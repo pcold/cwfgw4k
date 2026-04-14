@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, api } from './client';
+import { ApiError, api, camelizeKeys } from './client';
 
 type FetchMock = ReturnType<typeof vi.fn>;
 
@@ -9,6 +9,32 @@ function mockJson(body: unknown, status = 200): Response {
     headers: { 'Content-Type': 'application/json' },
   });
 }
+
+describe('camelizeKeys', () => {
+  it('passes through primitives and null', () => {
+    expect(camelizeKeys(42)).toBe(42);
+    expect(camelizeKeys('hi')).toBe('hi');
+    expect(camelizeKeys(null)).toBe(null);
+  });
+
+  it('rewrites nested objects and arrays', () => {
+    const input = {
+      top_level: {
+        inner_key: [{ leaf_one: 1, leaf_two: null }],
+      },
+    };
+    expect(camelizeKeys(input)).toEqual({
+      topLevel: { innerKey: [{ leafOne: 1, leafTwo: null }] },
+    });
+  });
+
+  it('leaves already-camelCase keys alone', () => {
+    expect(camelizeKeys({ teamName: 'Aces', total: 120 })).toEqual({
+      teamName: 'Aces',
+      total: 120,
+    });
+  });
+});
 
 describe('api client', () => {
   let fetchMock: FetchMock;
@@ -44,6 +70,25 @@ describe('api client', () => {
     expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/seasons/season-1/report');
     await api.seasonReport('season-1', true);
     expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/seasons/season-1/report?live=true');
+  });
+
+  it('converts snake_case response keys to camelCase', async () => {
+    const wire = [
+      {
+        team_id: 't-1',
+        team_name: 'Aces',
+        picks: [{ round: 1, golfer_name: 'Scheffler', ownership_pct: 100 }],
+      },
+    ];
+    fetchMock.mockResolvedValueOnce(mockJson(wire));
+    const result = await api.rosters('sn-1');
+    expect(result).toEqual([
+      {
+        teamId: 't-1',
+        teamName: 'Aces',
+        picks: [{ round: 1, golferName: 'Scheffler', ownershipPct: 100 }],
+      },
+    ]);
   });
 
   it('throws ApiError with the HTTP status when the response is not ok', async () => {
