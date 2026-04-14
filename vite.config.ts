@@ -15,6 +15,11 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    reporters: [
+      'default',
+      ['html', { outputFile: './test-report/index.html' }],
+      ['junit', { outputFile: './test-report/junit.xml' }],
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
