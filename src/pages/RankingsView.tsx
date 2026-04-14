@@ -1,5 +1,6 @@
 import type { Rankings, TeamRanking } from '../api/types';
 import { formatMoney } from '../util/money';
+import RankingsChart from './RankingsChart';
 
 function signColor(value: number): string {
   if (value > 0) return 'text-green-400';
@@ -17,6 +18,7 @@ function sumWhere(teams: TeamRanking[], predicate: (t: TeamRanking) => boolean):
 
 function RankingsView({ rankings }: Props) {
   const sorted = [...rankings.teams].sort((a, b) => b.totalCash - a.totalCash);
+  const sortedRankings: Rankings = { ...rankings, teams: sorted };
   const totalWon = sumWhere(sorted, (t) => t.totalCash > 0);
   const totalLost = sumWhere(sorted, (t) => t.totalCash < 0);
   const net = totalWon + totalLost;
@@ -88,6 +90,8 @@ function RankingsView({ rankings }: Props) {
           </span>
         </div>
       </div>
+
+      <RankingsChart rankings={sortedRankings} />
     </section>
   );
 }

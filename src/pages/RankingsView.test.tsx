@@ -44,9 +44,27 @@ function buildRankings(overrides: Partial<Rankings> = {}): Rankings {
 describe('RankingsView', () => {
   it('sorts teams by totalCash descending', () => {
     render(<RankingsView rankings={buildRankings()} />);
-    const rows = screen.getAllByRole('row').slice(1); // drop header row
+    const table = screen.getByRole('table');
+    const rows = within(table).getAllByRole('row').slice(1); // drop header row
     const names = rows.map((row) => within(row).getAllByRole('cell')[1]?.textContent);
     expect(names).toEqual(['Aces', 'Cuts', 'Birdies']);
+  });
+
+  it('renders the cumulative totals chart with a legend entry per team', () => {
+    render(<RankingsView rankings={buildRankings()} />);
+    const chart = screen.getByRole('figure', { name: /Cumulative Totals by Week/i });
+    expect(within(chart).getByText('Aces')).toBeInTheDocument();
+    expect(within(chart).getByText('Birdies')).toBeInTheDocument();
+    expect(within(chart).getByText('Cuts')).toBeInTheDocument();
+  });
+
+  it('shows an empty chart message when there is no week history yet', () => {
+    render(
+      <RankingsView
+        rankings={buildRankings({ teams: [], weeks: [], tournamentNames: [] })}
+      />,
+    );
+    expect(screen.getByText(/No ranking history yet/i)).toBeInTheDocument();
   });
 
   it('computes the zero-sum won/lost/net summary', () => {

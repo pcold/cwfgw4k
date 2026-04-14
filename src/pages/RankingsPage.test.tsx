@@ -1,19 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../test/renderWithProviders';
 import RankingsPage from './RankingsPage';
-import type { League, Rankings, Season } from '../api/types';
+import type { League, Rankings, Season, Tournament } from '../api/types';
 
 const leaguesMock = vi.fn();
 const seasonsMock = vi.fn();
 const rankingsMock = vi.fn();
+const tournamentsMock = vi.fn();
 
 vi.mock('../api/client', () => ({
   api: {
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
     seasonReport: vi.fn(),
-    rankings: (id: string, live: boolean) => rankingsMock(id, live),
+    rankings: (id: string, live: boolean, through?: string) =>
+      rankingsMock(id, live, through),
+    tournaments: (id: string) => tournamentsMock(id),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -27,6 +31,20 @@ const season: Season = {
   seasonNumber: 1,
   status: 'active',
 };
+const tournament: Tournament = {
+  id: 'tn-7',
+  pgaTournamentId: null,
+  name: 'Sample Open',
+  seasonId: 'sn-1',
+  startDate: '2026-03-01',
+  endDate: '2026-03-04',
+  courseName: null,
+  status: 'completed',
+  purseAmount: null,
+  payoutMultiplier: 1,
+  week: '9',
+  createdAt: '2026-01-01T00:00:00Z',
+};
 const rankings: Rankings = {
   teams: [
     {
@@ -35,12 +53,12 @@ const rankings: Rankings = {
       subtotal: 120,
       sideBets: 30,
       totalCash: 150,
-      series: [],
+      series: [50, 100, 150],
       liveWeekly: null,
     },
   ],
-  weeks: ['Week 1'],
-  tournamentNames: ['Sample'],
+  weeks: ['9', '10', '11'],
+  tournamentNames: ['A', 'B', 'C'],
   live: false,
 };
 
@@ -49,23 +67,43 @@ describe('RankingsPage', () => {
     leaguesMock.mockReset();
     seasonsMock.mockReset();
     rankingsMock.mockReset();
+    tournamentsMock.mockReset();
   });
 
-  it('renders the rankings table when all queries succeed', async () => {
+  it('loads the full season rankings by default', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([tournament]);
     rankingsMock.mockResolvedValue(rankings);
 
     renderWithProviders(<RankingsPage />);
 
     expect(await screen.findByRole('heading', { name: /Team Standings/i })).toBeInTheDocument();
-    expect(screen.getByText('Aces')).toBeInTheDocument();
-    expect(rankingsMock).toHaveBeenCalledWith('sn-1', false);
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('Aces')).toBeInTheDocument();
+    expect(rankingsMock).toHaveBeenCalledWith('sn-1', false, undefined);
+  });
+
+  it('passes the selected tournament as the "through" parameter', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([tournament]);
+    rankingsMock.mockResolvedValue(rankings);
+
+    const user = userEvent.setup();
+    renderWithProviders(<RankingsPage />);
+
+    await screen.findByRole('heading', { name: /Team Standings/i });
+    const select = screen.getByLabelText(/Through/i);
+    await user.selectOptions(select, 'tn-7');
+
+    expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', false, 'tn-7');
   });
 
   it('shows an error message when rankings fail to load', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([tournament]);
     rankingsMock.mockRejectedValue(new Error('nope'));
 
     renderWithProviders(<RankingsPage />);

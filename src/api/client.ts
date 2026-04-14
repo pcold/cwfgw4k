@@ -50,8 +50,13 @@ export const api = {
     getJson<Season[]>(`/api/v1/seasons?leagueId=${encodeURIComponent(leagueId)}`),
   seasonReport: (seasonId: string, live: boolean) =>
     getJson<WeeklyReport>(`/api/v1/seasons/${seasonId}/report${live ? '?live=true' : ''}`),
-  rankings: (seasonId: string, live: boolean) =>
-    getJson<Rankings>(`/api/v1/seasons/${seasonId}/rankings${live ? '?live=true' : ''}`),
+  rankings: (seasonId: string, live: boolean, throughTournamentId?: string) => {
+    const params = new URLSearchParams();
+    if (live) params.set('live', 'true');
+    if (throughTournamentId) params.set('through', throughTournamentId);
+    const qs = params.toString();
+    return getJson<Rankings>(`/api/v1/seasons/${seasonId}/rankings${qs ? `?${qs}` : ''}`);
+  },
   rosters: (seasonId: string) => getJson<RosterTeam[]>(`/api/v1/seasons/${seasonId}/rosters`),
   tournaments: (seasonId: string) =>
     getJson<Tournament[]>(

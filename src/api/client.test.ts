@@ -72,6 +72,20 @@ describe('api client', () => {
     expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/seasons/season-1/report?live=true');
   });
 
+  it('rankings() builds the query string from live + through tournament', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(mockJson({})));
+    await api.rankings('sn-1', false);
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/seasons/sn-1/rankings');
+    await api.rankings('sn-1', true);
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/seasons/sn-1/rankings?live=true');
+    await api.rankings('sn-1', false, 'tn-7');
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/seasons/sn-1/rankings?through=tn-7');
+    await api.rankings('sn-1', true, 'tn-7');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/v1/seasons/sn-1/rankings?live=true&through=tn-7',
+    );
+  });
+
   it('converts snake_case response keys to camelCase', async () => {
     const wire = [
       {
