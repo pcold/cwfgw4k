@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, api, camelizeKeys } from './client';
+import { ApiError, api, camelizeKeys, snakeifyKeys } from './client';
 
 type FetchMock = ReturnType<typeof vi.fn>;
 
@@ -33,6 +33,27 @@ describe('camelizeKeys', () => {
       teamName: 'Aces',
       total: 120,
     });
+  });
+});
+
+describe('snakeifyKeys', () => {
+  it('converts camelCase to snake_case recursively', () => {
+    expect(
+      snakeifyKeys({
+        leagueId: 'lg-1',
+        seasonYear: 2026,
+        rules: { tieFloor: 1, sideBetRounds: [5, 6] },
+      }),
+    ).toEqual({
+      league_id: 'lg-1',
+      season_year: 2026,
+      rules: { tie_floor: 1, side_bet_rounds: [5, 6] },
+    });
+  });
+
+  it('passes through primitives and null', () => {
+    expect(snakeifyKeys(null)).toBe(null);
+    expect(snakeifyKeys(42)).toBe(42);
   });
 });
 
@@ -115,5 +136,77 @@ describe('api client', () => {
     );
     expect(err).toBeInstanceOf(ApiError);
     expect(err).toMatchObject({ name: 'ApiError', status: 503 });
+  });
+
+  it('createSeason() sends snake_case keys in the body', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockJson({
+        id: 'sn-9',
+        league_id: 'lg-1',
+        name: 'Spring',
+        season_year: 2026,
+        season_number: 1,
+        status: 'active',
+      }),
+    );
+    const result = await api.createSeason({
+      leagueId: 'lg-1',
+      name: 'Spring',
+      seasonYear: 2026,
+      rules: { payouts: [18, 12], tieFloor: 1, sideBetRounds: [5, 6], sideBetAmount: 15 },
+    });
+    const call = fetchMock.mock.calls[0];
+    expect(call[0]).toBe('/api/v1/seasons');
+    const body = JSON.parse(String((call[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(body).toEqual({
+      league_id: 'lg-1',
+      name: 'Spring',
+      season_year: 2026,
+      rules: {
+        payouts: [18, 12],
+        tie_floor: 1,
+        side_bet_rounds: [5, 6],
+        side_bet_amount: 15,
+      },
+    });
+    expect(result).toMatchObject({ id: 'sn-9', leagueId: 'lg-1', seasonYear: 2026 });
+  });
+
+  it('postJson surfaces the server-supplied error message', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'Bad request' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const err = await api.createLeague('bad').then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).message).toBe('Bad request');
+    expect((err as ApiError).status).toBe(400);
+  });
+
+  it('login() posts credentials and returns the parsed body', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({ ok: true }));
+    const result = await api.login('admin', 'secret');
+    const call = fetchMock.mock.calls[0];
+    expect(call[0]).toBe('/api/v1/auth/login');
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+      username: 'admin',
+      password: 'secret',
+    });
+    expect(result).toEqual({ ok: true });
+  });
+
+  it('resetTournament() posts to the tournament path without a body', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({ message: 'Reset complete' }));
+    const result = await api.resetTournament('tn-7');
+    const call = fetchMock.mock.calls[0];
+    expect(call[0]).toBe('/api/v1/tournaments/tn-7/reset');
+    expect((call[1] as RequestInit).method).toBe('POST');
+    expect((call[1] as RequestInit).body).toBeUndefined();
+    expect(result).toEqual({ message: 'Reset complete' });
   });
 });

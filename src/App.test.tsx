@@ -6,6 +6,7 @@ import { renderWithProviders } from './test/renderWithProviders';
 
 vi.mock('./api/client', () => ({
   api: {
+    authMe: vi.fn().mockResolvedValue({ authenticated: false, username: null }),
     leagues: vi.fn().mockResolvedValue([]),
     seasons: vi.fn().mockResolvedValue([]),
     seasonReport: vi.fn().mockResolvedValue({
@@ -46,6 +47,7 @@ describe('App', () => {
     expect(screen.getByRole('link', { name: /Rosters/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Late Row Bets/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Rules/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Admin/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'CWFG' })).toBeInTheDocument();
   });
 

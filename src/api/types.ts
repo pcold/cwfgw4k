@@ -129,3 +129,103 @@ export interface Season {
   seasonNumber: number;
   status: string;
 }
+
+export interface AuthStatus {
+  authenticated: boolean;
+  username: string | null;
+}
+
+export interface SeasonRules {
+  payouts: number[];
+  tieFloor: number;
+  sideBetRounds: number[];
+  sideBetAmount: number;
+}
+
+export interface ScheduleTournament {
+  id: string;
+  name: string;
+  week: string | null;
+  startDate: string;
+  endDate: string;
+  payoutMultiplier: number;
+  espnId: string | null;
+  espnName: string | null;
+}
+
+export interface ScheduleUploadResult {
+  seasonYear: number;
+  tournamentsCreated: number;
+  espnMatched: number;
+  espnUnmatched: string[];
+  tournaments: ScheduleTournament[];
+}
+
+export interface RosterMatchSuggestion {
+  espnId: string;
+  name: string;
+}
+
+export type RosterMatchStatus = 'exact' | 'ambiguous' | 'no_match';
+
+export interface RosterPreviewPick {
+  round: number;
+  inputName: string;
+  ownershipPct: number;
+  matchStatus: RosterMatchStatus;
+  espnId: string | null;
+  espnName: string | null;
+  suggestions: RosterMatchSuggestion[];
+}
+
+export interface RosterPreviewTeam {
+  teamNumber: number;
+  teamName: string;
+  picks: RosterPreviewPick[];
+}
+
+export interface RosterPreview {
+  totalPicks: number;
+  exactMatches: number;
+  ambiguous: number;
+  noMatch: number;
+  teams: RosterPreviewTeam[];
+}
+
+export interface RosterConfirmPick {
+  round: number;
+  playerName: string;
+  ownershipPct: number;
+  espnId: string | null;
+  espnName: string | null;
+}
+
+export interface RosterConfirmTeamInput {
+  teamNumber: number;
+  teamName: string;
+  picks: RosterConfirmPick[];
+}
+
+export interface RosterConfirmResultPick {
+  round: number;
+  golferId: string;
+  golferName: string;
+  ownershipPct: number;
+}
+
+export interface RosterConfirmResultTeam {
+  teamId: string;
+  teamNumber: number;
+  teamName: string;
+  picks: RosterConfirmResultPick[];
+}
+
+export interface RosterConfirmResult {
+  teamsCreated: number;
+  golfersCreated: number;
+  teams: RosterConfirmResultTeam[];
+}
+
+export interface ActionMessageResponse {
+  message: string;
+}

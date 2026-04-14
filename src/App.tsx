@@ -5,8 +5,10 @@ import RostersPage from './pages/RostersPage';
 import ScoreboardPage from './pages/ScoreboardPage';
 import LateRowBetsPage from './pages/LateRowBetsPage';
 import RulesPage from './pages/RulesPage';
+import AdminPage from './pages/AdminPage';
 import LeagueSeasonPicker from './components/LeagueSeasonPicker';
 import { LeagueSeasonProvider } from './context/LeagueSeasonContext';
+import { AuthProvider } from './context/AuthContext';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }): string =>
   `px-3 py-1.5 rounded text-sm font-medium transition ${
@@ -15,6 +17,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }): string =>
 
 function App() {
   return (
+    <AuthProvider>
     <LeagueSeasonProvider>
       <div className="min-h-screen bg-gray-900 text-gray-100">
         <nav className="bg-gray-800 border-b border-gray-700">
@@ -39,6 +42,9 @@ function App() {
               <NavLink to="/rules" className={navLinkClass}>
                 Rules
               </NavLink>
+              <NavLink to="/admin" className={navLinkClass}>
+                Admin
+              </NavLink>
             </div>
           </div>
         </nav>
@@ -54,10 +60,12 @@ function App() {
             <Route path="/rosters" element={<RostersPage />} />
             <Route path="/late-row-bets" element={<LateRowBetsPage />} />
             <Route path="/rules" element={<RulesPage />} />
+            <Route path="/admin" element={<AdminPage />} />
           </Routes>
         </main>
       </div>
     </LeagueSeasonProvider>
+    </AuthProvider>
   );
 }
 
