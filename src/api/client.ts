@@ -1,4 +1,4 @@
-import type { League, Season, WeeklyReport } from './types';
+import type { League, Rankings, RosterTeam, Season, WeeklyReport } from './types';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -22,4 +22,7 @@ export const api = {
     getJson<Season[]>(`/api/v1/seasons?leagueId=${encodeURIComponent(leagueId)}`),
   seasonReport: (seasonId: string, live: boolean) =>
     getJson<WeeklyReport>(`/api/v1/seasons/${seasonId}/report${live ? '?live=true' : ''}`),
+  rankings: (seasonId: string, live: boolean) =>
+    getJson<Rankings>(`/api/v1/seasons/${seasonId}/rankings${live ? '?live=true' : ''}`),
+  rosters: (seasonId: string) => getJson<RosterTeam[]>(`/api/v1/seasons/${seasonId}/rosters`),
 };

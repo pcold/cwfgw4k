@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useLeagueSeason } from '../context/LeagueSeasonContext';
-import WeeklyReportView from './WeeklyReportView';
+import RankingsView from './RankingsView';
 
-function WeeklyReportPage() {
+function RankingsPage() {
   const { leagues, leaguesLoading, leaguesError, seasonId, live } = useLeagueSeason();
 
-  const reportQuery = useQuery({
-    queryKey: ['report', seasonId, live],
-    queryFn: () => api.seasonReport(seasonId!, live),
+  const rankingsQuery = useQuery({
+    queryKey: ['rankings', seasonId, live],
+    queryFn: () => api.rankings(seasonId!, live),
     enabled: !!seasonId,
   });
 
@@ -18,12 +18,12 @@ function WeeklyReportPage() {
   if (!leagues || leagues.length === 0)
     return <p className="text-gray-400">No leagues configured.</p>;
 
-  if (reportQuery.isLoading) return <p className="text-gray-400">Loading report…</p>;
-  if (reportQuery.isError)
-    return <p className="text-red-400">Failed to load report: {String(reportQuery.error)}</p>;
-  if (!reportQuery.data) return null;
+  if (rankingsQuery.isLoading) return <p className="text-gray-400">Loading standings…</p>;
+  if (rankingsQuery.isError)
+    return <p className="text-red-400">Failed to load standings: {String(rankingsQuery.error)}</p>;
+  if (!rankingsQuery.data) return null;
 
-  return <WeeklyReportView report={reportQuery.data} />;
+  return <RankingsView rankings={rankingsQuery.data} />;
 }
 
-export default WeeklyReportPage;
+export default RankingsPage;

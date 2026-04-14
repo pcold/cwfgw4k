@@ -70,6 +70,36 @@ export interface WeeklyReport {
   live: boolean | null;
 }
 
+export interface TeamRanking {
+  teamId: string;
+  teamName: string;
+  subtotal: number;
+  sideBets: number;
+  totalCash: number;
+  series: number[];
+  liveWeekly: number | null;
+}
+
+export interface Rankings {
+  teams: TeamRanking[];
+  weeks: string[];
+  tournamentNames: string[];
+  live: boolean | null;
+}
+
+export interface RosterPick {
+  round: number;
+  golferName: string;
+  ownershipPct: number;
+  golferId: string;
+}
+
+export interface RosterTeam {
+  teamId: string;
+  teamName: string;
+  picks: RosterPick[];
+}
+
 export interface League {
   id: string;
   name: string;

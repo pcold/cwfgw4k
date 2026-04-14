@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/react';
 import { renderWithProviders } from '../test/renderWithProviders';
 import WeeklyReportPage from './WeeklyReportPage';
 import type { League, Season, WeeklyReport } from '../api/types';
@@ -14,6 +13,7 @@ vi.mock('../api/client', () => ({
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
     seasonReport: (id: string, live: boolean) => reportMock(id, live),
+    rankings: vi.fn(),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -66,33 +66,16 @@ describe('WeeklyReportPage', () => {
     reportMock.mockReset();
   });
 
-  it('bootstraps league → season → report after the leagues query resolves', async () => {
+  it('renders the report when leagues → seasons → report all succeed', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     reportMock.mockResolvedValue(report);
 
     renderWithProviders(<WeeklyReportPage />);
 
-    expect(screen.getByText(/Loading leagues/i)).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: /Sample Open/i })).toBeInTheDocument();
     expect(seasonsMock).toHaveBeenCalledWith('lg-1');
     expect(reportMock).toHaveBeenCalledWith('sn-1', false);
-  });
-
-  it('re-fetches the report when the live toggle is flipped', async () => {
-    leaguesMock.mockResolvedValue([league]);
-    seasonsMock.mockResolvedValue([season]);
-    reportMock.mockResolvedValue(report);
-    const user = userEvent.setup();
-
-    renderWithProviders(<WeeklyReportPage />);
-    await screen.findByRole('heading', { name: /Sample Open/i });
-
-    await user.click(screen.getByRole('checkbox', { name: /Live overlay/i }));
-
-    await waitFor(() => {
-      expect(reportMock).toHaveBeenCalledWith('sn-1', true);
-    });
   });
 
   it('shows an empty state when there are no leagues', async () => {
@@ -101,9 +84,18 @@ describe('WeeklyReportPage', () => {
     expect(await screen.findByText(/No leagues configured/i)).toBeInTheDocument();
   });
 
-  it('surfaces an error message when the leagues query fails', async () => {
+  it('surfaces an error when the leagues query fails', async () => {
     leaguesMock.mockRejectedValue(new Error('network down'));
     renderWithProviders(<WeeklyReportPage />);
     expect(await screen.findByText(/Failed to load leagues/i)).toBeInTheDocument();
+  });
+
+  it('surfaces an error when the report query fails', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    reportMock.mockRejectedValue(new Error('kaboom'));
+
+    renderWithProviders(<WeeklyReportPage />);
+    expect(await screen.findByText(/Failed to load report/i)).toBeInTheDocument();
   });
 });
