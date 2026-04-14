@@ -44,6 +44,7 @@ describe('App', () => {
     expect(screen.getByRole('link', { name: /Weekly Report/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Team Standings/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Rosters/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Late Row Bets/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'CWFG' })).toBeInTheDocument();
   });
 
