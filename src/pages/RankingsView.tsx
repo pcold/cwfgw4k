@@ -1,15 +1,5 @@
 import type { Rankings, TeamRanking } from '../api/types';
-
-const money = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
-
-function formatMoney(value: number): string {
-  return money.format(value);
-}
+import { formatMoney } from '../util/money';
 
 function signColor(value: number): string {
   if (value > 0) return 'text-green-400';
@@ -70,7 +60,7 @@ function RankingsView({ rankings }: Props) {
                 <td
                   className={`px-3 py-2 text-right tabular-nums font-semibold ${signColor(team.totalCash)}`}
                 >
-                  {formatMoney(team.totalCash)}
+                  {formatMoney(team.totalCash, 0)}
                 </td>
               </tr>
             ))}
@@ -82,16 +72,20 @@ function RankingsView({ rankings }: Props) {
         <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
           <span className="text-gray-500">Won</span>
           <span className="font-semibold text-green-400 tabular-nums">
-            {formatMoney(totalWon)}
+            {formatMoney(totalWon, 0)}
           </span>
         </div>
         <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
           <span className="text-gray-500">Lost</span>
-          <span className="font-semibold text-red-400 tabular-nums">{formatMoney(totalLost)}</span>
+          <span className="font-semibold text-red-400 tabular-nums">
+            {formatMoney(totalLost, 0)}
+          </span>
         </div>
         <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
           <span className="text-gray-500">Net</span>
-          <span className={`font-semibold tabular-nums ${signColor(net)}`}>{formatMoney(net)}</span>
+          <span className={`font-semibold tabular-nums ${signColor(net)}`}>
+            {formatMoney(net, 0)}
+          </span>
         </div>
       </div>
     </section>

@@ -1,16 +1,6 @@
 import type { WeeklyReport } from '../api/types';
+import { formatMoney } from '../util/money';
 import { deriveScoreboard, formatScoreToPar } from './scoreboardModel';
-
-const money = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
-
-function formatMoney(value: number): string {
-  return money.format(value);
-}
 
 function formatSigned(value: number): string {
   if (value > 0) return `+${formatMoney(value)}`;

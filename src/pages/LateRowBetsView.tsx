@@ -1,21 +1,11 @@
 import type { WeeklyReport } from '../api/types';
+import { formatMoney } from '../util/money';
 import {
   lateRowBetRounds,
   lateRowBetTeamTotals,
   summarizeLateRowBets,
   type LateRowBetEntry,
 } from './lateRowBetsModel';
-
-const money = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
-
-function formatMoney(value: number): string {
-  return money.format(value);
-}
 
 function payoutClass(payout: number): string {
   if (payout > 0) return 'text-green-400';

@@ -1,4 +1,5 @@
 import type { ReportRow, ReportTeamColumn, WeeklyReport } from '../api/types';
+import { formatMoney } from '../util/money';
 import {
   isSeasonReport,
   sideBetWinnersByRound,
@@ -6,17 +7,6 @@ import {
 } from './weeklyReportModel';
 
 const ROUNDS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
-
-const money = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-});
-
-function formatMoney(value: number): string {
-  return money.format(value);
-}
 
 function signText(value: number): string {
   if (value > 0) return 'text-green-400';
