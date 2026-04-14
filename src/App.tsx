@@ -4,6 +4,7 @@ import RankingsPage from './pages/RankingsPage';
 import RostersPage from './pages/RostersPage';
 import ScoreboardPage from './pages/ScoreboardPage';
 import LateRowBetsPage from './pages/LateRowBetsPage';
+import RulesPage from './pages/RulesPage';
 import LeagueSeasonPicker from './components/LeagueSeasonPicker';
 import { LeagueSeasonProvider } from './context/LeagueSeasonContext';
 
@@ -35,6 +36,9 @@ function App() {
               <NavLink to="/late-row-bets" className={navLinkClass}>
                 Late Row Bets
               </NavLink>
+              <NavLink to="/rules" className={navLinkClass}>
+                Rules
+              </NavLink>
             </div>
           </div>
         </nav>
@@ -49,6 +53,7 @@ function App() {
             <Route path="/rankings" element={<RankingsPage />} />
             <Route path="/rosters" element={<RostersPage />} />
             <Route path="/late-row-bets" element={<LateRowBetsPage />} />
+            <Route path="/rules" element={<RulesPage />} />
           </Routes>
         </main>
       </div>
