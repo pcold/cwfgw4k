@@ -2,6 +2,7 @@ import { NavLink, Route, Routes } from 'react-router-dom';
 import WeeklyReportPage from './pages/WeeklyReportPage';
 import RankingsPage from './pages/RankingsPage';
 import RostersPage from './pages/RostersPage';
+import ScoreboardPage from './pages/ScoreboardPage';
 import LeagueSeasonPicker from './components/LeagueSeasonPicker';
 import { LeagueSeasonProvider } from './context/LeagueSeasonContext';
 
@@ -18,6 +19,9 @@ function App() {
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
             <h1 className="text-lg font-bold text-green-400 tracking-wide">CWFG</h1>
             <div className="flex gap-1">
+              <NavLink to="/scoreboard" className={navLinkClass}>
+                Scoreboard
+              </NavLink>
               <NavLink to="/report" className={navLinkClass}>
                 Weekly Report
               </NavLink>
@@ -35,7 +39,8 @@ function App() {
 
         <main className="max-w-6xl mx-auto px-4 py-6">
           <Routes>
-            <Route path="/" element={<WeeklyReportPage />} />
+            <Route path="/" element={<ScoreboardPage />} />
+            <Route path="/scoreboard" element={<ScoreboardPage />} />
             <Route path="/report" element={<WeeklyReportPage />} />
             <Route path="/rankings" element={<RankingsPage />} />
             <Route path="/rosters" element={<RostersPage />} />

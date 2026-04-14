@@ -31,6 +31,8 @@ vi.mock('./api/client', () => ({
       live: false,
     }),
     rosters: vi.fn().mockResolvedValue([]),
+    tournaments: vi.fn().mockResolvedValue([]),
+    tournamentReport: vi.fn().mockResolvedValue(null),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -38,6 +40,7 @@ vi.mock('./api/client', () => ({
 describe('App', () => {
   it('renders the primary nav', () => {
     renderWithProviders(<App />, { withLeagueSeasonProvider: false });
+    expect(screen.getByRole('link', { name: /Scoreboard/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Weekly Report/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Team Standings/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Rosters/i })).toBeInTheDocument();

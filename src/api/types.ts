@@ -106,6 +106,21 @@ export interface League {
   createdAt: string;
 }
 
+export interface Tournament {
+  id: string;
+  pgaTournamentId: string | null;
+  name: string;
+  seasonId: string;
+  startDate: string;
+  endDate: string;
+  courseName: string | null;
+  status: string;
+  purseAmount: number | null;
+  payoutMultiplier: number;
+  week: string | null;
+  createdAt: string;
+}
+
 export interface Season {
   id: string;
   leagueId: string;
