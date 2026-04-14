@@ -1,19 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../test/renderWithProviders';
 import WeeklyReportPage from './WeeklyReportPage';
-import type { League, Season, WeeklyReport } from '../api/types';
+import type { League, Season, Tournament, WeeklyReport } from '../api/types';
 
 const leaguesMock = vi.fn();
 const seasonsMock = vi.fn();
-const reportMock = vi.fn();
+const tournamentsMock = vi.fn();
+const seasonReportMock = vi.fn();
+const tournamentReportMock = vi.fn();
 
 vi.mock('../api/client', () => ({
   api: {
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
-    seasonReport: (id: string, live: boolean) => reportMock(id, live),
+    seasonReport: (id: string, live: boolean) => seasonReportMock(id, live),
     rankings: vi.fn(),
+    rosters: vi.fn(),
+    tournaments: (id: string) => tournamentsMock(id),
+    tournamentReport: (seasonId: string, tournamentId: string, live: boolean) =>
+      tournamentReportMock(seasonId, tournamentId, live),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -27,55 +34,104 @@ const season: Season = {
   seasonNumber: 1,
   status: 'active',
 };
-const report: WeeklyReport = {
-  tournament: {
-    id: 't-1',
-    name: 'Sample Open',
-    startDate: '2026-03-01',
-    endDate: '2026-03-04',
-    status: 'completed',
-    payoutMultiplier: 1,
-    week: '9',
-  },
-  teams: [
-    {
-      teamId: 'team-1',
-      teamName: 'Aces',
-      ownerName: 'Alice',
-      rows: [],
-      topTens: 0,
-      weeklyTotal: 25,
-      previous: 100,
-      subtotal: 125,
-      topTenCount: 1,
-      topTenMoney: 18,
-      sideBets: 0,
-      totalCash: 125,
-    },
-  ],
-  undraftedTopTens: [],
-  sideBetDetail: [],
-  standingsOrder: [{ rank: 1, teamName: 'Aces', totalCash: 125 }],
-  live: false,
+const tournament: Tournament = {
+  id: 'tn-1',
+  pgaTournamentId: null,
+  name: 'Sample Open',
+  seasonId: 'sn-1',
+  startDate: '2026-03-01',
+  endDate: '2026-03-04',
+  courseName: null,
+  status: 'completed',
+  purseAmount: null,
+  payoutMultiplier: 1,
+  week: '9',
+  createdAt: '2026-01-01T00:00:00Z',
 };
+
+function buildReport(name: string, tournamentId: string | null = null): WeeklyReport {
+  return {
+    tournament: {
+      id: tournamentId,
+      name,
+      startDate: tournamentId ? '2026-03-01' : null,
+      endDate: tournamentId ? '2026-03-04' : null,
+      status: tournamentId ? 'completed' : 'season',
+      payoutMultiplier: 1,
+      week: tournamentId ? '9' : null,
+    },
+    teams: [
+      {
+        teamId: 'team-1',
+        teamName: 'Aces',
+        ownerName: 'Alice',
+        rows: [1, 2, 3, 4, 5, 6, 7, 8].map((r) => ({
+          round: r,
+          golferName: `Golfer ${r}`,
+          golferId: `g-${r}`,
+          positionStr: null,
+          scoreToPar: null,
+          earnings: 0,
+          topTens: 0,
+          ownershipPct: 100,
+          seasonEarnings: 0,
+          seasonTopTens: 0,
+        })),
+        topTens: 0,
+        weeklyTotal: 0,
+        previous: 0,
+        subtotal: 0,
+        topTenCount: 0,
+        topTenMoney: 0,
+        sideBets: 0,
+        totalCash: 0,
+      },
+    ],
+    undraftedTopTens: [],
+    sideBetDetail: [],
+    standingsOrder: [],
+    live: false,
+  };
+}
 
 describe('WeeklyReportPage', () => {
   beforeEach(() => {
     leaguesMock.mockReset();
     seasonsMock.mockReset();
-    reportMock.mockReset();
+    tournamentsMock.mockReset();
+    seasonReportMock.mockReset();
+    tournamentReportMock.mockReset();
   });
 
-  it('renders the report when leagues → seasons → report all succeed', async () => {
+  it('loads the season report by default (All Tournaments)', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
-    reportMock.mockResolvedValue(report);
+    tournamentsMock.mockResolvedValue([tournament]);
+    seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
 
     renderWithProviders(<WeeklyReportPage />);
 
+    expect(await screen.findByRole('heading', { name: /All Tournaments/i })).toBeInTheDocument();
+    expect(seasonReportMock).toHaveBeenCalledWith('sn-1', false);
+    expect(tournamentReportMock).not.toHaveBeenCalled();
+  });
+
+  it('switches to the per-tournament report when a tournament is selected', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([tournament]);
+    seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
+    tournamentReportMock.mockResolvedValue(buildReport('Sample Open', 'tn-1'));
+
+    const user = userEvent.setup();
+    renderWithProviders(<WeeklyReportPage />);
+
+    await screen.findByRole('heading', { name: /All Tournaments/i });
+    const select = screen.getByLabelText(/Tournament/i);
+    await user.selectOptions(select, 'tn-1');
+
     expect(await screen.findByRole('heading', { name: /Sample Open/i })).toBeInTheDocument();
-    expect(seasonsMock).toHaveBeenCalledWith('lg-1');
-    expect(reportMock).toHaveBeenCalledWith('sn-1', false);
+    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', false);
   });
 
   it('shows an empty state when there are no leagues', async () => {
@@ -93,7 +149,8 @@ describe('WeeklyReportPage', () => {
   it('surfaces an error when the report query fails', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
-    reportMock.mockRejectedValue(new Error('kaboom'));
+    tournamentsMock.mockResolvedValue([tournament]);
+    seasonReportMock.mockRejectedValue(new Error('kaboom'));
 
     renderWithProviders(<WeeklyReportPage />);
     expect(await screen.findByText(/Failed to load report/i)).toBeInTheDocument();
