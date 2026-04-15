@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { useLeagueSeason } from '@/context/LeagueSeasonContext';
+import { QueryState, useLeaguesGate } from '@/components/QueryState';
 import type { Tournament } from '@/api/types';
 import RankingsView from './RankingsView';
 
@@ -13,7 +14,8 @@ function tournamentLabel(t: Tournament): string {
 }
 
 function RankingsPage() {
-  const { leagues, leaguesLoading, leaguesError, seasonId, live } = useLeagueSeason();
+  const { seasonId, live } = useLeagueSeason();
+  const leaguesGate = useLeaguesGate();
   const [throughTournamentId, setThroughTournamentId] = useState<string>(ALL_TOURNAMENTS);
 
   const tournamentsQuery = useQuery({
@@ -29,11 +31,7 @@ function RankingsPage() {
     enabled: !!seasonId,
   });
 
-  if (leaguesLoading) return <p className="text-gray-400">Loading leagues…</p>;
-  if (leaguesError)
-    return <p className="text-red-400">Failed to load leagues: {String(leaguesError)}</p>;
-  if (!leagues || leagues.length === 0)
-    return <p className="text-gray-400">No leagues configured.</p>;
+  if (leaguesGate) return leaguesGate;
 
   const tournaments = tournamentsQuery.data ?? [];
 
@@ -61,11 +59,9 @@ function RankingsPage() {
         </select>
       </div>
 
-      {rankingsQuery.isLoading ? <p className="text-gray-400">Loading standings…</p> : null}
-      {rankingsQuery.isError ? (
-        <p className="text-red-400">Failed to load standings: {String(rankingsQuery.error)}</p>
-      ) : null}
-      {rankingsQuery.data ? <RankingsView rankings={rankingsQuery.data} /> : null}
+      <QueryState query={rankingsQuery} label="standings">
+        {(rankings) => <RankingsView rankings={rankings} />}
+      </QueryState>
     </div>
   );
 }

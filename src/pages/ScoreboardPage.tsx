@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { useLeagueSeason } from '@/context/LeagueSeasonContext';
+import { QueryState, useLeaguesGate } from '@/components/QueryState';
 import type { Tournament } from '@/api/types';
 import ScoreboardView from './ScoreboardView';
 
@@ -18,7 +19,8 @@ function tournamentLabel(t: Tournament): string {
 }
 
 function ScoreboardPage() {
-  const { leagues, leaguesLoading, leaguesError, seasonId, live } = useLeagueSeason();
+  const { seasonId, live } = useLeagueSeason();
+  const leaguesGate = useLeaguesGate();
   const [tournamentId, setTournamentId] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
@@ -45,48 +47,44 @@ function ScoreboardPage() {
     enabled: !!seasonId && !!tournamentId,
   });
 
-  if (leaguesLoading) return <p className="text-gray-400">Loading leagues…</p>;
-  if (leaguesError)
-    return <p className="text-red-400">Failed to load leagues: {String(leaguesError)}</p>;
-  if (!leagues || leagues.length === 0)
-    return <p className="text-gray-400">No leagues configured.</p>;
-
-  if (tournamentsQuery.isLoading) return <p className="text-gray-400">Loading tournaments…</p>;
-  if (tournamentsQuery.isError)
-    return (
-      <p className="text-red-400">
-        Failed to load tournaments: {String(tournamentsQuery.error)}
-      </p>
-    );
-  if (tournaments.length === 0)
-    return <p className="text-gray-400">No tournaments scheduled for this season.</p>;
+  if (leaguesGate) return leaguesGate;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <label htmlFor="tournament-select" className="text-xs text-gray-400 uppercase tracking-wider">
-          Tournament
-        </label>
-        <select
-          id="tournament-select"
-          className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"
-          value={tournamentId ?? ''}
-          onChange={(e) => setTournamentId(e.target.value)}
-        >
-          {tournaments.map((t) => (
-            <option key={t.id} value={t.id}>
-              {tournamentLabel(t)}
-            </option>
-          ))}
-        </select>
-      </div>
+    <QueryState query={tournamentsQuery} label="tournaments">
+      {(loadedTournaments) => {
+        if (loadedTournaments.length === 0) {
+          return <p className="text-gray-400">No tournaments scheduled for this season.</p>;
+        }
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <label
+                htmlFor="tournament-select"
+                className="text-xs text-gray-400 uppercase tracking-wider"
+              >
+                Tournament
+              </label>
+              <select
+                id="tournament-select"
+                className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"
+                value={tournamentId ?? ''}
+                onChange={(e) => setTournamentId(e.target.value)}
+              >
+                {loadedTournaments.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {tournamentLabel(t)}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-      {reportQuery.isLoading ? <p className="text-gray-400">Loading scoreboard…</p> : null}
-      {reportQuery.isError ? (
-        <p className="text-red-400">Failed to load scoreboard: {String(reportQuery.error)}</p>
-      ) : null}
-      {reportQuery.data ? <ScoreboardView report={reportQuery.data} /> : null}
-    </div>
+            <QueryState query={reportQuery} label="scoreboard">
+              {(report) => <ScoreboardView report={report} />}
+            </QueryState>
+          </div>
+        );
+      }}
+    </QueryState>
   );
 }
 
