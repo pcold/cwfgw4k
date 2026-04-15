@@ -127,7 +127,7 @@ describe('LateRowBetsPage', () => {
     renderWithProviders(<LateRowBetsPage />);
 
     await screen.findByRole('heading', { name: 'Round 5' });
-    const select = screen.getByLabelText(/Tournament/i);
+    const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-1');
 
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', false);

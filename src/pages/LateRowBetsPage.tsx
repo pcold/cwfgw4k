@@ -38,13 +38,13 @@ function LateRowBetsPage() {
         <h2 className="text-xl font-bold">Round 5-8 Late Row Bets</h2>
         <div className="flex items-center gap-3">
           <label
-            htmlFor="late-row-bets-tournament"
+            htmlFor="late-row-bets-through"
             className="text-xs text-gray-400 uppercase tracking-wider"
           >
-            Tournament
+            Through
           </label>
           <select
-            id="late-row-bets-tournament"
+            id="late-row-bets-through"
             className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"
             value={tournamentId}
             onChange={(e) => setTournamentId(e.target.value)}
