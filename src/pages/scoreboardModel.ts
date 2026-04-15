@@ -58,10 +58,12 @@ function golferScoresFor(team: ReportTeamColumn): ScoreboardGolfer[] {
 }
 
 function scoreboardTeamFor(team: ReportTeamColumn): ScoreboardTeam {
+  // team.topTens holds the per-tournament top-10 earnings sum (rows.earnings).
+  // team.topTenMoney is cumulative season-to-date and belongs to the weekly report view, not here.
   return {
     teamId: team.teamId,
     teamName: team.teamName,
-    topTenEarnings: team.topTenMoney,
+    topTenEarnings: team.topTens,
     weeklyTotal: team.weeklyTotal,
     golferScores: golferScoresFor(team),
   };

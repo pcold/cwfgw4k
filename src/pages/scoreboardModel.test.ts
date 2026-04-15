@@ -58,6 +58,22 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
 }
 
 describe('deriveScoreboard', () => {
+  it('uses per-tournament top-10 earnings, not cumulative season earnings', () => {
+    const scoreboard = deriveScoreboard(
+      report({
+        teams: [
+          teamColumn({
+            teamId: 't-1',
+            teamName: 'Aces',
+            topTens: 42,
+            topTenMoney: 999,
+          }),
+        ],
+      }),
+    );
+    expect(scoreboard.teams[0].topTenEarnings).toBe(42);
+  });
+
   it('sorts teams by weeklyTotal descending', () => {
     const scoreboard = deriveScoreboard(
       report({
