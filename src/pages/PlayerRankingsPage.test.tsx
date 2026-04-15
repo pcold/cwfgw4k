@@ -207,16 +207,16 @@ describe('PlayerRankingsPage', () => {
     await screen.findByText('Scottie Scheffler');
     // All Tournaments: $18 + $12 = $30
     expect(within(screen.getAllByRole('row')[1]).getAllByRole('cell')[3]).toHaveTextContent(
-      '$30',
+      '$30.00',
     );
 
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-a');
 
     // Through tn-a only: $18
-    await screen.findByText('$18');
+    await screen.findByText('$18.00');
     expect(within(screen.getAllByRole('row')[1]).getAllByRole('cell')[3]).toHaveTextContent(
-      '$18',
+      '$18.00',
     );
   });
 
