@@ -9,6 +9,8 @@ const leaguesMock = vi.fn();
 const seasonsMock = vi.fn();
 const tournamentsMock = vi.fn();
 const tournamentReportMock = vi.fn();
+const authMeMock = vi.fn();
+const finalizeMock = vi.fn();
 
 vi.mock('../api/client', () => ({
   api: {
@@ -20,6 +22,8 @@ vi.mock('../api/client', () => ({
     tournaments: (id: string) => tournamentsMock(id),
     tournamentReport: (seasonId: string, tournamentId: string, live: boolean) =>
       tournamentReportMock(seasonId, tournamentId, live),
+    authMe: () => authMeMock(),
+    finalizeTournament: (id: string) => finalizeMock(id),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -95,6 +99,9 @@ describe('ScoreboardPage', () => {
     seasonsMock.mockReset();
     tournamentsMock.mockReset();
     tournamentReportMock.mockReset();
+    authMeMock.mockReset();
+    finalizeMock.mockReset();
+    authMeMock.mockResolvedValue({ authenticated: false, username: null });
   });
 
   it('auto-selects an active tournament over a completed one', async () => {
@@ -105,7 +112,7 @@ describe('ScoreboardPage', () => {
       Promise.resolve(buildReport(id === 'tn-active' ? 'Current Open' : 'Sample Open', id)),
     );
 
-    renderWithProviders(<ScoreboardPage />);
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
     expect(await screen.findByRole('heading', { name: /Current Open/i })).toBeInTheDocument();
     await waitFor(() => {
@@ -122,7 +129,7 @@ describe('ScoreboardPage', () => {
     );
 
     const user = userEvent.setup();
-    renderWithProviders(<ScoreboardPage />);
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
     await screen.findByRole('heading', { name: /Current Open/i });
     const select = screen.getByLabelText(/Tournament/i);
@@ -137,10 +144,79 @@ describe('ScoreboardPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
 
-    renderWithProviders(<ScoreboardPage />);
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
     expect(
       await screen.findByText(/No tournaments scheduled for this season/i),
     ).toBeInTheDocument();
+  });
+
+  it('shows the Finalize Results button for an admin viewing an in-progress tournament', async () => {
+    authMeMock.mockResolvedValue({ authenticated: true, username: 'admin' });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    tournamentReportMock.mockResolvedValue({
+      ...buildReport('Current Open', 'tn-active'),
+      tournament: {
+        id: 'tn-active',
+        name: 'Current Open',
+        startDate: '2026-03-01',
+        endDate: '2026-03-04',
+        status: 'in_progress',
+        payoutMultiplier: 1,
+        week: '10',
+      },
+    });
+    finalizeMock.mockResolvedValue({ message: 'ok' });
+
+    const user = userEvent.setup();
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    const button = await screen.findByRole('button', { name: /Finalize Results/i });
+    await user.click(button);
+    await waitFor(() => {
+      expect(finalizeMock).toHaveBeenCalledWith('tn-active');
+    });
+  });
+
+  it('hides the Finalize Results button for unauthenticated users', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    tournamentReportMock.mockResolvedValue({
+      ...buildReport('Current Open', 'tn-active'),
+      tournament: {
+        id: 'tn-active',
+        name: 'Current Open',
+        startDate: '2026-03-01',
+        endDate: '2026-03-04',
+        status: 'in_progress',
+        payoutMultiplier: 1,
+        week: '10',
+      },
+    });
+
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    await screen.findByRole('heading', { name: /Current Open/i });
+    expect(
+      screen.queryByRole('button', { name: /Finalize Results/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('hides the Finalize Results button for completed tournaments even when admin', async () => {
+    authMeMock.mockResolvedValue({ authenticated: true, username: 'admin' });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([completedTournament]);
+    tournamentReportMock.mockResolvedValue(buildReport('Sample Open', 'tn-completed'));
+
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    await screen.findByRole('heading', { name: /Sample Open/i });
+    expect(
+      screen.queryByRole('button', { name: /Finalize Results/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('shows an error message when the report fails to load', async () => {
@@ -149,7 +225,7 @@ describe('ScoreboardPage', () => {
     tournamentsMock.mockResolvedValue([completedTournament]);
     tournamentReportMock.mockRejectedValue(new Error('boom'));
 
-    renderWithProviders(<ScoreboardPage />);
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
     expect(await screen.findByText(/Failed to load scoreboard/i)).toBeInTheDocument();
   });
 });

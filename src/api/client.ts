@@ -127,6 +127,8 @@ export const api = {
     postJson<RosterPreview>('/api/v1/admin/roster/preview', { roster }),
   confirmRoster: (input: { seasonId: string; teams: RosterConfirmTeamInput[] }) =>
     postJson<RosterConfirmResult>('/api/v1/admin/roster/confirm', input),
+  finalizeTournament: (tournamentId: string) =>
+    postJson<ActionMessageResponse>(`/api/v1/tournaments/${tournamentId}/finalize`),
   resetTournament: (tournamentId: string) =>
     postJson<ActionMessageResponse>(`/api/v1/tournaments/${tournamentId}/reset`),
   cleanSeasonResults: (seasonId: string) =>

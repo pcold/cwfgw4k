@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { WeeklyReport } from '@/api/types';
 import { formatMoney } from '@/util/money';
 import { deriveScoreboard, formatScoreToPar } from './scoreboardModel';
@@ -21,16 +22,19 @@ function signColor(value: number): string {
 
 interface Props {
   report: WeeklyReport;
+  finalizeSlot?: ReactNode;
 }
 
-function ScoreboardView({ report }: Props) {
+function ScoreboardView({ report, finalizeSlot }: Props) {
   const scoreboard = deriveScoreboard(report);
   const tournament = report.tournament;
-  const statusBanner = tournament.status === 'completed' ? 'Results finalized' : 'Tournament in progress — scores are live estimates';
-  const bannerClass =
-    tournament.status === 'completed'
-      ? 'bg-green-900/30 border-green-700 text-green-300'
-      : 'bg-yellow-900/40 border-yellow-700 text-yellow-300';
+  const isCompleted = tournament.status === 'completed';
+  const statusBanner = isCompleted
+    ? 'Results finalized'
+    : 'Tournament in progress — scores are live estimates';
+  const bannerClass = isCompleted
+    ? 'bg-green-900/30 border-green-700 text-green-300'
+    : 'bg-yellow-900/40 border-yellow-700 text-yellow-300';
 
   return (
     <section className="space-y-6">
@@ -44,7 +48,12 @@ function ScoreboardView({ report }: Props) {
         </p>
       </header>
 
-      <div className={`px-4 py-2 border rounded text-sm ${bannerClass}`}>{statusBanner}</div>
+      <div
+        className={`px-4 py-2 border rounded text-sm flex items-center justify-between gap-3 ${bannerClass}`}
+      >
+        <span>{statusBanner}</span>
+        {!isCompleted && finalizeSlot ? finalizeSlot : null}
+      </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[500px]">

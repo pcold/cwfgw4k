@@ -79,6 +79,28 @@ describe('ScoreboardView', () => {
     expect(screen.getByText(/Tournament in progress/i)).toBeInTheDocument();
   });
 
+  it('renders a finalize slot inside the in-progress banner when provided', () => {
+    render(
+      <ScoreboardView
+        report={report({
+          tournament: { ...report().tournament, status: 'in_progress' },
+        })}
+        finalizeSlot={<button type="button">Finalize Results</button>}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /Finalize Results/i })).toBeInTheDocument();
+  });
+
+  it('does not render the finalize slot for completed tournaments', () => {
+    render(
+      <ScoreboardView
+        report={report()}
+        finalizeSlot={<button type="button">Finalize Results</button>}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: /Finalize Results/i })).not.toBeInTheDocument();
+  });
+
   it('sorts team rows by weekly total descending', () => {
     render(
       <ScoreboardView

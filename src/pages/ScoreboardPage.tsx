@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState, type ReactNode } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
+import { useAuth } from '@/context/AuthContext';
 import { useLeagueSeason } from '@/context/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/components/QueryState';
+import { mutationError } from '@/util/mutationError';
 import { tournamentLabel } from '@/util/tournament';
-import type { Tournament } from '@/api/types';
+import type { Tournament, WeeklyReport } from '@/api/types';
 import ScoreboardView from './ScoreboardView';
 
 function pickDefaultTournament(tournaments: Tournament[]): string | null {
@@ -16,7 +18,9 @@ function pickDefaultTournament(tournaments: Tournament[]): string | null {
 
 function ScoreboardPage() {
   const { seasonId, live } = useLeagueSeason();
+  const { authenticated } = useAuth();
   const leaguesGate = useLeaguesGate();
+  const queryClient = useQueryClient();
   const [tournamentId, setTournamentId] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
@@ -42,6 +46,39 @@ function ScoreboardPage() {
     queryFn: () => api.tournamentReport(seasonId!, tournamentId!, live),
     enabled: !!seasonId && !!tournamentId,
   });
+
+  const finalizeMutation = useMutation({
+    mutationFn: (id: string) => api.finalizeTournament(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tournaments', seasonId] });
+      void queryClient.invalidateQueries({ queryKey: ['tournamentReport', seasonId] });
+      void queryClient.invalidateQueries({ queryKey: ['rankings', seasonId] });
+      void queryClient.invalidateQueries({ queryKey: ['seasonReport', seasonId] });
+    },
+  });
+  const finalizeErr = mutationError(finalizeMutation.error);
+
+  function buildFinalizeSlot(report: WeeklyReport): ReactNode {
+    if (!authenticated || !tournamentId) return null;
+    if (report.tournament.status === 'completed') return null;
+    return (
+      <div className="flex items-center gap-3">
+        {finalizeErr ? (
+          <span role="alert" className="text-red-300 text-xs">
+            {finalizeErr}
+          </span>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => finalizeMutation.mutate(tournamentId)}
+          disabled={finalizeMutation.isPending}
+          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-xs font-medium whitespace-nowrap"
+        >
+          {finalizeMutation.isPending ? 'Finalizing…' : 'Finalize Results'}
+        </button>
+      </div>
+    );
+  }
 
   if (leaguesGate) return leaguesGate;
 
@@ -75,7 +112,9 @@ function ScoreboardPage() {
             </div>
 
             <QueryState query={reportQuery} label="scoreboard">
-              {(report) => <ScoreboardView report={report} />}
+              {(report) => (
+                <ScoreboardView report={report} finalizeSlot={buildFinalizeSlot(report)} />
+              )}
             </QueryState>
           </div>
         );
