@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import type {
@@ -10,6 +10,7 @@ import type {
   Season,
 } from '@/api/types';
 import { mutationError } from '@/util/mutationError';
+import { useDefaultSelectedId } from '@/util/useDefaultSelectedId';
 
 function seasonLabel(s: Season): string {
   return `${s.seasonYear} ${s.name}`;
@@ -66,12 +67,7 @@ function UploadRostersSection() {
 
   const leaguesQuery = useQuery<League[]>({ queryKey: ['leagues'], queryFn: api.leagues });
   const [leagueId, setLeagueId] = useState<string>('');
-
-  useEffect(() => {
-    if (!leagueId && leaguesQuery.data && leaguesQuery.data.length > 0) {
-      setLeagueId(leaguesQuery.data[0].id);
-    }
-  }, [leaguesQuery.data, leagueId]);
+  useDefaultSelectedId(leaguesQuery.data, leagueId, setLeagueId);
 
   const seasonsQuery = useQuery<Season[]>({
     queryKey: ['seasons', leagueId],

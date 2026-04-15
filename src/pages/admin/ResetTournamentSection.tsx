@@ -1,19 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import type { League, Season, Tournament } from '@/api/types';
 import { mutationError } from '@/util/mutationError';
+import { useDefaultSelectedId } from '@/util/useDefaultSelectedId';
 
 function ResetTournamentSection() {
   const queryClient = useQueryClient();
 
   const leaguesQuery = useQuery<League[]>({ queryKey: ['leagues'], queryFn: api.leagues });
   const [leagueId, setLeagueId] = useState<string>('');
-  useEffect(() => {
-    if (!leagueId && leaguesQuery.data && leaguesQuery.data.length > 0) {
-      setLeagueId(leaguesQuery.data[0].id);
-    }
-  }, [leaguesQuery.data, leagueId]);
+  useDefaultSelectedId(leaguesQuery.data, leagueId, setLeagueId);
 
   const seasonsQuery = useQuery<Season[]>({
     queryKey: ['seasons', leagueId],
@@ -21,11 +18,7 @@ function ResetTournamentSection() {
     enabled: !!leagueId,
   });
   const [seasonId, setSeasonId] = useState<string>('');
-  useEffect(() => {
-    if (!seasonId && seasonsQuery.data && seasonsQuery.data.length > 0) {
-      setSeasonId(seasonsQuery.data[0].id);
-    }
-  }, [seasonsQuery.data, seasonId]);
+  useDefaultSelectedId(seasonsQuery.data, seasonId, setSeasonId);
 
   const tournamentsQuery = useQuery<Tournament[]>({
     queryKey: ['tournaments', seasonId],
