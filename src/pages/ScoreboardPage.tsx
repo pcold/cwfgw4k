@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { useLeagueSeason } from '@/context/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/components/QueryState';
+import { tournamentLabel } from '@/util/tournament';
 import type { Tournament } from '@/api/types';
 import ScoreboardView from './ScoreboardView';
 
@@ -11,11 +12,6 @@ function pickDefaultTournament(tournaments: Tournament[]): string | null {
   const active = tournaments.find((t) => t.status !== 'completed');
   if (active) return active.id;
   return tournaments[0].id;
-}
-
-function tournamentLabel(t: Tournament): string {
-  const multiplier = t.payoutMultiplier !== 1 ? ` (${t.payoutMultiplier}x)` : '';
-  return `Wk ${t.week ?? '?'} — ${t.name}${multiplier} — ${t.status}`;
 }
 
 function ScoreboardPage() {

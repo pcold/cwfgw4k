@@ -3,15 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { useLeagueSeason } from '@/context/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/components/QueryState';
-import type { Tournament } from '@/api/types';
+import { tournamentLabel } from '@/util/tournament';
 import RankingsView from './RankingsView';
 
 const ALL_TOURNAMENTS = '';
-
-function tournamentLabel(t: Tournament): string {
-  const suffix = t.status !== 'completed' ? ` (${t.status})` : '';
-  return `Wk ${t.week ?? '?'} — ${t.name}${suffix}`;
-}
 
 function RankingsPage() {
   const { seasonId, live } = useLeagueSeason();

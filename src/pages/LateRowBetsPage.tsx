@@ -3,15 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { useLeagueSeason } from '@/context/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/components/QueryState';
-import type { Tournament } from '@/api/types';
+import { tournamentLabel } from '@/util/tournament';
 import LateRowBetsView from './LateRowBetsView';
 
 const ALL_TOURNAMENTS = '';
-
-function tournamentLabel(t: Tournament): string {
-  const multiplier = t.payoutMultiplier !== 1 ? ` ${t.payoutMultiplier}x` : '';
-  return `Wk ${t.week ?? '?'} — ${t.name}${multiplier} — ${t.status}`;
-}
 
 function LateRowBetsPage() {
   const { seasonId, live } = useLeagueSeason();
