@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, ApiError } from '@/api/client';
+import { api } from '@/api/client';
 import type { League, Season, Tournament } from '@/api/types';
+import { mutationError } from '@/util/mutationError';
 
 function ResetTournamentSection() {
   const queryClient = useQueryClient();
@@ -56,12 +57,7 @@ function ResetTournamentSection() {
     resetMutation.mutate(tournamentId);
   };
 
-  const errorMessage =
-    resetMutation.error instanceof ApiError
-      ? resetMutation.error.message
-      : resetMutation.error instanceof Error
-        ? resetMutation.error.message
-        : null;
+  const errorMessage = mutationError(resetMutation.error);
 
   return (
     <div className="bg-gray-800 rounded-lg p-6">

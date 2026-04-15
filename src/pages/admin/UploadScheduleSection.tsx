@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, ApiError } from '@/api/client';
+import { api } from '@/api/client';
 import type { League, ScheduleUploadResult, Season } from '@/api/types';
+import { mutationError } from '@/util/mutationError';
 
 function seasonLabel(s: Season): string {
   return `${s.seasonYear} ${s.name}`;
@@ -43,12 +44,7 @@ function UploadScheduleSection() {
   });
 
   const result: ScheduleUploadResult | undefined = uploadMutation.data;
-  const errorMessage =
-    uploadMutation.error instanceof ApiError
-      ? uploadMutation.error.message
-      : uploadMutation.error instanceof Error
-        ? uploadMutation.error.message
-        : null;
+  const errorMessage = mutationError(uploadMutation.error);
 
   const disabled = uploadMutation.isPending || !scheduleText.trim() || !seasonId;
 

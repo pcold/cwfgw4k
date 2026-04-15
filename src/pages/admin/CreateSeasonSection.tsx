@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, ApiError } from '@/api/client';
+import { api } from '@/api/client';
 import type { League, Season } from '@/api/types';
+import { mutationError } from '@/util/mutationError';
 import {
   DEFAULT_PAYOUTS,
   DEFAULT_SIDE_BET_AMOUNT,
@@ -44,12 +45,7 @@ function CreateSeasonSection() {
     },
   });
 
-  const errorMessage =
-    createMutation.error instanceof ApiError
-      ? createMutation.error.message
-      : createMutation.error instanceof Error
-        ? createMutation.error.message
-        : null;
+  const errorMessage = mutationError(createMutation.error);
 
   const disabled = createMutation.isPending || !seasonName.trim() || !leagueId;
 

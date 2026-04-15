@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, ApiError } from '@/api/client';
+import { api } from '@/api/client';
 import type {
   League,
   RosterConfirmResult,
@@ -9,15 +9,10 @@ import type {
   RosterPreviewPick,
   Season,
 } from '@/api/types';
+import { mutationError } from '@/util/mutationError';
 
 function seasonLabel(s: Season): string {
   return `${s.seasonYear} ${s.name}`;
-}
-
-function mutationError(err: unknown): string | null {
-  if (err instanceof ApiError) return err.message;
-  if (err instanceof Error) return err.message;
-  return null;
 }
 
 function pickKey(teamNumber: number, pick: RosterPreviewPick): string {

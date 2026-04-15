@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, ApiError } from '@/api/client';
+import { api } from '@/api/client';
 import type { League } from '@/api/types';
+import { mutationError } from '@/util/mutationError';
 
 function CreateLeagueSection() {
   const queryClient = useQueryClient();
@@ -18,12 +19,7 @@ function CreateLeagueSection() {
   });
 
   const disabled = !name.trim() || createMutation.isPending;
-  const errorMessage =
-    createMutation.error instanceof ApiError
-      ? createMutation.error.message
-      : createMutation.error instanceof Error
-        ? createMutation.error.message
-        : null;
+  const errorMessage = mutationError(createMutation.error);
 
   return (
     <div className="bg-gray-800 rounded-lg p-6">
