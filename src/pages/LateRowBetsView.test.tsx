@@ -58,6 +58,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     ],
     standingsOrder: [],
     live: false,
+    liveLeaderboard: [],
     ...overrides,
   };
 }

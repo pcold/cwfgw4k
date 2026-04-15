@@ -91,6 +91,7 @@ function buildReport(name: string, tournamentId: string | null = null): WeeklyRe
     sideBetDetail: [],
     standingsOrder: [],
     live: false,
+    liveLeaderboard: [],
   };
 }
 

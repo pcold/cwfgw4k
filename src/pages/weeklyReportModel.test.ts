@@ -26,6 +26,7 @@ function tournamentReport(status: string): WeeklyReport {
     sideBetDetail: [],
     standingsOrder: [],
     live: false,
+    liveLeaderboard: [],
   };
 }
 

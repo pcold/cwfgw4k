@@ -87,6 +87,7 @@ function buildReport(): WeeklyReport {
     ],
     standingsOrder: [],
     live: false,
+    liveLeaderboard: [],
   };
 }
 

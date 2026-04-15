@@ -53,6 +53,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     sideBetDetail: [],
     standingsOrder: [],
     live: false,
+    liveLeaderboard: [],
     ...overrides,
   };
 }

@@ -68,6 +68,21 @@ function scoreboardTeamFor(team: ReportTeamColumn): ScoreboardTeam {
 }
 
 function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
+  // In live preview mode the backend ships the full ESPN top-20 (rostered + undrafted) so we render it directly.
+  if (report.liveLeaderboard.length > 0) {
+    return report.liveLeaderboard
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .slice(0, 20)
+      .map((entry) => ({
+        name: entry.name,
+        position: entry.position,
+        scoreToPar: parseScoreToPar(entry.scoreToPar),
+        rostered: entry.rostered,
+        teamName: entry.teamName,
+      }));
+  }
+
   const undrafted: LeaderboardEntry[] = report.undraftedTopTens.map((entry) => ({
     name: entry.name,
     position: entry.position,

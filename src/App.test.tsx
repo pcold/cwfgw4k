@@ -24,6 +24,7 @@ vi.mock('./api/client', () => ({
       sideBetDetail: [],
       standingsOrder: [],
       live: false,
+      liveLeaderboard: [],
     }),
     rankings: vi.fn().mockResolvedValue({
       teams: [],

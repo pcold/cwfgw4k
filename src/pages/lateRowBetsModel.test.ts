@@ -40,6 +40,7 @@ function baseReport(): WeeklyReport {
     sideBetDetail: [],
     standingsOrder: [],
     live: false,
+    liveLeaderboard: [],
   };
 }
 

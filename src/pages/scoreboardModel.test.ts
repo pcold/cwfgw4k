@@ -52,6 +52,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     sideBetDetail: [],
     standingsOrder: [],
     live: false,
+    liveLeaderboard: [],
     ...overrides,
   };
 }
@@ -145,6 +146,38 @@ describe('deriveScoreboard', () => {
     expect(names.filter((n) => n === 'Rahm')).toHaveLength(1);
     // sorted by position ascending
     expect(scoreboard.leaderboard[0].name).toBe('Scheffler');
+  });
+
+  it('uses liveLeaderboard when present and ignores rostered row fallback', () => {
+    const scoreboard = deriveScoreboard(
+      report({
+        teams: [
+          teamColumn({
+            teamName: 'Aces',
+            // Rostered row uses last-name spelling and would normally feed the leaderboard
+            rows: [row({ golferName: 'SCHEFFLER', positionStr: 'T1', scoreToPar: '-12' })],
+          }),
+        ],
+        undraftedTopTens: [
+          { name: 'Old Undrafted', position: 9, payout: 0, scoreToPar: '-2' },
+        ],
+        liveLeaderboard: [
+          { name: 'Scottie Scheffler', position: 1, scoreToPar: '-12', rostered: true, teamName: 'Aces' },
+          { name: 'Rory McIlroy', position: 2, scoreToPar: '-10', rostered: false, teamName: null },
+          { name: 'Phil Mickelson', position: 5, scoreToPar: '-7', rostered: false, teamName: null },
+        ],
+      }),
+    );
+    expect(scoreboard.leaderboard.map((e) => e.name)).toEqual([
+      'Scottie Scheffler',
+      'Rory McIlroy',
+      'Phil Mickelson',
+    ]);
+    expect(scoreboard.leaderboard[1].rostered).toBe(false);
+    expect(scoreboard.leaderboard[1].scoreToPar).toBe(-10);
+    // The legacy fallback names ('SCHEFFLER', 'Old Undrafted') must not appear
+    expect(scoreboard.leaderboard.find((e) => e.name === 'SCHEFFLER')).toBeUndefined();
+    expect(scoreboard.leaderboard.find((e) => e.name === 'Old Undrafted')).toBeUndefined();
   });
 
   it('marks rostered vs undrafted leaderboard entries', () => {

@@ -61,6 +61,14 @@ export interface StandingsEntry {
   totalCash: number;
 }
 
+export interface LiveLeaderboardEntry {
+  name: string;
+  position: number;
+  scoreToPar: string | null;
+  rostered: boolean;
+  teamName: string | null;
+}
+
 export interface WeeklyReport {
   tournament: ReportTournamentInfo;
   teams: ReportTeamColumn[];
@@ -68,6 +76,7 @@ export interface WeeklyReport {
   sideBetDetail: ReportSideBetRound[];
   standingsOrder: StandingsEntry[];
   live: boolean | null;
+  liveLeaderboard: LiveLeaderboardEntry[];
 }
 
 export interface TeamRanking {
