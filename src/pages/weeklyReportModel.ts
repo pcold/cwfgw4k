@@ -1,4 +1,33 @@
-import type { ReportSideBetRound, WeeklyReport } from '@/api/types';
+import type {
+  ReportRow,
+  ReportSideBetRound,
+  ReportTeamColumn,
+  WeeklyReport,
+} from '@/api/types';
+
+export const ROUNDS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+
+export function teamRowsByRound(team: ReportTeamColumn): Map<number, ReportRow> {
+  const byRound = new Map<number, ReportRow>();
+  for (const row of team.rows) byRound.set(row.round, row);
+  return byRound;
+}
+
+export function signTextClass(value: number): string {
+  if (value > 0) return 'text-green-400';
+  if (value < 0) return 'text-red-400';
+  return 'text-gray-500';
+}
+
+export function roundCellBg(hasEarnings: boolean, isSideBetWinner: boolean): string {
+  if (isSideBetWinner) return 'bg-red-800';
+  if (hasEarnings) return 'bg-yellow-300';
+  return '';
+}
+
+export function roundTextColor(hasEarnings: boolean, isSideBetWinner: boolean): string {
+  return hasEarnings && !isSideBetWinner ? 'text-black' : 'text-gray-200';
+}
 
 // Map of side-bet round -> set of team ids that won that round's side bet.
 // Used by the Weekly Report grid to highlight the winning cells.

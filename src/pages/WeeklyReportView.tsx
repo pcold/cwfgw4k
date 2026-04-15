@@ -1,28 +1,16 @@
+import type { ReactNode } from 'react';
 import type { ReportRow, ReportTeamColumn, WeeklyReport } from '@/api/types';
 import { formatMoney } from '@/util/money';
 import {
+  ROUNDS,
   isSeasonReport,
+  roundCellBg,
+  roundTextColor,
   sideBetWinnersByRound,
+  signTextClass,
   summarizeWeeklyReport,
+  teamRowsByRound,
 } from './weeklyReportModel';
-
-const ROUNDS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
-
-function signText(value: number): string {
-  if (value > 0) return 'text-green-400';
-  if (value < 0) return 'text-red-400';
-  return 'text-gray-500';
-}
-
-function roundCellBg(hasEarnings: boolean, isSideBetWinner: boolean): string {
-  if (isSideBetWinner) return 'bg-red-800';
-  if (hasEarnings) return 'bg-yellow-300';
-  return '';
-}
-
-function roundTextColor(hasEarnings: boolean, isSideBetWinner: boolean): string {
-  return hasEarnings && !isSideBetWinner ? 'text-black' : 'text-gray-200';
-}
 
 interface RoundCellProps {
   row: ReportRow | undefined;
@@ -70,10 +58,49 @@ function RoundCell({ row, isSideBetWinner, showSeasonFooter }: RoundCellProps) {
   );
 }
 
-function teamRowsByRound(team: ReportTeamColumn): Map<number, ReportRow> {
-  const byRound = new Map<number, ReportRow>();
-  for (const row of team.rows) byRound.set(row.round, row);
-  return byRound;
+interface SummaryRowProps {
+  teams: ReportTeamColumn[];
+  label: ReactNode;
+  rowClass: string;
+  borderClass: string;
+  labelClass?: string;
+  cellClass?: (team: ReportTeamColumn) => string;
+  cellContent: (team: ReportTeamColumn) => ReactNode;
+  py?: string;
+}
+
+function SummaryRow({
+  teams,
+  label,
+  rowClass,
+  borderClass,
+  labelClass = '',
+  cellClass,
+  cellContent,
+  py = 'py-1.5',
+}: SummaryRowProps) {
+  return (
+    <tr className={rowClass}>
+      <td className={`${borderClass} px-1 ${py} text-center text-xs ${labelClass}`}>{label}</td>
+      {teams.map((team) => (
+        <td
+          key={team.teamId}
+          className={`${borderClass} px-1 ${py} text-center font-mono ${cellClass?.(team) ?? ''}`}
+        >
+          {cellContent(team)}
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
+      <span className="text-gray-500">{label}</span>
+      <span className={`font-semibold tabular-nums ${color}`}>{formatMoney(value)}</span>
+    </div>
+  );
 }
 
 interface Props {
@@ -87,6 +114,11 @@ function WeeklyReportView({ report }: Props) {
   const winnersByRound = sideBetWinnersByRound(sideBetDetail);
   const summary = summarizeWeeklyReport(report);
   const teamsByRound = teams.map((t) => ({ team: t, rows: teamRowsByRound(t) }));
+
+  const highlightRow = 'bg-gray-700 font-bold';
+  const subRow = 'bg-gray-800';
+  const highlightBorder = 'border border-gray-600';
+  const subBorder = 'border border-gray-700';
 
   return (
     <section className="space-y-4">
@@ -150,96 +182,79 @@ function WeeklyReportView({ report }: Props) {
               <td colSpan={teams.length + 1} className="h-1 bg-gray-900" />
             </tr>
 
-            <tr className="bg-gray-700 font-bold">
-              <td className="border border-gray-600 px-1 py-1.5 text-center text-xs">TOP TENS</td>
-              {teams.map((team) => (
-                <td
-                  key={`tt-${team.teamId}`}
-                  className={`border border-gray-600 px-1 py-1.5 text-center font-mono ${
-                    team.topTens > 0 ? 'text-green-400' : 'text-gray-500'
-                  }`}
-                >
-                  {formatMoney(team.topTens)}
-                </td>
-              ))}
-            </tr>
+            <SummaryRow
+              teams={teams}
+              label="TOP TENS"
+              rowClass={highlightRow}
+              borderClass={highlightBorder}
+              cellClass={(t) => (t.topTens > 0 ? 'text-green-400' : 'text-gray-500')}
+              cellContent={(t) => formatMoney(t.topTens)}
+            />
 
-            <tr className="bg-gray-700 font-bold">
-              <td className="border border-gray-600 px-1 py-1.5 text-center text-xs">
-                {seasonMode ? '**SEASON' : '**WEEKLY'}
-              </td>
-              {teams.map((team) => (
-                <td
-                  key={`wt-${team.teamId}`}
-                  className={`border border-gray-600 px-1 py-1.5 text-center font-mono ${signText(team.weeklyTotal)}`}
-                >
-                  {formatMoney(team.weeklyTotal)}
-                </td>
-              ))}
-            </tr>
+            <SummaryRow
+              teams={teams}
+              label={seasonMode ? '**SEASON' : '**WEEKLY'}
+              rowClass={highlightRow}
+              borderClass={highlightBorder}
+              cellClass={(t) => signTextClass(t.weeklyTotal)}
+              cellContent={(t) => formatMoney(t.weeklyTotal)}
+            />
 
-            <tr className="bg-gray-800">
-              <td className="border border-gray-700 px-1 py-1.5 text-center text-xs text-gray-400">
-                PREVIOUS
-              </td>
-              {teams.map((team) => (
-                <td
-                  key={`prev-${team.teamId}`}
-                  className="border border-gray-700 px-1 py-1.5 text-center font-mono text-gray-400 text-xs italic"
-                >
-                  {formatMoney(team.previous)}
-                </td>
-              ))}
-            </tr>
+            <SummaryRow
+              teams={teams}
+              label="PREVIOUS"
+              rowClass={subRow}
+              borderClass={subBorder}
+              labelClass="text-gray-400"
+              cellClass={() => 'text-gray-400 text-xs italic'}
+              cellContent={(t) => formatMoney(t.previous)}
+            />
 
-            <tr className="bg-gray-700 font-bold">
-              <td className="border border-gray-600 px-1 py-1.5 text-center text-xs">SUBTOTAL</td>
-              {teams.map((team) => (
-                <td
-                  key={`sub-${team.teamId}`}
-                  className={`border border-gray-600 px-1 py-1.5 text-center font-mono ${signText(team.subtotal)}`}
-                >
-                  <div>{formatMoney(team.subtotal)}</div>
+            <SummaryRow
+              teams={teams}
+              label="SUBTOTAL"
+              rowClass={highlightRow}
+              borderClass={highlightBorder}
+              cellClass={(t) => signTextClass(t.subtotal)}
+              cellContent={(t) => (
+                <>
+                  <div>{formatMoney(t.subtotal)}</div>
                   <div className="text-gray-500 text-xs font-normal">
-                    {formatMoney(team.topTenMoney)} ({team.topTenCount})
+                    {formatMoney(t.topTenMoney)} ({t.topTenCount})
                   </div>
-                </td>
-              ))}
-            </tr>
+                </>
+              )}
+            />
 
-            <tr className="bg-gray-800">
-              <td className="border border-gray-700 px-1 py-1.5 text-center text-xs text-gray-400">
-                ROWS 5-6-7-8
-              </td>
-              {teams.map((team) => (
-                <td
-                  key={`sb-${team.teamId}`}
-                  className={`border border-gray-700 px-1 py-1.5 text-center font-mono ${signText(team.sideBets)}`}
-                >
-                  {formatMoney(team.sideBets)}
-                </td>
-              ))}
-            </tr>
+            <SummaryRow
+              teams={teams}
+              label="ROWS 5-6-7-8"
+              rowClass={subRow}
+              borderClass={subBorder}
+              labelClass="text-gray-400"
+              cellClass={(t) => signTextClass(t.sideBets)}
+              cellContent={(t) => formatMoney(t.sideBets)}
+            />
 
             <tr>
               <td colSpan={teams.length + 1} className="h-1 bg-gray-900" />
             </tr>
 
-            <tr className="bg-yellow-700/30 font-bold text-sm">
-              <td className="border border-yellow-600/50 px-1 py-2 text-center text-xs">
-                TOTAL
-                <br />
-                CASH
-              </td>
-              {teams.map((team) => (
-                <td
-                  key={`total-${team.teamId}`}
-                  className={`border border-yellow-600/50 px-1 py-2 text-center font-mono ${signText(team.totalCash)}`}
-                >
-                  {formatMoney(team.totalCash)}
-                </td>
-              ))}
-            </tr>
+            <SummaryRow
+              teams={teams}
+              label={
+                <>
+                  TOTAL
+                  <br />
+                  CASH
+                </>
+              }
+              rowClass="bg-yellow-700/30 font-bold text-sm"
+              borderClass="border border-yellow-600/50"
+              py="py-2"
+              cellClass={(t) => signTextClass(t.totalCash)}
+              cellContent={(t) => formatMoney(t.totalCash)}
+            />
           </tbody>
         </table>
       </div>
@@ -257,24 +272,9 @@ function WeeklyReportView({ report }: Props) {
 
       {teams.length > 0 ? (
         <div className="flex flex-wrap gap-3 text-sm">
-          <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
-            <span className="text-gray-500">Won</span>
-            <span className="font-semibold text-green-400 tabular-nums">
-              {formatMoney(summary.totalWon)}
-            </span>
-          </div>
-          <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
-            <span className="text-gray-500">Lost</span>
-            <span className="font-semibold text-red-400 tabular-nums">
-              {formatMoney(summary.totalLost)}
-            </span>
-          </div>
-          <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
-            <span className="text-gray-500">Net</span>
-            <span className={`font-semibold tabular-nums ${signText(summary.net)}`}>
-              {formatMoney(summary.net)}
-            </span>
-          </div>
+          <StatCard label="Won" value={summary.totalWon} color="text-green-400" />
+          <StatCard label="Lost" value={summary.totalLost} color="text-red-400" />
+          <StatCard label="Net" value={summary.net} color={signTextClass(summary.net)} />
         </div>
       ) : null}
     </section>
