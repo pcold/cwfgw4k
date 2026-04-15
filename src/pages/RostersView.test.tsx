@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import RostersView from './RostersView';
 import type { RosterTeam } from '@/api/types';
 
@@ -70,6 +71,20 @@ describe('RostersView', () => {
     expect(within(callout).getByText('Rory McIlroy')).toBeInTheDocument();
     expect(within(callout).getByText(/Aces/)).toBeInTheDocument();
     expect(within(callout).getByText(/Birdies/)).toBeInTheDocument();
+  });
+
+  it('makes pick names clickable when onGolferClick is provided', async () => {
+    const onGolferClick = vi.fn();
+    const user = userEvent.setup();
+    render(<RostersView teams={[aces]} onGolferClick={onGolferClick} />);
+    await user.click(screen.getByRole('button', { name: 'Scottie Scheffler' }));
+    expect(onGolferClick).toHaveBeenCalledWith('g-1-Scottie Scheffler');
+  });
+
+  it('renders pick names as plain text when no onGolferClick is provided', () => {
+    render(<RostersView teams={[aces]} />);
+    expect(screen.queryByRole('button', { name: 'Scottie Scheffler' })).not.toBeInTheDocument();
+    expect(screen.getByText('Scottie Scheffler')).toBeInTheDocument();
   });
 
   it('omits the shared players callout when there are none', () => {

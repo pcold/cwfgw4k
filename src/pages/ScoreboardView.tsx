@@ -23,9 +23,10 @@ function signColor(value: number): string {
 interface Props {
   report: WeeklyReport;
   finalizeSlot?: ReactNode;
+  onGolferClick?: (golferId: string) => void;
 }
 
-function ScoreboardView({ report, finalizeSlot }: Props) {
+function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
   const scoreboard = deriveScoreboard(report);
   const tournament = report.tournament;
   const isCompleted = tournament.status === 'completed';
@@ -85,7 +86,17 @@ function ScoreboardView({ report, finalizeSlot }: Props) {
                   ) : (
                     team.golferScores.map((g) => (
                       <span key={`${team.teamId}-${g.golferId ?? g.golferName}`} className="inline-block mr-3 text-xs">
-                        <span className="text-gray-300">{g.golferName}</span>{' '}
+                        {onGolferClick && g.golferId ? (
+                          <button
+                            type="button"
+                            onClick={() => onGolferClick(g.golferId!)}
+                            className="text-gray-300 hover:underline cursor-pointer bg-transparent border-0 p-0"
+                          >
+                            {g.golferName}
+                          </button>
+                        ) : (
+                          <span className="text-gray-300">{g.golferName}</span>
+                        )}{' '}
                         <span className="text-gray-500">T</span>
                         <span className="text-gray-400">{g.position ?? '?'}</span>{' '}
                         <span className="text-green-400 tabular-nums">{formatMoney(g.payout)}</span>

@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import ScoreboardView from './ScoreboardView';
 import type { ReportRow, ReportTeamColumn, WeeklyReport } from '@/api/types';
 
@@ -142,6 +143,43 @@ describe('ScoreboardView', () => {
     expect(within(leaderboard).getByText('Tiger')).toBeInTheDocument();
     expect(within(leaderboard).getByText('Phil')).toBeInTheDocument();
     expect(within(leaderboard).getByText('undrafted')).toBeInTheDocument();
+  });
+
+  it('makes rostered golfer names clickable when onGolferClick is provided', async () => {
+    const onGolferClick = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ScoreboardView
+        report={report({
+          teams: [
+            team({
+              teamName: 'Aces',
+              // positionStr null so the leaderboard ignores this row and we only see the name once
+              rows: [row({ golferId: 'g-42', golferName: 'TeamGolfer', positionStr: null })],
+            }),
+          ],
+        })}
+        onGolferClick={onGolferClick}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'TeamGolfer' }));
+    expect(onGolferClick).toHaveBeenCalledWith('g-42');
+  });
+
+  it('renders golfer names as plain text when no onGolferClick is provided', () => {
+    render(
+      <ScoreboardView
+        report={report({
+          teams: [
+            team({
+              rows: [row({ golferId: 'g-1', golferName: 'PlainGolfer', positionStr: null })],
+            }),
+          ],
+        })}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'PlainGolfer' })).not.toBeInTheDocument();
+    expect(screen.getByText('PlainGolfer')).toBeInTheDocument();
   });
 
   it('hides the leaderboard section when nothing qualifies', () => {

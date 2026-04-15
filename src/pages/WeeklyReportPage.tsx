@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { useLeagueSeason } from '@/context/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/components/QueryState';
+import GolferHistoryModal from '@/components/GolferHistoryModal';
 import { tournamentLabel } from '@/util/tournament';
 import WeeklyReportView from './WeeklyReportView';
 
@@ -12,6 +13,7 @@ function WeeklyReportPage() {
   const { seasonId, live } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
   const [tournamentId, setTournamentId] = useState<string>(ALL_TOURNAMENTS);
+  const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
     queryKey: ['tournaments', seasonId],
@@ -57,8 +59,13 @@ function WeeklyReportPage() {
       </div>
 
       <QueryState query={reportQuery} label="report">
-        {(report) => <WeeklyReportView report={report} />}
+        {(report) => <WeeklyReportView report={report} onGolferClick={setHistoryGolferId} />}
       </QueryState>
+      <GolferHistoryModal
+        seasonId={seasonId}
+        golferId={historyGolferId}
+        onClose={() => setHistoryGolferId(null)}
+      />
     </div>
   );
 }

@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { useLeagueSeason } from '@/context/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/components/QueryState';
+import GolferHistoryModal from '@/components/GolferHistoryModal';
 import RostersView from './RostersView';
 
 function RostersPage() {
   const { seasonId } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
+  const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
 
   const rostersQuery = useQuery({
     queryKey: ['rosters', seasonId],
@@ -17,9 +20,16 @@ function RostersPage() {
   if (leaguesGate) return leaguesGate;
 
   return (
-    <QueryState query={rostersQuery} label="rosters">
-      {(teams) => <RostersView teams={teams} />}
-    </QueryState>
+    <>
+      <QueryState query={rostersQuery} label="rosters">
+        {(teams) => <RostersView teams={teams} onGolferClick={setHistoryGolferId} />}
+      </QueryState>
+      <GolferHistoryModal
+        seasonId={seasonId}
+        golferId={historyGolferId}
+        onClose={() => setHistoryGolferId(null)}
+      />
+    </>
   );
 }
 

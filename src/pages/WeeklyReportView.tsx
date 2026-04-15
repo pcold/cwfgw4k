@@ -16,9 +16,10 @@ interface RoundCellProps {
   row: ReportRow | undefined;
   isSideBetWinner: boolean;
   showSeasonFooter: boolean;
+  onGolferClick?: (golferId: string) => void;
 }
 
-function RoundCell({ row, isSideBetWinner, showSeasonFooter }: RoundCellProps) {
+function RoundCell({ row, isSideBetWinner, showSeasonFooter, onGolferClick }: RoundCellProps) {
   if (!row || !row.golferName) {
     return (
       <td className="border border-gray-700 px-1.5 py-1 text-center align-top">
@@ -44,12 +45,26 @@ function RoundCell({ row, isSideBetWinner, showSeasonFooter }: RoundCellProps) {
       ? `${formatMoney(row.seasonEarnings ?? 0)} (${row.seasonTopTens ?? 0})`
       : '$0';
 
-  return (
-    <td className={`border border-gray-700 px-1.5 py-1 text-center align-top ${bg}`}>
+  const nameContent =
+    onGolferClick && row.golferId ? (
+      <button
+        type="button"
+        onClick={() => onGolferClick(row.golferId!)}
+        className={`font-semibold truncate ${text} bg-transparent border-0 p-0 hover:underline cursor-pointer`}
+      >
+        {row.golferName}
+        {ownership}
+      </button>
+    ) : (
       <div className={`font-semibold truncate ${text}`}>
         {row.golferName}
         {ownership}
       </div>
+    );
+
+  return (
+    <td className={`border border-gray-700 px-1.5 py-1 text-center align-top ${bg}`}>
+      {nameContent}
       <div className={`font-mono ${earningsColor}`}>{earningsLabel}</div>
       {showSeasonFooter ? (
         <div className={`font-semibold ${text}`}>{seasonEarningsLabel}</div>
@@ -105,9 +120,10 @@ function StatCard({ label, value, color }: { label: string; value: number; color
 
 interface Props {
   report: WeeklyReport;
+  onGolferClick?: (golferId: string) => void;
 }
 
-function WeeklyReportView({ report }: Props) {
+function WeeklyReportView({ report, onGolferClick }: Props) {
   const { tournament, teams, undraftedTopTens, sideBetDetail } = report;
   const seasonMode = isSeasonReport(report);
   const showSeasonFooter = !seasonMode;
@@ -172,6 +188,7 @@ function WeeklyReportView({ report }: Props) {
                       row={rows.get(round)}
                       isSideBetWinner={winners.has(team.teamId)}
                       showSeasonFooter={showSeasonFooter}
+                      onGolferClick={onGolferClick}
                     />
                   ))}
                 </tr>

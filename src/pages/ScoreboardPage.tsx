@@ -4,6 +4,7 @@ import { api } from '@/api/client';
 import { useAuth } from '@/context/AuthContext';
 import { useLeagueSeason } from '@/context/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/components/QueryState';
+import GolferHistoryModal from '@/components/GolferHistoryModal';
 import { mutationError } from '@/util/mutationError';
 import { tournamentLabel } from '@/util/tournament';
 import type { Tournament, WeeklyReport } from '@/api/types';
@@ -22,6 +23,7 @@ function ScoreboardPage() {
   const leaguesGate = useLeaguesGate();
   const queryClient = useQueryClient();
   const [tournamentId, setTournamentId] = useState<string | null>(null);
+  const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
     queryKey: ['tournaments', seasonId],
@@ -113,9 +115,18 @@ function ScoreboardPage() {
 
             <QueryState query={reportQuery} label="scoreboard">
               {(report) => (
-                <ScoreboardView report={report} finalizeSlot={buildFinalizeSlot(report)} />
+                <ScoreboardView
+                  report={report}
+                  finalizeSlot={buildFinalizeSlot(report)}
+                  onGolferClick={setHistoryGolferId}
+                />
               )}
             </QueryState>
+            <GolferHistoryModal
+              seasonId={seasonId}
+              golferId={historyGolferId}
+              onClose={() => setHistoryGolferId(null)}
+            />
           </div>
         );
       }}

@@ -2,6 +2,7 @@ import type { RosterPick, RosterTeam } from '@/api/types';
 
 interface Props {
   teams: RosterTeam[];
+  onGolferClick?: (golferId: string) => void;
 }
 
 interface SharedPlayer {
@@ -30,7 +31,7 @@ function computeSharedPlayers(teams: RosterTeam[]): SharedPlayer[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function RostersView({ teams }: Props) {
+function RostersView({ teams, onGolferClick }: Props) {
   if (teams.length === 0) {
     return (
       <p className="text-gray-400 text-center py-12">
@@ -81,9 +82,19 @@ function RostersView({ teams }: Props) {
                     >
                       {pick ? (
                         <div>
-                          <div className="font-semibold text-gray-200 truncate">
-                            {pick.golferName}
-                          </div>
+                          {onGolferClick && pick.golferId ? (
+                            <button
+                              type="button"
+                              onClick={() => onGolferClick(pick.golferId)}
+                              className="font-semibold text-gray-200 truncate bg-transparent border-0 p-0 hover:underline cursor-pointer"
+                            >
+                              {pick.golferName}
+                            </button>
+                          ) : (
+                            <div className="font-semibold text-gray-200 truncate">
+                              {pick.golferName}
+                            </div>
+                          )}
                           {pick.ownershipPct < 100 ? (
                             <div className="text-gray-500 text-xs">{pick.ownershipPct}%</div>
                           ) : null}

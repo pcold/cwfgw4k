@@ -1,6 +1,7 @@
 import type {
   ActionMessageResponse,
   AuthStatus,
+  GolferHistory,
   League,
   Rankings,
   RosterConfirmResult,
@@ -108,6 +109,8 @@ export const api = {
     getJson<WeeklyReport>(
       `/api/v1/seasons/${seasonId}/report/${tournamentId}${live ? '?live=true' : ''}`,
     ),
+  golferHistory: (seasonId: string, golferId: string) =>
+    getJson<GolferHistory>(`/api/v1/seasons/${seasonId}/golfer/${golferId}/history`),
 
   authMe: () => getJson<AuthStatus>('/api/v1/auth/me'),
   login: (username: string, password: string) =>

@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import WeeklyReportView from './WeeklyReportView';
 import type { ReportRow, ReportTeamColumn, WeeklyReport } from '@/api/types';
 
@@ -170,5 +171,32 @@ describe('WeeklyReportView', () => {
     expect(screen.getByText('Won').nextSibling).toHaveTextContent('$120');
     expect(screen.getByText('Lost').nextSibling).toHaveTextContent('-$80');
     expect(screen.getByText('Net').nextSibling).toHaveTextContent('$40');
+  });
+
+  it('makes round-cell golfer names clickable when onGolferClick is provided', async () => {
+    const onGolferClick = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <WeeklyReportView
+        report={report({
+          teams: [team({ rows: [row(1, { golferId: 'g-99', golferName: 'Clickable' })] })],
+        })}
+        onGolferClick={onGolferClick}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /Clickable/ }));
+    expect(onGolferClick).toHaveBeenCalledWith('g-99');
+  });
+
+  it('renders golfer names as plain text when no onGolferClick is provided', () => {
+    render(
+      <WeeklyReportView
+        report={report({
+          teams: [team({ rows: [row(1, { golferId: 'g-1', golferName: 'NotClickable' })] })],
+        })}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: /NotClickable/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/NotClickable/)).toBeInTheDocument();
   });
 });

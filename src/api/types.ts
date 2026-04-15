@@ -238,3 +238,17 @@ export interface RosterConfirmResult {
 export interface ActionMessageResponse {
   message: string;
 }
+
+export interface GolferHistoryEntry {
+  tournament: string;
+  position: number;
+  earnings: number;
+}
+
+export interface GolferHistory {
+  golferName: string;
+  golferId: string;
+  totalEarnings: number;
+  topTens: number;
+  results: GolferHistoryEntry[];
+}
