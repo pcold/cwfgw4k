@@ -10,11 +10,8 @@ import type {
   Season,
 } from '@/api/types';
 import { mutationError } from '@/util/mutationError';
+import { seasonLabel } from '@/util/season';
 import { useDefaultSelectedId } from '@/util/useDefaultSelectedId';
-
-function seasonLabel(s: Season): string {
-  return `${s.seasonYear} ${s.name}`;
-}
 
 function pickKey(teamNumber: number, pick: RosterPreviewPick): string {
   return `${teamNumber}|${pick.round}|${pick.inputName}`;

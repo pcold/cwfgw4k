@@ -1,4 +1,5 @@
 import { useLeagueSeason } from '@/context/LeagueSeasonContext';
+import { seasonLabel } from '@/util/season';
 
 function LeagueSeasonPicker() {
   const ctx = useLeagueSeason();
@@ -33,7 +34,7 @@ function LeagueSeasonPicker() {
           >
             {(ctx.seasons ?? []).map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name}
+                {seasonLabel(s)}
               </option>
             ))}
           </select>

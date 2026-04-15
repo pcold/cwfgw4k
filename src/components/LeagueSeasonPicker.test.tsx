@@ -26,7 +26,7 @@ const seasonsForLg1: Season[] = [
   {
     id: 'sn-1',
     leagueId: 'lg-1',
-    name: '2026',
+    name: 'Spring',
     seasonYear: 2026,
     seasonNumber: 1,
     status: 'active',
@@ -34,7 +34,7 @@ const seasonsForLg1: Season[] = [
   {
     id: 'sn-0',
     leagueId: 'lg-1',
-    name: '2025',
+    name: 'Fall',
     seasonYear: 2025,
     seasonNumber: 1,
     status: 'completed',
@@ -44,7 +44,7 @@ const seasonsForLg2: Season[] = [
   {
     id: 'sn-2',
     leagueId: 'lg-2',
-    name: 'Shadow 2026',
+    name: 'Shadow',
     seasonYear: 2026,
     seasonNumber: 1,
     status: 'active',
@@ -73,7 +73,7 @@ describe('LeagueSeasonPicker', () => {
     await waitFor(() => {
       expect(seasonSelect).not.toBeDisabled();
     });
-    expect(screen.getByRole('option', { name: '2026' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '2026 Spring' })).toBeInTheDocument();
   });
 
   it('refetches seasons when the user picks a different league', async () => {
@@ -86,7 +86,7 @@ describe('LeagueSeasonPicker', () => {
     await waitFor(() => {
       expect(seasonsMock).toHaveBeenCalledWith('lg-2');
     });
-    expect(await screen.findByRole('option', { name: 'Shadow 2026' })).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: '2026 Shadow' })).toBeInTheDocument();
   });
 
   it('toggles the live overlay checkbox', async () => {

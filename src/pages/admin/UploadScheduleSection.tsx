@@ -3,11 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import type { League, ScheduleUploadResult, Season } from '@/api/types';
 import { mutationError } from '@/util/mutationError';
+import { seasonLabel } from '@/util/season';
 import { useDefaultSelectedId } from '@/util/useDefaultSelectedId';
-
-function seasonLabel(s: Season): string {
-  return `${s.seasonYear} ${s.name}`;
-}
 
 function UploadScheduleSection() {
   const queryClient = useQueryClient();
