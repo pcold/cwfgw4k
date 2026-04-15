@@ -1,6 +1,7 @@
 import { NavLink, Route, Routes } from 'react-router-dom';
 import WeeklyReportPage from './pages/WeeklyReportPage';
 import RankingsPage from './pages/RankingsPage';
+import PlayerRankingsPage from './pages/PlayerRankingsPage';
 import RostersPage from './pages/RostersPage';
 import ScoreboardPage from './pages/ScoreboardPage';
 import LateRowBetsPage from './pages/LateRowBetsPage';
@@ -33,6 +34,9 @@ function App() {
               <NavLink to="/rankings" className={navLinkClass}>
                 Team Standings
               </NavLink>
+              <NavLink to="/player-rankings" className={navLinkClass}>
+                Player Rankings
+              </NavLink>
               <NavLink to="/rosters" className={navLinkClass}>
                 Rosters
               </NavLink>
@@ -57,6 +61,7 @@ function App() {
             <Route path="/scoreboard" element={<ScoreboardPage />} />
             <Route path="/report" element={<WeeklyReportPage />} />
             <Route path="/rankings" element={<RankingsPage />} />
+            <Route path="/player-rankings" element={<PlayerRankingsPage />} />
             <Route path="/rosters" element={<RostersPage />} />
             <Route path="/late-row-bets" element={<LateRowBetsPage />} />
             <Route path="/rules" element={<RulesPage />} />
