@@ -41,7 +41,7 @@ describe('PlayerRankingsView', () => {
     expect(firstCells[0]).toHaveTextContent('1');
     expect(firstCells[1]).toHaveTextContent('Scottie Scheffler');
     expect(firstCells[2]).toHaveTextContent('3');
-    expect(firstCells[3]).toHaveTextContent('$50');
+    expect(firstCells[3]).toHaveTextContent('$50.00');
     expect(firstCells[4]).toHaveTextContent('Aces');
     expect(firstCells[5]).toHaveTextContent('1');
 
