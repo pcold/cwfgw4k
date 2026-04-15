@@ -49,7 +49,7 @@ describe('CleanSeasonSection', () => {
     renderWithProviders(<CleanSeasonSection />, { withLeagueSeasonProvider: false });
 
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: /^Spring$/ })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /^2026 Spring$/ })).toBeInTheDocument();
     });
 
     await user.selectOptions(screen.getByLabelText(/Season to clean/i), 'sn-1');
@@ -68,7 +68,7 @@ describe('CleanSeasonSection', () => {
     renderWithProviders(<CleanSeasonSection />, { withLeagueSeasonProvider: false });
 
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: /^Spring$/ })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /^2026 Spring$/ })).toBeInTheDocument();
     });
 
     await user.selectOptions(screen.getByLabelText(/Season to clean/i), 'sn-1');

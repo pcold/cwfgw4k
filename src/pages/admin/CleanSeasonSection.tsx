@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import type { League, Season } from '@/api/types';
 import { mutationError } from '@/util/mutationError';
+import { seasonLabel } from '@/util/season';
 import { useDefaultSelectedId } from '@/util/useDefaultSelectedId';
 
 function CleanSeasonSection() {
@@ -32,7 +33,7 @@ function CleanSeasonSection() {
   const onClean = () => {
     if (!seasonId) return;
     const selected = seasonsQuery.data?.find((s) => s.id === seasonId);
-    const name = selected?.name ?? seasonId;
+    const name = selected ? seasonLabel(selected) : seasonId;
     const message =
       `Are you sure you want to clean ALL results for "${name}"?\n\n` +
       'This will delete every score, result, and standing in this season ' +
@@ -63,7 +64,7 @@ function CleanSeasonSection() {
           <option value="">-- select season --</option>
           {(seasonsQuery.data ?? []).map((s) => (
             <option key={s.id} value={s.id}>
-              {s.name}
+              {seasonLabel(s)}
             </option>
           ))}
         </select>
