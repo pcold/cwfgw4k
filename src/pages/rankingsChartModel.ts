@@ -1,4 +1,4 @@
-import type { Rankings, TeamRanking } from '../api/types';
+import type { Rankings, TeamRanking } from '@/api/types';
 
 export const CHART_COLORS = [
   '#ef4444',

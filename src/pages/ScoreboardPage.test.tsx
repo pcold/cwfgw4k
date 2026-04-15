@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { renderWithProviders } from '../test/renderWithProviders';
+import { renderWithProviders } from '@/test/renderWithProviders';
 import ScoreboardPage from './ScoreboardPage';
-import type { League, Season, Tournament, WeeklyReport } from '../api/types';
+import type { League, Season, Tournament, WeeklyReport } from '@/api/types';
 
 const leaguesMock = vi.fn();
 const seasonsMock = vi.fn();

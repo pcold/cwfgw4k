@@ -1,5 +1,5 @@
-import type { Rankings } from '../api/types';
-import { formatMoney } from '../util/money';
+import type { Rankings } from '@/api/types';
+import { formatMoney } from '@/util/money';
 import {
   buildChartLayout,
   DEFAULT_DIMENSIONS,

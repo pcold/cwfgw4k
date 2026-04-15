@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, ApiError } from '../../api/client';
-import type { League, Season, Tournament } from '../../api/types';
+import { api, ApiError } from '@/api/client';
+import type { League, Season, Tournament } from '@/api/types';
 
 function ResetTournamentSection() {
   const queryClient = useQueryClient();

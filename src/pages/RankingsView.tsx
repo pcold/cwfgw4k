@@ -1,5 +1,5 @@
-import type { Rankings, TeamRanking } from '../api/types';
-import { formatMoney } from '../util/money';
+import type { Rankings, TeamRanking } from '@/api/types';
+import { formatMoney } from '@/util/money';
 import RankingsChart from './RankingsChart';
 
 function signColor(value: number): string {

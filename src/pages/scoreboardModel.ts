@@ -1,4 +1,4 @@
-import type { ReportRow, ReportTeamColumn, WeeklyReport } from '../api/types';
+import type { ReportRow, ReportTeamColumn, WeeklyReport } from '@/api/types';
 
 export interface ScoreboardGolfer {
   golferId: string | null;

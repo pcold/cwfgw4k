@@ -1,4 +1,4 @@
-import type { SeasonRules } from '../../api/types';
+import type { SeasonRules } from '@/api/types';
 
 export const DEFAULT_PAYOUTS: number[] = [18, 12, 10, 8, 7, 6, 5, 4, 3, 2];
 export const DEFAULT_TIE_FLOOR = 1;

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ResetTournamentSection from './ResetTournamentSection';
-import { renderWithProviders } from '../../test/renderWithProviders';
+import { renderWithProviders } from '@/test/renderWithProviders';
 
 const leaguesMock = vi.fn();
 const seasonsMock = vi.fn();

@@ -2,8 +2,8 @@ import type { ReactElement, ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, type RenderResult } from '@testing-library/react';
-import { LeagueSeasonProvider } from '../context/LeagueSeasonContext';
-import { AuthProvider } from '../context/AuthContext';
+import { LeagueSeasonProvider } from '@/context/LeagueSeasonContext';
+import { AuthProvider } from '@/context/AuthContext';
 
 interface Options {
   initialPath?: string;

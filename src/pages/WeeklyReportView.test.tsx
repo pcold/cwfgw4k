@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import WeeklyReportView from './WeeklyReportView';
-import type { ReportRow, ReportTeamColumn, WeeklyReport } from '../api/types';
+import type { ReportRow, ReportTeamColumn, WeeklyReport } from '@/api/types';
 
 function row(round: number, overrides: Partial<ReportRow> = {}): ReportRow {
   return {

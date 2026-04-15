@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../api/client';
-import { useLeagueSeason } from '../context/LeagueSeasonContext';
+import { api } from '@/api/client';
+import { useLeagueSeason } from '@/context/LeagueSeasonContext';
 import RostersView from './RostersView';
 
 function RostersPage() {

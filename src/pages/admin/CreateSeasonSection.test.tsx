@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import CreateSeasonSection from './CreateSeasonSection';
-import { renderWithProviders } from '../../test/renderWithProviders';
+import { renderWithProviders } from '@/test/renderWithProviders';
 
 const leaguesMock = vi.fn();
 const createSeasonMock = vi.fn();

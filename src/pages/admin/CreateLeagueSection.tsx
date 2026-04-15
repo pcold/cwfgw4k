@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, ApiError } from '../../api/client';
-import type { League } from '../../api/types';
+import { api, ApiError } from '@/api/client';
+import type { League } from '@/api/types';
 
 function CreateLeagueSection() {
   const queryClient = useQueryClient();

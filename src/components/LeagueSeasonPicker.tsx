@@ -1,4 +1,4 @@
-import { useLeagueSeason } from '../context/LeagueSeasonContext';
+import { useLeagueSeason } from '@/context/LeagueSeasonContext';
 
 function LeagueSeasonPicker() {
   const ctx = useLeagueSeason();

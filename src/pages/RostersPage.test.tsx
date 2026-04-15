@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
-import { renderWithProviders } from '../test/renderWithProviders';
+import { renderWithProviders } from '@/test/renderWithProviders';
 import RostersPage from './RostersPage';
-import type { League, RosterTeam, Season } from '../api/types';
+import type { League, RosterTeam, Season } from '@/api/types';
 
 const leaguesMock = vi.fn();
 const seasonsMock = vi.fn();

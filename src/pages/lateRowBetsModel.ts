@@ -3,7 +3,7 @@ import type {
   ReportSideBetTeamEntry,
   ReportTeamColumn,
   WeeklyReport,
-} from '../api/types';
+} from '@/api/types';
 
 export interface LateRowBetEntry {
   teamId: string;

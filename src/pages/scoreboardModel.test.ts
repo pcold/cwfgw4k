@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ReportRow, ReportTeamColumn, WeeklyReport } from '../api/types';
+import type { ReportRow, ReportTeamColumn, WeeklyReport } from '@/api/types';
 import { deriveScoreboard, formatScoreToPar } from './scoreboardModel';
 
 function row(overrides: Partial<ReportRow> = {}): ReportRow {

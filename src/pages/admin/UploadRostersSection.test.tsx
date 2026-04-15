@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import UploadRostersSection, { buildConfirmTeams } from './UploadRostersSection';
-import type { RosterPreview } from '../../api/types';
-import { renderWithProviders } from '../../test/renderWithProviders';
+import type { RosterPreview } from '@/api/types';
+import { renderWithProviders } from '@/test/renderWithProviders';
 
 const leaguesMock = vi.fn();
 const seasonsMock = vi.fn();

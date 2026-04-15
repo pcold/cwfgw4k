@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import RostersView from './RostersView';
-import type { RosterTeam } from '../api/types';
+import type { RosterTeam } from '@/api/types';
 
 function pick(round: number, name: string, pct = 100, id = `g-${round}-${name}`) {
   return { round, golferName: name, ownershipPct: pct, golferId: id };

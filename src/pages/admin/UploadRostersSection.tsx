@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, ApiError } from '../../api/client';
+import { api, ApiError } from '@/api/client';
 import type {
   League,
   RosterConfirmResult,
@@ -8,7 +8,7 @@ import type {
   RosterPreview,
   RosterPreviewPick,
   Season,
-} from '../../api/types';
+} from '@/api/types';
 
 function seasonLabel(s: Season): string {
   return `${s.seasonYear} ${s.name}`;

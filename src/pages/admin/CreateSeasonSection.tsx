@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, ApiError } from '../../api/client';
-import type { League, Season } from '../../api/types';
+import { api, ApiError } from '@/api/client';
+import type { League, Season } from '@/api/types';
 import {
   DEFAULT_PAYOUTS,
   DEFAULT_SIDE_BET_AMOUNT,

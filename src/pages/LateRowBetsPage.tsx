@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../api/client';
-import { useLeagueSeason } from '../context/LeagueSeasonContext';
-import type { Tournament } from '../api/types';
+import { api } from '@/api/client';
+import { useLeagueSeason } from '@/context/LeagueSeasonContext';
+import type { Tournament } from '@/api/types';
 import LateRowBetsView from './LateRowBetsView';
 
 const ALL_TOURNAMENTS = '';

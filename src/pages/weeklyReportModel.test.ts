@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { WeeklyReport } from '../api/types';
+import type { WeeklyReport } from '@/api/types';
 import {
   isSeasonReport,
   sideBetWinnersByRound,

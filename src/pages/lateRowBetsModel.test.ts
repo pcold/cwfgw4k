@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ReportTeamColumn, WeeklyReport } from '../api/types';
+import type { ReportTeamColumn, WeeklyReport } from '@/api/types';
 import {
   lateRowBetRounds,
   lateRowBetTeamTotals,

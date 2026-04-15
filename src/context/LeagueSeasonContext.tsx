@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../api/client';
-import type { League, Season } from '../api/types';
+import { api } from '@/api/client';
+import type { League, Season } from '@/api/types';
 
 interface LeagueSeasonValue {
   leagues: League[] | undefined;

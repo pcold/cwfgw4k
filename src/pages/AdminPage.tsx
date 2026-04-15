@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import LoginModal from '../components/LoginModal';
+import { useAuth } from '@/context/AuthContext';
+import LoginModal from '@/components/LoginModal';
 import CreateLeagueSection from './admin/CreateLeagueSection';
 import CreateSeasonSection from './admin/CreateSeasonSection';
 import UploadScheduleSection from './admin/UploadScheduleSection';

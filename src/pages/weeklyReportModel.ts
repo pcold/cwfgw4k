@@ -1,4 +1,4 @@
-import type { ReportSideBetRound, WeeklyReport } from '../api/types';
+import type { ReportSideBetRound, WeeklyReport } from '@/api/types';
 
 // Map of side-bet round -> set of team ids that won that round's side bet.
 // Used by the Weekly Report grid to highlight the winning cells.

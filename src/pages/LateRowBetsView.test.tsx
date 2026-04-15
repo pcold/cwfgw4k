@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import LateRowBetsView from './LateRowBetsView';
-import type { ReportTeamColumn, WeeklyReport } from '../api/types';
+import type { ReportTeamColumn, WeeklyReport } from '@/api/types';
 
 function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
   return {

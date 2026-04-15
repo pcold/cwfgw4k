@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Rankings } from '../api/types';
+import type { Rankings } from '@/api/types';
 import {
   buildChartLayout,
   DEFAULT_DIMENSIONS,

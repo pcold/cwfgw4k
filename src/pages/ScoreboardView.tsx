@@ -1,5 +1,5 @@
-import type { WeeklyReport } from '../api/types';
-import { formatMoney } from '../util/money';
+import type { WeeklyReport } from '@/api/types';
+import { formatMoney } from '@/util/money';
 import { deriveScoreboard, formatScoreToPar } from './scoreboardModel';
 
 function formatSigned(value: number): string {

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ApiError, api } from '../api/client';
-import type { AuthStatus } from '../api/types';
+import { ApiError, api } from '@/api/client';
+import type { AuthStatus } from '@/api/types';
 
 interface AuthValue {
   authenticated: boolean;

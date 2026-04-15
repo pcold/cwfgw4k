@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import RankingsView from './RankingsView';
-import type { Rankings } from '../api/types';
+import type { Rankings } from '@/api/types';
 
 function buildRankings(overrides: Partial<Rankings> = {}): Rankings {
   return {

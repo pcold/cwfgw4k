@@ -1,5 +1,5 @@
-import type { ReportRow, ReportTeamColumn, WeeklyReport } from '../api/types';
-import { formatMoney } from '../util/money';
+import type { ReportRow, ReportTeamColumn, WeeklyReport } from '@/api/types';
+import { formatMoney } from '@/util/money';
 import {
   isSeasonReport,
   sideBetWinnersByRound,

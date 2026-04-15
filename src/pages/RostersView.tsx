@@ -1,4 +1,4 @@
-import type { RosterPick, RosterTeam } from '../api/types';
+import type { RosterPick, RosterTeam } from '@/api/types';
 
 interface Props {
   teams: RosterTeam[];
