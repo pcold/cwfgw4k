@@ -195,6 +195,24 @@ describe('UploadRostersSection', () => {
     expect(within(resultRegion).getByText(/BROWN/)).toBeInTheDocument();
   });
 
+  it('auto-selects the first season so Match Players is enabled without manual pick', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<UploadRostersSection />, { withLeagueSeasonProvider: false });
+
+    await waitFor(() => {
+      expect(screen.getByText('2026 Spring')).toBeInTheDocument();
+    });
+
+    const seasonSelect = screen.getByLabelText(/^Season$/) as HTMLSelectElement;
+    expect(seasonSelect.value).toBe('sn-1');
+
+    const button = screen.getByRole('button', { name: /Match Players with ESPN/i });
+    expect(button).toBeDisabled();
+
+    await user.type(screen.getByLabelText(/Roster \(paste text/i), 'TEAM 1 BROWN');
+    expect(button).toBeEnabled();
+  });
+
   it('goes back to the input step when Back is clicked', async () => {
     previewRosterMock.mockResolvedValue(samplePreview());
 

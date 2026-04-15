@@ -76,6 +76,7 @@ function UploadRostersSection() {
   });
 
   const [seasonId, setSeasonId] = useState<string>('');
+  useDefaultSelectedId(seasonsQuery.data, seasonId, setSeasonId);
   const [rosterText, setRosterText] = useState<string>('');
   const [preview, setPreview] = useState<RosterPreview | null>(null);
   const [selections, setSelections] = useState<Record<string, string>>({});
