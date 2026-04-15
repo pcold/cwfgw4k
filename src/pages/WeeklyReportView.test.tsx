@@ -26,7 +26,7 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
     teamName: 'Aces',
     ownerName: 'Alice',
     rows: [1, 2, 3, 4, 5, 6, 7, 8].map((r) => row(r)),
-    topTens: 18,
+    topTenEarnings: 18,
     weeklyTotal: 25,
     previous: 100,
     subtotal: 125,

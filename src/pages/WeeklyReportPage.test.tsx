@@ -77,7 +77,7 @@ function buildReport(name: string, tournamentId: string | null = null): WeeklyRe
           seasonEarnings: 0,
           seasonTopTens: 0,
         })),
-        topTens: 0,
+        topTenEarnings: 0,
         weeklyTotal: 0,
         previous: 0,
         subtotal: 0,

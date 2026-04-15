@@ -204,8 +204,8 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
               label="TOP TENS"
               rowClass={highlightRow}
               borderClass={highlightBorder}
-              cellClass={(t) => (t.topTens > 0 ? 'text-green-400' : 'text-gray-500')}
-              cellContent={(t) => formatMoney(t.topTens)}
+              cellClass={(t) => (t.topTenEarnings > 0 ? 'text-green-400' : 'text-gray-500')}
+              cellContent={(t) => formatMoney(t.topTenEarnings)}
             />
 
             <SummaryRow

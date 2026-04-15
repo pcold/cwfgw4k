@@ -26,7 +26,7 @@ export interface ReportTeamColumn {
   teamName: string;
   ownerName: string;
   rows: ReportRow[];
-  topTens: number;
+  topTenEarnings: number;
   weeklyTotal: number;
   previous: number;
   subtotal: number;
