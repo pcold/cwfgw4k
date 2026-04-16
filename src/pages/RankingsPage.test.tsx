@@ -81,7 +81,7 @@ describe('RankingsPage', () => {
     expect(await screen.findByRole('heading', { name: /Team Standings/i })).toBeInTheDocument();
     const table = screen.getByRole('table');
     expect(within(table).getByText('Aces')).toBeInTheDocument();
-    expect(rankingsMock).toHaveBeenCalledWith('sn-1', false, undefined);
+    expect(rankingsMock).toHaveBeenCalledWith('sn-1', true, undefined);
   });
 
   it('passes the selected tournament as the "through" parameter', async () => {
@@ -97,7 +97,7 @@ describe('RankingsPage', () => {
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-7');
 
-    expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', false, 'tn-7');
+    expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', true, 'tn-7');
   });
 
   it('shows an error message when rankings fail to load', async () => {

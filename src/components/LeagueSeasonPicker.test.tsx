@@ -93,8 +93,8 @@ describe('LeagueSeasonPicker', () => {
     const user = userEvent.setup();
     renderWithProviders(<LeagueSeasonPicker />);
     const checkbox = await screen.findByRole('checkbox', { name: /Live overlay/i });
-    expect(checkbox).not.toBeChecked();
-    await user.click(checkbox);
     expect(checkbox).toBeChecked();
+    await user.click(checkbox);
+    expect(checkbox).not.toBeChecked();
   });
 });

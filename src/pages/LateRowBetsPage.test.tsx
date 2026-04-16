@@ -100,10 +100,10 @@ describe('LateRowBetsPage', () => {
     tournamentReportMock.mockReset();
   });
 
-  it('loads the season report by default (All Tournaments)', async () => {
+  it('loads the season report by default (All Tournaments) when the season has no tournaments yet', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
-    tournamentsMock.mockResolvedValue([tournament]);
+    tournamentsMock.mockResolvedValue([]);
     seasonReportMock.mockResolvedValue(buildReport());
 
     renderWithProviders(<LateRowBetsPage />);
@@ -112,7 +112,7 @@ describe('LateRowBetsPage', () => {
       await screen.findByRole('heading', { name: /Round 5-8 Late Row Bets/i }),
     ).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Round 5' })).toBeInTheDocument();
-    expect(seasonReportMock).toHaveBeenCalledWith('sn-1', false);
+    expect(seasonReportMock).toHaveBeenCalledWith('sn-1', true);
     expect(tournamentReportMock).not.toHaveBeenCalled();
   });
 
@@ -130,7 +130,7 @@ describe('LateRowBetsPage', () => {
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-1');
 
-    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', false);
+    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
   });
 
   it('shows an empty state when there are no leagues', async () => {

@@ -117,7 +117,7 @@ describe('ScoreboardPage', () => {
 
     expect(await screen.findByRole('heading', { name: /Current Open/i })).toBeInTheDocument();
     await waitFor(() => {
-      expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-active', false);
+      expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-active', true);
     });
   });
 
@@ -137,7 +137,7 @@ describe('ScoreboardPage', () => {
     await user.selectOptions(select, 'tn-completed');
 
     expect(await screen.findByRole('heading', { name: /Sample Open/i })).toBeInTheDocument();
-    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-completed', false);
+    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-completed', true);
   });
 
   it('shows an empty state when the season has no tournaments', async () => {

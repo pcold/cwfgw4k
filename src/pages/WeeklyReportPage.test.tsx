@@ -104,16 +104,16 @@ describe('WeeklyReportPage', () => {
     tournamentReportMock.mockReset();
   });
 
-  it('loads the season report by default (All Tournaments)', async () => {
+  it('loads the season report by default (All Tournaments) when the season has no tournaments yet', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
-    tournamentsMock.mockResolvedValue([tournament]);
+    tournamentsMock.mockResolvedValue([]);
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
 
     renderWithProviders(<WeeklyReportPage />);
 
     expect(await screen.findByRole('heading', { name: /All Tournaments/i })).toBeInTheDocument();
-    expect(seasonReportMock).toHaveBeenCalledWith('sn-1', false);
+    expect(seasonReportMock).toHaveBeenCalledWith('sn-1', true);
     expect(tournamentReportMock).not.toHaveBeenCalled();
   });
 
@@ -132,7 +132,7 @@ describe('WeeklyReportPage', () => {
     await user.selectOptions(select, 'tn-1');
 
     expect(await screen.findByRole('heading', { name: /Sample Open/i })).toBeInTheDocument();
-    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', false);
+    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
   });
 
   it('shows an empty state when there are no leagues', async () => {
