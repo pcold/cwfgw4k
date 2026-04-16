@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
 import { useLeagueSeason } from '@/context/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/components/QueryState';
 import GolferHistoryModal from '@/components/GolferHistoryModal';
-import { tournamentLabel } from '@/util/tournament';
+import { earliestUnfinalized, tournamentLabel } from '@/util/tournament';
 import WeeklyReportView from './WeeklyReportView';
 
 const ALL_TOURNAMENTS = '';
@@ -12,7 +12,7 @@ const ALL_TOURNAMENTS = '';
 function WeeklyReportPage() {
   const { seasonId, live } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
-  const [tournamentId, setTournamentId] = useState<string>(ALL_TOURNAMENTS);
+  const [tournamentId, setTournamentId] = useState<string | null>(null);
   const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
@@ -21,18 +21,25 @@ function WeeklyReportPage() {
     enabled: !!seasonId,
   });
 
+  const tournaments = tournamentsQuery.data ?? [];
+  useEffect(() => {
+    if (tournamentId === null && tournaments.length > 0) {
+      setTournamentId(earliestUnfinalized(tournaments) ?? ALL_TOURNAMENTS);
+    }
+  }, [tournaments, tournamentId]);
+
+  const effectiveId = tournamentId ?? ALL_TOURNAMENTS;
+
   const reportQuery = useQuery({
-    queryKey: ['report', seasonId, tournamentId, live],
+    queryKey: ['report', seasonId, effectiveId, live],
     queryFn: () =>
-      tournamentId === ALL_TOURNAMENTS
+      effectiveId === ALL_TOURNAMENTS
         ? api.seasonReport(seasonId!, live)
-        : api.tournamentReport(seasonId!, tournamentId, live),
+        : api.tournamentReport(seasonId!, effectiveId, live),
     enabled: !!seasonId,
   });
 
   if (leaguesGate) return leaguesGate;
-
-  const tournaments = tournamentsQuery.data ?? [];
 
   return (
     <div className="space-y-4">
@@ -46,7 +53,7 @@ function WeeklyReportPage() {
         <select
           id="weekly-report-tournament"
           className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"
-          value={tournamentId}
+          value={effectiveId}
           onChange={(e) => setTournamentId(e.target.value)}
         >
           <option value={ALL_TOURNAMENTS}>All Tournaments</option>

@@ -45,7 +45,7 @@ export function LeagueSeasonProvider({ children }: { children: ReactNode }) {
     }
   }, [seasonsQuery.data, seasonId]);
 
-  const [live, setLive] = useState(false);
+  const [live, setLive] = useState(true);
 
   const value = useMemo<LeagueSeasonValue>(
     () => ({

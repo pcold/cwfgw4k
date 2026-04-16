@@ -6,16 +6,9 @@ import { useLeagueSeason } from '@/context/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/components/QueryState';
 import GolferHistoryModal from '@/components/GolferHistoryModal';
 import { mutationError } from '@/util/mutationError';
-import { tournamentLabel } from '@/util/tournament';
-import type { Tournament, WeeklyReport } from '@/api/types';
+import { earliestUnfinalized, tournamentLabel } from '@/util/tournament';
+import type { WeeklyReport } from '@/api/types';
 import ScoreboardView from './ScoreboardView';
-
-function pickDefaultTournament(tournaments: Tournament[]): string | null {
-  if (tournaments.length === 0) return null;
-  const active = tournaments.find((t) => t.status !== 'completed');
-  if (active) return active.id;
-  return tournaments[0].id;
-}
 
 function ScoreboardPage() {
   const { seasonId, live } = useLeagueSeason();
@@ -39,7 +32,7 @@ function ScoreboardPage() {
       return;
     }
     if (!tournamentId || !tournaments.some((t) => t.id === tournamentId)) {
-      setTournamentId(pickDefaultTournament(tournaments));
+      setTournamentId(earliestUnfinalized(tournaments));
     }
   }, [tournaments, tournamentId]);
 
