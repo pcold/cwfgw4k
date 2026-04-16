@@ -1,11 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/api/client';
+import { api, ApiError } from '@/api/client';
 import { useLeagueSeason } from '@/context/LeagueSeasonContext';
 import { DEFAULT_RULES, ordinal } from './rulesModel';
 
 function RulesPage() {
   const { leaguesLoading, leaguesError, seasonId } = useLeagueSeason();
-  const rules = DEFAULT_RULES;
+
+  const rulesQuery = useQuery({
+    queryKey: ['seasonRules', seasonId],
+    queryFn: () => api.seasonRules(seasonId!),
+    enabled: !!seasonId,
+  });
 
   const tournamentsQuery = useQuery({
     queryKey: ['tournaments', seasonId],
@@ -17,13 +22,20 @@ function RulesPage() {
   if (leaguesError)
     return <p className="text-red-400">Failed to load leagues: {String(leaguesError)}</p>;
 
-  const multiplierTournaments = (tournamentsQuery.data ?? []).filter(
-    (t) => t.payoutMultiplier !== 1,
+  const rules = rulesQuery.data ?? DEFAULT_RULES;
+  const schedule = [...(tournamentsQuery.data ?? [])].sort((a, b) =>
+    a.startDate.localeCompare(b.startDate),
   );
 
   return (
     <section className="space-y-6">
       <h2 className="text-xl font-bold">Season Rules</h2>
+
+      {rulesQuery.error && !(rulesQuery.error instanceof ApiError) ? (
+        <p className="text-yellow-400 text-sm">
+          Could not load season rules; showing defaults.
+        </p>
+      ) : null}
 
       <div className="bg-gray-800 rounded-lg p-6">
         <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
@@ -66,25 +78,32 @@ function RulesPage() {
 
       <div className="bg-gray-800 rounded-lg p-6">
         <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
-          Multiplier Tournaments
+          Season Schedule
         </h3>
-        <p className="text-gray-300 text-sm">
-          Some tournaments have boosted payouts (e.g. 2x for majors). The multiplier is set
-          per tournament in the schedule.
+        <p className="text-gray-300 text-sm mb-3">
+          Tournaments on the season calendar. A highlighted multiplier means payouts are
+          boosted for that week (e.g. 2x for majors).
         </p>
-        {multiplierTournaments.length > 0 ? (
-          <ul className="text-gray-300 text-sm mt-2 space-y-0.5 list-disc list-inside">
-            {multiplierTournaments.map((t) => (
-              <li key={t.id}>
-                {t.name}{' '}
-                <span className="text-yellow-400 font-semibold">{t.payoutMultiplier}x</span>
+        {tournamentsQuery.isLoading ? (
+          <p className="text-gray-500 text-sm">Loading schedule…</p>
+        ) : schedule.length > 0 ? (
+          <ul className="text-gray-300 text-sm space-y-0.5">
+            {schedule.map((t) => (
+              <li key={t.id} className="flex items-baseline gap-2">
+                <span className="text-gray-500 tabular-nums w-16 shrink-0">
+                  {t.week ? `Wk ${t.week}` : ''}
+                </span>
+                <span className="flex-1">{t.name}</span>
+                {t.payoutMultiplier !== 1 ? (
+                  <span className="text-yellow-400 font-semibold tabular-nums">
+                    {t.payoutMultiplier}x
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-gray-500 text-sm mt-2">
-            No multiplier tournaments in this season.
-          </p>
+          <p className="text-gray-500 text-sm">No tournaments scheduled for this season.</p>
         )}
       </div>
 

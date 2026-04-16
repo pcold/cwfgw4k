@@ -1,13 +1,9 @@
-export interface SeasonRules {
-  payouts: number[];
-  tieFloor: number;
-  sideBetRounds: number[];
-  sideBetAmount: number;
-}
+import type { SeasonRules } from '@/api/types';
 
-// Mirrors the hardcoded fallback in the legacy Alpine UI's currentRules().
-// The backend does not currently expose a rules object on GET /seasons, so
-// both UIs render these defaults regardless of what was posted on create.
+export type { SeasonRules };
+
+// Fallback used while the season rules query is loading or if it errors.
+// Kept in sync with the backend's SeasonRules.default.
 export const DEFAULT_RULES: SeasonRules = {
   payouts: [18, 12, 10, 8, 7, 6, 5, 4, 3, 2],
   tieFloor: 1,
