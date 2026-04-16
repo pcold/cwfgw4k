@@ -22,7 +22,7 @@ function PlayerRankingsView({ players, live, onGolferClick }: Props) {
         </p>
       </header>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="min-w-full text-sm">
           <thead>
             <tr className="text-left text-xs uppercase tracking-wider text-gray-500">

@@ -48,11 +48,13 @@ function RostersView({ teams, onGolferClick }: Props) {
         <h2 className="text-xl font-semibold text-green-400">Team Rosters</h2>
       </header>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="bg-yellow-600 text-black font-bold">
-              <th className="border border-gray-600 px-1 py-1.5 w-12 text-center">RD</th>
+              <th className="border border-gray-600 px-1 py-1.5 w-10 sm:w-12 text-center sticky left-0 z-20 bg-yellow-600">
+                RD
+              </th>
               {teams.map((team, i) => (
                 <th
                   key={team.teamId}
@@ -65,12 +67,11 @@ function RostersView({ teams, onGolferClick }: Props) {
             </tr>
           </thead>
           <tbody>
-            {ROUNDS.map((round) => (
-              <tr
-                key={round}
-                className={round >= 5 ? 'bg-gray-800/70' : 'bg-gray-800'}
-              >
-                <td className="border border-gray-700 px-1 py-1.5 text-center font-bold text-gray-400">
+            {ROUNDS.map((round) => {
+              const rowBg = round >= 5 ? 'bg-gray-800/70' : 'bg-gray-800';
+              return (
+              <tr key={round} className={rowBg}>
+                <td className={`border border-gray-700 px-1 py-1.5 text-center font-bold text-gray-400 sticky left-0 z-10 ${round >= 5 ? 'bg-gray-800' : 'bg-gray-800'}`}>
                   {round}
                 </td>
                 {teams.map((team) => {
@@ -106,7 +107,8 @@ function RostersView({ teams, onGolferClick }: Props) {
                   );
                 })}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

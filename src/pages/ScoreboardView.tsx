@@ -56,7 +56,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
         {!isCompleted && finalizeSlot ? finalizeSlot : null}
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="w-full text-sm min-w-[500px]">
           <thead className="bg-gray-800 text-gray-300 text-xs uppercase tracking-wider">
             <tr>
@@ -139,7 +139,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
             Leaderboard (Top 20)
           </h3>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto -mx-3 sm:mx-0">
             <table className="w-full text-sm min-w-[400px]">
               <thead className="bg-gray-800 text-gray-300 text-xs uppercase tracking-wider">
                 <tr>

@@ -38,12 +38,12 @@ function GolferHistoryModal({ seasonId, golferId, onClose }: Props) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="golfer-history-title"
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden border border-gray-600">
+      <div className="bg-gray-800 rounded-lg shadow-xl w-[min(92vw,28rem)] max-h-[90vh] overflow-y-auto border border-gray-600">
         <div className="px-5 py-4 border-b border-gray-700 flex items-center justify-between">
           <h3 id="golfer-history-title" className="text-lg font-bold">
             {loading ? 'Loading…' : (history?.golferName ?? 'Golfer')}

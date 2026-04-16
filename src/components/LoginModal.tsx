@@ -45,9 +45,9 @@ function LoginModal({ open, onClose }: Props) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="login-modal-title"
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4"
     >
-      <div className="bg-gray-800 rounded-lg p-6 w-80 border border-gray-600">
+      <div className="bg-gray-800 rounded-lg p-6 w-[min(92vw,22rem)] border border-gray-600">
         <h3 id="login-modal-title" className="text-lg font-bold mb-4">
           Admin Login
         </h3>

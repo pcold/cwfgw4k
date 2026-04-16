@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { renderWithProviders } from './test/renderWithProviders';
@@ -40,23 +40,37 @@ vi.mock('./api/client', () => ({
 }));
 
 describe('App', () => {
-  it('renders the primary nav', () => {
+  // Both the desktop nav and (when open) the mobile hamburger nav end up in the DOM,
+  // so queries use getAllByRole / the mobile container when a single hit is needed.
+
+  it('renders all primary nav links', () => {
     renderWithProviders(<App />, { withLeagueSeasonProvider: false });
-    expect(screen.getByRole('link', { name: /Scoreboard/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Weekly Report/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Team Standings/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Rosters/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Late Row Bets/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Rules/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Admin/i })).toBeInTheDocument();
+
     expect(screen.getByRole('heading', { name: 'CWFG' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Scoreboard/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /Weekly Report/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /Team Standings/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /Player Rankings/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /Rosters/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /Late Row Bets/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /Rules/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /Admin/i }).length).toBeGreaterThan(0);
   });
 
-  it('navigates to the Rankings page when the nav link is clicked', async () => {
+  it('toggles the mobile hamburger menu and lets the user follow a link', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<App />, { withLeagueSeasonProvider: false });
+    const { container } = renderWithProviders(<App />, { withLeagueSeasonProvider: false });
 
-    await user.click(screen.getByRole('link', { name: /Team Standings/i }));
+    // Mobile nav container is absent until the hamburger is opened.
+    expect(container.querySelector('#mobile-nav')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: /Open navigation menu/i }));
+    const mobileNav = container.querySelector('#mobile-nav') as HTMLElement;
+    expect(mobileNav).not.toBeNull();
+
+    await user.click(within(mobileNav).getByRole('link', { name: /Team Standings/i }));
     expect(await screen.findByText(/No leagues configured/i)).toBeInTheDocument();
+    // Closes itself after navigation
+    expect(container.querySelector('#mobile-nav')).toBeNull();
   });
 });

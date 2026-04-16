@@ -67,7 +67,7 @@ function RankingsChart({ rankings }: Props) {
             <svg
               viewBox={`0 0 ${layout.width} ${layout.height}`}
               preserveAspectRatio="xMidYMid meet"
-              className="w-full h-[400px]"
+              className="w-full h-[220px] sm:h-[320px] lg:h-[400px]"
               role="img"
               aria-label="Team cumulative totals over time"
             >

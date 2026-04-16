@@ -78,6 +78,7 @@ interface SummaryRowProps {
   label: ReactNode;
   rowClass: string;
   borderClass: string;
+  labelBgClass: string;
   labelClass?: string;
   cellClass?: (team: ReportTeamColumn) => string;
   cellContent: (team: ReportTeamColumn) => ReactNode;
@@ -89,6 +90,7 @@ function SummaryRow({
   label,
   rowClass,
   borderClass,
+  labelBgClass,
   labelClass = '',
   cellClass,
   cellContent,
@@ -96,7 +98,11 @@ function SummaryRow({
 }: SummaryRowProps) {
   return (
     <tr className={rowClass}>
-      <td className={`${borderClass} px-1 ${py} text-center text-xs ${labelClass}`}>{label}</td>
+      <td
+        className={`${borderClass} px-1 ${py} text-center text-xs sticky left-0 z-10 ${labelBgClass} ${labelClass}`}
+      >
+        {label}
+      </td>
       {teams.map((team) => (
         <td
           key={team.teamId}
@@ -158,11 +164,13 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
         ) : null}
       </header>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="bg-yellow-600 text-black font-bold">
-              <th className="border border-gray-600 px-1 py-1.5 w-16 text-center">TEAM #</th>
+              <th className="border border-gray-600 px-1 py-1.5 w-12 sm:w-16 text-center sticky left-0 z-20 bg-yellow-600">
+                TEAM #
+              </th>
               {teams.map((team, i) => (
                 <th
                   key={team.teamId}
@@ -179,7 +187,7 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
               const winners = winnersByRound.get(round) ?? new Set<string>();
               return (
                 <tr key={round} className="bg-gray-800 hover:bg-gray-800/80">
-                  <td className="border border-gray-700 px-1 py-1 text-center font-bold text-gray-400">
+                  <td className="border border-gray-700 px-1 py-1 text-center font-bold text-gray-400 sticky left-0 z-10 bg-gray-800">
                     {round}
                   </td>
                   {teamsByRound.map(({ team, rows }) => (
@@ -204,6 +212,7 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
               label="TOP TENS"
               rowClass={highlightRow}
               borderClass={highlightBorder}
+              labelBgClass="bg-gray-700"
               cellClass={(t) => (t.topTenEarnings > 0 ? 'text-green-400' : 'text-gray-500')}
               cellContent={(t) => formatMoney(t.topTenEarnings)}
             />
@@ -213,6 +222,7 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
               label={seasonMode ? '**SEASON' : '**WEEKLY'}
               rowClass={highlightRow}
               borderClass={highlightBorder}
+              labelBgClass="bg-gray-700"
               cellClass={(t) => signTextClass(t.weeklyTotal)}
               cellContent={(t) => formatMoney(t.weeklyTotal)}
             />
@@ -222,6 +232,7 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
               label="PREVIOUS"
               rowClass={subRow}
               borderClass={subBorder}
+              labelBgClass="bg-gray-800"
               labelClass="text-gray-400"
               cellClass={() => 'text-gray-400 text-xs italic'}
               cellContent={(t) => formatMoney(t.previous)}
@@ -232,6 +243,7 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
               label="SUBTOTAL"
               rowClass={highlightRow}
               borderClass={highlightBorder}
+              labelBgClass="bg-gray-700"
               cellClass={(t) => signTextClass(t.subtotal)}
               cellContent={(t) => (
                 <>
@@ -248,6 +260,7 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
               label="ROWS 5-6-7-8"
               rowClass={subRow}
               borderClass={subBorder}
+              labelBgClass="bg-gray-800"
               labelClass="text-gray-400"
               cellClass={(t) => signTextClass(t.sideBets)}
               cellContent={(t) => formatMoney(t.sideBets)}
@@ -268,6 +281,7 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
               }
               rowClass="bg-yellow-700/30 font-bold text-sm"
               borderClass="border border-yellow-600/50"
+              labelBgClass="bg-yellow-900"
               py="py-2"
               cellClass={(t) => signTextClass(t.totalCash)}
               cellContent={(t) => formatMoney(t.totalCash)}

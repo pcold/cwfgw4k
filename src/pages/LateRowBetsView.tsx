@@ -30,8 +30,8 @@ function RoundTable({ round, entries }: RoundTableProps) {
       <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
         Round {round}
       </h3>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
+      <div className="overflow-x-auto -mx-2 sm:mx-0">
+        <table className="w-full text-xs min-w-[480px]">
           <thead>
             <tr className="text-gray-400">
               <th className="text-left px-2 py-1">Team</th>
