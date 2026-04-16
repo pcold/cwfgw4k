@@ -90,7 +90,9 @@ async function postJson<T>(path: string, payload?: unknown): Promise<T> {
 export const api = {
   leagues: () => getJson<League[]>('/api/v1/leagues'),
   seasons: (leagueId: string) =>
-    getJson<Season[]>(`/api/v1/seasons?leagueId=${encodeURIComponent(leagueId)}`),
+    getJson<Season[]>(`/api/v1/seasons?league_id=${encodeURIComponent(leagueId)}`),
+  seasonRules: (seasonId: string) =>
+    getJson<SeasonRules>(`/api/v1/seasons/${seasonId}/rules`),
   seasonReport: (seasonId: string, live: boolean) =>
     getJson<WeeklyReport>(`/api/v1/seasons/${seasonId}/report${live ? '?live=true' : ''}`),
   rankings: (seasonId: string, live: boolean, throughTournamentId?: string) => {
@@ -103,7 +105,7 @@ export const api = {
   rosters: (seasonId: string) => getJson<RosterTeam[]>(`/api/v1/seasons/${seasonId}/rosters`),
   tournaments: (seasonId: string) =>
     getJson<Tournament[]>(
-      `/api/v1/tournaments?seasonId=${encodeURIComponent(seasonId)}`,
+      `/api/v1/tournaments?season_id=${encodeURIComponent(seasonId)}`,
     ),
   tournamentReport: (seasonId: string, tournamentId: string, live: boolean) =>
     getJson<WeeklyReport>(

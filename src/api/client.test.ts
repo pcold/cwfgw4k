@@ -82,7 +82,7 @@ describe('api client', () => {
   it('seasons() url-encodes the league id', async () => {
     fetchMock.mockResolvedValueOnce(mockJson([]));
     await api.seasons('league/with space');
-    expect(fetchMock).toHaveBeenCalledWith('/api/v1/seasons?leagueId=league%2Fwith%20space');
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/seasons?league_id=league%2Fwith%20space');
   });
 
   it('seasonReport() appends live=true only when requested', async () => {
