@@ -163,4 +163,80 @@ describe('PlayerRankingsView', () => {
       .filter((label) => label !== 'Team' && label !== 'Undrafted');
     expect(teamOptionLabels).toEqual(['Aces', 'Birdies', 'Cuts']);
   });
+
+  it('filters rows by draft round when the round header is changed', async () => {
+    const user = userEvent.setup();
+    render(
+      <PlayerRankingsView
+        players={[
+          r({ key: 'g:1', name: 'R1 Guy', teamName: 'Aces', draftRound: 1 }),
+          r({ key: 'g:2', name: 'R3 Guy', teamName: 'Birdies', draftRound: 3 }),
+          r({ key: 'u:Phil', golferId: null, name: 'Undrafted Guy', teamName: null, draftRound: null }),
+        ]}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText(/Filter by draft round/i), '3');
+
+    const rows = screen.getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(1);
+    expect(within(rows[0]).getByText('R3 Guy')).toBeInTheDocument();
+  });
+
+  it('offers an Undrafted option on the round filter when any undrafted players exist', async () => {
+    const user = userEvent.setup();
+    render(
+      <PlayerRankingsView
+        players={[
+          r({ key: 'g:1', name: 'Drafted', teamName: 'Aces', draftRound: 2 }),
+          r({ key: 'u:Phil', golferId: null, name: 'Not Drafted', teamName: null, draftRound: null }),
+        ]}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText(/Filter by draft round/i), 'Undrafted');
+
+    const rows = screen.getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(1);
+    expect(within(rows[0]).getByText('Not Drafted')).toBeInTheDocument();
+  });
+
+  it('sorts round options ascending and dedupes', () => {
+    render(
+      <PlayerRankingsView
+        players={[
+          r({ key: 'g:1', draftRound: 7 }),
+          r({ key: 'g:2', draftRound: 1 }),
+          r({ key: 'g:3', draftRound: 3 }),
+          r({ key: 'g:4', draftRound: 1 }),
+        ]}
+      />,
+    );
+
+    const select = screen.getByLabelText(/Filter by draft round/i) as HTMLSelectElement;
+    const numericLabels = Array.from(select.options)
+      .map((o) => o.textContent ?? '')
+      .filter((label) => label !== 'Round' && label !== 'Undrafted');
+    expect(numericLabels).toEqual(['1', '3', '7']);
+  });
+
+  it('combines team and round filters with AND semantics', async () => {
+    const user = userEvent.setup();
+    render(
+      <PlayerRankingsView
+        players={[
+          r({ key: 'g:1', name: 'Aces R1', teamName: 'Aces', draftRound: 1 }),
+          r({ key: 'g:2', name: 'Aces R2', teamName: 'Aces', draftRound: 2 }),
+          r({ key: 'g:3', name: 'Birdies R1', teamName: 'Birdies', draftRound: 1 }),
+        ]}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText(/Filter by team/i), 'Aces');
+    await user.selectOptions(screen.getByLabelText(/Filter by draft round/i), '1');
+
+    const rows = screen.getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(1);
+    expect(within(rows[0]).getByText('Aces R1')).toBeInTheDocument();
+  });
 });

@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
 import { formatMoney } from '@/util/money';
+import ColumnHeaderFilter, {
+  type ColumnHeaderFilterOption,
+} from '@/components/ColumnHeaderFilter';
 import type { PlayerRankingsRow } from './playerRankingsModel';
 
 interface Props {
@@ -8,27 +11,56 @@ interface Props {
   onGolferClick?: (golferId: string) => void;
 }
 
-const ALL_TEAMS = '';
+const ALL = '';
 const UNDRAFTED = '__undrafted__';
 
 function PlayerRankingsView({ players, live, onGolferClick }: Props) {
-  const [teamFilter, setTeamFilter] = useState<string>(ALL_TEAMS);
+  const [teamFilter, setTeamFilter] = useState<string>(ALL);
+  const [roundFilter, setRoundFilter] = useState<string>(ALL);
 
-  const teamOptions = useMemo(() => {
+  const teamOptions = useMemo<ColumnHeaderFilterOption[]>(() => {
     const names = new Set<string>();
     let hasUndrafted = false;
     for (const p of players) {
       if (p.teamName) names.add(p.teamName);
       else hasUndrafted = true;
     }
-    return { names: Array.from(names).sort((a, b) => a.localeCompare(b)), hasUndrafted };
+    const sorted = Array.from(names).sort((a, b) => a.localeCompare(b));
+    return [
+      { value: ALL, label: 'Team' },
+      ...sorted.map((name) => ({ value: name, label: name })),
+      ...(hasUndrafted ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
+    ];
+  }, [players]);
+
+  const roundOptions = useMemo<ColumnHeaderFilterOption[]>(() => {
+    const rounds = new Set<number>();
+    let hasUndrafted = false;
+    for (const p of players) {
+      if (p.draftRound != null) rounds.add(p.draftRound);
+      else hasUndrafted = true;
+    }
+    const sorted = Array.from(rounds).sort((a, b) => a - b);
+    return [
+      { value: ALL, label: 'Round' },
+      ...sorted.map((r) => ({ value: String(r), label: String(r) })),
+      ...(hasUndrafted ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
+    ];
   }, [players]);
 
   const filtered = useMemo(() => {
-    if (teamFilter === ALL_TEAMS) return players;
-    if (teamFilter === UNDRAFTED) return players.filter((p) => !p.teamName);
-    return players.filter((p) => p.teamName === teamFilter);
-  }, [players, teamFilter]);
+    const matchesTeam = (p: PlayerRankingsRow) => {
+      if (teamFilter === ALL) return true;
+      if (teamFilter === UNDRAFTED) return !p.teamName;
+      return p.teamName === teamFilter;
+    };
+    const matchesRound = (p: PlayerRankingsRow) => {
+      if (roundFilter === ALL) return true;
+      if (roundFilter === UNDRAFTED) return p.draftRound == null;
+      return String(p.draftRound) === roundFilter;
+    };
+    return players.filter((p) => matchesTeam(p) && matchesRound(p));
+  }, [players, teamFilter, roundFilter]);
 
   if (players.length === 0) {
     return <p className="text-gray-400">No players with a top 10 finish yet.</p>;
@@ -53,24 +85,21 @@ function PlayerRankingsView({ players, live, onGolferClick }: Props) {
               <th className="px-3 py-2 text-right">Top 10s</th>
               <th className="px-3 py-2 text-right">Total $</th>
               <th className="px-3 py-2">
-                <select
-                  aria-label="Filter by team"
+                <ColumnHeaderFilter
+                  ariaLabel="Filter by team"
                   value={teamFilter}
-                  onChange={(e) => setTeamFilter(e.target.value)}
-                  className="bg-transparent text-xs uppercase tracking-wider text-gray-500 hover:text-gray-300 focus:text-gray-300 focus:outline-none cursor-pointer -ml-1 pr-1"
-                >
-                  <option value={ALL_TEAMS}>Team</option>
-                  {teamOptions.names.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                  {teamOptions.hasUndrafted ? (
-                    <option value={UNDRAFTED}>Undrafted</option>
-                  ) : null}
-                </select>
+                  onChange={setTeamFilter}
+                  options={teamOptions}
+                />
               </th>
-              <th className="px-3 py-2 text-right">Round</th>
+              <th className="px-3 py-2 text-right">
+                <ColumnHeaderFilter
+                  ariaLabel="Filter by draft round"
+                  value={roundFilter}
+                  onChange={setRoundFilter}
+                  options={roundOptions}
+                />
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">

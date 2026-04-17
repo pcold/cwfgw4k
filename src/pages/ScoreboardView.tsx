@@ -1,7 +1,13 @@
-import type { ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import type { WeeklyReport } from '@/api/types';
 import { formatMoney } from '@/util/money';
+import ColumnHeaderFilter, {
+  type ColumnHeaderFilterOption,
+} from '@/components/ColumnHeaderFilter';
 import { deriveScoreboard, formatScoreToPar } from './scoreboardModel';
+
+const ALL = '';
+const UNDRAFTED = '__undrafted__';
 
 function formatSigned(value: number): string {
   if (value > 0) return `+${formatMoney(value)}`;
@@ -29,6 +35,29 @@ interface Props {
 function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
   const scoreboard = deriveScoreboard(report);
   const tournament = report.tournament;
+  const [leaderboardTeamFilter, setLeaderboardTeamFilter] = useState<string>(ALL);
+
+  const leaderboardTeamOptions = useMemo<ColumnHeaderFilterOption[]>(() => {
+    const names = new Set<string>();
+    let hasUndrafted = false;
+    for (const entry of scoreboard.leaderboard) {
+      if (entry.teamName) names.add(entry.teamName);
+      else hasUndrafted = true;
+    }
+    const sorted = Array.from(names).sort((a, b) => a.localeCompare(b));
+    return [
+      { value: ALL, label: 'Team' },
+      ...sorted.map((name) => ({ value: name, label: name })),
+      ...(hasUndrafted ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
+    ];
+  }, [scoreboard.leaderboard]);
+
+  const filteredLeaderboard = useMemo(() => {
+    if (leaderboardTeamFilter === ALL) return scoreboard.leaderboard;
+    if (leaderboardTeamFilter === UNDRAFTED)
+      return scoreboard.leaderboard.filter((e) => !e.teamName);
+    return scoreboard.leaderboard.filter((e) => e.teamName === leaderboardTeamFilter);
+  }, [scoreboard.leaderboard, leaderboardTeamFilter]);
   const isCompleted = tournament.status === 'completed';
   const statusBanner = isCompleted
     ? 'Results finalized'
@@ -146,27 +175,42 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
                   <th className="px-4 py-2 text-left">Pos</th>
                   <th className="px-4 py-2 text-left">Player</th>
                   <th className="px-4 py-2 text-right">Score</th>
-                  <th className="px-4 py-2 text-left">Team</th>
+                  <th className="px-4 py-2 text-left">
+                    <ColumnHeaderFilter
+                      ariaLabel="Filter leaderboard by team"
+                      value={leaderboardTeamFilter}
+                      onChange={setLeaderboardTeamFilter}
+                      options={leaderboardTeamOptions}
+                    />
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
-                {scoreboard.leaderboard.map((entry) => (
-                  <tr
-                    key={entry.name}
-                    className={entry.rostered ? 'bg-green-900/10' : ''}
-                  >
-                    <td className="px-4 py-2 text-gray-400">{entry.position ?? '—'}</td>
-                    <td className="px-4 py-2 text-gray-100">{entry.name}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {formatScoreToPar(entry.scoreToPar)}
-                    </td>
-                    <td
-                      className={`px-4 py-2 text-xs ${entry.teamName ? 'text-green-400 uppercase' : 'text-gray-600'}`}
-                    >
-                      {entry.teamName ?? 'undrafted'}
+                {filteredLeaderboard.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-6 text-center text-gray-500 italic">
+                      No players match this filter.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredLeaderboard.map((entry) => (
+                    <tr
+                      key={entry.name}
+                      className={entry.rostered ? 'bg-green-900/10' : ''}
+                    >
+                      <td className="px-4 py-2 text-gray-400">{entry.position ?? '—'}</td>
+                      <td className="px-4 py-2 text-gray-100">{entry.name}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">
+                        {formatScoreToPar(entry.scoreToPar)}
+                      </td>
+                      <td
+                        className={`px-4 py-2 text-xs ${entry.teamName ? 'text-green-400 uppercase' : 'text-gray-600'}`}
+                      >
+                        {entry.teamName ?? 'undrafted'}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

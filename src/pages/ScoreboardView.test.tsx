@@ -196,4 +196,90 @@ describe('ScoreboardView', () => {
     );
     expect(screen.queryByRole('heading', { name: /Leaderboard/i })).not.toBeInTheDocument();
   });
+
+  it('filters the leaderboard to rostered golfers on the selected team', async () => {
+    const user = userEvent.setup();
+    render(
+      <ScoreboardView
+        report={report({
+          teams: [
+            team({
+              teamId: 't-1',
+              teamName: 'Aces',
+              rows: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
+            }),
+            team({
+              teamId: 't-2',
+              teamName: 'Birdies',
+              rows: [
+                row({
+                  golferId: 'g-2',
+                  golferName: 'Rory',
+                  positionStr: 'T5',
+                  scoreToPar: '-6',
+                }),
+              ],
+            }),
+          ],
+          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 'E' }],
+        })}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'Aces');
+
+    const leaderboard = screen.getAllByRole('table')[1];
+    const rows = within(leaderboard).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(1);
+    expect(within(rows[0]).getByText('Tiger')).toBeInTheDocument();
+  });
+
+  it('offers Undrafted on the leaderboard filter when undrafted golfers are present', async () => {
+    const user = userEvent.setup();
+    render(
+      <ScoreboardView
+        report={report({
+          teams: [
+            team({
+              teamName: 'Aces',
+              rows: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
+            }),
+          ],
+          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 'E' }],
+        })}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'Undrafted');
+
+    const leaderboard = screen.getAllByRole('table')[1];
+    const rows = within(leaderboard).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(1);
+    expect(within(rows[0]).getByText('Phil')).toBeInTheDocument();
+  });
+
+  it('shows a placeholder row and keeps the leaderboard filter reachable when it yields zero rows', async () => {
+    const user = userEvent.setup();
+    render(
+      <ScoreboardView
+        report={report({
+          teams: [
+            team({
+              teamName: 'Aces',
+              rows: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
+            }),
+          ],
+          // No undrafted golfers — Undrafted option is not offered.
+        })}
+      />,
+    );
+
+    // Narrow to Aces first, then switch back to Team to show a populated table again.
+    const select = screen.getByLabelText(/Filter leaderboard by team/i);
+    await user.selectOptions(select, 'Aces');
+    await user.selectOptions(select, 'Team');
+
+    const leaderboard = screen.getAllByRole('table')[1];
+    expect(within(leaderboard).getByText('Tiger')).toBeInTheDocument();
+  });
 });
