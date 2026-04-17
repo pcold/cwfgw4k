@@ -71,7 +71,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
             {scoreboard.teams.map((team, i) => (
               <tr key={team.teamId} className={`hover:bg-gray-800/60 ${rowTint(team.weeklyTotal)}`}>
                 <td className="px-4 py-3 text-gray-500">{i + 1}</td>
-                <td className="px-4 py-3 font-medium text-gray-100">{team.teamName}</td>
+                <td className="px-4 py-3 font-medium text-gray-100 uppercase">{team.teamName}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-300">
                   {formatMoney(team.topTenEarnings)}
                 </td>
@@ -161,7 +161,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
                       {formatScoreToPar(entry.scoreToPar)}
                     </td>
                     <td
-                      className={`px-4 py-2 text-xs ${entry.teamName ? 'text-green-400' : 'text-gray-600'}`}
+                      className={`px-4 py-2 text-xs ${entry.teamName ? 'text-green-400 uppercase' : 'text-gray-600'}`}
                     >
                       {entry.teamName ?? 'undrafted'}
                     </td>

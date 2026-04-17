@@ -48,7 +48,7 @@ function RankingsView({ rankings }: Props) {
             {sorted.map((team, index) => (
               <tr key={team.teamId} className="hover:bg-gray-800/60">
                 <td className="px-3 py-2 text-gray-500">{index + 1}</td>
-                <td className="px-3 py-2 font-medium text-gray-100">{team.teamName}</td>
+                <td className="px-3 py-2 font-medium text-gray-100 uppercase">{team.teamName}</td>
                 <td
                   className={`px-3 py-2 text-right tabular-nums ${signColor(team.subtotal)}`}
                 >

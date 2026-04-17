@@ -58,7 +58,11 @@ function PlayerRankingsView({ players, live, onGolferClick }: Props) {
                     {formatMoney(player.totalEarnings, 2)}
                   </td>
                   <td className="px-3 py-2 text-gray-300">
-                    {player.teamName ?? <span className="text-gray-500 italic">undrafted</span>}
+                    {player.teamName ? (
+                      <span className="uppercase">{player.teamName}</span>
+                    ) : (
+                      <span className="text-gray-500 italic">undrafted</span>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums text-gray-400">
                     {player.draftRound ?? '—'}

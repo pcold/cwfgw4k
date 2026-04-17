@@ -177,7 +177,7 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
                   className="border border-gray-600 px-1 py-1.5 text-center min-w-[90px]"
                 >
                   <div>{i + 1}</div>
-                  <div className="text-xs">{team.teamName}</div>
+                  <div className="text-xs uppercase">{team.teamName}</div>
                 </th>
               ))}
             </tr>

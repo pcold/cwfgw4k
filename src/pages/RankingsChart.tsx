@@ -34,7 +34,7 @@ function TeamLine({ line }: LineProps) {
           fill={line.color}
         >
           <title>
-            {`${line.teamName} · ${p.tournamentName ?? `Wk ${p.weekLabel}`}: ${formatMoney(p.value, 0)}`}
+            {`${line.teamName.toUpperCase()} · ${p.tournamentName ?? `Wk ${p.weekLabel}`}: ${formatMoney(p.value, 0)}`}
           </title>
         </circle>
       ))}
@@ -129,7 +129,7 @@ function RankingsChart({ rankings }: Props) {
 
           <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
             {layout.lines.map((line) => (
-              <li key={`legend-${line.teamId}`} className="flex items-center gap-1.5">
+              <li key={`legend-${line.teamId}`} className="flex items-center gap-1.5 uppercase">
                 <svg width={12} height={2} aria-hidden="true">
                   <rect width={12} height={2} fill={line.color} />
                 </svg>

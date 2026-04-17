@@ -61,7 +61,7 @@ function RostersView({ teams, onGolferClick }: Props) {
                   className="border border-gray-600 px-1 py-1.5 text-center min-w-[100px]"
                 >
                   <div>{i + 1}</div>
-                  <div className="text-xs">{team.teamName}</div>
+                  <div className="text-xs uppercase">{team.teamName}</div>
                 </th>
               ))}
             </tr>
@@ -124,7 +124,7 @@ function RostersView({ teams, onGolferClick }: Props) {
                   {j > 0 ? <span className="text-gray-600"> / </span> : null}
                   <span className="text-gray-400">
                     {' '}
-                    {owner.team} {owner.pct}%
+                    <span className="uppercase">{owner.team}</span> {owner.pct}%
                   </span>
                 </span>
               ))}

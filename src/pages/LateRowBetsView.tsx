@@ -43,7 +43,7 @@ function RoundTable({ round, entries }: RoundTableProps) {
           <tbody>
             {entries.map((entry) => (
               <tr key={entry.teamId} className="border-t border-gray-700">
-                <td className="px-2 py-1.5">{entry.teamName}</td>
+                <td className="px-2 py-1.5 uppercase">{entry.teamName}</td>
                 <td className="px-2 py-1.5 font-mono">{entry.golferName}</td>
                 <td className="px-2 py-1.5 text-right font-mono">
                   {formatMoney(entry.cumulativeEarnings)}
@@ -104,7 +104,7 @@ function LateRowBetsView({ report }: Props) {
               <tbody>
                 {totals.map((team) => (
                   <tr key={team.teamId} className="border-t border-gray-700">
-                    <td className="px-2 py-1.5">{team.teamName}</td>
+                    <td className="px-2 py-1.5 uppercase">{team.teamName}</td>
                     <td
                       className={`px-2 py-1.5 text-right font-mono font-bold ${signClass(team.sideBets)}`}
                     >

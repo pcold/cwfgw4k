@@ -309,7 +309,7 @@ function RosterReviewStep({
         <div key={`${team.teamNumber}-${team.teamName}`} className="mb-4">
           <div className="text-sm font-bold text-gray-200 mb-1">
             <span className="text-gray-400">#{team.teamNumber}</span>
-            <span className="ml-1">{team.teamName}</span>
+            <span className="ml-1 uppercase">{team.teamName}</span>
           </div>
           <table className="w-full text-xs">
             <tbody>
@@ -419,7 +419,7 @@ function RosterResultView({ result }: { result: RosterConfirmResult }) {
         <div key={team.teamId} className="mb-3">
           <div className="text-sm font-bold text-gray-200 mb-1">
             <span className="text-gray-400">#{team.teamNumber}</span>
-            <span className="ml-1">{team.teamName}</span>
+            <span className="ml-1 uppercase">{team.teamName}</span>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
             {team.picks.map((pick) => (
