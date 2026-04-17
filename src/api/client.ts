@@ -87,6 +87,20 @@ async function postJson<T>(path: string, payload?: unknown): Promise<T> {
   return camelizeKeys(parsed) as T;
 }
 
+async function deleteJson<T>(path: string): Promise<T> {
+  const resp = await fetch(path, { method: 'DELETE' });
+  const text = await resp.text();
+  const parsed: unknown = text ? JSON.parse(text) : null;
+  if (!resp.ok) {
+    const errMsg =
+      parsed && typeof parsed === 'object' && 'error' in parsed
+        ? String((parsed as { error: unknown }).error)
+        : `${resp.status} ${resp.statusText}`;
+    throw new ApiError(resp.status, errMsg);
+  }
+  return camelizeKeys(parsed) as T;
+}
+
 export const api = {
   leagues: () => getJson<League[]>('/api/v1/leagues'),
   seasons: (leagueId: string) =>
@@ -138,4 +152,6 @@ export const api = {
     postJson<ActionMessageResponse>(`/api/v1/tournaments/${tournamentId}/reset`),
   cleanSeasonResults: (seasonId: string) =>
     postJson<ActionMessageResponse>(`/api/v1/seasons/${seasonId}/clean-results`),
+  deleteSeason: (seasonId: string) =>
+    deleteJson<ActionMessageResponse>(`/api/v1/seasons/${seasonId}`),
 };

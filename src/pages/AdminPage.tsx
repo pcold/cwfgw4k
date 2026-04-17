@@ -7,6 +7,7 @@ import UploadScheduleSection from './admin/UploadScheduleSection';
 import UploadRostersSection from './admin/UploadRostersSection';
 import ResetTournamentSection from './admin/ResetTournamentSection';
 import CleanSeasonSection from './admin/CleanSeasonSection';
+import DeleteSeasonSection from './admin/DeleteSeasonSection';
 
 function AdminPage() {
   const { authenticated, loading, username, logout } = useAuth();
@@ -48,6 +49,7 @@ function AdminPage() {
       <UploadRostersSection />
       <ResetTournamentSection />
       <CleanSeasonSection />
+      <DeleteSeasonSection />
     </section>
   );
 }
