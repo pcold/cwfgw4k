@@ -4,6 +4,7 @@ export interface ScoreboardGolfer {
   golferId: string | null;
   golferName: string;
   position: number | null;
+  tied: boolean;
   payout: number;
   ownershipPct: number;
 }
@@ -38,6 +39,12 @@ function parsePosition(positionStr: string | null): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+// Backend reports position like "T1" when the golfer is tied, "1" when solo. The T prefix is the
+// only signal we get, so preserve it here — the view renders it conditionally.
+function isTiedPosition(positionStr: string | null): boolean {
+  return positionStr != null && positionStr.startsWith('T');
+}
+
 function parseScoreToPar(raw: string | null): number | null {
   if (raw === null) return null;
   if (raw === 'E') return 0;
@@ -52,6 +59,7 @@ function golferScoresFor(team: ReportTeamColumn): ScoreboardGolfer[] {
       golferId: row.golferId,
       golferName: row.golferName ?? '',
       position: parsePosition(row.positionStr),
+      tied: isTiedPosition(row.positionStr),
       payout: row.earnings,
       ownershipPct: row.ownershipPct,
     }));

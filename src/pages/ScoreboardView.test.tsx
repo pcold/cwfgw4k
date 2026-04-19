@@ -258,6 +258,64 @@ describe('ScoreboardView', () => {
     expect(within(rows[0]).getByText('Phil')).toBeInTheDocument();
   });
 
+  it('omits the T prefix on a solo position in the Golfers in Top 10 column', () => {
+    render(
+      <ScoreboardView
+        report={report({
+          teams: [
+            team({
+              teamName: 'Aces',
+              rows: [
+                row({
+                  golferId: 'g-1',
+                  golferName: 'FITZPATRICK',
+                  positionStr: '1',
+                  scoreToPar: '-19',
+                  earnings: 18,
+                }),
+              ],
+            }),
+          ],
+        })}
+      />,
+    );
+
+    const teamTable = screen.getAllByRole('table')[0];
+    const teamCells = within(teamTable).getAllByRole('cell');
+    const golferCell = teamCells[teamCells.length - 1];
+    // Visible text should read "FITZPATRICK 1 $18" — no stray T.
+    expect(golferCell.textContent ?? '').not.toMatch(/T\s*1\b/);
+    expect(golferCell).toHaveTextContent('1');
+  });
+
+  it('shows the T prefix on a tied position in the Golfers in Top 10 column', () => {
+    render(
+      <ScoreboardView
+        report={report({
+          teams: [
+            team({
+              teamName: 'Aces',
+              rows: [
+                row({
+                  golferId: 'g-1',
+                  golferName: 'MORIKAWA',
+                  positionStr: 'T4',
+                  scoreToPar: '-13',
+                  earnings: 7,
+                }),
+              ],
+            }),
+          ],
+        })}
+      />,
+    );
+
+    const teamTable = screen.getAllByRole('table')[0];
+    const teamCells = within(teamTable).getAllByRole('cell');
+    const golferCell = teamCells[teamCells.length - 1];
+    expect(golferCell.textContent ?? '').toMatch(/T\s*4/);
+  });
+
   it('shows a placeholder row and keeps the leaderboard filter reachable when it yields zero rows', async () => {
     const user = userEvent.setup();
     render(

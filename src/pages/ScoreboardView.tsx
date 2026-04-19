@@ -126,7 +126,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
                         ) : (
                           <span className="text-gray-300">{g.golferName}</span>
                         )}{' '}
-                        <span className="text-gray-500">T</span>
+                        {g.tied ? <span className="text-gray-500">T</span> : null}
                         <span className="text-gray-400">{g.position ?? '?'}</span>{' '}
                         <span className="text-green-400 tabular-nums">{formatMoney(g.payout)}</span>
                         {g.ownershipPct < 100 ? (

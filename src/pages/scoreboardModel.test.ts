@@ -105,13 +105,24 @@ describe('deriveScoreboard', () => {
     expect(golfers).toEqual(['Alpha', 'Gamma']);
   });
 
-  it('parses position strings like "T5" to numbers', () => {
+  it('parses position strings like "T5" to numbers and marks them tied', () => {
     const scoreboard = deriveScoreboard(
       report({
         teams: [teamColumn({ rows: [row({ positionStr: 'T5' })] })],
       }),
     );
     expect(scoreboard.teams[0].golferScores[0].position).toBe(5);
+    expect(scoreboard.teams[0].golferScores[0].tied).toBe(true);
+  });
+
+  it('marks a solo position (no T prefix) as not tied', () => {
+    const scoreboard = deriveScoreboard(
+      report({
+        teams: [teamColumn({ rows: [row({ positionStr: '1' })] })],
+      }),
+    );
+    expect(scoreboard.teams[0].golferScores[0].position).toBe(1);
+    expect(scoreboard.teams[0].golferScores[0].tied).toBe(false);
   });
 
   it('computes the zero-sum won/lost/net summary', () => {
