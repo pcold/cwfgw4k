@@ -6,6 +6,11 @@ import { QueryState, useLeaguesGate } from '@/components/QueryState';
 import GolferHistoryModal from '@/components/GolferHistoryModal';
 import { earliestUnfinalized, tournamentLabel } from '@/util/tournament';
 import WeeklyReportView from './WeeklyReportView';
+import type { WeeklyReport } from '@/api/types';
+
+function downloadPdf(report: WeeklyReport): Promise<void> {
+  return import('./weeklyReportPdf').then((m) => m.downloadWeeklyReportPdf(report));
+}
 
 const ALL_TOURNAMENTS = '';
 
@@ -63,6 +68,14 @@ function WeeklyReportPage() {
             </option>
           ))}
         </select>
+        <button
+          type="button"
+          disabled={!reportQuery.data}
+          onClick={() => reportQuery.data && downloadPdf(reportQuery.data)}
+          className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Download PDF
+        </button>
       </div>
 
       <QueryState query={reportQuery} label="report">
