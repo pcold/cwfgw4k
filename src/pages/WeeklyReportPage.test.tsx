@@ -156,4 +156,29 @@ describe('WeeklyReportPage', () => {
     renderWithProviders(<WeeklyReportPage />);
     expect(await screen.findByText(/Failed to load report/i)).toBeInTheDocument();
   });
+
+  it('enables the Download PDF button once the report loads', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([]);
+    seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
+
+    renderWithProviders(<WeeklyReportPage />);
+
+    const button = await screen.findByRole('button', { name: /Download PDF/i });
+    await screen.findByRole('heading', { name: /All Tournaments/i });
+    expect(button).toBeEnabled();
+  });
+
+  it('leaves the Download PDF button disabled while the report is loading', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([]);
+    seasonReportMock.mockImplementation(() => new Promise(() => {}));
+
+    renderWithProviders(<WeeklyReportPage />);
+
+    const button = await screen.findByRole('button', { name: /Download PDF/i });
+    expect(button).toBeDisabled();
+  });
 });
