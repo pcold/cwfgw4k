@@ -223,6 +223,11 @@ function drawFooter(
 }
 
 export function downloadWeeklyReportPdf(report: WeeklyReport, season: Season | null): void {
+  const doc = buildWeeklyReportPdf(report);
+  doc.save(pdfFilename(report, season));
+}
+
+export function buildWeeklyReportPdf(report: WeeklyReport): jsPDF {
   const { teams } = report;
   const seasonMode = isSeasonReport(report);
   const showSeasonFooter = !seasonMode;
@@ -337,6 +342,5 @@ export function downloadWeeklyReportPdf(report: WeeklyReport, season: Season | n
   const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
   drawFooter(doc, report, marginLeft, marginRight, finalY + 16);
 
-  const filename = pdfFilename(report, season);
-  doc.save(filename);
+  return doc;
 }
