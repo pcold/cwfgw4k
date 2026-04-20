@@ -98,7 +98,7 @@ function summaryValueCell(text: string, bg: RGB, color: RGB, bold: boolean): Cel
 
 function subtotalCell(team: ReportTeamColumn): CellDef {
   return {
-    content: `${formatMoney(team.subtotal)}\n(${team.topTenCount.toFixed(2)})`,
+    content: `${formatMoney(team.subtotal)}\n($${team.topTenMoney.toFixed(2)})`,
     styles: {
       fillColor: COLOR_TOTAL_BG,
       textColor: signColor(team.subtotal),
