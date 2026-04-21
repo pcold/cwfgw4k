@@ -1,5 +1,7 @@
 package com.cwfgw.health
 
+import com.cwfgw.golfers.FakeGolferRepository
+import com.cwfgw.golfers.GolferService
 import com.cwfgw.leagues.FakeLeagueRepository
 import com.cwfgw.leagues.LeagueService
 import com.cwfgw.module
@@ -16,7 +18,13 @@ private val NEVER_CONNECTED = HealthProbe { false }
 class HealthRoutesSpec : FunSpec({
     test("GET /api/v1/health returns ok when the probe reports connected") {
         testApplication {
-            application { module(ALWAYS_CONNECTED, LeagueService(FakeLeagueRepository())) }
+            application {
+                module(
+                    ALWAYS_CONNECTED,
+                    LeagueService(FakeLeagueRepository()),
+                    GolferService(FakeGolferRepository()),
+                )
+            }
 
             val response = client.get("/api/v1/health")
 
@@ -27,7 +35,13 @@ class HealthRoutesSpec : FunSpec({
 
     test("GET /api/v1/health returns degraded when the probe reports unreachable") {
         testApplication {
-            application { module(NEVER_CONNECTED, LeagueService(FakeLeagueRepository())) }
+            application {
+                module(
+                    NEVER_CONNECTED,
+                    LeagueService(FakeLeagueRepository()),
+                    GolferService(FakeGolferRepository()),
+                )
+            }
 
             val response = client.get("/api/v1/health")
 

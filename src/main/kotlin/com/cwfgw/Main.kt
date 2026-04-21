@@ -2,6 +2,9 @@ package com.cwfgw
 
 import com.cwfgw.config.AppConfig
 import com.cwfgw.db.Database
+import com.cwfgw.golfers.GolferService
+import com.cwfgw.golfers.JooqGolferRepository
+import com.cwfgw.golfers.golferRoutes
 import com.cwfgw.health.DatabaseHealthProbe
 import com.cwfgw.health.HealthProbe
 import com.cwfgw.health.healthRoutes
@@ -30,8 +33,9 @@ fun main() {
     val database = Database.start(config.db)
     val healthProbe = DatabaseHealthProbe(database.dsl)
     val leagueService = LeagueService(JooqLeagueRepository(database.dsl))
+    val golferService = GolferService(JooqGolferRepository(database.dsl))
     embeddedServer(Netty, port = config.http.port, host = config.http.host) {
-        module(healthProbe, leagueService)
+        module(healthProbe, leagueService, golferService)
     }.start(wait = true)
 }
 
@@ -39,6 +43,7 @@ fun main() {
 fun Application.module(
     healthProbe: HealthProbe,
     leagueService: LeagueService,
+    golferService: GolferService,
 ) {
     install(ContentNegotiation) {
         json(
@@ -59,6 +64,7 @@ fun Application.module(
         route("/api/v1") {
             healthRoutes(healthProbe)
             leagueRoutes(leagueService)
+            golferRoutes(golferService)
         }
     }
 }

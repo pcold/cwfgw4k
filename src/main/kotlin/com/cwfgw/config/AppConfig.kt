@@ -1,6 +1,7 @@
 package com.cwfgw.config
 
 import com.sksamuel.hoplite.ConfigLoaderBuilder
+import com.sksamuel.hoplite.addMapSource
 import com.sksamuel.hoplite.addResourceSource
 
 data class AppConfig(
@@ -8,8 +9,9 @@ data class AppConfig(
     val db: DbConfig,
 ) {
     companion object {
-        fun load(): AppConfig =
+        fun load(overrides: Map<String, Any> = emptyMap()): AppConfig =
             ConfigLoaderBuilder.default()
+                .apply { if (overrides.isNotEmpty()) addMapSource(overrides) }
                 .addResourceSource("/application.yaml")
                 .build()
                 .loadConfigOrThrow<AppConfig>()

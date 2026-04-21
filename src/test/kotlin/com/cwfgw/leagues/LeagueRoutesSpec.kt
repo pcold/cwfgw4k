@@ -1,5 +1,7 @@
 package com.cwfgw.leagues
 
+import com.cwfgw.golfers.FakeGolferRepository
+import com.cwfgw.golfers.GolferService
 import com.cwfgw.health.HealthProbe
 import com.cwfgw.module
 import io.kotest.core.spec.style.FunSpec
@@ -108,7 +110,13 @@ private suspend fun withLeagueApp(
     block: suspend ApplicationTestBuilder.(HttpClient) -> Unit,
 ) {
     testApplication {
-        application { module(ALWAYS_HEALTHY, LeagueService(fake)) }
+        application {
+            module(
+                healthProbe = ALWAYS_HEALTHY,
+                leagueService = LeagueService(fake),
+                golferService = GolferService(FakeGolferRepository()),
+            )
+        }
         val client = clientWithJson()
         block(client)
     }

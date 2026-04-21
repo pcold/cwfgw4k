@@ -16,7 +16,10 @@
       "Bash(./gradlew generateJooq --no-daemon)",
       "Bash(./gradlew -q dependencies --configuration jooqCodegenRuntimeClasspath)",
       "Bash(./gradlew check *)",
-      "Bash(./gradlew ktlintFormat --no-daemon)"
+      "Bash(./gradlew ktlintFormat --no-daemon)",
+      "Bash(./gradlew test *)",
+      "Bash(./gradlew compileKotlin --no-daemon)",
+      "Bash(./gradlew compileTestKotlin --no-daemon)"
     ]
   }
 }

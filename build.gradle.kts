@@ -166,9 +166,14 @@ kover {
                 )
             }
         }
+        verify {
+            rule("Overall line coverage") {
+                minBound(85, kotlinx.kover.gradle.plugin.dsl.CoverageUnit.LINE)
+            }
+        }
     }
 }
 
 tasks.named("check") {
-    dependsOn("koverXmlReport", "koverHtmlReport")
+    dependsOn("koverXmlReport", "koverHtmlReport", "koverVerify")
 }
