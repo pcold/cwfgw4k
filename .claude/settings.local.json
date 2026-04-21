@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/peter.cold/code/pcold/cwfgw/src/main/scala/**)",
+      "Read(//Users/peter.cold/code/pcold/cwfgw/src/main/scala/com/**)",
+      "Bash(cp /Users/peter.cold/code/pcold/cwfgw/gradle/wrapper/gradle-wrapper.jar /Users/peter.cold/code/pcold/cwfgw4k/gradle/wrapper/)",
+      "Bash(cp /Users/peter.cold/code/pcold/cwfgw/gradle/wrapper/gradle-wrapper.properties /Users/peter.cold/code/pcold/cwfgw4k/gradle/wrapper/)",
+      "Bash(cp /Users/peter.cold/code/pcold/cwfgw/gradlew /Users/peter.cold/code/pcold/cwfgw4k/gradlew)",
+      "Bash(cp /Users/peter.cold/code/pcold/cwfgw/gradlew.bat /Users/peter.cold/code/pcold/cwfgw4k/gradlew.bat)",
+      "Bash(chmod +x /Users/peter.cold/code/pcold/cwfgw4k/gradlew)",
+      "Bash(curl -s \"https://search.maven.org/solrsearch/select?q=g:io.ktor+AND+a:ktor-server-core&core=gav&rows=20&wt=json\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(doc['v']\\) for doc in d['response']['docs'][:20]]\")",
+      "Bash(curl -s \"https://search.maven.org/solrsearch/select?q=g:org.jetbrains.kotlinx+AND+a:kotlinx-serialization-json&core=gav&rows=20&wt=json\")",
+      "Bash(curl -s \"https://search.maven.org/solrsearch/select?q=g:org.jetbrains.kotlinx+AND+a:kotlinx-coroutines-core&core=gav&rows=20&wt=json\")"
+    ]
+  }
+}

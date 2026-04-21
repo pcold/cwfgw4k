@@ -1,0 +1,10 @@
+http:
+  host: 0.0.0.0
+  port: ${HTTP_PORT:-8080}
+
+db:
+  jdbcUrl: ${DB_JDBC_URL:-jdbc:postgresql://localhost:5432/cwfgw4k}
+  user: ${DB_USER:-cwfgw4k}
+  password: ${DB_PASSWORD:-cwfgw4k}
+  schema: ${DB_SCHEMA:-cwfgw4k}
+  maxPoolSize: ${DB_POOL:-10}
