@@ -5,6 +5,8 @@ import com.cwfgw.golfers.GolferService
 import com.cwfgw.leagues.FakeLeagueRepository
 import com.cwfgw.leagues.LeagueService
 import com.cwfgw.module
+import com.cwfgw.seasons.FakeSeasonRepository
+import com.cwfgw.seasons.SeasonService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.request.get
@@ -23,6 +25,7 @@ class HealthRoutesSpec : FunSpec({
                     ALWAYS_CONNECTED,
                     LeagueService(FakeLeagueRepository()),
                     GolferService(FakeGolferRepository()),
+                    SeasonService(FakeSeasonRepository()),
                 )
             }
 
@@ -40,6 +43,7 @@ class HealthRoutesSpec : FunSpec({
                     NEVER_CONNECTED,
                     LeagueService(FakeLeagueRepository()),
                     GolferService(FakeGolferRepository()),
+                    SeasonService(FakeSeasonRepository()),
                 )
             }
 

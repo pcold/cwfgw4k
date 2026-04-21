@@ -4,6 +4,8 @@ import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.health.HealthProbe
 import com.cwfgw.module
+import com.cwfgw.seasons.FakeSeasonRepository
+import com.cwfgw.seasons.SeasonService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
@@ -115,6 +117,7 @@ private suspend fun withLeagueApp(
                 healthProbe = ALWAYS_HEALTHY,
                 leagueService = LeagueService(fake),
                 golferService = GolferService(FakeGolferRepository()),
+                seasonService = SeasonService(FakeSeasonRepository()),
             )
         }
         val client = clientWithJson()

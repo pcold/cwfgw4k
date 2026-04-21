@@ -11,6 +11,9 @@ import com.cwfgw.health.healthRoutes
 import com.cwfgw.leagues.JooqLeagueRepository
 import com.cwfgw.leagues.LeagueService
 import com.cwfgw.leagues.leagueRoutes
+import com.cwfgw.seasons.JooqSeasonRepository
+import com.cwfgw.seasons.SeasonService
+import com.cwfgw.seasons.seasonRoutes
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -34,8 +37,9 @@ fun main() {
     val healthProbe = DatabaseHealthProbe(database.dsl)
     val leagueService = LeagueService(JooqLeagueRepository(database.dsl))
     val golferService = GolferService(JooqGolferRepository(database.dsl))
+    val seasonService = SeasonService(JooqSeasonRepository(database.dsl))
     embeddedServer(Netty, port = config.http.port, host = config.http.host) {
-        module(healthProbe, leagueService, golferService)
+        module(healthProbe, leagueService, golferService, seasonService)
     }.start(wait = true)
 }
 
@@ -44,6 +48,7 @@ fun Application.module(
     healthProbe: HealthProbe,
     leagueService: LeagueService,
     golferService: GolferService,
+    seasonService: SeasonService,
 ) {
     install(ContentNegotiation) {
         json(
@@ -65,6 +70,7 @@ fun Application.module(
             healthRoutes(healthProbe)
             leagueRoutes(leagueService)
             golferRoutes(golferService)
+            seasonRoutes(seasonService)
         }
     }
 }

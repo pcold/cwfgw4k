@@ -1,5 +1,6 @@
 package com.cwfgw.golfers
 
+import com.cwfgw.serialization.toUUIDOrNull
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -8,7 +9,6 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
-import java.util.UUID
 
 fun Route.golferRoutes(service: GolferService) {
     route("/golfers") {
@@ -19,7 +19,7 @@ fun Route.golferRoutes(service: GolferService) {
         }
 
         get("/{id}") {
-            val id = call.parameters["id"]?.toGolferIdOrNull()
+            val id = call.parameters["id"]?.toUUIDOrNull()?.let(::GolferId)
             if (id == null) {
                 call.respond(HttpStatusCode.BadRequest)
                 return@get
@@ -36,7 +36,7 @@ fun Route.golferRoutes(service: GolferService) {
         }
 
         put("/{id}") {
-            val id = call.parameters["id"]?.toGolferIdOrNull()
+            val id = call.parameters["id"]?.toUUIDOrNull()?.let(::GolferId)
             if (id == null) {
                 call.respond(HttpStatusCode.BadRequest)
                 return@put
@@ -49,10 +49,3 @@ fun Route.golferRoutes(service: GolferService) {
         }
     }
 }
-
-private fun String.toGolferIdOrNull(): GolferId? =
-    try {
-        GolferId(UUID.fromString(this))
-    } catch (_: IllegalArgumentException) {
-        null
-    }
