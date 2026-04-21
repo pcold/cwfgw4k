@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.ktor)
     alias(libs.plugins.detekt)
     alias(libs.plugins.ktlint)
+    alias(libs.plugins.kover)
     application
 }
 
@@ -56,17 +57,70 @@ dependencies {
     testImplementation(libs.bundles.kotest)
     testImplementation(libs.testcontainers.junit)
     testImplementation(libs.testcontainers.postgres)
-    testImplementation(libs.h2)
+    testImplementation(libs.docker.java.api)
+    testImplementation(libs.docker.java.transport.zerodep)
 }
 
 tasks.test {
     useJUnitPlatform()
+    environment("DOCKER_API_VERSION", "1.44")
+    systemProperty("api.version", "1.44")
 }
 
 ktor {
     fatJar {
         archiveFileName = "cwfgw4k-all.jar"
     }
+}
+
+val jooqGenDir = layout.buildDirectory.dir("generated/jooq")
+
+sourceSets {
+    create("jooqCodegen")
+}
+
+dependencies {
+    "jooqCodegenImplementation"(libs.jooq)
+    "jooqCodegenImplementation"(libs.jooq.codegen)
+    "jooqCodegenImplementation"(libs.jooq.meta)
+    "jooqCodegenImplementation"(libs.flyway.core)
+    "jooqCodegenImplementation"(libs.flyway.postgres)
+    "jooqCodegenImplementation"(libs.postgres)
+    "jooqCodegenImplementation"(libs.testcontainers.postgres)
+    "jooqCodegenImplementation"(libs.docker.java.api)
+    "jooqCodegenImplementation"(libs.docker.java.transport.zerodep)
+    "jooqCodegenImplementation"(libs.logback.classic)
+}
+
+val generateJooq by tasks.registering(JavaExec::class) {
+    group = "build"
+    description = "Generate jOOQ classes against a throwaway Postgres migrated by Flyway."
+    classpath = sourceSets["jooqCodegen"].runtimeClasspath
+    mainClass.set("com.cwfgw.jooqcodegen.JooqCodegenKt")
+    args(
+        layout.projectDirectory.dir("src/main/resources/db/migration").asFile.absolutePath,
+        jooqGenDir.get().asFile.absolutePath,
+        "com.cwfgw.jooq",
+    )
+    environment("DOCKER_API_VERSION", "1.44")
+    systemProperty("api.version", "1.44")
+    inputs.dir("src/main/resources/db/migration")
+    outputs.dir(jooqGenDir)
+}
+
+sourceSets.main {
+    kotlin.srcDir(jooqGenDir)
+}
+
+tasks.named("compileKotlin") {
+    dependsOn(generateJooq)
+}
+
+tasks.named("runKtlintCheckOverMainSourceSet") {
+    dependsOn(generateJooq)
+}
+tasks.named("runKtlintFormatOverMainSourceSet") {
+    dependsOn(generateJooq)
 }
 
 detekt {
@@ -78,6 +132,7 @@ detekt {
 
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
     jvmTarget = "21"
+    exclude("**/generated/**")
     reports {
         html.required.set(true)
         xml.required.set(true)
@@ -98,4 +153,22 @@ ktlint {
     filter {
         exclude { it.file.path.contains("/build/") }
     }
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                packages(
+                    "com.cwfgw.jooq",
+                    "com.cwfgw.jooq.*",
+                    "com.cwfgw.jooqcodegen",
+                )
+            }
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn("koverXmlReport", "koverHtmlReport")
 }

@@ -13,10 +13,11 @@ bcrypt = "0.10.2"
 hoplite = "2.9.0"
 kotest = "5.9.1"
 testcontainers = "1.21.3"
+docker-java = "3.5.1"
 shadow = "9.4.0"
-h2 = "2.3.232"
 detekt = "1.23.8"
 ktlint-gradle = "12.3.0"
+kover = "0.9.1"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
@@ -44,6 +45,8 @@ flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.
 jooq = { module = "org.jooq:jooq", version.ref = "jooq" }
 jooq-kotlin = { module = "org.jooq:jooq-kotlin", version.ref = "jooq" }
 jooq-kotlin-coroutines = { module = "org.jooq:jooq-kotlin-coroutines", version.ref = "jooq" }
+jooq-codegen = { module = "org.jooq:jooq-codegen", version.ref = "jooq" }
+jooq-meta = { module = "org.jooq:jooq-meta", version.ref = "jooq" }
 
 bcrypt = { module = "at.favre.lib:bcrypt", version.ref = "bcrypt" }
 
@@ -56,7 +59,8 @@ kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.
 kotest-framework-datatest = { module = "io.kotest:kotest-framework-datatest", version.ref = "kotest" }
 testcontainers-junit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
 testcontainers-postgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
-h2 = { module = "com.h2database:h2", version.ref = "h2" }
+docker-java-api = { module = "com.github.docker-java:docker-java-api", version.ref = "docker-java" }
+docker-java-transport-zerodep = { module = "com.github.docker-java:docker-java-transport-zerodep", version.ref = "docker-java" }
 
 [bundles]
 ktor-server = [
@@ -90,3 +94,4 @@ shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 flyway = { id = "org.flywaydb.flyway", version.ref = "flyway" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
