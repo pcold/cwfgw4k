@@ -11,7 +11,8 @@
       "Bash(curl -s \"https://search.maven.org/solrsearch/select?q=g:io.ktor+AND+a:ktor-server-core&core=gav&rows=20&wt=json\")",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(doc['v']\\) for doc in d['response']['docs'][:20]]\")",
       "Bash(curl -s \"https://search.maven.org/solrsearch/select?q=g:org.jetbrains.kotlinx+AND+a:kotlinx-serialization-json&core=gav&rows=20&wt=json\")",
-      "Bash(curl -s \"https://search.maven.org/solrsearch/select?q=g:org.jetbrains.kotlinx+AND+a:kotlinx-coroutines-core&core=gav&rows=20&wt=json\")"
+      "Bash(curl -s \"https://search.maven.org/solrsearch/select?q=g:org.jetbrains.kotlinx+AND+a:kotlinx-coroutines-core&core=gav&rows=20&wt=json\")",
+      "Bash(./gradlew ktlintCheck detekt --no-daemon)"
     ]
   }
 }

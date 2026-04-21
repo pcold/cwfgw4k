@@ -14,9 +14,12 @@ import org.jooq.impl.DSL
 
 class HealthRoutesSpec : StringSpec({
     "GET /api/v1/health returns ok when database is reachable" {
-        val ds = HikariDataSource(HikariConfig().apply {
-            jdbcUrl = "jdbc:h2:mem:health_ok;DB_CLOSE_DELAY=-1"
-        })
+        val ds =
+            HikariDataSource(
+                HikariConfig().apply {
+                    jdbcUrl = "jdbc:h2:mem:health_ok;DB_CLOSE_DELAY=-1"
+                },
+            )
         try {
             testApplication {
                 application { module(DSL.using(ds, SQLDialect.H2)) }
@@ -30,9 +33,12 @@ class HealthRoutesSpec : StringSpec({
     }
 
     "GET /api/v1/health returns degraded when database is unreachable" {
-        val ds = HikariDataSource(HikariConfig().apply {
-            jdbcUrl = "jdbc:h2:mem:health_fail"
-        })
+        val ds =
+            HikariDataSource(
+                HikariConfig().apply {
+                    jdbcUrl = "jdbc:h2:mem:health_fail"
+                },
+            )
         val dsl = DSL.using(ds, SQLDialect.H2)
         ds.close()
         testApplication {

@@ -7,6 +7,7 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import kotlinx.serialization.Serializable
 import org.jooq.DSLContext
+import org.jooq.exception.DataAccessException
 
 private val log = KotlinLogging.logger {}
 
@@ -22,7 +23,7 @@ fun Route.healthRoutes(dsl: DSLContext) {
         try {
             dsl.selectOne().fetch()
             call.respond(HealthResponse(status = "ok", service = "cwfgw", database = "connected"))
-        } catch (e: Exception) {
+        } catch (e: DataAccessException) {
             log.error(e) { "Health check failed: database unreachable" }
             call.respond(
                 HttpStatusCode.InternalServerError,

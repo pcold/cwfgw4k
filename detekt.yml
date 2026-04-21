@@ -1,0 +1,70 @@
+build:
+  maxIssues: 0
+
+coroutines:
+  GlobalCoroutineUsage:
+    active: true
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: true
+    exceptionNames:
+      - ArrayIndexOutOfBoundsException
+      - Error
+      - Exception
+      - IllegalMonitorStateException
+      - NullPointerException
+      - IndexOutOfBoundsException
+      - RuntimeException
+      - Throwable
+  TooGenericExceptionThrown:
+    active: true
+  SwallowedException:
+    active: true
+  ThrowingExceptionsWithoutMessageOrCause:
+    active: true
+
+potential-bugs:
+  UnsafeCallOnNullableType:
+    active: true
+  UnsafeCast:
+    active: true
+
+style:
+  MagicNumber:
+    active: false
+  ReturnCount:
+    active: false
+  VarCouldBeVal:
+    active: true
+  ForbiddenImport:
+    active: true
+    imports:
+      - value: 'org.springframework.**'
+        reason: 'Spring is excluded by CLAUDE.md — use Ktor.'
+      - value: 'com.fasterxml.jackson.**'
+        reason: 'Jackson is excluded by CLAUDE.md — use kotlinx.serialization.'
+      - value: 'arrow.**'
+        reason: 'Arrow is excluded by CLAUDE.md without explicit discussion.'
+      - value: 'javax.persistence.**'
+        reason: 'JPA is excluded by CLAUDE.md — use jOOQ.'
+      - value: 'jakarta.persistence.**'
+        reason: 'JPA is excluded by CLAUDE.md — use jOOQ.'
+  ForbiddenMethodCall:
+    active: true
+    methods:
+      - value: 'kotlinx.coroutines.runBlocking'
+        reason: 'runBlocking is forbidden outside main entrypoints and tests (CLAUDE.md).'
+  UnnecessaryAbstractClass:
+    active: true
+  UseCheckOrError:
+    active: true
+  UseRequire:
+    active: true
+
+complexity:
+  LongMethod:
+    active: true
+    threshold: 50
+  TooManyFunctions:
+    active: false

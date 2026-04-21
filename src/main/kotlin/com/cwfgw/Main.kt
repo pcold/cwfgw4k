@@ -29,7 +29,12 @@ fun main() {
 
 fun Application.module(dsl: DSLContext) {
     install(ContentNegotiation) {
-        json(Json { ignoreUnknownKeys = true; encodeDefaults = true })
+        json(
+            Json {
+                ignoreUnknownKeys = true
+                encodeDefaults = true
+            },
+        )
     }
     install(CallLogging)
     install(StatusPages) {
