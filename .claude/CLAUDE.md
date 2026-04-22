@@ -300,10 +300,47 @@ Rules:
   Respond with domain types directly.
 - **MUST NOT** install a DI framework. Wire dependencies via constructor
   parameters and module-level setup.
-- **SHOULD** use the `StatusPages` plugin for cross-cutting exception
-  translation rather than try/catch in every handler.
 - **SHOULD** install only Ktor plugins actually used. Each `install()` must be
   justifiable.
+
+#### HTTP boundary: errors and parameter parsing
+
+- **MUST** throw `DomainError.NotFound` / `Validation` / `Conflict`
+  (`com.cwfgw.http.DomainError`) from routes — never hand-write
+  `call.respond(HttpStatusCode.X)` for error cases. `installErrorHandling()`
+  is the canonical sink that maps each variant to its status plus a JSON
+  `ErrorBody`. The `exception<Throwable>` handler in `ErrorHandling.kt` is
+  the single documented place in the codebase where `Throwable` is caught —
+  do not replicate in business logic.
+- **MUST NOT** push HTTP error semantics into the domain or service layer.
+  Services return `T?` for "not found"; routes bridge with
+  `?: throw DomainError.NotFound("<label> ${id.value} not found")`.
+- **MUST NOT** make `String.toXId()` extensions throw `DomainError.Validation`.
+  They're pure domain primitives and must not depend on `com.cwfgw.http`;
+  the HTTP-aware throw belongs at the route boundary, not on the type.
+- **MUST** use `com.cwfgw.http.optionalQueryParam(name, parser)` for every
+  optional query parameter that can be malformed. Writing
+  `queryParameters[name]?.toXxx()` directly silently swallows garbage as
+  "no filter" — that's the bug the helper exists to prevent.
+- **SHOULD** give each route file a private `RoutingContext.xxxId(): XId`
+  helper that parses a path parameter or throws `DomainError.Validation`:
+  ```kotlin
+  private fun RoutingContext.teamId(): TeamId =
+      call.parameters["teamId"]?.toTeamId() ?: throw DomainError.Validation("invalid team id")
+  ```
+  Error messages: `"invalid <thing> id"` for Validation; `"<thing> ${id.value}
+  not found"` for NotFound — include the id for debuggability.
+- **SHOULD** extract each handler out of the top-level `Route.xxxRoutes()`
+  dispatcher into a private `RoutingContext.xxx(service)` function. Detekt's
+  `ThrowsCount` rule (max 2 per function) counts throws in nested lambdas
+  as part of the outer function, and aggregating a few parse-or-throw
+  handlers in one fun hits the limit fast. `TeamRoutes.kt` is the reference
+  shape.
+- **MUST** use `installRequestLogging()` (not bare `install(CallLogging)`).
+  Its format — `cwfgw.request method=X route=Y status=Z duration_ms=N` with
+  path normalization (UUIDs → `:id`, numerics → `:n`, `/assets/*` bucketed)
+  — is load-bearing for Cloud Logging metric extraction. Changing the format
+  requires coordinating with the shared cwfgw ops config.
 
 ### jOOQ
 
