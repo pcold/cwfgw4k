@@ -1,6 +1,5 @@
 package com.cwfgw.golfers
 
-import com.cwfgw.serialization.toUUIDOrNull
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -19,7 +18,7 @@ fun Route.golferRoutes(service: GolferService) {
         }
 
         get("/{id}") {
-            val id = call.parameters["id"]?.toUUIDOrNull()?.let(::GolferId)
+            val id = call.parameters["id"]?.toGolferId()
             if (id == null) {
                 call.respond(HttpStatusCode.BadRequest)
                 return@get
@@ -36,7 +35,7 @@ fun Route.golferRoutes(service: GolferService) {
         }
 
         put("/{id}") {
-            val id = call.parameters["id"]?.toUUIDOrNull()?.let(::GolferId)
+            val id = call.parameters["id"]?.toGolferId()
             if (id == null) {
                 call.respond(HttpStatusCode.BadRequest)
                 return@put

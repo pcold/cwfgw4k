@@ -1,18 +1,12 @@
 package com.cwfgw.seasons
 
-import com.cwfgw.golfers.FakeGolferRepository
-import com.cwfgw.golfers.GolferService
-import com.cwfgw.health.HealthProbe
-import com.cwfgw.leagues.FakeLeagueRepository
 import com.cwfgw.leagues.LeagueId
-import com.cwfgw.leagues.LeagueService
-import com.cwfgw.module
+import com.cwfgw.testing.ApiFixture
+import com.cwfgw.testing.apiTest
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
-import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -20,17 +14,9 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.testing.ApplicationTestBuilder
-import io.ktor.server.testing.testApplication
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNamingStrategy
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
-
-private val ALWAYS_HEALTHY = HealthProbe { true }
 
 private val CASTLEWOOD_ID = LeagueId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
 
@@ -55,19 +41,16 @@ private fun season(
         updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
     )
 
-@OptIn(ExperimentalSerializationApi::class)
-private val testJson =
-    Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-        namingStrategy = JsonNamingStrategy.SnakeCase
+private fun seasons(vararg seeded: Season): ApiFixture.() -> Unit =
+    {
+        seasonService = SeasonService(FakeSeasonRepository(initial = seeded.toList()))
     }
 
 class SeasonRoutesSpec : FunSpec({
 
     test("GET /api/v1/seasons returns seeded seasons") {
         val s = season()
-        withSeasonApp(seeded = listOf(s)) { client ->
+        apiTest(seasons(s)) { client ->
             val response = client.get("/api/v1/seasons")
 
             response.status shouldBe HttpStatusCode.OK
@@ -81,7 +64,7 @@ class SeasonRoutesSpec : FunSpec({
         val castlewoodSeason = season(leagueId = CASTLEWOOD_ID)
         val otherSeason = season(leagueId = otherLeague, name = "Other")
 
-        withSeasonApp(seeded = listOf(castlewoodSeason, otherSeason)) { client ->
+        apiTest(seasons(castlewoodSeason, otherSeason)) { client ->
             val response = client.get("/api/v1/seasons?league_id=${CASTLEWOOD_ID.value}")
 
             response.status shouldBe HttpStatusCode.OK
@@ -94,7 +77,7 @@ class SeasonRoutesSpec : FunSpec({
         val y2025 = season(name = "2025", seasonYear = 2025)
         val y2026 = season(name = "2026", seasonYear = 2026)
 
-        withSeasonApp(seeded = listOf(y2025, y2026)) { client ->
+        apiTest(seasons(y2025, y2026)) { client ->
             val response = client.get("/api/v1/seasons?year=2025")
 
             val seasons: List<Season> = response.body()
@@ -104,7 +87,7 @@ class SeasonRoutesSpec : FunSpec({
 
     test("GET /api/v1/seasons/{id} returns 200 with the season") {
         val s = season()
-        withSeasonApp(seeded = listOf(s)) { client ->
+        apiTest(seasons(s)) { client ->
             val response = client.get("/api/v1/seasons/${s.id.value}")
 
             response.status shouldBe HttpStatusCode.OK
@@ -113,14 +96,14 @@ class SeasonRoutesSpec : FunSpec({
     }
 
     test("GET /api/v1/seasons/{unknown-uuid} returns 404") {
-        withSeasonApp { client ->
+        apiTest { client ->
             val response = client.get("/api/v1/seasons/${UUID.randomUUID()}")
             response.status shouldBe HttpStatusCode.NotFound
         }
     }
 
     test("GET /api/v1/seasons/{non-uuid} returns 400") {
-        withSeasonApp { client ->
+        apiTest { client ->
             val response = client.get("/api/v1/seasons/not-a-uuid")
             response.status shouldBe HttpStatusCode.BadRequest
         }
@@ -131,7 +114,7 @@ class SeasonRoutesSpec : FunSpec({
         val newTime = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeSeasonRepository(idFactory = { newId }, clock = { newTime })
 
-        withSeasonApp(fake = fake) { client ->
+        apiTest({ seasonService = SeasonService(fake) }) { client ->
             val response =
                 client.post("/api/v1/seasons") {
                     contentType(ContentType.Application.Json)
@@ -155,7 +138,7 @@ class SeasonRoutesSpec : FunSpec({
 
     test("PUT /api/v1/seasons/{id} applies partial update and returns 200") {
         val s = season()
-        withSeasonApp(seeded = listOf(s)) { client ->
+        apiTest(seasons(s)) { client ->
             val response =
                 client.put("/api/v1/seasons/${s.id.value}") {
                     contentType(ContentType.Application.Json)
@@ -171,7 +154,7 @@ class SeasonRoutesSpec : FunSpec({
     }
 
     test("PUT /api/v1/seasons/{unknown-uuid} returns 404") {
-        withSeasonApp { client ->
+        apiTest { client ->
             val response =
                 client.put("/api/v1/seasons/${UUID.randomUUID()}") {
                     contentType(ContentType.Application.Json)
@@ -183,7 +166,7 @@ class SeasonRoutesSpec : FunSpec({
 
     test("GET /api/v1/seasons/{id}/rules returns the default rules") {
         val s = season()
-        withSeasonApp(seeded = listOf(s)) { client ->
+        apiTest(seasons(s)) { client ->
             val response = client.get("/api/v1/seasons/${s.id.value}/rules")
 
             response.status shouldBe HttpStatusCode.OK
@@ -194,36 +177,9 @@ class SeasonRoutesSpec : FunSpec({
     }
 
     test("GET /api/v1/seasons/{unknown}/rules returns 404") {
-        withSeasonApp { client ->
+        apiTest { client ->
             val response = client.get("/api/v1/seasons/${UUID.randomUUID()}/rules")
             response.status shouldBe HttpStatusCode.NotFound
         }
     }
 })
-
-private suspend fun withSeasonApp(
-    seeded: List<Season> = emptyList(),
-    fake: FakeSeasonRepository = FakeSeasonRepository(initial = seeded),
-    block: suspend ApplicationTestBuilder.(HttpClient) -> Unit,
-) {
-    testApplication {
-        application {
-            module(
-                healthProbe = ALWAYS_HEALTHY,
-                leagueService = LeagueService(FakeLeagueRepository()),
-                golferService = GolferService(FakeGolferRepository()),
-                seasonService = SeasonService(fake),
-            )
-        }
-        val client = clientWithJson()
-        block(client)
-    }
-}
-
-@OptIn(ExperimentalSerializationApi::class)
-private fun ApplicationTestBuilder.clientWithJson() =
-    createClient {
-        install(ContentNegotiation) {
-            json(testJson)
-        }
-    }

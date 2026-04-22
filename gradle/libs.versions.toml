@@ -12,6 +12,7 @@ jooq = "3.20.3"
 bcrypt = "0.10.2"
 hoplite = "2.9.0"
 kotest = "5.9.1"
+kotest-extensions-testcontainers = "2.0.2"
 testcontainers = "1.21.3"
 docker-java = "3.5.1"
 shadow = "9.4.0"
@@ -57,6 +58,7 @@ ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref 
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
 kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
 kotest-framework-datatest = { module = "io.kotest:kotest-framework-datatest", version.ref = "kotest" }
+kotest-extensions-testcontainers = { module = "io.kotest.extensions:kotest-extensions-testcontainers", version.ref = "kotest-extensions-testcontainers" }
 testcontainers-junit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
 testcontainers-postgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
 docker-java-api = { module = "com.github.docker-java:docker-java-api", version.ref = "docker-java" }

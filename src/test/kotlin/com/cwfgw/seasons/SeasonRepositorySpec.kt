@@ -1,74 +1,37 @@
 package com.cwfgw.seasons
 
-import com.cwfgw.jooq.tables.references.SEASONS
 import com.cwfgw.jooq.tables.references.SEASON_RULE_PAYOUTS
 import com.cwfgw.jooq.tables.references.SEASON_RULE_SIDE_BET_ROUNDS
+import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueId
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
+import com.cwfgw.leagues.LeagueRepository
+import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import org.flywaydb.core.Flyway
-import org.jooq.DSLContext
-import org.jooq.SQLDialect
-import org.jooq.impl.DSL
-import org.testcontainers.containers.PostgreSQLContainer
 import java.math.BigDecimal
 import java.util.UUID
 
-private const val SCHEMA = "cwfgw4k"
-private val CASTLEWOOD_ID = LeagueId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
+class SeasonRepositorySpec : FunSpec({
 
-class JooqSeasonRepositorySpec : FunSpec({
+    val postgres = postgresHarness()
+    val repository = SeasonRepository(postgres.dsl)
+    val leagueRepo = LeagueRepository(postgres.dsl)
+    var castlewoodId = LeagueId(UUID.randomUUID())
 
-    val postgres = PostgreSQLContainer<Nothing>("postgres:16-alpine")
-    lateinit var dataSource: HikariDataSource
-    lateinit var dsl: DSLContext
-    lateinit var repository: JooqSeasonRepository
-
-    beforeSpec {
-        postgres.start()
-        Flyway.configure()
-            .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-            .schemas(SCHEMA)
-            .createSchemas(true)
-            .locations("classpath:db/migration")
-            .load()
-            .migrate()
-        dataSource =
-            HikariDataSource(
-                HikariConfig().apply {
-                    jdbcUrl = postgres.jdbcUrl
-                    username = postgres.username
-                    password = postgres.password
-                    schema = SCHEMA
-                },
-            )
-        dsl = DSL.using(dataSource, SQLDialect.POSTGRES)
-        repository = JooqSeasonRepository(dsl)
-    }
-
-    beforeTest {
-        dsl.deleteFrom(SEASON_RULE_PAYOUTS).execute()
-        dsl.deleteFrom(SEASON_RULE_SIDE_BET_ROUNDS).execute()
-        dsl.deleteFrom(SEASONS).execute()
-    }
-
-    afterSpec {
-        dataSource.close()
-        postgres.stop()
+    beforeEach {
+        castlewoodId = leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf")).id
     }
 
     test("create uses DB defaults when request omits optional fields") {
         val created =
             repository.create(
-                CreateSeasonRequest(leagueId = CASTLEWOOD_ID, name = "2026 Season", seasonYear = 2026),
+                CreateSeasonRequest(leagueId = castlewoodId, name = "2026 Season", seasonYear = 2026),
             )
 
-        created.leagueId shouldBe CASTLEWOOD_ID
+        created.leagueId shouldBe castlewoodId
         created.name shouldBe "2026 Season"
         created.seasonYear shouldBe 2026
         created.seasonNumber shouldBe 1
@@ -82,7 +45,7 @@ class JooqSeasonRepositorySpec : FunSpec({
         val created =
             repository.create(
                 CreateSeasonRequest(
-                    leagueId = CASTLEWOOD_ID,
+                    leagueId = castlewoodId,
                     name = "Custom",
                     seasonYear = 2027,
                     seasonNumber = 2,
@@ -101,15 +64,15 @@ class JooqSeasonRepositorySpec : FunSpec({
     test("findAll orders by year desc, number desc, created_at desc") {
         val older =
             repository.create(
-                CreateSeasonRequest(leagueId = CASTLEWOOD_ID, name = "2025", seasonYear = 2025),
+                CreateSeasonRequest(leagueId = castlewoodId, name = "2025", seasonYear = 2025),
             )
         val newer =
             repository.create(
-                CreateSeasonRequest(leagueId = CASTLEWOOD_ID, name = "2026 S1", seasonYear = 2026, seasonNumber = 1),
+                CreateSeasonRequest(leagueId = castlewoodId, name = "2026 S1", seasonYear = 2026, seasonNumber = 1),
             )
         val newest =
             repository.create(
-                CreateSeasonRequest(leagueId = CASTLEWOOD_ID, name = "2026 S2", seasonYear = 2026, seasonNumber = 2),
+                CreateSeasonRequest(leagueId = castlewoodId, name = "2026 S2", seasonYear = 2026, seasonNumber = 2),
             )
 
         val result = repository.findAll(leagueId = null, seasonYear = null)
@@ -118,30 +81,26 @@ class JooqSeasonRepositorySpec : FunSpec({
     }
 
     test("findAll filters by league_id") {
-        val otherLeague = LeagueId(UUID.randomUUID())
-        dsl.insertInto(com.cwfgw.jooq.tables.references.LEAGUES)
-            .set(com.cwfgw.jooq.tables.references.LEAGUES.ID, otherLeague.value)
-            .set(com.cwfgw.jooq.tables.references.LEAGUES.NAME, "Other League")
-            .execute()
+        val otherLeague = leagueRepo.create(CreateLeagueRequest(name = "Other League")).id
 
         val castlewood =
             repository.create(
-                CreateSeasonRequest(leagueId = CASTLEWOOD_ID, name = "Castlewood 2026", seasonYear = 2026),
+                CreateSeasonRequest(leagueId = castlewoodId, name = "Castlewood 2026", seasonYear = 2026),
             )
         repository.create(
             CreateSeasonRequest(leagueId = otherLeague, name = "Other 2026", seasonYear = 2026),
         )
 
-        val result = repository.findAll(leagueId = CASTLEWOOD_ID, seasonYear = null)
+        val result = repository.findAll(leagueId = castlewoodId, seasonYear = null)
 
         result.map { it.id } shouldContainExactly listOf(castlewood.id)
     }
 
     test("findAll filters by season year") {
-        repository.create(CreateSeasonRequest(leagueId = CASTLEWOOD_ID, name = "2025", seasonYear = 2025))
+        repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "2025", seasonYear = 2025))
         val match =
             repository.create(
-                CreateSeasonRequest(leagueId = CASTLEWOOD_ID, name = "2026", seasonYear = 2026),
+                CreateSeasonRequest(leagueId = castlewoodId, name = "2026", seasonYear = 2026),
             )
 
         val result = repository.findAll(leagueId = null, seasonYear = 2026)
@@ -156,7 +115,7 @@ class JooqSeasonRepositorySpec : FunSpec({
     test("update applies only supplied fields and bumps updated_at") {
         val created =
             repository.create(
-                CreateSeasonRequest(leagueId = CASTLEWOOD_ID, name = "Orig", seasonYear = 2026),
+                CreateSeasonRequest(leagueId = castlewoodId, name = "Orig", seasonYear = 2026),
             )
 
         val updated =
@@ -175,7 +134,7 @@ class JooqSeasonRepositorySpec : FunSpec({
     test("update with no fields returns the existing row unchanged") {
         val created =
             repository.create(
-                CreateSeasonRequest(leagueId = CASTLEWOOD_ID, name = "Orig", seasonYear = 2026),
+                CreateSeasonRequest(leagueId = castlewoodId, name = "Orig", seasonYear = 2026),
             )
 
         val result = repository.update(created.id, UpdateSeasonRequest())
@@ -190,7 +149,7 @@ class JooqSeasonRepositorySpec : FunSpec({
     test("getRules returns defaults when join tables are empty") {
         val created =
             repository.create(
-                CreateSeasonRequest(leagueId = CASTLEWOOD_ID, name = "2026", seasonYear = 2026),
+                CreateSeasonRequest(leagueId = castlewoodId, name = "2026", seasonYear = 2026),
             )
 
         val rules = repository.getRules(created.id)
@@ -205,17 +164,17 @@ class JooqSeasonRepositorySpec : FunSpec({
     test("getRules returns custom payouts and rounds when seeded in join tables") {
         val created =
             repository.create(
-                CreateSeasonRequest(leagueId = CASTLEWOOD_ID, name = "2026", seasonYear = 2026),
+                CreateSeasonRequest(leagueId = castlewoodId, name = "2026", seasonYear = 2026),
             )
         listOf(1 to BigDecimal("50"), 2 to BigDecimal("25"), 3 to BigDecimal("10")).forEach { (pos, amt) ->
-            dsl.insertInto(SEASON_RULE_PAYOUTS)
+            postgres.dsl.insertInto(SEASON_RULE_PAYOUTS)
                 .set(SEASON_RULE_PAYOUTS.SEASON_ID, created.id.value)
                 .set(SEASON_RULE_PAYOUTS.POSITION, pos)
                 .set(SEASON_RULE_PAYOUTS.AMOUNT, amt)
                 .execute()
         }
         listOf(3, 4).forEach { round ->
-            dsl.insertInto(SEASON_RULE_SIDE_BET_ROUNDS)
+            postgres.dsl.insertInto(SEASON_RULE_SIDE_BET_ROUNDS)
                 .set(SEASON_RULE_SIDE_BET_ROUNDS.SEASON_ID, created.id.value)
                 .set(SEASON_RULE_SIDE_BET_ROUNDS.ROUND, round)
                 .execute()

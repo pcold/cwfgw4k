@@ -1,7 +1,6 @@
 package com.cwfgw.seasons
 
-import com.cwfgw.leagues.LeagueId
-import com.cwfgw.serialization.toUUIDOrNull
+import com.cwfgw.leagues.toLeagueId
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -14,13 +13,13 @@ import io.ktor.server.routing.route
 fun Route.seasonRoutes(service: SeasonService) {
     route("/seasons") {
         get {
-            val leagueId = call.request.queryParameters["league_id"]?.toUUIDOrNull()?.let(::LeagueId)
+            val leagueId = call.request.queryParameters["league_id"]?.toLeagueId()
             val year = call.request.queryParameters["year"]?.toIntOrNull()
             call.respond(service.list(leagueId = leagueId, seasonYear = year))
         }
 
         get("/{id}") {
-            val id = call.parameters["id"]?.toUUIDOrNull()?.let(::SeasonId)
+            val id = call.parameters["id"]?.toSeasonId()
             if (id == null) {
                 call.respond(HttpStatusCode.BadRequest)
                 return@get
@@ -37,7 +36,7 @@ fun Route.seasonRoutes(service: SeasonService) {
         }
 
         put("/{id}") {
-            val id = call.parameters["id"]?.toUUIDOrNull()?.let(::SeasonId)
+            val id = call.parameters["id"]?.toSeasonId()
             if (id == null) {
                 call.respond(HttpStatusCode.BadRequest)
                 return@put
@@ -50,7 +49,7 @@ fun Route.seasonRoutes(service: SeasonService) {
         }
 
         get("/{id}/rules") {
-            val id = call.parameters["id"]?.toUUIDOrNull()?.let(::SeasonId)
+            val id = call.parameters["id"]?.toSeasonId()
             if (id == null) {
                 call.respond(HttpStatusCode.BadRequest)
                 return@get

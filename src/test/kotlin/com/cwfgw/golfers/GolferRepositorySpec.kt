@@ -1,7 +1,7 @@
 package com.cwfgw.golfers
 
-import com.zaxxer.hikari.HikariConfig
-import com.zaxxer.hikari.HikariDataSource
+import com.cwfgw.jooq.tables.references.GOLFERS
+import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
@@ -9,51 +9,12 @@ import io.kotest.matchers.collections.shouldContainInOrder
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import org.flywaydb.core.Flyway
-import org.jooq.SQLDialect
-import org.jooq.impl.DSL
-import org.testcontainers.containers.PostgreSQLContainer
 import java.util.UUID
 
-private const val SCHEMA = "cwfgw4k"
+class GolferRepositorySpec : FunSpec({
 
-class JooqGolferRepositorySpec : FunSpec({
-
-    val postgres = PostgreSQLContainer<Nothing>("postgres:16-alpine")
-    lateinit var dataSource: HikariDataSource
-    lateinit var repository: JooqGolferRepository
-
-    beforeSpec {
-        postgres.start()
-        Flyway.configure()
-            .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-            .schemas(SCHEMA)
-            .createSchemas(true)
-            .locations("classpath:db/migration")
-            .load()
-            .migrate()
-        dataSource =
-            HikariDataSource(
-                HikariConfig().apply {
-                    jdbcUrl = postgres.jdbcUrl
-                    username = postgres.username
-                    password = postgres.password
-                    schema = SCHEMA
-                },
-            )
-        repository = JooqGolferRepository(DSL.using(dataSource, SQLDialect.POSTGRES))
-    }
-
-    beforeTest {
-        DSL.using(dataSource, SQLDialect.POSTGRES).deleteFrom(
-            com.cwfgw.jooq.tables.references.GOLFERS,
-        ).execute()
-    }
-
-    afterSpec {
-        dataSource.close()
-        postgres.stop()
-    }
+    val postgres = postgresHarness()
+    val repository = GolferRepository(postgres.dsl)
 
     test("create persists the golfer and returns a row populated with id and updatedAt") {
         val created =

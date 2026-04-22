@@ -388,6 +388,10 @@ Conscious exclusions. Do not introduce without discussion:
 
 - **MUST** use `UpperCamelCase` for types; `lowerCamelCase` for functions,
   properties, and parameters; `SCREAMING_SNAKE_CASE` only for `const val`.
+- **MAY** use `SCREAMING_SNAKE_CASE` for file-private `val` fixtures in test
+  code that represent fixed test data referenced across multiple tests in the
+  file (e.g., `private val CASTLEWOOD_ID = LeagueId(...)`). They read as
+  constants even though the `val` is not `const`.
 - **SHOULD** prefer full words over abbreviations (`employee` not `emp`).
   Exceptions: widely understood domain abbreviations (SSN, URL, HTTP, ID) and
   conventional loop variables.

@@ -1,6 +1,5 @@
 package com.cwfgw.leagues
 
-import com.cwfgw.serialization.toUUIDOrNull
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -16,7 +15,7 @@ fun Route.leagueRoutes(service: LeagueService) {
         }
 
         get("/{id}") {
-            val id = call.parameters["id"]?.toUUIDOrNull()?.let(::LeagueId)
+            val id = call.parameters["id"]?.toLeagueId()
             if (id == null) {
                 call.respond(HttpStatusCode.BadRequest)
                 return@get

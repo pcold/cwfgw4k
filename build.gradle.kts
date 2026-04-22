@@ -55,6 +55,7 @@ dependencies {
 
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.bundles.kotest)
+    testImplementation(libs.kotest.extensions.testcontainers)
     testImplementation(libs.testcontainers.junit)
     testImplementation(libs.testcontainers.postgres)
     testImplementation(libs.docker.java.api)

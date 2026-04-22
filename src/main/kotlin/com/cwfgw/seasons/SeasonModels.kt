@@ -4,6 +4,7 @@ import com.cwfgw.leagues.LeagueId
 import com.cwfgw.serialization.BigDecimalSerializer
 import com.cwfgw.serialization.InstantSerializer
 import com.cwfgw.serialization.UUIDSerializer
+import com.cwfgw.serialization.toUUIDOrNull
 import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 import java.time.Instant
@@ -14,6 +15,10 @@ import java.util.UUID
 value class SeasonId(
     @Serializable(with = UUIDSerializer::class) val value: UUID,
 )
+
+fun UUID.toSeasonId(): SeasonId = SeasonId(this)
+
+fun String.toSeasonId(): SeasonId? = toUUIDOrNull()?.toSeasonId()
 
 @Serializable
 data class Season(

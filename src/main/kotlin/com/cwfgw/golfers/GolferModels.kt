@@ -2,6 +2,7 @@ package com.cwfgw.golfers
 
 import com.cwfgw.serialization.InstantSerializer
 import com.cwfgw.serialization.UUIDSerializer
+import com.cwfgw.serialization.toUUIDOrNull
 import kotlinx.serialization.Serializable
 import java.time.Instant
 import java.util.UUID
@@ -11,6 +12,10 @@ import java.util.UUID
 value class GolferId(
     @Serializable(with = UUIDSerializer::class) val value: UUID,
 )
+
+fun UUID.toGolferId(): GolferId = GolferId(this)
+
+fun String.toGolferId(): GolferId? = toUUIDOrNull()?.toGolferId()
 
 @Serializable
 data class Golfer(
