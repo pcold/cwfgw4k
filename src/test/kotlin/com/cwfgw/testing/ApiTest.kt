@@ -1,5 +1,6 @@
 package com.cwfgw.testing
 
+import com.cwfgw.AppServices
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.health.HealthProbe
@@ -10,6 +11,8 @@ import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
+import com.cwfgw.tournaments.FakeTournamentRepository
+import com.cwfgw.tournaments.TournamentService
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
@@ -37,6 +40,7 @@ class ApiFixture {
     var golferService: GolferService = GolferService(FakeGolferRepository())
     var seasonService: SeasonService = SeasonService(FakeSeasonRepository())
     var teamService: TeamService = TeamService(FakeTeamRepository())
+    var tournamentService: TournamentService = TournamentService(FakeTournamentRepository())
 }
 
 /**
@@ -52,11 +56,14 @@ fun apiTest(
     testApplication {
         application {
             module(
-                healthProbe = fixture.healthProbe,
-                leagueService = fixture.leagueService,
-                golferService = fixture.golferService,
-                seasonService = fixture.seasonService,
-                teamService = fixture.teamService,
+                AppServices(
+                    healthProbe = fixture.healthProbe,
+                    leagueService = fixture.leagueService,
+                    golferService = fixture.golferService,
+                    seasonService = fixture.seasonService,
+                    teamService = fixture.teamService,
+                    tournamentService = fixture.tournamentService,
+                ),
             )
         }
         val client =

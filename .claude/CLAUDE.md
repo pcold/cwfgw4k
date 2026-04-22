@@ -330,11 +330,16 @@ Rules:
   ```
   Error messages: `"invalid <thing> id"` for Validation; `"<thing> ${id.value}
   not found"` for NotFound — include the id for debuggability.
-- **SHOULD** extract each handler out of the top-level `Route.xxxRoutes()`
-  dispatcher into a private `RoutingContext.xxx(service)` function. Detekt's
-  `ThrowsCount` rule (max 2 per function) counts throws in nested lambdas
-  as part of the outer function, and aggregating a few parse-or-throw
-  handlers in one fun hits the limit fast. `TeamRoutes.kt` is the reference
+- **MUST** keep the top-level `Route.xxxRoutes()` function as a thin
+  dispatcher — one line per verb that delegates to a private
+  `RoutingContext.xxx(service)` function. Inlining handler bodies in the
+  dispatcher is not allowed, even when the body would fit in two lines.
+  Reasons: the dispatcher reads as a table of contents for the domain's
+  HTTP surface; each handler has its own name and signature so a failing
+  test points at the right function; and detekt's `ThrowsCount` rule (max
+  2 per function) counts throws in nested lambdas as part of the outer
+  function, so aggregating parse-or-throw handlers in one fun hits the
+  limit fast. `TeamRoutes.kt` and `TournamentRoutes.kt` are the reference
   shape.
 - **MUST** use `installRequestLogging()` (not bare `install(CallLogging)`).
   Its format — `cwfgw.request method=X route=Y status=Z duration_ms=N` with

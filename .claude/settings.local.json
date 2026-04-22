@@ -19,7 +19,8 @@
       "Bash(./gradlew ktlintFormat --no-daemon)",
       "Bash(./gradlew test *)",
       "Bash(./gradlew compileKotlin --no-daemon)",
-      "Bash(./gradlew compileTestKotlin --no-daemon)"
+      "Bash(./gradlew compileTestKotlin --no-daemon)",
+      "Bash(./gradlew ktlintFormat)"
     ]
   }
 }

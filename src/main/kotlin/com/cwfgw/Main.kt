@@ -6,7 +6,6 @@ import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.golfers.golferRoutes
 import com.cwfgw.health.DatabaseHealthProbe
-import com.cwfgw.health.HealthProbe
 import com.cwfgw.health.healthRoutes
 import com.cwfgw.http.installErrorHandling
 import com.cwfgw.http.installRequestLogging
@@ -19,6 +18,9 @@ import com.cwfgw.seasons.seasonRoutes
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.teams.teamRoutes
+import com.cwfgw.tournaments.TournamentRepository
+import com.cwfgw.tournaments.TournamentService
+import com.cwfgw.tournaments.tournamentRoutes
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -34,24 +36,22 @@ import kotlinx.serialization.json.JsonNamingStrategy
 fun main() {
     val config = AppConfig.load()
     val database = Database.start(config.db)
-    val healthProbe = DatabaseHealthProbe(database.dsl)
-    val leagueService = LeagueService(LeagueRepository(database.dsl))
-    val golferService = GolferService(GolferRepository(database.dsl))
-    val seasonService = SeasonService(SeasonRepository(database.dsl))
-    val teamService = TeamService(TeamRepository(database.dsl))
+    val services =
+        AppServices(
+            healthProbe = DatabaseHealthProbe(database.dsl),
+            leagueService = LeagueService(LeagueRepository(database.dsl)),
+            golferService = GolferService(GolferRepository(database.dsl)),
+            seasonService = SeasonService(SeasonRepository(database.dsl)),
+            teamService = TeamService(TeamRepository(database.dsl)),
+            tournamentService = TournamentService(TournamentRepository(database.dsl)),
+        )
     embeddedServer(Netty, port = config.http.port, host = config.http.host) {
-        module(healthProbe, leagueService, golferService, seasonService, teamService)
+        module(services)
     }.start(wait = true)
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-fun Application.module(
-    healthProbe: HealthProbe,
-    leagueService: LeagueService,
-    golferService: GolferService,
-    seasonService: SeasonService,
-    teamService: TeamService,
-) {
+fun Application.module(services: AppServices) {
     install(ContentNegotiation) {
         json(
             Json {
@@ -65,11 +65,12 @@ fun Application.module(
     installErrorHandling()
     routing {
         route("/api/v1") {
-            healthRoutes(healthProbe)
-            leagueRoutes(leagueService)
-            golferRoutes(golferService)
-            seasonRoutes(seasonService)
-            teamRoutes(teamService)
+            healthRoutes(services.healthProbe)
+            leagueRoutes(services.leagueService)
+            golferRoutes(services.golferService)
+            seasonRoutes(services.seasonService)
+            teamRoutes(services.teamService)
+            tournamentRoutes(services.tournamentService)
         }
     }
 }
