@@ -107,24 +107,45 @@ are defects. Deviations from **SHOULD** rules require justification.
 
 Policy, in order of preference:
 
-1. **Nullable return types** for expected "not found" / "absent" cases.
-   `fun findById(id: EmployeeId): Employee?`
-2. **Sealed error hierarchies + typed returns** (e.g., `Either<Error, A>` from
-   a library or a domain-specific `Result` sealed interface) when multiple
-   distinct failure modes drive caller behavior.
+1. **Nullable return types** when a function has a single meaningful failure
+   mode — usually "not found" / "absent." `fun findById(id: EmployeeId):
+   Employee?`. This is the default for repository reads and simple service
+   lookups.
+2. **`com.cwfgw.result.Result<T, E>` with a domain-specific sealed error
+   hierarchy** when a function has multiple distinct failure modes that need
+   to drive different caller behavior (e.g., state-machine transitions where
+   "not found," "wrong status," "already completed," and "not your turn" must
+   each produce a different HTTP status). The error type lives in the domain
+   package and stays free of HTTP imports; routes map it to `DomainError`
+   via a tiny `.orThrow()` extension. `DraftService` / `DraftRoutes` are the
+   reference shape.
 3. **Exceptions** for truly exceptional conditions: programmer errors
    (`IllegalArgumentException`, `IllegalStateException`), infrastructure
-   failures, and at HTTP/framework boundaries.
+   failures, and at HTTP/framework boundaries — specifically `DomainError`
+   thrown from routes and consumed by `installErrorHandling()`.
 
 Rules:
 
 - **MUST NOT** use exceptions for expected domain outcomes (validation
-  failures, business-rule violations, not-found cases).
-- **MUST NOT** mix error-handling conventions within a single module. Pick one
-  pattern per layer and hold it.
-- **MUST** use sealed error hierarchies when using `Either`-style returns.
-  Strings as errors are forbidden.
-- **MUST NOT** catch `Throwable` or bare `Exception`. Catch specific types.
+  failures, business-rule violations, not-found cases). Exceptions are for
+  truly exceptional conditions and for bridging to `DomainError` at the
+  route boundary.
+- **MUST NOT** mix error-handling conventions for the same conceptual
+  operation. A single function signature uses one pattern. Across a module,
+  different operations can use different patterns (e.g., `get()` returning
+  `T?` alongside `makePick()` returning `Result<T, E>` is fine — they have
+  different failure-mode counts).
+- **MUST** use sealed error hierarchies when returning `Result<T, E>`.
+  `String` or `Throwable` as the error type is forbidden — the error must
+  be an exhaustive sealed hierarchy so mapping at the boundary stays
+  `when`-exhaustive.
+- **MUST NOT** use `kotlin.Result<T>` as a return type. It's `Throwable`
+  bound, requires opt-in, and doesn't carry typed error variants — wrong
+  tool for domain errors. Use `com.cwfgw.result.Result<T, E>`.
+- **MUST NOT** introduce Arrow's `Either`. `Result<T, E>` covers the use
+  case and `arrow.*` is excluded by the "what we do not use" list.
+- **MUST NOT** catch `Throwable` or bare `Exception` outside of
+  `installErrorHandling()`. Catch specific types.
 - **MUST NOT** swallow exceptions silently. If catching, log at appropriate
   level with the caught throwable attached.
 - **MUST NOT** use `runCatching { }.getOrNull()` as a general pattern. It
