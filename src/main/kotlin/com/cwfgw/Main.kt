@@ -8,6 +8,7 @@ import com.cwfgw.golfers.golferRoutes
 import com.cwfgw.health.DatabaseHealthProbe
 import com.cwfgw.health.HealthProbe
 import com.cwfgw.health.healthRoutes
+import com.cwfgw.http.installRequestLogging
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.leagues.LeagueService
 import com.cwfgw.leagues.leagueRoutes
@@ -23,7 +24,6 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respond
@@ -64,7 +64,7 @@ fun Application.module(
             },
         )
     }
-    install(CallLogging)
+    installRequestLogging()
     install(StatusPages) {
         exception<Throwable> { call, cause ->
             call.respond(HttpStatusCode.InternalServerError, ErrorBody(cause.message ?: "unknown error"))
