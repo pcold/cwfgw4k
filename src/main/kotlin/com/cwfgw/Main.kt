@@ -2,6 +2,9 @@ package com.cwfgw
 
 import com.cwfgw.config.AppConfig
 import com.cwfgw.db.Database
+import com.cwfgw.drafts.DraftRepository
+import com.cwfgw.drafts.DraftService
+import com.cwfgw.drafts.draftRoutes
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.golfers.golferRoutes
@@ -36,14 +39,16 @@ import kotlinx.serialization.json.JsonNamingStrategy
 fun main() {
     val config = AppConfig.load()
     val database = Database.start(config.db)
+    val teamService = TeamService(TeamRepository(database.dsl))
     val services =
         AppServices(
             healthProbe = DatabaseHealthProbe(database.dsl),
             leagueService = LeagueService(LeagueRepository(database.dsl)),
             golferService = GolferService(GolferRepository(database.dsl)),
             seasonService = SeasonService(SeasonRepository(database.dsl)),
-            teamService = TeamService(TeamRepository(database.dsl)),
+            teamService = teamService,
             tournamentService = TournamentService(TournamentRepository(database.dsl)),
+            draftService = DraftService(DraftRepository(database.dsl), teamService),
         )
     embeddedServer(Netty, port = config.http.port, host = config.http.host) {
         module(services)
@@ -71,6 +76,7 @@ fun Application.module(services: AppServices) {
             seasonRoutes(services.seasonService)
             teamRoutes(services.teamService)
             tournamentRoutes(services.tournamentService)
+            draftRoutes(services.draftService)
         }
     }
 }

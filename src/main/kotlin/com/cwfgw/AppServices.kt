@@ -1,5 +1,6 @@
 package com.cwfgw
 
+import com.cwfgw.drafts.DraftService
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.health.HealthProbe
 import com.cwfgw.leagues.LeagueService
@@ -20,4 +21,5 @@ data class AppServices(
     val seasonService: SeasonService,
     val teamService: TeamService,
     val tournamentService: TournamentService,
+    val draftService: DraftService,
 )

@@ -1,6 +1,8 @@
 package com.cwfgw.testing
 
 import com.cwfgw.AppServices
+import com.cwfgw.drafts.DraftService
+import com.cwfgw.drafts.FakeDraftRepository
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.health.HealthProbe
@@ -41,6 +43,7 @@ class ApiFixture {
     var seasonService: SeasonService = SeasonService(FakeSeasonRepository())
     var teamService: TeamService = TeamService(FakeTeamRepository())
     var tournamentService: TournamentService = TournamentService(FakeTournamentRepository())
+    var draftService: DraftService = DraftService(FakeDraftRepository(), teamService)
 }
 
 /**
@@ -63,6 +66,7 @@ fun apiTest(
                     seasonService = fixture.seasonService,
                     teamService = fixture.teamService,
                     tournamentService = fixture.tournamentService,
+                    draftService = fixture.draftService,
                 ),
             )
         }

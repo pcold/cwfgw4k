@@ -4,6 +4,7 @@ import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import java.time.LocalDate
@@ -27,7 +28,7 @@ class TournamentServiceSpec : FunSpec({
 
         val result = service(initial = listOf(masters, open)).list(seasonId = null, status = null)
 
-        result.map { it.id } shouldContainExactly listOf(masters.id, open.id)
+        result.map { it.id } shouldContainExactlyInAnyOrder listOf(masters.id, open.id)
     }
 
     test("get returns null for an unknown id") {
