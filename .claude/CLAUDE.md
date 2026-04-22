@@ -441,6 +441,11 @@ Conscious exclusions. Do not introduce without discussion:
   management. No hardcoded versions in build files.
 - **MUST** configure ktlint and detekt to fail the build on violations, not
   just warn in the IDE.
+- **MUST** use `./gradlew check` (not `./gradlew test`) as the verification
+  gate before committing. `check` aggregates tests, ktlint, detekt, and
+  coverage; `test` alone skips lint. The `test` task is wired to depend on
+  `ktlintCheck` and `detekt` so running tests also runs lint, but `check`
+  remains the canonical full verification command.
 - **SHOULD** enable explicit API mode for library modules.
 
 ---

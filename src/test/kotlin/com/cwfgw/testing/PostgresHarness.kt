@@ -7,12 +7,12 @@ import io.kotest.extensions.testcontainers.JdbcDatabaseContainerExtension
 import org.flywaydb.core.Flyway
 import org.jooq.DSLContext
 import org.jooq.SQLDialect
-import org.jooq.Table
 import org.jooq.impl.DSL
 import org.testcontainers.containers.PostgreSQLContainer
 
 private const val SCHEMA = "cwfgw4k"
 private const val DEFAULT_IMAGE = "postgres:16-alpine"
+
 /**
  * Tables excluded from automatic reset between tests. Add tables here that hold
  * reference data loaded by migrations and expected to persist across tests.
@@ -24,17 +24,18 @@ private val PRESERVED_TABLES = setOf("flyway_schema_history")
  * starts for the spec, Flyway applies every migration once, and [dsl] / [dataSource] are
  * available to every test. Call [reset] in `beforeTest` to reset state between tests.
  */
-internal class PostgresHarness (
-    val dataSource: HikariDataSource
+internal class PostgresHarness(
+    val dataSource: HikariDataSource,
 ) {
     val dsl: DSLContext = DSL.using(dataSource, SQLDialect.POSTGRES)
 
     fun reset() {
-        val tables = dsl.meta()
-            .filterSchemas { it.name == SCHEMA }
-            .tables
-            .map { it.name }
-            .filterNot { it in PRESERVED_TABLES }
+        val tables =
+            dsl.meta()
+                .filterSchemas { it.name == SCHEMA }
+                .tables
+                .map { it.name }
+                .filterNot { it in PRESERVED_TABLES }
 
         if (tables.isEmpty()) return
 

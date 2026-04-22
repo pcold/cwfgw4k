@@ -178,3 +178,8 @@ kover {
 tasks.named("check") {
     dependsOn("koverXmlReport", "koverHtmlReport", "koverVerify")
 }
+
+// Route `test` through lint so `./gradlew test` can't pass while ktlint/detekt fails.
+tasks.named("test") {
+    dependsOn("ktlintCheck", "detekt")
+}

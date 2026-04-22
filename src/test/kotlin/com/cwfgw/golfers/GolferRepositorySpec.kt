@@ -1,6 +1,5 @@
 package com.cwfgw.golfers
 
-import com.cwfgw.jooq.tables.references.GOLFERS
 import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
