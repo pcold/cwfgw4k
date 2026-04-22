@@ -85,6 +85,20 @@ class SeasonRoutesSpec : FunSpec({
         }
     }
 
+    test("GET /api/v1/seasons?league_id={non-uuid} returns 400 instead of silently ignoring the filter") {
+        apiTest { client ->
+            val response = client.get("/api/v1/seasons?league_id=not-a-uuid")
+            response.status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    test("GET /api/v1/seasons?year={non-int} returns 400 instead of silently ignoring the filter") {
+        apiTest { client ->
+            val response = client.get("/api/v1/seasons?year=spring")
+            response.status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
     test("GET /api/v1/seasons/{id} returns 200 with the season") {
         val s = season()
         apiTest(seasons(s)) { client ->

@@ -1,6 +1,9 @@
 package com.cwfgw.teams
 
+import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.toGolferId
+import com.cwfgw.http.DomainError
+import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.toSeasonId
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
@@ -34,73 +37,55 @@ private fun Route.teamDetailRoutes(service: TeamService) {
     }
 }
 
+private fun RoutingContext.seasonId(): SeasonId =
+    call.parameters["seasonId"]?.toSeasonId() ?: throw DomainError.Validation("invalid season id")
+
+private fun RoutingContext.teamId(): TeamId =
+    call.parameters["teamId"]?.toTeamId() ?: throw DomainError.Validation("invalid team id")
+
+private fun RoutingContext.golferId(): GolferId =
+    call.parameters["golferId"]?.toGolferId() ?: throw DomainError.Validation("invalid golfer id")
+
 private suspend fun RoutingContext.rosterView(service: TeamService) {
-    val seasonId =
-        call.parameters["seasonId"]?.toSeasonId()
-            ?: return call.respond(HttpStatusCode.BadRequest)
-    call.respond(service.getRosterView(seasonId))
+    call.respond(service.getRosterView(seasonId()))
 }
 
 private suspend fun RoutingContext.listTeams(service: TeamService) {
-    val seasonId =
-        call.parameters["seasonId"]?.toSeasonId()
-            ?: return call.respond(HttpStatusCode.BadRequest)
-    call.respond(service.listBySeason(seasonId))
+    call.respond(service.listBySeason(seasonId()))
 }
 
 private suspend fun RoutingContext.createTeam(service: TeamService) {
-    val seasonId =
-        call.parameters["seasonId"]?.toSeasonId()
-            ?: return call.respond(HttpStatusCode.BadRequest)
     val request = call.receive<CreateTeamRequest>()
-    call.respond(HttpStatusCode.Created, service.create(seasonId, request))
+    call.respond(HttpStatusCode.Created, service.create(seasonId(), request))
 }
 
 private suspend fun RoutingContext.getTeam(service: TeamService) {
-    val teamId =
-        call.parameters["teamId"]?.toTeamId()
-            ?: return call.respond(HttpStatusCode.BadRequest)
-    when (val team = service.get(teamId)) {
-        null -> call.respond(HttpStatusCode.NotFound)
-        else -> call.respond(team)
-    }
+    val teamId = teamId()
+    val team = service.get(teamId) ?: throw DomainError.NotFound("team ${teamId.value} not found")
+    call.respond(team)
 }
 
 private suspend fun RoutingContext.updateTeam(service: TeamService) {
-    val teamId =
-        call.parameters["teamId"]?.toTeamId()
-            ?: return call.respond(HttpStatusCode.BadRequest)
+    val teamId = teamId()
     val request = call.receive<UpdateTeamRequest>()
-    when (val team = service.update(teamId, request)) {
-        null -> call.respond(HttpStatusCode.NotFound)
-        else -> call.respond(team)
-    }
+    val team = service.update(teamId, request) ?: throw DomainError.NotFound("team ${teamId.value} not found")
+    call.respond(team)
 }
 
 private suspend fun RoutingContext.getRoster(service: TeamService) {
-    val teamId =
-        call.parameters["teamId"]?.toTeamId()
-            ?: return call.respond(HttpStatusCode.BadRequest)
-    call.respond(service.getRoster(teamId))
+    call.respond(service.getRoster(teamId()))
 }
 
 private suspend fun RoutingContext.addToRoster(service: TeamService) {
-    val teamId =
-        call.parameters["teamId"]?.toTeamId()
-            ?: return call.respond(HttpStatusCode.BadRequest)
     val request = call.receive<AddToRosterRequest>()
-    call.respond(HttpStatusCode.Created, service.addToRoster(teamId, request))
+    call.respond(HttpStatusCode.Created, service.addToRoster(teamId(), request))
 }
 
 private suspend fun RoutingContext.dropFromRoster(service: TeamService) {
-    val teamId = call.parameters["teamId"]?.toTeamId()
-    val golferId = call.parameters["golferId"]?.toGolferId()
-    if (teamId == null || golferId == null) {
-        return call.respond(HttpStatusCode.BadRequest)
+    val teamId = teamId()
+    val golferId = golferId()
+    if (!service.dropFromRoster(teamId, golferId)) {
+        throw DomainError.NotFound("roster entry for golfer ${golferId.value} on team ${teamId.value} not found")
     }
-    if (service.dropFromRoster(teamId, golferId)) {
-        call.respond(HttpStatusCode.NoContent)
-    } else {
-        call.respond(HttpStatusCode.NotFound)
-    }
+    call.respond(HttpStatusCode.NoContent)
 }

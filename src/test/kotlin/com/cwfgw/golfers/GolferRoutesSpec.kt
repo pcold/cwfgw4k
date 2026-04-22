@@ -77,6 +77,13 @@ class GolferRoutesSpec : FunSpec({
         }
     }
 
+    test("GET /api/v1/golfers?active={non-bool} returns 400 instead of silently defaulting to true") {
+        apiTest { client ->
+            val response = client.get("/api/v1/golfers?active=maybe")
+            response.status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
     test("GET /api/v1/golfers/{id} returns 200 with the golfer") {
         apiTest(golfers(RORY)) { client ->
             val response = client.get("/api/v1/golfers/${RORY.id.value}")

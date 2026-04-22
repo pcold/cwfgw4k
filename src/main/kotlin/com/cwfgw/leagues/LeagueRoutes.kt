@@ -1,5 +1,6 @@
 package com.cwfgw.leagues
 
+import com.cwfgw.http.DomainError
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
@@ -15,15 +16,9 @@ fun Route.leagueRoutes(service: LeagueService) {
         }
 
         get("/{id}") {
-            val id = call.parameters["id"]?.toLeagueId()
-            if (id == null) {
-                call.respond(HttpStatusCode.BadRequest)
-                return@get
-            }
-            when (val league = service.get(id)) {
-                null -> call.respond(HttpStatusCode.NotFound)
-                else -> call.respond(league)
-            }
+            val id = call.parameters["id"]?.toLeagueId() ?: throw DomainError.Validation("invalid league id")
+            val league = service.get(id) ?: throw DomainError.NotFound("league ${id.value} not found")
+            call.respond(league)
         }
 
         post {
