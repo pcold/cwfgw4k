@@ -513,6 +513,47 @@ Conscious exclusions. Do not introduce without discussion:
 
 ---
 
+## Change Scope
+
+How changes are packaged matters as much as how code is written. Small
+cohesive changes get reviewed carefully; large sprawling ones get
+rubber-stamped or stalled. Optimize each commit and pull request for
+the reviewer who will read it cold.
+
+- **MUST** keep each commit and pull request focused on a single
+  logical change. A logical change is one thing a reviewer needs to
+  understand end-to-end: a feature, a fix, a refactor, or a migration
+  — not three of those at once.
+- **MUST NOT** bundle unrelated refactors, formatting passes, or
+  drive-by cleanups with feature work. If you spot something worth
+  cleaning up while implementing a feature, do it in a separate
+  commit before or after — never the same diff.
+- **MUST** keep each commit independently buildable. Every commit on
+  the branch should pass `./gradlew check`. No "fix compilation" or
+  "fix tests" follow-up commits within the same PR.
+- **SHOULD** split large work into a stack of small dependent commits
+  or PRs. A vertical slice of a single domain port (migration +
+  models + repository + service + routes + tests) is one logical
+  change; a cross-cutting refactor that touches many domains is not
+  — split by domain or by concern.
+- **SHOULD** keep PRs small enough to review carefully in one
+  sitting. If a single PR is reaching hundreds of lines of
+  non-mechanical diff, look for a natural split.
+- **SHOULD** colocate tests with the code they cover in the same
+  commit. Production code in one commit followed by a tests-only
+  commit reads worse than one combined commit reviewers can verify
+  end-to-end.
+- **SHOULD** keep convention-codifying CLAUDE.md updates in a
+  separate commit from the work that motivated them. The motivating
+  work is reviewed on its merits; the policy update is reviewed for
+  long-term implications. Mixing them obscures both.
+- **MAY** include obvious mechanical refactors (renaming a function
+  whose new name is only sensible given a feature change) inline
+  with feature work when separating them would create churn. Use
+  judgment; err toward separation.
+
+---
+
 ## Working with AI Assistants
 
 When an AI assistant generates code against this guide:
