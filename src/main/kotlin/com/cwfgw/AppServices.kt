@@ -4,6 +4,7 @@ import com.cwfgw.drafts.DraftService
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.health.HealthProbe
 import com.cwfgw.leagues.LeagueService
+import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.TeamService
 import com.cwfgw.tournaments.TournamentService
@@ -22,4 +23,5 @@ data class AppServices(
     val teamService: TeamService,
     val tournamentService: TournamentService,
     val draftService: DraftService,
+    val scoringService: ScoringService,
 )

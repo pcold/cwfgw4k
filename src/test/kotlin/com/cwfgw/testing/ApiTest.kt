@@ -9,6 +9,8 @@ import com.cwfgw.health.HealthProbe
 import com.cwfgw.leagues.FakeLeagueRepository
 import com.cwfgw.leagues.LeagueService
 import com.cwfgw.module
+import com.cwfgw.scoring.FakeScoringRepository
+import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
@@ -44,6 +46,13 @@ class ApiFixture {
     var teamService: TeamService = TeamService(FakeTeamRepository())
     var tournamentService: TournamentService = TournamentService(FakeTournamentRepository())
     var draftService: DraftService = DraftService(FakeDraftRepository(), teamService)
+    var scoringService: ScoringService =
+        ScoringService(
+            repository = FakeScoringRepository(),
+            seasonService = seasonService,
+            tournamentService = tournamentService,
+            teamService = teamService,
+        )
 }
 
 /**
@@ -67,6 +76,7 @@ fun apiTest(
                     teamService = fixture.teamService,
                     tournamentService = fixture.tournamentService,
                     draftService = fixture.draftService,
+                    scoringService = fixture.scoringService,
                 ),
             )
         }

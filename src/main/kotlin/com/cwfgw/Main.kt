@@ -15,6 +15,9 @@ import com.cwfgw.http.installRequestLogging
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.leagues.LeagueService
 import com.cwfgw.leagues.leagueRoutes
+import com.cwfgw.scoring.ScoringRepository
+import com.cwfgw.scoring.ScoringService
+import com.cwfgw.scoring.scoringRoutes
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.seasons.seasonRoutes
@@ -40,15 +43,24 @@ fun main() {
     val config = AppConfig.load()
     val database = Database.start(config.db)
     val teamService = TeamService(TeamRepository(database.dsl))
+    val seasonService = SeasonService(SeasonRepository(database.dsl))
+    val tournamentService = TournamentService(TournamentRepository(database.dsl))
     val services =
         AppServices(
             healthProbe = DatabaseHealthProbe(database.dsl),
             leagueService = LeagueService(LeagueRepository(database.dsl)),
             golferService = GolferService(GolferRepository(database.dsl)),
-            seasonService = SeasonService(SeasonRepository(database.dsl)),
+            seasonService = seasonService,
             teamService = teamService,
-            tournamentService = TournamentService(TournamentRepository(database.dsl)),
+            tournamentService = tournamentService,
             draftService = DraftService(DraftRepository(database.dsl), teamService),
+            scoringService =
+                ScoringService(
+                    repository = ScoringRepository(database.dsl),
+                    seasonService = seasonService,
+                    tournamentService = tournamentService,
+                    teamService = teamService,
+                ),
         )
     embeddedServer(Netty, port = config.http.port, host = config.http.host) {
         module(services)
@@ -77,6 +89,7 @@ fun Application.module(services: AppServices) {
             teamRoutes(services.teamService)
             tournamentRoutes(services.tournamentService)
             draftRoutes(services.draftService)
+            scoringRoutes(services.scoringService)
         }
     }
 }
