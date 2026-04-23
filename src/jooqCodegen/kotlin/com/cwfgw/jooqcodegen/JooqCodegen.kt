@@ -11,7 +11,7 @@ import org.jooq.meta.jaxb.Target
 import org.testcontainers.containers.PostgreSQLContainer
 
 private const val SCHEMA = "cwfgw4k"
-private const val POSTGRES_IMAGE = "postgres:16-alpine"
+private const val POSTGRES_IMAGE = "postgres:18-alpine"
 
 fun main(args: Array<String>) {
     require(args.size == 3) {

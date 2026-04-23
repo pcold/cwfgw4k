@@ -11,7 +11,7 @@ import org.jooq.impl.DSL
 import org.testcontainers.containers.PostgreSQLContainer
 
 private const val SCHEMA = "cwfgw4k"
-private const val DEFAULT_IMAGE = "postgres:16-alpine"
+private const val DEFAULT_IMAGE = "postgres:18-alpine"
 
 /**
  * Tables excluded from automatic reset between tests. Add tables here that hold
