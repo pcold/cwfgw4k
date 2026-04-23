@@ -126,6 +126,7 @@ function reportRow(round: number): ReportRow {
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
+    pairKey: null,
   };
 }
 

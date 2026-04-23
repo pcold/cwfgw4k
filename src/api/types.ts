@@ -19,6 +19,7 @@ export interface ReportRow {
   ownershipPct: number;
   seasonEarnings: number;
   seasonTopTens: number;
+  pairKey: string | null;
 }
 
 export interface ReportTeamColumn {
@@ -41,6 +42,7 @@ export interface UndraftedGolfer {
   position: number | null;
   payout: number;
   scoreToPar: string | null;
+  pairKey: string | null;
 }
 
 export interface ReportSideBetTeamEntry {
@@ -67,6 +69,7 @@ export interface LiveLeaderboardEntry {
   scoreToPar: string | null;
   rostered: boolean;
   teamName: string | null;
+  pairKey: string | null;
 }
 
 export interface WeeklyReport {

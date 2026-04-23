@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ReportRow, ReportTeamColumn, WeeklyReport } from '@/api/types';
-import { deriveScoreboard, formatScoreToPar } from './scoreboardModel';
+import { collapsePairs, deriveScoreboard, formatScoreToPar } from './scoreboardModel';
+import type { LeaderboardEntry } from './scoreboardModel';
 
 function row(overrides: Partial<ReportRow> = {}): ReportRow {
   return {
@@ -14,6 +15,7 @@ function row(overrides: Partial<ReportRow> = {}): ReportRow {
     ownershipPct: 100,
     seasonEarnings: 100,
     seasonTopTens: 1,
+    pairKey: null,
     ...overrides,
   };
 }
@@ -161,7 +163,7 @@ describe('deriveScoreboard', () => {
           }),
         ],
         undraftedTopTens: [
-          { name: 'Unknown1', position: 3, payout: 0, scoreToPar: '-10' },
+          { name: 'Unknown1', position: 3, payout: 0, scoreToPar: '-10', pairKey: null },
         ],
       }),
     );
@@ -186,12 +188,12 @@ describe('deriveScoreboard', () => {
           }),
         ],
         undraftedTopTens: [
-          { name: 'Old Undrafted', position: 9, payout: 0, scoreToPar: '-2' },
+          { name: 'Old Undrafted', position: 9, payout: 0, scoreToPar: '-2', pairKey: null },
         ],
         liveLeaderboard: [
-          { name: 'Scottie Scheffler', position: 1, scoreToPar: '-12', rostered: true, teamName: 'Aces' },
-          { name: 'Rory McIlroy', position: 2, scoreToPar: '-10', rostered: false, teamName: null },
-          { name: 'Phil Mickelson', position: 5, scoreToPar: '-7', rostered: false, teamName: null },
+          { name: 'Scottie Scheffler', position: 1, scoreToPar: '-12', rostered: true, teamName: 'Aces', pairKey: null },
+          { name: 'Rory McIlroy', position: 2, scoreToPar: '-10', rostered: false, teamName: null, pairKey: null },
+          { name: 'Phil Mickelson', position: 5, scoreToPar: '-7', rostered: false, teamName: null, pairKey: null },
         ],
       }),
     );
@@ -217,7 +219,7 @@ describe('deriveScoreboard', () => {
           }),
         ],
         undraftedTopTens: [
-          { name: 'Phil', position: 4, payout: 0, scoreToPar: 'E' },
+          { name: 'Phil', position: 4, payout: 0, scoreToPar: 'E', pairKey: null },
         ],
       }),
     );
@@ -228,6 +230,79 @@ describe('deriveScoreboard', () => {
     expect(phil?.scoreToPar).toBe(0);
     expect(tiger?.rostered).toBe(true);
     expect(tiger?.teamName).toBe('Aces');
+  });
+
+  it('collapses team-event pairs from liveLeaderboard into a single row', () => {
+    const scoreboard = deriveScoreboard(
+      report({
+        liveLeaderboard: [
+          { name: 'McIlroy', position: 1, scoreToPar: '-28', rostered: false, teamName: null, pairKey: 'team:99' },
+          { name: 'Lowry', position: 1, scoreToPar: '-28', rostered: true, teamName: 'PAYRAY', pairKey: 'team:99' },
+          { name: 'Scheffler', position: 3, scoreToPar: '-25', rostered: false, teamName: null, pairKey: null },
+        ],
+      }),
+    );
+    expect(scoreboard.leaderboard).toHaveLength(2);
+    expect(scoreboard.leaderboard[0].name).toBe('McIlroy / Lowry');
+    expect(scoreboard.leaderboard[0].teamName).toBe('undrafted / PAYRAY');
+    expect(scoreboard.leaderboard[0].rostered).toBe(true);
+    expect(scoreboard.leaderboard[1].name).toBe('Scheffler');
+  });
+});
+
+describe('collapsePairs', () => {
+  const entry = (over: Partial<LeaderboardEntry>): LeaderboardEntry => ({
+    name: 'x',
+    position: 1,
+    scoreToPar: 0,
+    rostered: false,
+    teamName: null,
+    pairKey: null,
+    ...over,
+  });
+
+  it('keeps non-pair entries untouched', () => {
+    const input = [entry({ name: 'Solo' })];
+    expect(collapsePairs(input)).toEqual(input);
+  });
+
+  it('joins two entries sharing a pairKey with / separator in matching order', () => {
+    const input = [
+      entry({ name: 'A', pairKey: 'p1', teamName: 'X' }),
+      entry({ name: 'B', pairKey: 'p1', teamName: 'Y' }),
+    ];
+    const out = collapsePairs(input);
+    expect(out).toHaveLength(1);
+    expect(out[0].name).toBe('A / B');
+    expect(out[0].teamName).toBe('X / Y');
+  });
+
+  it('fills in "undrafted" when a partner has no team', () => {
+    const input = [
+      entry({ name: 'A', pairKey: 'p1', teamName: null }),
+      entry({ name: 'B', pairKey: 'p1', teamName: 'WOMBLE' }),
+    ];
+    const out = collapsePairs(input);
+    expect(out[0].teamName).toBe('undrafted / WOMBLE');
+  });
+
+  it('marks the collapsed row as rostered if either partner is rostered', () => {
+    const input = [
+      entry({ name: 'A', pairKey: 'p1', rostered: false }),
+      entry({ name: 'B', pairKey: 'p1', rostered: true }),
+    ];
+    expect(collapsePairs(input)[0].rostered).toBe(true);
+  });
+
+  it('keeps distinct pairKeys as separate rows', () => {
+    const input = [
+      entry({ name: 'A', pairKey: 'p1' }),
+      entry({ name: 'B', pairKey: 'p1' }),
+      entry({ name: 'C', pairKey: 'p2' }),
+      entry({ name: 'D', pairKey: 'p2' }),
+    ];
+    const out = collapsePairs(input);
+    expect(out.map((r) => r.name)).toEqual(['A / B', 'C / D']);
   });
 });
 

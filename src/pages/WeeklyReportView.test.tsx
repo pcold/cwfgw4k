@@ -16,6 +16,7 @@ function row(round: number, overrides: Partial<ReportRow> = {}): ReportRow {
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
+    pairKey: null,
     ...overrides,
   };
 }
@@ -134,7 +135,7 @@ describe('WeeklyReportView', () => {
       <WeeklyReportView
         report={report({
           undraftedTopTens: [
-            { name: 'Lefty', position: 5, payout: 8, scoreToPar: '-3' },
+            { name: 'Lefty', position: 5, payout: 8, scoreToPar: '-3', pairKey: null },
           ],
         })}
       />,

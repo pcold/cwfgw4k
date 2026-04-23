@@ -20,6 +20,7 @@ function row(overrides: Partial<ReportRow> = {}): ReportRow {
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
+    pairKey: null,
     ...overrides,
   };
 }
@@ -93,6 +94,7 @@ function buildFixture(overrides: {
       position: 10,
       payout: 4,
       scoreToPar: null,
+      pairKey: null,
     })),
     sideBetDetail,
     standingsOrder: standings,

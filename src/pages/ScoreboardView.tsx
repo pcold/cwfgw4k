@@ -41,8 +41,12 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
     const names = new Set<string>();
     let hasUndrafted = false;
     for (const entry of scoreboard.leaderboard) {
-      if (entry.teamName) names.add(entry.teamName);
-      else hasUndrafted = true;
+      const parts = entry.teamName ? entry.teamName.split(' / ') : [];
+      if (parts.length === 0) hasUndrafted = true;
+      for (const part of parts) {
+        if (part === 'undrafted') hasUndrafted = true;
+        else names.add(part);
+      }
     }
     const sorted = Array.from(names).sort((a, b) => a.localeCompare(b));
     return [
@@ -55,8 +59,14 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
   const filteredLeaderboard = useMemo(() => {
     if (leaderboardTeamFilter === ALL) return scoreboard.leaderboard;
     if (leaderboardTeamFilter === UNDRAFTED)
-      return scoreboard.leaderboard.filter((e) => !e.teamName);
-    return scoreboard.leaderboard.filter((e) => e.teamName === leaderboardTeamFilter);
+      return scoreboard.leaderboard.filter((e) => {
+        if (!e.teamName) return true;
+        return e.teamName.split(' / ').some((p) => p === 'undrafted');
+      });
+    return scoreboard.leaderboard.filter((e) => {
+      if (!e.teamName) return false;
+      return e.teamName.split(' / ').some((p) => p === leaderboardTeamFilter);
+    });
   }, [scoreboard.leaderboard, leaderboardTeamFilter]);
   const isCompleted = tournament.status === 'completed';
   const statusBanner = isCompleted

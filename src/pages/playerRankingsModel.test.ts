@@ -14,6 +14,7 @@ function row(overrides: Partial<ReportRow> = {}): ReportRow {
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
+    pairKey: null,
     ...overrides,
   };
 }
@@ -118,12 +119,12 @@ describe('buildPlayerRankings', () => {
     const reports = [
       report({
         undraftedTopTens: [
-          { name: 'P. Mickelson', position: 5, payout: 8, scoreToPar: '-3' },
+          { name: 'P. Mickelson', position: 5, payout: 8, scoreToPar: '-3', pairKey: null },
         ],
       }),
       report({
         undraftedTopTens: [
-          { name: 'P. Mickelson', position: 9, payout: 4, scoreToPar: '-1' },
+          { name: 'P. Mickelson', position: 9, payout: 4, scoreToPar: '-1', pairKey: null },
         ],
       }),
     ];
@@ -151,7 +152,7 @@ describe('buildPlayerRankings', () => {
           }),
         ],
         undraftedTopTens: [
-          { name: 'A. Player', position: 8, payout: 30, scoreToPar: '0' },
+          { name: 'A. Player', position: 8, payout: 30, scoreToPar: '0', pairKey: null },
         ],
       }),
     ];

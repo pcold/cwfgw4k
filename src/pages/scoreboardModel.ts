@@ -23,6 +23,7 @@ export interface LeaderboardEntry {
   scoreToPar: number | null;
   rostered: boolean;
   teamName: string | null;
+  pairKey: string | null;
 }
 
 export interface Scoreboard {
@@ -78,17 +79,18 @@ function scoreboardTeamFor(team: ReportTeamColumn): ScoreboardTeam {
 function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
   // In live preview mode the backend ships the full ESPN top-20 (rostered + undrafted) so we render it directly.
   if (report.liveLeaderboard.length > 0) {
-    return report.liveLeaderboard
+    const sorted = report.liveLeaderboard
       .slice()
       .sort((a, b) => a.position - b.position)
-      .slice(0, 20)
       .map((entry) => ({
         name: entry.name,
         position: entry.position,
         scoreToPar: parseScoreToPar(entry.scoreToPar),
         rostered: entry.rostered,
         teamName: entry.teamName,
+        pairKey: entry.pairKey,
       }));
+    return collapsePairs(sorted).slice(0, 20);
   }
 
   const undrafted: LeaderboardEntry[] = report.undraftedTopTens.map((entry) => ({
@@ -97,6 +99,7 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
     scoreToPar: parseScoreToPar(entry.scoreToPar),
     rostered: false,
     teamName: null,
+    pairKey: entry.pairKey,
   }));
 
   const rostered: LeaderboardEntry[] = [];
@@ -109,6 +112,7 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
           scoreToPar: parseScoreToPar(row.scoreToPar),
           rostered: true,
           teamName: team.teamName,
+          pairKey: row.pairKey,
         });
       }
     }
@@ -124,7 +128,31 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
     return true;
   });
 
-  return unique.slice(0, 20);
+  return collapsePairs(unique).slice(0, 20);
+}
+
+// For team events (e.g. Zurich Classic) two golfers share one competitor slot, so entries with the same pairKey
+// collapse into a single row with "A/B" player names and "teamA/teamB" teams in matching order. Undrafted partners
+// keep the literal "undrafted" placeholder so the joined team string stays aligned with the player string.
+export function collapsePairs(entries: LeaderboardEntry[]): LeaderboardEntry[] {
+  const result: LeaderboardEntry[] = [];
+  const pairIndex = new Map<string, number>();
+  for (const entry of entries) {
+    const key = entry.pairKey;
+    if (key && pairIndex.has(key)) {
+      const existing = result[pairIndex.get(key)!];
+      result[pairIndex.get(key)!] = {
+        ...existing,
+        name: `${existing.name} / ${entry.name}`,
+        teamName: `${existing.teamName ?? 'undrafted'} / ${entry.teamName ?? 'undrafted'}`,
+        rostered: existing.rostered || entry.rostered,
+      };
+    } else {
+      if (key) pairIndex.set(key, result.length);
+      result.push(entry);
+    }
+  }
+  return result;
 }
 
 export function deriveScoreboard(report: WeeklyReport): Scoreboard {

@@ -61,6 +61,7 @@ function row(overrides: Partial<ReportRow> = {}): ReportRow {
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
+    pairKey: null,
     ...overrides,
   };
 }

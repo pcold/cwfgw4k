@@ -74,6 +74,7 @@ function row(overrides: Partial<ReportRow>): ReportRow {
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
+    pairKey: null,
     ...overrides,
   };
 }
@@ -151,7 +152,7 @@ describe('PlayerRankingsPage', () => {
           report('tn-a', {
             teams: [team({ rows: [row({ golferId: 'g-1', earnings: 18, topTens: 1 })] })],
             undraftedTopTens: [
-              { name: 'P. Mickelson', position: 5, payout: 8, scoreToPar: '-3' },
+              { name: 'P. Mickelson', position: 5, payout: 8, scoreToPar: '-3', pairKey: null },
             ],
           }),
         );

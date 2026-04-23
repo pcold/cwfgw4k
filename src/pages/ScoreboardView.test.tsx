@@ -16,6 +16,7 @@ function row(overrides: Partial<ReportRow> = {}): ReportRow {
     ownershipPct: 100,
     seasonEarnings: 50,
     seasonTopTens: 1,
+    pairKey: null,
     ...overrides,
   };
 }
@@ -132,7 +133,7 @@ describe('ScoreboardView', () => {
               rows: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
             }),
           ],
-          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 'E' }],
+          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 'E', pairKey: null }],
         })}
       />,
     );
@@ -221,7 +222,7 @@ describe('ScoreboardView', () => {
               ],
             }),
           ],
-          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 'E' }],
+          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 'E', pairKey: null }],
         })}
       />,
     );
@@ -245,7 +246,7 @@ describe('ScoreboardView', () => {
               rows: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
             }),
           ],
-          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 'E' }],
+          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 'E', pairKey: null }],
         })}
       />,
     );
@@ -339,5 +340,48 @@ describe('ScoreboardView', () => {
 
     const leaderboard = screen.getAllByRole('table')[1];
     expect(within(leaderboard).getByText('Tiger')).toBeInTheDocument();
+  });
+
+  it('renders pair entries as one row with slash-joined names and teams', () => {
+    render(
+      <ScoreboardView
+        report={report({
+          teams: [],
+          undraftedTopTens: [],
+          liveLeaderboard: [
+            { name: 'McIlroy', position: 1, scoreToPar: '-28', rostered: false, teamName: null, pairKey: 'team:99' },
+            { name: 'Lowry', position: 1, scoreToPar: '-28', rostered: true, teamName: 'PAYRAY', pairKey: 'team:99' },
+          ],
+        })}
+      />,
+    );
+
+    const leaderboard = screen.getAllByRole('table')[1];
+    const rows = within(leaderboard).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(1);
+    expect(within(rows[0]).getByText('McIlroy / Lowry')).toBeInTheDocument();
+    expect(within(rows[0]).getByText('undrafted / PAYRAY')).toBeInTheDocument();
+  });
+
+  it('filter by a single team name matches pair rows where that team rostered one partner', async () => {
+    const user = userEvent.setup();
+    render(
+      <ScoreboardView
+        report={report({
+          teams: [],
+          liveLeaderboard: [
+            { name: 'McIlroy', position: 1, scoreToPar: '-28', rostered: true, teamName: 'ROSEH2O', pairKey: 'team:1' },
+            { name: 'Lowry', position: 1, scoreToPar: '-28', rostered: true, teamName: 'PAYRAY', pairKey: 'team:1' },
+            { name: 'Scheffler', position: 3, scoreToPar: '-25', rostered: false, teamName: null, pairKey: null },
+          ],
+        })}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'PAYRAY');
+    const leaderboard = screen.getAllByRole('table')[1];
+    const rows = within(leaderboard).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(1);
+    expect(within(rows[0]).getByText('McIlroy / Lowry')).toBeInTheDocument();
   });
 });
