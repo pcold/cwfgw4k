@@ -31,6 +31,9 @@ class FakeGolferRepository(
 
     override suspend fun findById(id: GolferId): Golfer? = store[id]
 
+    override suspend fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
+        store.values.firstOrNull { it.pgaPlayerId == pgaPlayerId }
+
     override suspend fun create(request: CreateGolferRequest): Golfer {
         val golfer =
             Golfer(

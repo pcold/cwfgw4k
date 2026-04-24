@@ -8,6 +8,8 @@ class GolferService(private val repository: GolferRepository) {
 
     suspend fun get(id: GolferId): Golfer? = repository.findById(id)
 
+    suspend fun findByPgaPlayerId(pgaPlayerId: String): Golfer? = repository.findByPgaPlayerId(pgaPlayerId)
+
     suspend fun create(request: CreateGolferRequest): Golfer = repository.create(request)
 
     suspend fun update(

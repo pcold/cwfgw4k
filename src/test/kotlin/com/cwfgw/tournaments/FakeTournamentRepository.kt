@@ -41,6 +41,9 @@ class FakeTournamentRepository(
 
     override suspend fun findById(id: TournamentId): Tournament? = tournaments[id]
 
+    override suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
+        tournaments.values.firstOrNull { it.pgaTournamentId == pgaTournamentId }
+
     override suspend fun create(request: CreateTournamentRequest): Tournament {
         val tournament =
             Tournament(

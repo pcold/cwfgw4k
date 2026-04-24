@@ -13,23 +13,35 @@ import java.time.format.DateTimeFormatter
 /**
  * Fetches PGA leaderboards from ESPN's public scoreboard API.
  *
- * ESPN's JSON uses camelCase keys, so this package owns its own [Json]
- * instance ([espnJson]) rather than sharing the server's SnakeCase-configured
- * one — exposing the response types internally keeps that boundary clean.
+ * ESPN's JSON uses camelCase keys, so the implementation owns its own [Json]
+ * instance rather than sharing the server's SnakeCase-configured one —
+ * exposing the response types internally keeps that boundary clean.
  *
  * Scope: one responsibility — fetch, deserialize, and parse. HTTP retries
  * and error policy belong to the caller (EspnImportService).
  */
-class EspnClient(
-    private val httpClient: HttpClient,
-    private val baseUrl: String = DEFAULT_BASE_URL,
-) {
+interface EspnClient {
     /**
-     * Fetch completed + in-progress tournaments for a specific date. Throws
-     * [EspnUpstreamException] on any non-200 response; callers decide how to
-     * translate that at the HTTP boundary.
+     * Fetch tournaments (completed + in-progress) for a specific date.
+     * Throws [EspnUpstreamException] on any non-200 response; callers decide
+     * how to translate that at the HTTP boundary.
      */
-    suspend fun fetchScoreboard(date: LocalDate): List<EspnTournament> {
+    suspend fun fetchScoreboard(date: LocalDate): List<EspnTournament>
+}
+
+const val ESPN_DEFAULT_BASE_URL: String =
+    "https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard"
+
+fun EspnClient(
+    httpClient: HttpClient,
+    baseUrl: String = ESPN_DEFAULT_BASE_URL,
+): EspnClient = HttpEspnClient(httpClient, baseUrl)
+
+private class HttpEspnClient(
+    private val httpClient: HttpClient,
+    private val baseUrl: String,
+) : EspnClient {
+    override suspend fun fetchScoreboard(date: LocalDate): List<EspnTournament> {
         val dateStr = date.format(DateTimeFormatter.BASIC_ISO_DATE)
         val response = httpClient.get("$baseUrl?dates=$dateStr")
         if (response.status != HttpStatusCode.OK) {
@@ -39,11 +51,6 @@ class EspnClient(
             )
         }
         return parseScoreboard(response.bodyAsText())
-    }
-
-    companion object {
-        const val DEFAULT_BASE_URL: String =
-            "https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard"
     }
 }
 

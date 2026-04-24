@@ -17,6 +17,8 @@ interface GolferRepository {
 
     suspend fun findById(id: GolferId): Golfer?
 
+    suspend fun findByPgaPlayerId(pgaPlayerId: String): Golfer?
+
     suspend fun create(request: CreateGolferRequest): Golfer
 
     suspend fun update(
@@ -46,6 +48,14 @@ private class JooqGolferRepository(private val dsl: DSLContext) : GolferReposito
         withContext(Dispatchers.IO) {
             dsl.selectFrom(GOLFERS)
                 .where(GOLFERS.ID.eq(id.value))
+                .fetchOne()
+                ?.let(::toGolfer)
+        }
+
+    override suspend fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
+        withContext(Dispatchers.IO) {
+            dsl.selectFrom(GOLFERS)
+                .where(GOLFERS.PGA_PLAYER_ID.eq(pgaPlayerId))
                 .fetchOne()
                 ?.let(::toGolfer)
         }

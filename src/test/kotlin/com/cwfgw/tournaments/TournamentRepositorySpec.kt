@@ -108,6 +108,28 @@ class TournamentRepositorySpec : FunSpec({
         repository.findById(TournamentId(UUID.randomUUID())).shouldBeNull()
     }
 
+    test("findByPgaTournamentId returns the tournament with that pga_tournament_id") {
+        repository.create(create(name = "Other"))
+        val masters =
+            repository.create(
+                CreateTournamentRequest(
+                    name = "The Masters",
+                    seasonId = seasonId,
+                    startDate = LocalDate.parse("2026-04-09"),
+                    endDate = LocalDate.parse("2026-04-12"),
+                    pgaTournamentId = "401580999",
+                ),
+            )
+
+        repository.findByPgaTournamentId("401580999")?.id shouldBe masters.id
+    }
+
+    test("findByPgaTournamentId returns null when no tournament has that pga_tournament_id") {
+        repository.create(create(name = "Other"))
+
+        repository.findByPgaTournamentId("missing").shouldBeNull()
+    }
+
     test("update applies only supplied fields") {
         val created = repository.create(create(name = "Original"))
 

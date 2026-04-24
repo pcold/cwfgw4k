@@ -19,6 +19,8 @@ interface TournamentRepository {
 
     suspend fun findById(id: TournamentId): Tournament?
 
+    suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament?
+
     suspend fun create(request: CreateTournamentRequest): Tournament
 
     suspend fun update(
@@ -57,6 +59,14 @@ private class JooqTournamentRepository(private val dsl: DSLContext) : Tournament
         withContext(Dispatchers.IO) {
             dsl.selectFrom(TOURNAMENTS)
                 .where(TOURNAMENTS.ID.eq(id.value))
+                .fetchOne()
+                ?.let(::toTournament)
+        }
+
+    override suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
+        withContext(Dispatchers.IO) {
+            dsl.selectFrom(TOURNAMENTS)
+                .where(TOURNAMENTS.PGA_TOURNAMENT_ID.eq(pgaTournamentId))
                 .fetchOne()
                 ?.let(::toTournament)
         }

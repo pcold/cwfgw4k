@@ -10,6 +10,9 @@ class TournamentService(private val repository: TournamentRepository) {
 
     suspend fun get(id: TournamentId): Tournament? = repository.findById(id)
 
+    suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
+        repository.findByPgaTournamentId(pgaTournamentId)
+
     suspend fun create(request: CreateTournamentRequest): Tournament = repository.create(request)
 
     suspend fun update(

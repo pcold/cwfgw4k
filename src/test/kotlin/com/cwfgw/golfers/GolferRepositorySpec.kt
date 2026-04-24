@@ -81,6 +81,26 @@ class GolferRepositorySpec : FunSpec({
         repository.findById(GolferId(UUID.randomUUID())).shouldBeNull()
     }
 
+    test("findByPgaPlayerId returns the golfer with that pga_player_id") {
+        repository.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods"))
+        val scottie =
+            repository.create(
+                CreateGolferRequest(
+                    pgaPlayerId = "pga-001",
+                    firstName = "Scottie",
+                    lastName = "Scheffler",
+                ),
+            )
+
+        repository.findByPgaPlayerId("pga-001")?.id shouldBe scottie.id
+    }
+
+    test("findByPgaPlayerId returns null when no golfer has that pga_player_id") {
+        repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
+
+        repository.findByPgaPlayerId("missing").shouldBeNull()
+    }
+
     test("update applies only the supplied fields and bumps updated_at") {
         val created =
             repository.create(
