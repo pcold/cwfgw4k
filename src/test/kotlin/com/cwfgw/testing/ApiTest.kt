@@ -22,12 +22,21 @@ import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.users.AuthService
 import com.cwfgw.users.AuthSetup
 import com.cwfgw.users.FakeUserRepository
+import com.cwfgw.users.LoginRequest
+import com.cwfgw.users.NewUser
 import com.cwfgw.users.UserRepository
+import com.cwfgw.users.UserRole
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
@@ -39,6 +48,10 @@ private val TEST_JSON =
         encodeDefaults = true
         namingStrategy = JsonNamingStrategy.SnakeCase
     }
+
+/** Shared credentials for [authenticatedApiTest] — seeded by the helper before `block` runs. */
+const val TEST_ADMIN_USERNAME: String = "test-admin"
+const val TEST_ADMIN_PASSWORD: String = "test-admin-password-not-used-in-prod"
 
 /**
  * Mutable fixture that each test overrides in its `apiTest { ... }` configure block. Defaults every slot
@@ -90,30 +103,70 @@ fun apiTest(
 ) {
     val fixture = ApiFixture().apply(configure)
     testApplication {
-        application {
-            module(
-                AppServices(
-                    healthProbe = fixture.healthProbe,
-                    leagueService = fixture.leagueService,
-                    golferService = fixture.golferService,
-                    seasonService = fixture.seasonService,
-                    teamService = fixture.teamService,
-                    tournamentService = fixture.tournamentService,
-                    draftService = fixture.draftService,
-                    scoringService = fixture.scoringService,
-                    espnImportService = fixture.espnImportService,
-                    authService = fixture.authService,
-                    userRepository = fixture.userRepository,
-                    authSetup = fixture.authSetup,
-                ),
-            )
+        application { module(fixture.toAppServices()) }
+        block(createJsonClient())
+    }
+}
+
+/**
+ * Like [apiTest] but seeds a test admin into the fixture's user repository, logs in via
+ * `/api/v1/auth/login`, and hands `block` a cookie-aware client with a live session. Use this
+ * for route specs that exercise auth-gated endpoints — the majority of POST/PUT/DELETE paths —
+ * so each test doesn't have to do the seed-and-login dance itself.
+ *
+ * The `configure` block still runs first so specs can override services. If a spec replaces
+ * `userRepository` or `authService`, the seed lands in the replaced one — callers should make
+ * sure that replacement happens in configure, not after.
+ */
+fun authenticatedApiTest(
+    configure: ApiFixture.() -> Unit = {},
+    block: suspend ApplicationTestBuilder.(HttpClient) -> Unit,
+) {
+    val fixture = ApiFixture().apply(configure)
+    runBlocking {
+        val hash = fixture.authService.hashPassword(TEST_ADMIN_PASSWORD)
+        fixture.userRepository.create(
+            NewUser(username = TEST_ADMIN_USERNAME, passwordHash = hash, role = UserRole.Admin),
+        )
+    }
+    testApplication {
+        application { module(fixture.toAppServices()) }
+        val client = createCookieClient()
+        client.post("/api/v1/auth/login") {
+            contentType(ContentType.Application.Json)
+            setBody(LoginRequest(username = TEST_ADMIN_USERNAME, password = TEST_ADMIN_PASSWORD))
         }
-        val client =
-            createClient {
-                install(ContentNegotiation) {
-                    json(TEST_JSON)
-                }
-            }
         block(client)
     }
 }
+
+private fun ApiFixture.toAppServices(): AppServices =
+    AppServices(
+        healthProbe = healthProbe,
+        leagueService = leagueService,
+        golferService = golferService,
+        seasonService = seasonService,
+        teamService = teamService,
+        tournamentService = tournamentService,
+        draftService = draftService,
+        scoringService = scoringService,
+        espnImportService = espnImportService,
+        authService = authService,
+        userRepository = userRepository,
+        authSetup = authSetup,
+    )
+
+private fun ApplicationTestBuilder.createJsonClient(): HttpClient =
+    createClient {
+        install(ContentNegotiation) {
+            json(TEST_JSON)
+        }
+    }
+
+private fun ApplicationTestBuilder.createCookieClient(): HttpClient =
+    createClient {
+        install(ContentNegotiation) {
+            json(TEST_JSON)
+        }
+        install(HttpCookies)
+    }
