@@ -14,6 +14,10 @@ import kotlinx.coroutines.withContext
  * BCrypt ops are CPU-bound on a single thread and take ~50–200ms at the
  * default cost — fine for a login endpoint, but they belong on
  * [Dispatchers.Default] (or IO; either keeps them off the event loop).
+ *
+ * Sessions are stateless — the signed cookie carries the user id and the
+ * Authentication plugin's session validator hydrates a [User] from the DB
+ * per request. No session map lives here.
  */
 class AuthService(
     private val userRepository: UserRepository,

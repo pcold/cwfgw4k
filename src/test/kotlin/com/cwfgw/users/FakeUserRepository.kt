@@ -40,6 +40,11 @@ class FakeUserRepository(
     }
 
     override suspend fun countAll(): Long = store.size.toLong()
+
+    /** Test-only: drop every stored user. Lets specs simulate "user deleted from DB mid-session". */
+    fun reset() {
+        store.clear()
+    }
 }
 
 /** Convenience pairing for seeding the fake — keeps the password hash with the user it belongs to. */

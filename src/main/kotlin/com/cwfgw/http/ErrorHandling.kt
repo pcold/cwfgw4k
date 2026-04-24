@@ -30,6 +30,9 @@ sealed class DomainError(message: String) : RuntimeException(message) {
 
     /** An upstream service we depend on (e.g. ESPN) returned an error. Maps to 502 Bad Gateway. */
     class BadGateway(message: String) : DomainError(message)
+
+    /** Authentication required or failed — bad credentials, missing session. Maps to 401 Unauthorized. */
+    class Unauthorized(message: String) : DomainError(message)
 }
 
 private val logger = LoggerFactory.getLogger("com.cwfgw.http.ErrorHandling")
@@ -57,6 +60,9 @@ internal fun Application.installErrorHandling() {
         }
         exception<DomainError.BadGateway> { call, cause ->
             call.respond(HttpStatusCode.BadGateway, ErrorBody(cause.message ?: "upstream unavailable"))
+        }
+        exception<DomainError.Unauthorized> { call, cause ->
+            call.respond(HttpStatusCode.Unauthorized, ErrorBody(cause.message ?: "unauthorized"))
         }
         exception<Throwable> { call, cause ->
             logger.error(

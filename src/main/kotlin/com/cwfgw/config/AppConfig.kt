@@ -7,6 +7,7 @@ import com.sksamuel.hoplite.addResourceSource
 data class AppConfig(
     val http: HttpConfig,
     val db: DbConfig,
+    val auth: AuthConfig,
 ) {
     companion object {
         fun load(overrides: Map<String, Any> = emptyMap()): AppConfig =
@@ -26,4 +27,11 @@ data class DbConfig(
     val password: String,
     val schema: String,
     val maxPoolSize: Int,
+)
+
+data class AuthConfig(
+    val sessionSecret: String,
+    val sessionMaxAgeSeconds: Long,
+    val adminUsername: String?,
+    val adminPassword: String?,
 )

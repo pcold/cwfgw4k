@@ -9,6 +9,9 @@ import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.TeamService
 import com.cwfgw.tournaments.TournamentService
+import com.cwfgw.users.AuthService
+import com.cwfgw.users.AuthSetup
+import com.cwfgw.users.UserRepository
 
 /**
  * Bundle of services and probes that `module()` wires into the Ktor application.
@@ -26,4 +29,7 @@ data class AppServices(
     val draftService: DraftService,
     val scoringService: ScoringService,
     val espnImportService: EspnImportService,
+    val authService: AuthService,
+    val userRepository: UserRepository,
+    val authSetup: AuthSetup,
 )

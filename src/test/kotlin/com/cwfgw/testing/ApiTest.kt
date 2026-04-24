@@ -19,6 +19,10 @@ import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentService
+import com.cwfgw.users.AuthService
+import com.cwfgw.users.AuthSetup
+import com.cwfgw.users.FakeUserRepository
+import com.cwfgw.users.UserRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
@@ -62,7 +66,18 @@ class ApiFixture {
             golferService = golferService,
             teamService = teamService,
         )
+    var userRepository: UserRepository = FakeUserRepository()
+    var authService: AuthService = AuthService(userRepository, cost = TEST_BCRYPT_COST)
+    var authSetup: AuthSetup =
+        AuthSetup(
+            sessionSecret = TEST_SESSION_SECRET.toByteArray(),
+            sessionMaxAgeSeconds = TEST_SESSION_MAX_AGE,
+        )
 }
+
+private const val TEST_BCRYPT_COST = 4
+private const val TEST_SESSION_MAX_AGE = 3_600L
+private const val TEST_SESSION_SECRET = "test-only-session-secret-not-used-in-prod"
 
 /**
  * Spin up a Ktor test application with every domain wired to fake-backed services; the optional
@@ -87,6 +102,9 @@ fun apiTest(
                     draftService = fixture.draftService,
                     scoringService = fixture.scoringService,
                     espnImportService = fixture.espnImportService,
+                    authService = fixture.authService,
+                    userRepository = fixture.userRepository,
+                    authSetup = fixture.authSetup,
                 ),
             )
         }

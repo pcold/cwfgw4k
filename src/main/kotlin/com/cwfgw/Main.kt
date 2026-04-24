@@ -30,28 +30,40 @@ import com.cwfgw.teams.teamRoutes
 import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.tournamentRoutes
+import com.cwfgw.users.AuthService
+import com.cwfgw.users.AuthSetup
+import com.cwfgw.users.SESSION_AUTH_NAME
+import com.cwfgw.users.UserPrincipal
+import com.cwfgw.users.UserRepository
+import com.cwfgw.users.UserSession
+import com.cwfgw.users.authRoutes
+import com.cwfgw.users.seedAdminIfEmpty
+import com.cwfgw.users.toUserId
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
+import io.ktor.server.auth.Authentication
+import io.ktor.server.auth.session
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
+import io.ktor.server.sessions.SessionTransportTransformerMessageAuthentication
+import io.ktor.server.sessions.Sessions
+import io.ktor.server.sessions.cookie
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
 
 fun main() {
     val config = AppConfig.load()
+    requireValidAuthSecret(config.auth)
     val database = Database.start(config.db)
-    val teamService = TeamService(TeamRepository(database.dsl))
-    val seasonService = SeasonService(SeasonRepository(database.dsl))
-    val tournamentService = TournamentService(TournamentRepository(database.dsl))
-    val golferService = GolferService(GolferRepository(database.dsl))
     val httpClient =
         HttpClient(CIO) {
             install(HttpTimeout) {
@@ -59,37 +71,67 @@ fun main() {
                 requestTimeoutMillis = HTTP_CLIENT_REQUEST_TIMEOUT_MS
             }
         }
-    val services =
-        AppServices(
-            healthProbe = DatabaseHealthProbe(database.dsl),
-            leagueService = LeagueService(LeagueRepository(database.dsl)),
-            golferService = golferService,
-            seasonService = seasonService,
-            teamService = teamService,
-            tournamentService = tournamentService,
-            draftService = DraftService(DraftRepository(database.dsl), teamService),
-            scoringService =
-                ScoringService(
-                    repository = ScoringRepository(database.dsl),
-                    seasonService = seasonService,
-                    tournamentService = tournamentService,
-                    teamService = teamService,
-                ),
-            espnImportService =
-                EspnImportService(
-                    client = EspnClient(httpClient),
-                    tournamentService = tournamentService,
-                    golferService = golferService,
-                    teamService = teamService,
-                ),
-        )
+    val services = buildServices(config, database, httpClient)
+    runBlocking { seedAdminIfEmpty(services.authService, services.userRepository, config.auth) }
     embeddedServer(Netty, port = config.http.port, host = config.http.host) {
         module(services)
     }.start(wait = true)
 }
 
+private fun buildServices(
+    config: AppConfig,
+    database: Database,
+    httpClient: HttpClient,
+): AppServices {
+    val teamService = TeamService(TeamRepository(database.dsl))
+    val seasonService = SeasonService(SeasonRepository(database.dsl))
+    val tournamentService = TournamentService(TournamentRepository(database.dsl))
+    val golferService = GolferService(GolferRepository(database.dsl))
+    val userRepository = UserRepository(database.dsl)
+    return AppServices(
+        healthProbe = DatabaseHealthProbe(database.dsl),
+        leagueService = LeagueService(LeagueRepository(database.dsl)),
+        golferService = golferService,
+        seasonService = seasonService,
+        teamService = teamService,
+        tournamentService = tournamentService,
+        draftService = DraftService(DraftRepository(database.dsl), teamService),
+        scoringService =
+            ScoringService(
+                repository = ScoringRepository(database.dsl),
+                seasonService = seasonService,
+                tournamentService = tournamentService,
+                teamService = teamService,
+            ),
+        espnImportService =
+            EspnImportService(
+                client = EspnClient(httpClient),
+                tournamentService = tournamentService,
+                golferService = golferService,
+                teamService = teamService,
+            ),
+        authService = AuthService(userRepository),
+        userRepository = userRepository,
+        authSetup =
+            AuthSetup(
+                sessionSecret = config.auth.sessionSecret.toByteArray(),
+                sessionMaxAgeSeconds = config.auth.sessionMaxAgeSeconds,
+            ),
+    )
+}
+
 private const val HTTP_CLIENT_CONNECT_TIMEOUT_MS: Long = 10_000
 private const val HTTP_CLIENT_REQUEST_TIMEOUT_MS: Long = 30_000
+
+/**
+ * Boot-time guard: refuse to start with a blank session secret. Extracted so
+ * tests can exercise the predicate without spinning up the whole app.
+ */
+internal fun requireValidAuthSecret(auth: com.cwfgw.config.AuthConfig) {
+    require(auth.sessionSecret.isNotBlank()) {
+        "AUTH_SESSION_SECRET must be set (generate with: openssl rand -hex 32)"
+    }
+}
 
 @OptIn(ExperimentalSerializationApi::class)
 fun Application.module(services: AppServices) {
@@ -101,6 +143,23 @@ fun Application.module(services: AppServices) {
                 namingStrategy = JsonNamingStrategy.SnakeCase
             },
         )
+    }
+    install(Sessions) {
+        cookie<UserSession>("cwfgw_session") {
+            cookie.path = "/"
+            cookie.httpOnly = true
+            cookie.maxAgeInSeconds = services.authSetup.sessionMaxAgeSeconds
+            transform(SessionTransportTransformerMessageAuthentication(services.authSetup.sessionSecret))
+        }
+    }
+    install(Authentication) {
+        session<UserSession>(SESSION_AUTH_NAME) {
+            validate { session ->
+                session.userId.toUserId()?.let { id ->
+                    services.userRepository.findById(id)?.let(::UserPrincipal)
+                }
+            }
+        }
     }
     installRequestLogging()
     installErrorHandling()
@@ -115,6 +174,7 @@ fun Application.module(services: AppServices) {
             draftRoutes(services.draftService)
             scoringRoutes(services.scoringService)
             espnRoutes(services.espnImportService)
+            authRoutes(services.authService)
         }
     }
 }
