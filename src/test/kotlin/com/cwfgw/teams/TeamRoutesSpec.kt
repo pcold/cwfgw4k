@@ -4,6 +4,7 @@ import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.apiTest
+import com.cwfgw.testing.authenticatedApiTest
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -99,7 +100,7 @@ class TeamRoutesSpec : FunSpec({
         val newTime = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeTeamRepository(teamIdFactory = { newId }, clock = { newTime })
 
-        apiTest({ teamService = TeamService(fake) }) { client ->
+        authenticatedApiTest({ teamService = TeamService(fake) }) { client ->
             val response =
                 client.post("/api/v1/seasons/${SEASON_ID.value}/teams") {
                     contentType(ContentType.Application.Json)
@@ -116,7 +117,7 @@ class TeamRoutesSpec : FunSpec({
 
     test("PUT /seasons/{seasonId}/teams/{teamId} applies partial updates") {
         val eagles = team(teamName = "Eagles")
-        apiTest(teamsAndRoster(teams = listOf(eagles))) { client ->
+        authenticatedApiTest(teamsAndRoster(teams = listOf(eagles))) { client ->
             val response =
                 client.put("/api/v1/seasons/${SEASON_ID.value}/teams/${eagles.id.value}") {
                     contentType(ContentType.Application.Json)
@@ -153,7 +154,7 @@ class TeamRoutesSpec : FunSpec({
                 clock = { newTime },
             )
 
-        apiTest({ teamService = TeamService(fake) }) { client ->
+        authenticatedApiTest({ teamService = TeamService(fake) }) { client ->
             val response =
                 client.post("/api/v1/seasons/${SEASON_ID.value}/teams/${eagles.id.value}/roster") {
                     contentType(ContentType.Application.Json)
@@ -179,7 +180,7 @@ class TeamRoutesSpec : FunSpec({
         val golferId = GolferId(UUID.randomUUID())
         val entry = rosterEntry(teamId = eagles.id, golferId = golferId)
 
-        apiTest(teamsAndRoster(teams = listOf(eagles), roster = listOf(entry))) { client ->
+        authenticatedApiTest(teamsAndRoster(teams = listOf(eagles), roster = listOf(entry))) { client ->
             val response =
                 client.delete(
                     "/api/v1/seasons/${SEASON_ID.value}/teams/${eagles.id.value}/roster/${golferId.value}",
@@ -191,12 +192,58 @@ class TeamRoutesSpec : FunSpec({
 
     test("DELETE /seasons/{sid}/teams/{tid}/roster/{unknown} returns 404") {
         val eagles = team()
-        apiTest(teamsAndRoster(teams = listOf(eagles))) { client ->
+        authenticatedApiTest(teamsAndRoster(teams = listOf(eagles))) { client ->
             val response =
                 client.delete(
                     "/api/v1/seasons/${SEASON_ID.value}/teams/${eagles.id.value}/roster/${UUID.randomUUID()}",
                 )
             response.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    test("POST /seasons/{sid}/teams returns 401 without an authenticated session") {
+        apiTest { client ->
+            val response =
+                client.post("/api/v1/seasons/${SEASON_ID.value}/teams") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CreateTeamRequest(ownerName = "anon", teamName = "anon"))
+                }
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("PUT /seasons/{sid}/teams/{tid} returns 401 without an authenticated session") {
+        val eagles = team()
+        apiTest(teamsAndRoster(teams = listOf(eagles))) { client ->
+            val response =
+                client.put("/api/v1/seasons/${SEASON_ID.value}/teams/${eagles.id.value}") {
+                    contentType(ContentType.Application.Json)
+                    setBody(UpdateTeamRequest(teamName = "anon"))
+                }
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("POST /seasons/{sid}/teams/{tid}/roster returns 401 without an authenticated session") {
+        val eagles = team()
+        apiTest(teamsAndRoster(teams = listOf(eagles))) { client ->
+            val response =
+                client.post("/api/v1/seasons/${SEASON_ID.value}/teams/${eagles.id.value}/roster") {
+                    contentType(ContentType.Application.Json)
+                    setBody(AddToRosterRequest(golferId = GolferId(UUID.randomUUID())))
+                }
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("DELETE /seasons/{sid}/teams/{tid}/roster/{golferId} returns 401 without an authenticated session") {
+        val eagles = team()
+        apiTest(teamsAndRoster(teams = listOf(eagles))) { client ->
+            val response =
+                client.delete(
+                    "/api/v1/seasons/${SEASON_ID.value}/teams/${eagles.id.value}/roster/${UUID.randomUUID()}",
+                )
+            response.status shouldBe HttpStatusCode.Unauthorized
         }
     }
 

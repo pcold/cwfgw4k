@@ -1,6 +1,7 @@
 package com.cwfgw.leagues
 
 import com.cwfgw.testing.apiTest
+import com.cwfgw.testing.authenticatedApiTest
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
@@ -63,7 +64,7 @@ class LeagueRoutesSpec : FunSpec({
         val newCreatedAt = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeLeagueRepository(idFactory = { newId }, clock = { newCreatedAt })
 
-        apiTest({ leagueService = LeagueService(fake) }) { client ->
+        authenticatedApiTest({ leagueService = LeagueService(fake) }) { client ->
             val createResponse =
                 client.post("/api/v1/leagues") {
                     contentType(ContentType.Application.Json)
@@ -79,6 +80,18 @@ class LeagueRoutesSpec : FunSpec({
             val getResponse = client.get("/api/v1/leagues/${newId.value}")
             getResponse.status shouldBe HttpStatusCode.OK
             getResponse.body<League>() shouldBe created
+        }
+    }
+
+    test("POST /api/v1/leagues returns 401 without an authenticated session") {
+        apiTest { client ->
+            val response =
+                client.post("/api/v1/leagues") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CreateLeagueRequest(name = "anonymous"))
+                }
+
+            response.status shouldBe HttpStatusCode.Unauthorized
         }
     }
 })

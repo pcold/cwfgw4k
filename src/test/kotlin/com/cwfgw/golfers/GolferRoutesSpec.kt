@@ -2,6 +2,7 @@ package com.cwfgw.golfers
 
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.apiTest
+import com.cwfgw.testing.authenticatedApiTest
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -112,7 +113,7 @@ class GolferRoutesSpec : FunSpec({
         val newTime = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeGolferRepository(idFactory = { newId }, clock = { newTime })
 
-        apiTest({ golferService = GolferService(fake) }) { client ->
+        authenticatedApiTest({ golferService = GolferService(fake) }) { client ->
             val response =
                 client.post("/api/v1/golfers") {
                     contentType(ContentType.Application.Json)
@@ -129,7 +130,7 @@ class GolferRoutesSpec : FunSpec({
     }
 
     test("PUT /api/v1/golfers/{id} applies partial updates and returns 200") {
-        apiTest(golfers(RORY)) { client ->
+        authenticatedApiTest(golfers(RORY)) { client ->
             val response =
                 client.put("/api/v1/golfers/${RORY.id.value}") {
                     contentType(ContentType.Application.Json)
@@ -145,13 +146,37 @@ class GolferRoutesSpec : FunSpec({
     }
 
     test("PUT /api/v1/golfers/{unknown-uuid} returns 404") {
-        apiTest { client ->
+        authenticatedApiTest { client ->
             val response =
                 client.put("/api/v1/golfers/${UUID.randomUUID()}") {
                     contentType(ContentType.Application.Json)
                     setBody(UpdateGolferRequest(firstName = "Ghost"))
                 }
             response.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    test("POST /api/v1/golfers returns 401 without an authenticated session") {
+        apiTest { client ->
+            val response =
+                client.post("/api/v1/golfers") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CreateGolferRequest(firstName = "Anon", lastName = "Anon"))
+                }
+
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("PUT /api/v1/golfers/{id} returns 401 without an authenticated session") {
+        apiTest(golfers(RORY)) { client ->
+            val response =
+                client.put("/api/v1/golfers/${RORY.id.value}") {
+                    contentType(ContentType.Application.Json)
+                    setBody(UpdateGolferRequest(active = false))
+                }
+
+            response.status shouldBe HttpStatusCode.Unauthorized
         }
     }
 })

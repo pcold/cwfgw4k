@@ -3,6 +3,7 @@ package com.cwfgw.seasons
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.apiTest
+import com.cwfgw.testing.authenticatedApiTest
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -128,7 +129,7 @@ class SeasonRoutesSpec : FunSpec({
         val newTime = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeSeasonRepository(idFactory = { newId }, clock = { newTime })
 
-        apiTest({ seasonService = SeasonService(fake) }) { client ->
+        authenticatedApiTest({ seasonService = SeasonService(fake) }) { client ->
             val response =
                 client.post("/api/v1/seasons") {
                     contentType(ContentType.Application.Json)
@@ -152,7 +153,7 @@ class SeasonRoutesSpec : FunSpec({
 
     test("PUT /api/v1/seasons/{id} applies partial update and returns 200") {
         val s = season()
-        apiTest(seasons(s)) { client ->
+        authenticatedApiTest(seasons(s)) { client ->
             val response =
                 client.put("/api/v1/seasons/${s.id.value}") {
                     contentType(ContentType.Application.Json)
@@ -168,13 +169,38 @@ class SeasonRoutesSpec : FunSpec({
     }
 
     test("PUT /api/v1/seasons/{unknown-uuid} returns 404") {
-        apiTest { client ->
+        authenticatedApiTest { client ->
             val response =
                 client.put("/api/v1/seasons/${UUID.randomUUID()}") {
                     contentType(ContentType.Application.Json)
                     setBody(UpdateSeasonRequest(name = "Ghost"))
                 }
             response.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    test("POST /api/v1/seasons returns 401 without an authenticated session") {
+        apiTest { client ->
+            val response =
+                client.post("/api/v1/seasons") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CreateSeasonRequest(leagueId = CASTLEWOOD_ID, name = "anon", seasonYear = 2026))
+                }
+
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("PUT /api/v1/seasons/{id} returns 401 without an authenticated session") {
+        val s = season()
+        apiTest(seasons(s)) { client ->
+            val response =
+                client.put("/api/v1/seasons/${s.id.value}") {
+                    contentType(ContentType.Application.Json)
+                    setBody(UpdateSeasonRequest(status = "active"))
+                }
+
+            response.status shouldBe HttpStatusCode.Unauthorized
         }
     }
 

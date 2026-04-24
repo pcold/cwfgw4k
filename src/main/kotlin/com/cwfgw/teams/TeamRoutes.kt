@@ -5,7 +5,9 @@ import com.cwfgw.golfers.toGolferId
 import com.cwfgw.http.DomainError
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.toSeasonId
+import com.cwfgw.users.SESSION_AUTH_NAME
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -21,19 +23,15 @@ fun Route.teamRoutes(service: TeamService) {
         get("/rosters") { rosterView(service) }
         route("/teams") {
             get { listTeams(service) }
-            post { createTeam(service) }
-            teamDetailRoutes(service)
+            get("/{teamId}") { getTeam(service) }
+            get("/{teamId}/roster") { getRoster(service) }
+            authenticate(SESSION_AUTH_NAME) {
+                post { createTeam(service) }
+                put("/{teamId}") { updateTeam(service) }
+                post("/{teamId}/roster") { addToRoster(service) }
+                delete("/{teamId}/roster/{golferId}") { dropFromRoster(service) }
+            }
         }
-    }
-}
-
-private fun Route.teamDetailRoutes(service: TeamService) {
-    get("/{teamId}") { getTeam(service) }
-    put("/{teamId}") { updateTeam(service) }
-    route("/{teamId}/roster") {
-        get { getRoster(service) }
-        post { addToRoster(service) }
-        delete("/{golferId}") { dropFromRoster(service) }
     }
 }
 

@@ -1,7 +1,9 @@
 package com.cwfgw.leagues
 
 import com.cwfgw.http.DomainError
+import com.cwfgw.users.SESSION_AUTH_NAME
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -14,7 +16,9 @@ fun Route.leagueRoutes(service: LeagueService) {
     route("/leagues") {
         get { listLeagues(service) }
         get("/{id}") { getLeague(service) }
-        post { createLeague(service) }
+        authenticate(SESSION_AUTH_NAME) {
+            post { createLeague(service) }
+        }
     }
 }
 

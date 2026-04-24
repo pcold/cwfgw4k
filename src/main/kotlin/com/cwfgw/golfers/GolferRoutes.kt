@@ -2,7 +2,9 @@ package com.cwfgw.golfers
 
 import com.cwfgw.http.DomainError
 import com.cwfgw.http.optionalQueryParam
+import com.cwfgw.users.SESSION_AUTH_NAME
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -16,8 +18,10 @@ fun Route.golferRoutes(service: GolferService) {
     route("/golfers") {
         get { listGolfers(service) }
         get("/{id}") { getGolfer(service) }
-        post { createGolfer(service) }
-        put("/{id}") { updateGolfer(service) }
+        authenticate(SESSION_AUTH_NAME) {
+            post { createGolfer(service) }
+            put("/{id}") { updateGolfer(service) }
+        }
     }
 }
 

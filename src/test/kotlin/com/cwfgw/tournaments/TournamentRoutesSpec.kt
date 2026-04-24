@@ -4,6 +4,7 @@ import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.apiTest
+import com.cwfgw.testing.authenticatedApiTest
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -112,7 +113,7 @@ class TournamentRoutesSpec : FunSpec({
         val newTime = Instant.parse("2026-04-01T00:00:00Z")
         val fake = FakeTournamentRepository(idFactory = { newId }, clock = { newTime })
 
-        apiTest({ tournamentService = TournamentService(fake) }) { client ->
+        authenticatedApiTest({ tournamentService = TournamentService(fake) }) { client ->
             val response =
                 client.post("/api/v1/tournaments") {
                     contentType(ContentType.Application.Json)
@@ -136,7 +137,7 @@ class TournamentRoutesSpec : FunSpec({
     test("PUT /api/v1/tournaments/{id} applies partial updates") {
         val masters = tournament(name = "Masters")
 
-        apiTest(tournaments(masters)) { client ->
+        authenticatedApiTest(tournaments(masters)) { client ->
             val response =
                 client.put("/api/v1/tournaments/${masters.id.value}") {
                     contentType(ContentType.Application.Json)
@@ -164,7 +165,7 @@ class TournamentRoutesSpec : FunSpec({
         val rory = GolferId(UUID.randomUUID())
         val scottie = GolferId(UUID.randomUUID())
 
-        apiTest(tournaments(masters)) { client ->
+        authenticatedApiTest(tournaments(masters)) { client ->
             val response =
                 client.post("/api/v1/tournaments/${masters.id.value}/results") {
                     contentType(ContentType.Application.Json)
@@ -179,6 +180,48 @@ class TournamentRoutesSpec : FunSpec({
             response.status shouldBe HttpStatusCode.OK
             val body: List<TournamentResult> = response.body()
             body.map { it.golferId.value } shouldContainExactly listOf(rory.value, scottie.value)
+        }
+    }
+
+    test("POST /api/v1/tournaments returns 401 without an authenticated session") {
+        apiTest { client ->
+            val response =
+                client.post("/api/v1/tournaments") {
+                    contentType(ContentType.Application.Json)
+                    setBody(
+                        CreateTournamentRequest(
+                            name = "anon",
+                            seasonId = SEASON_ID,
+                            startDate = LocalDate.parse("2026-04-09"),
+                            endDate = LocalDate.parse("2026-04-12"),
+                        ),
+                    )
+                }
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("PUT /api/v1/tournaments/{id} returns 401 without an authenticated session") {
+        val masters = tournament(name = "Masters")
+        apiTest(tournaments(masters)) { client ->
+            val response =
+                client.put("/api/v1/tournaments/${masters.id.value}") {
+                    contentType(ContentType.Application.Json)
+                    setBody(UpdateTournamentRequest(status = "completed"))
+                }
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("POST /api/v1/tournaments/{id}/results returns 401 without an authenticated session") {
+        val masters = tournament(name = "Masters")
+        apiTest(tournaments(masters)) { client ->
+            val response =
+                client.post("/api/v1/tournaments/${masters.id.value}/results") {
+                    contentType(ContentType.Application.Json)
+                    setBody(emptyList<CreateTournamentResultRequest>())
+                }
+            response.status shouldBe HttpStatusCode.Unauthorized
         }
     }
 })

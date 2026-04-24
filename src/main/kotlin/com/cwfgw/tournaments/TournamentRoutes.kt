@@ -3,7 +3,9 @@ package com.cwfgw.tournaments
 import com.cwfgw.http.DomainError
 import com.cwfgw.http.optionalQueryParam
 import com.cwfgw.seasons.toSeasonId
+import com.cwfgw.users.SESSION_AUTH_NAME
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -17,10 +19,12 @@ fun Route.tournamentRoutes(service: TournamentService) {
     route("/tournaments") {
         get { listTournaments(service) }
         get("/{id}") { getTournament(service) }
-        post { createTournament(service) }
-        put("/{id}") { updateTournament(service) }
         get("/{id}/results") { getResults(service) }
-        post("/{id}/results") { importResults(service) }
+        authenticate(SESSION_AUTH_NAME) {
+            post { createTournament(service) }
+            put("/{id}") { updateTournament(service) }
+            post("/{id}/results") { importResults(service) }
+        }
     }
 }
 

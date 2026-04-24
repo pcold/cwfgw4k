@@ -3,7 +3,9 @@ package com.cwfgw.seasons
 import com.cwfgw.http.DomainError
 import com.cwfgw.http.optionalQueryParam
 import com.cwfgw.leagues.toLeagueId
+import com.cwfgw.users.SESSION_AUTH_NAME
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -17,9 +19,11 @@ fun Route.seasonRoutes(service: SeasonService) {
     route("/seasons") {
         get { listSeasons(service) }
         get("/{id}") { getSeason(service) }
-        post { createSeason(service) }
-        put("/{id}") { updateSeason(service) }
         get("/{id}/rules") { getRules(service) }
+        authenticate(SESSION_AUTH_NAME) {
+            post { createSeason(service) }
+            put("/{id}") { updateSeason(service) }
+        }
     }
 }
 
