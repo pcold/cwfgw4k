@@ -6,6 +6,8 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.toSeasonId
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.toTournamentId
+import com.cwfgw.users.SESSION_AUTH_NAME
+import io.ktor.server.auth.authenticate
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingContext
@@ -18,9 +20,11 @@ fun Route.scoringRoutes(service: ScoringService) {
         get("/standings") { getStandings(service) }
         route("/scoring") {
             get("/side-bets") { getSideBetStandings(service) }
-            post("/refresh-standings") { refreshStandings(service) }
             get("/{tournamentId}") { getScores(service) }
-            post("/calculate/{tournamentId}") { calculateScores(service) }
+            authenticate(SESSION_AUTH_NAME) {
+                post("/refresh-standings") { refreshStandings(service) }
+                post("/calculate/{tournamentId}") { calculateScores(service) }
+            }
         }
     }
 }

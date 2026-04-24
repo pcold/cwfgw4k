@@ -15,6 +15,7 @@ import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.apiTest
+import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -180,14 +181,14 @@ class ScoringRoutesSpec : FunSpec({
     }
 
     test("POST /scoring/calculate/{tournamentId} returns 404 when the season does not exist") {
-        apiTest(withWorld(RouteWorld(season = null))) { client ->
+        authenticatedApiTest(withWorld(RouteWorld(season = null))) { client ->
             client.post("/api/v1/seasons/${SEASON_ID.value}/scoring/calculate/${TOURNAMENT_ID.value}")
                 .status shouldBe HttpStatusCode.NotFound
         }
     }
 
     test("POST /scoring/calculate/{tournamentId} returns 404 when the tournament does not exist") {
-        apiTest(withWorld(RouteWorld(tournament = null))) { client ->
+        authenticatedApiTest(withWorld(RouteWorld(tournament = null))) { client ->
             client.post("/api/v1/seasons/${SEASON_ID.value}/scoring/calculate/${TOURNAMENT_ID.value}")
                 .status shouldBe HttpStatusCode.NotFound
         }
@@ -195,7 +196,7 @@ class ScoringRoutesSpec : FunSpec({
 
     test("POST /scoring/calculate/{tournamentId} returns 200 with the weekly result on success") {
         val team = mkTeam(TEAM_A, "Alice")
-        apiTest(
+        authenticatedApiTest(
             withWorld(
                 RouteWorld(
                     teams = listOf(team),
@@ -214,19 +215,34 @@ class ScoringRoutesSpec : FunSpec({
         }
     }
 
+    test("POST /scoring/calculate/{tournamentId} returns 401 without an authenticated session") {
+        apiTest { client ->
+            val response =
+                client.post("/api/v1/seasons/${SEASON_ID.value}/scoring/calculate/${TOURNAMENT_ID.value}")
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
     test("POST /scoring/refresh-standings returns 404 when the season does not exist") {
-        apiTest(withWorld(RouteWorld(season = null))) { client ->
+        authenticatedApiTest(withWorld(RouteWorld(season = null))) { client ->
             client.post("/api/v1/seasons/${SEASON_ID.value}/scoring/refresh-standings")
                 .status shouldBe HttpStatusCode.NotFound
         }
     }
 
     test("POST /scoring/refresh-standings returns 200 with a standing per team") {
-        apiTest(withWorld(RouteWorld(teams = listOf(mkTeam(TEAM_A, "Alice"))))) { client ->
+        authenticatedApiTest(withWorld(RouteWorld(teams = listOf(mkTeam(TEAM_A, "Alice"))))) { client ->
             val response = client.post("/api/v1/seasons/${SEASON_ID.value}/scoring/refresh-standings")
 
             response.status shouldBe HttpStatusCode.OK
             response.body<List<SeasonStanding>>().size shouldBe 1
+        }
+    }
+
+    test("POST /scoring/refresh-standings returns 401 without an authenticated session") {
+        apiTest { client ->
+            client.post("/api/v1/seasons/${SEASON_ID.value}/scoring/refresh-standings")
+                .status shouldBe HttpStatusCode.Unauthorized
         }
     }
 

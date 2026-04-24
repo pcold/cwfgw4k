@@ -5,7 +5,9 @@ import com.cwfgw.http.optionalQueryParam
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.toSeasonId
+import com.cwfgw.users.SESSION_AUTH_NAME
 import io.ktor.http.HttpStatusCode
+import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -19,12 +21,14 @@ private const val DEFAULT_DRAFT_ROUNDS = 6
 fun Route.draftRoutes(service: DraftService) {
     route("/seasons/{seasonId}/draft") {
         get { getDraft(service) }
-        post { createDraft(service) }
-        post("/start") { startDraft(service) }
-        post("/initialize") { initializeDraft(service) }
-        post("/pick") { makePick(service) }
         get("/picks") { getPicks(service) }
         get("/available") { getAvailableGolfers(service) }
+        authenticate(SESSION_AUTH_NAME) {
+            post { createDraft(service) }
+            post("/start") { startDraft(service) }
+            post("/initialize") { initializeDraft(service) }
+            post("/pick") { makePick(service) }
+        }
     }
 }
 

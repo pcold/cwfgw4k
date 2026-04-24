@@ -7,6 +7,7 @@ import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.apiTest
+import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentId
@@ -86,7 +87,7 @@ private fun withWiredService(
 class EspnRoutesSpec : FunSpec({
 
     test("POST /espn/import?date=YYYY-MM-DD returns 200 with the import batch on success") {
-        apiTest(withWiredService(tournaments = mapOf(START_DATE to emptyList()))) { client ->
+        authenticatedApiTest(withWiredService(tournaments = mapOf(START_DATE to emptyList()))) { client ->
             val response = client.post("/api/v1/espn/import?date=2026-04-15")
 
             response.status shouldBe HttpStatusCode.OK
@@ -97,19 +98,19 @@ class EspnRoutesSpec : FunSpec({
     }
 
     test("POST /espn/import returns 400 when the date query parameter is missing") {
-        apiTest(withWiredService()) { client ->
+        authenticatedApiTest(withWiredService()) { client ->
             client.post("/api/v1/espn/import").status shouldBe HttpStatusCode.BadRequest
         }
     }
 
     test("POST /espn/import?date=garbage returns 400 for a malformed date") {
-        apiTest(withWiredService()) { client ->
+        authenticatedApiTest(withWiredService()) { client ->
             client.post("/api/v1/espn/import?date=not-a-date").status shouldBe HttpStatusCode.BadRequest
         }
     }
 
     test("POST /espn/import returns 502 when ESPN responds with an upstream error") {
-        apiTest(
+        authenticatedApiTest(
             withWiredService(upstreamError = EspnUpstreamException(503, "Service Unavailable")),
         ) { client ->
             client.post("/api/v1/espn/import?date=2026-04-15").status shouldBe HttpStatusCode.BadGateway
@@ -118,7 +119,7 @@ class EspnRoutesSpec : FunSpec({
 
     test("POST /espn/import surfaces unlinked events to the response without failing the batch") {
         val unlinked = espnTournament(espnId = "no-match", competitors = emptyList())
-        apiTest(withWiredService(tournaments = mapOf(START_DATE to listOf(unlinked)))) { client ->
+        authenticatedApiTest(withWiredService(tournaments = mapOf(START_DATE to listOf(unlinked)))) { client ->
             val response = client.post("/api/v1/espn/import?date=2026-04-15")
 
             response.status shouldBe HttpStatusCode.OK
@@ -138,7 +139,7 @@ class EspnRoutesSpec : FunSpec({
                 endDate = START_DATE.plusDays(3),
                 pgaTournamentId = "401580999",
             )
-        apiTest(
+        authenticatedApiTest(
             withWiredService(
                 tournaments = mapOf(START_DATE to listOf(event)),
                 seedTournaments = listOf(seed),
@@ -156,7 +157,7 @@ class EspnRoutesSpec : FunSpec({
     }
 
     test("POST /espn/import/tournament/{bad} returns 400 for a malformed tournament id") {
-        apiTest(withWiredService()) { client ->
+        authenticatedApiTest(withWiredService()) { client ->
             client.post("/api/v1/espn/import/tournament/not-a-uuid")
                 .status shouldBe HttpStatusCode.BadRequest
         }
@@ -164,7 +165,7 @@ class EspnRoutesSpec : FunSpec({
 
     test("POST /espn/import/tournament/{unknown} returns 404 when the tournament does not exist") {
         val unknown = TournamentId(UUID.randomUUID())
-        apiTest(withWiredService()) { client ->
+        authenticatedApiTest(withWiredService()) { client ->
             client.post("/api/v1/espn/import/tournament/${unknown.value}")
                 .status shouldBe HttpStatusCode.NotFound
         }
@@ -179,7 +180,7 @@ class EspnRoutesSpec : FunSpec({
                 endDate = START_DATE.plusDays(3),
                 // No pgaTournamentId
             )
-        apiTest(withWiredService(seedTournaments = listOf(seed))) { client ->
+        authenticatedApiTest(withWiredService(seedTournaments = listOf(seed))) { client ->
             // Look up the seeded tournament's id by calling the unlinked-event branch first, since seeding doesn't
             // expose the id directly. Easier: hit a tournament-list endpoint — but we don't have one in scope here.
             // Instead, drive through the route with a known-absent seed and let the batch result tell us.
@@ -191,6 +192,19 @@ class EspnRoutesSpec : FunSpec({
 
             client.post("/api/v1/espn/import/tournament/${seededId.value}")
                 .status shouldBe HttpStatusCode.Conflict
+        }
+    }
+
+    test("POST /espn/import returns 401 without an authenticated session") {
+        apiTest { client ->
+            client.post("/api/v1/espn/import?date=2026-04-15").status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("POST /espn/import/tournament/{id} returns 401 without an authenticated session") {
+        apiTest { client ->
+            client.post("/api/v1/espn/import/tournament/${UUID.randomUUID()}")
+                .status shouldBe HttpStatusCode.Unauthorized
         }
     }
 })

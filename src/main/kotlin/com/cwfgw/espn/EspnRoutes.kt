@@ -5,7 +5,9 @@ import com.cwfgw.http.optionalQueryParam
 import com.cwfgw.result.Result
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.toTournamentId
+import com.cwfgw.users.SESSION_AUTH_NAME
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.ktor.server.auth.authenticate
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingContext
@@ -17,9 +19,11 @@ import java.time.format.DateTimeParseException
 private val log = KotlinLogging.logger {}
 
 fun Route.espnRoutes(service: EspnImportService) {
-    route("/espn/import") {
-        post { importByDate(service) }
-        post("/tournament/{tournamentId}") { importForTournament(service) }
+    authenticate(SESSION_AUTH_NAME) {
+        route("/espn/import") {
+            post { importByDate(service) }
+            post("/tournament/{tournamentId}") { importForTournament(service) }
+        }
     }
 }
 

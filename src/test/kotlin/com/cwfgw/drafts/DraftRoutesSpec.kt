@@ -5,6 +5,7 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.teams.TeamId
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.apiTest
+import com.cwfgw.testing.authenticatedApiTest
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
@@ -61,7 +62,7 @@ class DraftRoutesSpec : FunSpec({
     }
 
     test("POST /draft creates and returns 201") {
-        apiTest { client ->
+        authenticatedApiTest { client ->
             val response =
                 client.post("/api/v1/seasons/${SEASON_ID.value}/draft") {
                     contentType(ContentType.Application.Json)
@@ -73,19 +74,19 @@ class DraftRoutesSpec : FunSpec({
 
     test("POST /draft/start returns 409 when draft is already in_progress") {
         val d = draft(status = "in_progress")
-        apiTest(withDraft(listOf(d))) { client ->
+        authenticatedApiTest(withDraft(listOf(d))) { client ->
             client.post("/api/v1/seasons/${SEASON_ID.value}/draft/start").status shouldBe HttpStatusCode.Conflict
         }
     }
 
     test("POST /draft/start returns 404 when no draft exists") {
-        apiTest { client ->
+        authenticatedApiTest { client ->
             client.post("/api/v1/seasons/${SEASON_ID.value}/draft/start").status shouldBe HttpStatusCode.NotFound
         }
     }
 
     test("POST /draft/start transitions a pending draft to in_progress") {
-        apiTest(withDraft(listOf(draft(status = "pending")))) { client ->
+        authenticatedApiTest(withDraft(listOf(draft(status = "pending")))) { client ->
             val response = client.post("/api/v1/seasons/${SEASON_ID.value}/draft/start")
 
             response.status shouldBe HttpStatusCode.OK
@@ -94,13 +95,14 @@ class DraftRoutesSpec : FunSpec({
     }
 
     test("POST /draft/initialize returns 409 when the season has no teams") {
-        apiTest(withDraft(listOf(draft(status = "pending")))) { client ->
-            client.post("/api/v1/seasons/${SEASON_ID.value}/draft/initialize").status shouldBe HttpStatusCode.Conflict
+        authenticatedApiTest(withDraft(listOf(draft(status = "pending")))) { client ->
+            client.post("/api/v1/seasons/${SEASON_ID.value}/draft/initialize")
+                .status shouldBe HttpStatusCode.Conflict
         }
     }
 
     test("POST /draft/initialize?rounds={bad} returns 400") {
-        apiTest(withDraft(listOf(draft(status = "pending")))) { client ->
+        authenticatedApiTest(withDraft(listOf(draft(status = "pending")))) { client ->
             client.post("/api/v1/seasons/${SEASON_ID.value}/draft/initialize?rounds=nope")
                 .status shouldBe HttpStatusCode.BadRequest
         }
@@ -112,13 +114,49 @@ class DraftRoutesSpec : FunSpec({
         val d = draft(status = "in_progress")
         val pick = DraftPick(DraftPickId(UUID.randomUUID()), d.id, teamA, null, 1, 1, null)
 
-        apiTest(withDraft(listOf(d), listOf(pick))) { client ->
+        authenticatedApiTest(withDraft(listOf(d), listOf(pick))) { client ->
             val response =
                 client.post("/api/v1/seasons/${SEASON_ID.value}/draft/pick") {
                     contentType(ContentType.Application.Json)
                     setBody(MakePickRequest(teamId = teamB, golferId = GolferId(UUID.randomUUID())))
                 }
             response.status shouldBe HttpStatusCode.Conflict
+        }
+    }
+
+    test("POST /draft returns 401 without an authenticated session") {
+        apiTest { client ->
+            val response =
+                client.post("/api/v1/seasons/${SEASON_ID.value}/draft") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CreateDraftRequest())
+                }
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("POST /draft/start returns 401 without an authenticated session") {
+        apiTest { client ->
+            client.post("/api/v1/seasons/${SEASON_ID.value}/draft/start")
+                .status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("POST /draft/initialize returns 401 without an authenticated session") {
+        apiTest { client ->
+            client.post("/api/v1/seasons/${SEASON_ID.value}/draft/initialize")
+                .status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("POST /draft/pick returns 401 without an authenticated session") {
+        apiTest { client ->
+            val response =
+                client.post("/api/v1/seasons/${SEASON_ID.value}/draft/pick") {
+                    contentType(ContentType.Application.Json)
+                    setBody(MakePickRequest(teamId = TeamId(UUID.randomUUID()), golferId = GolferId(UUID.randomUUID())))
+                }
+            response.status shouldBe HttpStatusCode.Unauthorized
         }
     }
 
