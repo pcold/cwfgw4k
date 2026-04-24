@@ -27,6 +27,9 @@ sealed class DomainError(message: String) : RuntimeException(message) {
     class Validation(message: String) : DomainError(message)
 
     class Conflict(message: String) : DomainError(message)
+
+    /** An upstream service we depend on (e.g. ESPN) returned an error. Maps to 502 Bad Gateway. */
+    class BadGateway(message: String) : DomainError(message)
 }
 
 private val logger = LoggerFactory.getLogger("com.cwfgw.http.ErrorHandling")
@@ -51,6 +54,9 @@ internal fun Application.installErrorHandling() {
         }
         exception<DomainError.Conflict> { call, cause ->
             call.respond(HttpStatusCode.Conflict, ErrorBody(cause.message ?: "conflict"))
+        }
+        exception<DomainError.BadGateway> { call, cause ->
+            call.respond(HttpStatusCode.BadGateway, ErrorBody(cause.message ?: "upstream unavailable"))
         }
         exception<Throwable> { call, cause ->
             logger.error(

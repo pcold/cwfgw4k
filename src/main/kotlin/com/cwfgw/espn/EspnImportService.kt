@@ -13,7 +13,10 @@ import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.UpdateTournamentRequest
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.LocalDate
+
+private val log = KotlinLogging.logger {}
 
 /**
  * Pulls tournament results from ESPN and writes them into our DB. Composes
@@ -67,6 +70,7 @@ class EspnImportService(
         try {
             Result.Ok(client.fetchScoreboard(date))
         } catch (e: EspnUpstreamException) {
+            log.warn(e) { "ESPN scoreboard fetch failed for $date with status ${e.status}" }
             Result.Err(EspnError.UpstreamUnavailable(e.status))
         }
 

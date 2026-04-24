@@ -5,6 +5,9 @@ import com.cwfgw.db.Database
 import com.cwfgw.drafts.DraftRepository
 import com.cwfgw.drafts.DraftService
 import com.cwfgw.drafts.draftRoutes
+import com.cwfgw.espn.EspnClient
+import com.cwfgw.espn.EspnImportService
+import com.cwfgw.espn.espnRoutes
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.golfers.golferRoutes
@@ -27,6 +30,9 @@ import com.cwfgw.teams.teamRoutes
 import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.tournamentRoutes
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -45,11 +51,19 @@ fun main() {
     val teamService = TeamService(TeamRepository(database.dsl))
     val seasonService = SeasonService(SeasonRepository(database.dsl))
     val tournamentService = TournamentService(TournamentRepository(database.dsl))
+    val golferService = GolferService(GolferRepository(database.dsl))
+    val httpClient =
+        HttpClient(CIO) {
+            install(HttpTimeout) {
+                connectTimeoutMillis = HTTP_CLIENT_CONNECT_TIMEOUT_MS
+                requestTimeoutMillis = HTTP_CLIENT_REQUEST_TIMEOUT_MS
+            }
+        }
     val services =
         AppServices(
             healthProbe = DatabaseHealthProbe(database.dsl),
             leagueService = LeagueService(LeagueRepository(database.dsl)),
-            golferService = GolferService(GolferRepository(database.dsl)),
+            golferService = golferService,
             seasonService = seasonService,
             teamService = teamService,
             tournamentService = tournamentService,
@@ -61,11 +75,21 @@ fun main() {
                     tournamentService = tournamentService,
                     teamService = teamService,
                 ),
+            espnImportService =
+                EspnImportService(
+                    client = EspnClient(httpClient),
+                    tournamentService = tournamentService,
+                    golferService = golferService,
+                    teamService = teamService,
+                ),
         )
     embeddedServer(Netty, port = config.http.port, host = config.http.host) {
         module(services)
     }.start(wait = true)
 }
+
+private const val HTTP_CLIENT_CONNECT_TIMEOUT_MS: Long = 10_000
+private const val HTTP_CLIENT_REQUEST_TIMEOUT_MS: Long = 30_000
 
 @OptIn(ExperimentalSerializationApi::class)
 fun Application.module(services: AppServices) {
@@ -90,6 +114,7 @@ fun Application.module(services: AppServices) {
             tournamentRoutes(services.tournamentService)
             draftRoutes(services.draftService)
             scoringRoutes(services.scoringService)
+            espnRoutes(services.espnImportService)
         }
     }
 }
