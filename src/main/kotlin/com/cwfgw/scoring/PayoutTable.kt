@@ -20,26 +20,43 @@ internal object PayoutTable {
      * then applies the multiplier. A tie that overlaps the payout zone is
      * floored at [SeasonRules.tieFloor] per player so the cheap end of the
      * board never pays less than the floor.
+     *
+     * For team events (Zurich Classic), two ESPN partner rows share one
+     * leaderboard position. We halve the per-player payout so the team
+     * collects the same total as a single non-team finisher would, and we
+     * count tied units as `numTied / 2` because a "tie" between two team
+     * entries is really one team-position, not two.
      */
     fun tieSplitPayout(
         position: Int,
         numTied: Int,
         multiplier: BigDecimal,
         rules: SeasonRules,
+        isTeamEvent: Boolean = false,
     ): BigDecimal {
         val payouts = rules.payouts
         val numPlaces = payouts.size
         if (position > numPlaces) return BigDecimal.ZERO
-        if (numTied <= 1) {
-            return payouts.getOrNull(position - 1)?.multiply(multiplier) ?: BigDecimal.ZERO
+        val tiedUnits = if (isTeamEvent) maxOf(1, numTied / 2) else numTied
+        val perTeamPayout =
+            if (tiedUnits <= 1) {
+                payouts.getOrNull(position - 1)?.multiply(multiplier) ?: BigDecimal.ZERO
+            } else {
+                val totalPayout =
+                    (position until position + tiedUnits)
+                        .mapNotNull { p -> payouts.getOrNull(p - 1) }
+                        .fold(BigDecimal.ZERO, BigDecimal::add)
+                val averaged = totalPayout.divide(BigDecimal(tiedUnits), SPLIT_SCALE, RoundingMode.HALF_UP)
+                averaged.max(rules.tieFloor).multiply(multiplier)
+            }
+        return if (isTeamEvent) {
+            perTeamPayout.divide(TEAM_EVENT_SHARE, SPLIT_SCALE, RoundingMode.HALF_UP)
+        } else {
+            perTeamPayout
         }
-        val totalPayout =
-            (position until position + numTied)
-                .mapNotNull { p -> payouts.getOrNull(p - 1) }
-                .fold(BigDecimal.ZERO, BigDecimal::add)
-        val averaged = totalPayout.divide(BigDecimal(numTied), SPLIT_SCALE, RoundingMode.HALF_UP)
-        return averaged.max(rules.tieFloor).multiply(multiplier)
     }
+
+    private val TEAM_EVENT_SHARE: BigDecimal = BigDecimal(2)
 
     /**
      * Split a base payout across owners so the rounded shares sum exactly to

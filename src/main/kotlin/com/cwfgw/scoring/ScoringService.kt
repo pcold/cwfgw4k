@@ -54,6 +54,7 @@ class ScoringService(
                 tournamentId = tournamentId,
                 rules = rules,
                 multiplier = tournament.payoutMultiplier,
+                isTeamEvent = tournament.isTeamEvent,
                 results = results,
                 ownersByGolfer = ownersByGolfer(rostersByTeam.values.flatten()),
             )
@@ -105,7 +106,14 @@ class ScoringService(
         val position = result.position ?: return null
         if (position > inputs.rules.payouts.size) return null
         val numTied = inputs.results.count { it.position == position }
-        val basePayout = PayoutTable.tieSplitPayout(position, numTied, inputs.multiplier, inputs.rules)
+        val basePayout =
+            PayoutTable.tieSplitPayout(
+                position = position,
+                numTied = numTied,
+                multiplier = inputs.multiplier,
+                rules = inputs.rules,
+                isTeamEvent = inputs.isTeamEvent,
+            )
         val owners = inputs.ownersByGolfer[entry.golferId] ?: emptyList()
         val ownerPayout = PayoutTable.splitOwnership(basePayout, owners)[teamId] ?: basePayout
         val breakdown =
@@ -241,6 +249,7 @@ private data class ScoringInputs(
     val tournamentId: TournamentId,
     val rules: SeasonRules,
     val multiplier: BigDecimal,
+    val isTeamEvent: Boolean,
     val results: List<TournamentResult>,
     val ownersByGolfer: Map<GolferId, List<Pair<TeamId, BigDecimal>>>,
 ) {

@@ -72,6 +72,59 @@ class PayoutTableSpec : FunSpec({
         payout shouldBe ONE
     }
 
+    // ----- team events (Zurich Classic) -----
+
+    test("team-event solo win pays half the head-of-table per partner — team collects the solo-winner amount") {
+        // ESPN reports 2 partner rows sharing position 1, so numTied=2 maps to one team-position.
+        val payout =
+            PayoutTable.tieSplitPayout(
+                position = 1,
+                numTied = 2,
+                multiplier = ONE,
+                rules = DEFAULT_RULES,
+                isTeamEvent = true,
+            )
+        // Each partner: $18 / 2 = $9. Team total: $18 — same as a solo non-team winner.
+        payout.compareTo(BigDecimal(9)) shouldBe 0
+    }
+
+    test("team-event two-team tie at top splits the top two payouts then halves per partner") {
+        // numTied = 4 (2 teams × 2 partners) → tiedUnits = 2.
+        // Avg(positions 1, 2) = ($18 + $12) / 2 = $15; per partner: $15 / 2 = $7.50.
+        val payout =
+            PayoutTable.tieSplitPayout(
+                position = 1,
+                numTied = 4,
+                multiplier = ONE,
+                rules = DEFAULT_RULES,
+                isTeamEvent = true,
+            )
+        payout.compareTo(BigDecimal("7.50")) shouldBe 0
+    }
+
+    test("team-event multiplier scales the per-partner payout") {
+        val payout =
+            PayoutTable.tieSplitPayout(
+                position = 1,
+                numTied = 2,
+                multiplier = TWO,
+                rules = DEFAULT_RULES,
+                isTeamEvent = true,
+            )
+        // ($18 × 2) / 2 partners = $18 each, team total $36.
+        payout.compareTo(BigDecimal(18)) shouldBe 0
+    }
+
+    test("team-event still pays zero past the payout zone") {
+        PayoutTable.tieSplitPayout(
+            position = 11,
+            numTied = 2,
+            multiplier = ONE,
+            rules = DEFAULT_RULES,
+            isTeamEvent = true,
+        ) shouldBe BigDecimal.ZERO
+    }
+
     test("custom rules with fewer payout places truncates correctly") {
         val custom =
             SeasonRules(
