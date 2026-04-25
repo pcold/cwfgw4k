@@ -12,7 +12,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 private val log = KotlinLogging.logger {}
 
 /**
- * Orchestrates tournament + season state transitions:
+ * Orchestrates per-tournament state transitions:
  *   - finalizeTournament: ESPN import → score calculation → standings refresh
  *   - resetTournament:   delete scores + results, revert to upcoming, refresh standings
  *
@@ -22,7 +22,8 @@ private val log = KotlinLogging.logger {}
  * completed. Lives in its own service (rather than on [TournamentService])
  * so the dependency arrow points outward without creating a cycle —
  * [ScoringService] and [EspnService] both already depend on
- * [TournamentService].
+ * [TournamentService]. Season-scope orchestration lives in
+ * [com.cwfgw.seasons.SeasonOpsService].
  */
 class TournamentOpsService(
     private val tournamentService: TournamentService,

@@ -1,19 +1,18 @@
 package com.cwfgw.tournaments
 
-import com.cwfgw.seasons.SeasonId
-
 /**
- * Typed failure modes for tournament + season finalize/reset orchestration.
+ * Typed failure modes for tournament-scope finalize/reset orchestration.
  * Variants stay free of HTTP concerns — routes map them to
- * [com.cwfgw.http.DomainError] at the boundary. The state-machine
- * ordering checks (`OutOfOrder`, `IncompleteTournaments`) are 409
- * conflicts; the not-found variants are 404; upstream/import failures
- * are 502 (carried through from EspnError).
+ * [com.cwfgw.http.DomainError] at the boundary. The chronological-order
+ * checks (`OutOfOrder`) are 409 conflicts; the not-found variant is 404;
+ * upstream/import failures are 502 (carried through from EspnError).
+ *
+ * Season-scope ops have their own [com.cwfgw.seasons.SeasonOpsError]
+ * since the lifecycle state machine and the error variants are
+ * conceptually distinct.
  */
 sealed interface TournamentOpsError {
     data class TournamentNotFound(val id: TournamentId) : TournamentOpsError
-
-    data class SeasonNotFound(val id: SeasonId) : TournamentOpsError
 
     /**
      * Returned when finalize/reset would violate chronological order:
@@ -22,12 +21,6 @@ sealed interface TournamentOpsError {
      * layer can render a deterministic error message.
      */
     data class OutOfOrder(val action: Action, val blocking: List<Tournament>) : TournamentOpsError
-
-    /** Returned by `finalizeSeason` when one or more tournaments aren't yet completed. */
-    data class IncompleteTournaments(val incomplete: List<Tournament>) : TournamentOpsError
-
-    /** Returned by `finalizeSeason` when the season has no tournaments at all to finalize. */
-    data object SeasonHasNoTournaments : TournamentOpsError
 
     /** ESPN was unreachable (or returned non-2xx) during the import step of finalize. */
     data class UpstreamUnavailable(val status: Int) : TournamentOpsError

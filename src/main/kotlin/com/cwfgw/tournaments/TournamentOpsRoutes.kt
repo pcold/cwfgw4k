@@ -11,10 +11,11 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 
 /**
- * Tournament + season state-transition routes (finalize, reset, etc).
- * Lives in its own file rather than [tournamentRoutes] because the ops
- * service composes ESPN + scoring and shouldn't be mixed into the basic
- * tournament CRUD wiring.
+ * Per-tournament state-transition routes (finalize, reset). Lives in
+ * its own file rather than [tournamentRoutes] because the ops service
+ * composes ESPN + scoring and shouldn't be mixed into the basic
+ * tournament CRUD wiring. Season-scope ops live in
+ * [com.cwfgw.seasons.seasonOpsRoutes].
  */
 fun Route.tournamentOpsRoutes(service: TournamentOpsService) {
     authenticate(SESSION_AUTH_NAME) {
@@ -39,11 +40,7 @@ private suspend fun RoutingContext.resetTournament(service: TournamentOpsService
 private fun TournamentOpsError.toDomainError(): DomainError =
     when (this) {
         is TournamentOpsError.TournamentNotFound -> DomainError.NotFound("tournament ${id.value} not found")
-        is TournamentOpsError.SeasonNotFound -> DomainError.NotFound("season ${id.value} not found")
         is TournamentOpsError.OutOfOrder -> DomainError.Conflict(outOfOrderMessage())
-        is TournamentOpsError.IncompleteTournaments ->
-            DomainError.Conflict("cannot finalize season — incomplete tournaments: " + incomplete.formatNames())
-        TournamentOpsError.SeasonHasNoTournaments -> DomainError.Conflict("season has no tournaments to finalize")
         is TournamentOpsError.UpstreamUnavailable -> DomainError.BadGateway("ESPN returned $status")
         is TournamentOpsError.EventNotInScoreboard ->
             DomainError.NotFound("ESPN scoreboard does not contain event $espnEventId for the linked date")
