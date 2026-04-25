@@ -100,6 +100,7 @@ private fun tournament(
         purseAmount = null,
         payoutMultiplier = BigDecimal("1.0000"),
         week = null,
+        isTeamEvent = false,
         createdAt = Instant.EPOCH,
     )
 
@@ -308,6 +309,33 @@ class EspnServiceSpec : FunSpec({
         fixture.service.importByDate(START_DATE)
 
         fixture.tournamentRepo.findById(TOURNAMENT_ID)?.status shouldBe "completed"
+    }
+
+    test("importByDate flips is_team_event on the tournament once ESPN reports a team event") {
+        val novak = golfer(UUID.randomUUID(), "Novak", "Novakovich")
+        val griffin = golfer(UUID.randomUUID(), "Ben", "Griffin")
+        val event =
+            espnTournament(
+                espnId = "401580999",
+                isTeamEvent = true,
+                competitors =
+                    listOf(
+                        espnCompetitor("team:t1:0", "Novakovich", 1, -20, isTeamPartner = true),
+                        espnCompetitor("team:t1:1", "Griffin", 1, -20, isTeamPartner = true),
+                    ),
+            )
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(tournament(pgaTournamentId = "401580999")),
+                initialGolfers = listOf(novak, griffin),
+                tournamentsByDate = mapOf(START_DATE to listOf(event)),
+            )
+
+        fixture.service.importByDate(START_DATE)
+
+        fixture.tournamentRepo.findById(TOURNAMENT_ID)?.isTeamEvent shouldBe true
+        val results = fixture.tournamentRepo.getResults(TOURNAMENT_ID)
+        results.map { it.pairKey } shouldBe listOf("team:t1", "team:t1")
     }
 
     test("importForTournament returns TournamentNotFound when the id does not exist") {

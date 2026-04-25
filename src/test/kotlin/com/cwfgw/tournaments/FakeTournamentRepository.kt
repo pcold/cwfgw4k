@@ -58,6 +58,7 @@ class FakeTournamentRepository(
                 purseAmount = request.purseAmount,
                 payoutMultiplier = request.payoutMultiplier ?: BigDecimal("1.0000"),
                 week = request.week,
+                isTeamEvent = false,
                 createdAt = clock(),
             )
         tournaments[tournament.id] = tournament
@@ -78,6 +79,7 @@ class FakeTournamentRepository(
                 status = request.status ?: current.status,
                 purseAmount = request.purseAmount ?: current.purseAmount,
                 payoutMultiplier = request.payoutMultiplier ?: current.payoutMultiplier,
+                isTeamEvent = request.isTeamEvent ?: current.isTeamEvent,
             )
         tournaments[id] = updated
         return updated
@@ -110,6 +112,7 @@ class FakeTournamentRepository(
                 round3 = request.round3,
                 round4 = request.round4,
                 madeCut = request.madeCut,
+                pairKey = request.pairKey,
             )
         results[entry.id] = entry
         return entry

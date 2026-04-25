@@ -36,6 +36,7 @@ private fun tournament(
         purseAmount = null,
         payoutMultiplier = BigDecimal.ONE,
         week = week,
+        isTeamEvent = false,
         createdAt = Instant.parse("2026-01-01T00:00:00Z"),
     )
 

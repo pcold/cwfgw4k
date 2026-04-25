@@ -67,6 +67,7 @@ private fun mkTournament(): Tournament =
         purseAmount = null,
         payoutMultiplier = BigDecimal.ONE,
         week = null,
+        isTeamEvent = false,
         createdAt = Instant.EPOCH,
     )
 
@@ -117,6 +118,7 @@ private fun mkResult(
         round3 = null,
         round4 = null,
         madeCut = position != null,
+        pairKey = null,
     )
 
 private data class RouteWorld(

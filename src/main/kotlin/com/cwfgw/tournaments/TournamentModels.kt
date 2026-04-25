@@ -42,6 +42,7 @@ data class Tournament(
     val purseAmount: Long?,
     @Serializable(with = BigDecimalSerializer::class) val payoutMultiplier: BigDecimal,
     val week: String?,
+    val isTeamEvent: Boolean,
     @Serializable(with = InstantSerializer::class) val createdAt: Instant,
 )
 
@@ -59,6 +60,7 @@ data class TournamentResult(
     val round3: Int?,
     val round4: Int?,
     val madeCut: Boolean,
+    val pairKey: String?,
 )
 
 @Serializable
@@ -83,6 +85,7 @@ data class UpdateTournamentRequest(
     val status: String? = null,
     val purseAmount: Long? = null,
     @Serializable(with = BigDecimalSerializer::class) val payoutMultiplier: BigDecimal? = null,
+    val isTeamEvent: Boolean? = null,
 )
 
 @Serializable
@@ -97,4 +100,5 @@ data class CreateTournamentResultRequest(
     val round3: Int? = null,
     val round4: Int? = null,
     val madeCut: Boolean = true,
+    val pairKey: String? = null,
 )

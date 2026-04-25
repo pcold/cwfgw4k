@@ -148,6 +148,7 @@ private class JooqTournamentRepository(private val dsl: DSLContext) : Tournament
             request.status?.let { put(TOURNAMENTS.STATUS, it) }
             request.purseAmount?.let { put(TOURNAMENTS.PURSE_AMOUNT, it) }
             request.payoutMultiplier?.let { put(TOURNAMENTS.PAYOUT_MULTIPLIER, it) }
+            request.isTeamEvent?.let { put(TOURNAMENTS.IS_TEAM_EVENT, it) }
         }
 
     private fun resultInsertAssignments(
@@ -166,6 +167,7 @@ private class JooqTournamentRepository(private val dsl: DSLContext) : Tournament
             TOURNAMENT_RESULTS.ROUND3 to request.round3,
             TOURNAMENT_RESULTS.ROUND4 to request.round4,
             TOURNAMENT_RESULTS.MADE_CUT to request.madeCut,
+            TOURNAMENT_RESULTS.PAIR_KEY to request.pairKey,
         )
 
     private fun resultUpdateAssignments(request: CreateTournamentResultRequest): Map<Field<*>, Any?> =
@@ -179,6 +181,7 @@ private class JooqTournamentRepository(private val dsl: DSLContext) : Tournament
             TOURNAMENT_RESULTS.ROUND3 to request.round3,
             TOURNAMENT_RESULTS.ROUND4 to request.round4,
             TOURNAMENT_RESULTS.MADE_CUT to request.madeCut,
+            TOURNAMENT_RESULTS.PAIR_KEY to request.pairKey,
         )
 
     private fun toTournament(record: TournamentsRecord): Tournament =
@@ -197,6 +200,10 @@ private class JooqTournamentRepository(private val dsl: DSLContext) : Tournament
                     "tournaments.payout_multiplier is NOT NULL but returned null"
                 },
             week = record.week,
+            isTeamEvent =
+                checkNotNull(record.isTeamEvent) {
+                    "tournaments.is_team_event is NOT NULL but returned null"
+                },
             createdAt =
                 checkNotNull(record.createdAt) {
                     "tournaments.created_at is NOT NULL but returned null"
@@ -220,5 +227,6 @@ private class JooqTournamentRepository(private val dsl: DSLContext) : Tournament
                 checkNotNull(record.madeCut) {
                     "tournament_results.made_cut is NOT NULL but returned null"
                 },
+            pairKey = record.pairKey,
         )
 }

@@ -65,6 +65,7 @@ private fun mkTournament(multiplier: BigDecimal = BigDecimal.ONE): Tournament =
         purseAmount = null,
         payoutMultiplier = multiplier,
         week = null,
+        isTeamEvent = false,
         createdAt = Instant.EPOCH,
     )
 
@@ -117,6 +118,7 @@ private fun mkResult(
         round3 = null,
         round4 = null,
         madeCut = position != null,
+        pairKey = null,
     )
 
 private data class World(

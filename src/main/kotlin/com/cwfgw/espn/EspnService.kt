@@ -101,7 +101,7 @@ class EspnService(
         val collisions = detectCollisions(matchedPairs)
 
         persistResults(tournament.id, matchedPairs)
-        markCompletedIfNeeded(tournament, event)
+        syncTournamentFromEvent(tournament, event)
 
         return EspnImport(
             tournamentId = tournament.id,
@@ -180,18 +180,31 @@ class EspnService(
                     round3 = competitor.roundScores.getOrNull(2),
                     round4 = competitor.roundScores.getOrNull(3),
                     madeCut = competitor.madeCut,
+                    pairKey = competitor.pairKey,
                 )
             }
         if (requests.isNotEmpty()) tournamentService.importResults(tournamentId, requests)
     }
 
-    private suspend fun markCompletedIfNeeded(
+    /**
+     * After a scoreboard pass, sync any tournament-level facts ESPN just
+     * revealed: the completed flag (so finalize can move on) and the
+     * team-event flag (admin uploadSeason can't know this from the
+     * calendar alone — partner rows only show up in the scoreboard
+     * payload). Updates only when something actually changes.
+     */
+    private suspend fun syncTournamentFromEvent(
         tournament: Tournament,
         event: EspnTournament,
     ) {
-        if (event.completed && tournament.status != STATUS_COMPLETED) {
-            tournamentService.update(tournament.id, UpdateTournamentRequest(status = STATUS_COMPLETED))
-        }
+        val statusChange =
+            if (event.completed && tournament.status != STATUS_COMPLETED) STATUS_COMPLETED else null
+        val teamEventChange = event.isTeamEvent.takeIf { it != tournament.isTeamEvent }
+        if (statusChange == null && teamEventChange == null) return
+        tournamentService.update(
+            tournament.id,
+            UpdateTournamentRequest(status = statusChange, isTeamEvent = teamEventChange),
+        )
     }
 
     private fun detectCollisions(matchedPairs: List<Pair<EspnCompetitor, GolferMatch>>): List<String> =

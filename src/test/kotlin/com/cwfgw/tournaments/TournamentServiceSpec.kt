@@ -70,5 +70,6 @@ private fun tournament(
         purseAmount = null,
         payoutMultiplier = java.math.BigDecimal("1.0000"),
         week = null,
+        isTeamEvent = false,
         createdAt = java.time.Instant.parse("2026-04-01T00:00:00Z"),
     )
