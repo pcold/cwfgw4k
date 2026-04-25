@@ -1,0 +1,492 @@
+package com.cwfgw.reports
+
+import com.cwfgw.golfers.Golfer
+import com.cwfgw.golfers.GolferId
+import com.cwfgw.golfers.GolferService
+import com.cwfgw.result.Result
+import com.cwfgw.scoring.FantasyScore
+import com.cwfgw.scoring.PayoutTable
+import com.cwfgw.scoring.ScoringService
+import com.cwfgw.seasons.SeasonId
+import com.cwfgw.seasons.SeasonRules
+import com.cwfgw.seasons.SeasonService
+import com.cwfgw.teams.RosterEntry
+import com.cwfgw.teams.Team
+import com.cwfgw.teams.TeamId
+import com.cwfgw.teams.TeamService
+import com.cwfgw.tournaments.Tournament
+import com.cwfgw.tournaments.TournamentId
+import com.cwfgw.tournaments.TournamentResult
+import com.cwfgw.tournaments.TournamentService
+import com.cwfgw.tournaments.TournamentStatus
+import java.math.BigDecimal
+
+/**
+ * Builds the operator-facing weekly report — the 13-column × 8-round grid
+ * the league has used for years, plus the surrounding totals (weekly +/-,
+ * standings, side-bet detail, undrafted top-10s). The non-live variant
+ * snapshots whatever's currently in the DB; the live overlay (Phase 2)
+ * will merge in-progress ESPN scoreboard data on top.
+ */
+class WeeklyReportService(
+    private val seasonService: SeasonService,
+    private val tournamentService: TournamentService,
+    private val teamService: TeamService,
+    private val golferService: GolferService,
+    private val scoringService: ScoringService,
+) {
+    /**
+     * Render the report as of one specific tournament. Loads everything the
+     * pure assembly needs in one pass and hands it to [assembleWeeklyReport].
+     * Cross-season tournament references would be a programmer error in the
+     * route layer, not a user-facing failure mode, so we don't validate the
+     * tournament's seasonId against the requested seasonId here.
+     */
+    suspend fun getReport(
+        seasonId: SeasonId,
+        tournamentId: TournamentId,
+    ): Result<WeeklyReport, ReportError> {
+        seasonService.get(seasonId) ?: return Result.Err(ReportError.SeasonNotFound(seasonId))
+        val tournament =
+            tournamentService.get(tournamentId)
+                ?: return Result.Err(ReportError.TournamentNotFound(tournamentId))
+
+        val rules = seasonService.getRules(seasonId) ?: SeasonRules.defaults()
+        val teams = teamService.listBySeason(seasonId)
+        val results = tournamentService.getResults(tournamentId)
+        val allGolfers = golferService.list(activeOnly = false, search = null)
+        val scores = scoringService.getScores(seasonId, tournamentId)
+        val allCompletedTournaments = tournamentService.list(seasonId, status = TournamentStatus.Completed)
+        val allRosters = teams.flatMap { teamService.getRoster(it.id) }
+        val allScores = allCompletedTournaments.flatMap { scoringService.getScores(seasonId, it.id) }
+
+        val inputs =
+            WeeklyReportInputs(
+                rules = rules,
+                teams = teams,
+                tournament = tournament,
+                results = results,
+                allGolfers = allGolfers,
+                scores = scores,
+                allCompletedTournaments = allCompletedTournaments,
+                allRosters = allRosters,
+                allScores = allScores,
+            )
+        return Result.Ok(assembleWeeklyReport(inputs))
+    }
+}
+
+/**
+ * Bag of pre-loaded data the pure [assembleWeeklyReport] needs. Bundled
+ * into one type so the assembly signature stays short and so future
+ * callers (live overlay, season-aggregate report) can build the same
+ * shape without re-deriving the parameter list.
+ */
+internal data class WeeklyReportInputs(
+    val rules: SeasonRules,
+    val teams: List<Team>,
+    val tournament: Tournament,
+    val results: List<TournamentResult>,
+    val allGolfers: List<Golfer>,
+    val scores: List<FantasyScore>,
+    val allCompletedTournaments: List<Tournament>,
+    val allRosters: List<RosterEntry>,
+    val allScores: List<FantasyScore>,
+)
+
+// ----- Pure assembly -----
+
+internal fun assembleWeeklyReport(inputs: WeeklyReportInputs): WeeklyReport {
+    val derived = deriveReportContext(inputs)
+    val teamColumns = inputs.teams.map { team -> buildTeamColumnFromContext(team, inputs, derived) }
+    val rosteredGolferIds = inputs.allRosters.map { it.golferId }.toSet()
+    val undraftedTopTens =
+        buildUndraftedForTournament(
+            results = inputs.results,
+            rosteredGolferIds = rosteredGolferIds,
+            golferMap = derived.golferMap,
+            multiplier = inputs.tournament.payoutMultiplier,
+            rules = inputs.rules,
+            isTeamEvent = inputs.tournament.isTeamEvent,
+        )
+    val sideBetDetail = buildSideBetDetail(derived.sideBetPerRound, inputs.teams, inputs.allRosters, derived.golferMap)
+
+    return WeeklyReport(
+        tournament = buildTournamentInfo(inputs.tournament),
+        teams = teamColumns,
+        undraftedTopTens = undraftedTopTens,
+        sideBetDetail = sideBetDetail,
+        standingsOrder = buildStandingsOrder(teamColumns),
+    )
+}
+
+/**
+ * Pre-derived lookups + per-team aggregates the team-column builder
+ * needs. Computed once per report so each column build is O(1) lookups
+ * against shared maps rather than O(N) walks of the loaded data.
+ */
+private data class ReportContext(
+    val golferMap: Map<GolferId, Golfer>,
+    val resultsByGolfer: Map<GolferId, TournamentResult>,
+    val scoresByTeamGolfer: Map<Pair<TeamId, GolferId>, FantasyScore>,
+    val cumulativeByTeamGolfer: Map<Pair<TeamId, GolferId>, Pair<BigDecimal, Int>>,
+    val priorWeeklyByTeam: Map<TeamId, BigDecimal>,
+    val cumulativeTopTenCounts: Map<TeamId, Int>,
+    val cumulativeTopTenEarnings: Map<TeamId, BigDecimal>,
+    val sideBetPerRound: List<SideBetRoundSnapshot>,
+    val sideBetResults: Map<TeamId, BigDecimal>,
+    val numTiedByPosition: Map<Int, Int>,
+)
+
+private fun deriveReportContext(inputs: WeeklyReportInputs): ReportContext {
+    val numTeams = inputs.teams.size
+    val throughTournaments = inputs.allCompletedTournaments.filter { isOnOrBefore(it, inputs.tournament) }
+    val throughIds = throughTournaments.map { it.id }.toSet()
+    val throughScores = inputs.allScores.filter { it.tournamentId in throughIds }
+    val sideBetPerRound =
+        buildSideBetPerRound(inputs.rules, inputs.allRosters, throughScores, numTeams, inputs.rules.sideBetAmount)
+    return ReportContext(
+        golferMap = inputs.allGolfers.associateBy { it.id },
+        resultsByGolfer = inputs.results.associateBy { it.golferId },
+        scoresByTeamGolfer = inputs.scores.associateBy { it.teamId to it.golferId },
+        cumulativeByTeamGolfer =
+            throughScores.groupBy { it.teamId to it.golferId }
+                .mapValues { (_, scores) -> scores.sumPoints() to scores.size },
+        priorWeeklyByTeam =
+            buildPriorWeekly(throughTournaments, throughScores, inputs.tournament, inputs.teams, numTeams),
+        cumulativeTopTenCounts = throughScores.groupBy { it.teamId }.mapValues { (_, scores) -> scores.size },
+        cumulativeTopTenEarnings = throughScores.groupBy { it.teamId }.mapValues { (_, scores) -> scores.sumPoints() },
+        sideBetPerRound = sideBetPerRound,
+        sideBetResults = aggregateSideBets(sideBetPerRound),
+        numTiedByPosition = inputs.results.mapNotNull { it.position }.groupingBy { it }.eachCount(),
+    )
+}
+
+private fun buildTeamColumnFromContext(
+    team: Team,
+    inputs: WeeklyReportInputs,
+    ctx: ReportContext,
+): ReportTeamColumn =
+    buildReportTeamColumn(
+        team = team,
+        allRosters = inputs.allRosters,
+        golferMap = ctx.golferMap,
+        resultsByGolfer = ctx.resultsByGolfer,
+        scoresByTeamGolfer = ctx.scoresByTeamGolfer,
+        tournamentScores = inputs.scores,
+        cumulativeByTeamGolfer = ctx.cumulativeByTeamGolfer,
+        priorWeeklyByTeam = ctx.priorWeeklyByTeam,
+        cumulativeTopTenCounts = ctx.cumulativeTopTenCounts,
+        cumulativeTopTenEarnings = ctx.cumulativeTopTenEarnings,
+        sideBetResults = ctx.sideBetResults,
+        numTiedByPosition = ctx.numTiedByPosition,
+        numTeams = inputs.teams.size,
+    )
+
+internal fun buildTournamentInfo(tournament: Tournament): ReportTournamentInfo =
+    ReportTournamentInfo(
+        id = tournament.id,
+        name = tournament.name,
+        startDate = tournament.startDate.toString(),
+        endDate = tournament.endDate.toString(),
+        status = tournament.status,
+        payoutMultiplier = tournament.payoutMultiplier,
+        week = tournament.week,
+    )
+
+/**
+ * Sum the per-team weekly +/- across every prior tournament in
+ * chronological order. Each prior tournament is itself zero-sum across
+ * teams: a team's weekly = (its top-10 earnings × N) − (sum of all
+ * top-10 earnings). Used as the `previous` running total in the report.
+ */
+internal fun buildPriorWeekly(
+    throughTournaments: List<Tournament>,
+    throughScores: List<FantasyScore>,
+    tournament: Tournament,
+    teams: List<Team>,
+    numTeams: Int,
+): Map<TeamId, BigDecimal> {
+    val priorTournaments = throughTournaments.filter { isBefore(it, tournament) }
+    val priorTournamentIds = priorTournaments.map { it.id }.toSet()
+    val priorScoresByTournament =
+        throughScores
+            .filter { it.tournamentId in priorTournamentIds }
+            .groupBy { it.tournamentId }
+    val perTournamentDeltas =
+        priorScoresByTournament.values.flatMap { tournamentScores ->
+            val teamTopTens =
+                tournamentScores.groupBy { it.teamId }.mapValues { (_, scores) -> scores.sumPoints() }
+            val totalPot = teamTopTens.values.fold(BigDecimal.ZERO, BigDecimal::add)
+            teams.map { team ->
+                val earned = teamTopTens[team.id] ?: BigDecimal.ZERO
+                team.id to earned.multiply(BigDecimal(numTeams)).subtract(totalPot)
+            }
+        }
+    return perTournamentDeltas
+        .groupBy({ it.first }, { it.second })
+        .mapValues { (_, deltas) -> deltas.fold(BigDecimal.ZERO, BigDecimal::add) }
+}
+
+@Suppress("LongParameterList")
+internal fun buildReportTeamColumn(
+    team: Team,
+    allRosters: List<RosterEntry>,
+    golferMap: Map<GolferId, Golfer>,
+    resultsByGolfer: Map<GolferId, TournamentResult>,
+    scoresByTeamGolfer: Map<Pair<TeamId, GolferId>, FantasyScore>,
+    tournamentScores: List<FantasyScore>,
+    cumulativeByTeamGolfer: Map<Pair<TeamId, GolferId>, Pair<BigDecimal, Int>>,
+    priorWeeklyByTeam: Map<TeamId, BigDecimal>,
+    cumulativeTopTenCounts: Map<TeamId, Int>,
+    cumulativeTopTenEarnings: Map<TeamId, BigDecimal>,
+    sideBetResults: Map<TeamId, BigDecimal>,
+    numTiedByPosition: Map<Int, Int>,
+    numTeams: Int,
+): ReportTeamColumn {
+    val roster =
+        allRosters
+            .filter { it.teamId == team.id }
+            .sortedBy { it.draftRound ?: Int.MAX_VALUE }
+    val cells =
+        buildWeeklyCells(
+            roster = roster,
+            golferMap = golferMap,
+            resultsByGolfer = resultsByGolfer,
+            scoresByTeamGolfer = scoresByTeamGolfer,
+            cumulativeByTeamGolfer = cumulativeByTeamGolfer,
+            numTiedByPosition = numTiedByPosition,
+            teamId = team.id,
+        )
+
+    val weeklyTopTenEarnings = cells.fold(BigDecimal.ZERO) { acc, cell -> acc.add(cell.earnings) }
+    val totalPot =
+        tournamentScores.groupBy { it.teamId }
+            .values
+            .fold(BigDecimal.ZERO) { acc, group -> acc.add(group.sumPoints()) }
+    val weeklyTotal = weeklyTopTenEarnings.multiply(BigDecimal(numTeams)).subtract(totalPot)
+    val previous = priorWeeklyByTeam[team.id] ?: BigDecimal.ZERO
+    val subtotal = previous.add(weeklyTotal)
+    val sideBetTotal = sideBetResults[team.id] ?: BigDecimal.ZERO
+
+    return ReportTeamColumn(
+        teamId = team.id,
+        teamName = team.teamName,
+        ownerName = team.ownerName,
+        cells = cells,
+        topTenEarnings = weeklyTopTenEarnings,
+        weeklyTotal = weeklyTotal,
+        previous = previous,
+        subtotal = subtotal,
+        topTenCount = cumulativeTopTenCounts[team.id] ?: 0,
+        topTenMoney = cumulativeTopTenEarnings[team.id] ?: BigDecimal.ZERO,
+        sideBets = sideBetTotal,
+        totalCash = subtotal.add(sideBetTotal),
+    )
+}
+
+@Suppress("LongParameterList")
+private fun buildWeeklyCells(
+    roster: List<RosterEntry>,
+    golferMap: Map<GolferId, Golfer>,
+    resultsByGolfer: Map<GolferId, TournamentResult>,
+    scoresByTeamGolfer: Map<Pair<TeamId, GolferId>, FantasyScore>,
+    cumulativeByTeamGolfer: Map<Pair<TeamId, GolferId>, Pair<BigDecimal, Int>>,
+    numTiedByPosition: Map<Int, Int>,
+    teamId: TeamId,
+): List<ReportCell> =
+    (1..ROUNDS_PER_REPORT).map { round ->
+        val entry = roster.firstOrNull { it.draftRound == round }
+        if (entry == null) {
+            emptyCell(round)
+        } else {
+            cellForEntry(
+                round = round,
+                entry = entry,
+                teamId = teamId,
+                golferMap = golferMap,
+                resultsByGolfer = resultsByGolfer,
+                scoresByTeamGolfer = scoresByTeamGolfer,
+                cumulativeByTeamGolfer = cumulativeByTeamGolfer,
+                numTiedByPosition = numTiedByPosition,
+            )
+        }
+    }
+
+@Suppress("LongParameterList")
+private fun cellForEntry(
+    round: Int,
+    entry: RosterEntry,
+    teamId: TeamId,
+    golferMap: Map<GolferId, Golfer>,
+    resultsByGolfer: Map<GolferId, TournamentResult>,
+    scoresByTeamGolfer: Map<Pair<TeamId, GolferId>, FantasyScore>,
+    cumulativeByTeamGolfer: Map<Pair<TeamId, GolferId>, Pair<BigDecimal, Int>>,
+    numTiedByPosition: Map<Int, Int>,
+): ReportCell {
+    val golferName = golferMap[entry.golferId]?.lastName?.uppercase() ?: "?"
+    val result = resultsByGolfer[entry.golferId]
+    val score = scoresByTeamGolfer[teamId to entry.golferId]
+    val position = result?.position
+    val (cumulativeEarnings, cumulativeTopTens) =
+        cumulativeByTeamGolfer[teamId to entry.golferId] ?: (BigDecimal.ZERO to 0)
+    return ReportCell(
+        round = round,
+        golferName = golferName,
+        golferId = entry.golferId,
+        positionStr = position?.let { positionString(it, numTiedByPosition[it] ?: 1) },
+        scoreToPar = result?.scoreToPar?.let(::formatScoreToPar),
+        earnings = score?.points ?: BigDecimal.ZERO,
+        topTens = if (position != null && position <= TOP_TEN_CUTOFF) 1 else 0,
+        ownershipPct = entry.ownershipPct,
+        seasonEarnings = cumulativeEarnings,
+        seasonTopTens = cumulativeTopTens,
+        pairKey = result?.pairKey,
+    )
+}
+
+private fun emptyCell(round: Int): ReportCell =
+    ReportCell(
+        round = round,
+        golferName = null,
+        golferId = null,
+        positionStr = null,
+        scoreToPar = null,
+        earnings = BigDecimal.ZERO,
+        topTens = 0,
+        ownershipPct = BigDecimal(100),
+        seasonEarnings = BigDecimal.ZERO,
+        seasonTopTens = 0,
+    )
+
+/** Render a leaderboard position with a `T` prefix when more than one golfer shares the position. */
+private fun positionString(
+    position: Int,
+    numTied: Int,
+): String = if (numTied > 1) "T$position" else position.toString()
+
+@Suppress("LongParameterList")
+internal fun buildUndraftedForTournament(
+    results: List<TournamentResult>,
+    rosteredGolferIds: Set<GolferId>,
+    golferMap: Map<GolferId, Golfer>,
+    multiplier: BigDecimal,
+    rules: SeasonRules,
+    isTeamEvent: Boolean,
+): List<UndraftedGolfer> =
+    results
+        .filter { result ->
+            val position = result.position ?: return@filter false
+            position <= TOP_TEN_CUTOFF && result.golferId !in rosteredGolferIds
+        }
+        .sortedBy { it.position ?: Int.MAX_VALUE }
+        .map { result ->
+            val golfer = golferMap[result.golferId]
+            val name = golfer?.let { "${it.firstName.firstOrNull() ?: '?'}. ${it.lastName}" } ?: "?"
+            val numTied = results.count { it.position == result.position }
+            val payout =
+                PayoutTable.tieSplitPayout(
+                    position = result.position ?: NEVER_PAID_POSITION,
+                    numTied = numTied,
+                    multiplier = multiplier,
+                    rules = rules,
+                    isTeamEvent = isTeamEvent,
+                )
+            UndraftedGolfer(
+                name = name,
+                position = result.position,
+                payout = payout,
+                scoreToPar = result.scoreToPar?.let(::formatScoreToPar),
+                pairKey = result.pairKey,
+            )
+        }
+
+/**
+ * Snapshot of one side-bet round: the per-team cumulative earnings the
+ * winners are picked from, and the per-team payouts for that round.
+ * Carries the round number so [buildSideBetDetail] can emit the rounds in
+ * the same order [SeasonRules.sideBetRounds] declares them.
+ */
+internal data class SideBetRoundSnapshot(
+    val round: Int,
+    val teamCumulativeEarnings: Map<TeamId, BigDecimal>,
+    val payouts: Map<TeamId, BigDecimal>,
+)
+
+internal fun buildSideBetPerRound(
+    rules: SeasonRules,
+    allRosters: List<RosterEntry>,
+    allScores: List<FantasyScore>,
+    numTeams: Int,
+    sideBetPerTeam: BigDecimal,
+): List<SideBetRoundSnapshot> =
+    rules.sideBetRounds.map { round ->
+        val roundPicks = allRosters.filter { it.draftRound == round }
+        val teamTotals =
+            roundPicks.associate { entry ->
+                val total =
+                    allScores
+                        .filter { it.teamId == entry.teamId && it.golferId == entry.golferId }
+                        .sumPoints()
+                entry.teamId to total.multiply(entry.ownershipPct).divide(BigDecimal(OWNERSHIP_DENOMINATOR))
+            }
+        val payouts =
+            if (teamTotals.isEmpty() || teamTotals.values.all { it.signum() == 0 }) {
+                emptyMap()
+            } else {
+                computeSideBetPayouts(teamTotals, numTeams, sideBetPerTeam)
+            }
+        SideBetRoundSnapshot(round = round, teamCumulativeEarnings = teamTotals, payouts = payouts)
+    }
+
+private fun computeSideBetPayouts(
+    teamTotals: Map<TeamId, BigDecimal>,
+    numTeams: Int,
+    sideBetPerTeam: BigDecimal,
+): Map<TeamId, BigDecimal> {
+    val maxEarnings = teamTotals.values.max()
+    val winners = teamTotals.filterValues { it == maxEarnings }.keys
+    val winnerCount = winners.size
+    val winnerCollects =
+        sideBetPerTeam.multiply(BigDecimal(numTeams - winnerCount)).divide(BigDecimal(winnerCount))
+    return teamTotals.mapValues { (teamId, _) ->
+        if (teamId in winners) winnerCollects else sideBetPerTeam.negate()
+    }
+}
+
+internal fun aggregateSideBets(perRound: List<SideBetRoundSnapshot>): Map<TeamId, BigDecimal> =
+    perRound
+        .flatMap { snapshot -> snapshot.payouts.entries.map { it.key to it.value } }
+        .groupBy({ it.first }, { it.second })
+        .mapValues { (_, amounts) -> amounts.fold(BigDecimal.ZERO, BigDecimal::add) }
+
+internal fun buildSideBetDetail(
+    perRound: List<SideBetRoundSnapshot>,
+    teams: List<Team>,
+    allRosters: List<RosterEntry>,
+    golferMap: Map<GolferId, Golfer>,
+): List<ReportSideBetRound> =
+    perRound.map { snapshot ->
+        val teamEntries =
+            teams.map { team ->
+                val entry = allRosters.firstOrNull { it.teamId == team.id && it.draftRound == snapshot.round }
+                val golferName = entry?.let { golferMap[it.golferId]?.lastName?.uppercase() } ?: "—"
+                ReportSideBetTeamEntry(
+                    teamId = team.id,
+                    golferName = golferName,
+                    cumulativeEarnings = snapshot.teamCumulativeEarnings[team.id] ?: BigDecimal.ZERO,
+                    payout = snapshot.payouts[team.id] ?: BigDecimal.ZERO,
+                )
+            }
+        ReportSideBetRound(round = snapshot.round, teams = teamEntries)
+    }
+
+private fun List<FantasyScore>.sumPoints(): BigDecimal = fold(BigDecimal.ZERO) { acc, score -> acc.add(score.points) }
+
+private const val ROUNDS_PER_REPORT = 8
+private const val TOP_TEN_CUTOFF = 10
+private const val OWNERSHIP_DENOMINATOR = 100
+
+// Sentinel position fed to [PayoutTable.tieSplitPayout] when the result has no position —
+// past the payout zone so the table returns 0.
+private const val NEVER_PAID_POSITION = 99

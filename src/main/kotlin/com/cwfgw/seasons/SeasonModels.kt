@@ -71,5 +71,14 @@ data class SeasonRules(
         val DEFAULT_TIE_FLOOR: BigDecimal = BigDecimal.ONE
         val DEFAULT_SIDE_BET_ROUNDS: List<Int> = listOf(5, 6, 7, 8)
         val DEFAULT_SIDE_BET_AMOUNT: BigDecimal = BigDecimal(15)
+
+        /** Shared league defaults; used wherever a season hasn't customized its rules row. */
+        fun defaults(): SeasonRules =
+            SeasonRules(
+                payouts = DEFAULT_PAYOUTS,
+                tieFloor = DEFAULT_TIE_FLOOR,
+                sideBetRounds = DEFAULT_SIDE_BET_ROUNDS,
+                sideBetAmount = DEFAULT_SIDE_BET_AMOUNT,
+            )
     }
 }

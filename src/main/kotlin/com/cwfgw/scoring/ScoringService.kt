@@ -231,14 +231,6 @@ class ScoringService(
         scores.fold(BigDecimal.ZERO) { acc, entry -> acc.add(entry.payout) }
 }
 
-private fun SeasonRules.Companion.defaults(): SeasonRules =
-    SeasonRules(
-        payouts = DEFAULT_PAYOUTS,
-        tieFloor = DEFAULT_TIE_FLOOR,
-        sideBetRounds = DEFAULT_SIDE_BET_ROUNDS,
-        sideBetAmount = DEFAULT_SIDE_BET_AMOUNT,
-    )
-
 /**
  * Per-call inputs for [ScoringService.calculateScores]. Bundles the data
  * needed to score every golfer for every team in a single tournament so the
