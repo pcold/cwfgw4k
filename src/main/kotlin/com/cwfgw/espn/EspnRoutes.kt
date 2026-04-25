@@ -11,6 +11,7 @@ import io.ktor.server.auth.authenticate
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingContext
+import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import java.time.LocalDate
@@ -19,12 +20,26 @@ import java.time.format.DateTimeParseException
 private val log = KotlinLogging.logger {}
 
 fun Route.espnRoutes(service: EspnService) {
-    authenticate(SESSION_AUTH_NAME) {
-        route("/espn/import") {
-            post { importByDate(service) }
-            post("/tournament/{tournamentId}") { importForTournament(service) }
+    route("/espn") {
+        get("/calendar") { getCalendar(service) }
+        authenticate(SESSION_AUTH_NAME) {
+            route("/import") {
+                post { importByDate(service) }
+                post("/tournament/{tournamentId}") { importForTournament(service) }
+            }
         }
     }
+}
+
+private suspend fun RoutingContext.getCalendar(service: EspnService) {
+    val entries =
+        try {
+            service.fetchCalendar()
+        } catch (e: EspnUpstreamException) {
+            log.warn(e) { "ESPN calendar fetch failed with status ${e.status}" }
+            throw DomainError.BadGateway("ESPN returned ${e.status}", cause = e)
+        }
+    call.respond(entries)
 }
 
 private suspend fun RoutingContext.importByDate(service: EspnService) {

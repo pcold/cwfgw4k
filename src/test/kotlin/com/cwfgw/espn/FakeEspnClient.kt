@@ -9,13 +9,22 @@ import java.time.LocalDate
  */
 class FakeEspnClient(
     private val tournamentsByDate: Map<LocalDate, List<EspnTournament>> = emptyMap(),
+    private val calendar: List<EspnCalendarEntry> = emptyList(),
     private val upstreamError: EspnUpstreamException? = null,
 ) : EspnClient {
     val fetchCalls = mutableListOf<LocalDate>()
+    var calendarCalls: Int = 0
+        private set
 
     override suspend fun fetchScoreboard(date: LocalDate): List<EspnTournament> {
         fetchCalls += date
         if (upstreamError != null) throw upstreamError
         return tournamentsByDate[date] ?: emptyList()
+    }
+
+    override suspend fun fetchCalendar(): List<EspnCalendarEntry> {
+        calendarCalls++
+        if (upstreamError != null) throw upstreamError
+        return calendar
     }
 }

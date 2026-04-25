@@ -21,18 +21,18 @@ data class ErrorBody(val error: String)
  * Throw one of these from a service or route to get the right status code
  * without each handler carrying its own try/catch.
  */
-sealed class DomainError(message: String) : RuntimeException(message) {
-    class NotFound(message: String) : DomainError(message)
+sealed class DomainError(message: String, cause: Throwable? = null) : RuntimeException(message, cause) {
+    class NotFound(message: String, cause: Throwable? = null) : DomainError(message, cause)
 
-    class Validation(message: String) : DomainError(message)
+    class Validation(message: String, cause: Throwable? = null) : DomainError(message, cause)
 
-    class Conflict(message: String) : DomainError(message)
+    class Conflict(message: String, cause: Throwable? = null) : DomainError(message, cause)
 
     /** An upstream service we depend on (e.g. ESPN) returned an error. Maps to 502 Bad Gateway. */
-    class BadGateway(message: String) : DomainError(message)
+    class BadGateway(message: String, cause: Throwable? = null) : DomainError(message, cause)
 
     /** Authentication required or failed — bad credentials, missing session. Maps to 401 Unauthorized. */
-    class Unauthorized(message: String) : DomainError(message)
+    class Unauthorized(message: String, cause: Throwable? = null) : DomainError(message, cause)
 }
 
 private val logger = LoggerFactory.getLogger("com.cwfgw.http.ErrorHandling")

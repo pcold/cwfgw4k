@@ -59,6 +59,7 @@ private fun espnTournament(
 
 private fun withWiredService(
     tournaments: Map<LocalDate, List<EspnTournament>> = emptyMap(),
+    calendar: List<EspnCalendarEntry> = emptyList(),
     upstreamError: EspnUpstreamException? = null,
     seedTournaments: List<CreateTournamentRequest> = emptyList(),
 ): ApiFixture.() -> Unit =
@@ -77,7 +78,12 @@ private fun withWiredService(
         teamService = TeamService(teamRepo)
         espnService =
             EspnService(
-                client = FakeEspnClient(tournamentsByDate = tournaments, upstreamError = upstreamError),
+                client =
+                    FakeEspnClient(
+                        tournamentsByDate = tournaments,
+                        calendar = calendar,
+                        upstreamError = upstreamError,
+                    ),
                 tournamentService = tournamentSvc,
                 golferService = golferService,
                 teamService = teamService,
@@ -205,6 +211,28 @@ class EspnRoutesSpec : FunSpec({
         apiTest { client ->
             client.post("/api/v1/espn/import/tournament/${UUID.randomUUID()}")
                 .status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("GET /espn/calendar returns 200 with the upstream calendar entries — public, no auth required") {
+        val entries =
+            listOf(
+                EspnCalendarEntry(id = "401580001", label = "The Sentry", startDate = "2026-01-02T00:00Z"),
+                EspnCalendarEntry(id = "401580999", label = "Masters", startDate = "2026-04-09T00:00Z"),
+            )
+        apiTest(withWiredService(calendar = entries)) { client ->
+            val response = client.get("/api/v1/espn/calendar")
+
+            response.status shouldBe HttpStatusCode.OK
+            response.body<List<EspnCalendarEntry>>() shouldBe entries
+        }
+    }
+
+    test("GET /espn/calendar returns 502 when ESPN responds with an upstream error") {
+        apiTest(
+            withWiredService(upstreamError = EspnUpstreamException(503, "Service Unavailable")),
+        ) { client ->
+            client.get("/api/v1/espn/calendar").status shouldBe HttpStatusCode.BadGateway
         }
     }
 })

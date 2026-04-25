@@ -27,6 +27,13 @@ interface EspnClient {
      * how to translate that at the HTTP boundary.
      */
     suspend fun fetchScoreboard(date: LocalDate): List<EspnTournament>
+
+    /**
+     * Fetch ESPN's season calendar — the list of tournaments scheduled for
+     * the season. Hits the base scoreboard URL with no date param; the
+     * calendar is embedded under `leagues[0].calendar[]` in the response.
+     */
+    suspend fun fetchCalendar(): List<EspnCalendarEntry>
 }
 
 const val ESPN_DEFAULT_BASE_URL: String =
@@ -52,6 +59,17 @@ private class HttpEspnClient(
         }
         return parseScoreboard(response.bodyAsText())
     }
+
+    override suspend fun fetchCalendar(): List<EspnCalendarEntry> {
+        val response = httpClient.get(baseUrl)
+        if (response.status != HttpStatusCode.OK) {
+            throw EspnUpstreamException(
+                status = response.status.value,
+                message = "ESPN returned ${response.status.value} for the calendar request",
+            )
+        }
+        return parseCalendar(response.bodyAsText())
+    }
 }
 
 /**
@@ -74,6 +92,26 @@ internal fun parseScoreboard(body: String): List<EspnTournament> =
         .events
         .map(::parseEvent)
 
+/**
+ * Extract the season calendar from a raw scoreboard response. ESPN embeds
+ * the calendar under the first league's `calendar[]` array; entries that
+ * are missing any of the three required fields are dropped silently
+ * (defensive — ESPN occasionally ships empty placeholder entries).
+ */
+internal fun parseCalendar(body: String): List<EspnCalendarEntry> =
+    espnJson.decodeFromString<EspnScoreboardResponse>(body)
+        .leagues
+        .firstOrNull()
+        ?.calendar
+        .orEmpty()
+        .mapNotNull { entry ->
+            EspnCalendarEntry(
+                id = entry.id ?: return@mapNotNull null,
+                label = entry.label ?: return@mapNotNull null,
+                startDate = entry.startDate ?: return@mapNotNull null,
+            )
+        }
+
 // ESPN uses camelCase, unlike our server's SnakeCase global Json.
 private val espnJson: Json =
     Json {
@@ -83,6 +121,17 @@ private val espnJson: Json =
 @Serializable
 internal data class EspnScoreboardResponse(
     val events: List<EspnEventJson> = emptyList(),
+    val leagues: List<EspnLeagueJson> = emptyList(),
+)
+
+@Serializable
+internal data class EspnLeagueJson(val calendar: List<EspnCalendarJson> = emptyList())
+
+@Serializable
+internal data class EspnCalendarJson(
+    val id: String? = null,
+    val label: String? = null,
+    val startDate: String? = null,
 )
 
 @Serializable

@@ -528,4 +528,87 @@ class EspnClientSpec : FunSpec({
             }
         thrown.status shouldBe HttpStatusCode.InternalServerError.value
     }
+
+    // ----- parseCalendar -----
+
+    test("parseCalendar reads id, label, and startDate from leagues[0].calendar[]") {
+        val json =
+            """
+            {
+              "leagues": [{
+                "calendar": [
+                  {"id": "401580001", "label": "The Sentry", "startDate": "2026-01-02T00:00Z"},
+                  {"id": "401580999", "label": "Masters Tournament", "startDate": "2026-04-09T00:00Z"}
+                ]
+              }]
+            }
+            """.trimIndent()
+
+        val entries = parseCalendar(json)
+
+        entries.map { it.id } shouldContainExactly listOf("401580001", "401580999")
+        entries[1].label shouldBe "Masters Tournament"
+        entries[1].startDate shouldBe "2026-04-09T00:00Z"
+    }
+
+    test("parseCalendar drops entries that are missing any of id, label, or startDate") {
+        val json =
+            """
+            {
+              "leagues": [{
+                "calendar": [
+                  {"id": "valid", "label": "OK", "startDate": "2026-04-09T00:00Z"},
+                  {"id": "no-label", "startDate": "2026-04-15T00:00Z"},
+                  {"label": "no-id", "startDate": "2026-04-22T00:00Z"},
+                  {"id": "no-date", "label": "OK"}
+                ]
+              }]
+            }
+            """.trimIndent()
+
+        parseCalendar(json).map { it.id } shouldContainExactly listOf("valid")
+    }
+
+    test("parseCalendar returns an empty list when leagues is missing") {
+        parseCalendar("""{"events": []}""").shouldBeEmpty()
+    }
+
+    // ----- fetchCalendar HTTP layer -----
+
+    test("fetchCalendar issues a GET to the base URL with no date parameter and decodes the calendar") {
+        var requestedUrl: String? = null
+        val mockEngine =
+            MockEngine { request ->
+                requestedUrl = request.url.toString()
+                respond(
+                    content =
+                        """
+                        {
+                          "leagues": [{
+                            "calendar": [
+                              {"id": "401580001", "label": "Sentry", "startDate": "2026-01-02T00:00Z"}
+                            ]
+                          }]
+                        }
+                        """.trimIndent(),
+                    status = HttpStatusCode.OK,
+                    headers = headersOf("Content-Type", "application/json"),
+                )
+            }
+        val client = EspnClient(HttpClient(mockEngine), baseUrl = "https://mock.test/scoreboard")
+
+        val entries = client.fetchCalendar()
+
+        requestedUrl shouldBe "https://mock.test/scoreboard"
+        entries.single().label shouldBe "Sentry"
+    }
+
+    test("fetchCalendar throws EspnUpstreamException on a non-200 response") {
+        val mockEngine =
+            MockEngine { _ -> respondError(HttpStatusCode.BadGateway, "upstream") }
+        val client = EspnClient(HttpClient(mockEngine), baseUrl = "https://mock.test/scoreboard")
+
+        val thrown = shouldThrow<EspnUpstreamException> { client.fetchCalendar() }
+        thrown.status shouldBe HttpStatusCode.BadGateway.value
+    }
 })

@@ -40,6 +40,13 @@ class EspnService(
     private val golferService: GolferService,
     private val teamService: TeamService,
 ) {
+    /**
+     * Fetch ESPN's season calendar. Pass-through to the client; surfaced on
+     * the service so routes stay service-only and don't pull [EspnClient]
+     * into their wiring.
+     */
+    suspend fun fetchCalendar(): List<EspnCalendarEntry> = client.fetchCalendar()
+
     suspend fun importByDate(date: LocalDate): Result<EspnImportBatch, EspnError> {
         val events = fetchOrFail(date).getOrElse { return Result.Err(it) }
         val imported = mutableListOf<EspnImport>()
