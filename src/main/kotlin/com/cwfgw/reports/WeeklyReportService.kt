@@ -74,6 +74,138 @@ class WeeklyReportService(
             )
         return Result.Ok(assembleWeeklyReport(inputs))
     }
+
+    /**
+     * Season-aggregate report: same wire shape as [getReport] but every
+     * column rolls up across every completed tournament. The "tournament"
+     * info block carries the synthetic id-less placeholder so the UI
+     * knows it's looking at a season view and not a specific event.
+     */
+    suspend fun getSeasonReport(seasonId: SeasonId): Result<WeeklyReport, ReportError> {
+        seasonService.get(seasonId) ?: return Result.Err(ReportError.SeasonNotFound(seasonId))
+
+        val rules = seasonService.getRules(seasonId) ?: SeasonRules.defaults()
+        val teams = teamService.listBySeason(seasonId)
+        val allGolfers = golferService.list(activeOnly = false, search = null)
+        val completed = tournamentService.list(seasonId, status = TournamentStatus.Completed)
+        val allRosters = teams.flatMap { teamService.getRoster(it.id) }
+        val allScores = completed.flatMap { scoringService.getScores(seasonId, it.id) }
+        val allResults = completed.flatMap { tournamentService.getResults(it.id) }
+
+        val inputs =
+            SeasonReportInputs(
+                rules = rules,
+                teams = teams,
+                allGolfers = allGolfers,
+                completed = completed,
+                allRosters = allRosters,
+                allScores = allScores,
+                allResults = allResults,
+            )
+        return Result.Ok(assembleSeasonReport(inputs))
+    }
+
+    /**
+     * Cumulative team rankings with per-tournament series for the line
+     * chart. `through` optionally trims the included tournaments to those
+     * at or before a cutoff event so an operator can replay standings as
+     * of any past week.
+     */
+    suspend fun getRankings(
+        seasonId: SeasonId,
+        throughTournamentId: TournamentId? = null,
+    ): Result<Rankings, ReportError> {
+        seasonService.get(seasonId) ?: return Result.Err(ReportError.SeasonNotFound(seasonId))
+        val through =
+            throughTournamentId?.let { id ->
+                tournamentService.get(id) ?: return Result.Err(ReportError.TournamentNotFound(id))
+            }
+
+        val rules = seasonService.getRules(seasonId) ?: SeasonRules.defaults()
+        val teams = teamService.listBySeason(seasonId)
+        val completed = tournamentService.list(seasonId, status = TournamentStatus.Completed)
+        val included = filterThroughTournament(completed, through)
+        val allRosters = teams.flatMap { teamService.getRoster(it.id) }
+        val allScores = included.flatMap { scoringService.getScores(seasonId, it.id) }
+
+        val sideBets =
+            aggregateSideBets(buildSideBetPerRound(rules, allRosters, allScores, teams.size, rules.sideBetAmount))
+        val sortedIncluded = included.sortedWith(tournamentOrdering)
+        val history = buildCumulativeHistory(sortedIncluded, allScores, teams)
+        val currentTotals = history.lastOrNull() ?: teams.associate { it.id to BigDecimal.ZERO }
+
+        val rankings =
+            teams.map { team ->
+                val subtotal = currentTotals[team.id] ?: BigDecimal.ZERO
+                val teamSideBets = sideBets[team.id] ?: BigDecimal.ZERO
+                TeamRanking(
+                    teamId = team.id,
+                    teamName = team.teamName,
+                    subtotal = subtotal,
+                    sideBets = teamSideBets,
+                    totalCash = subtotal.add(teamSideBets),
+                    series = history.map { snapshot -> (snapshot[team.id] ?: BigDecimal.ZERO).add(teamSideBets) },
+                )
+            }.sortedByDescending { it.totalCash }
+
+        return Result.Ok(
+            Rankings(
+                teams = rankings,
+                weeks = sortedIncluded.map { it.week ?: "" },
+                tournamentNames = sortedIncluded.map { it.name },
+            ),
+        )
+    }
+
+    /**
+     * Top-10 finishes for a single golfer over the season — driven from
+     * [TournamentResult] (real leaderboard), not [FantasyScore], so the
+     * payouts shown represent what one full-ownership team would have
+     * earned, independent of which fantasy teams actually rostered them.
+     */
+    suspend fun getGolferHistory(
+        seasonId: SeasonId,
+        golferId: GolferId,
+    ): Result<GolferHistory, ReportError> {
+        seasonService.get(seasonId) ?: return Result.Err(ReportError.SeasonNotFound(seasonId))
+        val golfer = golferService.get(golferId) ?: return Result.Err(ReportError.GolferNotFound(golferId))
+
+        val rules = seasonService.getRules(seasonId) ?: SeasonRules.defaults()
+        val completed = tournamentService.list(seasonId, status = TournamentStatus.Completed)
+        val byTournament =
+            completed.associateWith { tournamentService.getResults(it.id) }
+
+        val entries =
+            byTournament
+                .mapNotNull { (tournament, results) ->
+                    val mine =
+                        results.firstOrNull { result ->
+                            result.golferId == golferId && (result.position ?: Int.MAX_VALUE) <= TOP_TEN_CUTOFF
+                        } ?: return@mapNotNull null
+                    val position = mine.position ?: return@mapNotNull null
+                    val numTied = results.count { it.position == position }
+                    val payout =
+                        PayoutTable.tieSplitPayout(
+                            position = position,
+                            numTied = numTied,
+                            multiplier = tournament.payoutMultiplier,
+                            rules = rules,
+                            isTeamEvent = tournament.isTeamEvent,
+                        )
+                    GolferHistoryEntry(tournament = tournament.name, position = position, earnings = payout)
+                }
+                .sortedBy { it.position }
+
+        return Result.Ok(
+            GolferHistory(
+                golferName = "${golfer.firstName} ${golfer.lastName}",
+                golferId = golfer.id,
+                totalEarnings = entries.fold(BigDecimal.ZERO) { acc, entry -> acc.add(entry.earnings) },
+                topTens = entries.size,
+                results = entries,
+            ),
+        )
+    }
 }
 
 /**
@@ -92,6 +224,21 @@ internal data class WeeklyReportInputs(
     val allCompletedTournaments: List<Tournament>,
     val allRosters: List<RosterEntry>,
     val allScores: List<FantasyScore>,
+)
+
+/**
+ * Bag of pre-loaded data the season-aggregate assembly needs. Different
+ * shape from [WeeklyReportInputs] because we don't have a single
+ * `tournament` to anchor on — every column rolls across `completed`.
+ */
+internal data class SeasonReportInputs(
+    val rules: SeasonRules,
+    val teams: List<Team>,
+    val allGolfers: List<Golfer>,
+    val completed: List<Tournament>,
+    val allRosters: List<RosterEntry>,
+    val allScores: List<FantasyScore>,
+    val allResults: List<TournamentResult>,
 )
 
 // ----- Pure assembly -----
@@ -193,6 +340,181 @@ internal fun buildTournamentInfo(tournament: Tournament): ReportTournamentInfo =
         payoutMultiplier = tournament.payoutMultiplier,
         week = tournament.week,
     )
+
+/**
+ * Synthetic tournament info block for the season-aggregate report — no
+ * specific tournament, multiplier baseline 1, status `null` so the UI
+ * can detect "this is a season view, not a tournament view." Name is a
+ * static label rather than localized; the UI overrides anyway.
+ */
+private fun seasonTournamentInfo(): ReportTournamentInfo =
+    ReportTournamentInfo(
+        id = null,
+        name = "All Tournaments",
+        startDate = null,
+        endDate = null,
+        status = null,
+        payoutMultiplier = BigDecimal.ONE,
+        week = null,
+    )
+
+/**
+ * Pure: assemble the season-aggregate report. Each team column shows
+ * cumulative season earnings (`weeklyTotal` is the season total for
+ * the column; `previous` is zero because there's nothing prior to
+ * "all of it"). Cells use [buildSeasonCells] which renders `topTens`
+ * counts ("3x") in place of a position string.
+ */
+internal fun assembleSeasonReport(inputs: SeasonReportInputs): WeeklyReport {
+    val golferMap = inputs.allGolfers.associateBy { it.id }
+    val numTeams = inputs.teams.size
+    val cumulativeByTeamGolfer =
+        inputs.allScores.groupBy { it.teamId to it.golferId }
+            .mapValues { (_, scores) -> scores.sumPoints() to scores.size }
+    val topTensByTeam = inputs.allScores.groupBy { it.teamId }.mapValues { (_, scores) -> scores.sumPoints() }
+    val topTenCountByTeam = inputs.allScores.groupBy { it.teamId }.mapValues { (_, scores) -> scores.size }
+    val totalPot = topTensByTeam.values.fold(BigDecimal.ZERO, BigDecimal::add)
+
+    val sideBetPerRound =
+        buildSideBetPerRound(inputs.rules, inputs.allRosters, inputs.allScores, numTeams, inputs.rules.sideBetAmount)
+    val sideBetResults = aggregateSideBets(sideBetPerRound)
+
+    val teamColumns =
+        inputs.teams.map { team ->
+            val roster =
+                inputs.allRosters.filter { it.teamId == team.id }.sortedBy { it.draftRound ?: Int.MAX_VALUE }
+            val cells = buildSeasonCells(roster, golferMap, cumulativeByTeamGolfer, team.id)
+            val teamTopTenEarnings = topTensByTeam[team.id] ?: BigDecimal.ZERO
+            val weeklyTotal = teamTopTenEarnings.multiply(BigDecimal(numTeams)).subtract(totalPot)
+            val sideBetTotal = sideBetResults[team.id] ?: BigDecimal.ZERO
+            ReportTeamColumn(
+                teamId = team.id,
+                teamName = team.teamName,
+                ownerName = team.ownerName,
+                cells = cells,
+                topTenEarnings = teamTopTenEarnings,
+                weeklyTotal = weeklyTotal,
+                previous = BigDecimal.ZERO,
+                subtotal = weeklyTotal,
+                topTenCount = topTenCountByTeam[team.id] ?: 0,
+                topTenMoney = teamTopTenEarnings,
+                sideBets = sideBetTotal,
+                totalCash = weeklyTotal.add(sideBetTotal),
+            )
+        }
+
+    val rosteredGolferIds = inputs.allRosters.map { it.golferId }.toSet()
+    val undraftedAgg =
+        buildUndraftedAgg(inputs.allResults, inputs.completed, rosteredGolferIds, golferMap, inputs.rules)
+    val sideBetDetail = buildSideBetDetail(sideBetPerRound, inputs.teams, inputs.allRosters, golferMap)
+
+    return WeeklyReport(
+        tournament = seasonTournamentInfo(),
+        teams = teamColumns,
+        undraftedTopTens = undraftedAgg,
+        sideBetDetail = sideBetDetail,
+        standingsOrder = buildStandingsOrder(teamColumns),
+    )
+}
+
+private fun buildSeasonCells(
+    roster: List<RosterEntry>,
+    golferMap: Map<GolferId, Golfer>,
+    cumulative: Map<Pair<TeamId, GolferId>, Pair<BigDecimal, Int>>,
+    teamId: TeamId,
+): List<ReportCell> =
+    (1..ROUNDS_PER_REPORT).map { round ->
+        val entry = roster.firstOrNull { it.draftRound == round } ?: return@map emptyCell(round)
+        val (earnings, topTens) = cumulative[teamId to entry.golferId] ?: (BigDecimal.ZERO to 0)
+        val golferName = golferMap[entry.golferId]?.lastName?.uppercase() ?: "?"
+        val positionStr = if (topTens > 0) "${topTens}x" else null
+        ReportCell(
+            round = round,
+            golferName = golferName,
+            golferId = entry.golferId,
+            positionStr = positionStr,
+            scoreToPar = null,
+            earnings = earnings,
+            topTens = topTens,
+            ownershipPct = entry.ownershipPct,
+            seasonEarnings = earnings,
+            seasonTopTens = topTens,
+        )
+    }
+
+/**
+ * Aggregate undrafted top-10 finishes across the season. One row per
+ * golfer regardless of how many tournaments they finished top-10 in;
+ * `payout` sums every qualifying finish's tieSplitPayout. Sorted by
+ * total payout descending so the most-missed names surface first.
+ */
+internal fun buildUndraftedAgg(
+    allResults: List<TournamentResult>,
+    completed: List<Tournament>,
+    rosteredGolferIds: Set<GolferId>,
+    golferMap: Map<GolferId, Golfer>,
+    rules: SeasonRules,
+): List<UndraftedGolfer> {
+    val resultsByTournament = allResults.groupBy { it.tournamentId }
+    val tournamentById = completed.associateBy { it.id }
+    return allResults
+        .filter { result ->
+            val position = result.position ?: return@filter false
+            position <= TOP_TEN_CUTOFF && result.golferId !in rosteredGolferIds
+        }
+        .groupBy { it.golferId }
+        .map { (golferId, results) ->
+            val golfer = golferMap[golferId]
+            val name = golfer?.let { "${it.firstName.firstOrNull() ?: '?'}. ${it.lastName}" } ?: "?"
+            val totalPayout =
+                results.fold(BigDecimal.ZERO) { acc, result ->
+                    val tournament = tournamentById[result.tournamentId]
+                    val multiplier = tournament?.payoutMultiplier ?: BigDecimal.ONE
+                    val isTeamEvent = tournament?.isTeamEvent ?: false
+                    val tournamentResults = resultsByTournament[result.tournamentId].orEmpty()
+                    val numTied = tournamentResults.count { it.position == result.position }
+                    acc.add(
+                        PayoutTable.tieSplitPayout(
+                            position = result.position ?: NEVER_PAID_POSITION,
+                            numTied = numTied,
+                            multiplier = multiplier,
+                            rules = rules,
+                            isTeamEvent = isTeamEvent,
+                        ),
+                    )
+                }
+            UndraftedGolfer(name = name, position = null, payout = totalPayout)
+        }
+        .sortedByDescending { it.payout }
+}
+
+/**
+ * Cumulative-by-tournament running total per team, returned as one
+ * snapshot map per included tournament in chronological order. Used by
+ * [getRankings] to render the line-chart series. Each snapshot is the
+ * sum of all weekly +/- through that tournament inclusive.
+ */
+internal fun buildCumulativeHistory(
+    sortedTournaments: List<Tournament>,
+    allScores: List<FantasyScore>,
+    teams: List<Team>,
+): List<Map<TeamId, BigDecimal>> {
+    val numTeams = teams.size
+    val initial = teams.associate { it.id to BigDecimal.ZERO }
+    return sortedTournaments
+        .runningFold(initial) { cumulative, tournament ->
+            val tournamentScores = allScores.filter { it.tournamentId == tournament.id }
+            val teamTopTens =
+                tournamentScores.groupBy { it.teamId }.mapValues { (_, scores) -> scores.sumPoints() }
+            val totalPot = teamTopTens.values.fold(BigDecimal.ZERO, BigDecimal::add)
+            teams.associate { team ->
+                val weeklyTotal =
+                    (teamTopTens[team.id] ?: BigDecimal.ZERO).multiply(BigDecimal(numTeams)).subtract(totalPot)
+                team.id to (cumulative[team.id] ?: BigDecimal.ZERO).add(weeklyTotal)
+            }
+        }
+        .drop(1)
+}
 
 /**
  * Sum the per-team weekly +/- across every prior tournament in

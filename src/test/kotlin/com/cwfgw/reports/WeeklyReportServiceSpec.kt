@@ -498,4 +498,241 @@ class WeeklyReportServiceSpec : FunSpec({
         report.sideBetDetail.map { it.round } shouldContainExactly listOf(5, 6, 7, 8)
         report.sideBetDetail.forAll { it.teams.shouldBeEmpty() }
     }
+
+    // ========== getSeasonReport ==========
+
+    test("getSeasonReport returns SeasonNotFound when the season id doesn't exist") {
+        val fixture = Fixture(seedSeason = false)
+        fixture.service.getSeasonReport(SEASON_ID) shouldBe Result.Err(ReportError.SeasonNotFound(SEASON_ID))
+    }
+
+    test("getSeasonReport with no completed tournaments produces empty cells and zero totals") {
+        val fixture = Fixture(initialTeams = listOf(TEAM_A, TEAM_B))
+
+        val report =
+            fixture.service.getSeasonReport(SEASON_ID)
+                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
+                .value
+
+        report.tournament.id shouldBe null
+        report.tournament.name shouldBe "All Tournaments"
+        report.teams.forAll { col ->
+            col.weeklyTotal.compareTo(BigDecimal.ZERO) shouldBe 0
+            col.subtotal.compareTo(BigDecimal.ZERO) shouldBe 0
+        }
+    }
+
+    test("getSeasonReport rolls earnings up across multiple tournaments per team") {
+        val sony = tournamentFixture(SONY_ID, "Sony Open", "2026-01-15")
+        val masters = tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+        val winner = golferFixture("d01", "Scottie", "Scheffler")
+        val miss = golferFixture("d02", "Rando", "Player")
+        val rosters =
+            listOf(
+                rosterEntry(TEAM_A.id, winner.id, draftRound = 1),
+                rosterEntry(TEAM_B.id, miss.id, draftRound = 1),
+            )
+        val results =
+            listOf(
+                resultFixture(SONY_ID, winner.id, position = 1),
+                resultFixture(MASTERS_ID, winner.id, position = 1),
+                resultFixture(MASTERS_ID, miss.id, position = 11, scoreToPar = 5),
+            )
+        val scores =
+            listOf(
+                scoreFixture(TEAM_A.id, SONY_ID, winner.id, BigDecimal(18), position = 1),
+                scoreFixture(TEAM_A.id, MASTERS_ID, winner.id, BigDecimal(18), position = 1),
+            )
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(sony, masters),
+                initialTeams = listOf(TEAM_A, TEAM_B),
+                initialGolfers = listOf(winner, miss),
+                initialRosters = rosters,
+                initialResults = results,
+                initialScores = scores,
+            )
+
+        val report =
+            fixture.service.getSeasonReport(SEASON_ID)
+                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
+                .value
+        val a = report.teams.single { it.teamId == TEAM_A.id }
+        val b = report.teams.single { it.teamId == TEAM_B.id }
+
+        // A earned $18 in Sony + $18 in Masters = $36; B never earned.
+        // Per-tournament weekly: A = +$18, B = -$18; over 2 tournaments: A = +$36, B = -$36.
+        a.topTenEarnings.compareTo(BigDecimal(36)) shouldBe 0
+        a.weeklyTotal.compareTo(BigDecimal(36)) shouldBe 0
+        b.weeklyTotal.compareTo(BigDecimal(-36)) shouldBe 0
+        a.topTenCount shouldBe 2
+        a.cells.first { it.round == 1 }.positionStr shouldBe "2x"
+    }
+
+    test("getSeasonReport's undraftedTopTens aggregates a golfer's payouts across tournaments") {
+        val sony = tournamentFixture(SONY_ID, "Sony Open", "2026-01-15")
+        val masters = tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+        val undrafted = golferFixture("d02", "Rory", "McIlroy")
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(sony, masters),
+                initialTeams = listOf(TEAM_A),
+                initialGolfers = listOf(undrafted),
+                initialResults =
+                    listOf(
+                        resultFixture(SONY_ID, undrafted.id, position = 1),
+                        resultFixture(MASTERS_ID, undrafted.id, position = 5),
+                    ),
+            )
+
+        val undraftedList =
+            fixture.service.getSeasonReport(SEASON_ID)
+                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
+                .value
+                .undraftedTopTens
+
+        undraftedList shouldHaveSize 1
+        undraftedList.single().name shouldBe "R. McIlroy"
+        // Sony pos 1 = $18, Masters pos 5 = $7 → $25 total
+        undraftedList.single().payout.compareTo(BigDecimal(25)) shouldBe 0
+    }
+
+    // ========== getRankings ==========
+
+    test("getRankings returns SeasonNotFound when the season id doesn't exist") {
+        val fixture = Fixture(seedSeason = false)
+        fixture.service.getRankings(SEASON_ID) shouldBe Result.Err(ReportError.SeasonNotFound(SEASON_ID))
+    }
+
+    test("getRankings returns TournamentNotFound when the cutoff tournament id doesn't exist") {
+        val fixture = Fixture()
+        val ghost = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000fff"))
+        fixture.service.getRankings(SEASON_ID, throughTournamentId = ghost) shouldBe
+            Result.Err(ReportError.TournamentNotFound(ghost))
+    }
+
+    test("getRankings produces one series entry per included tournament with cumulative totals") {
+        val sony = tournamentFixture(SONY_ID, "Sony Open", "2026-01-15", week = "2")
+        val masters = tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09", week = "15")
+        val winner = golferFixture("d01", "Scottie", "Scheffler")
+        val rosters = listOf(rosterEntry(TEAM_A.id, winner.id, draftRound = 1))
+        val scores =
+            listOf(
+                scoreFixture(TEAM_A.id, SONY_ID, winner.id, BigDecimal(18), position = 1),
+                scoreFixture(TEAM_A.id, MASTERS_ID, winner.id, BigDecimal(18), position = 1),
+            )
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(sony, masters),
+                initialTeams = listOf(TEAM_A, TEAM_B),
+                initialGolfers = listOf(winner),
+                initialRosters = rosters,
+                initialScores = scores,
+            )
+
+        val rankings =
+            fixture.service.getRankings(SEASON_ID)
+                .shouldBeInstanceOf<Result.Ok<Rankings>>()
+                .value
+
+        rankings.weeks shouldContainExactly listOf("2", "15")
+        rankings.tournamentNames shouldContainExactly listOf("Sony Open", "The Masters")
+        rankings.teams.first().teamName shouldBe TEAM_A.teamName
+        // Series after Sony = +$18, after Masters = +$36.
+        // Team A is the leader; +$18 each tournament (zero-sum vs. the one other team).
+        val a = rankings.teams.single { it.teamId == TEAM_A.id }
+        a.subtotal.compareTo(BigDecimal(36)) shouldBe 0
+        a.series.map { it.compareTo(BigDecimal(0)) } shouldContainExactly listOf(1, 1)
+        a.series[0].compareTo(BigDecimal(18)) shouldBe 0
+        a.series[1].compareTo(BigDecimal(36)) shouldBe 0
+    }
+
+    test("getRankings respects the through cutoff and excludes later tournaments") {
+        val sony = tournamentFixture(SONY_ID, "Sony Open", "2026-01-15")
+        val masters = tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+        val winner = golferFixture("d01", "Scottie", "Scheffler")
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(sony, masters),
+                initialTeams = listOf(TEAM_A, TEAM_B),
+                initialGolfers = listOf(winner),
+                initialRosters = listOf(rosterEntry(TEAM_A.id, winner.id, draftRound = 1)),
+                initialScores =
+                    listOf(
+                        scoreFixture(TEAM_A.id, SONY_ID, winner.id, BigDecimal(18), position = 1),
+                        scoreFixture(TEAM_A.id, MASTERS_ID, winner.id, BigDecimal(18), position = 1),
+                    ),
+            )
+
+        val rankings =
+            fixture.service.getRankings(SEASON_ID, throughTournamentId = SONY_ID)
+                .shouldBeInstanceOf<Result.Ok<Rankings>>()
+                .value
+
+        rankings.tournamentNames shouldContainExactly listOf("Sony Open")
+        rankings.teams.single { it.teamId == TEAM_A.id }.subtotal.compareTo(BigDecimal(18)) shouldBe 0
+    }
+
+    // ========== getGolferHistory ==========
+
+    test("getGolferHistory returns SeasonNotFound when the season id doesn't exist") {
+        val fixture = Fixture(seedSeason = false)
+        val golferId = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d01"))
+        fixture.service.getGolferHistory(SEASON_ID, golferId) shouldBe
+            Result.Err(ReportError.SeasonNotFound(SEASON_ID))
+    }
+
+    test("getGolferHistory returns GolferNotFound when the golfer id doesn't exist") {
+        val ghost = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000999"))
+        val fixture = Fixture()
+        fixture.service.getGolferHistory(SEASON_ID, ghost) shouldBe Result.Err(ReportError.GolferNotFound(ghost))
+    }
+
+    test("getGolferHistory returns an empty results list and zero totals for a golfer with no top-10 finishes") {
+        val sony = tournamentFixture(SONY_ID, "Sony Open", "2026-01-15")
+        val golfer = golferFixture("d01", "Scottie", "Scheffler")
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(sony),
+                initialGolfers = listOf(golfer),
+                initialResults = listOf(resultFixture(SONY_ID, golfer.id, position = 25, scoreToPar = 5)),
+            )
+
+        val history =
+            fixture.service.getGolferHistory(SEASON_ID, golfer.id)
+                .shouldBeInstanceOf<Result.Ok<GolferHistory>>()
+                .value
+
+        history.golferName shouldBe "Scottie Scheffler"
+        history.results.shouldBeEmpty()
+        history.topTens shouldBe 0
+        history.totalEarnings.compareTo(BigDecimal.ZERO) shouldBe 0
+    }
+
+    test("getGolferHistory lists each top-10 finish with its position and tieSplitPayout") {
+        val sony = tournamentFixture(SONY_ID, "Sony Open", "2026-01-15")
+        val masters = tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+        val golfer = golferFixture("d01", "Scottie", "Scheffler")
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(sony, masters),
+                initialGolfers = listOf(golfer),
+                initialResults =
+                    listOf(
+                        resultFixture(SONY_ID, golfer.id, position = 1),
+                        resultFixture(MASTERS_ID, golfer.id, position = 5),
+                    ),
+            )
+
+        val history =
+            fixture.service.getGolferHistory(SEASON_ID, golfer.id)
+                .shouldBeInstanceOf<Result.Ok<GolferHistory>>()
+                .value
+
+        history.topTens shouldBe 2
+        history.results.map { it.tournament } shouldContainExactly listOf("Sony Open", "The Masters")
+        history.results.map { it.position } shouldContainExactly listOf(1, 5)
+        // Sony pos 1 = $18, Masters pos 5 = $7 → totals = $25
+        history.totalEarnings.compareTo(BigDecimal(25)) shouldBe 0
+    }
 })
