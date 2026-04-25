@@ -2,14 +2,21 @@ package com.cwfgw.admin
 
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnUpstreamException
+import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.Golfer
+import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonService
+import com.cwfgw.teams.AddToRosterRequest
+import com.cwfgw.teams.CreateTeamRequest
+import com.cwfgw.teams.Team
+import com.cwfgw.teams.TeamService
 import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.TournamentService
 import io.github.oshai.kotlinlogging.KotlinLogging
+import java.math.BigDecimal
 import java.time.LocalDate
 
 private val log = KotlinLogging.logger {}
@@ -33,6 +40,7 @@ class AdminService(
     private val tournamentService: TournamentService,
     private val espnService: EspnService,
     private val golferService: GolferService,
+    private val teamService: TeamService,
 ) {
     suspend fun uploadSeason(
         seasonId: SeasonId,
@@ -144,6 +152,87 @@ class AdminService(
         )
     }
 
+    /**
+     * Persist an operator-confirmed roster: create one Team per
+     * `ConfirmedTeam`, create new golfers for any `New` assignments, and
+     * add a roster entry per pick. Validates all `Existing` golfer ids
+     * up front so the operator sees every bad reference at once instead
+     * of fixing one and retrying. Writes are not transactional across
+     * teams — a downstream failure mid-write leaves partial state, which
+     * is acceptable because the validation pass catches the realistic
+     * errors and anything later would be unexpected (DB-level).
+     */
+    suspend fun confirmRoster(request: ConfirmRosterRequest): Result<RosterUploadResult, AdminError> {
+        seasonService.get(request.seasonId) ?: return Result.Err(AdminError.SeasonNotFound(request.seasonId))
+
+        val missingGolferIds = findMissingGolferIds(request.teams)
+        if (missingGolferIds.isNotEmpty()) return Result.Err(AdminError.GolferIdsNotFound(missingGolferIds))
+
+        var golfersCreated = 0
+        val createdTeams = mutableListOf<Team>()
+        for (team in request.teams) {
+            val (createdTeam, newGolfers) = persistConfirmedTeam(request.seasonId, team)
+            createdTeams += createdTeam
+            golfersCreated += newGolfers
+        }
+        return Result.Ok(
+            RosterUploadResult(
+                teamsCreated = createdTeams.size,
+                golfersCreated = golfersCreated,
+                teams = createdTeams,
+            ),
+        )
+    }
+
+    private suspend fun persistConfirmedTeam(
+        seasonId: SeasonId,
+        team: ConfirmedTeam,
+    ): Pair<Team, Int> {
+        val createdTeam =
+            teamService.create(
+                seasonId = seasonId,
+                request =
+                    CreateTeamRequest(
+                        ownerName = team.teamName,
+                        teamName = team.teamName,
+                        teamNumber = team.teamNumber,
+                    ),
+            )
+        var newGolfers = 0
+        for (pick in team.picks) {
+            val golferId =
+                when (val assignment = pick.assignment) {
+                    is GolferAssignment.Existing -> assignment.golferId
+                    is GolferAssignment.New -> {
+                        newGolfers++
+                        golferService.create(
+                            CreateGolferRequest(firstName = assignment.firstName, lastName = assignment.lastName),
+                        ).id
+                    }
+                }
+            teamService.addToRoster(
+                teamId = createdTeam.id,
+                request =
+                    AddToRosterRequest(
+                        golferId = golferId,
+                        acquiredVia = ROSTER_ACQUIRED_VIA_DRAFT,
+                        draftRound = pick.round,
+                        ownershipPct = BigDecimal(pick.ownershipPct),
+                    ),
+            )
+        }
+        return createdTeam to newGolfers
+    }
+
+    private suspend fun findMissingGolferIds(teams: List<ConfirmedTeam>): List<GolferId> {
+        val referencedIds =
+            teams.asSequence()
+                .flatMap { it.picks.asSequence() }
+                .mapNotNull { (it.assignment as? GolferAssignment.Existing)?.golferId }
+                .toSet()
+        return referencedIds.filter { golferService.get(it) == null }
+    }
+
     private suspend fun importOne(
         entry: com.cwfgw.espn.EspnCalendarEntry,
         seasonId: SeasonId,
@@ -192,6 +281,9 @@ class AdminService(
         /** Default tournament length: Thu→Sun = 4 days inclusive (start + 3). Operator can PUT to fix exceptions. */
         private const val DEFAULT_TOURNAMENT_DAYS: Long = 3
         private const val ISO_DATE_LENGTH = 10
+
+        /** Roster entries created by confirmRoster are draft picks — distinguishes from waiver/trade adds. */
+        private const val ROSTER_ACQUIRED_VIA_DRAFT = "draft"
     }
 }
 

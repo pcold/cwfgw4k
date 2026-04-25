@@ -20,8 +20,10 @@ import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.inspectors.forAll
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -68,6 +70,7 @@ private class Fixture(
     val seasonRepo: FakeSeasonRepository
     val tournamentRepo = FakeTournamentRepository()
     val golferRepo = FakeGolferRepository(initial = seedGolfers)
+    val teamRepo = FakeTeamRepository()
     val service: AdminService
 
     init {
@@ -83,7 +86,7 @@ private class Fixture(
         }
         val tournamentService = TournamentService(tournamentRepo)
         val golferService = GolferService(golferRepo)
-        val teamService = TeamService(FakeTeamRepository())
+        val teamService = TeamService(teamRepo)
         val espnService =
             EspnService(
                 client = FakeEspnClient(calendar = calendar, upstreamError = upstreamError),
@@ -97,6 +100,7 @@ private class Fixture(
                 tournamentService = tournamentService,
                 espnService = espnService,
                 golferService = golferService,
+                teamService = teamService,
             )
     }
 }
@@ -458,5 +462,244 @@ class AdminServiceSpec : FunSpec({
         result.matchedCount shouldBe 0
         result.ambiguousCount shouldBe 0
         result.unmatchedCount shouldBe 0
+    }
+
+    test("confirmRoster creates a team and roster entries for picks bound to existing golfers") {
+        val scottie = golfer("201", "Scottie", "Scheffler")
+        val rory = golfer("202", "Rory", "McIlroy")
+        val fixture = Fixture(seedGolfers = listOf(scottie, rory))
+
+        val request =
+            ConfirmRosterRequest(
+                seasonId = SEASON_ID,
+                teams =
+                    listOf(
+                        ConfirmedTeam(
+                            teamNumber = 1,
+                            teamName = "BROWN",
+                            picks =
+                                listOf(
+                                    ConfirmedPick(
+                                        round = 1,
+                                        ownershipPct = 75,
+                                        assignment = GolferAssignment.Existing(scottie.id),
+                                    ),
+                                    ConfirmedPick(
+                                        round = 2,
+                                        ownershipPct = 50,
+                                        assignment = GolferAssignment.Existing(rory.id),
+                                    ),
+                                ),
+                        ),
+                    ),
+            )
+
+        val result =
+            fixture.service.confirmRoster(request)
+                .shouldBeInstanceOf<Result.Ok<RosterUploadResult>>()
+                .value
+
+        result.teamsCreated shouldBe 1
+        result.golfersCreated shouldBe 0
+        val createdTeam = result.teams.single()
+        createdTeam.teamName shouldBe "BROWN"
+        createdTeam.teamNumber shouldBe 1
+        createdTeam.ownerName shouldBe "BROWN"
+
+        val roster = fixture.teamRepo.getRoster(createdTeam.id)
+        roster shouldHaveSize 2
+        roster.map { it.golferId } shouldContainExactly listOf(scottie.id, rory.id)
+        roster.map { it.draftRound } shouldContainExactly listOf(1, 2)
+        roster.map { it.ownershipPct.toInt() } shouldContainExactly listOf(75, 50)
+        roster.forAll { it.acquiredVia shouldBe "draft" }
+    }
+
+    test("confirmRoster creates a new golfer for each New assignment and counts it in golfersCreated") {
+        val fixture = Fixture()
+
+        val request =
+            ConfirmRosterRequest(
+                seasonId = SEASON_ID,
+                teams =
+                    listOf(
+                        ConfirmedTeam(
+                            teamNumber = 1,
+                            teamName = "BROWN",
+                            picks =
+                                listOf(
+                                    ConfirmedPick(
+                                        round = 1,
+                                        ownershipPct = 80,
+                                        assignment =
+                                            GolferAssignment.New(
+                                                firstName = "Scottie",
+                                                lastName = "Scheffler",
+                                            ),
+                                    ),
+                                ),
+                        ),
+                    ),
+            )
+
+        val result =
+            fixture.service.confirmRoster(request)
+                .shouldBeInstanceOf<Result.Ok<RosterUploadResult>>()
+                .value
+
+        result.golfersCreated shouldBe 1
+        val createdGolfer = fixture.golferRepo.findAll(activeOnly = false, search = null).single()
+        createdGolfer.firstName shouldBe "Scottie"
+        createdGolfer.lastName shouldBe "Scheffler"
+        fixture.teamRepo.getRoster(result.teams.single().id).single().golferId shouldBe createdGolfer.id
+    }
+
+    test("confirmRoster handles mixed Existing + New assignments across multiple teams") {
+        val scottie = golfer("201", "Scottie", "Scheffler")
+        val fixture = Fixture(seedGolfers = listOf(scottie))
+
+        val request =
+            ConfirmRosterRequest(
+                seasonId = SEASON_ID,
+                teams =
+                    listOf(
+                        ConfirmedTeam(
+                            teamNumber = 1,
+                            teamName = "BROWN",
+                            picks =
+                                listOf(
+                                    ConfirmedPick(
+                                        round = 1,
+                                        ownershipPct = 75,
+                                        assignment = GolferAssignment.Existing(scottie.id),
+                                    ),
+                                    ConfirmedPick(
+                                        round = 2,
+                                        ownershipPct = 50,
+                                        assignment = GolferAssignment.New("Justin", "Rose"),
+                                    ),
+                                ),
+                        ),
+                        ConfirmedTeam(
+                            teamNumber = 2,
+                            teamName = "WOMBLE",
+                            picks =
+                                listOf(
+                                    ConfirmedPick(
+                                        round = 1,
+                                        ownershipPct = 25,
+                                        assignment = GolferAssignment.Existing(scottie.id),
+                                    ),
+                                    ConfirmedPick(
+                                        round = 2,
+                                        ownershipPct = 60,
+                                        assignment = GolferAssignment.New("Shane", "Lowry"),
+                                    ),
+                                ),
+                        ),
+                    ),
+            )
+
+        val result =
+            fixture.service.confirmRoster(request)
+                .shouldBeInstanceOf<Result.Ok<RosterUploadResult>>()
+                .value
+
+        result.teamsCreated shouldBe 2
+        result.golfersCreated shouldBe 2
+        result.teams.map { it.teamName } shouldContainExactly listOf("BROWN", "WOMBLE")
+    }
+
+    test("confirmRoster returns SeasonNotFound when the season id doesn't exist (and writes nothing)") {
+        val fixture = Fixture(seedSeason = false, seedGolfers = listOf(golfer("201", "Scottie", "Scheffler")))
+
+        val request =
+            ConfirmRosterRequest(
+                seasonId = SEASON_ID,
+                teams =
+                    listOf(
+                        ConfirmedTeam(
+                            teamNumber = 1,
+                            teamName = "BROWN",
+                            picks =
+                                listOf(
+                                    ConfirmedPick(
+                                        round = 1,
+                                        ownershipPct = 75,
+                                        assignment = GolferAssignment.New("New", "Player"),
+                                    ),
+                                ),
+                        ),
+                    ),
+            )
+
+        fixture.service.confirmRoster(request) shouldBe Result.Err(AdminError.SeasonNotFound(SEASON_ID))
+        fixture.teamRepo.findBySeason(SEASON_ID).shouldBeEmpty()
+        fixture.golferRepo.findAll(activeOnly = false, search = null) shouldHaveSize 1
+    }
+
+    test("confirmRoster collects all bad existing-golfer ids into one GolferIdsNotFound and writes nothing") {
+        val scottie = golfer("201", "Scottie", "Scheffler")
+        val fixture = Fixture(seedGolfers = listOf(scottie))
+        val ghostA = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000901"))
+        val ghostB = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000902"))
+
+        val request =
+            ConfirmRosterRequest(
+                seasonId = SEASON_ID,
+                teams =
+                    listOf(
+                        ConfirmedTeam(
+                            teamNumber = 1,
+                            teamName = "BROWN",
+                            picks =
+                                listOf(
+                                    ConfirmedPick(
+                                        round = 1,
+                                        ownershipPct = 75,
+                                        assignment = GolferAssignment.Existing(ghostA),
+                                    ),
+                                    ConfirmedPick(
+                                        round = 2,
+                                        ownershipPct = 50,
+                                        assignment = GolferAssignment.Existing(scottie.id),
+                                    ),
+                                ),
+                        ),
+                        ConfirmedTeam(
+                            teamNumber = 2,
+                            teamName = "WOMBLE",
+                            picks =
+                                listOf(
+                                    ConfirmedPick(
+                                        round = 1,
+                                        ownershipPct = 25,
+                                        assignment = GolferAssignment.Existing(ghostB),
+                                    ),
+                                ),
+                        ),
+                    ),
+            )
+
+        val err =
+            fixture.service.confirmRoster(request)
+                .shouldBeInstanceOf<Result.Err<AdminError>>()
+                .error
+                .shouldBeInstanceOf<AdminError.GolferIdsNotFound>()
+        err.ids shouldContainExactlyInAnyOrder listOf(ghostA, ghostB)
+        fixture.teamRepo.findBySeason(SEASON_ID).shouldBeEmpty()
+    }
+
+    test("confirmRoster on an empty teams list succeeds with zero counts and no writes") {
+        val fixture = Fixture()
+
+        val result =
+            fixture.service.confirmRoster(ConfirmRosterRequest(seasonId = SEASON_ID, teams = emptyList()))
+                .shouldBeInstanceOf<Result.Ok<RosterUploadResult>>()
+                .value
+
+        result.teamsCreated shouldBe 0
+        result.golfersCreated shouldBe 0
+        result.teams.shouldBeEmpty()
+        fixture.teamRepo.findBySeason(SEASON_ID).shouldBeEmpty()
     }
 })

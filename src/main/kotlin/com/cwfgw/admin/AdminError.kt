@@ -1,5 +1,6 @@
 package com.cwfgw.admin
 
+import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
 
 /**
@@ -20,4 +21,12 @@ sealed interface AdminError {
      * losing per-row context.
      */
     data class InvalidRoster(val parseError: RosterParseError) : AdminError
+
+    /**
+     * One or more `GolferAssignment.Existing` entries in a confirmRoster
+     * payload reference golfer ids that aren't in the DB. All bad ids are
+     * collected so the operator sees every problem at once instead of
+     * one-fix-then-retry.
+     */
+    data class GolferIdsNotFound(val ids: List<GolferId>) : AdminError
 }
