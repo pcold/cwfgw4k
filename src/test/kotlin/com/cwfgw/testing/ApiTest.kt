@@ -1,6 +1,7 @@
 package com.cwfgw.testing
 
 import com.cwfgw.AppServices
+import com.cwfgw.admin.AdminService
 import com.cwfgw.drafts.DraftService
 import com.cwfgw.drafts.FakeDraftRepository
 import com.cwfgw.espn.EspnService
@@ -79,6 +80,14 @@ class ApiFixture {
             golferService = golferService,
             teamService = teamService,
         )
+    var adminService: AdminService =
+        AdminService(
+            seasonService = seasonService,
+            tournamentService = tournamentService,
+            espnService = espnService,
+            golferService = golferService,
+            teamService = teamService,
+        )
     var userRepository: UserRepository = FakeUserRepository()
     var authService: AuthService = AuthService(userRepository, cost = TEST_BCRYPT_COST)
     var authSetup: AuthSetup =
@@ -151,6 +160,7 @@ private fun ApiFixture.toAppServices(): AppServices =
         draftService = draftService,
         scoringService = scoringService,
         espnService = espnService,
+        adminService = adminService,
         authService = authService,
         userRepository = userRepository,
         authSetup = authSetup,

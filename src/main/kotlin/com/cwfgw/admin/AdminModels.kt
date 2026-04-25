@@ -2,10 +2,23 @@ package com.cwfgw.admin
 
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.serialization.LocalDateSerializer
 import com.cwfgw.teams.Team
 import com.cwfgw.tournaments.Tournament
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.time.LocalDate
+
+/**
+ * Body of `POST /api/v1/admin/seasons/{id}/upload`. Date range is inclusive
+ * on both ends — any ESPN calendar entry whose start date falls in the range
+ * lands as a tournament. The seasonId comes from the path, not the body.
+ */
+@Serializable
+data class UploadSeasonRequest(
+    @Serializable(with = LocalDateSerializer::class) val startDate: LocalDate,
+    @Serializable(with = LocalDateSerializer::class) val endDate: LocalDate,
+)
 
 /**
  * Result of a season-import call. The created list goes back to the UI as the

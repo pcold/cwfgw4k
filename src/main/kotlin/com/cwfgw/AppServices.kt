@@ -1,5 +1,6 @@
 package com.cwfgw
 
+import com.cwfgw.admin.AdminService
 import com.cwfgw.drafts.DraftService
 import com.cwfgw.espn.EspnService
 import com.cwfgw.golfers.GolferService
@@ -29,6 +30,7 @@ data class AppServices(
     val draftService: DraftService,
     val scoringService: ScoringService,
     val espnService: EspnService,
+    val adminService: AdminService,
     val authService: AuthService,
     val userRepository: UserRepository,
     val authSetup: AuthSetup,

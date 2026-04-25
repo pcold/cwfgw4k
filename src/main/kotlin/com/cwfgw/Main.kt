@@ -1,5 +1,7 @@
 package com.cwfgw
 
+import com.cwfgw.admin.AdminService
+import com.cwfgw.admin.adminRoutes
 import com.cwfgw.config.AppConfig
 import com.cwfgw.db.Database
 import com.cwfgw.drafts.DraftRepository
@@ -88,6 +90,13 @@ private fun buildServices(
     val tournamentService = TournamentService(TournamentRepository(database.dsl))
     val golferService = GolferService(GolferRepository(database.dsl))
     val userRepository = UserRepository(database.dsl)
+    val espnService =
+        EspnService(
+            client = EspnClient(httpClient),
+            tournamentService = tournamentService,
+            golferService = golferService,
+            teamService = teamService,
+        )
     return AppServices(
         healthProbe = DatabaseHealthProbe(database.dsl),
         leagueService = LeagueService(LeagueRepository(database.dsl)),
@@ -103,10 +112,12 @@ private fun buildServices(
                 tournamentService = tournamentService,
                 teamService = teamService,
             ),
-        espnService =
-            EspnService(
-                client = EspnClient(httpClient),
+        espnService = espnService,
+        adminService =
+            AdminService(
+                seasonService = seasonService,
                 tournamentService = tournamentService,
+                espnService = espnService,
                 golferService = golferService,
                 teamService = teamService,
             ),
@@ -174,6 +185,7 @@ fun Application.module(services: AppServices) {
             draftRoutes(services.draftService)
             scoringRoutes(services.scoringService)
             espnRoutes(services.espnService)
+            adminRoutes(services.adminService)
             authRoutes(services.authService)
         }
     }
