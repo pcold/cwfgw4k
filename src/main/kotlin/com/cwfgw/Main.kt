@@ -20,6 +20,8 @@ import com.cwfgw.http.installRequestLogging
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.leagues.LeagueService
 import com.cwfgw.leagues.leagueRoutes
+import com.cwfgw.reports.WeeklyReportService
+import com.cwfgw.reports.reportRoutes
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.scoring.scoringRoutes
@@ -91,12 +93,13 @@ private fun buildServices(
     val golferService = GolferService(GolferRepository(database.dsl))
     val userRepository = UserRepository(database.dsl)
     val espnService =
-        EspnService(
-            client = EspnClient(httpClient),
-            tournamentService = tournamentService,
-            golferService = golferService,
-            teamService = teamService,
-        )
+        EspnService(EspnClient(httpClient), tournamentService, golferService, teamService)
+    val scoringService =
+        ScoringService(ScoringRepository(database.dsl), seasonService, tournamentService, teamService)
+    val adminService =
+        AdminService(seasonService, tournamentService, espnService, golferService, teamService)
+    val weeklyReportService =
+        WeeklyReportService(seasonService, tournamentService, teamService, golferService, scoringService)
     return AppServices(
         healthProbe = DatabaseHealthProbe(database.dsl),
         leagueService = LeagueService(LeagueRepository(database.dsl)),
@@ -105,22 +108,10 @@ private fun buildServices(
         teamService = teamService,
         tournamentService = tournamentService,
         draftService = DraftService(DraftRepository(database.dsl), teamService),
-        scoringService =
-            ScoringService(
-                repository = ScoringRepository(database.dsl),
-                seasonService = seasonService,
-                tournamentService = tournamentService,
-                teamService = teamService,
-            ),
+        scoringService = scoringService,
         espnService = espnService,
-        adminService =
-            AdminService(
-                seasonService = seasonService,
-                tournamentService = tournamentService,
-                espnService = espnService,
-                golferService = golferService,
-                teamService = teamService,
-            ),
+        adminService = adminService,
+        weeklyReportService = weeklyReportService,
         authService = AuthService(userRepository),
         userRepository = userRepository,
         authSetup =
@@ -186,6 +177,7 @@ fun Application.module(services: AppServices) {
             scoringRoutes(services.scoringService)
             espnRoutes(services.espnService)
             adminRoutes(services.adminService)
+            reportRoutes(services.weeklyReportService)
             authRoutes(services.authService)
         }
     }

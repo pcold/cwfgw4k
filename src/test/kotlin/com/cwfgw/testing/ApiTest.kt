@@ -12,6 +12,7 @@ import com.cwfgw.health.HealthProbe
 import com.cwfgw.leagues.FakeLeagueRepository
 import com.cwfgw.leagues.LeagueService
 import com.cwfgw.module
+import com.cwfgw.reports.WeeklyReportService
 import com.cwfgw.scoring.FakeScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.FakeSeasonRepository
@@ -88,6 +89,14 @@ class ApiFixture {
             golferService = golferService,
             teamService = teamService,
         )
+    var weeklyReportService: WeeklyReportService =
+        WeeklyReportService(
+            seasonService = seasonService,
+            tournamentService = tournamentService,
+            teamService = teamService,
+            golferService = golferService,
+            scoringService = scoringService,
+        )
     var userRepository: UserRepository = FakeUserRepository()
     var authService: AuthService = AuthService(userRepository, cost = TEST_BCRYPT_COST)
     var authSetup: AuthSetup =
@@ -161,6 +170,7 @@ private fun ApiFixture.toAppServices(): AppServices =
         scoringService = scoringService,
         espnService = espnService,
         adminService = adminService,
+        weeklyReportService = weeklyReportService,
         authService = authService,
         userRepository = userRepository,
         authSetup = authSetup,
