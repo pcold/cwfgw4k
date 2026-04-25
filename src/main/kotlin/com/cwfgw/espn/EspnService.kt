@@ -34,7 +34,7 @@ private val log = KotlinLogging.logger {}
  *    their `pga_player_id`; team-partner rows skip that since the id is
  *    synthetic (`team:X:N`).
  */
-class EspnImportService(
+class EspnService(
     private val client: EspnClient,
     private val tournamentService: TournamentService,
     private val golferService: GolferService,

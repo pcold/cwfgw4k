@@ -75,8 +75,8 @@ private fun withWiredService(
         tournamentService = tournamentSvc
         golferService = GolferService(golferRepo)
         teamService = TeamService(teamRepo)
-        espnImportService =
-            EspnImportService(
+        espnService =
+            EspnService(
                 client = FakeEspnClient(tournamentsByDate = tournaments, upstreamError = upstreamError),
                 tournamentService = tournamentSvc,
                 golferService = golferService,

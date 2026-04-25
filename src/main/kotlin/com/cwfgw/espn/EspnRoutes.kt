@@ -18,7 +18,7 @@ import java.time.format.DateTimeParseException
 
 private val log = KotlinLogging.logger {}
 
-fun Route.espnRoutes(service: EspnImportService) {
+fun Route.espnRoutes(service: EspnService) {
     authenticate(SESSION_AUTH_NAME) {
         route("/espn/import") {
             post { importByDate(service) }
@@ -27,14 +27,14 @@ fun Route.espnRoutes(service: EspnImportService) {
     }
 }
 
-private suspend fun RoutingContext.importByDate(service: EspnImportService) {
+private suspend fun RoutingContext.importByDate(service: EspnService) {
     val date =
         optionalQueryParam("date", ::parseLocalDate)
             ?: throw DomainError.Validation("missing query parameter: date")
     call.respond(service.importByDate(date).orThrow())
 }
 
-private suspend fun RoutingContext.importForTournament(service: EspnImportService) {
+private suspend fun RoutingContext.importForTournament(service: EspnService) {
     call.respond(service.importForTournament(tournamentId()).orThrow())
 }
 

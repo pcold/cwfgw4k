@@ -6,7 +6,7 @@ import com.cwfgw.drafts.DraftRepository
 import com.cwfgw.drafts.DraftService
 import com.cwfgw.drafts.draftRoutes
 import com.cwfgw.espn.EspnClient
-import com.cwfgw.espn.EspnImportService
+import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.espnRoutes
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolferService
@@ -103,8 +103,8 @@ private fun buildServices(
                 tournamentService = tournamentService,
                 teamService = teamService,
             ),
-        espnImportService =
-            EspnImportService(
+        espnService =
+            EspnService(
                 client = EspnClient(httpClient),
                 tournamentService = tournamentService,
                 golferService = golferService,
@@ -173,7 +173,7 @@ fun Application.module(services: AppServices) {
             tournamentRoutes(services.tournamentService)
             draftRoutes(services.draftService)
             scoringRoutes(services.scoringService)
-            espnRoutes(services.espnImportService)
+            espnRoutes(services.espnService)
             authRoutes(services.authService)
         }
     }

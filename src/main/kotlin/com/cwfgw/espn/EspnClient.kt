@@ -18,7 +18,7 @@ import java.time.format.DateTimeFormatter
  * exposing the response types internally keeps that boundary clean.
  *
  * Scope: one responsibility — fetch, deserialize, and parse. HTTP retries
- * and error policy belong to the caller (EspnImportService).
+ * and error policy belong to the caller (EspnService).
  */
 interface EspnClient {
     /**

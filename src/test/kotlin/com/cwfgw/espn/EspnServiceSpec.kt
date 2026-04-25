@@ -115,8 +115,8 @@ private class Fixture(
     val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
     val golferRepo = FakeGolferRepository(initial = initialGolfers)
     val teamRepo = FakeTeamRepository(initialRosterView = rosterView)
-    val service: EspnImportService =
-        EspnImportService(
+    val service: EspnService =
+        EspnService(
             client = fakeClient,
             tournamentService = TournamentService(tournamentRepo),
             golferService = GolferService(golferRepo),
@@ -124,7 +124,7 @@ private class Fixture(
         )
 }
 
-class EspnImportServiceSpec : FunSpec({
+class EspnServiceSpec : FunSpec({
 
     test("importByDate returns an empty batch when ESPN has no events") {
         val fixture = Fixture()

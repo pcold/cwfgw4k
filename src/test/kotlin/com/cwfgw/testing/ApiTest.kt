@@ -3,7 +3,7 @@ package com.cwfgw.testing
 import com.cwfgw.AppServices
 import com.cwfgw.drafts.DraftService
 import com.cwfgw.drafts.FakeDraftRepository
-import com.cwfgw.espn.EspnImportService
+import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.GolferService
@@ -72,8 +72,8 @@ class ApiFixture {
             tournamentService = tournamentService,
             teamService = teamService,
         )
-    var espnImportService: EspnImportService =
-        EspnImportService(
+    var espnService: EspnService =
+        EspnService(
             client = FakeEspnClient(),
             tournamentService = tournamentService,
             golferService = golferService,
@@ -150,7 +150,7 @@ private fun ApiFixture.toAppServices(): AppServices =
         tournamentService = tournamentService,
         draftService = draftService,
         scoringService = scoringService,
-        espnImportService = espnImportService,
+        espnService = espnService,
         authService = authService,
         userRepository = userRepository,
         authSetup = authSetup,
