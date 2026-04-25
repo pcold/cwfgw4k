@@ -66,7 +66,7 @@ private fun tournament(
         startDate = LocalDate.parse("2026-04-09"),
         endDate = LocalDate.parse("2026-04-12"),
         courseName = null,
-        status = "upcoming",
+        status = TournamentStatus.Upcoming,
         purseAmount = null,
         payoutMultiplier = java.math.BigDecimal("1.0000"),
         week = null,

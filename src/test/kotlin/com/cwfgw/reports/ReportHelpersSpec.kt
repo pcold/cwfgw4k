@@ -4,6 +4,7 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
+import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
@@ -32,7 +33,7 @@ private fun tournament(
         startDate = LocalDate.parse(startDate),
         endDate = LocalDate.parse(startDate).plusDays(3),
         courseName = null,
-        status = "completed",
+        status = TournamentStatus.Completed,
         purseAmount = null,
         payoutMultiplier = BigDecimal.ONE,
         week = week,

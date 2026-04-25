@@ -20,6 +20,7 @@ import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentResult
 import com.cwfgw.tournaments.TournamentResultId
 import com.cwfgw.tournaments.TournamentService
+import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -61,7 +62,7 @@ private fun mkTournament(multiplier: BigDecimal = BigDecimal.ONE): Tournament =
         startDate = LocalDate.parse("2026-04-01"),
         endDate = LocalDate.parse("2026-04-04"),
         courseName = null,
-        status = "completed",
+        status = TournamentStatus.Completed,
         purseAmount = null,
         payoutMultiplier = multiplier,
         week = null,

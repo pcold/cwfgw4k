@@ -28,7 +28,7 @@ private fun tournament(
     name: String = "The Masters",
     seasonId: SeasonId = SEASON_ID,
     startDate: LocalDate = LocalDate.parse("2026-04-09"),
-    status: String = "upcoming",
+    status: TournamentStatus = TournamentStatus.Upcoming,
 ): Tournament =
     Tournament(
         id = id,
@@ -67,8 +67,8 @@ class TournamentRoutesSpec : FunSpec({
     }
 
     test("GET /api/v1/tournaments?season_id=&status= filters both") {
-        val upcoming = tournament(name = "Upcoming", status = "upcoming")
-        val completed = tournament(name = "Completed", status = "completed")
+        val upcoming = tournament(name = "Upcoming", status = TournamentStatus.Upcoming)
+        val completed = tournament(name = "Completed", status = TournamentStatus.Completed)
 
         apiTest(tournaments(upcoming, completed)) { client ->
             val response =
@@ -83,6 +83,12 @@ class TournamentRoutesSpec : FunSpec({
     test("GET /api/v1/tournaments?season_id={non-uuid} returns 400") {
         apiTest { client ->
             client.get("/api/v1/tournaments?season_id=not-a-uuid").status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    test("GET /api/v1/tournaments?status={unknown} returns 400 instead of silently ignoring the filter") {
+        apiTest { client ->
+            client.get("/api/v1/tournaments?status=garbage").status shouldBe HttpStatusCode.BadRequest
         }
     }
 
@@ -131,7 +137,7 @@ class TournamentRoutesSpec : FunSpec({
             response.status shouldBe HttpStatusCode.Created
             val created: Tournament = response.body()
             created.id shouldBe newId
-            created.status shouldBe "upcoming"
+            created.status shouldBe TournamentStatus.Upcoming
         }
     }
 
@@ -142,11 +148,11 @@ class TournamentRoutesSpec : FunSpec({
             val response =
                 client.put("/api/v1/tournaments/${masters.id.value}") {
                     contentType(ContentType.Application.Json)
-                    setBody(UpdateTournamentRequest(status = "in_progress"))
+                    setBody(UpdateTournamentRequest(status = TournamentStatus.InProgress))
                 }
 
             response.status shouldBe HttpStatusCode.OK
-            response.body<Tournament>().status shouldBe "in_progress"
+            response.body<Tournament>().status shouldBe TournamentStatus.InProgress
         }
     }
 
@@ -208,7 +214,7 @@ class TournamentRoutesSpec : FunSpec({
             val response =
                 client.put("/api/v1/tournaments/${masters.id.value}") {
                     contentType(ContentType.Application.Json)
-                    setBody(UpdateTournamentRequest(status = "completed"))
+                    setBody(UpdateTournamentRequest(status = TournamentStatus.Completed))
                 }
             response.status shouldBe HttpStatusCode.Unauthorized
         }

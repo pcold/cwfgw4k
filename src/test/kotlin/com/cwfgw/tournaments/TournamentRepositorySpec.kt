@@ -53,7 +53,7 @@ class TournamentRepositorySpec : FunSpec({
 
         created.name shouldBe "The Masters"
         created.seasonId shouldBe seasonId
-        created.status shouldBe "upcoming"
+        created.status shouldBe TournamentStatus.Upcoming
         created.payoutMultiplier.compareTo(BigDecimal.ONE) shouldBe 0
     }
 
@@ -97,9 +97,9 @@ class TournamentRepositorySpec : FunSpec({
     test("findAll filters by status") {
         val upcoming = repository.create(create(name = "Upcoming"))
         val completed = repository.create(create(name = "Completed"))
-        repository.update(completed.id, UpdateTournamentRequest(status = "completed"))
+        repository.update(completed.id, UpdateTournamentRequest(status = TournamentStatus.Completed))
 
-        val result = repository.findAll(seasonId = null, status = "upcoming")
+        val result = repository.findAll(seasonId = null, status = TournamentStatus.Upcoming)
 
         result.map { it.id } shouldContainExactly listOf(upcoming.id)
     }
@@ -133,10 +133,10 @@ class TournamentRepositorySpec : FunSpec({
     test("update applies only supplied fields") {
         val created = repository.create(create(name = "Original"))
 
-        val updated = repository.update(created.id, UpdateTournamentRequest(status = "in_progress"))
+        val updated = repository.update(created.id, UpdateTournamentRequest(status = TournamentStatus.InProgress))
 
         updated.shouldNotBeNull()
-        updated.status shouldBe "in_progress"
+        updated.status shouldBe TournamentStatus.InProgress
         updated.name shouldBe "Original"
     }
 

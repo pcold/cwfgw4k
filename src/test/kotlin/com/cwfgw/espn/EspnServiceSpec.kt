@@ -15,6 +15,7 @@ import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentService
+import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
@@ -86,7 +87,7 @@ private fun golfer(
 private fun tournament(
     id: TournamentId = TOURNAMENT_ID,
     pgaTournamentId: String? = "401580999",
-    status: String = "upcoming",
+    status: TournamentStatus = TournamentStatus.Upcoming,
 ): Tournament =
     Tournament(
         id = id,
@@ -302,13 +303,14 @@ class EspnServiceSpec : FunSpec({
         val event = espnTournament(completed = true, competitors = emptyList())
         val fixture =
             Fixture(
-                initialTournaments = listOf(tournament(pgaTournamentId = "401580999", status = "in_progress")),
+                initialTournaments =
+                    listOf(tournament(pgaTournamentId = "401580999", status = TournamentStatus.InProgress)),
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
         fixture.service.importByDate(START_DATE)
 
-        fixture.tournamentRepo.findById(TOURNAMENT_ID)?.status shouldBe "completed"
+        fixture.tournamentRepo.findById(TOURNAMENT_ID)?.status shouldBe TournamentStatus.Completed
     }
 
     test("importByDate flips is_team_event on the tournament once ESPN reports a team event") {

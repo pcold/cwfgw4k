@@ -14,7 +14,7 @@ import org.jooq.Field
 interface TournamentRepository {
     suspend fun findAll(
         seasonId: SeasonId?,
-        status: String?,
+        status: TournamentStatus?,
     ): List<Tournament>
 
     suspend fun findById(id: TournamentId): Tournament?
@@ -41,13 +41,13 @@ fun TournamentRepository(dsl: DSLContext): TournamentRepository = JooqTournament
 private class JooqTournamentRepository(private val dsl: DSLContext) : TournamentRepository {
     override suspend fun findAll(
         seasonId: SeasonId?,
-        status: String?,
+        status: TournamentStatus?,
     ): List<Tournament> =
         withContext(Dispatchers.IO) {
             val conditions =
                 buildList {
                     seasonId?.let { add(TOURNAMENTS.SEASON_ID.eq(it.value)) }
-                    status?.let { add(TOURNAMENTS.STATUS.eq(it)) }
+                    status?.let { add(TOURNAMENTS.STATUS.eq(it.value)) }
                 }
             dsl.selectFrom(TOURNAMENTS)
                 .where(conditions)
@@ -145,7 +145,7 @@ private class JooqTournamentRepository(private val dsl: DSLContext) : Tournament
             request.startDate?.let { put(TOURNAMENTS.START_DATE, it) }
             request.endDate?.let { put(TOURNAMENTS.END_DATE, it) }
             request.courseName?.let { put(TOURNAMENTS.COURSE_NAME, it) }
-            request.status?.let { put(TOURNAMENTS.STATUS, it) }
+            request.status?.let { put(TOURNAMENTS.STATUS, it.value) }
             request.purseAmount?.let { put(TOURNAMENTS.PURSE_AMOUNT, it) }
             request.payoutMultiplier?.let { put(TOURNAMENTS.PAYOUT_MULTIPLIER, it) }
             request.isTeamEvent?.let { put(TOURNAMENTS.IS_TEAM_EVENT, it) }
@@ -193,7 +193,13 @@ private class JooqTournamentRepository(private val dsl: DSLContext) : Tournament
             startDate = record.startDate,
             endDate = record.endDate,
             courseName = record.courseName,
-            status = checkNotNull(record.status) { "tournaments.status is NOT NULL but returned null" },
+            status =
+                run {
+                    val raw = checkNotNull(record.status) { "tournaments.status is NOT NULL but returned null" }
+                    requireNotNull(TournamentStatus.fromValueOrNull(raw)) {
+                        "tournaments.status held unrecognized value '$raw' — schema and code disagree"
+                    }
+                },
             purseAmount = record.purseAmount,
             payoutMultiplier =
                 checkNotNull(record.payoutMultiplier) {

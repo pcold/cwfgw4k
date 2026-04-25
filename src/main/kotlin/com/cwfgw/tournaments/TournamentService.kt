@@ -5,7 +5,7 @@ import com.cwfgw.seasons.SeasonId
 class TournamentService(private val repository: TournamentRepository) {
     suspend fun list(
         seasonId: SeasonId?,
-        status: String?,
+        status: TournamentStatus?,
     ): List<Tournament> = repository.findAll(seasonId = seasonId, status = status)
 
     suspend fun get(id: TournamentId): Tournament? = repository.findById(id)

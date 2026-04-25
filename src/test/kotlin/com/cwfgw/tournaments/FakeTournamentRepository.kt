@@ -30,7 +30,7 @@ class FakeTournamentRepository(
 
     override suspend fun findAll(
         seasonId: SeasonId?,
-        status: String?,
+        status: TournamentStatus?,
     ): List<Tournament> =
         tournaments.values
             .asSequence()
@@ -54,7 +54,7 @@ class FakeTournamentRepository(
                 startDate = request.startDate,
                 endDate = request.endDate,
                 courseName = request.courseName,
-                status = "upcoming",
+                status = TournamentStatus.Upcoming,
                 purseAmount = request.purseAmount,
                 payoutMultiplier = request.payoutMultiplier ?: BigDecimal("1.0000"),
                 week = request.week,

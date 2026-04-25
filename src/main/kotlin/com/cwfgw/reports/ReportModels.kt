@@ -6,6 +6,7 @@ import com.cwfgw.golfers.GolferId
 import com.cwfgw.serialization.BigDecimalSerializer
 import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.TournamentId
+import com.cwfgw.tournaments.TournamentStatus
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import java.math.BigDecimal
@@ -127,7 +128,7 @@ data class ReportTournamentInfo(
     val name: String?,
     val startDate: String?,
     val endDate: String?,
-    val status: String?,
+    val status: TournamentStatus?,
     val payoutMultiplier: BigDecimal,
     val week: String?,
 )

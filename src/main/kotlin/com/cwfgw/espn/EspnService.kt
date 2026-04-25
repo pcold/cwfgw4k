@@ -12,6 +12,7 @@ import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentService
+import com.cwfgw.tournaments.TournamentStatus
 import com.cwfgw.tournaments.UpdateTournamentRequest
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.LocalDate
@@ -198,7 +199,7 @@ class EspnService(
         event: EspnTournament,
     ) {
         val statusChange =
-            if (event.completed && tournament.status != STATUS_COMPLETED) STATUS_COMPLETED else null
+            if (event.completed && tournament.status != TournamentStatus.Completed) TournamentStatus.Completed else null
         val teamEventChange = event.isTeamEvent.takeIf { it != tournament.isTeamEvent }
         if (statusChange == null && teamEventChange == null) return
         tournamentService.update(
@@ -222,10 +223,6 @@ class EspnService(
         val golferId: GolferId,
         val created: Boolean,
     )
-
-    companion object {
-        private const val STATUS_COMPLETED = "completed"
-    }
 }
 
 private fun matchesFullName(
