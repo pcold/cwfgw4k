@@ -25,7 +25,10 @@ import com.cwfgw.result.Result
  *    the parser normalizes to UPPER so downstream lookups can compare
  *    case-insensitively.
  *  - `player_name` is the full name as it appears in the golfers table
- *    ("Scottie Scheffler", "Cameron Young"). Empty player names fail; the
+ *    ("Scottie Scheffler", "Cameron Young"). The parser normalizes to init
+ *    cap so "scottie SCHEFFLER" and "SCOTTIE SCHEFFLER" land identically;
+ *    capitalization resets after spaces, dots, hyphens, and apostrophes so
+ *    "K.H. Lee" and "Jean-Paul" survive intact. Empty player names fail; the
  *    parser doesn't validate that the format looks like a name — that's
  *    AdminService's job.
  *  - `ownership_pct` is `1`–`100`. Empty cell → 100 (the common case).
@@ -101,8 +104,9 @@ object RosterParser {
         val round =
             cells[2].trim().toIntOrNull()
                 ?: return RowResult.Err("invalid round: '${cells[2]}'")
-        val playerName = cells[3].trim()
-        if (playerName.isEmpty()) return RowResult.Err("player_name is empty")
+        val rawPlayerName = cells[3].trim()
+        if (rawPlayerName.isEmpty()) return RowResult.Err("player_name is empty")
+        val playerName = rawPlayerName.toInitCap()
         val ownership =
             when (val raw = cells[4].trim()) {
                 "" -> MAX_OWNERSHIP
@@ -161,6 +165,34 @@ object RosterParser {
     private const val MIN_OWNERSHIP = 1
     private const val MAX_OWNERSHIP = 100
 }
+
+/**
+ * Normalize a free-text name to init cap. Capitalizes the first letter of
+ * each token; tokens are split on space, dot, hyphen, and apostrophe so
+ * dotted initials ("K.H. Lee") and hyphenated/apostrophed surnames
+ * ("Jean-Paul", "O'Connor") capitalize correctly. Lowercases everything
+ * else, so "JUSTIN ROSE" and "justin rose" both land as "Justin Rose".
+ */
+private fun String.toInitCap(): String {
+    val sb = StringBuilder(length)
+    var capitalizeNext = true
+    for (ch in this) {
+        if (ch.isNameTokenBoundary()) {
+            sb.append(ch)
+            capitalizeNext = true
+        } else if (capitalizeNext) {
+            sb.append(ch.uppercaseChar())
+            capitalizeNext = false
+        } else {
+            sb.append(ch.lowercaseChar())
+        }
+    }
+    return sb.toString()
+}
+
+private fun Char.isNameTokenBoundary(): Boolean = isWhitespace() || this in NAME_PUNCTUATION_BOUNDARIES
+
+private val NAME_PUNCTUATION_BOUNDARIES = setOf('.', '-', '\'')
 
 private data class ParsedRow(
     val teamNumber: Int,

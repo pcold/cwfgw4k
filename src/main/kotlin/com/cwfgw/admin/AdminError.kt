@@ -13,4 +13,11 @@ sealed interface AdminError {
 
     /** ESPN returned a non-2xx response when we tried to fetch the calendar. */
     data class UpstreamUnavailable(val status: Int) : AdminError
+
+    /**
+     * The roster TSV failed to parse. Carries the structured parser error
+     * so the route layer can flatten it into a useful 400 response without
+     * losing per-row context.
+     */
+    data class InvalidRoster(val parseError: RosterParseError) : AdminError
 }

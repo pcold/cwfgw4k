@@ -572,4 +572,9 @@ When an AI assistant generates code against this guide:
   it diverges slightly from this document. Consistency within a file is more
   important than global uniformity.
 - AI **MUST** write tests for new code.
+- AI **MUST** pause for review before `git commit`. The pause includes
+  (1) a recap of the diff and (2) a test coverage review listing what
+  is well covered, gaps worth filling (with rationale), and gaps
+  deliberately skipped. User agreement to a plan is not a commit
+  signal.
 

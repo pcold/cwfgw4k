@@ -5,6 +5,8 @@ import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnUpstreamException
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
+import com.cwfgw.golfers.Golfer
+import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.result.Result
@@ -19,10 +21,12 @@ import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
+import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
+import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
@@ -30,6 +34,24 @@ private val LEAGUE_ID = LeagueId(UUID.fromString("00000000-0000-0000-0000-000000
 private val SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000aaa"))
 private val SEASON_START = LocalDate.parse("2026-01-01")
 private val SEASON_END = LocalDate.parse("2026-08-31")
+
+private fun golfer(
+    idHex: String,
+    firstName: String,
+    lastName: String,
+): Golfer =
+    Golfer(
+        id = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000$idHex")),
+        pgaPlayerId = "pga-$idHex",
+        firstName = firstName,
+        lastName = lastName,
+        country = null,
+        worldRanking = null,
+        active = true,
+        updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
+    )
+
+private const val ROSTER_HEADER = "team_number\tteam_name\tround\tplayer_name\townership_pct"
 
 private fun calendarEntry(
     id: String,
@@ -41,9 +63,11 @@ private class Fixture(
     seedSeason: Boolean = true,
     calendar: List<EspnCalendarEntry> = emptyList(),
     upstreamError: EspnUpstreamException? = null,
+    seedGolfers: List<com.cwfgw.golfers.Golfer> = emptyList(),
 ) {
     val seasonRepo: FakeSeasonRepository
     val tournamentRepo = FakeTournamentRepository()
+    val golferRepo = FakeGolferRepository(initial = seedGolfers)
     val service: AdminService
 
     init {
@@ -58,7 +82,7 @@ private class Fixture(
             }
         }
         val tournamentService = TournamentService(tournamentRepo)
-        val golferService = GolferService(FakeGolferRepository())
+        val golferService = GolferService(golferRepo)
         val teamService = TeamService(FakeTeamRepository())
         val espnService =
             EspnService(
@@ -72,6 +96,7 @@ private class Fixture(
                 seasonService = SeasonService(seasonRepo),
                 tournamentService = tournamentService,
                 espnService = espnService,
+                golferService = golferService,
             )
     }
 }
@@ -205,5 +230,233 @@ class AdminServiceSpec : FunSpec({
 
         result.created.shouldBeEmpty()
         result.skipped.shouldBeEmpty()
+    }
+
+    test("previewRoster matches each pick to a single golfer by full name and reports counts") {
+        val scottie = golfer("201", "Scottie", "Scheffler")
+        val rory = golfer("202", "Rory", "McIlroy")
+        val fixture = Fixture(seedGolfers = listOf(scottie, rory))
+
+        val tsv =
+            """
+            $ROSTER_HEADER
+            1	BROWN	1	Scottie Scheffler	75
+            1	BROWN	2	Rory McIlroy	50
+            """.trimIndent()
+
+        val result =
+            fixture.service.previewRoster(tsv)
+                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
+                .value
+
+        result.totalPicks shouldBe 2
+        result.matchedCount shouldBe 2
+        result.ambiguousCount shouldBe 0
+        result.unmatchedCount shouldBe 0
+        val team = result.teams.single()
+        team.teamNumber shouldBe 1
+        team.teamName shouldBe "BROWN"
+        team.picks.map { it.match } shouldContainExactly
+            listOf(
+                PickMatch.Matched(golferId = scottie.id, golferName = "Scottie Scheffler"),
+                PickMatch.Matched(golferId = rory.id, golferName = "Rory McIlroy"),
+            )
+    }
+
+    test("previewRoster matches names case-insensitively") {
+        val scottie = golfer("201", "Scottie", "Scheffler")
+        val fixture = Fixture(seedGolfers = listOf(scottie))
+
+        val tsv =
+            """
+            $ROSTER_HEADER
+            1	BROWN	1	scottie SCHEFFLER	75
+            """.trimIndent()
+
+        val result =
+            fixture.service.previewRoster(tsv)
+                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
+                .value
+
+        result.matchedCount shouldBe 1
+        result.teams.single().picks.single().match shouldBe
+            PickMatch.Matched(golferId = scottie.id, golferName = "Scottie Scheffler")
+    }
+
+    test("previewRoster reports NoMatch when the player name doesn't exist in the golfers table") {
+        val fixture = Fixture(seedGolfers = listOf(golfer("201", "Scottie", "Scheffler")))
+
+        val tsv =
+            """
+            $ROSTER_HEADER
+            1	BROWN	1	Phantom Player	50
+            """.trimIndent()
+
+        val result =
+            fixture.service.previewRoster(tsv)
+                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
+                .value
+
+        result.matchedCount shouldBe 0
+        result.unmatchedCount shouldBe 1
+        result.teams.single().picks.single().match shouldBe PickMatch.NoMatch
+    }
+
+    test("previewRoster reports Ambiguous when multiple golfers share the same full name") {
+        val younger = golfer("203", "Justin", "Thomas")
+        val older = golfer("204", "Justin", "Thomas")
+        val fixture = Fixture(seedGolfers = listOf(younger, older))
+
+        val tsv =
+            """
+            $ROSTER_HEADER
+            1	BROWN	1	Justin Thomas	50
+            """.trimIndent()
+
+        val result =
+            fixture.service.previewRoster(tsv)
+                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
+                .value
+
+        result.ambiguousCount shouldBe 1
+        result.matchedCount shouldBe 0
+        val match = result.teams.single().picks.single().match.shouldBeInstanceOf<PickMatch.Ambiguous>()
+        match.candidates.map { it.golferId } shouldContainExactly listOf(younger.id, older.id)
+    }
+
+    test("previewRoster summary counts mix matched, ambiguous, and unmatched across multiple teams") {
+        val scottie = golfer("201", "Scottie", "Scheffler")
+        val twinA = golfer("203", "Justin", "Thomas")
+        val twinB = golfer("204", "Justin", "Thomas")
+        val fixture = Fixture(seedGolfers = listOf(scottie, twinA, twinB))
+
+        val tsv =
+            """
+            $ROSTER_HEADER
+            1	BROWN	1	Scottie Scheffler	75
+            1	BROWN	2	Phantom Player	50
+            2	WOMBLE	1	Justin Thomas	60
+            2	WOMBLE	2	Scottie Scheffler	25
+            """.trimIndent()
+
+        val result =
+            fixture.service.previewRoster(tsv)
+                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
+                .value
+
+        result.totalPicks shouldBe 4
+        result.matchedCount shouldBe 2
+        result.ambiguousCount shouldBe 1
+        result.unmatchedCount shouldBe 1
+        result.teams.map { it.teamName } shouldContainExactly listOf("BROWN", "WOMBLE")
+    }
+
+    test("previewRoster returns InvalidRoster when the TSV header is wrong — no golfer lookup happens") {
+        val fixture = Fixture(seedGolfers = listOf(golfer("201", "Scottie", "Scheffler")))
+
+        val err =
+            fixture.service.previewRoster("nope\nrow")
+                .shouldBeInstanceOf<Result.Err<AdminError>>()
+                .error
+                .shouldBeInstanceOf<AdminError.InvalidRoster>()
+                .parseError
+                .shouldBeInstanceOf<RosterParseError.InvalidHeader>()
+        err.message.shouldContain("Header row must be exactly")
+    }
+
+    test("previewRoster returns InvalidRoster wrapping per-row errors when rows are malformed") {
+        val fixture = Fixture(seedGolfers = emptyList())
+
+        val tsv =
+            """
+            $ROSTER_HEADER
+            1	BROWN	notanumber	Scottie Scheffler	50
+            """.trimIndent()
+
+        val rows =
+            fixture.service.previewRoster(tsv)
+                .shouldBeInstanceOf<Result.Err<AdminError>>()
+                .error
+                .shouldBeInstanceOf<AdminError.InvalidRoster>()
+                .parseError
+                .shouldBeInstanceOf<RosterParseError.InvalidRows>()
+                .errors
+        rows shouldHaveSize 1
+        rows.single().message.shouldContain("invalid round")
+    }
+
+    test("previewRoster matches inactive golfers — operator's TSV may pick a deactivated player") {
+        val deactivated = golfer("201", "Scottie", "Scheffler").copy(active = false)
+        val fixture = Fixture(seedGolfers = listOf(deactivated))
+
+        val tsv =
+            """
+            $ROSTER_HEADER
+            1	BROWN	1	Scottie Scheffler	75
+            """.trimIndent()
+
+        val result =
+            fixture.service.previewRoster(tsv)
+                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
+                .value
+
+        result.matchedCount shouldBe 1
+        result.teams.single().picks.single().match shouldBe
+            PickMatch.Matched(golferId = deactivated.id, golferName = "Scottie Scheffler")
+    }
+
+    test("PreviewPick carries init-capped name plus round and ownership through unchanged") {
+        val scottie = golfer("201", "Scottie", "Scheffler")
+        val fixture = Fixture(seedGolfers = listOf(scottie))
+
+        val tsv =
+            """
+            $ROSTER_HEADER
+            1	BROWN	2	scottie SCHEFFLER	60
+            """.trimIndent()
+
+        val pick =
+            fixture.service.previewRoster(tsv)
+                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
+                .value
+                .teams.single().picks.single()
+
+        pick.playerName shouldBe "Scottie Scheffler"
+        pick.round shouldBe 2
+        pick.ownershipPct shouldBe 60
+    }
+
+    test("previewRoster requires a full first+last match — bare last name does not match") {
+        val scottie = golfer("201", "Scottie", "Scheffler")
+        val fixture = Fixture(seedGolfers = listOf(scottie))
+
+        val tsv =
+            """
+            $ROSTER_HEADER
+            1	BROWN	1	Scheffler	75
+            """.trimIndent()
+
+        val result =
+            fixture.service.previewRoster(tsv)
+                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
+                .value
+
+        result.unmatchedCount shouldBe 1
+        result.teams.single().picks.single().match shouldBe PickMatch.NoMatch
+    }
+
+    test("previewRoster on a header-only TSV returns an empty preview with zero counts") {
+        val fixture = Fixture(seedGolfers = listOf(golfer("201", "Scottie", "Scheffler")))
+
+        val result =
+            fixture.service.previewRoster(ROSTER_HEADER)
+                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
+                .value
+
+        result.teams.shouldBeEmpty()
+        result.totalPicks shouldBe 0
+        result.matchedCount shouldBe 0
+        result.ambiguousCount shouldBe 0
+        result.unmatchedCount shouldBe 0
     }
 })

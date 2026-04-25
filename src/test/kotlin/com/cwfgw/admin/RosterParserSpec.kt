@@ -121,8 +121,32 @@ class RosterParserSpec : FunSpec({
         ok(text).single().picks shouldHaveSize 2
     }
 
-    test("multi-word player names are preserved verbatim") {
+    test("multi-word player names round-trip when already init-capped") {
         ok(rosterText("1\tBROWN\t1\tSi Woo Kim\t")).single().picks.single().playerName shouldBe "Si Woo Kim"
+    }
+
+    test("player_name is normalized to init cap regardless of how the operator typed it") {
+        val text =
+            rosterText(
+                "1\tBROWN\t1\tscottie SCHEFFLER\t75",
+                "1\tBROWN\t2\tJUSTIN ROSE\t",
+                "1\tBROWN\t3\tshane lowry\t",
+            )
+
+        ok(text).single().picks.map { it.playerName } shouldBe
+            listOf("Scottie Scheffler", "Justin Rose", "Shane Lowry")
+    }
+
+    test("init cap preserves dotted initials, hyphens, and apostrophes") {
+        val text =
+            rosterText(
+                "1\tBROWN\t1\tk.h. lee\t",
+                "1\tBROWN\t2\tJEAN-PAUL gaultier\t",
+                "1\tBROWN\t3\tjohn o'connor\t",
+            )
+
+        ok(text).single().picks.map { it.playerName } shouldBe
+            listOf("K.H. Lee", "Jean-Paul Gaultier", "John O'Connor")
     }
 
     // ----- header errors -----
