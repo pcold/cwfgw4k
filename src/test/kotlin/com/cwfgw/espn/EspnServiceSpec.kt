@@ -5,7 +5,9 @@ import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.result.Result
+import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.RosterViewPick
 import com.cwfgw.teams.RosterViewTeam
@@ -117,12 +119,14 @@ private class Fixture(
     val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
     val golferRepo = FakeGolferRepository(initial = initialGolfers)
     val teamRepo = FakeTeamRepository(initialRosterView = rosterView)
+    val seasonRepo = FakeSeasonRepository()
     val service: EspnService =
         EspnService(
             client = fakeClient,
             tournamentService = TournamentService(tournamentRepo),
             golferService = GolferService(golferRepo),
             teamService = TeamService(teamRepo),
+            seasonService = SeasonService(seasonRepo),
         )
 }
 

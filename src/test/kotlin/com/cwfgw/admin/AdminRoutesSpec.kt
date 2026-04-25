@@ -88,6 +88,7 @@ private fun adminFixture(
                 tournamentService = tournamentService,
                 golferService = golferService,
                 teamService = teamService,
+                seasonService = seasonService,
             )
         adminService =
             AdminService(

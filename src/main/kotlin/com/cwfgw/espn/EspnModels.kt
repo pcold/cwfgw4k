@@ -1,6 +1,10 @@
 package com.cwfgw.espn
 
+import com.cwfgw.golfers.GolferId
+import com.cwfgw.serialization.BigDecimalSerializer
+import com.cwfgw.teams.TeamId
 import kotlinx.serialization.Serializable
+import java.math.BigDecimal
 
 /**
  * A tournament parsed from ESPN's scoreboard API. Internal to the import
@@ -77,4 +81,68 @@ data class EspnCalendarEntry(
     val id: String,
     val label: String,
     val startDate: String,
+)
+
+/**
+ * Dry-run scoring of one ESPN tournament against the league's current
+ * rosters — what each team *would* earn if the tournament were finalized
+ * with ESPN's current leaderboard. Returned by
+ * `GET /api/v1/espn/preview/{seasonId}?date=` and consumed by the live
+ * overlay to merge in-progress data onto reports + rankings.
+ *
+ * `payoutMultiplier` and `isTeamEvent` come from the matched DB
+ * tournament (see [com.cwfgw.reports.matchDbTournament]) so the per-team
+ * dollar figures honor any overrides operators set up-front; a missing
+ * match defaults to multiplier 1.0 and not a team event.
+ */
+@Serializable
+data class EspnLivePreview(
+    val espnName: String,
+    val espnId: String,
+    val completed: Boolean,
+    @Serializable(with = BigDecimalSerializer::class) val payoutMultiplier: BigDecimal,
+    val totalCompetitors: Int,
+    val teams: List<PreviewTeamScore>,
+    val leaderboard: List<PreviewLeaderboardEntry>,
+    val isTeamEvent: Boolean = false,
+)
+
+/** Per-team rollup of live golfer scores — sums golferScores into topTenEarnings + weekly +/- across the league. */
+@Serializable
+data class PreviewTeamScore(
+    val teamId: TeamId,
+    val teamName: String,
+    val ownerName: String,
+    @Serializable(with = BigDecimalSerializer::class) val topTenEarnings: BigDecimal,
+    val golferScores: List<PreviewGolferScore>,
+    @Serializable(with = BigDecimalSerializer::class) val weeklyTotal: BigDecimal = BigDecimal.ZERO,
+)
+
+/** One rostered golfer's projected score for the in-progress tournament. */
+@Serializable
+data class PreviewGolferScore(
+    val golferName: String,
+    val golferId: GolferId,
+    val position: Int,
+    val numTied: Int,
+    val scoreToPar: Int?,
+    @Serializable(with = BigDecimalSerializer::class) val basePayout: BigDecimal,
+    @Serializable(with = BigDecimalSerializer::class) val ownershipPct: BigDecimal,
+    @Serializable(with = BigDecimalSerializer::class) val payout: BigDecimal,
+)
+
+/**
+ * One row of the projected leaderboard — top-N competitors regardless of
+ * roster status. Lets the UI render a unified scoreboard with rostered
+ * and undrafted players in correct position order.
+ */
+@Serializable
+data class PreviewLeaderboardEntry(
+    val name: String,
+    val position: Int,
+    val scoreToPar: Int?,
+    val thru: String?,
+    val rostered: Boolean,
+    val teamName: String?,
+    val pairKey: String? = null,
 )

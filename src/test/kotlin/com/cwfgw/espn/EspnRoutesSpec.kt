@@ -87,6 +87,7 @@ private fun withWiredService(
                 tournamentService = tournamentSvc,
                 golferService = golferService,
                 teamService = teamService,
+                seasonService = seasonService,
             )
     }
 
@@ -233,6 +234,42 @@ class EspnRoutesSpec : FunSpec({
             withWiredService(upstreamError = EspnUpstreamException(503, "Service Unavailable")),
         ) { client ->
             client.get("/api/v1/espn/calendar").status shouldBe HttpStatusCode.BadGateway
+        }
+    }
+
+    test("GET /espn/preview/{sid}?date= returns 200 with the live preview list") {
+        apiTest(withWiredService(tournaments = mapOf(START_DATE to emptyList()))) { client ->
+            val response = client.get("/api/v1/espn/preview/${SEASON_ID.value}?date=2026-04-15")
+            response.status shouldBe HttpStatusCode.OK
+            response.body<List<EspnLivePreview>>() shouldBe emptyList()
+        }
+    }
+
+    test("GET /espn/preview/{sid} returns 400 when the date query parameter is missing") {
+        apiTest(withWiredService()) { client ->
+            client.get("/api/v1/espn/preview/${SEASON_ID.value}").status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    test("GET /espn/preview/{sid}?date=garbage returns 400 for a malformed date") {
+        apiTest(withWiredService()) { client ->
+            val response = client.get("/api/v1/espn/preview/${SEASON_ID.value}?date=not-a-date")
+            response.status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    test("GET /espn/preview/{non-uuid}?date=... returns 400 for a malformed season id") {
+        apiTest(withWiredService()) { client ->
+            client.get("/api/v1/espn/preview/not-a-uuid?date=2026-04-15").status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    test("GET /espn/preview/{sid}?date= returns 502 when ESPN is down") {
+        apiTest(
+            withWiredService(upstreamError = EspnUpstreamException(503, "Service Unavailable")),
+        ) { client ->
+            val response = client.get("/api/v1/espn/preview/${SEASON_ID.value}?date=2026-04-15")
+            response.status shouldBe HttpStatusCode.BadGateway
         }
     }
 })

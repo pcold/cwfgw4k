@@ -97,7 +97,7 @@ private fun buildServices(
     val golferService = GolferService(GolferRepository(database.dsl))
     val userRepository = UserRepository(database.dsl)
     val espnService =
-        EspnService(EspnClient(httpClient), tournamentService, golferService, teamService)
+        EspnService(EspnClient(httpClient), tournamentService, golferService, teamService, seasonService)
     val scoringService =
         ScoringService(ScoringRepository(database.dsl), seasonService, tournamentService, teamService)
     val adminService =

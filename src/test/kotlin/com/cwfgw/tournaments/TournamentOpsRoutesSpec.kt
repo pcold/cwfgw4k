@@ -94,6 +94,7 @@ private fun opsFixture(
                 tournamentService = tournamentService,
                 golferService = golferService,
                 teamService = teamService,
+                seasonService = seasonService,
             )
         scoringService = ScoringService(scoringRepo, seasonService, tournamentService, teamService)
         tournamentOpsService = TournamentOpsService(tournamentService, scoringService, espnService)

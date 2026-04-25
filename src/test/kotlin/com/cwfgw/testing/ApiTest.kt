@@ -82,6 +82,7 @@ class ApiFixture {
             tournamentService = tournamentService,
             golferService = golferService,
             teamService = teamService,
+            seasonService = seasonService,
         )
     var adminService: AdminService =
         AdminService(

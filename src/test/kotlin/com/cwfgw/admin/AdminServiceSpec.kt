@@ -93,6 +93,7 @@ private class Fixture(
                 tournamentService = tournamentService,
                 golferService = golferService,
                 teamService = teamService,
+                seasonService = SeasonService(seasonRepo),
             )
         service =
             AdminService(

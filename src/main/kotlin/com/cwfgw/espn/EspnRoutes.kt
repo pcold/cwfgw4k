@@ -3,6 +3,8 @@ package com.cwfgw.espn
 import com.cwfgw.http.DomainError
 import com.cwfgw.http.optionalQueryParam
 import com.cwfgw.result.Result
+import com.cwfgw.seasons.SeasonId
+import com.cwfgw.seasons.toSeasonId
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.toTournamentId
 import com.cwfgw.users.SESSION_AUTH_NAME
@@ -22,6 +24,7 @@ private val log = KotlinLogging.logger {}
 fun Route.espnRoutes(service: EspnService) {
     route("/espn") {
         get("/calendar") { getCalendar(service) }
+        get("/preview/{seasonId}") { previewByDate(service) }
         authenticate(SESSION_AUTH_NAME) {
             route("/import") {
                 post { importByDate(service) }
@@ -48,6 +51,17 @@ private suspend fun RoutingContext.importByDate(service: EspnService) {
             ?: throw DomainError.Validation("missing query parameter: date")
     call.respond(service.importByDate(date).orThrow())
 }
+
+private suspend fun RoutingContext.previewByDate(service: EspnService) {
+    val seasonId = seasonId()
+    val date =
+        optionalQueryParam("date", ::parseLocalDate)
+            ?: throw DomainError.Validation("missing query parameter: date")
+    call.respond(service.previewByDate(seasonId, date).orThrow())
+}
+
+private fun RoutingContext.seasonId(): SeasonId =
+    call.parameters["seasonId"]?.toSeasonId() ?: throw DomainError.Validation("invalid season id")
 
 private suspend fun RoutingContext.importForTournament(service: EspnService) {
     call.respond(service.importForTournament(tournamentId()).orThrow())
