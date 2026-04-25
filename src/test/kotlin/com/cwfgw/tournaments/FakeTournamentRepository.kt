@@ -90,6 +90,25 @@ class FakeTournamentRepository(
             .filter { it.tournamentId == tournamentId }
             .sortedWith(resultOrdering)
 
+    override suspend fun deleteResultsByTournament(tournamentId: TournamentId): Int {
+        val matching = results.values.filter { it.tournamentId == tournamentId }
+        matching.forEach { results.remove(it.id) }
+        return matching.size
+    }
+
+    override suspend fun deleteResultsBySeason(seasonId: SeasonId): Int {
+        val tournamentIds = tournaments.values.filter { it.seasonId == seasonId }.map { it.id }.toSet()
+        val matching = results.values.filter { it.tournamentId in tournamentIds }
+        matching.forEach { results.remove(it.id) }
+        return matching.size
+    }
+
+    override suspend fun resetSeasonTournaments(seasonId: SeasonId): Int {
+        val matching = tournaments.values.filter { it.seasonId == seasonId }
+        matching.forEach { tournaments[it.id] = it.copy(status = TournamentStatus.Upcoming) }
+        return matching.size
+    }
+
     override suspend fun upsertResult(
         tournamentId: TournamentId,
         request: CreateTournamentResultRequest,

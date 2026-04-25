@@ -103,4 +103,22 @@ class FakeScoringRepository(
         standingUpserts += standing
         return standing
     }
+
+    override suspend fun deleteByTournament(tournamentId: TournamentId): Int {
+        val matching = scores.values.filter { it.tournamentId == tournamentId }
+        matching.forEach { scores.remove(it.id) }
+        return matching.size
+    }
+
+    override suspend fun deleteBySeason(seasonId: SeasonId): Int {
+        val matching = scores.values.filter { it.seasonId == seasonId }
+        matching.forEach { scores.remove(it.id) }
+        return matching.size
+    }
+
+    override suspend fun deleteStandingsBySeason(seasonId: SeasonId): Int {
+        val matching = standings.values.filter { it.seasonId == seasonId }
+        matching.forEach { standings.remove(it.id) }
+        return matching.size
+    }
 }

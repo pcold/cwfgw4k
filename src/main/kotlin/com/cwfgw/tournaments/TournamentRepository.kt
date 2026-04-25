@@ -34,6 +34,15 @@ interface TournamentRepository {
         tournamentId: TournamentId,
         request: CreateTournamentResultRequest,
     ): TournamentResult
+
+    /** Wipe every leaderboard row for the given tournament. Returns the row count for logging. */
+    suspend fun deleteResultsByTournament(tournamentId: TournamentId): Int
+
+    /** Wipe every leaderboard row for every tournament in the given season. */
+    suspend fun deleteResultsBySeason(seasonId: SeasonId): Int
+
+    /** Reset every tournament in the season to status `Upcoming`. Returns the row count for logging. */
+    suspend fun resetSeasonTournaments(seasonId: SeasonId): Int
 }
 
 fun TournamentRepository(dsl: DSLContext): TournamentRepository = JooqTournamentRepository(dsl)
@@ -108,6 +117,37 @@ private class JooqTournamentRepository(private val dsl: DSLContext) : Tournament
                 .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.eq(tournamentId.value))
                 .orderBy(TOURNAMENT_RESULTS.POSITION.asc().nullsLast(), TOURNAMENT_RESULTS.ID.asc())
                 .fetch(::toResult)
+        }
+
+    override suspend fun deleteResultsByTournament(tournamentId: TournamentId): Int =
+        withContext(Dispatchers.IO) {
+            dsl.deleteFrom(TOURNAMENT_RESULTS)
+                .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.eq(tournamentId.value))
+                .execute()
+        }
+
+    override suspend fun deleteResultsBySeason(seasonId: SeasonId): Int =
+        withContext(Dispatchers.IO) {
+            val tournamentIds =
+                dsl.select(TOURNAMENTS.ID)
+                    .from(TOURNAMENTS)
+                    .where(TOURNAMENTS.SEASON_ID.eq(seasonId.value))
+                    .fetch(TOURNAMENTS.ID)
+            if (tournamentIds.isEmpty()) {
+                0
+            } else {
+                dsl.deleteFrom(TOURNAMENT_RESULTS)
+                    .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.`in`(tournamentIds))
+                    .execute()
+            }
+        }
+
+    override suspend fun resetSeasonTournaments(seasonId: SeasonId): Int =
+        withContext(Dispatchers.IO) {
+            dsl.update(TOURNAMENTS)
+                .set(TOURNAMENTS.STATUS, TournamentStatus.Upcoming.value)
+                .where(TOURNAMENTS.SEASON_ID.eq(seasonId.value))
+                .execute()
         }
 
     override suspend fun upsertResult(

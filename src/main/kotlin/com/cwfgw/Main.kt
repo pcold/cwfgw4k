@@ -31,8 +31,10 @@ import com.cwfgw.seasons.seasonRoutes
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.teams.teamRoutes
+import com.cwfgw.tournaments.TournamentOpsService
 import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentService
+import com.cwfgw.tournaments.tournamentOpsRoutes
 import com.cwfgw.tournaments.tournamentRoutes
 import com.cwfgw.users.AuthService
 import com.cwfgw.users.AuthSetup
@@ -100,6 +102,7 @@ private fun buildServices(
         AdminService(seasonService, tournamentService, espnService, golferService, teamService)
     val weeklyReportService =
         WeeklyReportService(seasonService, tournamentService, teamService, golferService, scoringService)
+    val tournamentOpsService = TournamentOpsService(tournamentService, scoringService, espnService)
     return AppServices(
         healthProbe = DatabaseHealthProbe(database.dsl),
         leagueService = LeagueService(LeagueRepository(database.dsl)),
@@ -107,6 +110,7 @@ private fun buildServices(
         seasonService = seasonService,
         teamService = teamService,
         tournamentService = tournamentService,
+        tournamentOpsService = tournamentOpsService,
         draftService = DraftService(DraftRepository(database.dsl), teamService),
         scoringService = scoringService,
         espnService = espnService,
@@ -173,6 +177,7 @@ fun Application.module(services: AppServices) {
             seasonRoutes(services.seasonService)
             teamRoutes(services.teamService)
             tournamentRoutes(services.tournamentService)
+            tournamentOpsRoutes(services.tournamentOpsService)
             draftRoutes(services.draftService)
             scoringRoutes(services.scoringService)
             espnRoutes(services.espnService)

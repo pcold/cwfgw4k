@@ -42,6 +42,15 @@ interface ScoringRepository {
         totalPoints: BigDecimal,
         tournamentsPlayed: Int,
     ): SeasonStanding
+
+    /** Wipe every fantasy score for the given tournament. Returns the row count for logging. */
+    suspend fun deleteByTournament(tournamentId: TournamentId): Int
+
+    /** Wipe every fantasy score for the season across all tournaments. */
+    suspend fun deleteBySeason(seasonId: SeasonId): Int
+
+    /** Wipe every standings row for the season. */
+    suspend fun deleteStandingsBySeason(seasonId: SeasonId): Int
 }
 
 data class TeamSeasonTotals(
@@ -134,6 +143,27 @@ private class JooqScoringRepository(private val dsl: DSLContext) : ScoringReposi
                         tournamentsPlayed = record.value2() ?: 0,
                     )
                 } ?: TeamSeasonTotals(BigDecimal.ZERO, 0)
+        }
+
+    override suspend fun deleteByTournament(tournamentId: TournamentId): Int =
+        withContext(Dispatchers.IO) {
+            dsl.deleteFrom(FANTASY_SCORES)
+                .where(FANTASY_SCORES.TOURNAMENT_ID.eq(tournamentId.value))
+                .execute()
+        }
+
+    override suspend fun deleteBySeason(seasonId: SeasonId): Int =
+        withContext(Dispatchers.IO) {
+            dsl.deleteFrom(FANTASY_SCORES)
+                .where(FANTASY_SCORES.SEASON_ID.eq(seasonId.value))
+                .execute()
+        }
+
+    override suspend fun deleteStandingsBySeason(seasonId: SeasonId): Int =
+        withContext(Dispatchers.IO) {
+            dsl.deleteFrom(SEASON_STANDINGS)
+                .where(SEASON_STANDINGS.SEASON_ID.eq(seasonId.value))
+                .execute()
         }
 
     override suspend fun upsertStanding(

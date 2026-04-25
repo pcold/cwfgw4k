@@ -26,4 +26,10 @@ class TournamentService(private val repository: TournamentRepository) {
         tournamentId: TournamentId,
         requests: List<CreateTournamentResultRequest>,
     ): List<TournamentResult> = requests.map { repository.upsertResult(tournamentId, it) }
+
+    suspend fun deleteResults(tournamentId: TournamentId): Int = repository.deleteResultsByTournament(tournamentId)
+
+    suspend fun deleteResultsBySeason(seasonId: SeasonId): Int = repository.deleteResultsBySeason(seasonId)
+
+    suspend fun resetSeasonTournaments(seasonId: SeasonId): Int = repository.resetSeasonTournaments(seasonId)
 }

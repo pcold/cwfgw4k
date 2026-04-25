@@ -38,6 +38,12 @@ class ScoringService(
 
     suspend fun getStandings(seasonId: SeasonId): List<SeasonStanding> = repository.getStandings(seasonId)
 
+    suspend fun deleteScoresByTournament(tournamentId: TournamentId): Int = repository.deleteByTournament(tournamentId)
+
+    suspend fun deleteScoresBySeason(seasonId: SeasonId): Int = repository.deleteBySeason(seasonId)
+
+    suspend fun deleteStandingsBySeason(seasonId: SeasonId): Int = repository.deleteStandingsBySeason(seasonId)
+
     suspend fun calculateScores(
         seasonId: SeasonId,
         tournamentId: TournamentId,

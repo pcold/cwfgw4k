@@ -20,6 +20,7 @@ import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.tournaments.FakeTournamentRepository
+import com.cwfgw.tournaments.TournamentOpsService
 import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.users.AuthService
 import com.cwfgw.users.AuthSetup
@@ -97,6 +98,12 @@ class ApiFixture {
             golferService = golferService,
             scoringService = scoringService,
         )
+    var tournamentOpsService: TournamentOpsService =
+        TournamentOpsService(
+            tournamentService = tournamentService,
+            scoringService = scoringService,
+            espnService = espnService,
+        )
     var userRepository: UserRepository = FakeUserRepository()
     var authService: AuthService = AuthService(userRepository, cost = TEST_BCRYPT_COST)
     var authSetup: AuthSetup =
@@ -166,6 +173,7 @@ private fun ApiFixture.toAppServices(): AppServices =
         seasonService = seasonService,
         teamService = teamService,
         tournamentService = tournamentService,
+        tournamentOpsService = tournamentOpsService,
         draftService = draftService,
         scoringService = scoringService,
         espnService = espnService,

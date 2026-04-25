@@ -34,3 +34,9 @@ inline fun <T, U, E> Result<T, E>.flatMap(transform: (T) -> Result<U, E>): Resul
         is Result.Ok -> transform(value)
         is Result.Err -> this
     }
+
+inline fun <T, E, F> Result<T, E>.mapError(transform: (E) -> F): Result<T, F> =
+    when (this) {
+        is Result.Ok -> this
+        is Result.Err -> Result.Err(transform(error))
+    }
