@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.detekt)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.kover)
+    alias(libs.plugins.node.gradle)
     application
 }
 
@@ -183,6 +184,62 @@ tasks.named("check") {
 // Route `test` through lint so `./gradlew test` can't pass while ktlint/detekt fails.
 tasks.named("test") {
     dependsOn("ktlintCheck", "detekt")
+}
+
+// --- Frontend (ui/) ---
+// node-gradle downloads its own Node so Cloud Build's gradle:9-jdk21 image can run npm
+// tasks without a separate toolchain step. uiInstall/uiTest/uiBuild mirror the Scala project.
+node {
+    download.set(true)
+    version.set("24.15.0")
+    nodeProjectDir.set(file("$projectDir/ui"))
+}
+
+tasks.register<com.github.gradle.node.npm.task.NpmTask>("uiInstall") {
+    description = "Install UI dependencies"
+    group = "frontend"
+    args.set(listOf("ci"))
+    inputs.file("ui/package.json")
+    inputs.file("ui/package-lock.json")
+    outputs.dir("ui/node_modules")
+}
+
+tasks.register<com.github.gradle.node.npm.task.NpmTask>("uiTest") {
+    description = "Run UI unit tests with coverage"
+    group = "frontend"
+    dependsOn("uiInstall")
+    args.set(listOf("run", "test:coverage"))
+    inputs.dir("ui/src")
+    inputs.file("ui/package.json")
+    inputs.file("ui/vite.config.ts")
+    outputs.dir("ui/coverage")
+    outputs.dir("ui/test-report")
+}
+
+tasks.register<com.github.gradle.node.npm.task.NpmTask>("uiBuild") {
+    description = "Build the UI production bundle"
+    group = "frontend"
+    dependsOn("uiInstall")
+    args.set(listOf("run", "build"))
+    inputs.dir("ui/src")
+    inputs.file("ui/package.json")
+    inputs.file("ui/vite.config.ts")
+    outputs.dir("ui/dist")
+}
+
+// Bundle ui/dist into the runtime jar under static/ so StaticRoutes can serve the React UI
+// from the classpath in Cloud Run. Hooked into processResources (rather than only into the
+// jar tasks) so `./gradlew run` also serves the production bundle locally if you want it,
+// while `npm run dev` remains the normal local-dev workflow via the Vite proxy.
+tasks.named<Copy>("processResources") {
+    dependsOn("uiBuild")
+    from("ui/dist") {
+        into("static")
+    }
+}
+
+tasks.named("check") {
+    dependsOn("uiTest")
 }
 
 // Local-dev convenience: reset the docker-compose Postgres to a clean state and run SeedMain

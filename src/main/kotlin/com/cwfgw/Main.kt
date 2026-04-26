@@ -17,6 +17,8 @@ import com.cwfgw.health.DatabaseHealthProbe
 import com.cwfgw.health.healthRoutes
 import com.cwfgw.http.installErrorHandling
 import com.cwfgw.http.installRequestLogging
+import com.cwfgw.http.spaFallback
+import com.cwfgw.http.staticRoutes
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.leagues.LeagueService
 import com.cwfgw.leagues.leagueRoutes
@@ -59,6 +61,7 @@ import io.ktor.server.auth.session
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.routing.Routing
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import io.ktor.server.sessions.SessionTransportTransformerMessageAuthentication
@@ -184,21 +187,27 @@ fun Application.module(services: AppServices) {
     installRequestLogging()
     installErrorHandling()
     routing {
-        route("/api/v1") {
-            healthRoutes(services.healthProbe)
-            leagueRoutes(services.leagueService)
-            golferRoutes(services.golferService)
-            seasonRoutes(services.seasonService)
-            teamRoutes(services.teamService)
-            tournamentRoutes(services.tournamentService)
-            tournamentOpsRoutes(services.tournamentOpsService)
-            seasonOpsRoutes(services.seasonOpsService)
-            draftRoutes(services.draftService)
-            scoringRoutes(services.scoringService)
-            espnRoutes(services.espnService)
-            adminRoutes(services.adminService)
-            reportRoutes(services.weeklyReportService)
-            authRoutes(services.authService)
-        }
+        apiRoutes(services)
+        staticRoutes()
+        spaFallback()
+    }
+}
+
+private fun Routing.apiRoutes(services: AppServices) {
+    route("/api/v1") {
+        healthRoutes(services.healthProbe)
+        leagueRoutes(services.leagueService)
+        golferRoutes(services.golferService)
+        seasonRoutes(services.seasonService)
+        teamRoutes(services.teamService)
+        tournamentRoutes(services.tournamentService)
+        tournamentOpsRoutes(services.tournamentOpsService)
+        seasonOpsRoutes(services.seasonOpsService)
+        draftRoutes(services.draftService)
+        scoringRoutes(services.scoringService)
+        espnRoutes(services.espnService)
+        adminRoutes(services.adminService)
+        reportRoutes(services.weeklyReportService)
+        authRoutes(services.authService)
     }
 }
