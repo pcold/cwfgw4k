@@ -87,7 +87,7 @@ fun main() {
     }.start(wait = true)
 }
 
-private fun buildServices(
+internal fun buildServices(
     config: AppConfig,
     database: Database,
     httpClient: HttpClient,
