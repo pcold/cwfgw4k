@@ -368,10 +368,10 @@ Rules:
   limit fast. `TeamRoutes.kt` and `TournamentRoutes.kt` are the reference
   shape.
 - **MUST** use `installRequestLogging()` (not bare `install(CallLogging)`).
-  Its format — `cwfgw.request method=X route=Y status=Z duration_ms=N` with
+  Its format — `cwfgw4k.request method=X route=Y status=Z duration_ms=N` with
   path normalization (UUIDs → `:id`, numerics → `:n`, `/assets/*` bucketed)
   — is load-bearing for Cloud Logging metric extraction. Changing the format
-  requires coordinating with the shared cwfgw ops config.
+  requires coordinating with the metric / dashboard config in `ops/`.
 
 ### jOOQ
 

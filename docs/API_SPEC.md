@@ -417,7 +417,7 @@ with a human-readable error body that names the blocking tournaments.
 Request logs are emitted by `installRequestLogging()` in the format:
 
 ```
-cwfgw.request method=GET route=/api/v1/seasons/:id/report status=200 duration_ms=12
+cwfgw4k.request method=GET route=/api/v1/seasons/:id/report status=200 duration_ms=12
 ```
 
 Path placeholders are normalized: UUIDs → `:id`, integer path segments →

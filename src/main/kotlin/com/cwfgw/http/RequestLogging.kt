@@ -31,10 +31,9 @@ internal fun normalizeRoute(path: String): String =
 
 /**
  * Emit one structured INFO log per request shaped for Cloud Logging log-based
- * metric extraction: `cwfgw.request method=X route=Y status=Z duration_ms=N`.
- * The matching metric regex and dashboard config live in the shared cwfgw ops
- * repo — changing this format without updating that config will break the
- * api-usage dashboard.
+ * metric extraction: `cwfgw4k.request method=X route=Y status=Z duration_ms=N`.
+ * The matching metric regex and dashboard config live in `ops/` — changing
+ * this format without updating that config will break the api-usage dashboard.
  */
 internal fun Application.installRequestLogging() {
     install(CallLogging) {
@@ -44,7 +43,7 @@ internal fun Application.installRequestLogging() {
             val route = normalizeRoute(call.request.path())
             val status = call.response.status()?.value ?: 0
             val durationMs = call.processingTimeMillis()
-            "cwfgw.request method=$method route=$route status=$status duration_ms=$durationMs"
+            "cwfgw4k.request method=$method route=$route status=$status duration_ms=$durationMs"
         }
     }
 }
