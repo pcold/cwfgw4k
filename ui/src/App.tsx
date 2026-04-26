@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
-import WeeklyReportPage from './pages/WeeklyReportPage';
-import RankingsPage from './pages/RankingsPage';
-import PlayerRankingsPage from './pages/PlayerRankingsPage';
-import RostersPage from './pages/RostersPage';
-import ScoreboardPage from './pages/ScoreboardPage';
-import LateRowBetsPage from './pages/LateRowBetsPage';
-import RulesPage from './pages/RulesPage';
-import AdminPage from './pages/AdminPage';
-import LeagueSeasonPicker from './components/LeagueSeasonPicker';
-import { LeagueSeasonProvider } from './context/LeagueSeasonContext';
-import { AuthProvider } from './context/AuthContext';
+import WeeklyReportPage from '@/features/weeklyReport/WeeklyReportPage';
+import RankingsPage from '@/features/rankings/RankingsPage';
+import PlayerRankingsPage from '@/features/playerRankings/PlayerRankingsPage';
+import RostersPage from '@/features/rosters/RostersPage';
+import ScoreboardPage from '@/features/scoreboard/ScoreboardPage';
+import LateRowBetsPage from '@/features/lateRowBets/LateRowBetsPage';
+import RulesPage from '@/features/rules/RulesPage';
+import AdminPage from '@/features/admin/AdminPage';
+import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
+import { LeagueSeasonProvider } from '@/features/leagues/LeagueSeasonContext';
+import { AuthProvider } from '@/features/auth/AuthContext';
 
 const NAV_ITEMS: Array<{ to: string; label: string }> = [
   { to: '/scoreboard', label: 'Scoreboard' },

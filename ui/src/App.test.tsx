@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
-import { renderWithProviders } from './test/renderWithProviders';
+import { renderWithProviders } from '@/shared/test/renderWithProviders';
 
-vi.mock('./api/client', () => ({
+vi.mock('@/shared/api/client', () => ({
   api: {
     authMe: vi.fn().mockResolvedValue({ authenticated: false, username: null }),
     leagues: vi.fn().mockResolvedValue([]),

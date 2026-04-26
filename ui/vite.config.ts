@@ -19,7 +19,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
+    setupFiles: ['./src/shared/test/setup.ts'],
     css: true,
     reporters: [
       'default',
@@ -30,7 +30,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/main.tsx', 'src/api/types.ts'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/shared/test/**', 'src/main.tsx', 'src/shared/api/types.ts'],
       thresholds: {
         lines: 80,
         statements: 80,
