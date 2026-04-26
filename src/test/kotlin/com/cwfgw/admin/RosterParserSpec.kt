@@ -222,4 +222,44 @@ class RosterParserSpec : FunSpec({
         errors[0].rowNumber shouldBe 2
         errors[1].rowNumber shouldBe 3
     }
+
+    test("CSV input parses identically to TSV — separator is detected from the header") {
+        val csvHeader = RosterParser.EXPECTED_HEADER.joinToString(",")
+        val csvText =
+            listOf(
+                csvHeader,
+                "1,BROWN,1,Scottie Scheffler,75",
+                "1,BROWN,2,Justin Rose,",
+                "2,WOMBLE,1,Cameron Young",
+            ).joinToString("\n")
+
+        val teams =
+            RosterParser.parse(csvText)
+                .shouldBeInstanceOf<Result.Ok<List<ParsedTeam>>>()
+                .value
+
+        teams shouldHaveSize 2
+        teams[0].teamName shouldBe "BROWN"
+        teams[0].picks[0].playerName shouldBe "Scottie Scheffler"
+        teams[0].picks[0].ownershipPct shouldBe 75
+        teams[0].picks[1].ownershipPct shouldBe 100
+        teams[1].picks.single().playerName shouldBe "Cameron Young"
+    }
+
+    test("CSV row with the wrong cell count surfaces 'comma-separated' in the error message") {
+        // 2-cell row is short of both the strict (5) and the lenient (4) shape.
+        val csvText =
+            listOf(
+                RosterParser.EXPECTED_HEADER.joinToString(","),
+                "1,BROWN",
+            ).joinToString("\n")
+
+        val errors =
+            RosterParser.parse(csvText)
+                .shouldBeInstanceOf<Result.Err<RosterParseError>>()
+                .error
+                .shouldBeInstanceOf<RosterParseError.InvalidRows>()
+                .errors
+        errors.single().message.shouldContain("comma-separated")
+    }
 })

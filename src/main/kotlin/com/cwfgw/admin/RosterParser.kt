@@ -8,13 +8,24 @@ import com.cwfgw.result.Result
  * out of a spreadsheet. Pure: no IO, no DB. The result feeds
  * [AdminService.previewRoster] which matches names to existing golfers.
  *
- * Required format — TSV with the header row exactly as below:
+ * Required format — TSV or CSV with the header row exactly as below.
+ * Format is auto-detected from the header line: if it contains a tab the
+ * whole file is parsed as TSV, otherwise as CSV. Mixed-separator files
+ * fail validation on the first non-conforming row.
  * ```
  * team_number\tteam_name\tround\tplayer_name\townership_pct
  * 1\tBROWN\t1\tScottie Scheffler\t75
  * 1\tBROWN\t2\tJustin Rose\t
  * 1\tBROWN\t3\tShane Lowry\t100
  * 2\tWOMBLE\t1\tScottie Scheffler\t25
+ * ```
+ * or
+ * ```
+ * team_number,team_name,round,player_name,ownership_pct
+ * 1,BROWN,1,Scottie Scheffler,75
+ * 1,BROWN,2,Justin Rose,
+ * 1,BROWN,3,Shane Lowry,100
+ * 2,WOMBLE,1,Scottie Scheffler,25
  * ```
  *
  *  - Header is required and validated exactly. Wrong column order or names
@@ -68,12 +79,13 @@ object RosterParser {
         if (numberedLines.isEmpty()) return Result.Err(RosterParseError.InvalidHeader("Empty input"))
 
         val (_, headerLine) = numberedLines.first()
-        validateHeader(headerLine)?.let { return Result.Err(it) }
+        val separator = detectSeparator(headerLine)
+        validateHeader(headerLine, separator)?.let { return Result.Err(it) }
 
         val rows = mutableListOf<ParsedRow>()
         val errors = mutableListOf<RosterParseError.RowError>()
         for ((rowNumber, line) in numberedLines.drop(1)) {
-            when (val r = parseRow(line)) {
+            when (val r = parseRow(line, separator)) {
                 is RowResult.Ok -> rows += r.row
                 is RowResult.Err -> errors += RosterParseError.RowError(rowNumber, r.message)
             }
@@ -83,25 +95,35 @@ object RosterParser {
         return aggregateByTeam(rows)
     }
 
-    private fun validateHeader(line: String): RosterParseError.InvalidHeader? {
-        val cells = line.split("\t").map(String::trim)
+    /** Tab in the header → TSV; otherwise CSV. Pasted snippets often lose tabs in transit. */
+    private fun detectSeparator(headerLine: String): Char = if ('\t' in headerLine) '\t' else ','
+
+    private fun validateHeader(
+        line: String,
+        separator: Char,
+    ): RosterParseError.InvalidHeader? {
+        val cells = line.split(separator).map(String::trim)
         if (cells != EXPECTED_HEADER) {
-            val expected = EXPECTED_HEADER.joinToString("\\t")
-            val got = cells.joinToString("\\t")
+            val expected = EXPECTED_HEADER.joinToString(separator.toString())
+            val got = cells.joinToString(separator.toString())
             return RosterParseError.InvalidHeader("Header row must be exactly: $expected (got: $got)")
         }
         return null
     }
 
-    private fun parseRow(line: String): RowResult {
-        val cells = line.split("\t")
+    private fun parseRow(
+        line: String,
+        separator: Char,
+    ): RowResult {
+        val cells = line.split(separator)
         // Accept the trailing ownership_pct column being either present (5
         // cells, possibly empty) or omitted entirely (4 cells); both forms
         // map to the 100 default. Spreadsheet exports frequently strip the
         // last empty column.
         val expectedSizes = "${EXPECTED_HEADER.size - 1} or ${EXPECTED_HEADER.size}"
+        val sepLabel = if (separator == '\t') "tab-separated" else "comma-separated"
         if (cells.size != EXPECTED_HEADER.size && cells.size != EXPECTED_HEADER.size - 1) {
-            return RowResult.Err("expected $expectedSizes tab-separated cells, got ${cells.size}")
+            return RowResult.Err("expected $expectedSizes $sepLabel cells, got ${cells.size}")
         }
         val teamNumber =
             cells[0].trim().toIntOrNull()

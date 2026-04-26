@@ -227,17 +227,25 @@ function RosterInputStep({
       </div>
 
       <div className="mb-4">
-        <label className="block text-xs text-gray-400 mb-1" htmlFor="roster-text">
-          Roster (paste text — TEAM headers + round/player lines)
+        <label className="block text-xs text-gray-400 mb-1" htmlFor="roster-file">
+          Roster file (.tsv or .csv with the header row team_number,team_name,round,player_name,ownership_pct)
         </label>
-        <textarea
-          id="roster-text"
-          rows={20}
-          value={rosterText}
-          onChange={(e) => onRosterChange(e.target.value)}
-          className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full font-mono leading-relaxed"
-          placeholder={'TEAM 1 BROWN\n1 SCHEFFLER 75\n2 ROSE\n3 LOWRY'}
+        <input
+          id="roster-file"
+          type="file"
+          accept=".tsv,.csv,text/tab-separated-values,text/csv,text/plain"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            void file.text().then(onRosterChange);
+          }}
+          className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-gray-700 file:text-gray-100 hover:file:bg-gray-600"
         />
+        {rosterText ? (
+          <p className="mt-2 text-xs text-gray-400">
+            Loaded {rosterText.split('\n').filter((line) => line.trim().length > 0).length} non-empty lines.
+          </p>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-4">

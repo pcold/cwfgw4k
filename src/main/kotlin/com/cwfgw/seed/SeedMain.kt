@@ -63,6 +63,9 @@ fun main() {
 private suspend fun seed(services: AppServices) {
     val league = services.leagueService.create(CreateLeagueRequest(name = "Cottonwood Fairway Golf Wagering"))
     log.info { "Created league '${league.name}' (${league.id.value})" }
+    // Spring uses CSV, summer uses TSV — running both lets ./gradlew seed exercise
+    // both parser paths on every run.
+    seedSeason(SeedData.spring2026, league.id, services)
     seedSeason(SeedData.summer2026, league.id, services)
 }
 
@@ -89,7 +92,9 @@ private suspend fun seedSeason(
         "Uploaded ${upload.created.size} tournaments from ESPN calendar; ${upload.skipped.size} skipped"
     }
 
-    val preview = services.adminService.previewRoster(seed.rosterTsv).orThrow("previewRoster")
+    applyMajorMultipliers(upload.created, seed.majorNamePatterns, services)
+
+    val preview = services.adminService.previewRoster(seed.rosterText).orThrow("previewRoster")
     log.info {
         "Roster preview: ${preview.totalPicks} picks — ${preview.matchedCount} matched, " +
             "${preview.ambiguousCount} ambiguous, ${preview.unmatchedCount} unmatched"
@@ -146,6 +151,33 @@ private fun pickAssignment(
             GolferAssignment.New(firstName = first, lastName = last)
         }
     }
+
+/**
+ * Bump payoutMultiplier to 2 on every imported tournament whose name
+ * contains any of the configured patterns (case-insensitive substring
+ * match). Skips silently when no patterns are configured for the season.
+ */
+private suspend fun applyMajorMultipliers(
+    created: List<com.cwfgw.tournaments.Tournament>,
+    patterns: List<String>,
+    services: AppServices,
+) {
+    if (patterns.isEmpty()) return
+    val matchers = patterns.map { it.lowercase() }
+    var applied = 0
+    for (tournament in created) {
+        val nameLower = tournament.name.lowercase()
+        if (matchers.any { it in nameLower }) {
+            services.tournamentService.update(
+                tournament.id,
+                com.cwfgw.tournaments.UpdateTournamentRequest(payoutMultiplier = java.math.BigDecimal("2")),
+            )
+            applied++
+            log.info { "Marked '${tournament.name}' as 2x major" }
+        }
+    }
+    log.info { "Applied 2x multiplier to $applied tournament(s) matching $patterns" }
+}
 
 /**
  * Walk tournaments in chronological order and finalize each one that's

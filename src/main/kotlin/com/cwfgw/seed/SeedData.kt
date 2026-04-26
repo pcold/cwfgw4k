@@ -15,10 +15,39 @@ data class SeasonSeed(
     val seasonNumber: Int,
     val startDate: LocalDate,
     val endDate: LocalDate,
-    val rosterTsv: String,
+    val rosterText: String,
+    /**
+     * Substrings (case-insensitive) that mark a tournament as a 2x major.
+     * After uploadSeason creates the calendar, every imported tournament
+     * whose name contains any of these substrings gets its
+     * payoutMultiplier bumped to 2.
+     */
+    val majorNamePatterns: List<String> = emptyList(),
 )
 
 object SeedData {
+    /**
+     * Spring 2026 — covers the West Coast swing through the Masters.
+     * Roster ships as CSV so the seed flow exercises the parser's CSV path
+     * end-to-end (the tab-loss-on-paste class of bug that prompted the
+     * dual-format support).
+     */
+    val spring2026: SeasonSeed by lazy {
+        SeasonSeed(
+            name = "Spring",
+            seasonYear = 2026,
+            seasonNumber = 1,
+            startDate = LocalDate.parse("2026-01-15"),
+            endDate = LocalDate.parse("2026-04-12"),
+            rosterText = loadResource("/seed/2026-spring-roster.csv"),
+            majorNamePatterns = listOf("Players", "Masters"),
+        )
+    }
+
+    /**
+     * Summer 2026 — post-Masters PGA stretch. Roster ships as TSV so the
+     * other parser path is exercised on the same seed run.
+     */
     val summer2026: SeasonSeed by lazy {
         SeasonSeed(
             name = "Summer",
@@ -26,7 +55,8 @@ object SeedData {
             seasonNumber = 2,
             startDate = LocalDate.parse("2026-04-16"),
             endDate = LocalDate.parse("2026-07-12"),
-            rosterTsv = loadResource("/seed/2026-summer-roster.tsv"),
+            rosterText = loadResource("/seed/2026-summer-roster.tsv"),
+            majorNamePatterns = listOf("U.S. Open", "Open Championship"),
         )
     }
 

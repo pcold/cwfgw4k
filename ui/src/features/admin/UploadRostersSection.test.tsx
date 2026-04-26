@@ -20,6 +20,12 @@ vi.mock('@/shared/api/client', () => ({
   ApiError: class ApiError extends Error {},
 }));
 
+async function uploadRosterFile(user: ReturnType<typeof userEvent.setup>, contents: string) {
+  const file = new File([contents], 'roster.tsv', { type: 'text/tab-separated-values' });
+  const input = screen.getByLabelText(/Roster file/i) as HTMLInputElement;
+  await user.upload(input, file);
+}
+
 function samplePreview(): RosterPreview {
   return {
     totalPicks: 3,
@@ -164,10 +170,7 @@ describe('UploadRostersSection', () => {
       expect(screen.getByText('2026 Spring')).toBeInTheDocument();
     });
     await user.selectOptions(screen.getByLabelText(/^Season$/), 'sn-1');
-    await user.type(
-      screen.getByLabelText(/Roster \(paste text/i),
-      'TEAM 1 BROWN\n1 SCHEFFLER',
-    );
+    await uploadRosterFile(user, 'TEAM 1 BROWN\n1 SCHEFFLER');
     await user.click(screen.getByRole('button', { name: /Match Players with ESPN/i }));
 
     expect(await screen.findByText(/Exact Matches:/)).toBeInTheDocument();
@@ -209,8 +212,8 @@ describe('UploadRostersSection', () => {
     const button = screen.getByRole('button', { name: /Match Players with ESPN/i });
     expect(button).toBeDisabled();
 
-    await user.type(screen.getByLabelText(/Roster \(paste text/i), 'TEAM 1 BROWN');
-    expect(button).toBeEnabled();
+    await uploadRosterFile(user, 'TEAM 1 BROWN');
+    await waitFor(() => expect(button).toBeEnabled());
   });
 
   it('goes back to the input step when Back is clicked', async () => {
@@ -223,7 +226,7 @@ describe('UploadRostersSection', () => {
       expect(screen.getByText('2026 Spring')).toBeInTheDocument();
     });
     await user.selectOptions(screen.getByLabelText(/^Season$/), 'sn-1');
-    await user.type(screen.getByLabelText(/Roster \(paste text/i), 'TEAM 1 BROWN');
+    await uploadRosterFile(user, 'TEAM 1 BROWN');
     await user.click(screen.getByRole('button', { name: /Match Players with ESPN/i }));
 
     expect(
