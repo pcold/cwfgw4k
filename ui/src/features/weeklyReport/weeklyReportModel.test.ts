@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ReportRow, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
+import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 import {
   isSeasonReport,
   roundCellBg,
@@ -7,7 +7,7 @@ import {
   sideBetWinnersByRound,
   signTextClass,
   summarizeWeeklyReport,
-  teamRowsByRound,
+  teamCellsByRound,
 } from './weeklyReportModel';
 
 function tournamentReport(status: string): WeeklyReport {
@@ -71,7 +71,7 @@ describe('summarizeWeeklyReport', () => {
         teamId: 't-1',
         teamName: 'Aces',
         ownerName: 'A',
-        rows: [],
+        cells: [],
         topTenEarnings: 0,
         weeklyTotal: 0,
         previous: 0,
@@ -85,7 +85,7 @@ describe('summarizeWeeklyReport', () => {
         teamId: 't-2',
         teamName: 'Birdies',
         ownerName: 'B',
-        rows: [],
+        cells: [],
         topTenEarnings: 0,
         weeklyTotal: 0,
         previous: 0,
@@ -114,7 +114,7 @@ describe('isSeasonReport', () => {
   });
 });
 
-function reportRow(round: number): ReportRow {
+function reportRow(round: number): ReportCell {
   return {
     round,
     golferName: `Golfer ${round}`,
@@ -130,13 +130,13 @@ function reportRow(round: number): ReportRow {
   };
 }
 
-describe('teamRowsByRound', () => {
+describe('teamCellsByRound', () => {
   it('indexes a team\u2019s rows by round number', () => {
     const team: ReportTeamColumn = {
       teamId: 't-1',
       teamName: 'Aces',
       ownerName: 'A',
-      rows: [reportRow(2), reportRow(5)],
+      cells: [reportRow(2), reportRow(5)],
       topTenEarnings: 0,
       weeklyTotal: 0,
       previous: 0,
@@ -146,7 +146,7 @@ describe('teamRowsByRound', () => {
       sideBets: 0,
       totalCash: 0,
     };
-    const map = teamRowsByRound(team);
+    const map = teamCellsByRound(team);
     expect(map.get(2)?.golferName).toBe('Golfer 2');
     expect(map.get(5)?.golferName).toBe('Golfer 5');
     expect(map.has(1)).toBe(false);

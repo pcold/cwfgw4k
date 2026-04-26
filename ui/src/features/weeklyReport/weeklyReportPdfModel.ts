@@ -1,4 +1,4 @@
-import type { ReportRow, Season, WeeklyReport } from '@/shared/api/types';
+import type { ReportCell, Season, WeeklyReport } from '@/shared/api/types';
 import { formatMoney } from '@/shared/util/money';
 import { isSeasonReport } from './weeklyReportModel';
 
@@ -22,16 +22,16 @@ export function formatDateRange(startDate: string | null, endDate: string | null
   return start ?? end ?? '';
 }
 
-export function cellContent(row: ReportRow | undefined, showSeasonFooter: boolean): string {
-  if (!row || !row.golferName) return '-';
-  const ownership = row.ownershipPct < 100 ? ` (${row.ownershipPct}%)` : '';
-  const name = row.golferName.toUpperCase() + ownership;
-  const earningsLine = row.earnings > 0
-    ? `${row.positionStr ?? ''} - ${formatMoney(row.earnings)}`
+export function cellContent(cell: ReportCell | undefined, showSeasonFooter: boolean): string {
+  if (!cell || !cell.golferName) return '-';
+  const ownership = cell.ownershipPct < 100 ? ` (${cell.ownershipPct}%)` : '';
+  const name = cell.golferName.toUpperCase() + ownership;
+  const earningsLine = cell.earnings > 0
+    ? `${cell.positionStr ?? ''} - ${formatMoney(cell.earnings)}`
     : '-';
   if (!showSeasonFooter) return `${name}\n${earningsLine}`;
-  const cumLine = (row.seasonTopTens ?? 0) > 0
-    ? `${formatMoney(row.seasonEarnings ?? 0)} (${row.seasonTopTens ?? 0})`
+  const cumLine = (cell.seasonTopTens ?? 0) > 0
+    ? `${formatMoney(cell.seasonEarnings ?? 0)} (${cell.seasonTopTens ?? 0})`
     : '$0';
   return `${name}\n${earningsLine}\n${cumLine}`;
 }

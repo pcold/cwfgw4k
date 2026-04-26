@@ -1,5 +1,5 @@
 import type {
-  ReportRow,
+  ReportCell,
   ReportSideBetRound,
   ReportTeamColumn,
   WeeklyReport,
@@ -7,9 +7,9 @@ import type {
 
 export const ROUNDS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
-export function teamRowsByRound(team: ReportTeamColumn): Map<number, ReportRow> {
-  const byRound = new Map<number, ReportRow>();
-  for (const row of team.rows) byRound.set(row.round, row);
+export function teamCellsByRound(team: ReportTeamColumn): Map<number, ReportCell> {
+  const byRound = new Map<number, ReportCell>();
+  for (const cell of team.cells) byRound.set(cell.round, cell);
   return byRound;
 }
 

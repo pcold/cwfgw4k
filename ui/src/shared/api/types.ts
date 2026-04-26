@@ -8,7 +8,7 @@ export interface ReportTournamentInfo {
   week: string | null;
 }
 
-export interface ReportRow {
+export interface ReportCell {
   round: number;
   golferName: string | null;
   golferId: string | null;
@@ -26,7 +26,7 @@ export interface ReportTeamColumn {
   teamId: string;
   teamName: string;
   ownerName: string;
-  rows: ReportRow[];
+  cells: ReportCell[];
   topTenEarnings: number;
   weeklyTotal: number;
   previous: number;

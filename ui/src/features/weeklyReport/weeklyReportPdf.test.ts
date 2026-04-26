@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type {
-  ReportRow,
+  ReportCell,
   ReportSideBetRound,
   ReportTeamColumn,
   StandingsEntry,
@@ -8,7 +8,7 @@ import type {
 } from '@/shared/api/types';
 import { buildWeeklyReportPdf } from './weeklyReportPdf';
 
-function row(overrides: Partial<ReportRow> = {}): ReportRow {
+function row(overrides: Partial<ReportCell> = {}): ReportCell {
   return {
     round: 1,
     golferName: 'Scheffler',
@@ -26,7 +26,7 @@ function row(overrides: Partial<ReportRow> = {}): ReportRow {
 }
 
 function buildTeam(teamId: string, teamName: string, earningsRound?: number): ReportTeamColumn {
-  const rows = [1, 2, 3, 4, 5, 6, 7, 8].map((r) =>
+  const cells = [1, 2, 3, 4, 5, 6, 7, 8].map((r) =>
     row({
       round: r,
       golferName: `Golfer${teamId}${r}`,
@@ -42,7 +42,7 @@ function buildTeam(teamId: string, teamName: string, earningsRound?: number): Re
     teamId,
     teamName,
     ownerName: `Owner-${teamName}`,
-    rows,
+    cells,
     topTenEarnings: earningsRound ? 7.5 : 0,
     weeklyTotal: earningsRound ? 50 : -40,
     previous: 0,

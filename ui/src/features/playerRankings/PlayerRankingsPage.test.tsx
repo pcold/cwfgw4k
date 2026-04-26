@@ -5,7 +5,7 @@ import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import PlayerRankingsPage from './PlayerRankingsPage';
 import type {
   League,
-  ReportRow,
+  ReportCell,
   ReportTeamColumn,
   RosterTeam,
   Season,
@@ -62,7 +62,7 @@ function tournament(overrides: Partial<Tournament>): Tournament {
   };
 }
 
-function row(overrides: Partial<ReportRow>): ReportRow {
+function row(overrides: Partial<ReportCell>): ReportCell {
   return {
     round: 1,
     golferName: 'SCHEFFLER',
@@ -84,7 +84,7 @@ function team(overrides: Partial<ReportTeamColumn>): ReportTeamColumn {
     teamId: 't-1',
     teamName: 'Aces',
     ownerName: 'Alice',
-    rows: [],
+    cells: [],
     topTenEarnings: 0,
     weeklyTotal: 0,
     previous: 0,
@@ -150,7 +150,7 @@ describe('PlayerRankingsPage', () => {
       if (tournamentId === 'tn-a') {
         return Promise.resolve(
           report('tn-a', {
-            teams: [team({ rows: [row({ golferId: 'g-1', earnings: 18, topTens: 1 })] })],
+            teams: [team({ cells: [row({ golferId: 'g-1', earnings: 18, topTens: 1 })] })],
             undraftedTopTens: [
               { name: 'P. Mickelson', position: 5, payout: 8, scoreToPar: '-3', pairKey: null },
             ],
@@ -159,7 +159,7 @@ describe('PlayerRankingsPage', () => {
       }
       return Promise.resolve(
         report('tn-b', {
-          teams: [team({ rows: [row({ golferId: 'g-1', earnings: 12, topTens: 1 })] })],
+          teams: [team({ cells: [row({ golferId: 'g-1', earnings: 12, topTens: 1 })] })],
           undraftedTopTens: [],
         }),
       );
@@ -198,7 +198,7 @@ describe('PlayerRankingsPage', () => {
       const earnings = tournamentId === 'tn-a' ? 18 : 12;
       return Promise.resolve(
         report(tournamentId, {
-          teams: [team({ rows: [row({ golferId: 'g-1', earnings, topTens: 1 })] })],
+          teams: [team({ cells: [row({ golferId: 'g-1', earnings, topTens: 1 })] })],
         }),
       );
     });

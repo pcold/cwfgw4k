@@ -65,7 +65,7 @@ function buildReport(name: string, tournamentId: string | null = null): WeeklyRe
         teamId: 'team-1',
         teamName: 'Aces',
         ownerName: 'Alice',
-        rows: [1, 2, 3, 4, 5, 6, 7, 8].map((r) => ({
+        cells: [1, 2, 3, 4, 5, 6, 7, 8].map((r) => ({
           round: r,
           golferName: `Golfer ${r}`,
           golferId: `g-${r}`,

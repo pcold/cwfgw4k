@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable, { type CellDef, type RowInput, type Styles } from 'jspdf-autotable';
 import type {
-  ReportRow,
+  ReportCell,
   ReportTeamColumn,
   Season,
   StandingsEntry,
@@ -13,7 +13,7 @@ import {
   isSeasonReport,
   sideBetWinnersByRound,
   summarizeWeeklyReport,
-  teamRowsByRound,
+  teamCellsByRound,
 } from './weeklyReportModel';
 import {
   cellContent,
@@ -36,11 +36,11 @@ const COLOR_POSITIVE: RGB = [22, 101, 52];
 const COLOR_NEGATIVE: RGB = [153, 27, 27];
 
 function roundCell(
-  row: ReportRow | undefined,
+  cell: ReportCell | undefined,
   isSideBetWinner: boolean,
   showSeasonFooter: boolean,
 ): CellDef {
-  const hasEarnings = !!row && row.earnings > 0;
+  const hasEarnings = !!cell && cell.earnings > 0;
   const styles: Partial<Styles> = {
     fontSize: 6,
     halign: 'center',
@@ -59,7 +59,7 @@ function roundCell(
     styles.fillColor = COLOR_WHITE;
     styles.textColor = COLOR_BLACK;
   }
-  return { content: cellContent(row, showSeasonFooter), styles };
+  return { content: cellContent(cell, showSeasonFooter), styles };
 }
 
 function signColor(value: number): RGB {
@@ -239,7 +239,7 @@ export function buildWeeklyReportPdf(report: WeeklyReport): jsPDF {
   const marginRight = 18;
   const headerBottom = drawHeader(doc, report, marginLeft, marginRight, 18);
 
-  const teamsByRound = teams.map((t) => ({ team: t, rows: teamRowsByRound(t) }));
+  const teamsByRound = teams.map((t) => ({ team: t, rows: teamCellsByRound(t) }));
 
   const head: RowInput[] = [
     [

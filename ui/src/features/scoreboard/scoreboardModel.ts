@@ -1,4 +1,4 @@
-import type { ReportRow, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
+import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 
 export interface ScoreboardGolfer {
   golferId: string | null;
@@ -54,15 +54,15 @@ function parseScoreToPar(raw: string | null): number | null {
 }
 
 function golferScoresFor(team: ReportTeamColumn): ScoreboardGolfer[] {
-  return team.rows
-    .filter((row: ReportRow) => row.earnings > 0 && row.golferName !== null)
-    .map((row) => ({
-      golferId: row.golferId,
-      golferName: row.golferName ?? '',
-      position: parsePosition(row.positionStr),
-      tied: isTiedPosition(row.positionStr),
-      payout: row.earnings,
-      ownershipPct: row.ownershipPct,
+  return team.cells
+    .filter((cell: ReportCell) => cell.earnings > 0 && cell.golferName !== null)
+    .map((cell) => ({
+      golferId: cell.golferId,
+      golferName: cell.golferName ?? '',
+      position: parsePosition(cell.positionStr),
+      tied: isTiedPosition(cell.positionStr),
+      payout: cell.earnings,
+      ownershipPct: cell.ownershipPct,
     }));
 }
 
@@ -104,15 +104,15 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
 
   const rostered: LeaderboardEntry[] = [];
   for (const team of report.teams) {
-    for (const row of team.rows) {
-      if (row.positionStr && row.golferName) {
+    for (const cell of team.cells) {
+      if (cell.positionStr && cell.golferName) {
         rostered.push({
-          name: row.golferName,
-          position: parsePosition(row.positionStr),
-          scoreToPar: parseScoreToPar(row.scoreToPar),
+          name: cell.golferName,
+          position: parsePosition(cell.positionStr),
+          scoreToPar: parseScoreToPar(cell.scoreToPar),
           rostered: true,
           teamName: team.teamName,
-          pairKey: row.pairKey,
+          pairKey: cell.pairKey,
         });
       }
     }
@@ -132,7 +132,7 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
 }
 
 // For team events (e.g. Zurich Classic) two golfers share one competitor slot, so entries with the same pairKey
-// collapse into a single row with "A/B" player names and "teamA/teamB" teams in matching order. Undrafted partners
+// collapse into a single cell with "A/B" player names and "teamA/teamB" teams in matching order. Undrafted partners
 // keep the literal "undrafted" placeholder so the joined team string stays aligned with the player string.
 export function collapsePairs(entries: LeaderboardEntry[]): LeaderboardEntry[] {
   const result: LeaderboardEntry[] = [];

@@ -40,7 +40,7 @@ function aggregateDrafted(reports: WeeklyReport[]): Map<string, DraftedAgg> {
   const byGolfer = new Map<string, DraftedAgg>();
   for (const report of reports) {
     for (const team of report.teams) {
-      for (const row of team.rows) {
+      for (const row of team.cells) {
         if (!row.golferId || row.topTens <= 0) continue;
         const existing = byGolfer.get(row.golferId) ?? {
           name: row.golferName ?? '?',

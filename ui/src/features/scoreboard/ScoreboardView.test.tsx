@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ScoreboardView from './ScoreboardView';
-import type { ReportRow, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
+import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 
-function row(overrides: Partial<ReportRow> = {}): ReportRow {
+function row(overrides: Partial<ReportCell> = {}): ReportCell {
   return {
     round: 1,
     golferName: 'Scottie Scheffler',
@@ -26,7 +26,7 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
     teamId: 't-1',
     teamName: 'Aces',
     ownerName: 'Alice',
-    rows: [row()],
+    cells: [row()],
     topTenEarnings: 1,
     weeklyTotal: 18,
     previous: 0,
@@ -130,7 +130,7 @@ describe('ScoreboardView', () => {
           teams: [
             team({
               teamName: 'Aces',
-              rows: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
+              cells: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
             }),
           ],
           undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 'E', pairKey: null }],
@@ -156,7 +156,7 @@ describe('ScoreboardView', () => {
             team({
               teamName: 'Aces',
               // positionStr null so the leaderboard ignores this row and we only see the name once
-              rows: [row({ golferId: 'g-42', golferName: 'TeamGolfer', positionStr: null })],
+              cells: [row({ golferId: 'g-42', golferName: 'TeamGolfer', positionStr: null })],
             }),
           ],
         })}
@@ -173,7 +173,7 @@ describe('ScoreboardView', () => {
         report={report({
           teams: [
             team({
-              rows: [row({ golferId: 'g-1', golferName: 'PlainGolfer', positionStr: null })],
+              cells: [row({ golferId: 'g-1', golferName: 'PlainGolfer', positionStr: null })],
             }),
           ],
         })}
@@ -189,7 +189,7 @@ describe('ScoreboardView', () => {
         report={report({
           teams: [
             team({
-              rows: [row({ golferName: null, positionStr: null, earnings: 0 })],
+              cells: [row({ golferName: null, positionStr: null, earnings: 0 })],
             }),
           ],
         })}
@@ -207,12 +207,12 @@ describe('ScoreboardView', () => {
             team({
               teamId: 't-1',
               teamName: 'Aces',
-              rows: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
+              cells: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
             }),
             team({
               teamId: 't-2',
               teamName: 'Birdies',
-              rows: [
+              cells: [
                 row({
                   golferId: 'g-2',
                   golferName: 'Rory',
@@ -243,7 +243,7 @@ describe('ScoreboardView', () => {
           teams: [
             team({
               teamName: 'Aces',
-              rows: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
+              cells: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
             }),
           ],
           undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 'E', pairKey: null }],
@@ -266,7 +266,7 @@ describe('ScoreboardView', () => {
           teams: [
             team({
               teamName: 'Aces',
-              rows: [
+              cells: [
                 row({
                   golferId: 'g-1',
                   golferName: 'FITZPATRICK',
@@ -296,7 +296,7 @@ describe('ScoreboardView', () => {
           teams: [
             team({
               teamName: 'Aces',
-              rows: [
+              cells: [
                 row({
                   golferId: 'g-1',
                   golferName: 'MORIKAWA',
@@ -325,7 +325,7 @@ describe('ScoreboardView', () => {
           teams: [
             team({
               teamName: 'Aces',
-              rows: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
+              cells: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
             }),
           ],
           // No undrafted golfers — Undrafted option is not offered.

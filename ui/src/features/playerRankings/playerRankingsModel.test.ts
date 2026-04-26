@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildPlayerRankings } from './playerRankingsModel';
-import type { ReportRow, ReportTeamColumn, RosterTeam, WeeklyReport } from '@/shared/api/types';
+import type { ReportCell, ReportTeamColumn, RosterTeam, WeeklyReport } from '@/shared/api/types';
 
-function row(overrides: Partial<ReportRow> = {}): ReportRow {
+function row(overrides: Partial<ReportCell> = {}): ReportCell {
   return {
     round: 1,
     golferName: 'SCHEFFLER',
@@ -24,7 +24,7 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
     teamId: 't-1',
     teamName: 'Aces',
     ownerName: 'Alice',
-    rows: [],
+    cells: [],
     topTenEarnings: 0,
     weeklyTotal: 0,
     previous: 0,
@@ -77,12 +77,12 @@ describe('buildPlayerRankings', () => {
     const reports = [
       report({
         teams: [
-          team({ rows: [row({ golferId: 'g-1', earnings: 18, topTens: 1 })] }),
+          team({ cells: [row({ golferId: 'g-1', earnings: 18, topTens: 1 })] }),
         ],
       }),
       report({
         teams: [
-          team({ rows: [row({ golferId: 'g-1', earnings: 12, topTens: 1 })] }),
+          team({ cells: [row({ golferId: 'g-1', earnings: 12, topTens: 1 })] }),
         ],
       }),
     ];
@@ -103,7 +103,7 @@ describe('buildPlayerRankings', () => {
       report({
         teams: [
           team({
-            rows: [
+            cells: [
               row({ golferId: 'g-1', earnings: 18, topTens: 1 }),
               row({ golferId: 'g-2', earnings: 0, topTens: 0 }),
             ],
@@ -145,7 +145,7 @@ describe('buildPlayerRankings', () => {
       report({
         teams: [
           team({
-            rows: [
+            cells: [
               row({ golferId: 'g-1', earnings: 30, topTens: 1 }),
               row({ golferId: 'g-2', earnings: 50, topTens: 1 }),
             ],
@@ -169,7 +169,7 @@ describe('buildPlayerRankings', () => {
       report({
         teams: [
           team({
-            rows: [
+            cells: [
               row({ golferId: 'g-orphan', golferName: 'ORPHAN', earnings: 18, topTens: 1 }),
             ],
           }),
@@ -189,7 +189,7 @@ describe('buildPlayerRankings', () => {
       report({
         teams: [
           team({
-            rows: [
+            cells: [
               row({ golferId: 'g-1', golferName: 'SCHEFFLER', earnings: 18, topTens: 1 }),
             ],
           }),

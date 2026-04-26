@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { ReportRow, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
+import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 import { collapsePairs, deriveScoreboard, formatScoreToPar } from './scoreboardModel';
 import type { LeaderboardEntry } from './scoreboardModel';
 
-function row(overrides: Partial<ReportRow> = {}): ReportRow {
+function row(overrides: Partial<ReportCell> = {}): ReportCell {
   return {
     round: 1,
     golferName: 'Scottie Scheffler',
@@ -25,7 +25,7 @@ function teamColumn(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn
     teamId: 't-1',
     teamName: 'Aces',
     ownerName: 'Alice',
-    rows: [row()],
+    cells: [row()],
     topTenEarnings: 1,
     weeklyTotal: 18,
     previous: 0,
@@ -94,7 +94,7 @@ describe('deriveScoreboard', () => {
       report({
         teams: [
           teamColumn({
-            rows: [
+            cells: [
               row({ golferName: 'Alpha', earnings: 50 }),
               row({ golferName: 'Beta', earnings: 0 }),
               row({ golferName: 'Gamma', earnings: 12 }),
@@ -110,7 +110,7 @@ describe('deriveScoreboard', () => {
   it('parses position strings like "T5" to numbers and marks them tied', () => {
     const scoreboard = deriveScoreboard(
       report({
-        teams: [teamColumn({ rows: [row({ positionStr: 'T5' })] })],
+        teams: [teamColumn({ cells: [row({ positionStr: 'T5' })] })],
       }),
     );
     expect(scoreboard.teams[0].golferScores[0].position).toBe(5);
@@ -120,7 +120,7 @@ describe('deriveScoreboard', () => {
   it('marks a solo position (no T prefix) as not tied', () => {
     const scoreboard = deriveScoreboard(
       report({
-        teams: [teamColumn({ rows: [row({ positionStr: '1' })] })],
+        teams: [teamColumn({ cells: [row({ positionStr: '1' })] })],
       }),
     );
     expect(scoreboard.teams[0].golferScores[0].position).toBe(1);
@@ -148,7 +148,7 @@ describe('deriveScoreboard', () => {
         teams: [
           teamColumn({
             teamName: 'Aces',
-            rows: [
+            cells: [
               row({ golferName: 'Scheffler', positionStr: 'T1', scoreToPar: '-12' }),
               row({ golferName: 'Rahm', positionStr: 'T5', scoreToPar: '-6' }),
             ],
@@ -156,7 +156,7 @@ describe('deriveScoreboard', () => {
           teamColumn({
             teamId: 't-2',
             teamName: 'Birdies',
-            rows: [
+            cells: [
               // same Rahm, rostered by both teams — dedup should keep one
               row({ golferName: 'Rahm', positionStr: 'T5', scoreToPar: '-6' }),
             ],
@@ -184,7 +184,7 @@ describe('deriveScoreboard', () => {
           teamColumn({
             teamName: 'Aces',
             // Rostered row uses last-name spelling and would normally feed the leaderboard
-            rows: [row({ golferName: 'SCHEFFLER', positionStr: 'T1', scoreToPar: '-12' })],
+            cells: [row({ golferName: 'SCHEFFLER', positionStr: 'T1', scoreToPar: '-12' })],
           }),
         ],
         undraftedTopTens: [
@@ -215,7 +215,7 @@ describe('deriveScoreboard', () => {
         teams: [
           teamColumn({
             teamName: 'Aces',
-            rows: [row({ golferName: 'Tiger', positionStr: 'T10' })],
+            cells: [row({ golferName: 'Tiger', positionStr: 'T10' })],
           }),
         ],
         undraftedTopTens: [

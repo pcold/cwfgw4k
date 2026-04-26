@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import WeeklyReportView from './WeeklyReportView';
-import type { ReportRow, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
+import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 
-function row(round: number, overrides: Partial<ReportRow> = {}): ReportRow {
+function row(round: number, overrides: Partial<ReportCell> = {}): ReportCell {
   return {
     round,
     golferName: `Golfer ${round}`,
@@ -26,7 +26,7 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
     teamId: 't-1',
     teamName: 'Aces',
     ownerName: 'Alice',
-    rows: [1, 2, 3, 4, 5, 6, 7, 8].map((r) => row(r)),
+    cells: [1, 2, 3, 4, 5, 6, 7, 8].map((r) => row(r)),
     topTenEarnings: 18,
     weeklyTotal: 25,
     previous: 100,
@@ -84,7 +84,7 @@ describe('WeeklyReportView', () => {
     expect(headers[2]).toHaveTextContent('Birdies');
   });
 
-  it('renders 8 draft-round rows with golfer names from team.rows', () => {
+  it('renders 8 draft-round rows with golfer names from team.cells', () => {
     render(<WeeklyReportView report={report()} />);
     expect(screen.getByText('Golfer 1')).toBeInTheDocument();
     expect(screen.getByText('Golfer 8')).toBeInTheDocument();
@@ -148,7 +148,7 @@ describe('WeeklyReportView', () => {
     const withMissing = report({
       teams: [
         team({
-          rows: [1, 2, 3, 4, 5, 6, 7, 8].map((r) =>
+          cells: [1, 2, 3, 4, 5, 6, 7, 8].map((r) =>
             r === 3 ? row(r, { golferName: null }) : row(r),
           ),
         }),
@@ -180,7 +180,7 @@ describe('WeeklyReportView', () => {
     render(
       <WeeklyReportView
         report={report({
-          teams: [team({ rows: [row(1, { golferId: 'g-99', golferName: 'Clickable' })] })],
+          teams: [team({ cells: [row(1, { golferId: 'g-99', golferName: 'Clickable' })] })],
         })}
         onGolferClick={onGolferClick}
       />,
@@ -193,7 +193,7 @@ describe('WeeklyReportView', () => {
     render(
       <WeeklyReportView
         report={report({
-          teams: [team({ rows: [row(1, { golferId: 'g-1', golferName: 'NotClickable' })] })],
+          teams: [team({ cells: [row(1, { golferId: 'g-1', golferName: 'NotClickable' })] })],
         })}
       />,
     );

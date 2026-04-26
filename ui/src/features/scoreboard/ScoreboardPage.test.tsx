@@ -75,7 +75,7 @@ function buildReport(name: string, tournamentId: string): WeeklyReport {
         teamId: 'team-1',
         teamName: 'Aces',
         ownerName: 'Alice',
-        rows: [],
+        cells: [],
         topTenEarnings: 0,
         weeklyTotal: 0,
         previous: 0,

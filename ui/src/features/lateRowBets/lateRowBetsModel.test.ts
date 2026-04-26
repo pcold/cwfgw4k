@@ -11,7 +11,7 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
     teamId: 't-1',
     teamName: 'Aces',
     ownerName: 'Alice',
-    rows: [],
+    cells: [],
     topTenEarnings: 0,
     weeklyTotal: 0,
     previous: 0,

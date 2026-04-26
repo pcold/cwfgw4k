@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { ReportRow, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
+import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 import { formatMoney } from '@/shared/util/money';
 import {
   ROUNDS,
@@ -9,18 +9,18 @@ import {
   sideBetWinnersByRound,
   signTextClass,
   summarizeWeeklyReport,
-  teamRowsByRound,
+  teamCellsByRound,
 } from './weeklyReportModel';
 
 interface RoundCellProps {
-  row: ReportRow | undefined;
+  cell: ReportCell | undefined;
   isSideBetWinner: boolean;
   showSeasonFooter: boolean;
   onGolferClick?: (golferId: string) => void;
 }
 
-function RoundCell({ row, isSideBetWinner, showSeasonFooter, onGolferClick }: RoundCellProps) {
-  if (!row || !row.golferName) {
+function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick }: RoundCellProps) {
+  if (!cell || !cell.golferName) {
     return (
       <td className="border border-gray-700 px-1.5 py-1 text-center align-top">
         <span className="text-gray-600">—</span>
@@ -28,7 +28,7 @@ function RoundCell({ row, isSideBetWinner, showSeasonFooter, onGolferClick }: Ro
     );
   }
 
-  const hasEarnings = row.earnings > 0;
+  const hasEarnings = cell.earnings > 0;
   const bg = roundCellBg(hasEarnings, isSideBetWinner);
   const text = roundTextColor(hasEarnings, isSideBetWinner);
   const earningsColor = hasEarnings
@@ -36,16 +36,16 @@ function RoundCell({ row, isSideBetWinner, showSeasonFooter, onGolferClick }: Ro
       ? 'text-green-400'
       : 'text-green-700'
     : 'text-gray-500';
-  const ownership = row.ownershipPct < 100 ? ` (${row.ownershipPct}%)` : '';
+  const ownership = cell.ownershipPct < 100 ? ` (${cell.ownershipPct}%)` : '';
   const earningsLabel = hasEarnings
-    ? `${row.positionStr ?? ''} - ${formatMoney(row.earnings)}`
+    ? `${cell.positionStr ?? ''} - ${formatMoney(cell.earnings)}`
     : '-';
   const seasonEarningsLabel =
-    (row.seasonTopTens ?? 0) > 0
-      ? `${formatMoney(row.seasonEarnings ?? 0)} (${row.seasonTopTens ?? 0})`
+    (cell.seasonTopTens ?? 0) > 0
+      ? `${formatMoney(cell.seasonEarnings ?? 0)} (${cell.seasonTopTens ?? 0})`
       : '$0';
 
-  const golferId = row.golferId;
+  const golferId = cell.golferId;
   const nameContent =
     onGolferClick && golferId ? (
       <button
@@ -53,12 +53,12 @@ function RoundCell({ row, isSideBetWinner, showSeasonFooter, onGolferClick }: Ro
         onClick={() => onGolferClick(golferId)}
         className={`font-semibold truncate ${text} bg-transparent border-0 p-0 hover:underline cursor-pointer`}
       >
-        {row.golferName}
+        {cell.golferName}
         {ownership}
       </button>
     ) : (
       <div className={`font-semibold truncate ${text}`}>
-        {row.golferName}
+        {cell.golferName}
         {ownership}
       </div>
     );
@@ -136,7 +136,7 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
   const showSeasonFooter = !seasonMode;
   const winnersByRound = sideBetWinnersByRound(sideBetDetail);
   const summary = summarizeWeeklyReport(report);
-  const teamsByRound = teams.map((t) => ({ team: t, rows: teamRowsByRound(t) }));
+  const teamsByRound = teams.map((t) => ({ team: t, cells: teamCellsByRound(t) }));
 
   const highlightRow = 'bg-gray-700 font-bold';
   const subRow = 'bg-gray-800';
@@ -191,10 +191,10 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
                   <td className="border border-gray-700 px-1 py-1 text-center font-bold text-gray-400 sticky left-0 z-10 bg-gray-800">
                     {round}
                   </td>
-                  {teamsByRound.map(({ team, rows }) => (
+                  {teamsByRound.map(({ team, cells }) => (
                     <RoundCell
                       key={`${team.teamId}-${round}`}
-                      row={rows.get(round)}
+                      cell={cells.get(round)}
                       isSideBetWinner={winners.has(team.teamId)}
                       showSeasonFooter={showSeasonFooter}
                       onGolferClick={onGolferClick}

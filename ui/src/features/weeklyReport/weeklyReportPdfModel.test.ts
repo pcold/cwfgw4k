@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type {
-  ReportRow,
+  ReportCell,
   ReportSideBetRound,
   ReportTeamColumn,
   Season,
@@ -49,7 +49,7 @@ function buildReport(overrides: {
   };
 }
 
-function row(overrides: Partial<ReportRow> = {}): ReportRow {
+function row(overrides: Partial<ReportCell> = {}): ReportCell {
   return {
     round: 1,
     golferName: 'Scheffler',
