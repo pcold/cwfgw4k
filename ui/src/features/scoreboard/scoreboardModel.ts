@@ -24,6 +24,10 @@ export interface LeaderboardEntry {
   rostered: boolean;
   teamName: string | null;
   pairKey: string | null;
+  /** R1..R4 stroke totals when ESPN ships them; empty before play. */
+  roundScores: number[];
+  /** Sum of [roundScores] when at least one round is in. */
+  totalStrokes: number | null;
 }
 
 export interface Scoreboard {
@@ -89,6 +93,8 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
         rostered: entry.rostered,
         teamName: entry.teamName,
         pairKey: entry.pairKey,
+        roundScores: entry.roundScores ?? [],
+        totalStrokes: entry.totalStrokes ?? null,
       }));
     return collapsePairs(sorted);
   }
@@ -100,6 +106,8 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
     rostered: false,
     teamName: null,
     pairKey: entry.pairKey,
+    roundScores: [],
+    totalStrokes: null,
   }));
 
   const rostered: LeaderboardEntry[] = [];
@@ -113,6 +121,10 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
           rostered: true,
           teamName: team.teamName,
           pairKey: cell.pairKey,
+          // Non-live mode doesn't carry round-by-round through ReportCell yet;
+          // live mode does. Show "—" in those columns until that pipeline is added.
+          roundScores: [],
+          totalStrokes: null,
         });
       }
     }

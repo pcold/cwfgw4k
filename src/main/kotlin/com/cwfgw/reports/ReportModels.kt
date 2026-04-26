@@ -91,6 +91,10 @@ data class LiveLeaderboardEntry(
     val rostered: Boolean,
     val teamName: String?,
     val pairKey: String? = null,
+    /** Per-round stroke totals (R1..R4) when ESPN ships them. Empty list if pre-tournament. */
+    val roundScores: List<Int> = emptyList(),
+    /** Sum of [roundScores] when at least one round has been played; null otherwise. */
+    val totalStrokes: Int? = null,
 )
 
 /** One team's row inside a side-bet round detail (cumulative earnings + that round's payout). */

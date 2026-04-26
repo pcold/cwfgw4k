@@ -182,13 +182,12 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
             Leaderboard
           </h3>
           <div className="overflow-x-auto -mx-3 sm:mx-0">
-            <table className="w-full text-sm min-w-[400px]">
+            <table className="w-full text-sm min-w-[640px]">
               <thead className="bg-gray-800 text-gray-300 text-xs uppercase tracking-wider">
                 <tr>
-                  <th className="px-4 py-2 text-left">Pos</th>
-                  <th className="px-4 py-2 text-left">Player</th>
-                  <th className="px-4 py-2 text-right">Score</th>
-                  <th className="px-4 py-2 text-left">
+                  <th className="px-3 py-2 text-left">Pos</th>
+                  <th className="px-3 py-2 text-left">Player</th>
+                  <th className="px-3 py-2 text-left">
                     <ColumnHeaderFilter
                       ariaLabel="Filter leaderboard by team"
                       value={leaderboardTeamFilter}
@@ -196,12 +195,18 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
                       options={leaderboardTeamOptions}
                     />
                   </th>
+                  <th className="px-3 py-2 text-right">Score</th>
+                  <th className="px-3 py-2 text-right">R1</th>
+                  <th className="px-3 py-2 text-right">R2</th>
+                  <th className="px-3 py-2 text-right">R3</th>
+                  <th className="px-3 py-2 text-right">R4</th>
+                  <th className="px-3 py-2 text-right">Tot</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
                 {filteredLeaderboard.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-center text-gray-500 italic">
+                    <td colSpan={9} className="px-3 py-6 text-center text-gray-500 italic">
                       No players match this filter.
                     </td>
                   </tr>
@@ -211,15 +216,23 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
                       key={entry.name}
                       className={entry.rostered ? 'bg-green-900/10' : ''}
                     >
-                      <td className="px-4 py-2 text-gray-400">{entry.position ?? '—'}</td>
-                      <td className="px-4 py-2 text-gray-100">{entry.name}</td>
-                      <td className="px-4 py-2 text-right tabular-nums">
-                        {formatScoreToPar(entry.scoreToPar)}
-                      </td>
+                      <td className="px-3 py-2 text-gray-400">{entry.position ?? '—'}</td>
+                      <td className="px-3 py-2 text-gray-100">{entry.name}</td>
                       <td
-                        className={`px-4 py-2 text-xs ${entry.teamName ? 'text-green-400 uppercase' : 'text-gray-600'}`}
+                        className={`px-3 py-2 text-xs ${entry.teamName ? 'text-green-400 uppercase' : 'text-gray-600'}`}
                       >
                         {entry.teamName ?? 'undrafted'}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {formatScoreToPar(entry.scoreToPar)}
+                      </td>
+                      {[0, 1, 2, 3].map((idx) => (
+                        <td key={idx} className="px-3 py-2 text-right tabular-nums text-gray-400">
+                          {entry.roundScores[idx] ?? '—'}
+                        </td>
+                      ))}
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                        {entry.totalStrokes ?? '—'}
                       </td>
                     </tr>
                   ))

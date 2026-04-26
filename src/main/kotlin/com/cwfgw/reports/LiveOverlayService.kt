@@ -495,6 +495,8 @@ internal fun buildLiveLeaderboard(liveData: EspnLivePreview): List<LiveLeaderboa
                 rostered = entry.rostered,
                 teamName = entry.teamName,
                 pairKey = entry.pairKey,
+                roundScores = entry.roundScores,
+                totalStrokes = entry.totalStrokes,
             )
         }
 

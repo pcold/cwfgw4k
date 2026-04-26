@@ -70,6 +70,11 @@ export interface LiveLeaderboardEntry {
   rostered: boolean;
   teamName: string | null;
   pairKey: string | null;
+  // Optional on the wire because older finalized-tournament responses may
+  // pre-date the round-by-round columns. The scoreboard model coerces
+  // missing values to [] / null.
+  roundScores?: number[];
+  totalStrokes?: number | null;
 }
 
 export interface WeeklyReport {

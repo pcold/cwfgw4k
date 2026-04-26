@@ -460,6 +460,8 @@ private fun buildLivePreviewLeaderboard(
                 rostered = rosterEntry != null,
                 teamName = rosterEntry?.let { teamsById[it.teamId]?.teamName },
                 pairKey = competitor.pairKey,
+                roundScores = competitor.roundScores,
+                totalStrokes = competitor.totalStrokes,
             )
         }
 }

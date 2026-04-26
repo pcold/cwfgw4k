@@ -145,4 +145,6 @@ data class PreviewLeaderboardEntry(
     val rostered: Boolean,
     val teamName: String?,
     val pairKey: String? = null,
+    val roundScores: List<Int> = emptyList(),
+    val totalStrokes: Int? = null,
 )

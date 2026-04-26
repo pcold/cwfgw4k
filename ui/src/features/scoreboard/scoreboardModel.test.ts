@@ -209,6 +209,41 @@ describe('deriveScoreboard', () => {
     expect(scoreboard.leaderboard.find((e) => e.name === 'Old Undrafted')).toBeUndefined();
   });
 
+  it('threads round scores and total strokes through the live leaderboard when the backend ships them', () => {
+    const scoreboard = deriveScoreboard(
+      report({
+        liveLeaderboard: [
+          {
+            name: 'Scottie Scheffler',
+            position: 1,
+            scoreToPar: '-12',
+            rostered: true,
+            teamName: 'Aces',
+            pairKey: null,
+            roundScores: [64, 68, 70, 67],
+            totalStrokes: 269,
+          },
+        ],
+      }),
+    );
+    expect(scoreboard.leaderboard).toHaveLength(1);
+    expect(scoreboard.leaderboard[0].roundScores).toEqual([64, 68, 70, 67]);
+    expect(scoreboard.leaderboard[0].totalStrokes).toBe(269);
+  });
+
+  it('coerces missing round scores and total strokes from older live entries to defaults', () => {
+    const scoreboard = deriveScoreboard(
+      report({
+        liveLeaderboard: [
+          { name: 'Rory McIlroy', position: 1, scoreToPar: '-10', rostered: false, teamName: null, pairKey: null },
+        ],
+      }),
+    );
+    const entry = scoreboard.leaderboard[0];
+    expect(entry.roundScores).toEqual([]);
+    expect(entry.totalStrokes).toBeNull();
+  });
+
   it('marks rostered vs undrafted leaderboard entries', () => {
     const scoreboard = deriveScoreboard(
       report({
@@ -258,6 +293,8 @@ describe('collapsePairs', () => {
     rostered: false,
     teamName: null,
     pairKey: null,
+    roundScores: [],
+    totalStrokes: null,
     ...over,
   });
 
