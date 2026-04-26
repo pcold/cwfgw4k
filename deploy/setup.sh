@@ -103,6 +103,22 @@ else
   ADMIN_PASSWORD_PRINTED=""
 fi
 
+CACHE_BUCKET="${PROJECT_ID}-build-cache"
+echo "==> Creating private build-cache bucket ${CACHE_BUCKET} (with 14-day cleanup)"
+if ! gcloud storage buckets describe "gs://${CACHE_BUCKET}" &>/dev/null; then
+  gcloud storage buckets create "gs://${CACHE_BUCKET}" \
+    --location="${REGION}" \
+    --uniform-bucket-level-access
+  CACHE_LIFECYCLE="$(mktemp)"
+  cat > "${CACHE_LIFECYCLE}" <<'JSON'
+{ "lifecycle": { "rule": [ { "action": { "type": "Delete" }, "condition": { "age": 14 } } ] } }
+JSON
+  gcloud storage buckets update "gs://${CACHE_BUCKET}" --lifecycle-file="${CACHE_LIFECYCLE}"
+  rm -f "${CACHE_LIFECYCLE}"
+else
+  echo "    (already exists)"
+fi
+
 echo "==> Creating public reports bucket ${REPORTS_BUCKET}"
 if ! gcloud storage buckets describe "gs://${REPORTS_BUCKET}" &>/dev/null; then
   gcloud storage buckets create "gs://${REPORTS_BUCKET}" \
