@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
@@ -242,6 +244,28 @@ tasks.named("check") {
     dependsOn("uiTest")
 }
 
+// Load dev.properties (gitignored, copied from dev.properties.example) and apply each entry
+// as an environment variable on the JVM the task launches. Mirrors how Cloud Run injects env
+// in production, so AppConfig's resolution is identical between local and prod. No-op if the
+// file is absent — the app's own validation (e.g., AUTH_SESSION_SECRET) surfaces the missing
+// value at startup with a clear message.
+fun JavaExec.loadDevEnv() {
+    val devProps = layout.projectDirectory.file("dev.properties").asFile
+    if (!devProps.exists()) return
+    doFirst {
+        val props = Properties()
+        devProps.inputStream().use(props::load)
+        val names: Set<String> = props.stringPropertyNames()
+        for (name in names) {
+            environment(name, props.getProperty(name))
+        }
+    }
+}
+
+tasks.named<JavaExec>("run") {
+    loadDevEnv()
+}
+
 // Local-dev convenience: reset the docker-compose Postgres to a clean state and run SeedMain
 // against it. SeedMain re-uses the same AppConfig as the running app, so the docker compose
 // defaults must match application.yaml's DB defaults (cwfgw4k / cwfgw4k / cwfgw4k).
@@ -251,6 +275,7 @@ tasks.register<JavaExec>("seed") {
     dependsOn("classes")
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("com.cwfgw.seed.SeedMainKt")
+    loadDevEnv()
 
     doFirst {
         // Fresh slate: drop the named volume so Flyway runs against an empty DB.

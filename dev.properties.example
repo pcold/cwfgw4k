@@ -1,0 +1,22 @@
+# Copy to dev.properties (gitignored) and fill in. The Gradle `run` and `seed`
+# tasks load this file and pass each entry as an environment variable to the
+# JVM, mirroring how Cloud Run injects config in production. Empty or missing
+# keys behave the same as if the env var were unset, so the app's own
+# defaulting/validation logic is the source of truth.
+
+# Database — these defaults match docker-compose.yml. Override only if you're
+# pointing at something other than the local docker-compose Postgres.
+DB_JDBC_URL=jdbc:postgresql://localhost:5432/cwfgw4k
+DB_USER=cwfgw4k
+DB_PASSWORD=cwfgw4k
+DB_SCHEMA=cwfgw4k
+
+# HMAC key used to sign session cookies. Required — the app refuses to boot
+# with a blank value. Generate with: openssl rand -hex 32
+AUTH_SESSION_SECRET=
+
+# Optional admin bootstrap. If both are set AND the users table is empty at
+# startup, an admin user is seeded with these credentials. If either is missing
+# the seeder logs a warning and skips — we never bake in a default password.
+AUTH_ADMIN_USERNAME=admin
+AUTH_ADMIN_PASSWORD=

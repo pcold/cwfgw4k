@@ -17,3 +17,8 @@ out/
 
 # Per-user Claude Code overrides (permissions, env, etc.) — settings.json is shared.
 .claude/settings.local.json
+
+# Local dev env (DB creds, session secret, admin bootstrap). Copy from
+# dev.properties.example. The Gradle `run` and `seed` tasks load this file
+# and inject each entry as an environment variable.
+dev.properties
