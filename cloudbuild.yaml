@@ -76,7 +76,7 @@ substitutions:
   _DB_USER: cwfgw4k
   _DB_SCHEMA: cwfgw4k
   _TAG: latest
-  _REPORTS_BUCKET: cwfgw4k-test-reports
+  _REPORTS_BUCKET: cwfgw4k-cwfgw4k-test-reports
 
 options:
   logging: CLOUD_LOGGING_ONLY

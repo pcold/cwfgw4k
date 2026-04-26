@@ -49,7 +49,8 @@ echo "==> Checking Cloud SQL instance"
 if ! gcloud sql instances describe "${SQL_INSTANCE}" &>/dev/null; then
   echo "    Creating instance (this takes a few minutes)..."
   gcloud sql instances create "${SQL_INSTANCE}" \
-    --database-version=POSTGRES_16 \
+    --database-version=POSTGRES_18 \
+    --edition=ENTERPRISE \
     --tier=db-f1-micro \
     --region="${REGION}" \
     --storage-auto-increase
