@@ -1,5 +1,7 @@
 package com.cwfgw.reports
 
+import com.cwfgw.espn.EspnService
+import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
@@ -205,6 +207,15 @@ private fun reportFixture(
                 tournamentService = tournamentService,
                 teamService = teamService,
             )
+        val previewEspnService =
+            EspnService(
+                client = FakeEspnClient(),
+                tournamentService = tournamentService,
+                golferService = golferService,
+                teamService = teamService,
+                seasonService = seasonService,
+            )
+        liveOverlayService = LiveOverlayService(previewEspnService)
         weeklyReportService =
             WeeklyReportService(
                 seasonService = seasonService,
@@ -212,6 +223,7 @@ private fun reportFixture(
                 teamService = teamService,
                 golferService = golferService,
                 scoringService = scoringService,
+                liveOverlayService = liveOverlayService,
             )
     }
 

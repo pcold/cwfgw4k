@@ -40,8 +40,8 @@ private suspend fun RoutingContext.getSeasonReport(service: WeeklyReportService)
 }
 
 private suspend fun RoutingContext.getReport(service: WeeklyReportService) {
-    optionalQueryParam("live", String::toBooleanStrictOrNull)
-    call.respond(service.getReport(seasonId(), tournamentId()).orThrow())
+    val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
+    call.respond(service.getReport(seasonId(), tournamentId(), live = live).orThrow())
 }
 
 private suspend fun RoutingContext.getRankings(service: WeeklyReportService) {

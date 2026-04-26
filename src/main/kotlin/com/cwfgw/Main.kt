@@ -20,6 +20,7 @@ import com.cwfgw.http.installRequestLogging
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.leagues.LeagueService
 import com.cwfgw.leagues.leagueRoutes
+import com.cwfgw.reports.LiveOverlayService
 import com.cwfgw.reports.WeeklyReportService
 import com.cwfgw.reports.reportRoutes
 import com.cwfgw.scoring.ScoringRepository
@@ -102,8 +103,16 @@ private fun buildServices(
         ScoringService(ScoringRepository(database.dsl), seasonService, tournamentService, teamService)
     val adminService =
         AdminService(seasonService, tournamentService, espnService, golferService, teamService)
+    val liveOverlayService = LiveOverlayService(espnService)
     val weeklyReportService =
-        WeeklyReportService(seasonService, tournamentService, teamService, golferService, scoringService)
+        WeeklyReportService(
+            seasonService,
+            tournamentService,
+            teamService,
+            golferService,
+            scoringService,
+            liveOverlayService,
+        )
     val tournamentOpsService = TournamentOpsService(tournamentService, scoringService, espnService)
     val seasonOpsService = SeasonOpsService(seasonService, tournamentService, scoringService)
     return AppServices(
@@ -119,6 +128,7 @@ private fun buildServices(
         scoringService = scoringService,
         espnService = espnService,
         adminService = adminService,
+        liveOverlayService = liveOverlayService,
         weeklyReportService = weeklyReportService,
         authService = AuthService(userRepository),
         userRepository = userRepository,

@@ -12,6 +12,7 @@ import com.cwfgw.health.HealthProbe
 import com.cwfgw.leagues.FakeLeagueRepository
 import com.cwfgw.leagues.LeagueService
 import com.cwfgw.module
+import com.cwfgw.reports.LiveOverlayService
 import com.cwfgw.reports.WeeklyReportService
 import com.cwfgw.scoring.FakeScoringRepository
 import com.cwfgw.scoring.ScoringService
@@ -92,6 +93,7 @@ class ApiFixture {
             golferService = golferService,
             teamService = teamService,
         )
+    var liveOverlayService: LiveOverlayService = LiveOverlayService(espnService)
     var weeklyReportService: WeeklyReportService =
         WeeklyReportService(
             seasonService = seasonService,
@@ -99,6 +101,7 @@ class ApiFixture {
             teamService = teamService,
             golferService = golferService,
             scoringService = scoringService,
+            liveOverlayService = liveOverlayService,
         )
     var tournamentOpsService: TournamentOpsService =
         TournamentOpsService(
@@ -187,6 +190,7 @@ private fun ApiFixture.toAppServices(): AppServices =
         scoringService = scoringService,
         espnService = espnService,
         adminService = adminService,
+        liveOverlayService = liveOverlayService,
         weeklyReportService = weeklyReportService,
         authService = authService,
         userRepository = userRepository,

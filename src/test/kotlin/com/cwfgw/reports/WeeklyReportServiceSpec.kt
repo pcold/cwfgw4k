@@ -1,5 +1,10 @@
 package com.cwfgw.reports
 
+import com.cwfgw.espn.EspnCompetitor
+import com.cwfgw.espn.EspnService
+import com.cwfgw.espn.EspnStatus
+import com.cwfgw.espn.EspnTournament
+import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
@@ -175,6 +180,7 @@ private class Fixture(
     initialRosters: List<RosterEntry> = emptyList(),
     initialResults: List<TournamentResult> = emptyList(),
     initialScores: List<FantasyScore> = emptyList(),
+    espnByDate: Map<LocalDate, List<EspnTournament>> = emptyMap(),
 ) {
     val seasonRepo: FakeSeasonRepository = FakeSeasonRepository(idFactory = { SEASON_ID })
     val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
@@ -205,6 +211,14 @@ private class Fixture(
                 tournamentService = tournamentService,
                 teamService = teamService,
             )
+        val espnService =
+            EspnService(
+                client = FakeEspnClient(tournamentsByDate = espnByDate),
+                tournamentService = tournamentService,
+                golferService = golferService,
+                teamService = teamService,
+                seasonService = seasonService,
+            )
         service =
             WeeklyReportService(
                 seasonService = seasonService,
@@ -212,6 +226,7 @@ private class Fixture(
                 teamService = teamService,
                 golferService = golferService,
                 scoringService = scoringService,
+                liveOverlayService = LiveOverlayService(espnService),
             )
     }
 }
@@ -734,5 +749,163 @@ class WeeklyReportServiceSpec : FunSpec({
         history.results.map { it.position } shouldContainExactly listOf(1, 5)
         // Sony pos 1 = $18, Masters pos 5 = $7 → totals = $25
         history.totalEarnings.compareTo(BigDecimal(25)) shouldBe 0
+    }
+
+    // ========== getReport live overlay ==========
+
+    test("getReport with live=true and no ESPN data returns the base report unchanged (no live flag)") {
+        val masters =
+            tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+                .copy(status = TournamentStatus.InProgress)
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(masters),
+                initialTeams = listOf(TEAM_A, TEAM_B),
+            )
+
+        val report =
+            fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true)
+                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
+                .value
+        // ESPN gave nothing back → overlay degraded silently, base report returned with live flag still null.
+        report.live shouldBe null
+    }
+
+    test("getReport with live=true overlays projected ESPN earnings onto cells and sets live=true") {
+        val winner = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
+        val mastersInProgress =
+            tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+                .copy(status = TournamentStatus.InProgress, pgaTournamentId = "espn-masters")
+        val rosters = listOf(rosterEntry(TEAM_A.id, winner.id, draftRound = 1))
+        val espnEvent =
+            EspnTournament(
+                espnId = "espn-masters",
+                name = "The Masters",
+                completed = false,
+                competitors =
+                    listOf(
+                        EspnCompetitor(
+                            espnId = "espn-p1",
+                            name = "Scottie Scheffler",
+                            order = 1,
+                            scoreStr = "-12",
+                            scoreToPar = -12,
+                            totalStrokes = 270,
+                            roundScores = listOf(68, 68, 67),
+                            position = 1,
+                            status = EspnStatus.Active,
+                            isTeamPartner = false,
+                            pairKey = null,
+                        ),
+                    ),
+                isTeamEvent = false,
+            )
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(mastersInProgress),
+                initialTeams = listOf(TEAM_A, TEAM_B),
+                initialGolfers = listOf(winner),
+                initialRosters = rosters,
+                espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(espnEvent)),
+            )
+
+        val report =
+            fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true)
+                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
+                .value
+
+        report.live shouldBe true
+        val a = report.teams.single { it.teamId == TEAM_A.id }
+        a.cells.first { it.round == 1 }.earnings.compareTo(BigDecimal(18)) shouldBe 0
+        a.cells.first { it.round == 1 }.positionStr shouldBe "1"
+        // Zero-sum: A weekly = 18*2-18 = +18; B weekly = 0*2-18 = -18
+        a.weeklyTotal.compareTo(BigDecimal(18)) shouldBe 0
+    }
+
+    test("getReport with live=true populates the liveLeaderboard from ESPN's full competitor list") {
+        val mastersInProgress =
+            tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+                .copy(status = TournamentStatus.InProgress, pgaTournamentId = "espn-masters")
+        val espnEvent =
+            EspnTournament(
+                espnId = "espn-masters",
+                name = "The Masters",
+                completed = false,
+                competitors =
+                    listOf(
+                        EspnCompetitor(
+                            espnId = "p1",
+                            name = "Leader",
+                            order = 1,
+                            scoreStr = "-12",
+                            scoreToPar = -12,
+                            totalStrokes = 270,
+                            roundScores = listOf(68, 68, 67),
+                            position = 1,
+                            status = EspnStatus.Active,
+                            isTeamPartner = false,
+                            pairKey = null,
+                        ),
+                        EspnCompetitor(
+                            espnId = "p2",
+                            name = "Runner-up",
+                            order = 2,
+                            scoreStr = "-10",
+                            scoreToPar = -10,
+                            totalStrokes = 272,
+                            roundScores = listOf(68, 68, 68),
+                            position = 2,
+                            status = EspnStatus.Active,
+                            isTeamPartner = false,
+                            pairKey = null,
+                        ),
+                    ),
+                isTeamEvent = false,
+            )
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(mastersInProgress),
+                initialTeams = listOf(TEAM_A),
+                espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(espnEvent)),
+            )
+
+        val report =
+            fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true)
+                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
+                .value
+
+        report.liveLeaderboard.map { it.name } shouldContainExactly listOf("Leader", "Runner-up")
+        report.liveLeaderboard.forEach { it.rostered shouldBe false }
+    }
+
+    test("getReport with live=true on a completed tournament does not call the live overlay (no live flag set)") {
+        val completedMasters =
+            tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+                .copy(status = TournamentStatus.Completed)
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(completedMasters),
+                initialTeams = listOf(TEAM_A),
+                // ESPN data present but selected tournament is already completed so overlay should skip.
+                espnByDate =
+                    mapOf(
+                        LocalDate.parse("2026-04-09") to
+                            listOf(
+                                EspnTournament(
+                                    espnId = "espn-masters",
+                                    name = "The Masters",
+                                    completed = true,
+                                    competitors = emptyList(),
+                                    isTeamEvent = false,
+                                ),
+                            ),
+                    ),
+            )
+
+        val report =
+            fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true)
+                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
+                .value
+        report.live shouldBe null
     }
 })

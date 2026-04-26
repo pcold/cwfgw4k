@@ -34,6 +34,7 @@ class WeeklyReportService(
     private val teamService: TeamService,
     private val golferService: GolferService,
     private val scoringService: ScoringService,
+    private val liveOverlayService: LiveOverlayService,
 ) {
     /**
      * Render the report as of one specific tournament. Loads everything the
@@ -45,6 +46,7 @@ class WeeklyReportService(
     suspend fun getReport(
         seasonId: SeasonId,
         tournamentId: TournamentId,
+        live: Boolean = false,
     ): Result<WeeklyReport, ReportError> {
         seasonService.get(seasonId) ?: return Result.Err(ReportError.SeasonNotFound(seasonId))
         val tournament =
@@ -72,7 +74,22 @@ class WeeklyReportService(
                 allRosters = allRosters,
                 allScores = allScores,
             )
-        return Result.Ok(assembleWeeklyReport(inputs))
+        val baseReport = assembleWeeklyReport(inputs)
+        if (!live) return Result.Ok(baseReport)
+
+        val priorNonCompleted =
+            tournamentService.list(seasonId, status = null)
+                .filter { it.status != TournamentStatus.Completed && it.id != tournamentId && isBefore(it, tournament) }
+        return Result.Ok(
+            liveOverlayService.overlayReport(
+                seasonId = seasonId,
+                baseReport = baseReport,
+                rules = rules,
+                priorNonCompleted = priorNonCompleted,
+                selectedTournament = tournament,
+                tournamentId = tournamentId,
+            ),
+        )
     }
 
     /**
