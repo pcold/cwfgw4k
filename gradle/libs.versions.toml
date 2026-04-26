@@ -20,6 +20,7 @@ detekt = "1.23.8"
 ktlint-gradle = "12.3.0"
 kover = "0.9.1"
 node-gradle = "7.1.0"
+cloud-sql-postgres = "1.25.1"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
@@ -45,6 +46,7 @@ hikari = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
 postgres = { module = "org.postgresql:postgresql", version.ref = "postgres" }
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
 flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
+cloud-sql-postgres = { module = "com.google.cloud.sql:postgres-socket-factory", version.ref = "cloud-sql-postgres" }
 jooq = { module = "org.jooq:jooq", version.ref = "jooq" }
 jooq-kotlin = { module = "org.jooq:jooq-kotlin", version.ref = "jooq" }
 jooq-kotlin-coroutines = { module = "org.jooq:jooq-kotlin-coroutines", version.ref = "jooq" }

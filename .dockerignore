@@ -1,0 +1,16 @@
+.git
+.gradle
+.idea
+.vscode
+.kotlin
+build/*
+!build/libs
+build/libs/*
+!build/libs/cwfgw4k-all.jar
+*.md
+docker-compose.yml
+dev.properties
+ui/node_modules
+ui/coverage
+ui/test-report
+ui/dist

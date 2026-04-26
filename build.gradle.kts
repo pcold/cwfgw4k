@@ -49,6 +49,7 @@ dependencies {
     implementation(libs.postgres)
     implementation(libs.flyway.core)
     implementation(libs.flyway.postgres)
+    implementation(libs.cloud.sql.postgres)
 
     implementation(libs.bcrypt)
     implementation(libs.bundles.hoplite)

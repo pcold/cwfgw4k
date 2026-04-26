@@ -1,0 +1,82 @@
+steps:
+  # Compile, run check (tests + ktlint + detekt + kover verify + UI tests),
+  # then build the deployable fatJar with the bundled React UI inside it.
+  # Repository integration tests use Testcontainers against the Docker
+  # socket Cloud Build mounts into every step.
+  - name: 'gradle:9-jdk21'
+    entrypoint: gradle
+    args: ['check', 'buildFatJar', '--no-daemon']
+
+  # Upload backend test + Kover coverage HTML reports plus UI Vitest test +
+  # coverage to a public bucket so links in the build log resolve with one
+  # click. Output mirrors cwfgw's report layout so dashboards stay uniform.
+  - name: 'gcr.io/cloud-builders/gsutil'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gsutil -m cp -r build/reports/tests/test/* \
+          gs://${_REPORTS_BUCKET}/$BUILD_ID/tests/
+        gsutil -m cp -r build/reports/kover/html/* \
+          gs://${_REPORTS_BUCKET}/$BUILD_ID/coverage/
+        gsutil -m cp -r ui/test-report/* \
+          gs://${_REPORTS_BUCKET}/$BUILD_ID/ui-tests/
+        gsutil -m cp -r ui/coverage/* \
+          gs://${_REPORTS_BUCKET}/$BUILD_ID/ui-coverage/
+        echo ""
+        echo "=================================================="
+        echo "Backend test report:"
+        echo "https://storage.googleapis.com/${_REPORTS_BUCKET}/$BUILD_ID/tests/index.html"
+        echo "Backend coverage report:"
+        echo "https://storage.googleapis.com/${_REPORTS_BUCKET}/$BUILD_ID/coverage/index.html"
+        echo "UI test report:"
+        echo "https://storage.googleapis.com/${_REPORTS_BUCKET}/$BUILD_ID/ui-tests/index.html"
+        echo "UI coverage report:"
+        echo "https://storage.googleapis.com/${_REPORTS_BUCKET}/$BUILD_ID/ui-coverage/index.html"
+        echo "=================================================="
+
+  # Build the runtime image (just copies the pre-built fatJar).
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/cwfgw4k:${_TAG}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/cwfgw4k:latest'
+      - '.'
+
+  # Push the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/cwfgw4k']
+
+  # Deploy to Cloud Run. AUTH_SESSION_SECRET is required at boot — the app
+  # refuses to start with a blank value — so it ships from a managed secret.
+  # DB_JDBC_URL uses the Cloud SQL socket factory; the postgres-socket-factory
+  # dependency added in build.gradle.kts is what makes that URL resolve.
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'cwfgw4k'
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/cwfgw4k:${_TAG}'
+      - '--region=${_REGION}'
+      - '--allow-unauthenticated'
+      - '--add-cloudsql-instances=${PROJECT_ID}:${_REGION}:${_SQL_INSTANCE}'
+      - '--set-secrets=DB_PASSWORD=cwfgw4k-db-password:latest,AUTH_SESSION_SECRET=cwfgw4k-session-secret:latest,AUTH_ADMIN_PASSWORD=cwfgw4k-admin-password:latest'
+      - '--set-env-vars=DB_JDBC_URL=jdbc:postgresql:///${_DB_NAME}?cloudSqlInstance=${PROJECT_ID}:${_REGION}:${_SQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DB_USER=${_DB_USER},DB_SCHEMA=${_DB_SCHEMA},AUTH_ADMIN_USERNAME=admin'
+      - '--memory=512Mi'
+      - '--min-instances=0'
+      - '--max-instances=2'
+
+substitutions:
+  _REGION: us-west1
+  _REPO: cwfgw4k
+  _SQL_INSTANCE: cwfgw4k-prod
+  _DB_NAME: cwfgw4k
+  _DB_USER: cwfgw4k
+  _DB_SCHEMA: cwfgw4k
+  _TAG: latest
+  _REPORTS_BUCKET: cwfgw4k-test-reports
+
+options:
+  logging: CLOUD_LOGGING_ONLY
