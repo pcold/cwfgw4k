@@ -60,6 +60,14 @@ class RosterParserSpec : FunSpec({
         pick.ownershipPct shouldBe 100
     }
 
+    test("missing ownership_pct column entirely (4-cell row) also defaults to 100") {
+        // Spreadsheet exports often strip the trailing empty column. The parser must accept
+        // both "5 cells, last empty" and "4 cells" as the same intent.
+        val pick = ok(rosterText("1\tBROWN\t1\tShane Lowry")).single().picks.single()
+
+        pick.ownershipPct shouldBe 100
+    }
+
     test("multiple rows for the same team_number aggregate into one ParsedTeam in input order") {
         val text =
             rosterText(
@@ -197,8 +205,9 @@ class RosterParserSpec : FunSpec({
     }
 
     test("a row with the wrong number of cells fails with the column count in the message") {
-        val errors = rowErrors(rosterText("1\tBROWN\t1\tScottie Scheffler"))
-        errors.single().message.shouldContain("expected 5")
+        // 3 cells is short of both the strict (5) and the lenient (4) shape.
+        val errors = rowErrors(rosterText("1\tBROWN\t1"))
+        errors.single().message.shouldContain("expected 4 or 5")
     }
 
     test("multiple bad rows all surface in one error response (not one-by-one)") {

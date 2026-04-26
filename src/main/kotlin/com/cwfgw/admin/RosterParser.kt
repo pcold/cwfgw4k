@@ -31,7 +31,9 @@ import com.cwfgw.result.Result
  *    "K.H. Lee" and "Jean-Paul" survive intact. Empty player names fail; the
  *    parser doesn't validate that the format looks like a name — that's
  *    AdminService's job.
- *  - `ownership_pct` is `1`–`100`. Empty cell → 100 (the common case).
+ *  - `ownership_pct` is `1`–`100`. Empty cell *or* missing trailing column
+ *    → 100 (the common case). Spreadsheet exports often drop the trailing
+ *    empty column entirely, so a row with only four cells is accepted.
  *  - Blank lines are skipped to be forgiving about copy-paste artifacts.
  */
 data class ParsedTeam(
@@ -93,8 +95,13 @@ object RosterParser {
 
     private fun parseRow(line: String): RowResult {
         val cells = line.split("\t")
-        if (cells.size != EXPECTED_HEADER.size) {
-            return RowResult.Err("expected ${EXPECTED_HEADER.size} tab-separated cells, got ${cells.size}")
+        // Accept the trailing ownership_pct column being either present (5
+        // cells, possibly empty) or omitted entirely (4 cells); both forms
+        // map to the 100 default. Spreadsheet exports frequently strip the
+        // last empty column.
+        val expectedSizes = "${EXPECTED_HEADER.size - 1} or ${EXPECTED_HEADER.size}"
+        if (cells.size != EXPECTED_HEADER.size && cells.size != EXPECTED_HEADER.size - 1) {
+            return RowResult.Err("expected $expectedSizes tab-separated cells, got ${cells.size}")
         }
         val teamNumber =
             cells[0].trim().toIntOrNull()
@@ -108,7 +115,7 @@ object RosterParser {
         if (rawPlayerName.isEmpty()) return RowResult.Err("player_name is empty")
         val playerName = rawPlayerName.toInitCap()
         val ownership =
-            when (val raw = cells[4].trim()) {
+            when (val raw = cells.getOrNull(4)?.trim() ?: "") {
                 "" -> MAX_OWNERSHIP
                 else ->
                     raw.toIntOrNull()?.takeIf { it in MIN_OWNERSHIP..MAX_OWNERSHIP }
