@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import type { League, Season, SeasonImportResult } from '@/shared/api/types';
+import type { League, Season, SeasonImportResult, Tournament } from '@/shared/api/types';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
 
@@ -20,15 +20,20 @@ function UploadScheduleSection() {
   const [seasonId, setSeasonId] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  // Tournaments returned by the import POST. Stored locally so we can edit
+  // each row's multiplier in place and patch them via PUT one at a time.
+  const [createdTournaments, setCreatedTournaments] = useState<Tournament[]>([]);
+  const [skippedSummary, setSkippedSummary] = useState<SeasonImportResult['skipped']>([]);
 
   const importMutation = useMutation({
     mutationFn: () => api.importSeasonSchedule({ seasonId, startDate, endDate }),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      setCreatedTournaments(result.created);
+      setSkippedSummary(result.skipped);
       void queryClient.invalidateQueries({ queryKey: ['tournaments'] });
     },
   });
 
-  const result: SeasonImportResult | undefined = importMutation.data;
   const errorMessage = mutationError(importMutation.error);
 
   const disabled =
@@ -46,7 +51,8 @@ function UploadScheduleSection() {
       <p className="text-xs text-gray-400 mb-4">
         Pulls the PGA tour calendar from ESPN for the date range and creates a tournament for
         every event whose start date falls inside it. Week labels (1, 2, 3a, 3b…) are assigned
-        chronologically. Re-running on a season skips events already linked.
+        chronologically. Re-running on a season skips events already linked. After import, edit
+        the per-tournament payout multiplier inline and Save each row to push the change.
       </p>
 
       <div className="flex flex-wrap gap-4 mb-4">
@@ -132,19 +138,32 @@ function UploadScheduleSection() {
         ) : null}
       </div>
 
-      {result ? <ImportResult result={result} /> : null}
+      {createdTournaments.length > 0 || skippedSummary.length > 0 ? (
+        <ImportResult
+          created={createdTournaments}
+          skipped={skippedSummary}
+          onRowSaved={(updated) =>
+            setCreatedTournaments((prev) =>
+              prev.map((t) => (t.id === updated.id ? updated : t)),
+            )
+          }
+        />
+      ) : null}
     </div>
   );
 }
 
-function ImportResult({ result }: { result: SeasonImportResult }) {
-  const created = result.created;
-  const skipped = result.skipped;
+interface ImportResultProps {
+  created: Tournament[];
+  skipped: SeasonImportResult['skipped'];
+  onRowSaved: (updated: Tournament) => void;
+}
 
+function ImportResult({ created, skipped, onRowSaved }: ImportResultProps) {
   return (
     <div className="mt-6 pt-4 border-t border-gray-700">
       <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-        Import Result
+        Confirm Imported Tournaments
       </h4>
 
       <div className="flex gap-6 mb-4 text-sm">
@@ -181,27 +200,87 @@ function ImportResult({ result }: { result: SeasonImportResult }) {
               <th className="px-3 py-2 text-left">Tournament</th>
               <th className="px-3 py-2 text-left">Dates</th>
               <th className="px-3 py-2 text-center">Mult</th>
-              <th className="px-3 py-2 text-left">ESPN id</th>
+              <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody>
-            {created.map((t) => (
-              <tr key={t.id} className="border-t border-gray-700">
-                <td className="px-3 py-2 text-gray-400 font-mono">{t.week ?? ''}</td>
-                <td className="px-3 py-2 font-medium">{t.name}</td>
-                <td className="px-3 py-2 text-gray-400 text-xs">
-                  {t.startDate} to {t.endDate}
-                </td>
-                <td className="px-3 py-2 text-center">
-                  {t.payoutMultiplier !== 1 ? `${t.payoutMultiplier}x` : ''}
-                </td>
-                <td className="px-3 py-2 text-xs text-gray-500">{t.pgaTournamentId ?? '—'}</td>
-              </tr>
+            {created.map((tournament) => (
+              <TournamentRow
+                key={tournament.id}
+                tournament={tournament}
+                onSaved={onRowSaved}
+              />
             ))}
           </tbody>
         </table>
       ) : null}
     </div>
+  );
+}
+
+interface TournamentRowProps {
+  tournament: Tournament;
+  onSaved: (updated: Tournament) => void;
+}
+
+function TournamentRow({ tournament, onSaved }: TournamentRowProps) {
+  const [draftMultiplier, setDraftMultiplier] = useState<string>(String(tournament.payoutMultiplier));
+
+  const updateMutation = useMutation({
+    mutationFn: () => {
+      const parsed = Number.parseFloat(draftMultiplier);
+      return api.updateTournament(tournament.id, { payoutMultiplier: parsed });
+    },
+    onSuccess: (updated) => {
+      onSaved(updated);
+      setDraftMultiplier(String(updated.payoutMultiplier));
+    },
+  });
+
+  const draftValue = Number.parseFloat(draftMultiplier);
+  const dirty =
+    draftMultiplier.trim() !== '' &&
+    Number.isFinite(draftValue) &&
+    draftValue !== tournament.payoutMultiplier;
+  const invalid = draftMultiplier.trim() !== '' && (!Number.isFinite(draftValue) || draftValue <= 0);
+  const errorMessage = mutationError(updateMutation.error);
+
+  return (
+    <tr className="border-t border-gray-700">
+      <td className="px-3 py-2 text-gray-400 font-mono">{tournament.week ?? ''}</td>
+      <td className="px-3 py-2 font-medium">{tournament.name}</td>
+      <td className="px-3 py-2 text-gray-400 text-xs">
+        {tournament.startDate} to {tournament.endDate}
+      </td>
+      <td className="px-3 py-2 text-center">
+        <input
+          type="number"
+          min="0.5"
+          step="0.5"
+          value={draftMultiplier}
+          onChange={(e) => setDraftMultiplier(e.target.value)}
+          aria-label={`Payout multiplier for ${tournament.name}`}
+          className={`bg-gray-700 border ${invalid ? 'border-red-500' : 'border-gray-600'} rounded px-2 py-1 text-sm w-20 text-right`}
+        />
+      </td>
+      <td className="px-3 py-2 text-xs">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => updateMutation.mutate()}
+            disabled={!dirty || invalid || updateMutation.isPending}
+            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 text-white px-3 py-1 rounded"
+          >
+            {updateMutation.isPending ? 'Saving…' : 'Save'}
+          </button>
+          {errorMessage ? (
+            <span role="alert" className="text-red-400">
+              {errorMessage}
+            </span>
+          ) : null}
+        </div>
+      </td>
+    </tr>
   );
 }
 

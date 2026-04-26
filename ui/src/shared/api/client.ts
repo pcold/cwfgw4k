@@ -87,6 +87,24 @@ async function postJson<T>(path: string, payload?: unknown): Promise<T> {
   return camelizeKeys(parsed) as T;
 }
 
+async function putJson<T>(path: string, payload: unknown): Promise<T> {
+  const resp = await fetch(path, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(snakeifyKeys(payload)),
+  });
+  const text = await resp.text();
+  const parsed: unknown = text ? JSON.parse(text) : null;
+  if (!resp.ok) {
+    const errMsg =
+      parsed && typeof parsed === 'object' && 'error' in parsed
+        ? String((parsed as { error: unknown }).error)
+        : `${resp.status} ${resp.statusText}`;
+    throw new ApiError(resp.status, errMsg);
+  }
+  return camelizeKeys(parsed) as T;
+}
+
 async function deleteJson<T>(path: string): Promise<T> {
   const resp = await fetch(path, { method: 'DELETE' });
   const text = await resp.text();
@@ -121,6 +139,8 @@ export const api = {
     getJson<Tournament[]>(
       `/api/v1/tournaments?season_id=${encodeURIComponent(seasonId)}`,
     ),
+  updateTournament: (id: string, body: { payoutMultiplier?: number }) =>
+    putJson<Tournament>(`/api/v1/tournaments/${encodeURIComponent(id)}`, body),
   tournamentReport: (seasonId: string, tournamentId: string, live: boolean) =>
     getJson<WeeklyReport>(
       `/api/v1/seasons/${seasonId}/report/${tournamentId}${live ? '?live=true' : ''}`,
