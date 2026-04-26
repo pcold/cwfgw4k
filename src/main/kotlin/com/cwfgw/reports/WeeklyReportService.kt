@@ -98,7 +98,10 @@ class WeeklyReportService(
      * info block carries the synthetic id-less placeholder so the UI
      * knows it's looking at a season view and not a specific event.
      */
-    suspend fun getSeasonReport(seasonId: SeasonId): Result<WeeklyReport, ReportError> {
+    suspend fun getSeasonReport(
+        seasonId: SeasonId,
+        live: Boolean = false,
+    ): Result<WeeklyReport, ReportError> {
         seasonService.get(seasonId) ?: return Result.Err(ReportError.SeasonNotFound(seasonId))
 
         val rules = seasonService.getRules(seasonId) ?: SeasonRules.defaults()
@@ -119,7 +122,13 @@ class WeeklyReportService(
                 allScores = allScores,
                 allResults = allResults,
             )
-        return Result.Ok(assembleSeasonReport(inputs))
+        val baseReport = assembleSeasonReport(inputs)
+        if (!live) return Result.Ok(baseReport)
+
+        val nonCompleted =
+            tournamentService.list(seasonId, status = null)
+                .filter { it.status != TournamentStatus.Completed }
+        return Result.Ok(liveOverlayService.overlaySeasonReport(seasonId, baseReport, rules, nonCompleted))
     }
 
     /**
@@ -131,6 +140,7 @@ class WeeklyReportService(
     suspend fun getRankings(
         seasonId: SeasonId,
         throughTournamentId: TournamentId? = null,
+        live: Boolean = false,
     ): Result<Rankings, ReportError> {
         seasonService.get(seasonId) ?: return Result.Err(ReportError.SeasonNotFound(seasonId))
         val through =
@@ -145,13 +155,14 @@ class WeeklyReportService(
         val allRosters = teams.flatMap { teamService.getRoster(it.id) }
         val allScores = included.flatMap { scoringService.getScores(seasonId, it.id) }
 
-        val sideBets =
-            aggregateSideBets(buildSideBetPerRound(rules, allRosters, allScores, teams.size, rules.sideBetAmount))
+        val sideBetPerRound =
+            buildSideBetPerRound(rules, allRosters, allScores, teams.size, rules.sideBetAmount)
+        val sideBets = aggregateSideBets(sideBetPerRound)
         val sortedIncluded = included.sortedWith(tournamentOrdering)
         val history = buildCumulativeHistory(sortedIncluded, allScores, teams)
         val currentTotals = history.lastOrNull() ?: teams.associate { it.id to BigDecimal.ZERO }
 
-        val rankings =
+        val baseTeams =
             teams.map { team ->
                 val subtotal = currentTotals[team.id] ?: BigDecimal.ZERO
                 val teamSideBets = sideBets[team.id] ?: BigDecimal.ZERO
@@ -164,14 +175,48 @@ class WeeklyReportService(
                     series = history.map { snapshot -> (snapshot[team.id] ?: BigDecimal.ZERO).add(teamSideBets) },
                 )
             }.sortedByDescending { it.totalCash }
-
-        return Result.Ok(
+        val baseRankings =
             Rankings(
-                teams = rankings,
+                teams = baseTeams,
                 weeks = sortedIncluded.map { it.week ?: "" },
                 tournamentNames = sortedIncluded.map { it.name },
-            ),
-        )
+            )
+        if (!live) return Result.Ok(baseRankings)
+
+        val liveCandidates = liveCandidatesFor(seasonId, through)
+        val ctx =
+            RankingsContext(
+                allRosters = allRosters,
+                rules = rules,
+                sideBetPerRound = sideBetPerRound,
+                numTeams = teams.size,
+            )
+        return Result.Ok(liveOverlayService.overlayRankings(seasonId, baseRankings, liveCandidates, ctx))
+    }
+
+    /**
+     * Live candidates for a rankings overlay: every non-completed
+     * tournament strictly before the cutoff, plus the cutoff itself if
+     * it's also non-completed. Sorted chronologically so the overlay
+     * folds them in the order they'd actually play out.
+     */
+    private suspend fun liveCandidatesFor(
+        seasonId: SeasonId,
+        through: Tournament?,
+    ): List<Tournament> {
+        val nonCompleted =
+            tournamentService.list(seasonId, status = null)
+                .filter { it.status != TournamentStatus.Completed }
+        val candidates =
+            if (through == null) {
+                nonCompleted
+            } else {
+                val priorNonCompleted = nonCompleted.filter { isBefore(it, through) }
+                val selectedIfLive =
+                    if (through.status != TournamentStatus.Completed) listOf(through) else emptyList()
+                priorNonCompleted + selectedIfLive
+            }
+        return candidates.sortedWith(tournamentOrdering)
     }
 
     /**

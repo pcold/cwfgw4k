@@ -34,9 +34,8 @@ private fun RoutingContext.golferId(): GolferId =
     call.parameters["golferId"]?.toGolferId() ?: throw DomainError.Validation("invalid golfer id")
 
 private suspend fun RoutingContext.getSeasonReport(service: WeeklyReportService) {
-    // `?live=` is accepted but currently ignored — Phase 2 will overlay ESPN live data when true.
-    optionalQueryParam("live", String::toBooleanStrictOrNull)
-    call.respond(service.getSeasonReport(seasonId()).orThrow())
+    val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
+    call.respond(service.getSeasonReport(seasonId(), live = live).orThrow())
 }
 
 private suspend fun RoutingContext.getReport(service: WeeklyReportService) {
@@ -45,9 +44,9 @@ private suspend fun RoutingContext.getReport(service: WeeklyReportService) {
 }
 
 private suspend fun RoutingContext.getRankings(service: WeeklyReportService) {
-    optionalQueryParam("live", String::toBooleanStrictOrNull)
+    val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
     val through = optionalQueryParam("through", String::toTournamentId)
-    call.respond(service.getRankings(seasonId(), throughTournamentId = through).orThrow())
+    call.respond(service.getRankings(seasonId(), throughTournamentId = through, live = live).orThrow())
 }
 
 private suspend fun RoutingContext.getGolferHistory(service: WeeklyReportService) {

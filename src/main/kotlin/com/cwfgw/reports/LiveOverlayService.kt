@@ -40,6 +40,60 @@ private val log = KotlinLogging.logger {}
  */
 class LiveOverlayService(private val espnService: EspnService) {
     /**
+     * Overlay live data onto the season-aggregate report. Walks every
+     * non-completed tournament chronologically, folding each one's
+     * live preview into the running report via [mergeLiveData] in
+     * additive mode (live amounts add to existing rather than
+     * replacing, so completed tournaments' earnings stay intact).
+     */
+    suspend fun overlaySeasonReport(
+        seasonId: SeasonId,
+        baseReport: WeeklyReport,
+        rules: SeasonRules,
+        nonCompleted: List<Tournament>,
+    ): WeeklyReport {
+        if (nonCompleted.isEmpty()) return baseReport
+        return nonCompleted.sortedWith(tournamentOrdering).fold(baseReport) { acc, tournament ->
+            val previews =
+                fetchPreviewsOrLog(seasonId, tournament.startDate, "season live overlay ${tournament.name}")
+                    ?: return@fold acc
+            val matched = matchPreview(previews, tournament) ?: return@fold acc
+            mergeLiveData(acc, listOf(matched), rules, additive = true)
+        }
+    }
+
+    /**
+     * Overlay live data onto the rankings response. Each non-completed
+     * candidate tournament adds a new column to the per-team series
+     * (with a ` *` suffix in the tournament-name label) and updates
+     * cumulative side-bet totals + each team's live weekly.
+     */
+    internal suspend fun overlayRankings(
+        seasonId: SeasonId,
+        baseRankings: Rankings,
+        liveCandidates: List<Tournament>,
+        ctx: RankingsContext,
+    ): Rankings {
+        if (liveCandidates.isEmpty()) return baseRankings
+        return liveCandidates.fold(baseRankings to ctx) { (rankings, rollingCtx), tournament ->
+            tryOverlayCandidate(seasonId, rankings, tournament, rollingCtx) ?: (rankings to rollingCtx)
+        }.first
+    }
+
+    internal suspend fun tryOverlayCandidate(
+        seasonId: SeasonId,
+        rankings: Rankings,
+        tournament: Tournament,
+        ctx: RankingsContext,
+    ): Pair<Rankings, RankingsContext>? {
+        val previews =
+            fetchPreviewsOrLog(seasonId, tournament.startDate, "rankings live overlay ${tournament.name}")
+                ?: return null
+        val matched = matchPreview(previews, tournament) ?: return null
+        return overlayLiveRankings(rankings, tournament, matched, ctx)
+    }
+
+    /**
      * Overlay live data onto a single-tournament report. Walks
      * `priorNonCompleted` chronologically (each prior live tournament
      * adds to the running zero-sum total carried into `previous`); then
@@ -82,6 +136,22 @@ class LiveOverlayService(private val espnService: EspnService) {
             .onErr { error -> log.warn { "$context: ESPN preview failed: $error" } }
             .getOrElse { null }
 }
+
+/**
+ * Carrier for the data [LiveOverlayService.overlayRankings] needs to
+ * fold a live tournament into existing rankings: rosters (to apply
+ * live earnings × ownership), the rules, the per-round side-bet
+ * snapshots, and team count. The snapshots evolve across iterations
+ * — one round's cumulative grows as each candidate's live earnings
+ * land — so the context is returned alongside the updated rankings
+ * and threaded into the next iteration.
+ */
+internal data class RankingsContext(
+    val allRosters: List<com.cwfgw.teams.RosterEntry>,
+    val rules: SeasonRules,
+    val sideBetPerRound: List<SideBetRoundSnapshot>,
+    val numTeams: Int,
+)
 
 /**
  * Pick the [EspnLivePreview] that matches a DB tournament. Resolves by
@@ -225,6 +295,107 @@ internal fun mergeLiveData(
         standingsOrder = buildStandingsOrder(finalTeams),
         live = true,
         liveLeaderboard = liveLeaderboard,
+    )
+}
+
+/**
+ * Fold one live tournament into running rankings. Updates each round's
+ * cumulative side-bet totals with the live golfer earnings (× ownership
+ * pct), recomputes side-bet payouts from the new totals, and bumps
+ * each team's `subtotal` / `series` by their projected live weekly +/-.
+ * The matched-tournament name gets a ` *` suffix on the chart label so
+ * the UI can distinguish projected from finalized columns.
+ */
+internal fun overlayLiveRankings(
+    baseRankings: Rankings,
+    tournament: Tournament,
+    preview: EspnLivePreview,
+    ctx: RankingsContext,
+): Pair<Rankings, RankingsContext> {
+    val numTeams = ctx.numTeams
+    val totalPot = preview.teams.fold(BigDecimal.ZERO) { acc, team -> acc.add(team.topTenEarnings) }
+    val liveWeekly =
+        preview.teams.associate { team ->
+            team.teamId to team.topTenEarnings.multiply(BigDecimal(numTeams)).subtract(totalPot)
+        }
+    val liveByGolfer: Map<Pair<TeamId, GolferId>, BigDecimal> =
+        preview.teams.flatMap { team -> team.golferScores.map { (team.teamId to it.golferId) to it.payout } }.toMap()
+
+    val updatedSnapshots = ctx.sideBetPerRound.map { snapshot -> snapshot.foldLive(ctx.allRosters, liveByGolfer) }
+    val recomputedSnapshots =
+        updatedSnapshots.map { snapshot ->
+            snapshot.copy(
+                payouts = computeRoundPayouts(snapshot.teamCumulativeEarnings, numTeams, ctx.rules.sideBetAmount),
+            )
+        }
+    val newSideBets = aggregateRoundPayouts(recomputedSnapshots)
+    val updatedTeams =
+        baseRankings.teams
+            .map { it.applyLive(liveWeekly, newSideBets) }
+            .sortedByDescending { it.totalCash }
+
+    val updatedRankings =
+        baseRankings.copy(
+            teams = updatedTeams,
+            weeks = baseRankings.weeks + (tournament.week ?: ""),
+            tournamentNames = baseRankings.tournamentNames + "${preview.espnName} *",
+            live = true,
+        )
+    return updatedRankings to ctx.copy(sideBetPerRound = recomputedSnapshots)
+}
+
+private fun SideBetRoundSnapshot.foldLive(
+    allRosters: List<com.cwfgw.teams.RosterEntry>,
+    liveByGolfer: Map<Pair<TeamId, GolferId>, BigDecimal>,
+): SideBetRoundSnapshot {
+    val updated =
+        allRosters.filter { it.draftRound == round }.fold(teamCumulativeEarnings) { acc, entry ->
+            val live = liveByGolfer[entry.teamId to entry.golferId] ?: return@fold acc
+            val adjusted = live.multiply(entry.ownershipPct).divide(BigDecimal(OWNERSHIP_DENOMINATOR))
+            if (adjusted.signum() == 0) {
+                acc
+            } else {
+                acc + (entry.teamId to (acc[entry.teamId] ?: BigDecimal.ZERO).add(adjusted))
+            }
+        }
+    return copy(teamCumulativeEarnings = updated)
+}
+
+private fun computeRoundPayouts(
+    teamTotals: Map<TeamId, BigDecimal>,
+    numTeams: Int,
+    sideBetPerTeam: BigDecimal,
+): Map<TeamId, BigDecimal> {
+    if (teamTotals.isEmpty() || teamTotals.values.all { it.signum() == 0 }) return emptyMap()
+    val maxEarnings = teamTotals.values.max()
+    val winners = teamTotals.filterValues { it == maxEarnings }.keys
+    val winnerCollects =
+        sideBetPerTeam.multiply(BigDecimal(numTeams - winners.size)).divide(BigDecimal(winners.size))
+    return teamTotals.mapValues { (teamId, _) ->
+        if (teamId in winners) winnerCollects else sideBetPerTeam.negate()
+    }
+}
+
+private fun aggregateRoundPayouts(snapshots: List<SideBetRoundSnapshot>): Map<TeamId, BigDecimal> =
+    snapshots
+        .flatMap { snap -> snap.payouts.entries.map { it.key to it.value } }
+        .groupBy({ it.first }, { it.second })
+        .mapValues { (_, amounts) -> amounts.fold(BigDecimal.ZERO, BigDecimal::add) }
+
+private fun TeamRanking.applyLive(
+    liveWeekly: Map<TeamId, BigDecimal>,
+    newSideBets: Map<TeamId, BigDecimal>,
+): TeamRanking {
+    val live = liveWeekly[teamId] ?: BigDecimal.ZERO
+    val sideBets = newSideBets[teamId] ?: BigDecimal.ZERO
+    val newSubtotal = subtotal.add(live)
+    val newTotal = newSubtotal.add(sideBets)
+    return copy(
+        subtotal = newSubtotal,
+        sideBets = sideBets,
+        totalCash = newTotal,
+        series = series + newTotal,
+        liveWeekly = live,
     )
 }
 
