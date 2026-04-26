@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import type { League, Season } from '@/shared/api/types';
@@ -23,26 +23,24 @@ const LeagueSeasonContext = createContext<LeagueSeasonValue | null>(null);
 
 export function LeagueSeasonProvider({ children }: { children: ReactNode }) {
   const leaguesQuery = useQuery({ queryKey: ['leagues'], queryFn: api.leagues });
-  const [leagueId, setLeagueId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!leagueId && leaguesQuery.data && leaguesQuery.data.length > 0) {
-      setLeagueId(leaguesQuery.data[0].id);
-    }
-  }, [leaguesQuery.data, leagueId]);
+  const [userLeagueId, setUserLeagueId] = useState<string | null>(null);
+  // Derive the active league from the user's pick + loaded leagues so we don't
+  // have to sync state-to-state in a useEffect on first load.
+  const leagueId = userLeagueId ?? leaguesQuery.data?.[0]?.id ?? null;
 
   const seasonsQuery = useQuery({
     queryKey: ['seasons', leagueId],
     queryFn: leagueId === null ? skipToken : () => api.seasons(leagueId),
   });
 
-  const [seasonId, setSeasonId] = useState<string | null>(null);
-  useEffect(() => {
-    if (seasonsQuery.data && seasonsQuery.data.length > 0) {
-      const stillValid = seasonId && seasonsQuery.data.some((s) => s.id === seasonId);
-      if (!stillValid) setSeasonId(seasonsQuery.data[0].id);
-    }
-  }, [seasonsQuery.data, seasonId]);
+  const [userSeasonId, setUserSeasonId] = useState<string | null>(null);
+  // Same shape as leagueId, but with a "pick is no longer valid" guard so a
+  // league switch falls back to the new league's first season instead of
+  // pinning to a stale id.
+  const seasonId =
+    userSeasonId !== null && seasonsQuery.data?.some((s) => s.id === userSeasonId)
+      ? userSeasonId
+      : seasonsQuery.data?.[0]?.id ?? null;
 
   const [live, setLive] = useState(true);
 
@@ -53,13 +51,13 @@ export function LeagueSeasonProvider({ children }: { children: ReactNode }) {
       leaguesError: leaguesQuery.error,
       leagueId,
       setLeagueId: (id) => {
-        setLeagueId(id);
-        setSeasonId(null);
+        setUserLeagueId(id);
+        setUserSeasonId(null);
       },
       seasons: seasonsQuery.data,
       seasonsLoading: seasonsQuery.isLoading,
       seasonId,
-      setSeasonId,
+      setSeasonId: setUserSeasonId,
       live,
       setLive,
     }),

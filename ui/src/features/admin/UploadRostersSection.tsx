@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import type {
   League,
@@ -11,7 +11,6 @@ import type {
 } from '@/shared/api/types';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
-import { useDefaultSelectedId } from '@/features/admin/useDefaultSelectedId';
 
 function pickKey(teamNumber: number, pick: RosterPreviewPick): string {
   return `${teamNumber}|${pick.round}|${pick.inputName}`;
@@ -63,17 +62,18 @@ function UploadRostersSection() {
   const queryClient = useQueryClient();
 
   const leaguesQuery = useQuery<League[]>({ queryKey: ['leagues'], queryFn: api.leagues });
-  const [leagueId, setLeagueId] = useState<string>('');
-  useDefaultSelectedId(leaguesQuery.data, leagueId, setLeagueId);
+  const [userLeagueId, setUserLeagueId] = useState<string>('');
+  // User's pick wins; otherwise default to the first loaded league.
+  const leagueId = userLeagueId || (leaguesQuery.data?.[0]?.id ?? '');
 
   const seasonsQuery = useQuery<Season[]>({
     queryKey: ['seasons', leagueId],
-    queryFn: () => api.seasons(leagueId),
-    enabled: !!leagueId,
+    queryFn: leagueId === '' ? skipToken : () => api.seasons(leagueId),
   });
 
-  const [seasonId, setSeasonId] = useState<string>('');
-  useDefaultSelectedId(seasonsQuery.data, seasonId, setSeasonId);
+  const [userSeasonId, setUserSeasonId] = useState<string>('');
+  // Same shape: user's pick wins, otherwise default to the first loaded season.
+  const seasonId = userSeasonId || (seasonsQuery.data?.[0]?.id ?? '');
   const [rosterText, setRosterText] = useState<string>('');
   const [preview, setPreview] = useState<RosterPreview | null>(null);
   const [selections, setSelections] = useState<Record<string, string>>({});
@@ -124,10 +124,10 @@ function UploadRostersSection() {
           seasonId={seasonId}
           rosterText={rosterText}
           onLeagueChange={(id) => {
-            setLeagueId(id);
-            setSeasonId('');
+            setUserLeagueId(id);
+            setUserSeasonId('');
           }}
-          onSeasonChange={setSeasonId}
+          onSeasonChange={setUserSeasonId}
           onRosterChange={setRosterText}
           onSubmit={() => previewMutation.mutate(rosterText)}
           submitting={previewMutation.isPending}

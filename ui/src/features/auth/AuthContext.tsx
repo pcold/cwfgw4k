@@ -11,7 +11,6 @@ interface AuthValue {
   logout: () => Promise<void>;
   loginError: string | null;
   loginPending: boolean;
-  clearLoginError: () => void;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
@@ -59,10 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await logoutMutation.mutateAsync();
   }, [logoutMutation]);
 
-  const clearLoginError = useCallback(() => {
-    loginMutation.reset();
-  }, [loginMutation]);
-
   const loginError =
     loginMutation.error instanceof ApiError
       ? loginMutation.error.status === 403
@@ -81,7 +76,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       loginError,
       loginPending: loginMutation.isPending,
-      clearLoginError,
     }),
     [
       authQuery.data,
@@ -90,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       loginError,
       loginMutation.isPending,
-      clearLoginError,
     ],
   );
 

@@ -1,29 +1,27 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import type { League, Season, Tournament } from '@/shared/api/types';
 import { mutationError } from '@/shared/util/mutationError';
-import { useDefaultSelectedId } from '@/features/admin/useDefaultSelectedId';
 
 function ResetTournamentSection() {
   const queryClient = useQueryClient();
 
   const leaguesQuery = useQuery<League[]>({ queryKey: ['leagues'], queryFn: api.leagues });
-  const [leagueId, setLeagueId] = useState<string>('');
-  useDefaultSelectedId(leaguesQuery.data, leagueId, setLeagueId);
+  // No UI to pick a league — just default to the first one.
+  const leagueId = leaguesQuery.data?.[0]?.id ?? '';
 
   const seasonsQuery = useQuery<Season[]>({
     queryKey: ['seasons', leagueId],
-    queryFn: () => api.seasons(leagueId),
-    enabled: !!leagueId,
+    queryFn: leagueId === '' ? skipToken : () => api.seasons(leagueId),
   });
-  const [seasonId, setSeasonId] = useState<string>('');
-  useDefaultSelectedId(seasonsQuery.data, seasonId, setSeasonId);
+  const [userSeasonId, setUserSeasonId] = useState<string>('');
+  // User's pick wins; otherwise default to the first loaded season.
+  const seasonId = userSeasonId || (seasonsQuery.data?.[0]?.id ?? '');
 
   const tournamentsQuery = useQuery<Tournament[]>({
     queryKey: ['tournaments', seasonId],
-    queryFn: () => api.tournaments(seasonId),
-    enabled: !!seasonId,
+    queryFn: seasonId === '' ? skipToken : () => api.tournaments(seasonId),
   });
 
   const [tournamentId, setTournamentId] = useState<string>('');
@@ -67,7 +65,7 @@ function ResetTournamentSection() {
           aria-label="Season"
           value={seasonId}
           onChange={(e) => {
-            setSeasonId(e.target.value);
+            setUserSeasonId(e.target.value);
             setTournamentId('');
           }}
           className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full sm:w-64"

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -15,7 +15,7 @@ function ScoreboardPage() {
   const { authenticated } = useAuth();
   const leaguesGate = useLeaguesGate();
   const queryClient = useQueryClient();
-  const [tournamentId, setTournamentId] = useState<string | null>(null);
+  const [userTournamentId, setUserTournamentId] = useState<string | null>(null);
   const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
@@ -25,15 +25,14 @@ function ScoreboardPage() {
 
   const tournaments = tournamentsQuery.data ?? [];
 
-  useEffect(() => {
-    if (tournaments.length === 0) {
-      if (tournamentId !== null) setTournamentId(null);
-      return;
-    }
-    if (!tournamentId || !tournaments.some((t) => t.id === tournamentId)) {
-      setTournamentId(earliestUnfinalized(tournaments));
-    }
-  }, [tournaments, tournamentId]);
+  // Derive the active tournament rather than syncing it via useEffect: the user's
+  // explicit choice wins if it's still in the loaded set, otherwise fall back to
+  // the earliest unfinalized one. This naturally handles season changes and the
+  // initial-load case without a sync-state-to-state effect.
+  const tournamentId =
+    userTournamentId !== null && tournaments.some((t) => t.id === userTournamentId)
+      ? userTournamentId
+      : earliestUnfinalized(tournaments);
 
   const reportQuery = useQuery({
     queryKey: ['tournamentReport', seasonId, tournamentId, live],
@@ -97,7 +96,7 @@ function ScoreboardPage() {
                 id="tournament-select"
                 className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"
                 value={tournamentId ?? ''}
-                onChange={(e) => setTournamentId(e.target.value)}
+                onChange={(e) => setUserTournamentId(e.target.value)}
               >
                 {loadedTournaments.map((t) => (
                   <option key={t.id} value={t.id}>

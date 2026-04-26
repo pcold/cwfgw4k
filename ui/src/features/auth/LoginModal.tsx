@@ -7,10 +7,14 @@ interface Props {
 }
 
 function LoginModal({ open, onClose }: Props) {
-  const { login, loginError, loginPending, clearLoginError } = useAuth();
+  const { login, loginError, loginPending } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
+  // Subscribe to keyboard Escape — a real side effect on a non-React event source.
+  // The "reset on close" effect was removed: the parent unmounts this modal when
+  // it isn't needed, so component state (and loginError via the auth context)
+  // resets via remount rather than via a useEffect that syncs prop → state.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -19,13 +23,6 @@ function LoginModal({ open, onClose }: Props) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
-
-  useEffect(() => {
-    if (!open) {
-      setPassword('');
-      clearLoginError();
-    }
-  }, [open, clearLoginError]);
 
   if (!open) return null;
 

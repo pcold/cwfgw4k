@@ -1,22 +1,21 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import type { League, ScheduleUploadResult, Season } from '@/shared/api/types';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
-import { useDefaultSelectedId } from '@/features/admin/useDefaultSelectedId';
 
 function UploadScheduleSection() {
   const queryClient = useQueryClient();
 
   const leaguesQuery = useQuery<League[]>({ queryKey: ['leagues'], queryFn: api.leagues });
-  const [leagueId, setLeagueId] = useState<string>('');
-  useDefaultSelectedId(leaguesQuery.data, leagueId, setLeagueId);
+  const [userLeagueId, setUserLeagueId] = useState<string>('');
+  // User's pick wins; otherwise default to the first loaded league.
+  const leagueId = userLeagueId || (leaguesQuery.data?.[0]?.id ?? '');
 
   const seasonsQuery = useQuery<Season[]>({
     queryKey: ['seasons', leagueId],
-    queryFn: () => api.seasons(leagueId),
-    enabled: !!leagueId,
+    queryFn: leagueId === '' ? skipToken : () => api.seasons(leagueId),
   });
 
   const [seasonId, setSeasonId] = useState<string>('');
@@ -56,7 +55,7 @@ function UploadScheduleSection() {
             id="schedule-league"
             value={leagueId}
             onChange={(e) => {
-              setLeagueId(e.target.value);
+              setUserLeagueId(e.target.value);
               setSeasonId('');
             }}
             className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full sm:w-64"

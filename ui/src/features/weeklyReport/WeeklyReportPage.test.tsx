@@ -118,7 +118,7 @@ describe('WeeklyReportPage', () => {
     expect(tournamentReportMock).not.toHaveBeenCalled();
   });
 
-  it('switches to the per-tournament report when a tournament is selected', async () => {
+  it('defaults to the earliest unfinalized tournament and switches to the season report when All Tournaments is selected', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournament]);
@@ -128,12 +128,14 @@ describe('WeeklyReportPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<WeeklyReportPage />);
 
-    await screen.findByRole('heading', { name: /All Tournaments/i });
-    const select = screen.getByLabelText(/Tournament/i);
-    await user.selectOptions(select, 'tn-1');
-
     expect(await screen.findByRole('heading', { name: /Sample Open/i })).toBeInTheDocument();
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
+
+    const select = screen.getByLabelText(/Tournament/i);
+    await user.selectOptions(select, '');
+
+    expect(await screen.findByRole('heading', { name: /All Tournaments/i })).toBeInTheDocument();
+    expect(seasonReportMock).toHaveBeenCalledWith('sn-1', true);
   });
 
   it('shows an empty state when there are no leagues', async () => {

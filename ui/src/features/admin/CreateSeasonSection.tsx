@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import type { League, Season } from '@/shared/api/types';
 import { mutationError } from '@/shared/util/mutationError';
-import { useDefaultSelectedId } from '@/features/admin/useDefaultSelectedId';
 import {
   DEFAULT_PAYOUTS,
   DEFAULT_SIDE_BET_AMOUNT,
@@ -17,7 +16,9 @@ function CreateSeasonSection() {
 
   const leaguesQuery = useQuery<League[]>({ queryKey: ['leagues'], queryFn: api.leagues });
 
-  const [leagueId, setLeagueId] = useState<string>('');
+  const [userLeagueId, setUserLeagueId] = useState<string>('');
+  // User's pick wins; otherwise default to the first loaded league.
+  const leagueId = userLeagueId || (leaguesQuery.data?.[0]?.id ?? '');
   const [seasonYear, setSeasonYear] = useState<number>(new Date().getFullYear());
   const [seasonName, setSeasonName] = useState('');
   const [payouts, setPayouts] = useState<number[]>(DEFAULT_PAYOUTS);
@@ -25,8 +26,6 @@ function CreateSeasonSection() {
   const [sideBetRoundsStr, setSideBetRoundsStr] = useState<string>(DEFAULT_SIDE_BET_ROUNDS_STR);
   const [sideBetAmount, setSideBetAmount] = useState<number>(DEFAULT_SIDE_BET_AMOUNT);
   const [success, setSuccess] = useState<string | null>(null);
-
-  useDefaultSelectedId(leaguesQuery.data, leagueId, setLeagueId);
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -64,7 +63,7 @@ function CreateSeasonSection() {
           <select
             id="season-league"
             value={leagueId}
-            onChange={(e) => setLeagueId(e.target.value)}
+            onChange={(e) => setUserLeagueId(e.target.value)}
             className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full sm:w-64"
           >
             {(leaguesQuery.data ?? []).map((lg) => (

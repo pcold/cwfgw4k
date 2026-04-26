@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
@@ -11,7 +11,7 @@ const ALL_TOURNAMENTS = '';
 function LateRowBetsPage() {
   const { seasonId, live } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
-  const [tournamentId, setTournamentId] = useState<string | null>(null);
+  const [userTournamentId, setUserTournamentId] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
     queryKey: ['tournaments', seasonId],
@@ -19,13 +19,9 @@ function LateRowBetsPage() {
   });
 
   const tournaments = tournamentsQuery.data ?? [];
-  useEffect(() => {
-    if (tournamentId === null && tournaments.length > 0) {
-      setTournamentId(earliestUnfinalized(tournaments) ?? ALL_TOURNAMENTS);
-    }
-  }, [tournaments, tournamentId]);
-
-  const effectiveId = tournamentId ?? ALL_TOURNAMENTS;
+  // Derived rather than synced: user's pick wins, otherwise the earliest
+  // unfinalized tournament, otherwise the "All Tournaments" sentinel.
+  const effectiveId = userTournamentId ?? earliestUnfinalized(tournaments) ?? ALL_TOURNAMENTS;
 
   const reportQuery = useQuery({
     queryKey: ['report', seasonId, effectiveId, live],
@@ -55,7 +51,7 @@ function LateRowBetsPage() {
             id="late-row-bets-through"
             className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"
             value={effectiveId}
-            onChange={(e) => setTournamentId(e.target.value)}
+            onChange={(e) => setUserTournamentId(e.target.value)}
           >
             <option value={ALL_TOURNAMENTS}>All Tournaments</option>
             {tournaments.map((t) => (

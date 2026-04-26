@@ -1,22 +1,20 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import type { League, Season } from '@/shared/api/types';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
-import { useDefaultSelectedId } from '@/features/admin/useDefaultSelectedId';
 
 function DeleteSeasonSection() {
   const queryClient = useQueryClient();
 
   const leaguesQuery = useQuery<League[]>({ queryKey: ['leagues'], queryFn: api.leagues });
-  const [leagueId, setLeagueId] = useState<string>('');
-  useDefaultSelectedId(leaguesQuery.data, leagueId, setLeagueId);
+  // No UI to pick a league — just default to the first one when leagues load.
+  const leagueId = leaguesQuery.data?.[0]?.id ?? '';
 
   const seasonsQuery = useQuery<Season[]>({
     queryKey: ['seasons', leagueId],
-    queryFn: () => api.seasons(leagueId),
-    enabled: !!leagueId,
+    queryFn: leagueId === '' ? skipToken : () => api.seasons(leagueId),
   });
 
   const [seasonId, setSeasonId] = useState<string>('');
