@@ -105,6 +105,24 @@ async function putJson<T>(path: string, payload: unknown): Promise<T> {
   return camelizeKeys(parsed) as T;
 }
 
+async function postText<T>(path: string, body: string): Promise<T> {
+  const resp = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body,
+  });
+  const text = await resp.text();
+  const parsed: unknown = text ? JSON.parse(text) : null;
+  if (!resp.ok) {
+    const errMsg =
+      parsed && typeof parsed === 'object' && 'error' in parsed
+        ? String((parsed as { error: unknown }).error)
+        : `${resp.status} ${resp.statusText}`;
+    throw new ApiError(resp.status, errMsg);
+  }
+  return camelizeKeys(parsed) as T;
+}
+
 async function deleteEmpty(path: string): Promise<void> {
   const resp = await fetch(path, { method: 'DELETE' });
   if (!resp.ok) {
@@ -170,8 +188,10 @@ export const api = {
       `/api/v1/admin/seasons/${encodeURIComponent(input.seasonId)}/upload`,
       { startDate: input.startDate, endDate: input.endDate },
     ),
+  // The backend's previewRoster route consumes the raw TSV/CSV body via
+  // receiveText() rather than a JSON envelope, so post the text as-is.
   previewRoster: (roster: string) =>
-    postJson<RosterPreview>('/api/v1/admin/roster/preview', { roster }),
+    postText<RosterPreview>('/api/v1/admin/roster/preview', roster),
   confirmRoster: (input: { seasonId: string; teams: RosterConfirmTeamInput[] }) =>
     postJson<RosterConfirmResult>('/api/v1/admin/roster/confirm', input),
   finalizeTournament: (tournamentId: string) =>
