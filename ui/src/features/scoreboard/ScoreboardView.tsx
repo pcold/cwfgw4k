@@ -179,7 +179,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
       {scoreboard.leaderboard.length > 0 ? (
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-            Leaderboard (Top 20)
+            Leaderboard
           </h3>
           <div className="overflow-x-auto -mx-3 sm:mx-0">
             <table className="w-full text-sm min-w-[400px]">

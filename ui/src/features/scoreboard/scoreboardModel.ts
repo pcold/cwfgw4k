@@ -77,7 +77,7 @@ function scoreboardTeamFor(team: ReportTeamColumn): ScoreboardTeam {
 }
 
 function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
-  // In live preview mode the backend ships the full ESPN top-20 (rostered + undrafted) so we render it directly.
+  // In live preview mode the backend ships the full ESPN field (rostered + undrafted) so we render it directly.
   if (report.liveLeaderboard.length > 0) {
     const sorted = report.liveLeaderboard
       .slice()
@@ -90,7 +90,7 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
         teamName: entry.teamName,
         pairKey: entry.pairKey,
       }));
-    return collapsePairs(sorted).slice(0, 20);
+    return collapsePairs(sorted);
   }
 
   const undrafted: LeaderboardEntry[] = report.undraftedTopTens.map((entry) => ({
@@ -128,7 +128,7 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
     return true;
   });
 
-  return collapsePairs(unique).slice(0, 20);
+  return collapsePairs(unique);
 }
 
 // For team events (e.g. Zurich Classic) two golfers share one competitor slot, so entries with the same pairKey

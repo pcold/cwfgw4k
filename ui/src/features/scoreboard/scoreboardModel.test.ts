@@ -142,7 +142,7 @@ describe('deriveScoreboard', () => {
     expect(scoreboard.net).toBe(0);
   });
 
-  it('builds a leaderboard with rostered + undrafted, dedupes by name, caps at 20', () => {
+  it('builds a leaderboard with rostered + undrafted and dedupes by name', () => {
     const scoreboard = deriveScoreboard(
       report({
         teams: [
