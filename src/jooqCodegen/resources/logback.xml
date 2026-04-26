@@ -1,0 +1,17 @@
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <!-- Without an explicit config logback uses BasicConfigurator at DEBUG, which floods
+         the build log with testcontainers + flyway internals on every generateJooq run.
+         Pin everything that runs during codegen to INFO. -->
+    <logger name="org.testcontainers" level="INFO"/>
+    <logger name="org.flywaydb" level="INFO"/>
+    <logger name="com.github.dockerjava" level="WARN"/>
+    <logger name="com.zaxxer.hikari" level="WARN"/>
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>

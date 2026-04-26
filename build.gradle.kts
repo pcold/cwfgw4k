@@ -78,6 +78,11 @@ fun JavaExec.applyMacDockerWorkaround() {
     if (macDockerRawSock.exists()) {
         environment("DOCKER_HOST", "unix://${macDockerRawSock.absolutePath}")
         environment("DOCKER_API_VERSION", "1.44")
+        // Ryuk's cleanup container would try to bind-mount docker.raw.sock from
+        // the macOS host path, which fails inside the daemon's Linux VM. The
+        // tradeoff is no automatic container reaping; testcontainers cleans up
+        // its own containers on JVM exit, so it only matters for crashed runs.
+        environment("TESTCONTAINERS_RYUK_DISABLED", "true")
         systemProperty("api.version", "1.44")
     }
 }
@@ -86,6 +91,7 @@ tasks.withType<Test>().configureEach {
     if (macDockerRawSock.exists()) {
         environment("DOCKER_HOST", "unix://${macDockerRawSock.absolutePath}")
         environment("DOCKER_API_VERSION", "1.44")
+        environment("TESTCONTAINERS_RYUK_DISABLED", "true")
         systemProperty("api.version", "1.44")
     }
 }
@@ -98,6 +104,16 @@ ktor {
     fatJar {
         archiveFileName = "cwfgw4k-all.jar"
     }
+}
+
+// Flyway (and other libraries that load plugins via java.util.ServiceLoader)
+// register implementations through META-INF/services/* files. Shadow's default
+// behaviour is to overwrite same-path files when merging dependency JARs, which
+// strips Flyway's location-parser registrations and crashes the app at boot
+// with "Unknown prefix for location (should be one of )". mergeServiceFiles()
+// concatenates them instead.
+tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>().configureEach {
+    mergeServiceFiles()
 }
 
 val jooqGenDir = layout.buildDirectory.dir("generated/jooq")
