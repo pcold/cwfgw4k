@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tournamentLabel } from './tournament';
+import { earliestUnfinalized, tournamentLabel } from './tournament';
 import type { Tournament } from '@/shared/api/types';
 
 function makeTournament(overrides: Partial<Tournament> = {}): Tournament {
@@ -39,5 +39,29 @@ describe('tournamentLabel', () => {
     expect(tournamentLabel(makeTournament({ status: 'in_progress' }))).toBe(
       'Wk 1 — Sony Open — in_progress',
     );
+  });
+});
+
+describe('earliestUnfinalized', () => {
+  it('returns the first non-completed tournament when the list is sorted oldest-first', () => {
+    const tournaments: Tournament[] = [
+      makeTournament({ id: 'tn-1', status: 'completed' }),
+      makeTournament({ id: 'tn-2', status: 'completed' }),
+      makeTournament({ id: 'tn-3', status: 'in_progress' }),
+      makeTournament({ id: 'tn-4', status: 'upcoming' }),
+    ];
+    expect(earliestUnfinalized(tournaments)).toBe('tn-3');
+  });
+
+  it('falls back to the first tournament when every event is completed', () => {
+    const tournaments: Tournament[] = [
+      makeTournament({ id: 'tn-1', status: 'completed' }),
+      makeTournament({ id: 'tn-2', status: 'completed' }),
+    ];
+    expect(earliestUnfinalized(tournaments)).toBe('tn-1');
+  });
+
+  it('returns null on an empty list', () => {
+    expect(earliestUnfinalized([])).toBeNull();
   });
 });
