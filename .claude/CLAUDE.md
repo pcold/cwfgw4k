@@ -432,10 +432,22 @@ Working with AI Assistants) apply unchanged.
 - **MUST NOT** use `any`. Use `unknown` and narrow with a type guard, or
   model the value precisely. `any` defeats the entire reason TypeScript
   exists and silently spreads through every expression that touches it.
-- **MUST NOT** use `as` casts. Two narrow exceptions: `as const` for
-  literal narrowing, and `value satisfies T` for type-checking without
-  widening. Casting hides the bugs that strict mode would otherwise catch
-  — when you reach for `as`, restructure or add a type guard instead.
+- **MUST NOT** use `as` casts. Two narrow always-OK forms: `as const`
+  for literal narrowing, and `value satisfies T` for type-checking
+  without widening. Casting hides the bugs that strict mode would
+  otherwise catch — when you reach for `as`, restructure or add a
+  type guard instead.
+
+  Two boundary exceptions where `as` is the least-bad option and
+  should stay confined to those boundaries:
+  - **JSON deserialization** (`shared/api/client.ts` post-parse):
+    `unknown` from `JSON.parse` flows into `as T` once at the public
+    function boundary. The API contract IS the type. Adopt runtime
+    validation (e.g. Zod) before this surface gets larger.
+  - **Testing-only DOM narrowing**: `getByLabelText(...) as
+    HTMLInputElement` and `container.querySelector(...) as
+    HTMLElement` are the conventional Testing Library shape; there
+    isn't a cleaner form. Test files only.
 - **MUST NOT** use `!` (the non-null assertion operator). Use a guard, an
   early return, or restructure to remove the nullable. Same rationale as
   Kotlin's `!!` rule.

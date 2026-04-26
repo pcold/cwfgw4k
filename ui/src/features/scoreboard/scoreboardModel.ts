@@ -43,7 +43,7 @@ function parsePosition(positionStr: string | null): number | null {
 // Backend reports position like "T1" when the golfer is tied, "1" when solo. The T prefix is the
 // only signal we get, so preserve it here — the view renders it conditionally.
 function isTiedPosition(positionStr: string | null): boolean {
-  return positionStr != null && positionStr.startsWith('T');
+  return positionStr !== null && positionStr.startsWith('T');
 }
 
 function parseScoreToPar(raw: string | null): number | null {

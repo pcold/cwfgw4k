@@ -37,7 +37,7 @@ function PlayerRankingsView({ players, live, onGolferClick }: Props) {
     const rounds = new Set<number>();
     let hasUndrafted = false;
     for (const p of players) {
-      if (p.draftRound != null) rounds.add(p.draftRound);
+      if (p.draftRound !== null) rounds.add(p.draftRound);
       else hasUndrafted = true;
     }
     const sorted = Array.from(rounds).sort((a, b) => a - b);
@@ -56,7 +56,7 @@ function PlayerRankingsView({ players, live, onGolferClick }: Props) {
     };
     const matchesRound = (p: PlayerRankingsRow) => {
       if (roundFilter === ALL) return true;
-      if (roundFilter === UNDRAFTED) return p.draftRound == null;
+      if (roundFilter === UNDRAFTED) return p.draftRound === null;
       return String(p.draftRound) === roundFilter;
     };
     return players.filter((p) => matchesTeam(p) && matchesRound(p));
