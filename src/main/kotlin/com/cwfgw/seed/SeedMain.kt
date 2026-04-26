@@ -8,6 +8,7 @@ import com.cwfgw.admin.GolferAssignment
 import com.cwfgw.admin.PickMatch
 import com.cwfgw.admin.PreviewTeam
 import com.cwfgw.admin.RosterPreviewResult
+import com.cwfgw.buildHttpClient
 import com.cwfgw.buildServices
 import com.cwfgw.config.AppConfig
 import com.cwfgw.db.Database
@@ -18,9 +19,6 @@ import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.tournaments.TournamentStatus
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.HttpTimeout
 import kotlinx.coroutines.runBlocking
 
 private val log = KotlinLogging.logger {}
@@ -50,13 +48,7 @@ fun main() {
 
     log.info { "SeedMain: starting database (runs Flyway migrations against ${config.db.jdbcUrl})" }
     val database = Database.start(config.db)
-    val httpClient =
-        HttpClient(CIO) {
-            install(HttpTimeout) {
-                connectTimeoutMillis = HTTP_CLIENT_CONNECT_TIMEOUT_MS
-                requestTimeoutMillis = HTTP_CLIENT_REQUEST_TIMEOUT_MS
-            }
-        }
+    val httpClient = buildHttpClient()
 
     try {
         val services = buildServices(config, database, httpClient)
@@ -188,6 +180,3 @@ private fun <T, E> Result<T, E>.orThrow(label: String): T =
         is Result.Ok -> value
         is Result.Err -> error("Seed step '$label' failed: $error")
     }
-
-private const val HTTP_CLIENT_CONNECT_TIMEOUT_MS: Long = 10_000
-private const val HTTP_CLIENT_REQUEST_TIMEOUT_MS: Long = 30_000

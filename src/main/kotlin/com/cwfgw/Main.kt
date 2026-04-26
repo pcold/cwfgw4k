@@ -71,18 +71,15 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
+import java.security.KeyStore
+import javax.net.ssl.TrustManagerFactory
+import javax.net.ssl.X509TrustManager
 
 fun main() {
     val config = AppConfig.load()
     requireValidAuthSecret(config.auth)
     val database = Database.start(config.db)
-    val httpClient =
-        HttpClient(CIO) {
-            install(HttpTimeout) {
-                connectTimeoutMillis = HTTP_CLIENT_CONNECT_TIMEOUT_MS
-                requestTimeoutMillis = HTTP_CLIENT_REQUEST_TIMEOUT_MS
-            }
-        }
+    val httpClient = buildHttpClient()
     val services = buildServices(config, database, httpClient)
     runBlocking { seedAdminIfEmpty(services.authService, services.userRepository, config.auth) }
     embeddedServer(Netty, port = config.http.port, host = config.http.host) {
@@ -145,6 +142,47 @@ internal fun buildServices(
 
 private const val HTTP_CLIENT_CONNECT_TIMEOUT_MS: Long = 10_000
 private const val HTTP_CLIENT_REQUEST_TIMEOUT_MS: Long = 30_000
+
+/**
+ * Build the outbound HTTP client used for ESPN calls (and any future external
+ * service). On macOS we initialize the trust manager from the system Keychain
+ * so corporate/MITM proxies (Zscaler, etc.) that have a trusted root in the
+ * user's keychain don't fail TLS validation. On other platforms (Linux Cloud
+ * Run, etc.) the keychain lookup throws and we fall through to the JDK default
+ * trust store, which is what we want there.
+ */
+internal fun buildHttpClient(): HttpClient {
+    val trustManager = systemKeychainTrustManager() ?: defaultJdkTrustManager()
+    return HttpClient(CIO) {
+        install(HttpTimeout) {
+            connectTimeoutMillis = HTTP_CLIENT_CONNECT_TIMEOUT_MS
+            requestTimeoutMillis = HTTP_CLIENT_REQUEST_TIMEOUT_MS
+        }
+        engine {
+            https {
+                this.trustManager = trustManager
+            }
+        }
+    }
+}
+
+private fun systemKeychainTrustManager(): X509TrustManager? =
+    try {
+        val keychain = KeyStore.getInstance("KeychainStore", "Apple")
+        keychain.load(null, null)
+        firstX509(TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply { init(keychain) })
+    } catch (_: Exception) {
+        null
+    }
+
+private fun defaultJdkTrustManager(): X509TrustManager? {
+    val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+    tmf.init(null as KeyStore?)
+    return firstX509(tmf)
+}
+
+private fun firstX509(tmf: TrustManagerFactory): X509TrustManager? =
+    tmf.trustManagers.filterIsInstance<X509TrustManager>().firstOrNull()
 
 /**
  * Boot-time guard: refuse to start with a blank session secret. Extracted so
