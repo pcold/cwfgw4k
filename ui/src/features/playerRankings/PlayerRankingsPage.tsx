@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { skipToken, useQueries, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { useLeaguesGate } from '@/shared/components/QueryState';
@@ -56,14 +56,12 @@ function PlayerRankingsPage() {
 
   const tournamentsQuery = useQuery({
     queryKey: ['tournaments', seasonId],
-    queryFn: () => api.tournaments(seasonId!),
-    enabled: !!seasonId,
+    queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
 
   const rostersQuery = useQuery({
     queryKey: ['rosters', seasonId],
-    queryFn: () => api.rosters(seasonId!),
-    enabled: !!seasonId,
+    queryFn: seasonId === null ? skipToken : () => api.rosters(seasonId),
   });
 
   const tournaments = tournamentsQuery.data ?? [];
@@ -72,8 +70,8 @@ function PlayerRankingsPage() {
   const reportQueries = useQueries({
     queries: targets.map((target) => ({
       queryKey: ['report', seasonId, target.id, target.useLive],
-      queryFn: () => api.tournamentReport(seasonId!, target.id, target.useLive),
-      enabled: !!seasonId,
+      queryFn:
+        seasonId === null ? skipToken : () => api.tournamentReport(seasonId, target.id, target.useLive),
     })),
   });
 

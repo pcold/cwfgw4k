@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import { api, ApiError } from '@/shared/api/client';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { DEFAULT_RULES, ordinal } from './rulesModel';
@@ -8,14 +8,12 @@ function RulesPage() {
 
   const rulesQuery = useQuery({
     queryKey: ['seasonRules', seasonId],
-    queryFn: () => api.seasonRules(seasonId!),
-    enabled: !!seasonId,
+    queryFn: seasonId === null ? skipToken : () => api.seasonRules(seasonId),
   });
 
   const tournamentsQuery = useQuery({
     queryKey: ['tournaments', seasonId],
-    queryFn: () => api.tournaments(seasonId!),
-    enabled: !!seasonId,
+    queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
 
   if (leaguesLoading) return <p className="text-gray-400">Loading leagues…</p>;

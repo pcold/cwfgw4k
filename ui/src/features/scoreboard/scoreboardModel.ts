@@ -139,9 +139,10 @@ export function collapsePairs(entries: LeaderboardEntry[]): LeaderboardEntry[] {
   const pairIndex = new Map<string, number>();
   for (const entry of entries) {
     const key = entry.pairKey;
-    if (key && pairIndex.has(key)) {
-      const existing = result[pairIndex.get(key)!];
-      result[pairIndex.get(key)!] = {
+    const existingIndex = key === null ? undefined : pairIndex.get(key);
+    if (existingIndex !== undefined) {
+      const existing = result[existingIndex];
+      result[existingIndex] = {
         ...existing,
         name: `${existing.name} / ${entry.name}`,
         teamName: `${existing.teamName ?? 'undrafted'} / ${entry.teamName ?? 'undrafted'}`,

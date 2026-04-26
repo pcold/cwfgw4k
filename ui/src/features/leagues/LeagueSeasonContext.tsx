@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import type { League, Season } from '@/shared/api/types';
 
@@ -33,8 +33,7 @@ export function LeagueSeasonProvider({ children }: { children: ReactNode }) {
 
   const seasonsQuery = useQuery({
     queryKey: ['seasons', leagueId],
-    queryFn: () => api.seasons(leagueId!),
-    enabled: !!leagueId,
+    queryFn: leagueId === null ? skipToken : () => api.seasons(leagueId),
   });
 
   const [seasonId, setSeasonId] = useState<string | null>(null);

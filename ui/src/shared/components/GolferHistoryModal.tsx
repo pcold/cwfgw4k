@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { formatMoney } from '@/shared/util/money';
 
@@ -23,8 +23,10 @@ function GolferHistoryModal({ seasonId, golferId, onClose }: Props) {
 
   const historyQuery = useQuery({
     queryKey: ['golferHistory', seasonId, golferId],
-    queryFn: () => api.golferHistory(seasonId!, golferId!),
-    enabled: !!seasonId && !!golferId,
+    queryFn:
+      seasonId === null || golferId === null
+        ? skipToken
+        : () => api.golferHistory(seasonId, golferId),
   });
 
   if (!open) return null;

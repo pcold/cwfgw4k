@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
@@ -15,15 +15,15 @@ function RankingsPage() {
 
   const tournamentsQuery = useQuery({
     queryKey: ['tournaments', seasonId],
-    queryFn: () => api.tournaments(seasonId!),
-    enabled: !!seasonId,
+    queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
 
   const rankingsQuery = useQuery({
     queryKey: ['rankings', seasonId, live, throughTournamentId],
-    queryFn: () =>
-      api.rankings(seasonId!, live, throughTournamentId || undefined),
-    enabled: !!seasonId,
+    queryFn:
+      seasonId === null
+        ? skipToken
+        : () => api.rankings(seasonId, live, throughTournamentId || undefined),
   });
 
   if (leaguesGate) return leaguesGate;

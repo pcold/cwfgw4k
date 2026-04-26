@@ -111,7 +111,8 @@ function PlayerRankingsView({ players, live, onGolferClick }: Props) {
               </tr>
             ) : (
               filtered.map((player, index) => {
-                const clickable = player.golferId && onGolferClick;
+                const golferId = player.golferId;
+                const clickable = golferId && onGolferClick ? { golferId, onGolferClick } : null;
                 return (
                   <tr key={player.key} className="hover:bg-gray-800/60">
                     <td className="px-3 py-2 text-gray-500 tabular-nums">{index + 1}</td>
@@ -120,7 +121,7 @@ function PlayerRankingsView({ players, live, onGolferClick }: Props) {
                         <button
                           type="button"
                           className="text-left hover:text-green-400 hover:underline"
-                          onClick={() => onGolferClick!(player.golferId!)}
+                          onClick={() => clickable.onGolferClick(clickable.golferId)}
                         >
                           {player.name}
                         </button>

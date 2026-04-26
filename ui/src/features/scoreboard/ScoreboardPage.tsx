@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
@@ -20,8 +20,7 @@ function ScoreboardPage() {
 
   const tournamentsQuery = useQuery({
     queryKey: ['tournaments', seasonId],
-    queryFn: () => api.tournaments(seasonId!),
-    enabled: !!seasonId,
+    queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
 
   const tournaments = tournamentsQuery.data ?? [];
@@ -38,8 +37,10 @@ function ScoreboardPage() {
 
   const reportQuery = useQuery({
     queryKey: ['tournamentReport', seasonId, tournamentId, live],
-    queryFn: () => api.tournamentReport(seasonId!, tournamentId!, live),
-    enabled: !!seasonId && !!tournamentId,
+    queryFn:
+      seasonId === null || tournamentId === null
+        ? skipToken
+        : () => api.tournamentReport(seasonId, tournamentId, live),
   });
 
   const finalizeMutation = useMutation({

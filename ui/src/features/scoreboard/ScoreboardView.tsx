@@ -123,12 +123,14 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
                   {team.golferScores.length === 0 ? (
                     <span className="text-gray-600">—</span>
                   ) : (
-                    team.golferScores.map((g) => (
-                      <span key={`${team.teamId}-${g.golferId ?? g.golferName}`} className="inline-block mr-3 text-xs">
-                        {onGolferClick && g.golferId ? (
+                    team.golferScores.map((g) => {
+                      const golferId = g.golferId;
+                      return (
+                      <span key={`${team.teamId}-${golferId ?? g.golferName}`} className="inline-block mr-3 text-xs">
+                        {onGolferClick && golferId ? (
                           <button
                             type="button"
-                            onClick={() => onGolferClick(g.golferId!)}
+                            onClick={() => onGolferClick(golferId)}
                             className="text-gray-300 hover:underline cursor-pointer bg-transparent border-0 p-0"
                           >
                             {g.golferName}
@@ -143,7 +145,8 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
                           <span className="text-gray-500"> ({g.ownershipPct}%)</span>
                         ) : null}
                       </span>
-                    ))
+                      );
+                    })
                   )}
                 </td>
               </tr>

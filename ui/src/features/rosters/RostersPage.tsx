@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
@@ -13,8 +13,7 @@ function RostersPage() {
 
   const rostersQuery = useQuery({
     queryKey: ['rosters', seasonId],
-    queryFn: () => api.rosters(seasonId!),
-    enabled: !!seasonId,
+    queryFn: seasonId === null ? skipToken : () => api.rosters(seasonId),
   });
 
   if (leaguesGate) return leaguesGate;

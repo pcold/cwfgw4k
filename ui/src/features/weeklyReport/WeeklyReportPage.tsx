@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
@@ -23,8 +23,7 @@ function WeeklyReportPage() {
 
   const tournamentsQuery = useQuery({
     queryKey: ['tournaments', seasonId],
-    queryFn: () => api.tournaments(seasonId!),
-    enabled: !!seasonId,
+    queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
 
   const tournaments = tournamentsQuery.data ?? [];
@@ -38,11 +37,13 @@ function WeeklyReportPage() {
 
   const reportQuery = useQuery({
     queryKey: ['report', seasonId, effectiveId, live],
-    queryFn: () =>
-      effectiveId === ALL_TOURNAMENTS
-        ? api.seasonReport(seasonId!, live)
-        : api.tournamentReport(seasonId!, effectiveId, live),
-    enabled: !!seasonId,
+    queryFn:
+      seasonId === null
+        ? skipToken
+        : () =>
+            effectiveId === ALL_TOURNAMENTS
+              ? api.seasonReport(seasonId, live)
+              : api.tournamentReport(seasonId, effectiveId, live),
   });
 
   if (leaguesGate) return leaguesGate;

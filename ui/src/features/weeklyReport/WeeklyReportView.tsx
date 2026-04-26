@@ -45,11 +45,12 @@ function RoundCell({ row, isSideBetWinner, showSeasonFooter, onGolferClick }: Ro
       ? `${formatMoney(row.seasonEarnings ?? 0)} (${row.seasonTopTens ?? 0})`
       : '$0';
 
+  const golferId = row.golferId;
   const nameContent =
-    onGolferClick && row.golferId ? (
+    onGolferClick && golferId ? (
       <button
         type="button"
-        onClick={() => onGolferClick(row.golferId!)}
+        onClick={() => onGolferClick(golferId)}
         className={`font-semibold truncate ${text} bg-transparent border-0 p-0 hover:underline cursor-pointer`}
       >
         {row.golferName}
