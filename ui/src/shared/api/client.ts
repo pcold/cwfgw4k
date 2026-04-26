@@ -8,7 +8,7 @@ import type {
   RosterConfirmTeamInput,
   RosterPreview,
   RosterTeam,
-  ScheduleUploadResult,
+  SeasonImportResult,
   Season,
   SeasonRules,
   Tournament,
@@ -140,8 +140,11 @@ export const api = {
     seasonYear: number;
     rules: SeasonRules;
   }) => postJson<Season>('/api/v1/seasons', input),
-  uploadSchedule: (input: { seasonId: string; seasonYear: number; schedule: string }) =>
-    postJson<ScheduleUploadResult>('/api/v1/admin/season', input),
+  importSeasonSchedule: (input: { seasonId: string; startDate: string; endDate: string }) =>
+    postJson<SeasonImportResult>(
+      `/api/v1/admin/seasons/${encodeURIComponent(input.seasonId)}/upload`,
+      { startDate: input.startDate, endDate: input.endDate },
+    ),
   previewRoster: (roster: string) =>
     postJson<RosterPreview>('/api/v1/admin/roster/preview', { roster }),
   confirmRoster: (input: { seasonId: string; teams: RosterConfirmTeamInput[] }) =>

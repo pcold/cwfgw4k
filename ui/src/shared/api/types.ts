@@ -154,23 +154,15 @@ export interface SeasonRules {
   sideBetAmount: number;
 }
 
-export interface ScheduleTournament {
-  id: string;
-  name: string;
-  week: string | null;
-  startDate: string;
-  endDate: string;
-  payoutMultiplier: number;
-  espnId: string | null;
-  espnName: string | null;
+export interface SkippedSeasonImportEntry {
+  espnEventId: string;
+  espnEventName: string;
+  reason: string;
 }
 
-export interface ScheduleUploadResult {
-  seasonYear: number;
-  tournamentsCreated: number;
-  espnMatched: number;
-  espnUnmatched: string[];
-  tournaments: ScheduleTournament[];
+export interface SeasonImportResult {
+  created: Tournament[];
+  skipped: SkippedSeasonImportEntry[];
 }
 
 export interface RosterMatchSuggestion {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import type { League, ScheduleUploadResult, Season } from '@/shared/api/types';
+import type { League, Season, SeasonImportResult } from '@/shared/api/types';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
 
@@ -10,7 +10,6 @@ function UploadScheduleSection() {
 
   const leaguesQuery = useQuery<League[]>({ queryKey: ['leagues'], queryFn: api.leagues });
   const [userLeagueId, setUserLeagueId] = useState<string>('');
-  // User's pick wins; otherwise default to the first loaded league.
   const leagueId = userLeagueId || (leaguesQuery.data?.[0]?.id ?? '');
 
   const seasonsQuery = useQuery<Season[]>({
@@ -19,32 +18,36 @@ function UploadScheduleSection() {
   });
 
   const [seasonId, setSeasonId] = useState<string>('');
-  const [scheduleText, setScheduleText] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
-  const uploadMutation = useMutation({
-    mutationFn: () => {
-      const season = seasonsQuery.data?.find((s) => s.id === seasonId);
-      return api.uploadSchedule({
-        seasonId,
-        seasonYear: season?.seasonYear ?? new Date().getFullYear(),
-        schedule: scheduleText,
-      });
-    },
+  const importMutation = useMutation({
+    mutationFn: () => api.importSeasonSchedule({ seasonId, startDate, endDate }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['tournaments'] });
     },
   });
 
-  const result: ScheduleUploadResult | undefined = uploadMutation.data;
-  const errorMessage = mutationError(uploadMutation.error);
+  const result: SeasonImportResult | undefined = importMutation.data;
+  const errorMessage = mutationError(importMutation.error);
 
-  const disabled = uploadMutation.isPending || !scheduleText.trim() || !seasonId;
+  const disabled =
+    importMutation.isPending ||
+    !seasonId ||
+    !startDate ||
+    !endDate ||
+    startDate > endDate;
 
   return (
     <div className="bg-gray-800 rounded-lg p-6">
       <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-        Upload Season Schedule
+        Import Season Schedule from ESPN
       </h3>
+      <p className="text-xs text-gray-400 mb-4">
+        Pulls the PGA tour calendar from ESPN for the date range and creates a tournament for
+        every event whose start date falls inside it. Week labels (1, 2, 3a, 3b…) are assigned
+        chronologically. Re-running on a season skips events already linked.
+      </p>
 
       <div className="flex flex-wrap gap-4 mb-4">
         <div>
@@ -87,30 +90,40 @@ function UploadScheduleSection() {
             ))}
           </select>
         </div>
-      </div>
-
-      <div className="mb-4">
-        <label className="block text-xs text-gray-400 mb-1" htmlFor="schedule-text">
-          Schedule (one tournament per line, optional Nx multiplier)
-        </label>
-        <textarea
-          id="schedule-text"
-          value={scheduleText}
-          onChange={(e) => setScheduleText(e.target.value)}
-          rows={16}
-          className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full font-mono leading-relaxed"
-          placeholder={`1 1 Jan 15-18 Sony Open\n9 10 March 12-15 The Players Championship 2x\n15 15 April 9-12 The Masters 2x`}
-        />
+        <div>
+          <label className="block text-xs text-gray-400 mb-1" htmlFor="schedule-start">
+            Start date
+          </label>
+          <input
+            id="schedule-start"
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-400 mb-1" htmlFor="schedule-end">
+            End date
+          </label>
+          <input
+            id="schedule-end"
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
+          />
+        </div>
       </div>
 
       <div className="flex items-center gap-4">
         <button
           type="button"
-          onClick={() => uploadMutation.mutate()}
+          onClick={() => importMutation.mutate()}
           disabled={disabled}
           className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
         >
-          {uploadMutation.isPending ? 'Uploading...' : 'Upload & Validate with ESPN'}
+          {importMutation.isPending ? 'Importing…' : 'Import from ESPN'}
         </button>
         {errorMessage ? (
           <span role="alert" className="text-red-400 text-sm">
@@ -119,82 +132,75 @@ function UploadScheduleSection() {
         ) : null}
       </div>
 
-      {result ? <ScheduleResult result={result} /> : null}
+      {result ? <ImportResult result={result} /> : null}
     </div>
   );
 }
 
-function ScheduleResult({ result }: { result: ScheduleUploadResult }) {
+function ImportResult({ result }: { result: SeasonImportResult }) {
+  const created = result.created;
+  const skipped = result.skipped;
+
   return (
     <div className="mt-6 pt-4 border-t border-gray-700">
       <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-        Season Created
+        Import Result
       </h4>
 
       <div className="flex gap-6 mb-4 text-sm">
         <div>
-          <span className="text-gray-400">Season:</span>
-          <span className="text-white font-bold ml-1">{result.seasonYear}</span>
-        </div>
-        <div>
           <span className="text-gray-400">Created:</span>
-          <span className="text-green-400 font-bold ml-1">{result.tournamentsCreated}</span>
+          <span className="text-green-400 font-bold ml-1">{created.length}</span>
         </div>
-        <div>
-          <span className="text-gray-400">ESPN Matched:</span>
-          <span className="text-green-400 font-bold ml-1">{result.espnMatched}</span>
-        </div>
-        {result.espnUnmatched.length > 0 ? (
+        {skipped.length > 0 ? (
           <div>
-            <span className="text-gray-400">Unmatched:</span>
-            <span className="text-yellow-400 font-bold ml-1">{result.espnUnmatched.length}</span>
+            <span className="text-gray-400">Skipped:</span>
+            <span className="text-yellow-400 font-bold ml-1">{skipped.length}</span>
           </div>
         ) : null}
       </div>
 
-      {result.espnUnmatched.length > 0 ? (
+      {skipped.length > 0 ? (
         <div className="mb-4 px-3 py-2 bg-yellow-900/30 border border-yellow-700 rounded text-yellow-300 text-xs">
-          <span className="font-semibold">ESPN unmatched:</span>
-          {result.espnUnmatched.map((name) => (
-            <span key={name} className="ml-2">
-              {name}
-            </span>
-          ))}
+          <div className="font-semibold mb-1">Skipped ESPN entries:</div>
+          <ul className="space-y-0.5">
+            {skipped.map((s) => (
+              <li key={s.espnEventId}>
+                <span className="font-mono">{s.espnEventName}</span> — {s.reason}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
 
-      <table className="w-full text-sm">
-        <thead className="bg-gray-700 text-gray-300 text-xs uppercase tracking-wider">
-          <tr>
-            <th className="px-3 py-2 text-left">Wk</th>
-            <th className="px-3 py-2 text-left">Tournament</th>
-            <th className="px-3 py-2 text-left">Dates</th>
-            <th className="px-3 py-2 text-center">Mult</th>
-            <th className="px-3 py-2 text-left">ESPN Match</th>
-          </tr>
-        </thead>
-        <tbody>
-          {result.tournaments.map((t) => (
-            <tr key={t.id} className="border-t border-gray-700">
-              <td className="px-3 py-2 text-gray-400 font-mono">{t.week ?? ''}</td>
-              <td className="px-3 py-2 font-medium">{t.name}</td>
-              <td className="px-3 py-2 text-gray-400 text-xs">
-                {t.startDate} to {t.endDate}
-              </td>
-              <td className="px-3 py-2 text-center">
-                {t.payoutMultiplier !== 1 ? `${t.payoutMultiplier}x` : ''}
-              </td>
-              <td
-                className={`px-3 py-2 text-xs ${
-                  t.espnId ? 'text-green-400' : 'text-yellow-400'
-                }`}
-              >
-                {t.espnId ? `${t.espnName ?? ''} (${t.espnId})` : 'No match'}
-              </td>
+      {created.length > 0 ? (
+        <table className="w-full text-sm">
+          <thead className="bg-gray-700 text-gray-300 text-xs uppercase tracking-wider">
+            <tr>
+              <th className="px-3 py-2 text-left">Wk</th>
+              <th className="px-3 py-2 text-left">Tournament</th>
+              <th className="px-3 py-2 text-left">Dates</th>
+              <th className="px-3 py-2 text-center">Mult</th>
+              <th className="px-3 py-2 text-left">ESPN id</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {created.map((t) => (
+              <tr key={t.id} className="border-t border-gray-700">
+                <td className="px-3 py-2 text-gray-400 font-mono">{t.week ?? ''}</td>
+                <td className="px-3 py-2 font-medium">{t.name}</td>
+                <td className="px-3 py-2 text-gray-400 text-xs">
+                  {t.startDate} to {t.endDate}
+                </td>
+                <td className="px-3 py-2 text-center">
+                  {t.payoutMultiplier !== 1 ? `${t.payoutMultiplier}x` : ''}
+                </td>
+                <td className="px-3 py-2 text-xs text-gray-500">{t.pgaTournamentId ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
     </div>
   );
 }

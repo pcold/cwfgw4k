@@ -6,13 +6,13 @@ import { renderWithProviders } from '@/shared/test/renderWithProviders';
 
 const leaguesMock = vi.fn();
 const seasonsMock = vi.fn();
-const uploadScheduleMock = vi.fn();
+const importSeasonScheduleMock = vi.fn();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
-    uploadSchedule: (input: unknown) => uploadScheduleMock(input),
+    importSeasonSchedule: (input: unknown) => importSeasonScheduleMock(input),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -21,7 +21,7 @@ describe('UploadScheduleSection', () => {
   beforeEach(() => {
     leaguesMock.mockReset();
     seasonsMock.mockReset();
-    uploadScheduleMock.mockReset();
+    importSeasonScheduleMock.mockReset();
     leaguesMock.mockResolvedValue([
       { id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' },
     ]);
@@ -37,33 +37,40 @@ describe('UploadScheduleSection', () => {
     ]);
   });
 
-  it('uploads the schedule with the selected season year and renders the result table', async () => {
-    uploadScheduleMock.mockResolvedValue({
-      seasonYear: 2026,
-      tournamentsCreated: 2,
-      espnMatched: 1,
-      espnUnmatched: ['The Invisible Open'],
-      tournaments: [
+  it('imports the schedule from ESPN for the selected date range and renders the result table', async () => {
+    importSeasonScheduleMock.mockResolvedValue({
+      created: [
         {
           id: 't-1',
+          pgaTournamentId: '401-sony',
           name: 'Sony Open',
-          week: '1',
+          seasonId: 'sn-1',
           startDate: '2026-01-15',
           endDate: '2026-01-18',
+          courseName: null,
+          status: 'upcoming',
+          purseAmount: null,
           payoutMultiplier: 1,
-          espnId: '401',
-          espnName: 'Sony Open',
+          week: '1',
+          createdAt: '2026-01-01T00:00:00Z',
         },
         {
           id: 't-2',
+          pgaTournamentId: null,
           name: 'The Masters',
-          week: '15',
+          seasonId: 'sn-1',
           startDate: '2026-04-09',
           endDate: '2026-04-12',
+          courseName: null,
+          status: 'upcoming',
+          purseAmount: null,
           payoutMultiplier: 2,
-          espnId: null,
-          espnName: null,
+          week: '15',
+          createdAt: '2026-01-01T00:00:00Z',
         },
+      ],
+      skipped: [
+        { espnEventId: '401-skip', espnEventName: 'The Invisible Open', reason: 'already linked' },
       ],
     });
 
@@ -75,35 +82,34 @@ describe('UploadScheduleSection', () => {
     });
 
     await user.selectOptions(screen.getByLabelText(/^Season$/), 'sn-1');
-    await user.type(
-      screen.getByLabelText(/Schedule \(one tournament per line/i),
-      '1 1 Jan 15-18 Sony Open',
-    );
-    await user.click(screen.getByRole('button', { name: /Upload & Validate with ESPN/i }));
+    await user.type(screen.getByLabelText(/Start date/i), '2026-01-01');
+    await user.type(screen.getByLabelText(/End date/i), '2026-12-31');
+    await user.click(screen.getByRole('button', { name: /Import from ESPN/i }));
 
     await waitFor(() => {
-      expect(uploadScheduleMock).toHaveBeenCalledTimes(1);
+      expect(importSeasonScheduleMock).toHaveBeenCalledTimes(1);
     });
-    expect(uploadScheduleMock).toHaveBeenCalledWith({
+    expect(importSeasonScheduleMock).toHaveBeenCalledWith({
       seasonId: 'sn-1',
-      seasonYear: 2026,
-      schedule: '1 1 Jan 15-18 Sony Open',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
     });
 
-    expect(await screen.findByText('Season Created')).toBeInTheDocument();
-    expect(screen.getByText(/The Invisible Open/)).toBeInTheDocument();
+    expect(await screen.findByText('Import Result')).toBeInTheDocument();
+    const skippedItem = screen.getByRole('listitem');
+    expect(within(skippedItem).getByText(/The Invisible Open/)).toBeInTheDocument();
+    expect(within(skippedItem).getByText(/already linked/)).toBeInTheDocument();
     const table = screen.getByRole('table');
     expect(within(table).getByText('Sony Open')).toBeInTheDocument();
     expect(within(table).getByText('The Masters')).toBeInTheDocument();
     expect(within(table).getByText('2x')).toBeInTheDocument();
-    expect(within(table).getByText('No match')).toBeInTheDocument();
   });
 
-  it('disables the upload button until a season is selected and text is entered', async () => {
+  it('disables the import button until a season + start date + end date are picked', async () => {
     renderWithProviders(<UploadScheduleSection />, { withLeagueSeasonProvider: false });
     await waitFor(() => {
       expect(screen.getByText('2026 Spring')).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: /Upload & Validate with ESPN/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Import from ESPN/i })).toBeDisabled();
   });
 });
