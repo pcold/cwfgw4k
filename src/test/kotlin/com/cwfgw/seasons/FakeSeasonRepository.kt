@@ -87,6 +87,11 @@ class FakeSeasonRepository(
         )
     }
 
+    override suspend fun delete(id: SeasonId): Boolean {
+        rulesStore.remove(id)
+        return store.remove(id) != null
+    }
+
     private fun UpdateSeasonRequest.hasAnyChange(): Boolean =
         name != null ||
             status != null ||

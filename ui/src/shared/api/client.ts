@@ -105,18 +105,23 @@ async function putJson<T>(path: string, payload: unknown): Promise<T> {
   return camelizeKeys(parsed) as T;
 }
 
-async function deleteJson<T>(path: string): Promise<T> {
+async function deleteEmpty(path: string): Promise<void> {
   const resp = await fetch(path, { method: 'DELETE' });
-  const text = await resp.text();
-  const parsed: unknown = text ? JSON.parse(text) : null;
   if (!resp.ok) {
-    const errMsg =
-      parsed && typeof parsed === 'object' && 'error' in parsed
-        ? String((parsed as { error: unknown }).error)
-        : `${resp.status} ${resp.statusText}`;
+    const text = await resp.text();
+    let errMsg = `${resp.status} ${resp.statusText}`;
+    if (text) {
+      try {
+        const parsed = JSON.parse(text) as unknown;
+        if (parsed && typeof parsed === 'object' && 'error' in parsed) {
+          errMsg = String((parsed as { error: unknown }).error);
+        }
+      } catch {
+        // fall through to the status-line message
+      }
+    }
     throw new ApiError(resp.status, errMsg);
   }
-  return camelizeKeys(parsed) as T;
 }
 
 export const api = {
@@ -176,5 +181,5 @@ export const api = {
   cleanSeasonResults: (seasonId: string) =>
     postJson<ActionMessageResponse>(`/api/v1/seasons/${seasonId}/clean-results`),
   deleteSeason: (seasonId: string) =>
-    deleteJson<ActionMessageResponse>(`/api/v1/seasons/${seasonId}`),
+    deleteEmpty(`/api/v1/seasons/${encodeURIComponent(seasonId)}`),
 };

@@ -28,6 +28,14 @@ interface SeasonRepository {
     ): Season?
 
     suspend fun getRules(id: SeasonId): SeasonRules?
+
+    /**
+     * Delete a season and everything that hangs off it (teams, tournaments,
+     * rosters, draft picks, scores, standings, payout/side-bet rules, drafts).
+     * Returns true if a row was deleted, false if the id didn't exist.
+     * Single SQL DELETE — the FKs migrated in V010 cascade the subtree.
+     */
+    suspend fun delete(id: SeasonId): Boolean
 }
 
 fun SeasonRepository(dsl: DSLContext): SeasonRepository = JooqSeasonRepository(dsl)
@@ -129,6 +137,11 @@ private class JooqSeasonRepository(private val dsl: DSLContext) : SeasonReposito
                         "seasons.side_bet_amount is NOT NULL but returned null"
                     },
             )
+        }
+
+    override suspend fun delete(id: SeasonId): Boolean =
+        withContext(Dispatchers.IO) {
+            dsl.deleteFrom(SEASONS).where(SEASONS.ID.eq(id.value)).execute() > 0
         }
 
     private fun filterConditions(

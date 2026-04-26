@@ -18,4 +18,6 @@ class SeasonService(private val repository: SeasonRepository) {
     ): Season? = repository.update(id, request)
 
     suspend fun getRules(id: SeasonId): SeasonRules? = repository.getRules(id)
+
+    suspend fun delete(id: SeasonId): Boolean = repository.delete(id)
 }

@@ -1,12 +1,27 @@
 package com.cwfgw.seasons
 
+import com.cwfgw.drafts.CreateDraftRequest
+import com.cwfgw.drafts.DraftRepository
+import com.cwfgw.drafts.PickSlot
+import com.cwfgw.golfers.CreateGolferRequest
+import com.cwfgw.golfers.GolferRepository
+import com.cwfgw.jooq.tables.references.DRAFT_PICKS
 import com.cwfgw.jooq.tables.references.SEASON_RULE_PAYOUTS
 import com.cwfgw.jooq.tables.references.SEASON_RULE_SIDE_BET_ROUNDS
+import com.cwfgw.jooq.tables.references.TEAM_ROSTERS
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.leagues.LeagueRepository
+import com.cwfgw.teams.AddToRosterRequest
+import com.cwfgw.teams.CreateTeamRequest
+import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.postgresHarness
+import com.cwfgw.tournaments.CreateTournamentRequest
+import com.cwfgw.tournaments.TournamentRepository
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.booleans.shouldBeFalse
+import io.kotest.matchers.booleans.shouldBeTrue
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -190,5 +205,55 @@ class SeasonRepositorySpec : FunSpec({
 
     test("getRules returns null for unknown season") {
         repository.getRules(SeasonId(UUID.randomUUID())).shouldBeNull()
+    }
+
+    test("delete cascades through teams + tournaments + team_rosters + draft_picks via the V010 FKs") {
+        val teamRepo = TeamRepository(postgres.dsl)
+        val tournamentRepo = TournamentRepository(postgres.dsl)
+        val draftRepo = DraftRepository(postgres.dsl)
+        val golferRepo = GolferRepository(postgres.dsl)
+
+        val season =
+            repository.create(
+                CreateSeasonRequest(leagueId = castlewoodId, name = "2026 Summer", seasonYear = 2026),
+            )
+        val team =
+            teamRepo.create(
+                seasonId = season.id,
+                request = CreateTeamRequest(ownerName = "Owner", teamName = "Birdies"),
+            )
+        tournamentRepo.create(
+            CreateTournamentRequest(
+                name = "Sony Open",
+                seasonId = season.id,
+                startDate = java.time.LocalDate.parse("2026-01-15"),
+                endDate = java.time.LocalDate.parse("2026-01-18"),
+            ),
+        )
+        val golfer =
+            golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
+        teamRepo.addToRoster(team.id, AddToRosterRequest(golferId = golfer.id))
+        val draft = draftRepo.create(seasonId = season.id, request = CreateDraftRequest())
+        draftRepo.createPicks(
+            draftId = draft.id,
+            slots = listOf(PickSlot(teamId = team.id, roundNum = 1, pickNum = 1)),
+        )
+        draftRepo.makePick(draftId = draft.id, pickNum = 1, golferId = golfer.id)
+
+        // Sanity: rows are present before we cascade them away.
+        postgres.dsl.fetchCount(TEAM_ROSTERS, TEAM_ROSTERS.TEAM_ID.eq(team.id.value)) shouldBe 1
+        postgres.dsl.fetchCount(DRAFT_PICKS, DRAFT_PICKS.DRAFT_ID.eq(draft.id.value)) shouldBe 1
+
+        repository.delete(season.id).shouldBeTrue()
+
+        repository.findById(season.id).shouldBeNull()
+        teamRepo.findBySeason(season.id).shouldBeEmpty()
+        tournamentRepo.findAll(seasonId = season.id, status = null).shouldBeEmpty()
+        postgres.dsl.fetchCount(TEAM_ROSTERS, TEAM_ROSTERS.TEAM_ID.eq(team.id.value)) shouldBe 0
+        postgres.dsl.fetchCount(DRAFT_PICKS, DRAFT_PICKS.DRAFT_ID.eq(draft.id.value)) shouldBe 0
+    }
+
+    test("delete returns false for an unknown season") {
+        repository.delete(SeasonId(UUID.randomUUID())).shouldBeFalse()
     }
 })

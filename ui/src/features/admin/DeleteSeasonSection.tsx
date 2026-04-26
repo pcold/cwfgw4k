@@ -77,8 +77,8 @@ function DeleteSeasonSection() {
           {deleteMutation.isPending ? 'Deleting...' : 'Delete Season'}
         </button>
       </div>
-      {deleteMutation.data ? (
-        <span className="block mt-3 text-sm text-green-400">{deleteMutation.data.message}</span>
+      {deleteMutation.isSuccess ? (
+        <span className="block mt-3 text-sm text-green-400">Season deleted.</span>
       ) : null}
       {errorMessage ? (
         <span role="alert" className="block mt-3 text-sm text-red-400">

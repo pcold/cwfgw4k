@@ -8,6 +8,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.put
@@ -199,6 +200,34 @@ class SeasonRoutesSpec : FunSpec({
                     contentType(ContentType.Application.Json)
                     setBody(UpdateSeasonRequest(status = "active"))
                 }
+
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("DELETE /api/v1/seasons/{id} returns 204 and a follow-up GET 404s") {
+        val s = season()
+        authenticatedApiTest(seasons(s)) { client ->
+            val deleteResponse = client.delete("/api/v1/seasons/${s.id.value}")
+            deleteResponse.status shouldBe HttpStatusCode.NoContent
+
+            val getResponse = client.get("/api/v1/seasons/${s.id.value}")
+            getResponse.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    test("DELETE /api/v1/seasons/{unknown-uuid} returns 404") {
+        authenticatedApiTest { client ->
+            val response = client.delete("/api/v1/seasons/${UUID.randomUUID()}")
+
+            response.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    test("DELETE /api/v1/seasons/{id} returns 401 without an authenticated session") {
+        val s = season()
+        apiTest(seasons(s)) { client ->
+            val response = client.delete("/api/v1/seasons/${s.id.value}")
 
             response.status shouldBe HttpStatusCode.Unauthorized
         }

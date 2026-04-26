@@ -10,6 +10,7 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingContext
+import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
@@ -23,6 +24,7 @@ fun Route.seasonRoutes(service: SeasonService) {
         authenticate(SESSION_AUTH_NAME) {
             post { createSeason(service) }
             put("/{id}") { updateSeason(service) }
+            delete("/{id}") { deleteSeason(service) }
         }
     }
 }
@@ -58,4 +60,10 @@ private suspend fun RoutingContext.getRules(service: SeasonService) {
     val id = seasonId()
     val rules = service.getRules(id) ?: throw DomainError.NotFound("season ${id.value} not found")
     call.respond(rules)
+}
+
+private suspend fun RoutingContext.deleteSeason(service: SeasonService) {
+    val id = seasonId()
+    if (!service.delete(id)) throw DomainError.NotFound("season ${id.value} not found")
+    call.respond(HttpStatusCode.NoContent)
 }
