@@ -1,44 +1,11 @@
 steps:
-  # Restore the Gradle dependency cache + UI node_modules from GCS so the
-  # gradle step doesn't re-download all dependencies on every build. Both
-  # rsyncs are best-effort: a fresh bucket (or a missing prefix) is fine
-  # — the build then runs cold and seeds the cache for next time.
-  - name: 'gcr.io/cloud-builders/gsutil'
-    id: cache-restore
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        mkdir -p .gradle-cache ui/node_modules
-        gsutil -m -q rsync -r -d gs://${_CACHE_BUCKET}/gradle .gradle-cache 2>/dev/null || true
-        gsutil -m -q rsync -r -d gs://${_CACHE_BUCKET}/node_modules ui/node_modules 2>/dev/null || true
-        echo "Gradle cache: $(du -sh .gradle-cache 2>/dev/null | cut -f1)"
-        echo "node_modules: $(du -sh ui/node_modules 2>/dev/null | cut -f1)"
-
   # Compile, run check (tests + ktlint + detekt + kover verify + UI tests),
   # then build the deployable fatJar with the bundled React UI inside it.
   # Repository integration tests use Testcontainers against the Docker
-  # socket Cloud Build mounts into every step. GRADLE_USER_HOME points at
-  # the workspace-mounted cache directory so its contents survive into the
-  # cache-save step.
+  # socket Cloud Build mounts into every step.
   - name: 'gradle:9-jdk21'
-    id: gradle
     entrypoint: gradle
-    env:
-      - 'GRADLE_USER_HOME=/workspace/.gradle-cache'
     args: ['check', 'buildFatJar', '--no-daemon']
-
-  # Push the warmed caches back to GCS only when the gradle step succeeded
-  # (the trigger DAG ensures earlier failures abort the build before we
-  # reach this step, so we never persist a half-baked cache).
-  - name: 'gcr.io/cloud-builders/gsutil'
-    id: cache-save
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        gsutil -m -q rsync -r -d .gradle-cache gs://${_CACHE_BUCKET}/gradle
-        gsutil -m -q rsync -r -d ui/node_modules gs://${_CACHE_BUCKET}/node_modules
 
   # Upload backend test + Kover coverage HTML reports plus UI Vitest test +
   # coverage to a public bucket so links in the build log resolve with one
@@ -110,7 +77,6 @@ substitutions:
   _DB_SCHEMA: cwfgw4k
   _TAG: latest
   _REPORTS_BUCKET: cwfgw4k-cwfgw4k-test-reports
-  _CACHE_BUCKET: cwfgw4k-build-cache
 
 options:
   logging: CLOUD_LOGGING_ONLY
