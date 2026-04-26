@@ -88,6 +88,12 @@ fun JavaExec.applyMacDockerWorkaround() {
 }
 
 tasks.withType<Test>().configureEach {
+    // Two test JVMs in parallel. Each spec's PostgresHarness spawns its own
+    // Testcontainers Postgres so there's no shared-state risk; the cap is set
+    // for the Cloud Build E2_MEDIUM worker (2 vCPUs / 4 GB), which can hold
+    // two JVMs + two Postgres containers without thrashing. Override locally
+    // with -PtestForks=N if you have headroom.
+    maxParallelForks = (project.findProperty("testForks") as String?)?.toIntOrNull() ?: 2
     if (macDockerRawSock.exists()) {
         environment("DOCKER_HOST", "unix://${macDockerRawSock.absolutePath}")
         environment("DOCKER_API_VERSION", "1.44")
