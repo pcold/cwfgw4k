@@ -145,6 +145,36 @@ class AdminServiceSpec : FunSpec({
         tournament.payoutMultiplier.compareTo(java.math.BigDecimal.ONE) shouldBe 0
     }
 
+    test("week labels are 1-indexed by chronological position; same-ISO-week tournaments suffix a/b") {
+        // Sony Open and American Express are different ISO weeks; the Masters
+        // and a fictional alt-field event share a week and should split a/b.
+        val fixture =
+            Fixture(
+                calendar =
+                    listOf(
+                        // intentionally out of chronological order to prove sorting
+                        calendarEntry("e-2", "American Express", "2026-01-22T00:00Z"),
+                        calendarEntry("e-1", "Sony Open", "2026-01-15T00:00Z"),
+                        calendarEntry("e-3a", "The Masters", "2026-04-09T00:00Z"),
+                        calendarEntry("e-3b", "Corales Puntacana", "2026-04-09T00:00Z"),
+                    ),
+            )
+
+        val created =
+            fixture.service.uploadSeason(SEASON_ID, SEASON_START, SEASON_END)
+                .shouldBeInstanceOf<Result.Ok<SeasonImportResult>>()
+                .value
+                .created
+
+        created.map { it.name to it.week } shouldBe
+            listOf(
+                "Sony Open" to "1",
+                "American Express" to "2",
+                "The Masters" to "3a",
+                "Corales Puntacana" to "3b",
+            )
+    }
+
     test("entries outside the date range are silently filtered out — not even reported as skipped") {
         val fixture =
             Fixture(

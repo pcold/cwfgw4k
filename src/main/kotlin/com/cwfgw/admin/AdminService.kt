@@ -18,6 +18,7 @@ import com.cwfgw.tournaments.TournamentService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.temporal.WeekFields
 
 private val log = KotlinLogging.logger {}
 
@@ -59,15 +60,59 @@ class AdminService(
 
         val created = mutableListOf<com.cwfgw.tournaments.Tournament>()
         val skipped = mutableListOf<SkippedEntry>()
-        for (entry in calendar) {
-            when (val outcome = importOne(entry, seasonId, startDate, endDate)) {
+        // ESPN's calendar response doesn't carry a "week N" concept, so we
+        // synthesize one from chronologically-sorted in-range entries. Two
+        // tournaments in the same ISO calendar week get suffixed "Na" / "Nb"
+        // (the 'b' is conventionally the alternate-field event, but we can't
+        // tell which is which from ESPN — operators correct via the UI).
+        val datedEntries = parseAndFilterByRange(calendar, startDate, endDate, skipped)
+        for ((entry, date, week) in assignWeeks(datedEntries)) {
+            when (val outcome = importOne(entry, date, week, seasonId)) {
                 is EntryOutcome.Created -> created += outcome.tournament
                 is EntryOutcome.Skipped -> skipped += outcome.entry
-                EntryOutcome.OutOfRange -> Unit
             }
         }
         return Result.Ok(SeasonImportResult(created = created, skipped = skipped))
     }
+
+    private fun parseAndFilterByRange(
+        calendar: List<com.cwfgw.espn.EspnCalendarEntry>,
+        startDate: LocalDate,
+        endDate: LocalDate,
+        skipped: MutableList<SkippedEntry>,
+    ): List<Pair<com.cwfgw.espn.EspnCalendarEntry, LocalDate>> =
+        calendar.mapNotNull { entry ->
+            val parsed = parseEspnDate(entry.startDate)
+            if (parsed == null) {
+                skipped += SkippedEntry(entry.id, entry.label, "could not parse ESPN start date '${entry.startDate}'")
+                null
+            } else if (parsed !in startDate..endDate) {
+                null
+            } else {
+                entry to parsed
+            }
+        }
+
+    private fun assignWeeks(
+        entries: List<Pair<com.cwfgw.espn.EspnCalendarEntry, LocalDate>>,
+    ): List<Triple<com.cwfgw.espn.EspnCalendarEntry, LocalDate, String>> {
+        val grouped =
+            entries.sortedBy { it.second }
+                .groupBy { (_, date) -> date.weekKey() }
+                .values
+                .toList()
+        return grouped.flatMapIndexed { weekIndex, group ->
+            val weekNumber = weekIndex + 1
+            group.mapIndexed { positionInWeek, (entry, date) ->
+                val label = if (group.size == 1) "$weekNumber" else "$weekNumber${'a' + positionInWeek}"
+                Triple(entry, date, label)
+            }
+        }
+    }
+
+    /** Year-aware ISO week key so the year boundary doesn't collide week 52 with week 1. */
+    private fun LocalDate.weekKey(): Pair<Int, Int> =
+        get(WeekFields.ISO.weekBasedYear()) to get(WeekFields.ISO.weekOfWeekBasedYear())
 
     /**
      * Read-only roster preview. Parses the TSV, matches each pick against
@@ -235,16 +280,10 @@ class AdminService(
 
     private suspend fun importOne(
         entry: com.cwfgw.espn.EspnCalendarEntry,
-        seasonId: SeasonId,
         startDate: LocalDate,
-        endDate: LocalDate,
+        week: String,
+        seasonId: SeasonId,
     ): EntryOutcome {
-        val parsedDate =
-            parseEspnDate(entry.startDate)
-                ?: return EntryOutcome.Skipped(
-                    SkippedEntry(entry.id, entry.label, "could not parse ESPN start date '${entry.startDate}'"),
-                )
-        if (parsedDate !in startDate..endDate) return EntryOutcome.OutOfRange
         val existing = tournamentService.findByPgaTournamentId(entry.id)
         if (existing != null) {
             return EntryOutcome.Skipped(
@@ -257,8 +296,9 @@ class AdminService(
                     pgaTournamentId = entry.id,
                     name = entry.label,
                     seasonId = seasonId,
-                    startDate = parsedDate,
-                    endDate = parsedDate.plusDays(DEFAULT_TOURNAMENT_DAYS),
+                    startDate = startDate,
+                    endDate = startDate.plusDays(DEFAULT_TOURNAMENT_DAYS),
+                    week = week,
                 ),
             )
         return EntryOutcome.Created(created)
@@ -291,6 +331,4 @@ private sealed interface EntryOutcome {
     data class Created(val tournament: com.cwfgw.tournaments.Tournament) : EntryOutcome
 
     data class Skipped(val entry: SkippedEntry) : EntryOutcome
-
-    data object OutOfRange : EntryOutcome
 }
