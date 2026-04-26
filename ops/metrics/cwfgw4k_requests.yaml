@@ -1,0 +1,35 @@
+# Log-based distribution metric populated by RequestMetricsMiddleware's
+# `cwfgw4k.request method=… route=… status=… duration_ms=…` log line.
+#
+# Apply with:
+#   gcloud logging metrics create cwfgw4k_requests \
+#     --project=cwfgw4k \
+#     --config-from-file=ops/metrics/cwfgw4k_requests.yaml
+name: cwfgw4k_requests
+description: Per-request telemetry extracted from RequestMetricsMiddleware
+filter: |
+  resource.type="cloud_run_revision"
+  AND resource.labels.service_name="cwfgw4k"
+  AND textPayload:"cwfgw4k.request"
+metricDescriptor:
+  metricKind: DELTA
+  valueType: DISTRIBUTION
+  unit: ms
+  labels:
+    - key: method
+      valueType: STRING
+      description: HTTP method
+    - key: route
+      valueType: STRING
+      description: Normalized route template (UUIDs → :id, numeric segments → :n, /assets/* bucketed)
+    - key: status_class
+      valueType: STRING
+      description: First digit of the HTTP status code (2, 3, 4, 5)
+valueExtractor: REGEXP_EXTRACT(textPayload, "duration_ms=([0-9]+)")
+labelExtractors:
+  method: REGEXP_EXTRACT(textPayload, "method=([A-Z]+)")
+  route: REGEXP_EXTRACT(textPayload, "route=(\\S+)")
+  status_class: REGEXP_EXTRACT(textPayload, "status=([0-9])")
+bucketOptions:
+  explicitBuckets:
+    bounds: [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000]

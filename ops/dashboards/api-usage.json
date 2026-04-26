@@ -1,0 +1,255 @@
+{
+  "displayName": "cwfgw4k — API Usage",
+  "mosaicLayout": {
+    "columns": 12,
+    "tiles": [
+      {
+        "xPos": 0,
+        "yPos": 0,
+        "width": 4,
+        "height": 3,
+        "widget": {
+          "title": "Requests / min (last 5 min avg)",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "timeSeriesFilter": {
+                "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"logging.googleapis.com/user/cwfgw4k_request_count\"",
+                "aggregation": {
+                  "alignmentPeriod": "60s",
+                  "perSeriesAligner": "ALIGN_DELTA",
+                  "crossSeriesReducer": "REDUCE_SUM"
+                }
+              }
+            },
+            "sparkChartView": { "sparkChartType": "SPARK_LINE" }
+          }
+        }
+      },
+      {
+        "xPos": 4,
+        "yPos": 0,
+        "width": 4,
+        "height": 3,
+        "widget": {
+          "title": "4xx rate (last 5 min)",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "timeSeriesFilter": {
+                "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"logging.googleapis.com/user/cwfgw4k_request_count\" AND metric.labels.status_class = \"4\"",
+                "aggregation": {
+                  "alignmentPeriod": "300s",
+                  "perSeriesAligner": "ALIGN_DELTA",
+                  "crossSeriesReducer": "REDUCE_SUM"
+                }
+              }
+            },
+            "sparkChartView": { "sparkChartType": "SPARK_LINE" },
+            "thresholds": [
+              { "value": 1.0, "color": "YELLOW", "direction": "ABOVE" },
+              { "value": 5.0, "color": "RED", "direction": "ABOVE" }
+            ]
+          }
+        }
+      },
+      {
+        "xPos": 8,
+        "yPos": 0,
+        "width": 4,
+        "height": 3,
+        "widget": {
+          "title": "5xx rate (last 5 min)",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "timeSeriesFilter": {
+                "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"logging.googleapis.com/user/cwfgw4k_request_count\" AND metric.labels.status_class = \"5\"",
+                "aggregation": {
+                  "alignmentPeriod": "300s",
+                  "perSeriesAligner": "ALIGN_DELTA",
+                  "crossSeriesReducer": "REDUCE_SUM"
+                }
+              }
+            },
+            "sparkChartView": { "sparkChartType": "SPARK_LINE" },
+            "thresholds": [
+              { "value": 0.1, "color": "YELLOW", "direction": "ABOVE" },
+              { "value": 1.0, "color": "RED", "direction": "ABOVE" }
+            ]
+          }
+        }
+      },
+
+      {
+        "xPos": 0,
+        "yPos": 3,
+        "width": 6,
+        "height": 5,
+        "widget": {
+          "title": "Top routes by request rate",
+          "timeSeriesTable": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"logging.googleapis.com/user/cwfgw4k_request_count\"",
+                    "aggregation": {
+                      "alignmentPeriod": "3600s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.labels.method", "metric.labels.route"]
+                    }
+                  }
+                },
+                "tableDisplayOptions": {}
+              }
+            ]
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 3,
+        "width": 6,
+        "height": 5,
+        "widget": {
+          "title": "P95 latency by route",
+          "timeSeriesTable": {
+            "dataSets": [
+              {
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"logging.googleapis.com/user/cwfgw4k_requests\"",
+                    "aggregation": {
+                      "alignmentPeriod": "3600s",
+                      "perSeriesAligner": "ALIGN_PERCENTILE_95",
+                      "crossSeriesReducer": "REDUCE_MEAN",
+                      "groupByFields": ["metric.labels.route"]
+                    }
+                  }
+                },
+                "tableDisplayOptions": {}
+              }
+            ]
+          }
+        }
+      },
+
+      {
+        "xPos": 0,
+        "yPos": 8,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Requests by status class",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "STACKED_AREA",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"logging.googleapis.com/user/cwfgw4k_request_count\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.labels.status_class"]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 8,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Requests by HTTP method",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"logging.googleapis.com/user/cwfgw4k_request_count\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.labels.method"]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+
+      {
+        "xPos": 0,
+        "yPos": 12,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "4xx responses by route",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"logging.googleapis.com/user/cwfgw4k_request_count\" AND metric.labels.status_class = \"4\"",
+                    "aggregation": {
+                      "alignmentPeriod": "300s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.labels.route"]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 12,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "5xx responses by route",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"logging.googleapis.com/user/cwfgw4k_request_count\" AND metric.labels.status_class = \"5\"",
+                    "aggregation": {
+                      "alignmentPeriod": "300s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.labels.route"]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

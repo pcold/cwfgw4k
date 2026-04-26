@@ -1,0 +1,384 @@
+{
+  "displayName": "cwfgw4k — Operational Health",
+  "mosaicLayout": {
+    "columns": 12,
+    "tiles": [
+      {
+        "xPos": 0,
+        "yPos": 0,
+        "width": 4,
+        "height": 3,
+        "widget": {
+          "title": "Active instances",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "timeSeriesFilter": {
+                "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"run.googleapis.com/container/instance_count\"",
+                "aggregation": {
+                  "alignmentPeriod": "60s",
+                  "perSeriesAligner": "ALIGN_MEAN",
+                  "crossSeriesReducer": "REDUCE_SUM"
+                }
+              }
+            },
+            "thresholds": []
+          }
+        }
+      },
+      {
+        "xPos": 4,
+        "yPos": 0,
+        "width": 4,
+        "height": 3,
+        "widget": {
+          "title": "5xx rate (last 5 min)",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "timeSeriesFilter": {
+                "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"run.googleapis.com/request_count\" AND metric.labels.response_code_class = \"5xx\"",
+                "aggregation": {
+                  "alignmentPeriod": "300s",
+                  "perSeriesAligner": "ALIGN_RATE",
+                  "crossSeriesReducer": "REDUCE_SUM"
+                }
+              }
+            },
+            "sparkChartView": {
+              "sparkChartType": "SPARK_LINE"
+            },
+            "thresholds": [
+              { "value": 0.1, "color": "YELLOW", "direction": "ABOVE" },
+              { "value": 1.0, "color": "RED", "direction": "ABOVE" }
+            ]
+          }
+        }
+      },
+      {
+        "xPos": 8,
+        "yPos": 0,
+        "width": 4,
+        "height": 3,
+        "widget": {
+          "title": "P95 request latency (last 5 min)",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "timeSeriesFilter": {
+                "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"run.googleapis.com/request_latencies\"",
+                "aggregation": {
+                  "alignmentPeriod": "300s",
+                  "perSeriesAligner": "ALIGN_DELTA",
+                  "crossSeriesReducer": "REDUCE_PERCENTILE_95"
+                }
+              }
+            },
+            "sparkChartView": {
+              "sparkChartType": "SPARK_LINE"
+            },
+            "thresholds": [
+              { "value": 500, "color": "YELLOW", "direction": "ABOVE" },
+              { "value": 2000, "color": "RED", "direction": "ABOVE" }
+            ]
+          }
+        }
+      },
+
+      {
+        "xPos": 0,
+        "yPos": 3,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Request rate by response class",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "STACKED_AREA",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"run.googleapis.com/request_count\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_RATE",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.labels.response_code_class"]
+                    }
+                  }
+                }
+              }
+            ],
+            "timeshiftDuration": "0s"
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 3,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Request latency (P50 / P95 / P99)",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "legendTemplate": "P50",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"run.googleapis.com/request_latencies\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_50"
+                    }
+                  }
+                }
+              },
+              {
+                "legendTemplate": "P95",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"run.googleapis.com/request_latencies\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_95"
+                    }
+                  }
+                }
+              },
+              {
+                "legendTemplate": "P99",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"run.googleapis.com/request_latencies\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_99"
+                    }
+                  }
+                }
+              }
+            ],
+            "yAxis": { "label": "ms", "scale": "LINEAR" }
+          }
+        }
+      },
+
+      {
+        "xPos": 0,
+        "yPos": 7,
+        "width": 4,
+        "height": 4,
+        "widget": {
+          "title": "CPU utilization",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "legendTemplate": "P95",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"run.googleapis.com/container/cpu/utilizations\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_95"
+                    }
+                  }
+                }
+              }
+            ],
+            "yAxis": { "label": "fraction", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 4,
+        "yPos": 7,
+        "width": 4,
+        "height": 4,
+        "widget": {
+          "title": "Memory utilization",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "legendTemplate": "P95",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"run.googleapis.com/container/memory/utilizations\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_95"
+                    }
+                  }
+                }
+              }
+            ],
+            "yAxis": { "label": "fraction", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 8,
+        "yPos": 7,
+        "width": 4,
+        "height": 4,
+        "widget": {
+          "title": "Container startup latency (cold starts)",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "legendTemplate": "P95",
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"run.googleapis.com/container/startup_latencies\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_PERCENTILE_95"
+                    }
+                  }
+                }
+              }
+            ],
+            "yAxis": { "label": "ms", "scale": "LINEAR" }
+          }
+        }
+      },
+
+      {
+        "xPos": 0,
+        "yPos": 11,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Cloud SQL CPU (cwfgw4k-prod)",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloudsql_database\" AND resource.labels.database_id = \"cwfgw4k:cwfgw4k-prod\" AND metric.type = \"cloudsql.googleapis.com/database/cpu/utilization\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_MEAN"
+                    }
+                  }
+                }
+              }
+            ],
+            "yAxis": { "label": "fraction", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 11,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Cloud SQL connections",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloudsql_database\" AND resource.labels.database_id = \"cwfgw4k:cwfgw4k-prod\" AND metric.type = \"cloudsql.googleapis.com/database/postgresql/num_backends\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_MEAN"
+                    }
+                  }
+                }
+              }
+            ],
+            "yAxis": { "label": "count", "scale": "LINEAR" }
+          }
+        }
+      },
+
+      {
+        "xPos": 0,
+        "yPos": 15,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Unhandled errors (log-based)",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"logging.googleapis.com/user/cwfgw4k_unhandled_errors\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_RATE",
+                      "crossSeriesReducer": "REDUCE_SUM"
+                    }
+                  }
+                }
+              }
+            ],
+            "yAxis": { "label": "errors/s", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 15,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "ESPN integration failures (log-based)",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"logging.googleapis.com/user/cwfgw4k_espn_failures\"",
+                    "aggregation": {
+                      "alignmentPeriod": "300s",
+                      "perSeriesAligner": "ALIGN_RATE",
+                      "crossSeriesReducer": "REDUCE_SUM"
+                    }
+                  }
+                }
+              }
+            ],
+            "yAxis": { "label": "events/s", "scale": "LINEAR" }
+          }
+        }
+      }
+    ]
+  }
+}
