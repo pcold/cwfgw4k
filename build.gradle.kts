@@ -67,10 +67,31 @@ dependencies {
     testImplementation(libs.docker.java.transport.zerodep)
 }
 
+// Mac Docker Desktop 29+ needs DOCKER_API_VERSION=1.44 against the docker.raw.sock workaround;
+// CI (Cloud Build, Linux) runs an older daemon (API 1.41) and rejects 1.44 as too new. Apply
+// the pin only when the macOS raw socket is present so both environments work without per-step
+// overrides.
+val macDockerRawSock: java.io.File =
+    file("${System.getProperty("user.home")}/Library/Containers/com.docker.docker/Data/docker.raw.sock")
+
+fun JavaExec.applyMacDockerWorkaround() {
+    if (macDockerRawSock.exists()) {
+        environment("DOCKER_HOST", "unix://${macDockerRawSock.absolutePath}")
+        environment("DOCKER_API_VERSION", "1.44")
+        systemProperty("api.version", "1.44")
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    if (macDockerRawSock.exists()) {
+        environment("DOCKER_HOST", "unix://${macDockerRawSock.absolutePath}")
+        environment("DOCKER_API_VERSION", "1.44")
+        systemProperty("api.version", "1.44")
+    }
+}
+
 tasks.test {
     useJUnitPlatform()
-    environment("DOCKER_API_VERSION", "1.44")
-    systemProperty("api.version", "1.44")
 }
 
 ktor {
@@ -108,8 +129,7 @@ val generateJooq by tasks.registering(JavaExec::class) {
         jooqGenDir.get().asFile.absolutePath,
         "com.cwfgw.jooq",
     )
-    environment("DOCKER_API_VERSION", "1.44")
-    systemProperty("api.version", "1.44")
+    applyMacDockerWorkaround()
     inputs.dir("src/main/resources/db/migration")
     outputs.dir(jooqGenDir)
 }
