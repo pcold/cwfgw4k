@@ -23,6 +23,7 @@ import com.cwfgw.tournaments.UpdateTournamentRequest
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.format.DateTimeParseException
 
 private val log = KotlinLogging.logger {}
 
@@ -55,6 +56,56 @@ class EspnService(
      * into their wiring.
      */
     suspend fun fetchCalendar(): List<EspnCalendarEntry> = client.fetchCalendar()
+
+    /**
+     * Build a deduped pool of currently-active golfers by unioning the
+     * competitor lists from the most recent [recentEventCount] PGA
+     * scoreboards. Used by the roster matcher to discover players that
+     * haven't been seen in our `golfers` table yet — see
+     * [com.cwfgw.admin.AdminService.previewRoster] for the persist-and-
+     * rematch flow.
+     *
+     * Calendar parse failures and individual scoreboard fetch failures are
+     * absorbed (logged as warnings, contributing zero athletes) so a single
+     * upstream hiccup doesn't black out the entire pool.
+     */
+    suspend fun fetchActivePlayers(recentEventCount: Int = DEFAULT_RECENT_EVENT_COUNT): List<EspnAthlete> {
+        val calendar =
+            try {
+                client.fetchCalendar()
+            } catch (e: EspnUpstreamException) {
+                log.warn(e) { "ESPN calendar fetch failed during athlete-pool build" }
+                return emptyList()
+            }
+        val today = LocalDate.now()
+        val recentDates =
+            calendar.mapNotNull { entry -> parseEspnDate(entry.startDate) }
+                .filter { !it.isAfter(today) }
+                .sortedDescending()
+                .take(recentEventCount)
+        log.info { "Fetching ESPN athletes from ${recentDates.size} recent events" }
+        return recentDates
+            .flatMap { date -> fetchScoreboardOrEmpty(date).flatMap(EspnTournament::competitors) }
+            .filterNot { it.isTeamPartner }
+            .map { EspnAthlete(espnId = it.espnId, name = it.name) }
+            .distinctBy { it.espnId }
+    }
+
+    private suspend fun fetchScoreboardOrEmpty(date: LocalDate): List<EspnTournament> =
+        try {
+            client.fetchScoreboard(date)
+        } catch (e: EspnUpstreamException) {
+            log.warn(e) { "ESPN scoreboard fetch failed for $date during athlete-pool build" }
+            emptyList()
+        }
+
+    private fun parseEspnDate(raw: String): LocalDate? =
+        try {
+            LocalDate.parse(raw.take(ISO_DATE_LENGTH))
+        } catch (e: DateTimeParseException) {
+            log.warn(e) { "ESPN sent an unparseable startDate for athlete pool: '$raw'" }
+            null
+        }
 
     /**
      * Dry-run scoring of every ESPN tournament starting on [date] against
@@ -257,6 +308,16 @@ class EspnService(
         val golferId: GolferId,
         val created: Boolean,
     )
+
+    companion object {
+        // Past PGA events folded into the active-player pool. Six events covers
+        // ~5 weeks of touring (with one off week) — enough for a typical roster.
+        private const val DEFAULT_RECENT_EVENT_COUNT: Int = 6
+
+        // Length of the ISO date prefix `yyyy-MM-dd` extracted from ESPN's
+        // startDate strings (which include a time/zone suffix).
+        private const val ISO_DATE_LENGTH: Int = 10
+    }
 }
 
 private fun matchesFullName(

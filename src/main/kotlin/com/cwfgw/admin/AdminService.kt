@@ -17,7 +17,9 @@ import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.TournamentService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.math.BigDecimal
+import java.text.Normalizer
 import java.time.LocalDate
+import java.time.format.DateTimeParseException
 import java.time.temporal.WeekFields
 
 private val log = KotlinLogging.logger {}
@@ -115,10 +117,18 @@ class AdminService(
         get(WeekFields.ISO.weekBasedYear()) to get(WeekFields.ISO.weekOfWeekBasedYear())
 
     /**
-     * Read-only roster preview. Parses the TSV, matches each pick against
-     * existing golfers by full name (case-insensitive), and returns per-pick
-     * status plus headline counts. No DB writes — the operator confirms via
-     * a follow-up call once the ambiguous/no-match rows are resolved.
+     * Roster preview with persisted-pool fallback. Parses the TSV, matches
+     * each pick against existing golfers by normalized full name, and — if
+     * any picks fail to match — pulls ESPN's recent-active player pool and
+     * persists any newly-discovered golfers (with their `pga_player_id`)
+     * before re-matching. The DB grows opportunistically so subsequent
+     * previews start from a richer base and only need to fish ESPN for
+     * truly new players.
+     *
+     * The route still returns a read-shaped [RosterPreviewResult]; callers
+     * confirm via [confirmRoster] once ambiguous / no-match rows are
+     * resolved. The persisted golfer rows stay valid even if the operator
+     * later abandons the preview.
      */
     suspend fun previewRoster(rosterText: String): Result<RosterPreviewResult, AdminError> {
         val parsed =
@@ -126,10 +136,55 @@ class AdminService(
                 is Result.Ok -> r.value
                 is Result.Err -> return Result.Err(AdminError.InvalidRoster(r.error))
             }
-        val nameIndex = buildGolferNameIndex(golferService.list(activeOnly = false, search = null))
 
-        val previewTeams = parsed.map { team -> previewTeam(team, nameIndex) }
+        val initialIndex = buildGolferNameIndex(golferService.list(activeOnly = false, search = null))
+        val initialMatches = parsed.flatMap { it.picks }.map { matchPick(it.playerName, initialIndex) }
+        val anyUnmatched = initialMatches.any { it is PickMatch.NoMatch }
+
+        val finalIndex =
+            if (anyUnmatched) {
+                fishEspnPoolInto(initialIndex)
+            } else {
+                initialIndex
+            }
+
+        val previewTeams = parsed.map { team -> previewTeam(team, finalIndex) }
         return Result.Ok(summarize(previewTeams))
+    }
+
+    /**
+     * Pull ESPN's recent-active player pool and persist any athlete whose
+     * `pga_player_id` isn't already in the DB. Returns a fresh name index
+     * over the now-larger golfer set. Best-effort: if ESPN is unavailable
+     * (the service itself absorbs upstream failures into an empty list),
+     * we just return the original index unchanged so the matcher falls
+     * back to "no match" rather than failing the whole preview.
+     */
+    private suspend fun fishEspnPoolInto(currentIndex: Map<String, List<Golfer>>): Map<String, List<Golfer>> {
+        val athletes = espnService.fetchActivePlayers()
+        if (athletes.isEmpty()) return currentIndex
+        val existingIds = currentIndex.values.flatten().mapNotNull { it.pgaPlayerId }.toSet()
+        val newAthletes = athletes.filter { it.espnId !in existingIds }
+        if (newAthletes.isEmpty()) return currentIndex
+        log.info { "Persisting ${newAthletes.size} new ESPN athletes into golfers table" }
+        for (athlete in newAthletes) {
+            val (firstName, lastName) = splitName(athlete.name)
+            golferService.create(
+                CreateGolferRequest(
+                    pgaPlayerId = athlete.espnId,
+                    firstName = firstName,
+                    lastName = lastName,
+                ),
+            )
+        }
+        return buildGolferNameIndex(golferService.list(activeOnly = false, search = null))
+    }
+
+    private fun splitName(fullName: String): Pair<String, String> {
+        val trimmed = fullName.trim()
+        val lastSpace = trimmed.lastIndexOf(' ')
+        if (lastSpace == -1) return trimmed to ""
+        return trimmed.substring(0, lastSpace) to trimmed.substring(lastSpace + 1)
     }
 
     private fun previewTeam(
@@ -154,7 +209,7 @@ class AdminService(
         playerName: String,
         nameIndex: Map<String, List<Golfer>>,
     ): PickMatch {
-        val candidates = nameIndex[playerName.lowercase()].orEmpty()
+        val candidates = nameIndex[normalizeName(playerName)].orEmpty()
         return when (candidates.size) {
             0 -> PickMatch.NoMatch
             1 -> {
@@ -174,7 +229,32 @@ class AdminService(
     private fun Golfer.fullName(): String = "$firstName $lastName"
 
     private fun buildGolferNameIndex(golfers: List<Golfer>): Map<String, List<Golfer>> =
-        golfers.groupBy { "${it.firstName} ${it.lastName}".lowercase() }
+        golfers.groupBy { normalizeName("${it.firstName} ${it.lastName}") }
+
+    /**
+     * Lowercase + accent-fold a name so "Niklas Nørgaard-Petersen",
+     * "Niklas Norgaard-Petersen", and "niklas  nørgaard-PETERSEN" all
+     * land in the same bucket.
+     *
+     * Two-step folding: explicit substitution of letters that have no NFD
+     * canonical decomposition (Scandinavian ø/å/æ, Polish ł, German ß,
+     * Icelandic ð, Croatian đ — the ones that bit us in production), then
+     * standard NFD-decompose-and-strip-combining-marks for the regular
+     * accented Latin range (é, ñ, ü, etc.).
+     *
+     * Predictable substitution rather than edit-distance fuzzy matching:
+     * "Tom Kim" must not silently match "Tim Kim".
+     */
+    private fun normalizeName(name: String): String {
+        val folded =
+            NON_DECOMPOSABLE_LETTERS.entries.fold(name.trim()) { acc, (from, to) ->
+                acc.replace(from, to)
+            }
+        return Normalizer.normalize(folded, Normalizer.Form.NFD)
+            .replace(DIACRITIC_REGEX, "")
+            .replace(WHITESPACE_REGEX, " ")
+            .lowercase()
+    }
 
     private fun summarize(teams: List<PreviewTeam>): RosterPreviewResult {
         val allPicks = teams.flatMap { it.picks }
@@ -312,7 +392,7 @@ class AdminService(
     private fun parseEspnDate(raw: String): LocalDate? =
         try {
             LocalDate.parse(raw.take(ISO_DATE_LENGTH))
-        } catch (e: java.time.format.DateTimeParseException) {
+        } catch (e: DateTimeParseException) {
             log.warn(e) { "ESPN sent an unparseable startDate: '$raw'" }
             null
         }
@@ -324,6 +404,25 @@ class AdminService(
 
         /** Roster entries created by confirmRoster are draft picks — distinguishes from waiver/trade adds. */
         private const val ROSTER_ACQUIRED_VIA_DRAFT = "draft"
+
+        private val DIACRITIC_REGEX: Regex = Regex("\\p{InCombiningDiacriticalMarks}+")
+        private val WHITESPACE_REGEX: Regex = Regex("\\s+")
+
+        // Letters with no NFD canonical decomposition that we still want
+        // to fold for name matching. Order doesn't matter — replace passes
+        // are independent.
+        private val NON_DECOMPOSABLE_LETTERS: Map<String, String> =
+            mapOf(
+                "ø" to "o", "Ø" to "O",
+                "å" to "a", "Å" to "A",
+                "æ" to "ae", "Æ" to "AE",
+                "œ" to "oe", "Œ" to "OE",
+                "ß" to "ss",
+                "ł" to "l", "Ł" to "L",
+                "đ" to "d", "Đ" to "D",
+                "ð" to "d", "Ð" to "D",
+                "þ" to "th", "Þ" to "Th",
+            )
     }
 }
 

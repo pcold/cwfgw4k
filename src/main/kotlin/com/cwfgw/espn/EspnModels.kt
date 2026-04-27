@@ -84,6 +84,18 @@ data class EspnCalendarEntry(
 )
 
 /**
+ * One ESPN player as identified across recent tournament scoreboards. The
+ * pool is built by unioning competitors from a handful of recent events
+ * and deduplicating by [espnId] — see [EspnService.fetchActivePlayers].
+ * `name` is ESPN's `displayName` (with original diacritics); callers do
+ * their own normalization for matching.
+ */
+data class EspnAthlete(
+    val espnId: String,
+    val name: String,
+)
+
+/**
  * Dry-run scoring of one ESPN tournament against the league's current
  * rosters — what each team *would* earn if the tournament were finalized
  * with ESPN's current leaderboard. Returned by
