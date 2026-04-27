@@ -1,6 +1,5 @@
 import type {
   ActionMessageResponse,
-  AuthStatus,
   GolferHistory,
   League,
   Rankings,
@@ -12,6 +11,7 @@ import type {
   Season,
   SeasonRules,
   Tournament,
+  User,
   WeeklyReport,
 } from './types';
 
@@ -171,10 +171,24 @@ export const api = {
   golferHistory: (seasonId: string, golferId: string) =>
     getJson<GolferHistory>(`/api/v1/seasons/${seasonId}/golfer/${golferId}/history`),
 
-  authMe: () => getJson<AuthStatus>('/api/v1/auth/me'),
+  // /auth/me returns the User on success and 401 when not logged in. The
+  // unauthenticated case is a normal app state, not an error, so swallow
+  // 401 and return null. Any other status still throws.
+  authMe: async (): Promise<User | null> => {
+    try {
+      return await getJson<User>('/api/v1/auth/me');
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) return null;
+      throw e;
+    }
+  },
   login: (username: string, password: string) =>
-    postJson<{ ok: boolean }>('/api/v1/auth/login', { username, password }),
-  logout: () => postJson<{ ok: boolean }>('/api/v1/auth/logout'),
+    postJson<User>('/api/v1/auth/login', { username, password }),
+  // Returns 204 No Content; we don't need the body.
+  logout: async (): Promise<void> => {
+    const resp = await fetch('/api/v1/auth/logout', { method: 'POST' });
+    if (!resp.ok) throw new ApiError(resp.status, `${resp.status} ${resp.statusText}`);
+  },
 
   createLeague: (name: string) => postJson<League>('/api/v1/leagues', { name }),
   createSeason: (input: {

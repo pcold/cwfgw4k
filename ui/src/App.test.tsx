@@ -6,7 +6,7 @@ import { renderWithProviders } from '@/shared/test/renderWithProviders';
 
 vi.mock('@/shared/api/client', () => ({
   api: {
-    authMe: vi.fn().mockResolvedValue({ authenticated: false, username: null }),
+    authMe: vi.fn().mockResolvedValue(null),
     leagues: vi.fn().mockResolvedValue([]),
     seasons: vi.fn().mockResolvedValue([]),
     seasonReport: vi.fn().mockResolvedValue({

@@ -188,8 +188,15 @@ describe('api client', () => {
     expect((err as ApiError).status).toBe(400);
   });
 
-  it('login() posts credentials and returns the parsed body', async () => {
-    fetchMock.mockResolvedValueOnce(mockJson({ ok: true }));
+  it('login() posts credentials and returns the User from the body', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockJson({
+        id: 'u-1',
+        username: 'admin',
+        role: 'admin',
+        created_at: '2026-01-01T00:00:00Z',
+      }),
+    );
     const result = await api.login('admin', 'secret');
     const call = fetchMock.mock.calls[0];
     expect(call[0]).toBe('/api/v1/auth/login');
@@ -197,7 +204,49 @@ describe('api client', () => {
       username: 'admin',
       password: 'secret',
     });
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+  });
+
+  it('authMe() returns null when the server responds 401', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const result = await api.authMe();
+    expect(result).toBeNull();
+  });
+
+  it('authMe() returns the User when the server responds 200', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockJson({
+        id: 'u-1',
+        username: 'admin',
+        role: 'admin',
+        created_at: '2026-01-01T00:00:00Z',
+      }),
+    );
+    const result = await api.authMe();
+    expect(result).toEqual({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+  });
+
+  it('logout() POSTs and tolerates an empty 204 response', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await expect(api.logout()).resolves.toBeUndefined();
+    const call = fetchMock.mock.calls[0];
+    expect(call[0]).toBe('/api/v1/auth/logout');
+    expect((call[1] as RequestInit).method).toBe('POST');
   });
 
   it('resetTournament() posts to the tournament path without a body', async () => {

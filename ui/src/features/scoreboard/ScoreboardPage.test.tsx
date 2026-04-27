@@ -102,7 +102,7 @@ describe('ScoreboardPage', () => {
     tournamentReportMock.mockReset();
     authMeMock.mockReset();
     finalizeMock.mockReset();
-    authMeMock.mockResolvedValue({ authenticated: false, username: null });
+    authMeMock.mockResolvedValue(null);
   });
 
   it('auto-selects an active tournament over a completed one', async () => {
@@ -152,7 +152,12 @@ describe('ScoreboardPage', () => {
   });
 
   it('shows the Finalize Results button for an admin viewing an in-progress tournament', async () => {
-    authMeMock.mockResolvedValue({ authenticated: true, username: 'admin' });
+    authMeMock.mockResolvedValue({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament]);
@@ -206,7 +211,12 @@ describe('ScoreboardPage', () => {
   });
 
   it('hides the Finalize Results button for completed tournaments even when admin', async () => {
-    authMeMock.mockResolvedValue({ authenticated: true, username: 'admin' });
+    authMeMock.mockResolvedValue({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([completedTournament]);

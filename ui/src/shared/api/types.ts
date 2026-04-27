@@ -147,9 +147,16 @@ export interface Season {
   status: string;
 }
 
-export interface AuthStatus {
-  authenticated: boolean;
-  username: string | null;
+// Mirrors backend com.cwfgw.users.User. Returned by /auth/me (200) and
+// /auth/login (200). A 401 from /auth/me means "not logged in" — handled
+// in `api.authMe` by returning null.
+export type UserRole = 'admin' | 'user';
+
+export interface User {
+  id: string;
+  username: string;
+  role: UserRole;
+  createdAt: string;
 }
 
 export interface SeasonRules {

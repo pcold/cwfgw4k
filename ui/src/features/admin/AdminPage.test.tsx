@@ -57,8 +57,15 @@ describe('AdminPage', () => {
     logoutMock.mockReset();
   });
 
+  const adminUser = {
+    id: 'u-1',
+    username: 'admin',
+    role: 'admin' as const,
+    createdAt: '2026-01-01T00:00:00Z',
+  };
+
   it('shows the login modal when the user is not authenticated', async () => {
-    authMeMock.mockResolvedValue({ authenticated: false, username: null });
+    authMeMock.mockResolvedValue(null);
 
     renderWithProviders(<AdminPage />, {
       withAuthProvider: true,
@@ -71,8 +78,8 @@ describe('AdminPage', () => {
   });
 
   it('logs in successfully and reveals the admin page', async () => {
-    authMeMock.mockResolvedValue({ authenticated: false, username: null });
-    loginMock.mockResolvedValue({ ok: true });
+    authMeMock.mockResolvedValue(null);
+    loginMock.mockResolvedValue(adminUser);
 
     const user = userEvent.setup();
     renderWithProviders(<AdminPage />, {
@@ -89,9 +96,9 @@ describe('AdminPage', () => {
     expect(screen.getByText(/Signed in as admin/i)).toBeInTheDocument();
   });
 
-  it('surfaces an invalid-credentials error on 403', async () => {
-    authMeMock.mockResolvedValue({ authenticated: false, username: null });
-    loginMock.mockRejectedValue(new ApiError(403, 'Invalid credentials'));
+  it('surfaces an invalid-credentials error on 401', async () => {
+    authMeMock.mockResolvedValue(null);
+    loginMock.mockRejectedValue(new ApiError(401, 'invalid username or password'));
 
     const user = userEvent.setup();
     renderWithProviders(<AdminPage />, {
@@ -108,8 +115,8 @@ describe('AdminPage', () => {
   });
 
   it('renders signed-in state and logs out', async () => {
-    authMeMock.mockResolvedValue({ authenticated: true, username: 'admin' });
-    logoutMock.mockResolvedValue({ ok: true });
+    authMeMock.mockResolvedValue(adminUser);
+    logoutMock.mockResolvedValue(undefined);
 
     const user = userEvent.setup();
     renderWithProviders(<AdminPage />, {
