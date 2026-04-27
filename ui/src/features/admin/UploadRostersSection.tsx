@@ -431,25 +431,14 @@ function RosterResultView({ result }: { result: RosterConfirmResult }) {
           <span className="text-blue-400 font-bold ml-1">{result.golfersCreated}</span>
         </div>
       </div>
-      {result.teams.map((team) => (
-        <div key={team.teamId} className="mb-3">
-          <div className="text-sm font-bold text-gray-200 mb-1">
+      <div className="flex flex-wrap gap-2 text-xs">
+        {result.teams.map((team) => (
+          <span key={team.id} className="bg-gray-700 px-2 py-1 rounded">
             <span className="text-gray-400">#{team.teamNumber}</span>
             <span className="ml-1 uppercase">{team.teamName}</span>
-          </div>
-          <div className="flex flex-wrap gap-2 text-xs">
-            {team.picks.map((pick) => (
-              <span key={pick.golferId} className="bg-gray-700 px-2 py-1 rounded">
-                <span className="text-gray-400">R{pick.round}</span>
-                <span className="ml-1">{pick.golferName}</span>
-                {pick.ownershipPct < 100 ? (
-                  <span className="text-gray-500 ml-1">{pick.ownershipPct}%</span>
-                ) : null}
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

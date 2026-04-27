@@ -167,12 +167,13 @@ describe('UploadRostersSection', () => {
       golfersCreated: 1,
       teams: [
         {
-          teamId: 'tm-1',
-          teamNumber: 1,
+          id: 'tm-1',
+          seasonId: 'sn-1',
+          ownerName: 'BROWN',
           teamName: 'BROWN',
-          picks: [
-            { round: 1, golferId: 'g-1', golferName: 'Scottie Scheffler', ownershipPct: 100 },
-          ],
+          teamNumber: 1,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
         },
       ],
     });

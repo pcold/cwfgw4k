@@ -239,24 +239,25 @@ export interface RosterConfirmTeamInput {
   picks: RosterConfirmPick[];
 }
 
-export interface RosterConfirmResultPick {
-  round: number;
-  golferId: string;
-  golferName: string;
-  ownershipPct: number;
-}
-
-export interface RosterConfirmResultTeam {
-  teamId: string;
-  teamNumber: number;
+// Mirrors backend com.cwfgw.teams.Team. Returned by /admin/roster/confirm
+// (inside RosterUploadResult). Note that the wire shape carries `id`, not
+// `teamId`, and does NOT include the persisted picks — the confirm response
+// is bare team rows. If the UI grows a need for picks-after-create, the
+// backend's RosterUploadResult is the right place to extend.
+export interface Team {
+  id: string;
+  seasonId: string;
+  ownerName: string;
   teamName: string;
-  picks: RosterConfirmResultPick[];
+  teamNumber: number | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface RosterConfirmResult {
   teamsCreated: number;
   golfersCreated: number;
-  teams: RosterConfirmResultTeam[];
+  teams: Team[];
 }
 
 // Response of POST /api/v1/seasons/{id}/clean-results — counts of rows
