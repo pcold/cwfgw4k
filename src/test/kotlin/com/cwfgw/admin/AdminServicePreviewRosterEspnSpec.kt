@@ -254,6 +254,33 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         f.golferRepo.findAll(activeOnly = false, search = null).shouldHaveSize(0)
     }
 
+    test("treats hyphens and spaces as equivalent so 'Byeong Hun An' matches ESPN's 'Byeong-Hun An'") {
+        val f =
+            fixture(
+                calendar = listOf(recentCalendarEntry),
+                scoreboards =
+                    mapOf(
+                        recentDate to
+                            listOf(espnEvent(competitors = listOf(espnPlayer("espn-an", "Byeong-Hun An")))),
+                    ),
+            )
+
+        val tsv =
+            """
+            $rosterHeader
+            1	BLAU	5	Byeong Hun An	100
+            """.trimIndent()
+
+        val result =
+            f.service.previewRoster(tsv)
+                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
+                .value
+
+        result.matchedCount shouldBe 1
+        val match = result.teams.single().picks.single().match.shouldBeInstanceOf<PickMatch.Matched>()
+        match.golferName shouldBe "Byeong-Hun An"
+    }
+
     test("does not double-create a golfer when ESPN returns an athlete already in the table") {
         // The unique constraint on golfers.pga_player_id would blow up if this filter
         // regressed; assert via row count to catch the regression in the fake too.

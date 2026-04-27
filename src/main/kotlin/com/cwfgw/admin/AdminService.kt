@@ -252,6 +252,11 @@ class AdminService(
             }
         return Normalizer.normalize(folded, Normalizer.Form.NFD)
             .replace(DIACRITIC_REGEX, "")
+            // Treat hyphens as token separators so ESPN's "Byeong-Hun An"
+            // matches a roster's "Byeong Hun An" (and vice versa). Compound
+            // surnames like "Nørgaard-Petersen" still match either spelling
+            // because we compare the whole normalized string.
+            .replace('-', ' ')
             .replace(WHITESPACE_REGEX, " ")
             .lowercase()
     }
