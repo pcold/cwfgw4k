@@ -240,6 +240,46 @@ class LiveOverlayServiceSpec : FunSpec({
         overlaid.teams.single().cells.single().scoreToPar shouldBe "-10"
     }
 
+    test("mergeLiveData bumps team.topTenMoney + topTenCount for live wins (non-additive mode)") {
+        val base =
+            emptyReport(
+                listOf(
+                    teamColumn(
+                        TEAM_A_ID,
+                        cells =
+                            listOf(
+                                cell(
+                                    round = 1,
+                                    golferId = SCOTTIE_ID,
+                                    seasonEarnings = BigDecimal(5),
+                                    seasonTopTens = 1,
+                                ),
+                                cell(round = 2, golferId = RORY_ID),
+                            ),
+                    ).copy(topTenMoney = BigDecimal(5), topTenCount = 1),
+                ),
+            )
+        val live =
+            preview(
+                teams =
+                    listOf(
+                        previewTeam(
+                            teamId = TEAM_A_ID,
+                            golfers = listOf(previewGolfer(RORY_ID, position = 1, payout = BigDecimal(18))),
+                        ),
+                    ),
+            )
+
+        val overlaid = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false)
+        val team = overlaid.teams.single()
+        team.topTenMoney.compareTo(BigDecimal(23)) shouldBe 0
+        team.topTenCount shouldBe 2
+        // Sanity: cell-level numbers match what the team total claims.
+        val cellSum = team.cells.fold(BigDecimal.ZERO) { acc, c -> acc.add(c.seasonEarnings) }
+        cellSum.compareTo(team.topTenMoney) shouldBe 0
+        team.cells.sumOf { it.seasonTopTens } shouldBe team.topTenCount
+    }
+
     test("mergeLiveData adds live earnings to existing cell.earnings in additive mode") {
         val base =
             emptyReport(

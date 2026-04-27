@@ -470,14 +470,18 @@ private fun overlayTeamCells(
             }
         }
     val weeklyTopTens = updatedCells.fold(BigDecimal.ZERO) { acc, cell -> acc.add(cell.earnings) }
-    val liveTopTenCount =
-        if (additive) {
-            updatedCells.sumOf { it.topTens }
-        } else {
-            team.topTenCount + updatedCells.count { it.topTens > 0 }
-        }
+    // Per-cell seasonEarnings/seasonTopTens already include the live hit, so
+    // the team totals follow from a sum over cells in both overlay modes.
+    val liveTopTenCount = updatedCells.sumOf { it.seasonTopTens }
+    val liveTopTenMoney = updatedCells.fold(BigDecimal.ZERO) { acc, cell -> acc.add(cell.seasonEarnings) }
     return TeamPhase1(
-        team = team.copy(cells = updatedCells, topTenEarnings = weeklyTopTens, topTenCount = liveTopTenCount),
+        team =
+            team.copy(
+                cells = updatedCells,
+                topTenEarnings = weeklyTopTens,
+                topTenCount = liveTopTenCount,
+                topTenMoney = liveTopTenMoney,
+            ),
         weeklyTopTenEarnings = weeklyTopTens,
         previous = team.previous,
         originalSideBets = team.sideBets,
