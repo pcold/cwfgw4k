@@ -207,6 +207,58 @@ class SeasonRepositorySpec : FunSpec({
         repository.getRules(SeasonId(UUID.randomUUID())).shouldBeNull()
     }
 
+    test("create with rules persists payouts + side-bet rounds and uses rules' tieFloor/sideBetAmount") {
+        val customRules =
+            SeasonRules(
+                payouts = listOf(BigDecimal("100"), BigDecimal("50"), BigDecimal("25")),
+                tieFloor = BigDecimal("2"),
+                sideBetRounds = listOf(2, 3),
+                sideBetAmount = BigDecimal("20"),
+            )
+
+        val created =
+            repository.create(
+                CreateSeasonRequest(
+                    leagueId = castlewoodId,
+                    name = "2026 With Rules",
+                    seasonYear = 2026,
+                    rules = customRules,
+                ),
+            )
+
+        created.tieFloor.compareTo(BigDecimal("2")) shouldBe 0
+        created.sideBetAmount.compareTo(BigDecimal("20")) shouldBe 0
+
+        val rules = repository.getRules(created.id)
+        rules.shouldNotBeNull()
+        rules.payouts shouldContainExactly
+            listOf(BigDecimal("100.0000"), BigDecimal("50.0000"), BigDecimal("25.0000"))
+        rules.sideBetRounds shouldContainExactly listOf(2, 3)
+        rules.tieFloor.compareTo(BigDecimal("2")) shouldBe 0
+        rules.sideBetAmount.compareTo(BigDecimal("20")) shouldBe 0
+    }
+
+    test("create with rules prefers rules' tieFloor over the top-level field") {
+        val created =
+            repository.create(
+                CreateSeasonRequest(
+                    leagueId = castlewoodId,
+                    name = "2026 Conflict",
+                    seasonYear = 2026,
+                    tieFloor = BigDecimal("99"),
+                    rules =
+                        SeasonRules(
+                            payouts = listOf(BigDecimal("1")),
+                            tieFloor = BigDecimal("3"),
+                            sideBetRounds = listOf(1),
+                            sideBetAmount = BigDecimal("10"),
+                        ),
+                ),
+            )
+
+        created.tieFloor.compareTo(BigDecimal("3")) shouldBe 0
+    }
+
     test("delete cascades through teams + tournaments + team_rosters + draft_picks via the V010 FKs") {
         val teamRepo = TeamRepository(postgres.dsl)
         val tournamentRepo = TournamentRepository(postgres.dsl)

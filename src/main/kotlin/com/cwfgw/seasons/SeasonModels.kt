@@ -35,6 +35,16 @@ data class Season(
     @Serializable(with = InstantSerializer::class) val updatedAt: Instant,
 )
 
+/**
+ * Body of `POST /api/v1/seasons`. The `rules` field is the canonical
+ * source for tie floor, side-bet amount, payouts, and side-bet rounds —
+ * when supplied, the repo writes the side-table rows for payouts and
+ * side-bet rounds atomically with the seasons row, and ignores the
+ * top-level `tieFloor`/`sideBetAmount`. Those flat fields stay for
+ * callers that don't care about per-season overrides; if both are
+ * absent the schema defaults apply (1.0 / 15 / DEFAULT_PAYOUTS /
+ * DEFAULT_SIDE_BET_ROUNDS).
+ */
 @Serializable
 data class CreateSeasonRequest(
     val leagueId: LeagueId,
@@ -44,6 +54,7 @@ data class CreateSeasonRequest(
     val maxTeams: Int? = null,
     @Serializable(with = BigDecimalSerializer::class) val tieFloor: BigDecimal? = null,
     @Serializable(with = BigDecimalSerializer::class) val sideBetAmount: BigDecimal? = null,
+    val rules: SeasonRules? = null,
 )
 
 @Serializable

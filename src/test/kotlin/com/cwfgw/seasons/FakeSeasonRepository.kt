@@ -39,6 +39,12 @@ class FakeSeasonRepository(
 
     override suspend fun create(request: CreateSeasonRequest): Season {
         val now = clock()
+        // Mirrors the real repo: when `rules` is supplied it overrides the
+        // top-level tieFloor/sideBetAmount and persists payouts + side-bet
+        // rounds for getRules() to read back.
+        val tieFloor = request.rules?.tieFloor ?: request.tieFloor ?: SeasonRules.DEFAULT_TIE_FLOOR
+        val sideBetAmount =
+            request.rules?.sideBetAmount ?: request.sideBetAmount ?: SeasonRules.DEFAULT_SIDE_BET_AMOUNT
         val season =
             Season(
                 id = idFactory(),
@@ -47,13 +53,14 @@ class FakeSeasonRepository(
                 seasonYear = request.seasonYear,
                 seasonNumber = request.seasonNumber ?: 1,
                 status = "draft",
-                tieFloor = request.tieFloor ?: SeasonRules.DEFAULT_TIE_FLOOR,
-                sideBetAmount = request.sideBetAmount ?: SeasonRules.DEFAULT_SIDE_BET_AMOUNT,
+                tieFloor = tieFloor,
+                sideBetAmount = sideBetAmount,
                 maxTeams = request.maxTeams ?: DEFAULT_MAX_TEAMS,
                 createdAt = now,
                 updatedAt = now,
             )
         store[season.id] = season
+        request.rules?.let { rulesStore[season.id] = it }
         return season
     }
 

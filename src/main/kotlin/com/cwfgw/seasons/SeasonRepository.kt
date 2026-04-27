@@ -66,14 +66,43 @@ private class JooqSeasonRepository(private val dsl: DSLContext) : SeasonReposito
 
     override suspend fun create(request: CreateSeasonRequest): Season =
         withContext(Dispatchers.IO) {
-            val values = insertAssignments(request)
-            val inserted =
-                dsl.insertInto(SEASONS)
-                    .set(values)
-                    .returning()
-                    .fetchOne() ?: error("INSERT RETURNING produced no row for seasons")
-            toSeason(inserted)
+            // When `rules` is supplied we have to insert into three tables
+            // atomically — the seasons row plus the per-position payouts and
+            // per-round side-bet entries. Wrap in a transaction so a failure
+            // mid-write doesn't leave a season with a partial rules set.
+            dsl.transactionResult { config ->
+                val tx = config.dsl()
+                val values = insertAssignments(request)
+                val inserted =
+                    tx.insertInto(SEASONS)
+                        .set(values)
+                        .returning()
+                        .fetchOne() ?: error("INSERT RETURNING produced no row for seasons")
+                val season = toSeason(inserted)
+                request.rules?.let { writeRules(tx, season.id, it) }
+                season
+            }
         }
+
+    private fun writeRules(
+        tx: DSLContext,
+        seasonId: SeasonId,
+        rules: SeasonRules,
+    ) {
+        rules.payouts.forEachIndexed { index, amount ->
+            tx.insertInto(SEASON_RULE_PAYOUTS)
+                .set(SEASON_RULE_PAYOUTS.SEASON_ID, seasonId.value)
+                .set(SEASON_RULE_PAYOUTS.POSITION, index + 1)
+                .set(SEASON_RULE_PAYOUTS.AMOUNT, amount)
+                .execute()
+        }
+        rules.sideBetRounds.forEach { round ->
+            tx.insertInto(SEASON_RULE_SIDE_BET_ROUNDS)
+                .set(SEASON_RULE_SIDE_BET_ROUNDS.SEASON_ID, seasonId.value)
+                .set(SEASON_RULE_SIDE_BET_ROUNDS.ROUND, round)
+                .execute()
+        }
+    }
 
     override suspend fun update(
         id: SeasonId,
@@ -163,8 +192,11 @@ private class JooqSeasonRepository(private val dsl: DSLContext) : SeasonReposito
             put(SEASONS.SEASON_YEAR, request.seasonYear)
             request.seasonNumber?.let { put(SEASONS.SEASON_NUMBER, it) }
             request.maxTeams?.let { put(SEASONS.MAX_TEAMS, it) }
-            request.tieFloor?.let { put(SEASONS.TIE_FLOOR, it) }
-            request.sideBetAmount?.let { put(SEASONS.SIDE_BET_AMOUNT, it) }
+            // `rules` wins when supplied — see CreateSeasonRequest KDoc.
+            (request.rules?.tieFloor ?: request.tieFloor)?.let { put(SEASONS.TIE_FLOOR, it) }
+            (request.rules?.sideBetAmount ?: request.sideBetAmount)?.let {
+                put(SEASONS.SIDE_BET_AMOUNT, it)
+            }
         }
 
     private fun updateAssignments(request: UpdateSeasonRequest): Map<Field<*>, Any?> =
