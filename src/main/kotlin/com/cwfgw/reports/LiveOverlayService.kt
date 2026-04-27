@@ -325,7 +325,7 @@ internal fun overlayLiveRankings(
     val recomputedSnapshots =
         updatedSnapshots.map { snapshot ->
             snapshot.copy(
-                payouts = computeRoundPayouts(snapshot.teamCumulativeEarnings, numTeams, ctx.rules.sideBetAmount),
+                payouts = pickSideBetPayouts(snapshot.teamCumulativeEarnings, numTeams, ctx.rules.sideBetAmount),
             )
         }
     val newSideBets = aggregateRoundPayouts(recomputedSnapshots)
@@ -358,21 +358,6 @@ private fun SideBetRoundSnapshot.foldLive(
             }
         }
     return copy(teamCumulativeEarnings = updated)
-}
-
-private fun computeRoundPayouts(
-    teamTotals: Map<TeamId, BigDecimal>,
-    numTeams: Int,
-    sideBetPerTeam: BigDecimal,
-): Map<TeamId, BigDecimal> {
-    if (teamTotals.isEmpty() || teamTotals.values.all { it.signum() == 0 }) return emptyMap()
-    val maxEarnings = teamTotals.values.max()
-    val winners = teamTotals.filterValues { it == maxEarnings }.keys
-    val winnerCollects =
-        sideBetPerTeam.multiply(BigDecimal(numTeams - winners.size)).divide(BigDecimal(winners.size))
-    return teamTotals.mapValues { (teamId, _) ->
-        if (teamId in winners) winnerCollects else sideBetPerTeam.negate()
-    }
 }
 
 private fun aggregateRoundPayouts(snapshots: List<SideBetRoundSnapshot>): Map<TeamId, BigDecimal> =

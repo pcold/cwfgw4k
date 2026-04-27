@@ -305,6 +305,61 @@ class LiveOverlayServiceSpec : FunSpec({
         overlaid.teams.single().cells.single().earnings.compareTo(BigDecimal(23)) shouldBe 0
     }
 
+    test("mergeLiveData side-bet folds this-week live payouts into the per-round cumulative") {
+        val rodgersCell =
+            cell(round = 8, golferId = SCOTTIE_ID, seasonEarnings = BigDecimal(10), seasonTopTens = 1)
+        val coodyCell = cell(round = 8, golferId = RORY_ID)
+        val base =
+            emptyReport(
+                listOf(
+                    teamColumn(TEAM_A_ID, cells = listOf(rodgersCell))
+                        .copy(topTenMoney = BigDecimal(10), topTenCount = 1),
+                    teamColumn(TEAM_B_ID, cells = listOf(coodyCell)),
+                ),
+            ).copy(
+                sideBetDetail =
+                    listOf(
+                        ReportSideBetRound(
+                            round = 8,
+                            teams =
+                                listOf(
+                                    ReportSideBetTeamEntry(
+                                        teamId = TEAM_A_ID,
+                                        golferName = "RODGERS",
+                                        cumulativeEarnings = BigDecimal(10),
+                                        payout = BigDecimal.ZERO,
+                                    ),
+                                    ReportSideBetTeamEntry(
+                                        teamId = TEAM_B_ID,
+                                        golferName = "COODY",
+                                        cumulativeEarnings = BigDecimal.ZERO,
+                                        payout = BigDecimal.ZERO,
+                                    ),
+                                ),
+                        ),
+                    ),
+            )
+        val live =
+            preview(
+                teams =
+                    listOf(
+                        previewTeam(teamId = TEAM_A_ID),
+                        previewTeam(
+                            teamId = TEAM_B_ID,
+                            golfers = listOf(previewGolfer(RORY_ID, position = 2, payout = BigDecimal(10))),
+                        ),
+                    ),
+            )
+
+        val overlaid = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false)
+        val r8 = overlaid.sideBetDetail.single()
+        val a = r8.teams.single { it.teamId == TEAM_A_ID }
+        val b = r8.teams.single { it.teamId == TEAM_B_ID }
+        a.cumulativeEarnings.compareTo(BigDecimal(10)) shouldBe 0
+        b.cumulativeEarnings.compareTo(BigDecimal(10)) shouldBe 0
+        a.payout.compareTo(b.payout) shouldBe 0
+    }
+
     test("mergeLiveData computes weekly +/- as zero-sum across teams") {
         val base =
             emptyReport(

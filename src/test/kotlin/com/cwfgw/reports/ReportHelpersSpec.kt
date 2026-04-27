@@ -177,6 +177,22 @@ class ReportHelpersSpec : FunSpec({
         result.single { it.teamId == entries[2].teamId }.payout shouldBe BigDecimal("-5")
     }
 
+    test("recomputeSideBetPayouts treats numerically-equal earnings with different scales as tied") {
+        // BigDecimal.equals is scale-sensitive (10 != 10.00); use compareTo
+        // for tie detection or one team gets the pool and the other pays.
+        val entries =
+            listOf(
+                sideBetEntry("01", BigDecimal("10")),
+                sideBetEntry("02", BigDecimal("10.0000")),
+                sideBetEntry("03", BigDecimal("0")),
+            )
+
+        val result = recomputeSideBetPayouts(entries, numTeams = 3, sideBetPerTeam = BigDecimal("5"))
+        result.single { it.teamId == entries[0].teamId }.payout.compareTo(BigDecimal("2.5")) shouldBe 0
+        result.single { it.teamId == entries[1].teamId }.payout.compareTo(BigDecimal("2.5")) shouldBe 0
+        result.single { it.teamId == entries[2].teamId }.payout shouldBe BigDecimal("-5")
+    }
+
     test("recomputeSideBetPayouts splits the pool when multiple teams tie for the lead") {
         val entries =
             listOf(

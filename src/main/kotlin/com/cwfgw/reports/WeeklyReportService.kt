@@ -814,29 +814,9 @@ internal fun buildSideBetPerRound(
                         .sumPoints()
                 entry.teamId to total
             }
-        val payouts =
-            if (teamTotals.isEmpty() || teamTotals.values.all { it.signum() == 0 }) {
-                emptyMap()
-            } else {
-                computeSideBetPayouts(teamTotals, numTeams, sideBetPerTeam)
-            }
+        val payouts = pickSideBetPayouts(teamTotals, numTeams, sideBetPerTeam)
         SideBetRoundSnapshot(round = round, teamCumulativeEarnings = teamTotals, payouts = payouts)
     }
-
-private fun computeSideBetPayouts(
-    teamTotals: Map<TeamId, BigDecimal>,
-    numTeams: Int,
-    sideBetPerTeam: BigDecimal,
-): Map<TeamId, BigDecimal> {
-    val maxEarnings = teamTotals.values.max()
-    val winners = teamTotals.filterValues { it == maxEarnings }.keys
-    val winnerCount = winners.size
-    val winnerCollects =
-        sideBetPerTeam.multiply(BigDecimal(numTeams - winnerCount)).divide(BigDecimal(winnerCount))
-    return teamTotals.mapValues { (teamId, _) ->
-        if (teamId in winners) winnerCollects else sideBetPerTeam.negate()
-    }
-}
 
 internal fun aggregateSideBets(perRound: List<SideBetRoundSnapshot>): Map<TeamId, BigDecimal> =
     perRound

@@ -1,5 +1,6 @@
 package com.cwfgw.reports
 
+import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.Tournament
 import java.math.BigDecimal
 
@@ -56,30 +57,40 @@ fun buildStandingsOrder(teams: List<ReportTeamColumn>): List<StandingsEntry> =
         }
 
 /**
- * Recompute side-bet payouts from current cumulative earnings. If every
- * team is at zero (start of season, no scoring yet) every payout is zero.
- * Otherwise the team(s) at the highest cumulative-earnings level split
- * the pot — each non-winner pays `sideBetPerTeam`, winners share the
- * total pool. Ties at the top mean shared winnings.
+ * Pick side-bet payouts from current cumulative earnings per team. All-
+ * zero (start of season) returns empty. Otherwise the team(s) at the
+ * highest cumulative split the pot — losers each pay `sideBetPerTeam`,
+ * winners share the pool. Tie detection uses `compareTo` because
+ * `BigDecimal.equals` is scale-sensitive (10 != 10.00) and the same
+ * cumulative arrives at different scales depending on the source path.
  */
+fun pickSideBetPayouts(
+    cumulativeByTeam: Map<TeamId, BigDecimal>,
+    numTeams: Int,
+    sideBetPerTeam: BigDecimal,
+): Map<TeamId, BigDecimal> {
+    if (cumulativeByTeam.isEmpty() || cumulativeByTeam.values.all { it.signum() == 0 }) {
+        return emptyMap()
+    }
+    val highest = cumulativeByTeam.values.max()
+    val winners = cumulativeByTeam.filterValues { it.compareTo(highest) == 0 }.keys
+    val winnerCount = winners.size
+    val winnerCollects =
+        sideBetPerTeam.multiply(BigDecimal(numTeams - winnerCount)).divide(BigDecimal(winnerCount))
+    return cumulativeByTeam.mapValues { (teamId, _) ->
+        if (teamId in winners) winnerCollects else sideBetPerTeam.negate()
+    }
+}
+
+/** [pickSideBetPayouts] over a list of [ReportSideBetTeamEntry]; updates each entry's `payout`. */
 fun recomputeSideBetPayouts(
     entries: List<ReportSideBetTeamEntry>,
     numTeams: Int,
     sideBetPerTeam: BigDecimal,
 ): List<ReportSideBetTeamEntry> {
-    val cumulativeByTeam = entries.associate { it.teamId to it.cumulativeEarnings }
-    if (cumulativeByTeam.values.all { it.signum() == 0 }) {
-        return entries.map { it.copy(payout = BigDecimal.ZERO) }
-    }
-    val highest = cumulativeByTeam.values.max()
-    val winners = cumulativeByTeam.filterValues { it == highest }.keys
-    val winnerCount = winners.size
-    val winnerCollects =
-        sideBetPerTeam.multiply(BigDecimal(numTeams - winnerCount)).divide(BigDecimal(winnerCount))
-    return entries.map { entry ->
-        val payout = if (entry.teamId in winners) winnerCollects else sideBetPerTeam.negate()
-        entry.copy(payout = payout)
-    }
+    val payouts =
+        pickSideBetPayouts(entries.associate { it.teamId to it.cumulativeEarnings }, numTeams, sideBetPerTeam)
+    return entries.map { it.copy(payout = payouts[it.teamId] ?: BigDecimal.ZERO) }
 }
 
 /**
