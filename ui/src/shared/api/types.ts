@@ -138,6 +138,10 @@ export interface Tournament {
   createdAt: string;
 }
 
+// Mirrors backend com.cwfgw.seasons.Season. tieFloor/sideBetAmount/maxTeams
+// are part of the wire shape — keeping them in the TS type so a future
+// backend change ripples back to the UI as a type error rather than a
+// silent shape drift.
 export interface Season {
   id: string;
   leagueId: string;
@@ -145,6 +149,11 @@ export interface Season {
   seasonYear: number;
   seasonNumber: number;
   status: string;
+  tieFloor: number;
+  sideBetAmount: number;
+  maxTeams: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Mirrors backend com.cwfgw.users.User. Returned by /auth/me (200) and
@@ -250,8 +259,13 @@ export interface RosterConfirmResult {
   teams: RosterConfirmResultTeam[];
 }
 
-export interface ActionMessageResponse {
-  message: string;
+// Response of POST /api/v1/seasons/{id}/clean-results — counts of rows
+// removed by the clean. Mirrors backend com.cwfgw.seasons.CleanSeasonResult.
+export interface CleanSeasonResult {
+  scoresDeleted: number;
+  resultsDeleted: number;
+  standingsDeleted: number;
+  tournamentsReset: number;
 }
 
 export interface GolferHistoryEntry {

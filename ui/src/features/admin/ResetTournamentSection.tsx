@@ -102,7 +102,9 @@ function ResetTournamentSection() {
         </button>
       </div>
       {resetMutation.data ? (
-        <span className="block mt-3 text-sm text-green-400">{resetMutation.data.message}</span>
+        <span className="block mt-3 text-sm text-green-400">
+          Reset "{resetMutation.data.name}" to {resetMutation.data.status}.
+        </span>
       ) : null}
       {errorMessage ? (
         <span role="alert" className="block mt-3 text-sm text-red-400">

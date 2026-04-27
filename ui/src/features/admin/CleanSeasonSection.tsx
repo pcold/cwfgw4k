@@ -76,7 +76,12 @@ function CleanSeasonSection() {
         </button>
       </div>
       {cleanMutation.data ? (
-        <span className="block mt-3 text-sm text-green-400">{cleanMutation.data.message}</span>
+        <span className="block mt-3 text-sm text-green-400">
+          Cleaned {cleanMutation.data.scoresDeleted} scores,{' '}
+          {cleanMutation.data.resultsDeleted} results,{' '}
+          {cleanMutation.data.standingsDeleted} standings; reset{' '}
+          {cleanMutation.data.tournamentsReset} tournaments.
+        </span>
       ) : null}
       {errorMessage ? (
         <span role="alert" className="block mt-3 text-sm text-red-400">

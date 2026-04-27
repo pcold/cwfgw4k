@@ -75,7 +75,20 @@ describe('ResetTournamentSection', () => {
   });
 
   it('lists only completed tournaments and resets on confirm', async () => {
-    resetTournamentMock.mockResolvedValue({ message: 'Reset complete' });
+    resetTournamentMock.mockResolvedValue({
+      id: 'tn-1',
+      pgaTournamentId: null,
+      name: 'Sony Open',
+      seasonId: 'sn-1',
+      startDate: '2026-01-08',
+      endDate: '2026-01-11',
+      courseName: null,
+      status: 'upcoming',
+      purseAmount: null,
+      payoutMultiplier: 1,
+      week: '1',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     const user = userEvent.setup();
@@ -92,7 +105,9 @@ describe('ResetTournamentSection', () => {
     await waitFor(() => {
       expect(resetTournamentMock).toHaveBeenCalledWith('tn-1');
     });
-    expect(await screen.findByText(/Reset complete/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Reset "Sony Open" to upcoming\./),
+    ).toBeInTheDocument();
   });
 
   it('does not call the API when the user cancels the confirm dialog', async () => {

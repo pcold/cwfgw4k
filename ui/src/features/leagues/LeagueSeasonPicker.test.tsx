@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LeagueSeasonPicker from './LeagueSeasonPicker';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { makeSeason } from '@/shared/test/fixtures';
 import type { League, Season } from '@/shared/api/types';
 
 const leaguesMock = vi.fn();
@@ -23,32 +24,17 @@ const leagues: League[] = [
   { id: 'lg-2', name: 'Shadow League', createdAt: '2026-01-01T00:00:00Z' },
 ];
 const seasonsForLg1: Season[] = [
-  {
-    id: 'sn-1',
-    leagueId: 'lg-1',
-    name: 'Spring',
-    seasonYear: 2026,
-    seasonNumber: 1,
-    status: 'active',
-  },
-  {
+  makeSeason({ id: 'sn-1', leagueId: 'lg-1', name: 'Spring', seasonYear: 2026 }),
+  makeSeason({
     id: 'sn-0',
     leagueId: 'lg-1',
     name: 'Fall',
     seasonYear: 2025,
-    seasonNumber: 1,
     status: 'completed',
-  },
+  }),
 ];
 const seasonsForLg2: Season[] = [
-  {
-    id: 'sn-2',
-    leagueId: 'lg-2',
-    name: 'Shadow',
-    seasonYear: 2026,
-    seasonNumber: 1,
-    status: 'active',
-  },
+  makeSeason({ id: 'sn-2', leagueId: 'lg-2', name: 'Shadow', seasonYear: 2026 }),
 ];
 
 describe('LeagueSeasonPicker', () => {

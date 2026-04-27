@@ -42,7 +42,12 @@ describe('CleanSeasonSection', () => {
   });
 
   it('cleans the selected season after confirm', async () => {
-    cleanMock.mockResolvedValue({ message: 'Season cleaned' });
+    cleanMock.mockResolvedValue({
+      scoresDeleted: 12,
+      resultsDeleted: 3,
+      standingsDeleted: 5,
+      tournamentsReset: 2,
+    });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     const user = userEvent.setup();
@@ -58,7 +63,11 @@ describe('CleanSeasonSection', () => {
     await waitFor(() => {
       expect(cleanMock).toHaveBeenCalledWith('sn-1');
     });
-    expect(await screen.findByText(/Season cleaned/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        /Cleaned 12 scores, 3 results, 5 standings; reset 2 tournaments\./,
+      ),
+    ).toBeInTheDocument();
   });
 
   it('does nothing when the user cancels the confirm dialog', async () => {
