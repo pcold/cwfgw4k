@@ -27,9 +27,9 @@ vi.mock('@/shared/api/client', () => ({
     }),
     previewRoster: vi.fn().mockResolvedValue({
       totalPicks: 0,
-      exactMatches: 0,
-      ambiguous: 0,
-      noMatch: 0,
+      matchedCount: 0,
+      ambiguousCount: 0,
+      unmatchedCount: 0,
       teams: [],
     }),
     confirmRoster: vi.fn().mockResolvedValue({

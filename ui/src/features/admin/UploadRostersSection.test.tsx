@@ -29,9 +29,9 @@ async function uploadRosterFile(user: ReturnType<typeof userEvent.setup>, conten
 function samplePreview(): RosterPreview {
   return {
     totalPicks: 3,
-    exactMatches: 1,
-    ambiguous: 1,
-    noMatch: 1,
+    matchedCount: 1,
+    ambiguousCount: 1,
+    unmatchedCount: 1,
     teams: [
       {
         teamNumber: 1,
@@ -39,33 +39,27 @@ function samplePreview(): RosterPreview {
         picks: [
           {
             round: 1,
-            inputName: 'SCHEFFLER',
+            playerName: 'Scottie Scheffler',
             ownershipPct: 100,
-            matchStatus: 'exact',
-            espnId: '9478',
-            espnName: 'Scottie Scheffler',
-            suggestions: [],
+            match: { type: 'matched', golferId: 'g-9478', golferName: 'Scottie Scheffler' },
           },
           {
             round: 2,
-            inputName: 'SMITH',
+            playerName: 'Cam Smith',
             ownershipPct: 100,
-            matchStatus: 'ambiguous',
-            espnId: null,
-            espnName: null,
-            suggestions: [
-              { espnId: '100', name: 'Cameron Smith' },
-              { espnId: '200', name: 'Jordan Smith' },
-            ],
+            match: {
+              type: 'ambiguous',
+              candidates: [
+                { golferId: 'g-100', name: 'Cameron Smith' },
+                { golferId: 'g-200', name: 'Jordan Smith' },
+              ],
+            },
           },
           {
             round: 3,
-            inputName: 'NEWGUY',
+            playerName: 'Brand New',
             ownershipPct: 75,
-            matchStatus: 'no_match',
-            espnId: null,
-            espnName: null,
-            suggestions: [],
+            match: { type: 'no_match' },
           },
         ],
       },
@@ -74,12 +68,12 @@ function samplePreview(): RosterPreview {
 }
 
 describe('buildConfirmTeams', () => {
-  it('maps exact, ambiguous selection, and no_match picks correctly', () => {
+  it('maps matched, ambiguous selection, and no_match picks correctly', () => {
     const preview = samplePreview();
     const selections: Record<string, string> = {
-      '1|1|SCHEFFLER': '9478|Scottie Scheffler',
-      '1|2|SMITH': '100|Cameron Smith',
-      '1|3|NEWGUY': '',
+      '1|1|Scottie Scheffler': 'g-9478',
+      '1|2|Cam Smith': 'g-100',
+      '1|3|Brand New': '',
     };
     const teams = buildConfirmTeams(preview, selections);
     expect(teams).toEqual([
@@ -89,39 +83,59 @@ describe('buildConfirmTeams', () => {
         picks: [
           {
             round: 1,
-            playerName: 'SCHEFFLER',
             ownershipPct: 100,
-            espnId: '9478',
-            espnName: 'Scottie Scheffler',
+            assignment: { type: 'existing', golferId: 'g-9478' },
           },
           {
             round: 2,
-            playerName: 'SMITH',
             ownershipPct: 100,
-            espnId: '100',
-            espnName: 'Cameron Smith',
+            assignment: { type: 'existing', golferId: 'g-100' },
           },
           {
             round: 3,
-            playerName: 'NEWGUY',
             ownershipPct: 75,
-            espnId: null,
-            espnName: null,
+            assignment: { type: 'new', firstName: 'Brand', lastName: 'New' },
           },
         ],
       },
     ]);
   });
 
-  it('treats a "none" selection as create-new', () => {
+  it('treats a "none" selection as create-new with the input name split into first/last', () => {
     const preview = samplePreview();
     const selections: Record<string, string> = {
-      '1|1|SCHEFFLER': '9478|Scottie Scheffler',
-      '1|2|SMITH': 'none',
-      '1|3|NEWGUY': '',
+      '1|1|Scottie Scheffler': 'g-9478',
+      '1|2|Cam Smith': 'none',
+      '1|3|Brand New': '',
     };
     const teams = buildConfirmTeams(preview, selections);
-    expect(teams[0].picks[1]).toMatchObject({ espnId: null, espnName: null });
+    expect(teams[0].picks[1]).toMatchObject({
+      assignment: { type: 'new', firstName: 'Cam', lastName: 'Smith' },
+    });
+  });
+
+  it('puts the whole name in firstName when the input has no space', () => {
+    const preview: RosterPreview = {
+      totalPicks: 1,
+      matchedCount: 0,
+      ambiguousCount: 0,
+      unmatchedCount: 1,
+      teams: [
+        {
+          teamNumber: 1,
+          teamName: 'BROWN',
+          picks: [
+            { round: 1, playerName: 'Madonna', ownershipPct: 100, match: { type: 'no_match' } },
+          ],
+        },
+      ],
+    };
+    const teams = buildConfirmTeams(preview, { '1|1|Madonna': '' });
+    expect(teams[0].picks[0].assignment).toEqual({
+      type: 'new',
+      firstName: 'Madonna',
+      lastName: '',
+    });
   });
 });
 
@@ -174,11 +188,10 @@ describe('UploadRostersSection', () => {
     await user.click(screen.getByRole('button', { name: /Match Players with ESPN/i }));
 
     expect(await screen.findByText(/Exact Matches:/)).toBeInTheDocument();
-    expect(screen.getByText('Scottie Scheffler')).toBeInTheDocument();
+    expect(screen.getAllByText('Scottie Scheffler').length).toBeGreaterThan(0);
 
-    // The ambiguous dropdown
-    const dropdown = screen.getByLabelText(/ESPN match for SMITH/i);
-    await user.selectOptions(dropdown, '100|Cameron Smith');
+    const dropdown = screen.getByLabelText(/Golfer match for Cam Smith/i);
+    await user.selectOptions(dropdown, 'g-100');
 
     await user.click(screen.getByRole('button', { name: /Confirm & Create Teams/i }));
 
@@ -188,9 +201,9 @@ describe('UploadRostersSection', () => {
     const args = confirmRosterMock.mock.calls[0][0];
     expect(args.seasonId).toBe('sn-1');
     expect(args.teams[0].picks[1]).toMatchObject({
-      playerName: 'SMITH',
-      espnId: '100',
-      espnName: 'Cameron Smith',
+      round: 2,
+      ownershipPct: 100,
+      assignment: { type: 'existing', golferId: 'g-100' },
     });
 
     expect(await screen.findByText('Rosters Created')).toBeInTheDocument();

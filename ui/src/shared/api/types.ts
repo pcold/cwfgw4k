@@ -170,21 +170,24 @@ export interface SeasonImportResult {
   skipped: SkippedSeasonImportEntry[];
 }
 
-export interface RosterMatchSuggestion {
-  espnId: string;
+export interface GolferCandidate {
+  golferId: string;
   name: string;
 }
 
-export type RosterMatchStatus = 'exact' | 'ambiguous' | 'no_match';
+// Mirrors the backend's sealed PickMatch hierarchy
+// (com.cwfgw.admin.PickMatch). kotlinx.serialization emits a "type"
+// discriminator with @SerialName values matched/ambiguous/no_match.
+export type PickMatch =
+  | { type: 'matched'; golferId: string; golferName: string }
+  | { type: 'ambiguous'; candidates: GolferCandidate[] }
+  | { type: 'no_match' };
 
 export interface RosterPreviewPick {
   round: number;
-  inputName: string;
+  playerName: string;
   ownershipPct: number;
-  matchStatus: RosterMatchStatus;
-  espnId: string | null;
-  espnName: string | null;
-  suggestions: RosterMatchSuggestion[];
+  match: PickMatch;
 }
 
 export interface RosterPreviewTeam {
@@ -195,18 +198,23 @@ export interface RosterPreviewTeam {
 
 export interface RosterPreview {
   totalPicks: number;
-  exactMatches: number;
-  ambiguous: number;
-  noMatch: number;
+  matchedCount: number;
+  ambiguousCount: number;
+  unmatchedCount: number;
   teams: RosterPreviewTeam[];
 }
 
+// Mirrors the backend's sealed GolferAssignment
+// (com.cwfgw.admin.GolferAssignment). For new golfers the operator must
+// supply first/last; existing references the resolved golfer id.
+export type GolferAssignment =
+  | { type: 'existing'; golferId: string }
+  | { type: 'new'; firstName: string; lastName: string };
+
 export interface RosterConfirmPick {
   round: number;
-  playerName: string;
   ownershipPct: number;
-  espnId: string | null;
-  espnName: string | null;
+  assignment: GolferAssignment;
 }
 
 export interface RosterConfirmTeamInput {

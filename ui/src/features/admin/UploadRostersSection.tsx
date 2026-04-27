@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import type {
+  GolferAssignment,
   League,
   RosterConfirmResult,
   RosterConfirmTeamInput,
@@ -13,19 +14,19 @@ import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
 
 function pickKey(teamNumber: number, pick: RosterPreviewPick): string {
-  return `${teamNumber}|${pick.round}|${pick.inputName}`;
+  return `${teamNumber}|${pick.round}|${pick.playerName}`;
 }
+
+// Selections value is either a golferId (existing pick) or '' / 'none' for
+// "create new". Sentinels rather than null because <select> values are strings.
+const CREATE_NEW = 'none';
 
 function initialSelections(preview: RosterPreview): Record<string, string> {
   const out: Record<string, string> = {};
   for (const team of preview.teams) {
     for (const pick of team.picks) {
       const key = pickKey(team.teamNumber, pick);
-      if (pick.matchStatus === 'exact' && pick.espnId && pick.espnName) {
-        out[key] = `${pick.espnId}|${pick.espnName}`;
-      } else {
-        out[key] = '';
-      }
+      out[key] = pick.match.type === 'matched' ? pick.match.golferId : '';
     }
   }
   return out;
@@ -38,24 +39,30 @@ export function buildConfirmTeams(
   return preview.teams.map((team) => ({
     teamNumber: team.teamNumber,
     teamName: team.teamName,
-    picks: team.picks.map((pick) => {
-      const selected = selections[pickKey(team.teamNumber, pick)] ?? '';
-      let espnId: string | null = null;
-      let espnName: string | null = null;
-      if (selected && selected !== 'none') {
-        const [id, ...rest] = selected.split('|');
-        espnId = id;
-        espnName = rest.join('|') || null;
-      }
-      return {
-        round: pick.round,
-        playerName: pick.inputName,
-        ownershipPct: pick.ownershipPct,
-        espnId,
-        espnName,
-      };
-    }),
+    picks: team.picks.map((pick) => ({
+      round: pick.round,
+      ownershipPct: pick.ownershipPct,
+      assignment: assignmentFor(pick, selections[pickKey(team.teamNumber, pick)] ?? ''),
+    })),
   }));
+}
+
+function assignmentFor(pick: RosterPreviewPick, selected: string): GolferAssignment {
+  if (selected && selected !== CREATE_NEW) {
+    return { type: 'existing', golferId: selected };
+  }
+  const { firstName, lastName } = splitName(pick.playerName);
+  return { type: 'new', firstName, lastName };
+}
+
+function splitName(fullName: string): { firstName: string; lastName: string } {
+  const trimmed = fullName.trim();
+  const lastSpace = trimmed.lastIndexOf(' ');
+  if (lastSpace === -1) return { firstName: trimmed, lastName: '' };
+  return {
+    firstName: trimmed.slice(0, lastSpace),
+    lastName: trimmed.slice(lastSpace + 1),
+  };
 }
 
 function UploadRostersSection() {
@@ -289,12 +296,12 @@ function RosterReviewStep({
   const summary = useMemo(
     () => [
       { label: 'Total Picks', value: preview.totalPicks, color: 'text-white' },
-      { label: 'Exact Matches', value: preview.exactMatches, color: 'text-green-400' },
-      preview.ambiguous > 0
-        ? { label: 'Ambiguous', value: preview.ambiguous, color: 'text-yellow-400' }
+      { label: 'Exact Matches', value: preview.matchedCount, color: 'text-green-400' },
+      preview.ambiguousCount > 0
+        ? { label: 'Ambiguous', value: preview.ambiguousCount, color: 'text-yellow-400' }
         : null,
-      preview.noMatch > 0
-        ? { label: 'No Match', value: preview.noMatch, color: 'text-red-400' }
+      preview.unmatchedCount > 0
+        ? { label: 'No Match', value: preview.unmatchedCount, color: 'text-red-400' }
         : null,
     ],
     [preview],
@@ -323,37 +330,38 @@ function RosterReviewStep({
             <tbody>
               {team.picks.map((pick) => {
                 const key = pickKey(team.teamNumber, pick);
+                const match = pick.match;
                 return (
                   <tr key={key} className="border-t border-gray-700">
                     <td className="px-2 py-1.5 text-gray-400 w-8">R{pick.round}</td>
-                    <td className="px-2 py-1.5 font-mono">{pick.inputName}</td>
+                    <td className="px-2 py-1.5 font-mono">{pick.playerName}</td>
                     <td className="px-2 py-1.5 text-center w-10">
                       {pick.ownershipPct < 100 ? `${pick.ownershipPct}%` : null}
                     </td>
                     <td className="px-2 py-1.5 w-6 text-center">
-                      {pick.matchStatus === 'exact' ? (
+                      {match.type === 'matched' ? (
                         <span className="text-green-400" aria-label="exact match">
                           ✓
                         </span>
                       ) : null}
-                      {pick.matchStatus === 'ambiguous' ? (
+                      {match.type === 'ambiguous' ? (
                         <span className="text-yellow-400" aria-label="ambiguous match">
                           ?
                         </span>
                       ) : null}
-                      {pick.matchStatus === 'no_match' ? (
+                      {match.type === 'no_match' ? (
                         <span className="text-red-400" aria-label="no match">
                           ✗
                         </span>
                       ) : null}
                     </td>
                     <td className="px-2 py-1.5">
-                      {pick.matchStatus === 'exact' ? (
-                        <span className="text-green-400">{pick.espnName}</span>
+                      {match.type === 'matched' ? (
+                        <span className="text-green-400">{match.golferName}</span>
                       ) : null}
-                      {pick.matchStatus === 'ambiguous' ? (
+                      {match.type === 'ambiguous' ? (
                         <select
-                          aria-label={`ESPN match for ${pick.inputName}`}
+                          aria-label={`Golfer match for ${pick.playerName}`}
                           value={selections[key] ?? ''}
                           onChange={(e) =>
                             onSelectionChange(team.teamNumber, pick, e.target.value)
@@ -361,15 +369,15 @@ function RosterReviewStep({
                           className="bg-gray-700 border border-yellow-600 rounded px-2 py-1 text-xs"
                         >
                           <option value="">-- select player --</option>
-                          {pick.suggestions.map((s) => (
-                            <option key={s.espnId} value={`${s.espnId}|${s.name}`}>
-                              {s.name} ({s.espnId})
+                          {match.candidates.map((c) => (
+                            <option key={c.golferId} value={c.golferId}>
+                              {c.name}
                             </option>
                           ))}
-                          <option value="none">None of these (create new)</option>
+                          <option value={CREATE_NEW}>None of these (create new)</option>
                         </select>
                       ) : null}
-                      {pick.matchStatus === 'no_match' ? (
+                      {match.type === 'no_match' ? (
                         <span className="text-red-400 text-xs">Will create new golfer</span>
                       ) : null}
                     </td>
