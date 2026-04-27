@@ -124,11 +124,14 @@ private fun rosterEntry(
         isActive = true,
     )
 
+@Suppress("LongParameterList")
 private fun resultFixture(
     tournamentId: TournamentId,
     golferId: GolferId,
     position: Int?,
     scoreToPar: Int? = -5,
+    totalStrokes: Int? = 270,
+    rounds: List<Int> = emptyList(),
 ): TournamentResult =
     TournamentResult(
         id = TournamentResultId(UUID.randomUUID()),
@@ -136,12 +139,12 @@ private fun resultFixture(
         golferId = golferId,
         position = position,
         scoreToPar = scoreToPar,
-        totalStrokes = 270,
+        totalStrokes = totalStrokes,
         earnings = null,
-        round1 = null,
-        round2 = null,
-        round3 = null,
-        round4 = null,
+        round1 = rounds.getOrNull(0),
+        round2 = rounds.getOrNull(1),
+        round3 = rounds.getOrNull(2),
+        round4 = rounds.getOrNull(3),
         madeCut = position != null,
         pairKey = null,
     )
@@ -807,6 +810,41 @@ class WeeklyReportServiceSpec : FunSpec({
                 .value
         // ESPN gave nothing back → overlay degraded silently, base report returned with live flag still null.
         report.live shouldBe null
+    }
+
+    test("getReport (non-live) populates the leaderboard with round-by-round + total-strokes from persisted results") {
+        val masters = tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+        val winner = golferFixture("d01", "Scottie", "Scheffler")
+        val rosters = listOf(rosterEntry(TEAM_A.id, winner.id, draftRound = 1))
+        val winnerResult =
+            resultFixture(
+                tournamentId = MASTERS_ID,
+                golferId = winner.id,
+                position = 1,
+                scoreToPar = -12,
+                totalStrokes = 276,
+                rounds = listOf(68, 70, 69, 69),
+            )
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(masters),
+                initialTeams = listOf(TEAM_A, TEAM_B),
+                initialGolfers = listOf(winner),
+                initialRosters = rosters,
+                initialResults = listOf(winnerResult),
+            )
+
+        val report =
+            fixture.service.getReport(SEASON_ID, MASTERS_ID)
+                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
+                .value
+
+        val leader = report.liveLeaderboard.single { it.position == 1 }
+        leader.name shouldBe "Scottie Scheffler"
+        leader.roundScores shouldContainExactly listOf(68, 70, 69, 69)
+        leader.totalStrokes shouldBe 276
+        leader.rostered shouldBe true
+        leader.teamName shouldBe "BROWN"
     }
 
     test("getReport with live=true overlays projected ESPN earnings onto cells and sets live=true") {

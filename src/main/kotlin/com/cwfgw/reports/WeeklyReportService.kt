@@ -319,6 +319,12 @@ internal fun assembleWeeklyReport(inputs: WeeklyReportInputs): WeeklyReport {
             isTeamEvent = inputs.tournament.isTeamEvent,
         )
     val sideBetDetail = buildSideBetDetail(derived.sideBetPerRound, inputs.teams, inputs.allRosters, derived.golferMap)
+    val leaderboard =
+        buildPersistedLeaderboard(
+            results = inputs.results,
+            golferMap = derived.golferMap,
+            teamsByGolfer = teamNamesByGolfer(inputs.allRosters, inputs.teams),
+        )
 
     return WeeklyReport(
         tournament = buildTournamentInfo(inputs.tournament),
@@ -326,8 +332,44 @@ internal fun assembleWeeklyReport(inputs: WeeklyReportInputs): WeeklyReport {
         undraftedTopTens = undraftedTopTens,
         sideBetDetail = sideBetDetail,
         standingsOrder = buildStandingsOrder(teamColumns),
+        liveLeaderboard = leaderboard,
     )
 }
+
+private fun teamNamesByGolfer(
+    rosters: List<RosterEntry>,
+    teams: List<Team>,
+): Map<GolferId, String> {
+    val nameByTeam = teams.associate { it.id to it.teamName }
+    return rosters
+        .groupBy { it.golferId }
+        .mapValues { (_, entries) -> entries.mapNotNull { nameByTeam[it.teamId] }.joinToString(" / ") }
+}
+
+internal fun buildPersistedLeaderboard(
+    results: List<TournamentResult>,
+    golferMap: Map<GolferId, Golfer>,
+    teamsByGolfer: Map<GolferId, String>,
+): List<LiveLeaderboardEntry> =
+    results
+        .filter { it.position != null }
+        .sortedBy { it.position }
+        .map { result ->
+            val golfer = golferMap[result.golferId]
+            val name = golfer?.let { "${it.firstName} ${it.lastName}" } ?: "?"
+            val rounds = listOfNotNull(result.round1, result.round2, result.round3, result.round4)
+            val teamName = teamsByGolfer[result.golferId]
+            LiveLeaderboardEntry(
+                name = name,
+                position = result.position ?: 0,
+                scoreToPar = result.scoreToPar?.let(::formatScoreToPar),
+                rostered = teamName != null,
+                teamName = teamName,
+                pairKey = result.pairKey,
+                roundScores = rounds,
+                totalStrokes = result.totalStrokes,
+            )
+        }
 
 /**
  * Pre-derived lookups + per-team aggregates the team-column builder
