@@ -351,11 +351,10 @@ private fun SideBetRoundSnapshot.foldLive(
     val updated =
         allRosters.filter { it.draftRound == round }.fold(teamCumulativeEarnings) { acc, entry ->
             val live = liveByGolfer[entry.teamId to entry.golferId] ?: return@fold acc
-            val adjusted = live.multiply(entry.ownershipPct).divide(BigDecimal(OWNERSHIP_DENOMINATOR))
-            if (adjusted.signum() == 0) {
+            if (live.signum() == 0) {
                 acc
             } else {
-                acc + (entry.teamId to (acc[entry.teamId] ?: BigDecimal.ZERO).add(adjusted))
+                acc + (entry.teamId to (acc[entry.teamId] ?: BigDecimal.ZERO).add(live))
             }
         }
     return copy(teamCumulativeEarnings = updated)
@@ -552,10 +551,8 @@ internal fun updateSideBetDetailWith(
                     teams.firstOrNull { it.teamId == entry.teamId }
                         ?.cells?.firstOrNull { it.round == round.round }
                 val gid = cell?.golferId
-                val ownership = cell?.ownershipPct ?: BigDecimal(100)
                 val liveEarnings = if (gid == null) BigDecimal.ZERO else earningsLookup(entry.teamId, gid)
-                val adjusted = liveEarnings.multiply(ownership).divide(BigDecimal(OWNERSHIP_DENOMINATOR))
-                entry.copy(cumulativeEarnings = entry.cumulativeEarnings.add(adjusted))
+                entry.copy(cumulativeEarnings = entry.cumulativeEarnings.add(liveEarnings))
             }
         round.copy(teams = recomputeSideBetPayouts(updatedEntries, numTeams, sideBetPerTeam))
     }
@@ -573,4 +570,3 @@ private inline fun <T, E> Result<T, E>.onErr(action: (E) -> Unit): Result<T, E> 
 
 private const val STATUS_COMPLETED = "completed"
 private const val TOP_TEN = 10
-private const val OWNERSHIP_DENOMINATOR = 100

@@ -439,6 +439,43 @@ class WeeklyReportServiceSpec : FunSpec({
         }
     }
 
+    test("sideBetDetail does not double-apply ownership for partial-share picks") {
+        // Two teams split a single golfer 50/50 in the R5 side-bet round. The
+        // golfer scored a $20 base payout this week, so each team's persisted
+        // FantasyScore.points is already $10 (basePayout * 0.5). The side-bet
+        // cumulative for each team should be $10
+        val masters = tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+        val shared = golferFixture("d01", "Scottie", "Scheffler")
+        val rosters =
+            listOf(
+                rosterEntry(TEAM_A.id, shared.id, draftRound = 5, ownershipPct = BigDecimal(50)),
+                rosterEntry(TEAM_B.id, shared.id, draftRound = 5, ownershipPct = BigDecimal(50)),
+            )
+        val scores =
+            listOf(
+                scoreFixture(TEAM_A.id, MASTERS_ID, shared.id, points = BigDecimal(10), position = 1),
+                scoreFixture(TEAM_B.id, MASTERS_ID, shared.id, points = BigDecimal(10), position = 1),
+            )
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(masters),
+                initialTeams = listOf(TEAM_A, TEAM_B),
+                initialGolfers = listOf(shared),
+                initialRosters = rosters,
+                initialResults = listOf(resultFixture(MASTERS_ID, shared.id, position = 1)),
+                initialScores = scores,
+            )
+
+        val report =
+            fixture.service.getReport(SEASON_ID, MASTERS_ID)
+                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
+                .value
+
+        val r5 = report.sideBetDetail.single { it.round == 5 }
+        r5.teams.single { it.teamId == TEAM_A.id }.cumulativeEarnings.compareTo(BigDecimal(10)) shouldBe 0
+        r5.teams.single { it.teamId == TEAM_B.id }.cumulativeEarnings.compareTo(BigDecimal(10)) shouldBe 0
+    }
+
     test("getReport's `previous` field accumulates weekly +/- from prior completed tournaments") {
         val sony = tournamentFixture(SONY_ID, "Sony Open", "2026-01-15")
         val masters = tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")

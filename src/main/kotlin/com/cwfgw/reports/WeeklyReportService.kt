@@ -812,7 +812,7 @@ internal fun buildSideBetPerRound(
                     allScores
                         .filter { it.teamId == entry.teamId && it.golferId == entry.golferId }
                         .sumPoints()
-                entry.teamId to total.multiply(entry.ownershipPct).divide(BigDecimal(OWNERSHIP_DENOMINATOR))
+                entry.teamId to total
             }
         val payouts =
             if (teamTotals.isEmpty() || teamTotals.values.all { it.signum() == 0 }) {
@@ -869,7 +869,6 @@ private fun List<FantasyScore>.sumPoints(): BigDecimal = fold(BigDecimal.ZERO) {
 
 private const val ROUNDS_PER_REPORT = 8
 private const val TOP_TEN_CUTOFF = 10
-private const val OWNERSHIP_DENOMINATOR = 100
 
 // Sentinel position fed to [PayoutTable.tieSplitPayout] when the result has no position —
 // past the payout zone so the table returns 0.
