@@ -124,9 +124,10 @@ describe('WeeklyReportPage', () => {
   });
 
   it('defaults to the earliest unfinalized tournament and switches to the season report when All Tournaments is selected', async () => {
+    const inProgress = { ...tournament, status: 'in_progress' };
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
-    tournamentsMock.mockResolvedValue([tournament]);
+    tournamentsMock.mockResolvedValue([inProgress]);
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
     tournamentReportMock.mockResolvedValue(buildReport('Sample Open', 'tn-1'));
 
@@ -141,6 +142,19 @@ describe('WeeklyReportPage', () => {
 
     expect(await screen.findByRole('heading', { name: /All Tournaments/i })).toBeInTheDocument();
     expect(seasonReportMock).toHaveBeenCalledWith('sn-1', true);
+  });
+
+  it('defaults to All Tournaments when every tournament is already completed', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([tournament]);
+    seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
+
+    renderWithProviders(<WeeklyReportPage />);
+
+    expect(await screen.findByRole('heading', { name: /All Tournaments/i })).toBeInTheDocument();
+    expect(seasonReportMock).toHaveBeenCalledWith('sn-1', true);
+    expect(tournamentReportMock).not.toHaveBeenCalled();
   });
 
   it('shows an empty state when there are no leagues', async () => {

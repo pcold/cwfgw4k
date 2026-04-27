@@ -126,6 +126,24 @@ describe('ScoreboardPage', () => {
     });
   });
 
+  it('defaults to the most recent tournament when every event is completed', async () => {
+    const earlier = { ...completedTournament, id: 'tn-early', name: 'Early Open', week: '1' };
+    const latest = { ...completedTournament, id: 'tn-latest', name: 'Latest Open', week: '20' };
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([earlier, latest]);
+    tournamentReportMock.mockImplementation((_s, id) =>
+      Promise.resolve(buildReport(id === 'tn-latest' ? 'Latest Open' : 'Early Open', id)),
+    );
+
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    expect(await screen.findByRole('heading', { name: /Latest Open/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-latest', true);
+    });
+  });
+
   it('refetches the report when the user picks a different tournament', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);

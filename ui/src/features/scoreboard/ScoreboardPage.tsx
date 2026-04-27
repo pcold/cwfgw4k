@@ -6,7 +6,7 @@ import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { mutationError } from '@/shared/util/mutationError';
-import { earliestUnfinalized, tournamentLabel } from '@/shared/util/tournament';
+import { defaultScoreboardTournament, tournamentLabel } from '@/shared/util/tournament';
 import type { WeeklyReport } from '@/shared/api/types';
 import ScoreboardView from './ScoreboardView';
 
@@ -25,14 +25,14 @@ function ScoreboardPage() {
 
   const tournaments = tournamentsQuery.data ?? [];
 
-  // Derive the active tournament rather than syncing it via useEffect: the user's
-  // explicit choice wins if it's still in the loaded set, otherwise fall back to
-  // the earliest unfinalized one. This naturally handles season changes and the
-  // initial-load case without a sync-state-to-state effect.
+  // User's explicit pick wins if it's still in the loaded set; otherwise
+  // defaultScoreboardTournament picks the right one (earliest unfinalized,
+  // or the most recent if everything is completed). Derived rather than
+  // synced via effect so season changes don't need a separate handler.
   const tournamentId =
     userTournamentId !== null && tournaments.some((t) => t.id === userTournamentId)
       ? userTournamentId
-      : earliestUnfinalized(tournaments);
+      : defaultScoreboardTournament(tournaments);
 
   const reportQuery = useQuery({
     queryKey: ['tournamentReport', seasonId, tournamentId, live],
