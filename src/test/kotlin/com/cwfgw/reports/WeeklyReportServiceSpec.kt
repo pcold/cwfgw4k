@@ -190,6 +190,7 @@ private class Fixture(
     val teamRepo = FakeTeamRepository(initialTeams = initialTeams, initialRoster = initialRosters)
     val golferRepo = FakeGolferRepository(initial = initialGolfers)
     val scoringRepo = FakeScoringRepository(initialScores = initialScores)
+    val espnClient = FakeEspnClient(tournamentsByDate = espnByDate)
     val service: WeeklyReportService
 
     init {
@@ -216,7 +217,7 @@ private class Fixture(
             )
         val espnService =
             EspnService(
-                client = FakeEspnClient(tournamentsByDate = espnByDate),
+                client = espnClient,
                 tournamentService = tournamentService,
                 golferService = golferService,
                 teamService = teamService,
@@ -845,6 +846,22 @@ class WeeklyReportServiceSpec : FunSpec({
         leader.totalStrokes shouldBe 276
         leader.rostered shouldBe true
         leader.teamName shouldBe "BROWN"
+    }
+
+    test("getReport with live=true on a completed tournament skips the ESPN call entirely") {
+        val mastersDone =
+            tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+                .copy(status = TournamentStatus.Completed, pgaTournamentId = "espn-masters")
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(mastersDone),
+                initialTeams = listOf(TEAM_A, TEAM_B),
+            )
+
+        fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true)
+            .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
+
+        fixture.espnClient.fetchCalls shouldBe emptyList<LocalDate>()
     }
 
     test("getReport with live=true overlays projected ESPN earnings onto cells and sets live=true") {

@@ -11,6 +11,7 @@ import com.cwfgw.seasons.SeasonRules
 import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
+import com.cwfgw.tournaments.TournamentStatus
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.math.BigDecimal
 
@@ -109,6 +110,10 @@ class LiveOverlayService(private val espnService: EspnService) {
         selectedTournament: Tournament,
         tournamentId: TournamentId,
     ): WeeklyReport {
+        // Finalized tournaments are immutable from the report's perspective;
+        // hitting ESPN can't change the numbers and just costs latency / quota.
+        if (selectedTournament.status == TournamentStatus.Completed) return baseReport
+
         val withPrior =
             priorNonCompleted.sortedWith(tournamentOrdering)
                 .fold(baseReport) { acc, prior ->
@@ -118,7 +123,6 @@ class LiveOverlayService(private val espnService: EspnService) {
                     val matched = matchPreview(previews, prior) ?: return@fold acc
                     overlayPriorLivePreview(acc, matched, rules)
                 }
-        if (selectedTournament.status.value == STATUS_COMPLETED) return withPrior
 
         val previews =
             fetchPreviewsOrLog(seasonId, selectedTournament.startDate, "live overlay $tournamentId")
@@ -553,5 +557,4 @@ private inline fun <T, E> Result<T, E>.onErr(action: (E) -> Unit): Result<T, E> 
     return this
 }
 
-private const val STATUS_COMPLETED = "completed"
 private const val TOP_TEN = 10
