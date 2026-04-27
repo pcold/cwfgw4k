@@ -125,7 +125,7 @@ Body shape: `{ "status": "ok" | "degraded", "service": "cwfgw", "database": "con
 | GET    | `/api/v1/seasons?league_id=&year=`    | No   | List seasons; filters are optional UUIDs / ints                                    |
 | GET    | `/api/v1/seasons/{id}`                | No   | Get one season                                                                     |
 | GET    | `/api/v1/seasons/{id}/rules`          | No   | Get the season's `SeasonRules` (payouts, tie floor, side bet rounds + amount)      |
-| POST   | `/api/v1/seasons`                     | Yes  | Create a season                                                                    |
+| POST   | `/api/v1/seasons`                     | Yes  | Create a season. Body accepts an optional `rules: SeasonRules` — when supplied, the side tables for payouts + side-bet rounds are populated atomically with the seasons row, and the rules' `tie_floor`/`side_bet_amount` override the top-level fields |
 | PUT    | `/api/v1/seasons/{id}`                | Yes  | Partial update (`status`, `name`, `max_teams`, `tie_floor`, `side_bet_amount`)     |
 | POST   | `/api/v1/seasons/{sid}/finalize`      | Yes  | Lock the season as completed (every tournament must already be `completed`)        |
 | POST   | `/api/v1/seasons/{sid}/clean-results` | Yes  | Destructive: wipe all scores/results/standings + revert every tournament to upcoming. Returns deletion counts. |
@@ -231,6 +231,24 @@ property names; on the wire they're snake-cased.
 data class ErrorBody(val error: String)
 ```
 
+### User
+
+Returned by `POST /api/v1/auth/login` (200) and `GET /api/v1/auth/me`
+(200). Both endpoints respond with 401 + `ErrorBody` when there is no
+authenticated session — clients should treat 401 from `/auth/me` as the
+"not logged in" signal rather than an error.
+
+```kotlin
+enum class UserRole { Admin, User }   // serialized as "admin" / "user"
+
+data class User(
+    val id: UserId,
+    val username: String,
+    val role: UserRole,
+    val createdAt: Instant,
+)
+```
+
 ### Tournament
 
 ```kotlin
@@ -274,7 +292,8 @@ data class Season(
     val seasonYear: Int,
     val seasonNumber: Int,
     val status: String,           // still stringly-typed; cleanup pending
-    val sideBetAmount: BigDecimal?,
+    val tieFloor: BigDecimal,
+    val sideBetAmount: BigDecimal,
     val maxTeams: Int,
     val createdAt: Instant,
     val updatedAt: Instant,
@@ -285,6 +304,21 @@ data class SeasonRules(
     val tieFloor: BigDecimal,      // per-player floor when ties span the payout-zone tail
     val sideBetRounds: List<Int>,  // [5, 6, 7, 8] by default
     val sideBetAmount: BigDecimal,
+)
+
+// POST /api/v1/seasons body. When `rules` is supplied the repo
+// transactionally inserts the seasons row + per-position payouts +
+// per-round side-bet entries; rules' tie_floor / side_bet_amount win
+// over the top-level flat fields.
+data class CreateSeasonRequest(
+    val leagueId: LeagueId,
+    val name: String,
+    val seasonYear: Int,
+    val seasonNumber: Int? = null,
+    val maxTeams: Int? = null,
+    val tieFloor: BigDecimal? = null,
+    val sideBetAmount: BigDecimal? = null,
+    val rules: SeasonRules? = null,
 )
 ```
 
