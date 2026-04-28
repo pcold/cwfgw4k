@@ -241,6 +241,16 @@ describe('api client', () => {
     });
   });
 
+  it('authMe() rethrows non-401 errors instead of swallowing them', async () => {
+    fetchMock.mockResolvedValueOnce(new Response('boom', { status: 500, statusText: 'ISE' }));
+    const err = await api.authMe().then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).status).toBe(500);
+  });
+
   it('logout() POSTs and tolerates an empty 204 response', async () => {
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
     await expect(api.logout()).resolves.toBeUndefined();
@@ -257,5 +267,199 @@ describe('api client', () => {
     expect((call[1] as RequestInit).method).toBe('POST');
     expect((call[1] as RequestInit).body).toBeUndefined();
     expect(result).toEqual({ message: 'Reset complete' });
+  });
+
+  it('seasonRules() fetches the rules endpoint for the season', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({}));
+    await api.seasonRules('sn-1');
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/seasons/sn-1/rules');
+  });
+
+  it('tournaments() url-encodes the season id', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson([]));
+    await api.tournaments('sn/1 a');
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/tournaments?season_id=sn%2F1%20a');
+  });
+
+  it('tournamentReport() appends live=true only when requested', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(mockJson({})));
+    await api.tournamentReport('sn-1', 'tn-1', false);
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/seasons/sn-1/report/tn-1');
+    await api.tournamentReport('sn-1', 'tn-1', true);
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/seasons/sn-1/report/tn-1?live=true');
+  });
+
+  it('golferHistory() fetches the golfer-history endpoint', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({}));
+    await api.golferHistory('sn-1', 'g-1');
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/seasons/sn-1/golfer/g-1/history');
+  });
+
+  it('updateTournament() PUTs a snake_case body and url-encodes the id', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({ id: 'tn-1', payout_multiplier: 2 }));
+    await api.updateTournament('tn/1', { payoutMultiplier: 2 });
+    const call = fetchMock.mock.calls[0];
+    expect(call[0]).toBe('/api/v1/tournaments/tn%2F1');
+    expect((call[1] as RequestInit).method).toBe('PUT');
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({ payout_multiplier: 2 });
+  });
+
+  it('updateTournament() surfaces the server-supplied error message on PUT failure', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'cannot edit completed' }), {
+        status: 409,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const err = await api.updateTournament('tn-1', { payoutMultiplier: 2 }).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).status).toBe(409);
+    expect((err as ApiError).message).toBe('cannot edit completed');
+  });
+
+  it('importSeasonSchedule() POSTs the date range with the season in the path', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({ created: [], skipped: [] }));
+    await api.importSeasonSchedule({
+      seasonId: 'sn 1',
+      startDate: '2026-01-01',
+      endDate: '2026-04-01',
+    });
+    const call = fetchMock.mock.calls[0];
+    expect(call[0]).toBe('/api/v1/admin/seasons/sn%201/upload');
+    expect((call[1] as RequestInit).method).toBe('POST');
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+      start_date: '2026-01-01',
+      end_date: '2026-04-01',
+    });
+  });
+
+  it('previewRoster() POSTs the raw TSV body as text/plain', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockJson({ teams: [], total_picks: 0, matched_count: 0, ambiguous_count: 0, unmatched_count: 0 }),
+    );
+    const tsv = 'team_number\tteam_name\tround\tplayer_name\townership_pct\n1\tBROWN\t1\tScottie Scheffler\t';
+    await api.previewRoster(tsv);
+    const call = fetchMock.mock.calls[0];
+    expect(call[0]).toBe('/api/v1/admin/roster/preview');
+    expect((call[1] as RequestInit).headers).toEqual({ 'Content-Type': 'text/plain' });
+    expect((call[1] as RequestInit).body).toBe(tsv);
+  });
+
+  it('previewRoster() surfaces the server error on a 400 response', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'header invalid' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const err = await api.previewRoster('garbage').then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect((err as ApiError).message).toBe('header invalid');
+  });
+
+  it('confirmRoster() POSTs a snake_case envelope including the discriminated assignment', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({ teams_created: 0, golfers_created: 0, teams: [] }));
+    await api.confirmRoster({
+      seasonId: 'sn-1',
+      teams: [
+        {
+          teamNumber: 1,
+          teamName: 'BROWN',
+          picks: [
+            {
+              round: 1,
+              ownershipPct: 75,
+              assignment: { type: 'existing', golferId: 'g-1' },
+            },
+          ],
+        },
+      ],
+    });
+    const body = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body));
+    expect(body).toEqual({
+      season_id: 'sn-1',
+      teams: [
+        {
+          team_number: 1,
+          team_name: 'BROWN',
+          picks: [
+            {
+              round: 1,
+              ownership_pct: 75,
+              assignment: { type: 'existing', golfer_id: 'g-1' },
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('finalizeTournament() POSTs to the finalize path and returns the parsed body', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({ id: 'tn-7', name: 'Sony', status: 'completed' }));
+    const result = await api.finalizeTournament('tn-7');
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/tournaments/tn-7/finalize',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(result).toMatchObject({ id: 'tn-7', status: 'completed' });
+  });
+
+  it('cleanSeasonResults() returns the deletion counts from the body', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockJson({
+        scores_deleted: 12,
+        results_deleted: 3,
+        standings_deleted: 5,
+        tournaments_reset: 2,
+      }),
+    );
+    const result = await api.cleanSeasonResults('sn-1');
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/seasons/sn-1/clean-results',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(result).toEqual({
+      scoresDeleted: 12,
+      resultsDeleted: 3,
+      standingsDeleted: 5,
+      tournamentsReset: 2,
+    });
+  });
+
+  it('deleteSeason() DELETEs the season path and url-encodes the id', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await expect(api.deleteSeason('sn 1')).resolves.toBeUndefined();
+    const call = fetchMock.mock.calls[0];
+    expect(call[0]).toBe('/api/v1/seasons/sn%201');
+    expect((call[1] as RequestInit).method).toBe('DELETE');
+  });
+
+  it('deleteSeason() surfaces a server-supplied error message', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'season has tournaments' }), {
+        status: 409,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const err = await api.deleteSeason('sn-1').then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect((err as ApiError).status).toBe(409);
+    expect((err as ApiError).message).toBe('season has tournaments');
+  });
+
+  it('deleteSeason() falls back to the status line when the error body is not JSON', async () => {
+    fetchMock.mockResolvedValueOnce(new Response('plain text whoops', { status: 500, statusText: 'Boom' }));
+    const err = await api.deleteSeason('sn-1').then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect((err as ApiError).message).toBe('500 Boom');
   });
 });
