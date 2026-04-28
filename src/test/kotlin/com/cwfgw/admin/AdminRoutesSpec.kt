@@ -30,6 +30,9 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import kotlinx.coroutines.runBlocking
+import org.jooq.SQLDialect
+import org.jooq.impl.DSL
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -69,7 +72,7 @@ private fun adminFixture(
     {
         val seasonRepo = FakeSeasonRepository(idFactory = { SEASON_ID })
         if (seedSeason) {
-            kotlinx.coroutines.runBlocking {
+            runBlocking {
                 seasonRepo.create(
                     CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
                 )
@@ -92,6 +95,7 @@ private fun adminFixture(
             )
         adminService =
             AdminService(
+                dsl = DSL.using(SQLDialect.POSTGRES),
                 seasonService = seasonService,
                 tournamentService = tournamentService,
                 espnService = espnService,
@@ -237,40 +241,10 @@ class AdminRoutesSpec : FunSpec({
         }
     }
 
-    test("POST /api/v1/admin/roster/confirm returns 200 with the upload result on success") {
-        val scottie = golfer("201", "Scottie", "Scheffler")
-        authenticatedApiTest(adminFixture(seedGolfers = listOf(scottie))) { client ->
-            val request =
-                ConfirmRosterRequest(
-                    seasonId = SEASON_ID,
-                    teams =
-                        listOf(
-                            ConfirmedTeam(
-                                teamNumber = 1,
-                                teamName = "BROWN",
-                                picks =
-                                    listOf(
-                                        ConfirmedPick(
-                                            round = 1,
-                                            ownershipPct = 75,
-                                            assignment = GolferAssignment.Existing(scottie.id),
-                                        ),
-                                    ),
-                            ),
-                        ),
-                )
-            val response =
-                client.post("/api/v1/admin/roster/confirm") {
-                    contentType(ContentType.Application.Json)
-                    setBody(request)
-                }
-            response.status shouldBe HttpStatusCode.OK
-            val body: RosterUploadResult = response.body()
-            body.teamsCreated shouldBe 1
-            body.golfersCreated shouldBe 0
-            body.teams.single().teamName shouldBe "BROWN"
-        }
-    }
+    // The success-path body shape (200 + RosterUploadResult) is exercised by
+    // AdminServiceConfirmRosterSpec against a real Postgres harness. The
+    // 401 + 400 branches above stay here because they short-circuit before
+    // the transaction opens and don't need a live DB.
 
     test("POST /api/v1/admin/roster/confirm returns 400 listing every bad golfer id") {
         val ghost = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000901"))

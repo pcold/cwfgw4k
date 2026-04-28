@@ -102,7 +102,7 @@ internal fun buildServices(
     val scoringService =
         ScoringService(ScoringRepository(database.dsl), seasonService, tournamentService, teamService)
     val adminService =
-        AdminService(seasonService, tournamentService, espnService, golferService, teamService)
+        AdminService(database.dsl, seasonService, tournamentService, espnService, golferService, teamService)
     val liveOverlayService = LiveOverlayService(espnService)
     val weeklyReportService =
         WeeklyReportService(

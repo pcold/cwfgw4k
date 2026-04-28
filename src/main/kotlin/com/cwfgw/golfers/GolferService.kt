@@ -1,5 +1,7 @@
 package com.cwfgw.golfers
 
+import org.jooq.DSLContext
+
 class GolferService(private val repository: GolferRepository) {
     suspend fun list(
         activeOnly: Boolean,
@@ -10,7 +12,10 @@ class GolferService(private val repository: GolferRepository) {
 
     suspend fun findByPgaPlayerId(pgaPlayerId: String): Golfer? = repository.findByPgaPlayerId(pgaPlayerId)
 
-    suspend fun create(request: CreateGolferRequest): Golfer = repository.create(request)
+    suspend fun create(
+        request: CreateGolferRequest,
+        dsl: DSLContext? = null,
+    ): Golfer = repository.create(request, dsl)
 
     suspend fun update(
         id: GolferId,

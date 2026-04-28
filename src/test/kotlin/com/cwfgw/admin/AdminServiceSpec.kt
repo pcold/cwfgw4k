@@ -20,7 +20,6 @@ import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.inspectors.forAll
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -28,6 +27,10 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.runBlocking
+import org.jooq.DSLContext
+import org.jooq.SQLDialect
+import org.jooq.impl.DSL
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -65,7 +68,7 @@ private class Fixture(
     seedSeason: Boolean = true,
     calendar: List<EspnCalendarEntry> = emptyList(),
     upstreamError: EspnUpstreamException? = null,
-    seedGolfers: List<com.cwfgw.golfers.Golfer> = emptyList(),
+    seedGolfers: List<Golfer> = emptyList(),
 ) {
     val seasonRepo: FakeSeasonRepository
     val tournamentRepo = FakeTournamentRepository()
@@ -78,7 +81,7 @@ private class Fixture(
         seasonRepo =
             FakeSeasonRepository(idFactory = { seasonId })
         if (seedSeason) {
-            kotlinx.coroutines.runBlocking {
+            runBlocking {
                 seasonRepo.create(
                     CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
                 )
@@ -97,6 +100,7 @@ private class Fixture(
             )
         service =
             AdminService(
+                dsl = stubDsl(),
                 seasonService = SeasonService(seasonRepo),
                 tournamentService = tournamentService,
                 espnService = espnService,
@@ -105,6 +109,11 @@ private class Fixture(
             )
     }
 }
+
+// confirmRoster's transactional path is exercised in AdminServiceConfirmRosterSpec
+// against a real Postgres harness; the fake-fixture tests in this file only
+// reach validation-path branches that short-circuit before the transaction.
+private fun stubDsl(): DSLContext = DSL.using(SQLDialect.POSTGRES)
 
 class AdminServiceSpec : FunSpec({
 
@@ -219,7 +228,7 @@ class AdminServiceSpec : FunSpec({
         val fixture =
             Fixture(calendar = listOf(calendarEntry("e-1", "Sony Open", "2026-01-15T00:00Z")))
         // Pre-seed a tournament with the same pga id, simulating a prior import.
-        kotlinx.coroutines.runBlocking {
+        runBlocking {
             fixture.tournamentRepo.create(
                 CreateTournamentRequest(
                     pgaTournamentId = "e-1",
@@ -495,150 +504,11 @@ class AdminServiceSpec : FunSpec({
         result.unmatchedCount shouldBe 0
     }
 
-    test("confirmRoster creates a team and roster entries for picks bound to existing golfers") {
-        val scottie = golfer("201", "Scottie", "Scheffler")
-        val rory = golfer("202", "Rory", "McIlroy")
-        val fixture = Fixture(seedGolfers = listOf(scottie, rory))
-
-        val request =
-            ConfirmRosterRequest(
-                seasonId = SEASON_ID,
-                teams =
-                    listOf(
-                        ConfirmedTeam(
-                            teamNumber = 1,
-                            teamName = "BROWN",
-                            picks =
-                                listOf(
-                                    ConfirmedPick(
-                                        round = 1,
-                                        ownershipPct = 75,
-                                        assignment = GolferAssignment.Existing(scottie.id),
-                                    ),
-                                    ConfirmedPick(
-                                        round = 2,
-                                        ownershipPct = 50,
-                                        assignment = GolferAssignment.Existing(rory.id),
-                                    ),
-                                ),
-                        ),
-                    ),
-            )
-
-        val result =
-            fixture.service.confirmRoster(request)
-                .shouldBeInstanceOf<Result.Ok<RosterUploadResult>>()
-                .value
-
-        result.teamsCreated shouldBe 1
-        result.golfersCreated shouldBe 0
-        val createdTeam = result.teams.single()
-        createdTeam.teamName shouldBe "BROWN"
-        createdTeam.teamNumber shouldBe 1
-        createdTeam.ownerName shouldBe "BROWN"
-
-        val roster = fixture.teamRepo.getRoster(createdTeam.id)
-        roster shouldHaveSize 2
-        roster.map { it.golferId } shouldContainExactly listOf(scottie.id, rory.id)
-        roster.map { it.draftRound } shouldContainExactly listOf(1, 2)
-        roster.map { it.ownershipPct.toInt() } shouldContainExactly listOf(75, 50)
-        roster.forAll { it.acquiredVia shouldBe "draft" }
-    }
-
-    test("confirmRoster creates a new golfer for each New assignment and counts it in golfersCreated") {
-        val fixture = Fixture()
-
-        val request =
-            ConfirmRosterRequest(
-                seasonId = SEASON_ID,
-                teams =
-                    listOf(
-                        ConfirmedTeam(
-                            teamNumber = 1,
-                            teamName = "BROWN",
-                            picks =
-                                listOf(
-                                    ConfirmedPick(
-                                        round = 1,
-                                        ownershipPct = 80,
-                                        assignment =
-                                            GolferAssignment.New(
-                                                firstName = "Scottie",
-                                                lastName = "Scheffler",
-                                            ),
-                                    ),
-                                ),
-                        ),
-                    ),
-            )
-
-        val result =
-            fixture.service.confirmRoster(request)
-                .shouldBeInstanceOf<Result.Ok<RosterUploadResult>>()
-                .value
-
-        result.golfersCreated shouldBe 1
-        val createdGolfer = fixture.golferRepo.findAll(activeOnly = false, search = null).single()
-        createdGolfer.firstName shouldBe "Scottie"
-        createdGolfer.lastName shouldBe "Scheffler"
-        fixture.teamRepo.getRoster(result.teams.single().id).single().golferId shouldBe createdGolfer.id
-    }
-
-    test("confirmRoster handles mixed Existing + New assignments across multiple teams") {
-        val scottie = golfer("201", "Scottie", "Scheffler")
-        val fixture = Fixture(seedGolfers = listOf(scottie))
-
-        val request =
-            ConfirmRosterRequest(
-                seasonId = SEASON_ID,
-                teams =
-                    listOf(
-                        ConfirmedTeam(
-                            teamNumber = 1,
-                            teamName = "BROWN",
-                            picks =
-                                listOf(
-                                    ConfirmedPick(
-                                        round = 1,
-                                        ownershipPct = 75,
-                                        assignment = GolferAssignment.Existing(scottie.id),
-                                    ),
-                                    ConfirmedPick(
-                                        round = 2,
-                                        ownershipPct = 50,
-                                        assignment = GolferAssignment.New("Justin", "Rose"),
-                                    ),
-                                ),
-                        ),
-                        ConfirmedTeam(
-                            teamNumber = 2,
-                            teamName = "WOMBLE",
-                            picks =
-                                listOf(
-                                    ConfirmedPick(
-                                        round = 1,
-                                        ownershipPct = 25,
-                                        assignment = GolferAssignment.Existing(scottie.id),
-                                    ),
-                                    ConfirmedPick(
-                                        round = 2,
-                                        ownershipPct = 60,
-                                        assignment = GolferAssignment.New("Shane", "Lowry"),
-                                    ),
-                                ),
-                        ),
-                    ),
-            )
-
-        val result =
-            fixture.service.confirmRoster(request)
-                .shouldBeInstanceOf<Result.Ok<RosterUploadResult>>()
-                .value
-
-        result.teamsCreated shouldBe 2
-        result.golfersCreated shouldBe 2
-        result.teams.map { it.teamName } shouldContainExactly listOf("BROWN", "WOMBLE")
-    }
+    // confirmRoster's persisting path is exercised against a real Postgres
+    // harness in AdminServiceConfirmRosterSpec — fakes can't honestly model
+    // the all-or-nothing transactional semantics. The validation-path tests
+    // below stay on fakes since they short-circuit before the transaction
+    // opens.
 
     test("confirmRoster returns SeasonNotFound when the season id doesn't exist (and writes nothing)") {
         val fixture = Fixture(seedSeason = false, seedGolfers = listOf(golfer("201", "Scottie", "Scheffler")))

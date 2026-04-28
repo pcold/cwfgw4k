@@ -19,9 +19,15 @@ interface TeamRepository {
 
     suspend fun findById(id: TeamId): Team?
 
+    /**
+     * Insert a team. The optional [dsl] override lets the caller supply a
+     * transactional DSLContext (from `dsl.transactionCoroutine { config -> ... }`)
+     * so the write joins an outer multi-repo transaction.
+     */
     suspend fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
+        dsl: DSLContext? = null,
     ): Team
 
     suspend fun update(
@@ -31,9 +37,11 @@ interface TeamRepository {
 
     suspend fun getRoster(teamId: TeamId): List<RosterEntry>
 
+    /** [dsl] override behaves the same as on [create] — pass tx context to join an outer transaction. */
     suspend fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,
+        dsl: DSLContext? = null,
     ): RosterEntry
 
     suspend fun dropFromRoster(
@@ -79,10 +87,12 @@ private class JooqTeamRepository(private val dsl: DSLContext) : TeamRepository {
     override suspend fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
+        dsl: DSLContext?,
     ): Team =
         withContext(Dispatchers.IO) {
+            val ctx = dsl ?: this@JooqTeamRepository.dsl
             val inserted =
-                dsl.insertInto(TEAMS)
+                ctx.insertInto(TEAMS)
                     .set(TEAMS.SEASON_ID, seasonId.value)
                     .set(TEAMS.OWNER_NAME, request.ownerName)
                     .set(TEAMS.TEAM_NAME, request.teamName)
@@ -125,10 +135,12 @@ private class JooqTeamRepository(private val dsl: DSLContext) : TeamRepository {
     override suspend fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,
+        dsl: DSLContext?,
     ): RosterEntry =
         withContext(Dispatchers.IO) {
+            val ctx = dsl ?: this@JooqTeamRepository.dsl
             val inserted =
-                dsl.insertInto(TEAM_ROSTERS)
+                ctx.insertInto(TEAM_ROSTERS)
                     .set(TEAM_ROSTERS.TEAM_ID, teamId.value)
                     .set(TEAM_ROSTERS.GOLFER_ID, request.golferId.value)
                     .set(TEAM_ROSTERS.ACQUIRED_VIA, request.acquiredVia ?: DEFAULT_ACQUIRED_VIA)

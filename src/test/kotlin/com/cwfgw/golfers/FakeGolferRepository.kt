@@ -1,5 +1,6 @@
 package com.cwfgw.golfers
 
+import org.jooq.DSLContext
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -34,7 +35,10 @@ class FakeGolferRepository(
     override suspend fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
         store.values.firstOrNull { it.pgaPlayerId == pgaPlayerId }
 
-    override suspend fun create(request: CreateGolferRequest): Golfer {
+    override suspend fun create(
+        request: CreateGolferRequest,
+        dsl: DSLContext?,
+    ): Golfer {
         val golfer =
             Golfer(
                 id = idFactory(),

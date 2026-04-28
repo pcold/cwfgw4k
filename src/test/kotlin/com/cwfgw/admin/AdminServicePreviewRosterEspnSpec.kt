@@ -8,6 +8,8 @@ import com.cwfgw.espn.EspnTournament
 import com.cwfgw.espn.EspnUpstreamException
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
+import com.cwfgw.golfers.Golfer
+import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.result.Result
@@ -23,6 +25,10 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.runBlocking
+import org.jooq.SQLDialect
+import org.jooq.impl.DSL
+import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
 
@@ -42,7 +48,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         EspnCalendarEntry(id = "e-recent", label = "Recent Event", startDate = "2026-04-01T00:00Z")
 
     fun fixture(
-        seedGolfers: List<com.cwfgw.golfers.Golfer> = emptyList(),
+        seedGolfers: List<Golfer> = emptyList(),
         calendar: List<EspnCalendarEntry> = emptyList(),
         scoreboards: Map<LocalDate, List<EspnTournament>> = emptyMap(),
         upstreamError: EspnUpstreamException? = null,
@@ -50,7 +56,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         val seasonId = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000aaa"))
         val leagueId = LeagueId(UUID.fromString("00000000-0000-0000-0000-000000000111"))
         val seasonRepo = FakeSeasonRepository(idFactory = { seasonId })
-        kotlinx.coroutines.runBlocking {
+        runBlocking {
             seasonRepo.create(CreateSeasonRequest(leagueId = leagueId, name = "2026 Season", seasonYear = 2026))
         }
         val tournamentRepo = FakeTournamentRepository()
@@ -78,6 +84,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
             client = client,
             service =
                 AdminService(
+                    dsl = DSL.using(SQLDialect.POSTGRES),
                     seasonService = SeasonService(seasonRepo),
                     tournamentService = tournamentService,
                     espnService = espnService,
@@ -123,15 +130,15 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
 
     test("skips the ESPN fetch entirely when every pick already matches in DB") {
         val scottie =
-            com.cwfgw.golfers.Golfer(
-                id = com.cwfgw.golfers.GolferId(UUID.fromString("00000000-0000-0000-0000-000000000201")),
+            Golfer(
+                id = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000201")),
                 pgaPlayerId = "pga-201",
                 firstName = "Scottie",
                 lastName = "Scheffler",
                 country = null,
                 worldRanking = null,
                 active = true,
-                updatedAt = java.time.Instant.parse("2026-01-01T00:00:00Z"),
+                updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
             )
         val f = fixture(seedGolfers = listOf(scottie), calendar = listOf(recentCalendarEntry))
 
@@ -285,15 +292,15 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         // The unique constraint on golfers.pga_player_id would blow up if this filter
         // regressed; assert via row count to catch the regression in the fake too.
         val seeded =
-            com.cwfgw.golfers.Golfer(
-                id = com.cwfgw.golfers.GolferId(UUID.fromString("00000000-0000-0000-0000-000000000c01")),
+            Golfer(
+                id = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000c01")),
                 pgaPlayerId = "espn-9478",
                 firstName = "Scottie",
                 lastName = "Scheffler",
                 country = null,
                 worldRanking = null,
                 active = true,
-                updatedAt = java.time.Instant.parse("2026-01-01T00:00:00Z"),
+                updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
             )
         val f =
             fixture(

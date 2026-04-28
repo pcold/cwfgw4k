@@ -2,6 +2,7 @@ package com.cwfgw.teams
 
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
+import org.jooq.DSLContext
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -43,6 +44,7 @@ class FakeTeamRepository(
     override suspend fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
+        dsl: DSLContext?,
     ): Team {
         val now = clock()
         val team =
@@ -83,6 +85,7 @@ class FakeTeamRepository(
     override suspend fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,
+        dsl: DSLContext?,
     ): RosterEntry {
         val entry =
             RosterEntry(

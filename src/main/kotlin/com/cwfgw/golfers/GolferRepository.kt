@@ -19,7 +19,15 @@ interface GolferRepository {
 
     suspend fun findByPgaPlayerId(pgaPlayerId: String): Golfer?
 
-    suspend fun create(request: CreateGolferRequest): Golfer
+    /**
+     * Insert a golfer. Pass [dsl] (typically the inner DSLContext from
+     * `dsl.transactionCoroutine { config -> ... }`) to join an outer
+     * multi-repo transaction; null uses the constructor-captured DSL.
+     */
+    suspend fun create(
+        request: CreateGolferRequest,
+        dsl: DSLContext? = null,
+    ): Golfer
 
     suspend fun update(
         id: GolferId,
@@ -60,10 +68,14 @@ private class JooqGolferRepository(private val dsl: DSLContext) : GolferReposito
                 ?.let(::toGolfer)
         }
 
-    override suspend fun create(request: CreateGolferRequest): Golfer =
+    override suspend fun create(
+        request: CreateGolferRequest,
+        dsl: DSLContext?,
+    ): Golfer =
         withContext(Dispatchers.IO) {
+            val ctx = dsl ?: this@JooqGolferRepository.dsl
             val inserted =
-                dsl.insertInto(GOLFERS)
+                ctx.insertInto(GOLFERS)
                     .set(GOLFERS.PGA_PLAYER_ID, request.pgaPlayerId)
                     .set(GOLFERS.FIRST_NAME, request.firstName)
                     .set(GOLFERS.LAST_NAME, request.lastName)

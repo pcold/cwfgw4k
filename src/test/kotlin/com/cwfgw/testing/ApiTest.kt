@@ -45,6 +45,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
+import org.jooq.SQLDialect
+import org.jooq.impl.DSL
 
 @OptIn(ExperimentalSerializationApi::class)
 private val TEST_JSON =
@@ -87,6 +89,7 @@ class ApiFixture {
         )
     var adminService: AdminService =
         AdminService(
+            dsl = DSL.using(SQLDialect.POSTGRES),
             seasonService = seasonService,
             tournamentService = tournamentService,
             espnService = espnService,

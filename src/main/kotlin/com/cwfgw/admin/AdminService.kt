@@ -1,5 +1,6 @@
 package com.cwfgw.admin
 
+import com.cwfgw.espn.EspnCalendarEntry
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnUpstreamException
 import com.cwfgw.golfers.CreateGolferRequest
@@ -14,8 +15,11 @@ import com.cwfgw.teams.CreateTeamRequest
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamService
 import com.cwfgw.tournaments.CreateTournamentRequest
+import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentService
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.jooq.DSLContext
+import org.jooq.kotlin.coroutines.transactionCoroutine
 import java.math.BigDecimal
 import java.text.Normalizer
 import java.time.LocalDate
@@ -39,6 +43,7 @@ private val log = KotlinLogging.logger {}
  * the `skipped` list with a clear reason, never overwrites or duplicates.
  */
 class AdminService(
+    private val dsl: DSLContext,
     private val seasonService: SeasonService,
     private val tournamentService: TournamentService,
     private val espnService: EspnService,
@@ -60,7 +65,7 @@ class AdminService(
                 return Result.Err(AdminError.UpstreamUnavailable(e.status))
             }
 
-        val created = mutableListOf<com.cwfgw.tournaments.Tournament>()
+        val created = mutableListOf<Tournament>()
         val skipped = mutableListOf<SkippedEntry>()
         // ESPN's calendar response doesn't carry a "week N" concept, so we
         // synthesize one from chronologically-sorted in-range entries. Two
@@ -78,11 +83,11 @@ class AdminService(
     }
 
     private fun parseAndFilterByRange(
-        calendar: List<com.cwfgw.espn.EspnCalendarEntry>,
+        calendar: List<EspnCalendarEntry>,
         startDate: LocalDate,
         endDate: LocalDate,
         skipped: MutableList<SkippedEntry>,
-    ): List<Pair<com.cwfgw.espn.EspnCalendarEntry, LocalDate>> =
+    ): List<Pair<EspnCalendarEntry, LocalDate>> =
         calendar.mapNotNull { entry ->
             val parsed = parseEspnDate(entry.startDate)
             if (parsed == null) {
@@ -96,8 +101,8 @@ class AdminService(
         }
 
     private fun assignWeeks(
-        entries: List<Pair<com.cwfgw.espn.EspnCalendarEntry, LocalDate>>,
-    ): List<Triple<com.cwfgw.espn.EspnCalendarEntry, LocalDate, String>> {
+        entries: List<Pair<EspnCalendarEntry, LocalDate>>,
+    ): List<Triple<EspnCalendarEntry, LocalDate, String>> {
         val grouped =
             entries.sortedBy { it.second }
                 .groupBy { (_, date) -> date.weekKey() }
@@ -283,38 +288,44 @@ class AdminService(
     }
 
     /**
-     * Persist an operator-confirmed roster: create one Team per
-     * `ConfirmedTeam`, create new golfers for any `New` assignments, and
-     * add a roster entry per pick. Validates all `Existing` golfer ids
-     * up front so the operator sees every bad reference at once instead
-     * of fixing one and retrying. Writes are not transactional across
-     * teams — a downstream failure mid-write leaves partial state, which
-     * is acceptable because the validation pass catches the realistic
-     * errors and anything later would be unexpected (DB-level).
+     * Persist an operator-confirmed roster atomically: create one Team
+     * per `ConfirmedTeam`, create new golfers for any `New` assignments,
+     * and add a roster entry per pick — all inside a single transaction
+     * so a mid-loop failure rolls back every prior write rather than
+     * leaving the DB with half-built teams. Validates all `Existing`
+     * golfer ids up front so the operator sees every bad reference at
+     * once before the transaction opens.
      */
     suspend fun confirmRoster(request: ConfirmRosterRequest): Result<RosterUploadResult, AdminError> {
         seasonService.get(request.seasonId) ?: return Result.Err(AdminError.SeasonNotFound(request.seasonId))
 
         val missingGolferIds = findMissingGolferIds(request.teams)
         if (missingGolferIds.isNotEmpty()) return Result.Err(AdminError.GolferIdsNotFound(missingGolferIds))
-
-        var golfersCreated = 0
-        val createdTeams = mutableListOf<Team>()
-        for (team in request.teams) {
-            val (createdTeam, newGolfers) = persistConfirmedTeam(request.seasonId, team)
-            createdTeams += createdTeam
-            golfersCreated += newGolfers
+        if (request.teams.isEmpty()) {
+            return Result.Ok(RosterUploadResult(teamsCreated = 0, golfersCreated = 0, teams = emptyList()))
         }
-        return Result.Ok(
-            RosterUploadResult(
-                teamsCreated = createdTeams.size,
-                golfersCreated = golfersCreated,
-                teams = createdTeams,
-            ),
-        )
+
+        return dsl.transactionCoroutine { config ->
+            val tx = config.dsl()
+            var golfersCreated = 0
+            val createdTeams = mutableListOf<Team>()
+            for (team in request.teams) {
+                val (createdTeam, newGolfers) = persistConfirmedTeam(tx, request.seasonId, team)
+                createdTeams += createdTeam
+                golfersCreated += newGolfers
+            }
+            Result.Ok(
+                RosterUploadResult(
+                    teamsCreated = createdTeams.size,
+                    golfersCreated = golfersCreated,
+                    teams = createdTeams,
+                ),
+            )
+        }
     }
 
     private suspend fun persistConfirmedTeam(
+        tx: DSLContext,
         seasonId: SeasonId,
         team: ConfirmedTeam,
     ): Pair<Team, Int> {
@@ -327,6 +338,7 @@ class AdminService(
                         teamName = team.teamName,
                         teamNumber = team.teamNumber,
                     ),
+                dsl = tx,
             )
         var newGolfers = 0
         for (pick in team.picks) {
@@ -335,9 +347,8 @@ class AdminService(
                     is GolferAssignment.Existing -> assignment.golferId
                     is GolferAssignment.New -> {
                         newGolfers++
-                        golferService.create(
-                            CreateGolferRequest(firstName = assignment.firstName, lastName = assignment.lastName),
-                        ).id
+                        val req = CreateGolferRequest(firstName = assignment.firstName, lastName = assignment.lastName)
+                        golferService.create(request = req, dsl = tx).id
                     }
                 }
             teamService.addToRoster(
@@ -349,6 +360,7 @@ class AdminService(
                         draftRound = pick.round,
                         ownershipPct = BigDecimal(pick.ownershipPct),
                     ),
+                dsl = tx,
             )
         }
         return createdTeam to newGolfers
@@ -364,7 +376,7 @@ class AdminService(
     }
 
     private suspend fun importOne(
-        entry: com.cwfgw.espn.EspnCalendarEntry,
+        entry: EspnCalendarEntry,
         startDate: LocalDate,
         week: String,
         seasonId: SeasonId,
@@ -432,7 +444,7 @@ class AdminService(
 }
 
 private sealed interface EntryOutcome {
-    data class Created(val tournament: com.cwfgw.tournaments.Tournament) : EntryOutcome
+    data class Created(val tournament: Tournament) : EntryOutcome
 
     data class Skipped(val entry: SkippedEntry) : EntryOutcome
 }

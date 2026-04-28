@@ -2,6 +2,7 @@ package com.cwfgw.teams
 
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
+import org.jooq.DSLContext
 
 class TeamService(private val repository: TeamRepository) {
     suspend fun listBySeason(seasonId: SeasonId): List<Team> = repository.findBySeason(seasonId)
@@ -11,7 +12,8 @@ class TeamService(private val repository: TeamRepository) {
     suspend fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
-    ): Team = repository.create(seasonId, request)
+        dsl: DSLContext? = null,
+    ): Team = repository.create(seasonId, request, dsl)
 
     suspend fun update(
         id: TeamId,
@@ -23,7 +25,8 @@ class TeamService(private val repository: TeamRepository) {
     suspend fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,
-    ): RosterEntry = repository.addToRoster(teamId, request)
+        dsl: DSLContext? = null,
+    ): RosterEntry = repository.addToRoster(teamId, request, dsl)
 
     suspend fun dropFromRoster(
         teamId: TeamId,
