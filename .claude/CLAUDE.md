@@ -807,6 +807,28 @@ UI exclusions:
 
 - **MUST** explicitly declare return types on all public functions. Type
   inference is fine for local `val`s; it is not fine for public API.
+- **MUST** reference types and functions by their short name with an
+  `import` at the top of the file. No fully-qualified names inline:
+
+  ```kotlin
+  // RIGHT
+  import kotlinx.coroutines.runBlocking
+  import org.jooq.DSLContext
+
+  fun stubDsl(): DSLContext = DSL.using(SQLDialect.POSTGRES)
+  runBlocking { repo.findAll() }
+
+  // WRONG
+  fun stubDsl(): org.jooq.DSLContext =
+      org.jooq.impl.DSL.using(org.jooq.SQLDialect.POSTGRES)
+  kotlinx.coroutines.runBlocking { repo.findAll() }
+  ```
+
+  Inline FQNs hide what the file actually depends on (the import block
+  is the file's dependency manifest), bloat call sites, and read like
+  the author was avoiding the import on purpose. The only acceptable
+  exception is when two imports would genuinely collide on a short
+  name — and even then, prefer an `import ... as Alias`.
 
 ---
 
