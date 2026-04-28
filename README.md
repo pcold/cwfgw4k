@@ -10,7 +10,7 @@ A fantasy PGA Tour league tracker. Configurable number of teams draft real PGA p
 
 ### The Draft
 
-- 13 teams, 8-round snake draft
+- Configurable team count (13 by default), 8-round snake draft
 - Each team drafts 8 PGA Tour players
 - Players can be split between teams with ownership percentages (earnings divided proportionally)
 
@@ -52,7 +52,7 @@ All payouts are **doubled** for the four majors and two additional premier event
 ### Zero-Sum Scoring
 
 - Each top-10 finish earns that payout from every other team
-- Formula: `weekly +/- = (your top-10 earnings × 13) − total pot`
+- Formula: `weekly +/- = (your top-10 earnings × N teams) − total pot`
 - The league is zero-sum — every dollar won is a dollar lost by someone else
 - Undrafted players who finish top 10 are tracked but don't affect team payouts
 
@@ -60,5 +60,5 @@ All payouts are **doubled** for the four majors and two additional premier event
 
 - 4 separate season-long races — one for each draft round (5, 6, 7, 8)
 - Winner = the team whose round-N pick has the highest cumulative earnings across all tournaments
-- Winner collects **$15** from every other team ($15 × 12 = $180 gross)
+- Winner collects **$15** from every other team (`$15 × (N − 1)` gross at the default `sideBetAmount`)
 - Side bet is not active if all entries are at $0

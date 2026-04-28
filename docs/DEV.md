@@ -33,7 +33,7 @@ Postgres 18 listens on `localhost:5432` with user/db/password all set to `cwfgw4
 ./gradlew seed
 ```
 
-Resets the docker-compose Postgres to a clean state and runs `SeedMain`, which creates a league + the 2026 Summer season, pulls the real ESPN tournament calendar for the date range, imports a 13-team roster of full-name PGA players, and finalizes every tournament ESPN already reports as completed. Drops the named volume first, so this is destructive — only use it on the local docker-compose database.
+Resets the docker-compose Postgres to a clean state and runs `SeedMain`, which creates a league plus the 2026 Spring (CSV) and 2026 Summer (TSV) seasons, pulls the real ESPN tournament calendar for each date range, imports the seed roster of full-name PGA players, and finalizes every tournament ESPN already reports as completed. Drops the named volume first, so this is destructive — only use it on the local docker-compose database.
 
 ## Run the backend
 
@@ -67,7 +67,7 @@ Runs the full gate: backend tests + ktlint + detekt + Kover coverage verify + UI
 | Task | Description |
 |------|-------------|
 | `./gradlew run` | Run the backend locally, serving the bundled UI. |
-| `./gradlew seed` | Reset Postgres and populate the 2026 Summer season end-to-end. |
+| `./gradlew seed` | Reset Postgres and populate the 2026 Spring + Summer seasons end-to-end. |
 | `./gradlew check` | Full verification gate (tests + lint + coverage + UI tests). |
 | `./gradlew uiBuild` | Build the production UI bundle into `ui/dist/`. |
 | `./gradlew uiTest` | Run UI unit tests with coverage. |

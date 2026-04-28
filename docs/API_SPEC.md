@@ -193,14 +193,20 @@ Routes nested under `/api/v1/seasons/{seasonId}/`.
 
 | Method | Path                                                    | Auth | Description                                                               |
 |--------|---------------------------------------------------------|------|---------------------------------------------------------------------------|
-| GET    | `/api/v1/seasons/{id}/report?live=`                     | No   | Season-aggregate `WeeklyReport`. `?live=` parsed but currently a no-op    |
-| GET    | `/api/v1/seasons/{id}/report/{tournamentId}?live=`      | No   | Single-tournament `WeeklyReport`. `?live=` parsed but currently a no-op   |
-| GET    | `/api/v1/seasons/{id}/rankings?live=&through=`          | No   | Cumulative team rankings + per-tournament series. `?through=` is an optional cutoff tournament id (404 if missing) |
+| GET    | `/api/v1/seasons/{id}/report?live=`                     | No   | Season-aggregate `WeeklyReport`. `?live=true` overlays in-progress ESPN data (see below) |
+| GET    | `/api/v1/seasons/{id}/report/{tournamentId}?live=`      | No   | Single-tournament `WeeklyReport`. `?live=true` overlays in-progress ESPN data (see below) |
+| GET    | `/api/v1/seasons/{id}/rankings?live=&through=`          | No   | Cumulative team rankings + per-tournament series. `?live=true` overlays in-progress ESPN data; `?through=` is an optional cutoff tournament id (404 if missing) |
 | GET    | `/api/v1/seasons/{id}/golfer/{golferId}/history`        | No   | Top-10 finishes for one golfer over the season                            |
 
-Live overlay (`?live=true`) is accepted at the route level but ignored by
-the service today — the response is identical to the non-live shape. The
-in-progress ESPN scoreboard merge is tracked separately.
+`?live=true` triggers `LiveOverlayService` to merge ESPN scoreboard data
+on top of the persisted base report. For a single-tournament report it
+projects the current leaderboard onto the team grid and refreshes
+side-bet payouts; for the season-aggregate report and rankings it folds
+each in-progress tournament's projected zero-sum into the running
+totals. Selected tournaments whose status is already `completed` skip
+the ESPN call entirely — the persisted numbers are immutable so a fresh
+pull can't change them. ESPN failures are absorbed (logged at WARN) and
+the response falls back to the base report.
 
 ### ESPN
 
@@ -215,7 +221,7 @@ in-progress ESPN scoreboard merge is tracked separately.
 | Method | Path                                              | Auth | Description                                                                                    |
 |--------|---------------------------------------------------|------|------------------------------------------------------------------------------------------------|
 | POST   | `/api/v1/admin/seasons/{id}/upload`               | Yes  | Pull ESPN's calendar for the date range in the body and create one tournament per entry. Body: `{ "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD" }`. Returns `SeasonImportResult` |
-| POST   | `/api/v1/admin/roster/preview`                    | Yes  | Read-only preview of a roster TSV. Body is `text/plain` (the raw TSV). Returns `RosterPreviewResult` describing per-pick match status |
+| POST   | `/api/v1/admin/roster/preview`                    | Yes  | Preview a roster TSV/CSV. Body is `text/plain` (the raw roster). Returns `RosterPreviewResult` describing per-pick match status. If any pick can't be matched to an existing golfer the service pulls ESPN's recent active-player pool and persists any newly-discovered athletes (with their `pga_player_id`) before re-matching — so this endpoint is a *write* on the golfers table, not strictly read-only |
 | POST   | `/api/v1/admin/roster/confirm`                    | Yes  | Persist an operator-confirmed roster. Body: `ConfirmRosterRequest`. Returns `RosterUploadResult` with deletion counts and persisted teams |
 
 ---
