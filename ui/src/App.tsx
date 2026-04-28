@@ -104,7 +104,7 @@ function App() {
 
         <LeagueSeasonPicker />
 
-        <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        <main className="max-w-screen-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
           <Routes>
             <Route path="/" element={<ScoreboardPage />} />
             <Route path="/scoreboard" element={<ScoreboardPage />} />
