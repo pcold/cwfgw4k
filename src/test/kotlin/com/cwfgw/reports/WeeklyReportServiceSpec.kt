@@ -795,6 +795,32 @@ class WeeklyReportServiceSpec : FunSpec({
         history.totalEarnings.compareTo(BigDecimal(25)) shouldBe 0
     }
 
+    test("getGolferHistory floors a team-event tail-tie partner share at tieFloor × multiplier") {
+        // Three teams tied at position 10 in a Zurich-style team event: ESPN
+        // surfaces six partner rows (numTied=6 → tiedUnits=3). Average of
+        // positions 10-12 is $2/3 ≈ $0.6667; halved per partner ≈ $0.33. The
+        // floor bumps the modal value back to $1 so it matches what the
+        // persisted scoring path pays a 100% owner.
+        val zurich = tournamentFixture(MASTERS_ID, "Zurich Classic", "2026-04-23", isTeamEvent = true)
+        val golfer = golferFixture("d99", "Matt", "Fitzpatrick")
+        val partners = (1..5).map { idx -> golferFixture("d9$idx", "Pard$idx", "Tied") }
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(zurich),
+                initialGolfers = listOf(golfer) + partners,
+                initialResults =
+                    listOf(resultFixture(MASTERS_ID, golfer.id, position = 10)) +
+                        partners.map { resultFixture(MASTERS_ID, it.id, position = 10) },
+            )
+
+        val history =
+            fixture.service.getGolferHistory(SEASON_ID, golfer.id)
+                .shouldBeInstanceOf<Result.Ok<GolferHistory>>()
+                .value
+
+        history.results.single().earnings.compareTo(BigDecimal.ONE) shouldBe 0
+    }
+
     // ========== getReport live overlay ==========
 
     test("getReport with live=true and no ESPN data returns the base report unchanged (no live flag)") {

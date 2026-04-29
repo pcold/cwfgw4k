@@ -17,15 +17,23 @@ internal object PayoutTable {
     /**
      * Tie-split payout for a tournament position. T4 with three tied golfers
      * and the default payout table averages positions 4–6 ($8+$7+$6)/3 = $7,
-     * then applies the multiplier. A tie that overlaps the payout zone is
-     * floored at [SeasonRules.tieFloor] per player so the cheap end of the
-     * board never pays less than the floor.
+     * then applies the multiplier.
      *
      * For team events (Zurich Classic), two ESPN partner rows share one
      * leaderboard position. We halve the per-player payout so the team
      * collects the same total as a single non-team finisher would, and we
      * count tied units as `numTied / 2` because a "tie" between two team
      * entries is really one team-position, not two.
+     *
+     * The league's "minimum payout for any non-zero share" rule is enforced
+     * here on the per-player return value at `tieFloor × multiplier`. Zero
+     * stays zero (positions outside the payout zone shouldn't suddenly start
+     * paying). The floor matters most at the cheap end of the board: a
+     * 3-way team-event tie at position 10 averages $2/3, halves to $0.50,
+     * and would mislead the modal without this floor — see
+     * [com.cwfgw.reports.WeeklyReportService.getGolferHistory], which
+     * computes earnings from this function rather than from
+     * [splitOwnership].
      */
     fun tieSplitPayout(
         position: Int,
@@ -47,13 +55,15 @@ internal object PayoutTable {
                         .mapNotNull { p -> payouts.getOrNull(p - 1) }
                         .fold(BigDecimal.ZERO, BigDecimal::add)
                 val averaged = totalPayout.divide(BigDecimal(tiedUnits), SPLIT_SCALE, RoundingMode.HALF_UP)
-                averaged.max(rules.tieFloor).multiply(multiplier)
+                averaged.multiply(multiplier)
             }
-        return if (isTeamEvent) {
-            perTeamPayout.divide(TEAM_EVENT_SHARE, SPLIT_SCALE, RoundingMode.HALF_UP)
-        } else {
-            perTeamPayout
-        }
+        val perPlayerPayout =
+            if (isTeamEvent) {
+                perTeamPayout.divide(TEAM_EVENT_SHARE, SPLIT_SCALE, RoundingMode.HALF_UP)
+            } else {
+                perTeamPayout
+            }
+        return applyFloor(perPlayerPayout, rules.tieFloor.multiply(multiplier))
     }
 
     private val TEAM_EVENT_SHARE: BigDecimal = BigDecimal(2)

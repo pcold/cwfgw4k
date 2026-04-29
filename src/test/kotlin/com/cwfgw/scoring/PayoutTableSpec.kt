@@ -125,6 +125,49 @@ class PayoutTableSpec : FunSpec({
         ) shouldBe BigDecimal.ZERO
     }
 
+    test("team-event tie at the cheap tail floors per partner at tieFloor × multiplier") {
+        // Three teams (six partner rows) tied at position 10 with default payouts.
+        // Average of positions 10-12 = $2/3; halved per partner ≈ $0.33; the floor
+        // bumps the per-partner share back up to $1. This is the bug the
+        // golfer-history modal was surfacing — see PayoutTable docstring.
+        val payout =
+            PayoutTable.tieSplitPayout(
+                position = 10,
+                numTied = 6,
+                multiplier = ONE,
+                rules = DEFAULT_RULES,
+                isTeamEvent = true,
+            )
+        payout.compareTo(ONE) shouldBe 0
+    }
+
+    test("team-event tail-tie floor scales with the multiplier") {
+        // Same scenario but at a 2× event: floor is now $2 per partner.
+        val payout =
+            PayoutTable.tieSplitPayout(
+                position = 10,
+                numTied = 6,
+                multiplier = TWO,
+                rules = DEFAULT_RULES,
+                isTeamEvent = true,
+            )
+        payout.compareTo(TWO) shouldBe 0
+    }
+
+    test("solo position whose raw payout sits below the floor is bumped to the floor") {
+        // Custom rules where positions 4-6 pay less than the $1 tie floor —
+        // a solo finish at position 6 must still pay the floor.
+        val custom =
+            SeasonRules(
+                payouts = listOf("20", "10", "5", "0.75", "0.50", "0.25").map(::BigDecimal),
+                tieFloor = ONE,
+                sideBetRounds = emptyList(),
+                sideBetAmount = BigDecimal.ZERO,
+            )
+        val payout = PayoutTable.tieSplitPayout(position = 6, numTied = 1, multiplier = ONE, rules = custom)
+        payout.compareTo(ONE) shouldBe 0
+    }
+
     test("custom rules with fewer payout places truncates correctly") {
         val custom =
             SeasonRules(
