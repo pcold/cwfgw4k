@@ -12,6 +12,7 @@ const competitorsMock = vi.fn();
 const golfersMock = vi.fn();
 const upsertMock = vi.fn();
 const deleteMock = vi.fn();
+const createGolferMock = vi.fn();
 const onCloseMock = vi.fn();
 
 vi.mock('@/shared/api/client', () => ({
@@ -26,6 +27,7 @@ vi.mock('@/shared/api/client', () => ({
     ) => upsertMock(tournamentId, body),
     deleteTournamentPlayerOverride: (tournamentId: string, espnCompetitorId: string) =>
       deleteMock(tournamentId, espnCompetitorId),
+    createGolfer: (input: { firstName: string; lastName: string }) => createGolferMock(input),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -95,6 +97,7 @@ describe('PlayerLinksPanel', () => {
     golfersMock.mockReset();
     upsertMock.mockReset();
     deleteMock.mockReset();
+    createGolferMock.mockReset();
     onCloseMock.mockReset();
     golfersMock.mockResolvedValue([mattGolfer, alexGolfer, otherGolfer]);
   });
@@ -223,5 +226,116 @@ describe('PlayerLinksPanel', () => {
     expect(
       await screen.findByText(/No ESPN competitors found for this tournament/i),
     ).toBeInTheDocument();
+  });
+
+  it('opens the create-golfer form pre-filled from a partner row last-name', async () => {
+    competitorsMock.mockResolvedValue(buildListing());
+    const user = userEvent.setup();
+    renderPanel();
+
+    const partnerRow = (await screen.findByText('Fitzpatrick')).closest('li');
+    if (!partnerRow) throw new Error('partner row not found');
+    await user.click(within(partnerRow as HTMLElement).getByRole('button', { name: /Create new golfer/i }));
+
+    const firstName = within(partnerRow as HTMLElement).getByLabelText(/First name/i) as HTMLInputElement;
+    const lastName = within(partnerRow as HTMLElement).getByLabelText(/Last name/i) as HTMLInputElement;
+    expect(firstName.value).toBe('');
+    expect(lastName.value).toBe('Fitzpatrick');
+  });
+
+  it('pre-fills both names from a full-name competitor row', async () => {
+    competitorsMock.mockResolvedValue(buildListing());
+    const user = userEvent.setup();
+    renderPanel();
+
+    const alexRow = (await screen.findByText('Alex Fitzpatrick')).closest('li');
+    if (!alexRow) throw new Error('competitor row not found');
+    await user.click(within(alexRow as HTMLElement).getByRole('button', { name: /Create new golfer/i }));
+
+    const firstName = within(alexRow as HTMLElement).getByLabelText(/First name/i) as HTMLInputElement;
+    const lastName = within(alexRow as HTMLElement).getByLabelText(/Last name/i) as HTMLInputElement;
+    expect(firstName.value).toBe('Alex');
+    expect(lastName.value).toBe('Fitzpatrick');
+  });
+
+  it('creates a new golfer and immediately pins this row to them', async () => {
+    competitorsMock.mockResolvedValue(buildListing());
+    createGolferMock.mockResolvedValue({
+      ...mattGolfer,
+      id: 'g-new-fitz',
+      firstName: 'Other',
+      lastName: 'Fitzpatrick',
+    });
+    upsertMock.mockResolvedValue({
+      tournamentId: 'tn-1',
+      espnCompetitorId: 'team:1:1',
+      golferId: 'g-new-fitz',
+    });
+    const user = userEvent.setup();
+    renderPanel();
+
+    const partnerRow = (await screen.findByText('Fitzpatrick')).closest('li');
+    if (!partnerRow) throw new Error('partner row not found');
+    await user.click(within(partnerRow as HTMLElement).getByRole('button', { name: /Create new golfer/i }));
+
+    const firstName = within(partnerRow as HTMLElement).getByLabelText(/First name/i);
+    await user.clear(firstName);
+    await user.type(firstName, 'Other');
+    await user.click(within(partnerRow as HTMLElement).getByRole('button', { name: /Create & link/i }));
+
+    await waitFor(() => {
+      expect(createGolferMock).toHaveBeenCalledWith({
+        firstName: 'Other',
+        lastName: 'Fitzpatrick',
+      });
+    });
+    await waitFor(() => {
+      expect(upsertMock).toHaveBeenCalledWith('tn-1', {
+        espnCompetitorId: 'team:1:1',
+        golferId: 'g-new-fitz',
+      });
+    });
+  });
+
+  it('disables Create & link until both names are filled in', async () => {
+    competitorsMock.mockResolvedValue(buildListing());
+    const user = userEvent.setup();
+    renderPanel();
+
+    const partnerRow = (await screen.findByText('Fitzpatrick')).closest('li');
+    if (!partnerRow) throw new Error('partner row not found');
+    await user.click(within(partnerRow as HTMLElement).getByRole('button', { name: /Create new golfer/i }));
+
+    const submit = within(partnerRow as HTMLElement).getByRole('button', { name: /Create & link/i });
+    // First name is blank for partner-only row, so Create & link starts disabled.
+    expect(submit).toBeDisabled();
+
+    const firstName = within(partnerRow as HTMLElement).getByLabelText(/First name/i);
+    await user.type(firstName, 'Other');
+    expect(submit).toBeEnabled();
+  });
+
+  it('hides the create affordance when the tournament is finalized', async () => {
+    competitorsMock.mockResolvedValue(buildListing({ isFinalized: true }));
+    renderPanel();
+    await screen.findByRole('status');
+
+    expect(
+      screen.queryByRole('button', { name: /Create new golfer/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('cancels back to the dropdown without creating anything', async () => {
+    competitorsMock.mockResolvedValue(buildListing());
+    const user = userEvent.setup();
+    renderPanel();
+
+    const partnerRow = (await screen.findByText('Fitzpatrick')).closest('li');
+    if (!partnerRow) throw new Error('partner row not found');
+    await user.click(within(partnerRow as HTMLElement).getByRole('button', { name: /Create new golfer/i }));
+    await user.click(within(partnerRow as HTMLElement).getByRole('button', { name: /Cancel/i }));
+
+    expect(within(partnerRow as HTMLElement).queryByLabelText(/First name/i)).not.toBeInTheDocument();
+    expect(createGolferMock).not.toHaveBeenCalled();
   });
 });

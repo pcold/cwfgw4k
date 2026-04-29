@@ -269,6 +269,18 @@ export interface CleanSeasonResult {
   tournamentsReset: number;
 }
 
+// Mirrors backend com.cwfgw.golfers.CreateGolferRequest. POST /api/v1/golfers.
+// `pgaPlayerId` is intentionally omitted on the create-from-link-panel path —
+// these are placeholder partners (e.g., the "other" Fitzpatrick at Zurich)
+// that don't have an ESPN id and shouldn't get auto-matched on future imports.
+export interface CreateGolferRequest {
+  firstName: string;
+  lastName: string;
+  pgaPlayerId?: string | null;
+  country?: string | null;
+  worldRanking?: number | null;
+}
+
 // Mirrors backend com.cwfgw.golfers.Golfer. Returned by GET /api/v1/golfers
 // (list) and GET /api/v1/golfers/{id}.
 export interface Golfer {

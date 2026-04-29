@@ -1,5 +1,6 @@
 import type {
   CleanSeasonResult,
+  CreateGolferRequest,
   Golfer,
   GolferHistory,
   League,
@@ -183,6 +184,8 @@ export const api = {
     if (search && search.trim().length > 0) params.set('search', search.trim());
     return getJson<Golfer[]>(`/api/v1/golfers?${params.toString()}`);
   },
+  createGolfer: (input: CreateGolferRequest) =>
+    postJson<Golfer>('/api/v1/golfers', input),
   tournamentCompetitors: (tournamentId: string) =>
     getJson<TournamentCompetitorListing>(
       `/api/v1/admin/tournaments/${encodeURIComponent(tournamentId)}/competitors`,

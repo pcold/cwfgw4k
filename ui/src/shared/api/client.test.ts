@@ -529,4 +529,27 @@ describe('api client', () => {
     expect(call[0]).toBe('/api/v1/admin/tournaments/tn%201/player-overrides/team%3A1%3A1');
     expect((call[1] as RequestInit).method).toBe('DELETE');
   });
+
+  it('createGolfer() POSTs a snake_case body to /api/v1/golfers', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockJson({
+        id: 'g-99',
+        pga_player_id: null,
+        first_name: 'Alex',
+        last_name: 'Fitzpatrick',
+        country: null,
+        world_ranking: null,
+        active: true,
+        updated_at: '2026-04-29T00:00:00Z',
+      }),
+    );
+    const result = await api.createGolfer({ firstName: 'Alex', lastName: 'Fitzpatrick' });
+    const call = fetchMock.mock.calls[0];
+    expect(call[0]).toBe('/api/v1/golfers');
+    expect((call[1] as RequestInit).method).toBe('POST');
+    const body = JSON.parse(String((call[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(body).toEqual({ first_name: 'Alex', last_name: 'Fitzpatrick' });
+    expect(result.firstName).toBe('Alex');
+    expect(result.pgaPlayerId).toBeNull();
+  });
 });
