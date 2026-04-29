@@ -14,6 +14,9 @@ import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
+import com.cwfgw.tournamentLinks.TournamentCompetitorListing
+import com.cwfgw.tournamentLinks.TournamentCompetitorView
+import com.cwfgw.tournamentLinks.TournamentLinkRepository
 import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -49,6 +52,7 @@ class EspnService(
     private val golferService: GolferService,
     private val teamService: TeamService,
     private val seasonService: SeasonService,
+    private val tournamentLinkRepository: TournamentLinkRepository,
 ) {
     /**
      * Fetch ESPN's season calendar. Pass-through to the client; surfaced on
@@ -130,8 +134,20 @@ class EspnService(
         val rosters = teams.flatMap { teamService.getRoster(it.id) }
         val dbTournamentsForDate =
             tournamentService.list(seasonId, status = null).filter { it.startDate == date }
-        return Result.Ok(buildLivePreviews(events, golfers, teams, rosters, dbTournamentsForDate, rules))
+        val overridesByTournament = loadOverridesByTournament(dbTournamentsForDate)
+        return Result.Ok(
+            buildLivePreviews(events, golfers, teams, rosters, dbTournamentsForDate, rules, overridesByTournament),
+        )
     }
+
+    private suspend fun loadOverridesByTournament(
+        tournaments: List<Tournament>,
+    ): Map<TournamentId, Map<String, GolferId>> =
+        tournaments.associate { tournament ->
+            tournament.id to
+                tournamentLinkRepository.listByTournament(tournament.id)
+                    .associate { it.espnCompetitorId to it.golferId }
+        }
 
     suspend fun importByDate(date: LocalDate): Result<EspnImportBatch, EspnError> {
         val events = fetchOrFail(date).getOrElse { return Result.Err(it) }
@@ -159,6 +175,47 @@ class EspnService(
         return Result.Ok(runImport(tournament, event))
     }
 
+    /**
+     * Dry-run "what would each ESPN competitor link to right now?" for the
+     * admin link-management UI. Fetches the live scoreboard, runs the
+     * override-aware matcher, and returns one row per competitor with the
+     * resolved [Golfer] (if any) plus a flag indicating whether the
+     * resolution came from a manual override.
+     *
+     * Does not persist anything. The auto-create behavior of the import
+     * path is intentionally skipped — unmatched competitors return
+     * `linkedGolfer = null` so the admin can pick one explicitly.
+     */
+    suspend fun listCompetitorsForLinking(tournamentId: TournamentId): Result<TournamentCompetitorListing, EspnError> {
+        val tournament =
+            tournamentService.get(tournamentId) ?: return Result.Err(EspnError.TournamentNotFound(tournamentId))
+        val espnId =
+            tournament.pgaTournamentId ?: return Result.Err(EspnError.TournamentNotLinked(tournamentId))
+        val events = fetchOrFail(tournament.startDate).getOrElse { return Result.Err(it) }
+        val event =
+            events.firstOrNull { it.espnId == espnId } ?: return Result.Err(EspnError.EventNotInScoreboard(espnId))
+
+        val context = buildMatchingContext(tournament.seasonId, tournamentId)
+        val views =
+            event.competitors.map { competitor ->
+                TournamentCompetitorView(
+                    espnCompetitorId = competitor.espnId,
+                    name = competitor.name,
+                    position = competitor.position,
+                    isTeamPartner = competitor.isTeamPartner,
+                    linkedGolfer = locateExistingGolfer(competitor, context),
+                    hasOverride = competitor.espnId in context.overrides,
+                )
+            }
+        return Result.Ok(
+            TournamentCompetitorListing(
+                tournamentId = tournamentId,
+                isFinalized = tournament.status == TournamentStatus.Completed,
+                competitors = views,
+            ),
+        )
+    }
+
     private suspend fun fetchOrFail(date: LocalDate): Result<List<EspnTournament>, EspnError> =
         try {
             Result.Ok(client.fetchScoreboard(date))
@@ -171,7 +228,7 @@ class EspnService(
         tournament: Tournament,
         event: EspnTournament,
     ): EspnImport {
-        val context = buildMatchingContext(tournament.seasonId)
+        val context = buildMatchingContext(tournament.seasonId, tournament.id)
         val matches = event.competitors.map { matchOrCreate(it, context) }
 
         val matchedPairs =
@@ -201,14 +258,20 @@ class EspnService(
         )
     }
 
-    private suspend fun buildMatchingContext(seasonId: SeasonId): MatchingContext {
+    private suspend fun buildMatchingContext(
+        seasonId: SeasonId,
+        tournamentId: TournamentId,
+    ): MatchingContext {
         val golfers = golferService.list(activeOnly = false, search = null)
         val rosterIds =
             teamService.getRosterView(seasonId)
                 .flatMap { it.picks }
                 .map { it.golferId }
                 .toSet()
-        return MatchingContext(golfers = golfers, rosterGolferIds = rosterIds)
+        val overrides =
+            tournamentLinkRepository.listByTournament(tournamentId)
+                .associate { it.espnCompetitorId to it.golferId }
+        return MatchingContext(golfers = golfers, rosterGolferIds = rosterIds, overrides = overrides)
     }
 
     private suspend fun matchOrCreate(
@@ -234,6 +297,11 @@ class EspnService(
         competitor: EspnCompetitor,
         context: MatchingContext,
     ): Golfer? {
+        // Manual override wins. Lets an admin disambiguate ESPN partner rows
+        // (last-name only) when multiple rostered golfers share the surname.
+        context.overrides[competitor.espnId]?.let { golferId ->
+            golferService.get(golferId)?.let { return it }
+        }
         if (!competitor.isTeamPartner) {
             golferService.findByPgaPlayerId(competitor.espnId)?.let { return it }
         }
@@ -302,6 +370,7 @@ class EspnService(
     private data class MatchingContext(
         val golfers: List<Golfer>,
         val rosterGolferIds: Set<GolferId>,
+        val overrides: Map<String, GolferId>,
     )
 
     private data class GolferMatch(
@@ -340,8 +409,9 @@ internal fun buildLivePreviews(
     rosters: List<RosterEntry>,
     dbTournamentsForDate: List<Tournament>,
     rules: SeasonRules,
+    overridesByTournament: Map<TournamentId, Map<String, GolferId>> = emptyMap(),
 ): List<EspnLivePreview> {
-    val context = LivePreviewContext.from(allGolfers, teams, rosters, rules)
+    val context = LivePreviewContext.from(allGolfers, teams, rosters, rules, overridesByTournament)
     return events.map { event -> buildLivePreviewForEvent(event, context, dbTournamentsForDate) }
 }
 
@@ -355,7 +425,7 @@ private fun buildLivePreviewForEvent(
     val isTeamEvent = event.isTeamEvent || matchedDb?.isTeamEvent == true
 
     val matchedCompetitors: List<Pair<EspnCompetitor, Golfer?>> =
-        event.competitors.map { competitor -> competitor to ctx.resolveGolfer(competitor) }
+        event.competitors.map { competitor -> competitor to ctx.resolveGolfer(competitor, matchedDb?.id) }
     val tiedCounts = event.competitors.groupingBy { it.position }.eachCount()
 
     val teamPreviews =
@@ -439,6 +509,7 @@ private data class LivePreviewContext(
     val teams: List<Team>,
     val rosters: List<RosterEntry>,
     val rules: SeasonRules,
+    val golferById: Map<GolferId, Golfer>,
     val golferByEspnId: Map<String, Golfer>,
     val golferByName: Map<Pair<String, String>, Golfer>,
     val golferByLastName: Map<String, List<Golfer>>,
@@ -446,9 +517,16 @@ private data class LivePreviewContext(
     val rostersByTeam: Map<TeamId, List<RosterEntry>>,
     val golferOwners: Map<GolferId, List<Pair<TeamId, BigDecimal>>>,
     val numPlaces: Int,
+    val overridesByTournament: Map<TournamentId, Map<String, GolferId>>,
 ) {
-    fun resolveGolfer(competitor: EspnCompetitor): Golfer? =
-        resolveGolfer(competitor, golferByEspnId, golferByName, golferByLastName, rosteredGolferIds)
+    fun resolveGolfer(
+        competitor: EspnCompetitor,
+        tournamentId: TournamentId?,
+    ): Golfer? {
+        val override = tournamentId?.let { overridesByTournament[it]?.get(competitor.espnId) }
+        if (override != null) golferById[override]?.let { return it }
+        return resolveGolfer(competitor, golferByEspnId, golferByName, golferByLastName, rosteredGolferIds)
+    }
 
     companion object {
         fun from(
@@ -456,11 +534,13 @@ private data class LivePreviewContext(
             teams: List<Team>,
             rosters: List<RosterEntry>,
             rules: SeasonRules,
+            overridesByTournament: Map<TournamentId, Map<String, GolferId>> = emptyMap(),
         ): LivePreviewContext =
             LivePreviewContext(
                 teams = teams,
                 rosters = rosters,
                 rules = rules,
+                golferById = allGolfers.associateBy { it.id },
                 golferByEspnId = allGolfers.mapNotNull { golfer -> golfer.pgaPlayerId?.let { it to golfer } }.toMap(),
                 golferByName = allGolfers.associateBy { (it.firstName.lowercase() to it.lastName.lowercase()) },
                 golferByLastName = allGolfers.groupBy { it.lastName.lowercase() },
@@ -470,6 +550,7 @@ private data class LivePreviewContext(
                     rosters.groupBy { it.golferId }
                         .mapValues { (_, entries) -> entries.map { it.teamId to it.ownershipPct } },
                 numPlaces = rules.payouts.size,
+                overridesByTournament = overridesByTournament,
             )
     }
 }

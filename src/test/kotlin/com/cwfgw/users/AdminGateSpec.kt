@@ -123,4 +123,15 @@ class AdminGateSpec : FunSpec({
             response.status shouldBe HttpStatusCode.Forbidden
         }
     }
+
+    test("TournamentLinkRoutes: POST /api/v1/admin/tournaments/{id}/player-overrides rejects a regular user with 403") {
+        regularUserApiTest { client ->
+            val response =
+                client.post("/api/v1/admin/tournaments/$anyTournamentId/player-overrides") {
+                    contentType(ContentType.Application.Json)
+                    setBody("{}")
+                }
+            response.status shouldBe HttpStatusCode.Forbidden
+        }
+    }
 })

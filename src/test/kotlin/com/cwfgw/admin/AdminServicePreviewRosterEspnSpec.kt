@@ -19,6 +19,7 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
+import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
@@ -78,6 +79,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
                 golferService = golferService,
                 teamService = teamService,
                 seasonService = SeasonService(seasonRepo),
+                tournamentLinkRepository = FakeTournamentLinkRepository(),
             )
         return TestFixture(
             golferRepo = golferRepo,

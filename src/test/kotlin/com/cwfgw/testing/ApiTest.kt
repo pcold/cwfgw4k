@@ -21,6 +21,9 @@ import com.cwfgw.seasons.SeasonOpsService
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
+import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
+import com.cwfgw.tournamentLinks.TournamentLinkRepository
+import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentOpsService
 import com.cwfgw.tournaments.TournamentService
@@ -83,6 +86,13 @@ class ApiFixture {
             tournamentService = tournamentService,
             teamService = teamService,
         )
+    var tournamentLinkRepository: TournamentLinkRepository = FakeTournamentLinkRepository()
+    var tournamentLinkService: TournamentLinkService =
+        TournamentLinkService(
+            repository = tournamentLinkRepository,
+            tournamentService = tournamentService,
+            golferService = golferService,
+        )
     var espnService: EspnService =
         EspnService(
             client = FakeEspnClient(),
@@ -90,6 +100,7 @@ class ApiFixture {
             golferService = golferService,
             teamService = teamService,
             seasonService = seasonService,
+            tournamentLinkRepository = tournamentLinkRepository,
         )
     var adminService: AdminService =
         AdminService(
@@ -218,6 +229,7 @@ private fun ApiFixture.toAppServices(): AppServices =
         seasonService = seasonService,
         teamService = teamService,
         tournamentService = tournamentService,
+        tournamentLinkService = tournamentLinkService,
         tournamentOpsService = tournamentOpsService,
         seasonOpsService = seasonOpsService,
         draftService = draftService,

@@ -8,6 +8,7 @@ import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentId
@@ -88,6 +89,7 @@ private fun withWiredService(
                 golferService = golferService,
                 teamService = teamService,
                 seasonService = seasonService,
+                tournamentLinkRepository = FakeTournamentLinkRepository(),
             )
     }
 

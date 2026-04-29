@@ -36,6 +36,9 @@ import com.cwfgw.seasons.seasonRoutes
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.teams.teamRoutes
+import com.cwfgw.tournamentLinks.TournamentLinkRepository
+import com.cwfgw.tournamentLinks.TournamentLinkService
+import com.cwfgw.tournamentLinks.tournamentLinkRoutes
 import com.cwfgw.tournaments.TournamentOpsService
 import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentService
@@ -97,8 +100,10 @@ internal fun buildServices(
     val tournamentService = TournamentService(TournamentRepository(database.dsl))
     val golferService = GolferService(GolferRepository(database.dsl))
     val userRepository = UserRepository(database.dsl)
+    val linkRepo = TournamentLinkRepository(database.dsl)
+    val tournamentLinkService = TournamentLinkService(linkRepo, tournamentService, golferService)
     val espnService =
-        EspnService(EspnClient(httpClient), tournamentService, golferService, teamService, seasonService)
+        EspnService(EspnClient(httpClient), tournamentService, golferService, teamService, seasonService, linkRepo)
     val scoringService =
         ScoringService(ScoringRepository(database.dsl), seasonService, tournamentService, teamService)
     val adminService =
@@ -113,8 +118,6 @@ internal fun buildServices(
             scoringService,
             liveOverlayService,
         )
-    val tournamentOpsService = TournamentOpsService(tournamentService, scoringService, espnService)
-    val seasonOpsService = SeasonOpsService(seasonService, tournamentService, scoringService)
     return AppServices(
         healthProbe = DatabaseHealthProbe(database.dsl),
         leagueService = LeagueService(LeagueRepository(database.dsl)),
@@ -122,8 +125,9 @@ internal fun buildServices(
         seasonService = seasonService,
         teamService = teamService,
         tournamentService = tournamentService,
-        tournamentOpsService = tournamentOpsService,
-        seasonOpsService = seasonOpsService,
+        tournamentLinkService = tournamentLinkService,
+        tournamentOpsService = TournamentOpsService(tournamentService, scoringService, espnService),
+        seasonOpsService = SeasonOpsService(seasonService, tournamentService, scoringService),
         draftService = DraftService(DraftRepository(database.dsl), teamService),
         scoringService = scoringService,
         espnService = espnService,
@@ -245,6 +249,7 @@ private fun Routing.apiRoutes(services: AppServices) {
         scoringRoutes(services.scoringService)
         espnRoutes(services.espnService)
         adminRoutes(services.adminService)
+        tournamentLinkRoutes(services.espnService, services.tournamentLinkService)
         reportRoutes(services.weeklyReportService)
         authRoutes(services.authService)
     }

@@ -23,6 +23,7 @@ import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.apiTest
+import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
@@ -214,6 +215,7 @@ private fun reportFixture(
                 golferService = golferService,
                 teamService = teamService,
                 seasonService = seasonService,
+                tournamentLinkRepository = FakeTournamentLinkRepository(),
             )
         liveOverlayService = LiveOverlayService(previewEspnService)
         weeklyReportService =

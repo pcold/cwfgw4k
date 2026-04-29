@@ -12,6 +12,7 @@ import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.SeasonOpsService
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.TeamService
+import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.TournamentOpsService
 import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.users.AuthService
@@ -31,6 +32,7 @@ data class AppServices(
     val seasonService: SeasonService,
     val teamService: TeamService,
     val tournamentService: TournamentService,
+    val tournamentLinkService: TournamentLinkService,
     val tournamentOpsService: TournamentOpsService,
     val seasonOpsService: SeasonOpsService,
     val draftService: DraftService,

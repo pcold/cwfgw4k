@@ -13,6 +13,8 @@ import com.cwfgw.teams.RosterViewPick
 import com.cwfgw.teams.RosterViewTeam
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
+import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
+import com.cwfgw.tournamentLinks.TournamentPlayerOverride
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -113,6 +115,7 @@ private class Fixture(
     rosterView: Map<SeasonId, List<RosterViewTeam>> = emptyMap(),
     tournamentsByDate: Map<LocalDate, List<EspnTournament>> = emptyMap(),
     upstreamError: EspnUpstreamException? = null,
+    initialOverrides: List<TournamentPlayerOverride> = emptyList(),
 ) {
     val fakeClient =
         FakeEspnClient(tournamentsByDate = tournamentsByDate, upstreamError = upstreamError)
@@ -127,6 +130,7 @@ private class Fixture(
             golferService = GolferService(golferRepo),
             teamService = TeamService(teamRepo),
             seasonService = SeasonService(seasonRepo),
+            tournamentLinkRepository = FakeTournamentLinkRepository(initial = initialOverrides),
         )
 }
 
@@ -499,5 +503,39 @@ class EspnServiceSpec : FunSpec({
         fixture.service.importForTournament(TOURNAMENT_ID)
 
         fixture.golferRepo.findAll(activeOnly = false, search = null).shouldHaveSize(1)
+    }
+
+    test("a manual override pins an ambiguous partner row to the chosen golfer instead of auto-create") {
+        // Two Fitzpatricks on the roster: without an override, the partner row "Fitzpatrick"
+        // would auto-create a third golfer because both rostered Fitzpatricks are valid matches.
+        // The override pins the partner row to Matt's id directly.
+        val matt = golfer(UUID.fromString("00000000-0000-0000-0000-0000000000a1"), "Matt", "Fitzpatrick")
+        val alex = golfer(UUID.fromString("00000000-0000-0000-0000-0000000000a2"), "Alex", "Fitzpatrick")
+        val event =
+            espnTournament(
+                espnId = "401580999",
+                isTeamEvent = true,
+                competitors =
+                    listOf(
+                        espnCompetitor("team:t1:1", "Fitzpatrick", 1, -10, isTeamPartner = true),
+                    ),
+            )
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(tournament(pgaTournamentId = "401580999")),
+                initialGolfers = listOf(matt, alex),
+                tournamentsByDate = mapOf(START_DATE to listOf(event)),
+                initialOverrides = listOf(TournamentPlayerOverride(TOURNAMENT_ID, "team:t1:1", matt.id)),
+            )
+
+        val import =
+            fixture.service.importForTournament(TOURNAMENT_ID)
+                .shouldBeInstanceOf<Result.Ok<EspnImport>>()
+                .value
+
+        // No new golfer auto-created — the override mapped the partner row to Matt directly.
+        import.created shouldBe 0
+        import.matched shouldBe 1
+        fixture.golferRepo.findAll(activeOnly = false, search = "Fitzpatrick").shouldHaveSize(2)
     }
 })

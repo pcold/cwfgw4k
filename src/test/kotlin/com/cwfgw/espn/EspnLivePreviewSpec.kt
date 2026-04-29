@@ -16,6 +16,7 @@ import com.cwfgw.teams.RosterEntryId
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
+import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -173,6 +174,7 @@ private class PreviewFixture(
                 golferService = GolferService(golferRepo),
                 teamService = TeamService(teamRepo),
                 seasonService = SeasonService(seasonRepo),
+                tournamentLinkRepository = FakeTournamentLinkRepository(),
             )
     }
 }

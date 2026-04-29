@@ -20,6 +20,7 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
+import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
@@ -127,7 +128,15 @@ private class Fixture(
         val teamService = TeamService(teamRepo)
         val golferService = GolferService(golferRepo)
         val espnClient = FakeEspnClient(tournamentsByDate = espnByDate, upstreamError = espnUpstreamError)
-        val espnService = EspnService(espnClient, tournamentService, golferService, teamService, seasonService)
+        val espnService =
+            EspnService(
+                espnClient,
+                tournamentService,
+                golferService,
+                teamService,
+                seasonService,
+                FakeTournamentLinkRepository(),
+            )
         val scoringService = ScoringService(scoringRepo, seasonService, tournamentService, teamService)
         service = TournamentOpsService(tournamentService, scoringService, espnService)
     }
