@@ -312,6 +312,10 @@ tasks.named<JavaExec>("run") {
 // Local-dev convenience: reset the docker-compose Postgres to a clean state and run SeedMain
 // against it. SeedMain re-uses the same AppConfig as the running app, so the docker compose
 // defaults must match application.yaml's DB defaults (cwfgw4k / cwfgw4k / cwfgw4k).
+//
+// The docker compose calls and the pg_isready poll are inlined inside doFirst rather than
+// extracted to script-level helpers because the configuration cache cannot serialize
+// references from a task action back to the build script object.
 tasks.register<JavaExec>("seed") {
     group = "application"
     description = "Reset docker-compose Postgres and run SeedMain to populate dev data"
@@ -320,7 +324,15 @@ tasks.register<JavaExec>("seed") {
     mainClass.set("com.cwfgw.seed.SeedMainKt")
     loadDevEnv()
 
+    val pgReadyTimeoutMs: Long = 60_000
+    val pgReadyPollIntervalMs: Long = 500
+
     doFirst {
+        fun runCommand(vararg cmd: String) {
+            val exit = ProcessBuilder(*cmd).inheritIO().start().waitFor()
+            if (exit != 0) throw GradleException("'${cmd.joinToString(" ")}' exited $exit")
+        }
+
         // Fresh slate: drop the named volume so Flyway runs against an empty DB.
         runCommand("docker", "compose", "down", "-v")
         runCommand("docker", "compose", "up", "-d", "postgres")
@@ -340,11 +352,3 @@ tasks.register<JavaExec>("seed") {
         if (!ready) throw GradleException("Postgres did not become ready within ${pgReadyTimeoutMs / 1000}s")
     }
 }
-
-private fun runCommand(vararg cmd: String) {
-    val exit = ProcessBuilder(*cmd).inheritIO().start().waitFor()
-    if (exit != 0) throw GradleException("'${cmd.joinToString(" ")}' exited $exit")
-}
-
-private val pgReadyTimeoutMs: Long = 60_000
-private val pgReadyPollIntervalMs: Long = 500
