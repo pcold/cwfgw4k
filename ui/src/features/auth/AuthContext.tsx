@@ -1,12 +1,14 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError, api } from '@/shared/api/client';
-import type { User } from '@/shared/api/types';
+import type { User, UserRole } from '@/shared/api/types';
 
 interface AuthValue {
   authenticated: boolean;
   loading: boolean;
   username: string | null;
+  role: UserRole | null;
+  isAdmin: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loginError: string | null;
@@ -64,11 +66,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ? loginMutation.error.message
         : null;
 
+  const role = authQuery.data?.role ?? null;
   const value = useMemo<AuthValue>(
     () => ({
       authenticated: !!authQuery.data,
       loading: authQuery.isLoading,
       username: authQuery.data?.username ?? null,
+      role,
+      isAdmin: role === 'admin',
       login,
       logout,
       loginError,
@@ -77,6 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [
       authQuery.data,
       authQuery.isLoading,
+      role,
       login,
       logout,
       loginError,

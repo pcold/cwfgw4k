@@ -269,6 +269,52 @@ export interface CleanSeasonResult {
   tournamentsReset: number;
 }
 
+// Mirrors backend com.cwfgw.golfers.Golfer. Returned by GET /api/v1/golfers
+// (list) and GET /api/v1/golfers/{id}.
+export interface Golfer {
+  id: string;
+  pgaPlayerId: string | null;
+  firstName: string;
+  lastName: string;
+  country: string | null;
+  worldRanking: number | null;
+  active: boolean;
+  updatedAt: string;
+}
+
+// Mirrors backend com.cwfgw.tournamentLinks.TournamentPlayerOverride.
+export interface TournamentPlayerOverride {
+  tournamentId: string;
+  espnCompetitorId: string;
+  golferId: string;
+}
+
+// Mirrors backend com.cwfgw.tournamentLinks.UpsertTournamentPlayerOverrideRequest.
+export interface UpsertTournamentPlayerOverrideRequest {
+  espnCompetitorId: string;
+  golferId: string;
+}
+
+// One ESPN competitor row for the admin link-management UI. `linkedGolfer` is
+// what the override-aware matcher would return right now; `hasOverride` flags
+// whether that match came from a manual pin vs auto-matching.
+export interface TournamentCompetitorView {
+  espnCompetitorId: string;
+  name: string;
+  position: number;
+  isTeamPartner: boolean;
+  linkedGolfer: Golfer | null;
+  hasOverride: boolean;
+}
+
+// Top-level response of GET /api/v1/admin/tournaments/{id}/competitors.
+// `isFinalized` is the UI's signal to render the panel read-only.
+export interface TournamentCompetitorListing {
+  tournamentId: string;
+  isFinalized: boolean;
+  competitors: TournamentCompetitorView[];
+}
+
 export interface GolferHistoryEntry {
   tournament: string;
   position: number;

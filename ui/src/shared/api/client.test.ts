@@ -462,4 +462,71 @@ describe('api client', () => {
     );
     expect((err as ApiError).message).toBe('500 Boom');
   });
+
+  it('golfers() requests inactive too and adds the search filter when present', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(mockJson([])));
+    await api.golfers();
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/golfers?active=false');
+    await api.golfers('  fitz  ');
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      '/api/v1/golfers?active=false&search=fitz',
+    );
+    await api.golfers('   ');
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/golfers?active=false');
+  });
+
+  it('tournamentCompetitors() fetches the admin competitors endpoint and camelizes the body', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockJson({
+        tournament_id: 'tn-1',
+        is_finalized: false,
+        competitors: [
+          {
+            espn_competitor_id: 'team:1:1',
+            name: 'Fitzpatrick',
+            position: 1,
+            is_team_partner: true,
+            linked_golfer: null,
+            has_override: false,
+          },
+        ],
+      }),
+    );
+    const result = await api.tournamentCompetitors('tn 1');
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/admin/tournaments/tn%201/competitors');
+    expect(result.isFinalized).toBe(false);
+    expect(result.competitors[0]).toMatchObject({
+      espnCompetitorId: 'team:1:1',
+      isTeamPartner: true,
+      hasOverride: false,
+    });
+  });
+
+  it('upsertTournamentPlayerOverride() POSTs a snake_case body to the player-overrides endpoint', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockJson({ tournament_id: 'tn-1', espn_competitor_id: 'abc', golfer_id: 'g-1' }),
+    );
+    const result = await api.upsertTournamentPlayerOverride('tn-1', {
+      espnCompetitorId: 'abc',
+      golferId: 'g-1',
+    });
+    const call = fetchMock.mock.calls[0];
+    expect(call[0]).toBe('/api/v1/admin/tournaments/tn-1/player-overrides');
+    expect((call[1] as RequestInit).method).toBe('POST');
+    const body = JSON.parse(String((call[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(body).toEqual({ espn_competitor_id: 'abc', golfer_id: 'g-1' });
+    expect(result).toEqual({
+      tournamentId: 'tn-1',
+      espnCompetitorId: 'abc',
+      golferId: 'g-1',
+    });
+  });
+
+  it('deleteTournamentPlayerOverride() DELETEs and url-encodes both ids', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await api.deleteTournamentPlayerOverride('tn 1', 'team:1:1');
+    const call = fetchMock.mock.calls[0];
+    expect(call[0]).toBe('/api/v1/admin/tournaments/tn%201/player-overrides/team%3A1%3A1');
+    expect((call[1] as RequestInit).method).toBe('DELETE');
+  });
 });

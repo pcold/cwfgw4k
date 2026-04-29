@@ -1,5 +1,6 @@
 import type {
   CleanSeasonResult,
+  Golfer,
   GolferHistory,
   League,
   Rankings,
@@ -11,6 +12,9 @@ import type {
   Season,
   SeasonRules,
   Tournament,
+  TournamentCompetitorListing,
+  TournamentPlayerOverride,
+  UpsertTournamentPlayerOverrideRequest,
   User,
   WeeklyReport,
 } from './types';
@@ -170,6 +174,32 @@ export const api = {
     ),
   golferHistory: (seasonId: string, golferId: string) =>
     getJson<GolferHistory>(`/api/v1/seasons/${seasonId}/golfer/${golferId}/history`),
+  // The list endpoint is public and supports an optional case-insensitive
+  // server-side `search` filter. We pass `active=false` so the picker can
+  // also surface inactive golfers — admins occasionally need to link an
+  // ESPN row to a previously-deactivated golfer.
+  golfers: (search?: string) => {
+    const params = new URLSearchParams({ active: 'false' });
+    if (search && search.trim().length > 0) params.set('search', search.trim());
+    return getJson<Golfer[]>(`/api/v1/golfers?${params.toString()}`);
+  },
+  tournamentCompetitors: (tournamentId: string) =>
+    getJson<TournamentCompetitorListing>(
+      `/api/v1/admin/tournaments/${encodeURIComponent(tournamentId)}/competitors`,
+    ),
+  upsertTournamentPlayerOverride: (
+    tournamentId: string,
+    body: UpsertTournamentPlayerOverrideRequest,
+  ) =>
+    postJson<TournamentPlayerOverride>(
+      `/api/v1/admin/tournaments/${encodeURIComponent(tournamentId)}/player-overrides`,
+      body,
+    ),
+  // 404 is treated as "already cleared" by the panel — the caller maps it.
+  deleteTournamentPlayerOverride: (tournamentId: string, espnCompetitorId: string) =>
+    deleteEmpty(
+      `/api/v1/admin/tournaments/${encodeURIComponent(tournamentId)}/player-overrides/${encodeURIComponent(espnCompetitorId)}`,
+    ),
 
   // /auth/me returns the User on success and 401 when not logged in. The
   // unauthenticated case is a normal app state, not an error, so swallow

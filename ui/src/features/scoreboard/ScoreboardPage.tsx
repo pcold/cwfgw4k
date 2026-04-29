@@ -8,15 +8,17 @@ import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { mutationError } from '@/shared/util/mutationError';
 import { defaultScoreboardTournament, tournamentLabel } from '@/shared/util/tournament';
 import type { WeeklyReport } from '@/shared/api/types';
+import PlayerLinksPanel from './PlayerLinksPanel';
 import ScoreboardView from './ScoreboardView';
 
 function ScoreboardPage() {
   const { seasonId, live } = useLeagueSeason();
-  const { authenticated } = useAuth();
+  const { authenticated, isAdmin } = useAuth();
   const leaguesGate = useLeaguesGate();
   const queryClient = useQueryClient();
   const [userTournamentId, setUserTournamentId] = useState<string | null>(null);
   const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
+  const [linksPanelOpen, setLinksPanelOpen] = useState(false);
 
   const tournamentsQuery = useQuery({
     queryKey: ['tournaments', seasonId],
@@ -55,7 +57,9 @@ function ScoreboardPage() {
 
   function buildFinalizeSlot(report: WeeklyReport): ReactNode {
     if (!authenticated || !tournamentId) return null;
-    if (report.tournament.status === 'completed') return null;
+    const showLinks = isAdmin;
+    const showFinalize = isAdmin && report.tournament.status !== 'completed';
+    if (!showLinks && !showFinalize) return null;
     return (
       <div className="flex items-center gap-3">
         {finalizeErr ? (
@@ -63,14 +67,25 @@ function ScoreboardPage() {
             {finalizeErr}
           </span>
         ) : null}
-        <button
-          type="button"
-          onClick={() => finalizeMutation.mutate(tournamentId)}
-          disabled={finalizeMutation.isPending}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-xs font-medium whitespace-nowrap"
-        >
-          {finalizeMutation.isPending ? 'Finalizing…' : 'Finalize Results'}
-        </button>
+        {showLinks ? (
+          <button
+            type="button"
+            onClick={() => setLinksPanelOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium whitespace-nowrap"
+          >
+            Manage player links
+          </button>
+        ) : null}
+        {showFinalize ? (
+          <button
+            type="button"
+            onClick={() => finalizeMutation.mutate(tournamentId)}
+            disabled={finalizeMutation.isPending}
+            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-xs font-medium whitespace-nowrap"
+          >
+            {finalizeMutation.isPending ? 'Finalizing…' : 'Finalize Results'}
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -120,6 +135,13 @@ function ScoreboardPage() {
               golferId={historyGolferId}
               onClose={() => setHistoryGolferId(null)}
             />
+            {linksPanelOpen && isAdmin && tournamentId && seasonId ? (
+              <PlayerLinksPanel
+                tournamentId={tournamentId}
+                seasonId={seasonId}
+                onClose={() => setLinksPanelOpen(false)}
+              />
+            ) : null}
           </div>
         );
       }}

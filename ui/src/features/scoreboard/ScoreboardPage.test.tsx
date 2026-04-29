@@ -11,6 +11,8 @@ const tournamentsMock = vi.fn();
 const tournamentReportMock = vi.fn();
 const authMeMock = vi.fn();
 const finalizeMock = vi.fn();
+const competitorsMock = vi.fn();
+const golfersMock = vi.fn();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -24,6 +26,8 @@ vi.mock('@/shared/api/client', () => ({
       tournamentReportMock(seasonId, tournamentId, live),
     authMe: () => authMeMock(),
     finalizeTournament: (id: string) => finalizeMock(id),
+    tournamentCompetitors: (id: string) => competitorsMock(id),
+    golfers: () => golfersMock(),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -107,7 +111,15 @@ describe('ScoreboardPage', () => {
     tournamentReportMock.mockReset();
     authMeMock.mockReset();
     finalizeMock.mockReset();
+    competitorsMock.mockReset();
+    golfersMock.mockReset();
     authMeMock.mockResolvedValue(null);
+    competitorsMock.mockResolvedValue({
+      tournamentId: 'tn-active',
+      isFinalized: false,
+      competitors: [],
+    });
+    golfersMock.mockResolvedValue([]);
   });
 
   it('auto-selects an active tournament over a completed one', async () => {
@@ -261,5 +273,71 @@ describe('ScoreboardPage', () => {
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
     expect(await screen.findByText(/Failed to load scoreboard/i)).toBeInTheDocument();
+  });
+
+  it('shows the Manage player links button for an admin and opens the panel on click', async () => {
+    authMeMock.mockResolvedValue({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    tournamentReportMock.mockResolvedValue({
+      ...buildReport('Current Open', 'tn-active'),
+      tournament: {
+        id: 'tn-active',
+        name: 'Current Open',
+        startDate: '2026-03-01',
+        endDate: '2026-03-04',
+        status: 'in_progress',
+        payoutMultiplier: 1,
+        week: '10',
+      },
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    const button = await screen.findByRole('button', { name: /Manage player links/i });
+    await user.click(button);
+
+    expect(await screen.findByRole('dialog', { name: /Manage player links/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(competitorsMock).toHaveBeenCalledWith('tn-active');
+    });
+  });
+
+  it('hides the Manage player links button for a logged-in non-admin', async () => {
+    authMeMock.mockResolvedValue({
+      id: 'u-2',
+      username: 'reg',
+      role: 'user',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    tournamentReportMock.mockResolvedValue({
+      ...buildReport('Current Open', 'tn-active'),
+      tournament: {
+        id: 'tn-active',
+        name: 'Current Open',
+        startDate: '2026-03-01',
+        endDate: '2026-03-04',
+        status: 'in_progress',
+        payoutMultiplier: 1,
+        week: '10',
+      },
+    });
+
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    await screen.findByRole('heading', { name: /Current Open/i });
+
+    expect(
+      screen.queryByRole('button', { name: /Manage player links/i }),
+    ).not.toBeInTheDocument();
   });
 });
