@@ -406,7 +406,8 @@ private fun buildTeamPreview(
                     isTeamEvent = isTeamEvent,
                 )
             val owners = ctx.golferOwners[resolvedGolfer.id].orEmpty()
-            val splits = PayoutTable.splitOwnership(basePayout, owners)
+            val floor = ctx.rules.tieFloor.multiply(multiplier)
+            val splits = PayoutTable.splitOwnership(basePayout, owners, floor)
             val ownerPayout = splits[team.id] ?: basePayout
             PreviewGolferScore(
                 golferName = "${resolvedGolfer.firstName} ${resolvedGolfer.lastName}",

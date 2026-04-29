@@ -121,7 +121,8 @@ class ScoringService(
                 isTeamEvent = inputs.isTeamEvent,
             )
         val owners = inputs.ownersByGolfer[entry.golferId] ?: emptyList()
-        val ownerPayout = PayoutTable.splitOwnership(basePayout, owners)[teamId] ?: basePayout
+        val floor = inputs.rules.tieFloor.multiply(inputs.multiplier)
+        val ownerPayout = PayoutTable.splitOwnership(basePayout, owners, floor)[teamId] ?: basePayout
         val breakdown =
             ScoreBreakdown(
                 position = position,

@@ -63,13 +63,21 @@ internal object PayoutTable {
      * [basePayout]. The largest-ownership share is rounded first; the last
      * owner absorbs the remainder. With a single owner the full amount goes
      * to them — no rounding loss possible.
+     *
+     * Every non-zero recipient share is then bumped up to [floor] if it would
+     * otherwise fall below — this is the league's "minimum payout for any
+     * bet or split" rule. Zero stays zero (positions outside the payout zone
+     * shouldn't suddenly start paying). Bumping is intentional: total league
+     * outflow can exceed [basePayout] — the floor is a guarantee, not a
+     * redistribution.
      */
     fun splitOwnership(
         basePayout: BigDecimal,
         owners: List<Pair<TeamId, BigDecimal>>,
+        floor: BigDecimal,
     ): Map<TeamId, BigDecimal> {
         if (owners.size <= 1) {
-            return owners.associate { (teamId, _) -> teamId to basePayout }
+            return owners.associate { (teamId, _) -> teamId to applyFloor(basePayout, floor) }
         }
         val sorted = owners.sortedByDescending { it.second }
         val rounded =
@@ -79,6 +87,12 @@ internal object PayoutTable {
                         .divide(BigDecimal(OWNERSHIP_DENOMINATOR), SPLIT_SCALE, RoundingMode.HALF_UP)
             }
         val remainder = basePayout.subtract(rounded.fold(BigDecimal.ZERO) { acc, (_, amount) -> acc.add(amount) })
-        return (rounded + (sorted.last().first to remainder)).toMap()
+        val withRemainder = rounded + (sorted.last().first to remainder)
+        return withRemainder.associate { (teamId, share) -> teamId to applyFloor(share, floor) }
     }
+
+    private fun applyFloor(
+        amount: BigDecimal,
+        floor: BigDecimal,
+    ): BigDecimal = if (amount.signum() > 0 && amount < floor) floor else amount
 }
