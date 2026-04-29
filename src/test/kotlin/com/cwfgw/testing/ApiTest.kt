@@ -60,6 +60,10 @@ private val TEST_JSON =
 const val TEST_ADMIN_USERNAME: String = "test-admin"
 const val TEST_ADMIN_PASSWORD: String = "test-admin-password-not-used-in-prod"
 
+/** Shared credentials for [regularUserApiTest] — a non-admin account for 403 testing. */
+const val TEST_USER_USERNAME: String = "test-user"
+const val TEST_USER_PASSWORD: String = "test-user-password-not-used-in-prod"
+
 /**
  * Mutable fixture that each test overrides in its `apiTest { ... }` configure block. Defaults every slot
  * to an empty fake-backed service so a spec only has to override the domain it's actually exercising.
@@ -174,6 +178,33 @@ fun authenticatedApiTest(
         client.post("/api/v1/auth/login") {
             contentType(ContentType.Application.Json)
             setBody(LoginRequest(username = TEST_ADMIN_USERNAME, password = TEST_ADMIN_PASSWORD))
+        }
+        block(client)
+    }
+}
+
+/**
+ * Like [authenticatedApiTest] but the seeded user has [UserRole.User], not Admin.
+ * Use this to verify that data-changing endpoints reject regular users with 403
+ * via the [com.cwfgw.users.requireAdmin] gate.
+ */
+fun regularUserApiTest(
+    configure: ApiFixture.() -> Unit = {},
+    block: suspend ApplicationTestBuilder.(HttpClient) -> Unit,
+) {
+    val fixture = ApiFixture().apply(configure)
+    runBlocking {
+        val hash = fixture.authService.hashPassword(TEST_USER_PASSWORD)
+        fixture.userRepository.create(
+            NewUser(username = TEST_USER_USERNAME, passwordHash = hash, role = UserRole.User),
+        )
+    }
+    testApplication {
+        application { module(fixture.toAppServices()) }
+        val client = createCookieClient()
+        client.post("/api/v1/auth/login") {
+            contentType(ContentType.Application.Json)
+            setBody(LoginRequest(username = TEST_USER_USERNAME, password = TEST_USER_PASSWORD))
         }
         block(client)
     }

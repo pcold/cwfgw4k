@@ -6,6 +6,7 @@ import com.cwfgw.http.DomainError
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.toSeasonId
 import com.cwfgw.users.SESSION_AUTH_NAME
+import com.cwfgw.users.requireAdmin
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
@@ -53,6 +54,7 @@ private suspend fun RoutingContext.listTeams(service: TeamService) {
 }
 
 private suspend fun RoutingContext.createTeam(service: TeamService) {
+    requireAdmin()
     val request = call.receive<CreateTeamRequest>()
     call.respond(HttpStatusCode.Created, service.create(seasonId(), request))
 }
@@ -64,6 +66,7 @@ private suspend fun RoutingContext.getTeam(service: TeamService) {
 }
 
 private suspend fun RoutingContext.updateTeam(service: TeamService) {
+    requireAdmin()
     val teamId = teamId()
     val request = call.receive<UpdateTeamRequest>()
     val team = service.update(teamId, request) ?: throw DomainError.NotFound("team ${teamId.value} not found")
@@ -75,11 +78,13 @@ private suspend fun RoutingContext.getRoster(service: TeamService) {
 }
 
 private suspend fun RoutingContext.addToRoster(service: TeamService) {
+    requireAdmin()
     val request = call.receive<AddToRosterRequest>()
     call.respond(HttpStatusCode.Created, service.addToRoster(teamId(), request))
 }
 
 private suspend fun RoutingContext.dropFromRoster(service: TeamService) {
+    requireAdmin()
     val teamId = teamId()
     val golferId = golferId()
     if (!service.dropFromRoster(teamId, golferId)) {

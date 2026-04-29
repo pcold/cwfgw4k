@@ -2,6 +2,7 @@ package com.cwfgw.leagues
 
 import com.cwfgw.http.DomainError
 import com.cwfgw.users.SESSION_AUTH_NAME
+import com.cwfgw.users.requireAdmin
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
@@ -36,6 +37,7 @@ private suspend fun RoutingContext.getLeague(service: LeagueService) {
 }
 
 private suspend fun RoutingContext.createLeague(service: LeagueService) {
+    requireAdmin()
     val request = call.receive<CreateLeagueRequest>()
     call.respond(HttpStatusCode.Created, service.create(request))
 }

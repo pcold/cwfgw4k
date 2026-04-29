@@ -6,6 +6,7 @@ import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.toSeasonId
 import com.cwfgw.users.SESSION_AUTH_NAME
+import com.cwfgw.users.requireAdmin
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
@@ -59,20 +60,24 @@ private suspend fun RoutingContext.getDraft(service: DraftService) {
 }
 
 private suspend fun RoutingContext.createDraft(service: DraftService) {
+    requireAdmin()
     val request = call.receive<CreateDraftRequest>()
     call.respond(HttpStatusCode.Created, service.create(seasonId(), request))
 }
 
 private suspend fun RoutingContext.startDraft(service: DraftService) {
+    requireAdmin()
     call.respond(service.start(seasonId()).orThrow())
 }
 
 private suspend fun RoutingContext.initializeDraft(service: DraftService) {
+    requireAdmin()
     val rounds = optionalQueryParam("rounds", String::toIntOrNull) ?: DEFAULT_DRAFT_ROUNDS
     call.respond(service.initializePicks(seasonId(), rounds).orThrow())
 }
 
 private suspend fun RoutingContext.makePick(service: DraftService) {
+    requireAdmin()
     val request = call.receive<MakePickRequest>()
     call.respond(service.makePick(seasonId(), request).orThrow())
 }

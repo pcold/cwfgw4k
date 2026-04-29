@@ -4,6 +4,7 @@ import com.cwfgw.http.DomainError
 import com.cwfgw.http.optionalQueryParam
 import com.cwfgw.leagues.toLeagueId
 import com.cwfgw.users.SESSION_AUTH_NAME
+import com.cwfgw.users.requireAdmin
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
@@ -45,11 +46,13 @@ private suspend fun RoutingContext.getSeason(service: SeasonService) {
 }
 
 private suspend fun RoutingContext.createSeason(service: SeasonService) {
+    requireAdmin()
     val request = call.receive<CreateSeasonRequest>()
     call.respond(HttpStatusCode.Created, service.create(request))
 }
 
 private suspend fun RoutingContext.updateSeason(service: SeasonService) {
+    requireAdmin()
     val id = seasonId()
     val request = call.receive<UpdateSeasonRequest>()
     val season = service.update(id, request) ?: throw DomainError.NotFound("season ${id.value} not found")
@@ -63,6 +66,7 @@ private suspend fun RoutingContext.getRules(service: SeasonService) {
 }
 
 private suspend fun RoutingContext.deleteSeason(service: SeasonService) {
+    requireAdmin()
     val id = seasonId()
     if (!service.delete(id)) throw DomainError.NotFound("season ${id.value} not found")
     call.respond(HttpStatusCode.NoContent)

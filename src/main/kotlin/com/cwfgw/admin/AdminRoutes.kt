@@ -5,6 +5,7 @@ import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.toSeasonId
 import com.cwfgw.users.SESSION_AUTH_NAME
+import com.cwfgw.users.requireAdmin
 import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
 import io.ktor.server.request.receiveText
@@ -28,17 +29,20 @@ private fun RoutingContext.seasonId(): SeasonId =
     call.parameters["id"]?.toSeasonId() ?: throw DomainError.Validation("invalid season id")
 
 private suspend fun RoutingContext.uploadSeason(service: AdminService) {
+    requireAdmin()
     val id = seasonId()
     val body = call.receive<UploadSeasonRequest>()
     call.respond(service.uploadSeason(id, body.startDate, body.endDate).orThrow())
 }
 
 private suspend fun RoutingContext.previewRoster(service: AdminService) {
+    requireAdmin()
     val tsv = call.receiveText()
     call.respond(service.previewRoster(tsv).orThrow())
 }
 
 private suspend fun RoutingContext.confirmRoster(service: AdminService) {
+    requireAdmin()
     val request = call.receive<ConfirmRosterRequest>()
     call.respond(service.confirmRoster(request).orThrow())
 }

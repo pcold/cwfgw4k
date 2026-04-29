@@ -4,6 +4,7 @@ import com.cwfgw.http.DomainError
 import com.cwfgw.result.Result
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.users.SESSION_AUTH_NAME
+import com.cwfgw.users.requireAdmin
 import io.ktor.server.auth.authenticate
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -30,10 +31,12 @@ private fun RoutingContext.seasonId(): SeasonId =
     call.parameters["sid"]?.toSeasonId() ?: throw DomainError.Validation("invalid season id")
 
 private suspend fun RoutingContext.finalizeSeason(service: SeasonOpsService) {
+    requireAdmin()
     call.respond(service.finalizeSeason(seasonId()).orThrow())
 }
 
 private suspend fun RoutingContext.cleanSeasonResults(service: SeasonOpsService) {
+    requireAdmin()
     call.respond(service.cleanSeasonResults(seasonId()).orThrow())
 }
 

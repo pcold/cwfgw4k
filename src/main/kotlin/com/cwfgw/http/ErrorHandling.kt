@@ -33,6 +33,12 @@ sealed class DomainError(message: String, cause: Throwable? = null) : RuntimeExc
 
     /** Authentication required or failed — bad credentials, missing session. Maps to 401 Unauthorized. */
     class Unauthorized(message: String, cause: Throwable? = null) : DomainError(message, cause)
+
+    /**
+     * Authenticated but lacking the required role — e.g. a non-admin hitting
+     * an admin-gated endpoint. Maps to 403 Forbidden.
+     */
+    class Forbidden(message: String, cause: Throwable? = null) : DomainError(message, cause)
 }
 
 private val logger = LoggerFactory.getLogger("com.cwfgw.http.ErrorHandling")
@@ -63,6 +69,9 @@ internal fun Application.installErrorHandling() {
         }
         exception<DomainError.Unauthorized> { call, cause ->
             call.respond(HttpStatusCode.Unauthorized, ErrorBody(cause.message ?: "unauthorized"))
+        }
+        exception<DomainError.Forbidden> { call, cause ->
+            call.respond(HttpStatusCode.Forbidden, ErrorBody(cause.message ?: "forbidden"))
         }
         exception<Throwable> { call, cause ->
             logger.error(

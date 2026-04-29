@@ -7,6 +7,7 @@ import com.cwfgw.seasons.toSeasonId
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.toTournamentId
 import com.cwfgw.users.SESSION_AUTH_NAME
+import com.cwfgw.users.requireAdmin
 import io.ktor.server.auth.authenticate
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -57,10 +58,12 @@ private suspend fun RoutingContext.getScores(service: ScoringService) {
 }
 
 private suspend fun RoutingContext.calculateScores(service: ScoringService) {
+    requireAdmin()
     call.respond(service.calculateScores(seasonId(), tournamentId()).orThrow())
 }
 
 private suspend fun RoutingContext.refreshStandings(service: ScoringService) {
+    requireAdmin()
     call.respond(service.refreshStandings(seasonId()).orThrow())
 }
 

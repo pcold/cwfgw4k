@@ -4,6 +4,7 @@ import com.cwfgw.http.DomainError
 import com.cwfgw.http.optionalQueryParam
 import com.cwfgw.seasons.toSeasonId
 import com.cwfgw.users.SESSION_AUTH_NAME
+import com.cwfgw.users.requireAdmin
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
@@ -44,11 +45,13 @@ private suspend fun RoutingContext.getTournament(service: TournamentService) {
 }
 
 private suspend fun RoutingContext.createTournament(service: TournamentService) {
+    requireAdmin()
     val request = call.receive<CreateTournamentRequest>()
     call.respond(HttpStatusCode.Created, service.create(request))
 }
 
 private suspend fun RoutingContext.updateTournament(service: TournamentService) {
+    requireAdmin()
     val id = tournamentId()
     val request = call.receive<UpdateTournamentRequest>()
     val tournament =
@@ -61,6 +64,7 @@ private suspend fun RoutingContext.getResults(service: TournamentService) {
 }
 
 private suspend fun RoutingContext.importResults(service: TournamentService) {
+    requireAdmin()
     val id = tournamentId()
     val requests = call.receive<List<CreateTournamentResultRequest>>()
     call.respond(service.importResults(id, requests))

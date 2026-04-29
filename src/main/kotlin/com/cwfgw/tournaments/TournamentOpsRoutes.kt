@@ -3,6 +3,7 @@ package com.cwfgw.tournaments
 import com.cwfgw.http.DomainError
 import com.cwfgw.result.Result
 import com.cwfgw.users.SESSION_AUTH_NAME
+import com.cwfgw.users.requireAdmin
 import io.ktor.server.auth.authenticate
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -30,10 +31,12 @@ private fun RoutingContext.tournamentId(): TournamentId =
     call.parameters["id"]?.toTournamentId() ?: throw DomainError.Validation("invalid tournament id")
 
 private suspend fun RoutingContext.finalizeTournament(service: TournamentOpsService) {
+    requireAdmin()
     call.respond(service.finalizeTournament(tournamentId()).orThrow())
 }
 
 private suspend fun RoutingContext.resetTournament(service: TournamentOpsService) {
+    requireAdmin()
     call.respond(service.resetTournament(tournamentId()).orThrow())
 }
 

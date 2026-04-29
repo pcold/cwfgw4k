@@ -3,6 +3,7 @@ package com.cwfgw.golfers
 import com.cwfgw.http.DomainError
 import com.cwfgw.http.optionalQueryParam
 import com.cwfgw.users.SESSION_AUTH_NAME
+import com.cwfgw.users.requireAdmin
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.request.receive
@@ -41,11 +42,13 @@ private suspend fun RoutingContext.getGolfer(service: GolferService) {
 }
 
 private suspend fun RoutingContext.createGolfer(service: GolferService) {
+    requireAdmin()
     val request = call.receive<CreateGolferRequest>()
     call.respond(HttpStatusCode.Created, service.create(request))
 }
 
 private suspend fun RoutingContext.updateGolfer(service: GolferService) {
+    requireAdmin()
     val id = golferId()
     val request = call.receive<UpdateGolferRequest>()
     val golfer = service.update(id, request) ?: throw DomainError.NotFound("golfer ${id.value} not found")

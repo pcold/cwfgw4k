@@ -8,6 +8,7 @@ import com.cwfgw.seasons.toSeasonId
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.toTournamentId
 import com.cwfgw.users.SESSION_AUTH_NAME
+import com.cwfgw.users.requireAdmin
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.server.auth.authenticate
 import io.ktor.server.response.respond
@@ -46,6 +47,7 @@ private suspend fun RoutingContext.getCalendar(service: EspnService) {
 }
 
 private suspend fun RoutingContext.importByDate(service: EspnService) {
+    requireAdmin()
     val date =
         optionalQueryParam("date", ::parseLocalDate)
             ?: throw DomainError.Validation("missing query parameter: date")
@@ -64,6 +66,7 @@ private fun RoutingContext.seasonId(): SeasonId =
     call.parameters["seasonId"]?.toSeasonId() ?: throw DomainError.Validation("invalid season id")
 
 private suspend fun RoutingContext.importForTournament(service: EspnService) {
+    requireAdmin()
     call.respond(service.importForTournament(tournamentId()).orThrow())
 }
 
