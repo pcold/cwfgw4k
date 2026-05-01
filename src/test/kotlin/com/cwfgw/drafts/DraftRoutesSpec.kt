@@ -40,9 +40,9 @@ private fun withDraft(
     picks: List<DraftPick> = emptyList(),
 ): ApiFixture.() -> Unit =
     {
-        val teamService = this.teamService
+        val teamRepository = this.teamRepository
         val fake = FakeDraftRepository(initialDrafts = drafts, initialPicks = picks)
-        draftService = DraftService(fake, teamService, FakeTransactor())
+        draftService = DraftService(fake, teamRepository, FakeTransactor())
     }
 
 class DraftRoutesSpec : FunSpec({

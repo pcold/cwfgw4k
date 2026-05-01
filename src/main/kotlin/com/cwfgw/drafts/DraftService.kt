@@ -5,7 +5,7 @@ import com.cwfgw.golfers.Golfer
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.teams.TeamId
-import com.cwfgw.teams.TeamService
+import com.cwfgw.teams.TeamRepository
 
 /**
  * Draft state machine. A season has at most one draft which moves through
@@ -20,7 +20,7 @@ import com.cwfgw.teams.TeamService
  */
 class DraftService(
     private val repository: DraftRepository,
-    private val teamService: TeamService,
+    private val teamRepository: TeamRepository,
     private val tx: Transactor,
 ) {
     suspend fun get(seasonId: SeasonId): Draft? = tx.read { repository.findBySeason(seasonId) }
@@ -57,18 +57,17 @@ class DraftService(
     suspend fun initializePicks(
         seasonId: SeasonId,
         rounds: Int,
-    ): Result<List<DraftPick>, DraftError> {
-        val teams = teamService.listBySeason(seasonId)
-        return tx.update {
+    ): Result<List<DraftPick>, DraftError> =
+        tx.update {
             val draft = repository.findBySeason(seasonId) ?: return@update Result.Err(DraftError.NotFound)
             if (draft.status != STATUS_PENDING) {
                 return@update Result.Err(DraftError.WrongStatus(current = draft.status, expected = STATUS_PENDING))
             }
+            val teams = teamRepository.findBySeason(seasonId)
             if (teams.isEmpty()) return@update Result.Err(DraftError.NoTeams)
             val slots = snakeDraftOrder(teams.map { it.id }, rounds)
             Result.Ok(repository.createPicks(draft.id, slots))
         }
-    }
 
     suspend fun makePick(
         seasonId: SeasonId,

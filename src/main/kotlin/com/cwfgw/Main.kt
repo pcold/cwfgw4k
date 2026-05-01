@@ -150,7 +150,7 @@ internal fun buildServices(
         tournamentLinkService = tournamentLinkService,
         tournamentOpsService = TournamentOpsService(tournamentService, scoringService, espnService),
         seasonOpsService = SeasonOpsService(seasonService, tournamentService, scoringService),
-        draftService = DraftService(DraftRepository(), teamService, transactor),
+        draftService = DraftService(DraftRepository(), teamRepository, transactor),
         scoringService = scoringService,
         espnService = espnService,
         adminService = adminService,

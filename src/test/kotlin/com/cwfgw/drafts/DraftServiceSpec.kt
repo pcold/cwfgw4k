@@ -5,7 +5,6 @@ import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamId
-import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
@@ -36,7 +35,7 @@ private fun service(
 ): DraftService =
     DraftService(
         FakeDraftRepository(initialDrafts = drafts, initialPicks = picks),
-        TeamService(FakeTeamRepository(), FakeTransactor()),
+        FakeTeamRepository(),
         FakeTransactor(),
     )
 
