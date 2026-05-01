@@ -21,6 +21,7 @@ import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
+import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
@@ -97,7 +98,13 @@ private fun adminFixture(
                 golferService = golferService,
                 teamService = teamService,
                 seasonService = seasonService,
-                tournamentLinkRepository = FakeTournamentLinkRepository(),
+                tournamentLinkService =
+                    TournamentLinkService(
+                        FakeTournamentLinkRepository(),
+                        tournamentService,
+                        golferService,
+                        FakeTransactor(),
+                    ),
             )
         adminService =
             AdminService(

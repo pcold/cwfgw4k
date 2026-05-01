@@ -19,6 +19,7 @@ import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
+import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -171,14 +172,22 @@ private class PreviewFixture(
                 )
             }
         }
+        val tournamentService = TournamentService(tournamentRepo, FakeTransactor())
+        val golferService = GolferService(golferRepo, FakeTransactor())
         service =
             EspnService(
                 client = FakeEspnClient(tournamentsByDate = tournamentsByDate, upstreamError = upstreamError),
-                tournamentService = TournamentService(tournamentRepo, FakeTransactor()),
-                golferService = GolferService(golferRepo, FakeTransactor()),
+                tournamentService = tournamentService,
+                golferService = golferService,
                 teamService = TeamService(teamRepo, FakeTransactor()),
                 seasonService = SeasonService(seasonRepo, FakeTransactor()),
-                tournamentLinkRepository = FakeTournamentLinkRepository(),
+                tournamentLinkService =
+                    TournamentLinkService(
+                        FakeTournamentLinkRepository(),
+                        tournamentService,
+                        golferService,
+                        FakeTransactor(),
+                    ),
             )
     }
 }

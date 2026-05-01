@@ -16,6 +16,7 @@ import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
+import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournamentLinks.TournamentPlayerOverride
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
@@ -125,14 +126,22 @@ private class Fixture(
     val golferRepo = FakeGolferRepository(initial = initialGolfers)
     val teamRepo = FakeTeamRepository(initialRosterView = rosterView)
     val seasonRepo = FakeSeasonRepository()
+    private val tournamentService = TournamentService(tournamentRepo, FakeTransactor())
+    private val golferService = GolferService(golferRepo, FakeTransactor())
     val service: EspnService =
         EspnService(
             client = fakeClient,
-            tournamentService = TournamentService(tournamentRepo, FakeTransactor()),
-            golferService = GolferService(golferRepo, FakeTransactor()),
+            tournamentService = tournamentService,
+            golferService = golferService,
             teamService = TeamService(teamRepo, FakeTransactor()),
             seasonService = SeasonService(seasonRepo, FakeTransactor()),
-            tournamentLinkRepository = FakeTournamentLinkRepository(initial = initialOverrides),
+            tournamentLinkService =
+                TournamentLinkService(
+                    FakeTournamentLinkRepository(initial = initialOverrides),
+                    tournamentService,
+                    golferService,
+                    FakeTransactor(),
+                ),
         )
 }
 

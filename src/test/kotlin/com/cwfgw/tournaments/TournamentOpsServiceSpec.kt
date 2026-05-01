@@ -23,6 +23,7 @@ import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
+import com.cwfgw.tournamentLinks.TournamentLinkService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
@@ -142,7 +143,12 @@ private class Fixture(
                 golferService,
                 teamService,
                 seasonService,
-                FakeTournamentLinkRepository(),
+                TournamentLinkService(
+                    FakeTournamentLinkRepository(),
+                    tournamentService,
+                    golferService,
+                    FakeTransactor(),
+                ),
             )
         val scoringService =
             ScoringService(scoringRepo, seasonService, tournamentService, teamService, FakeTransactor())

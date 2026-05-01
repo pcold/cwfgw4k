@@ -16,7 +16,7 @@ import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
 import com.cwfgw.tournamentLinks.TournamentCompetitorListing
 import com.cwfgw.tournamentLinks.TournamentCompetitorView
-import com.cwfgw.tournamentLinks.TournamentLinkRepository
+import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -52,7 +52,7 @@ class EspnService(
     private val golferService: GolferService,
     private val teamService: TeamService,
     private val seasonService: SeasonService,
-    private val tournamentLinkRepository: TournamentLinkRepository,
+    private val tournamentLinkService: TournamentLinkService,
 ) {
     /**
      * Fetch ESPN's season calendar. Pass-through to the client; surfaced on
@@ -144,9 +144,7 @@ class EspnService(
         tournaments: List<Tournament>,
     ): Map<TournamentId, Map<String, GolferId>> =
         tournaments.associate { tournament ->
-            tournament.id to
-                tournamentLinkRepository.listByTournament(tournament.id)
-                    .associate { it.espnCompetitorId to it.golferId }
+            tournament.id to tournamentLinkService.overrideMap(tournament.id)
         }
 
     suspend fun importByDate(date: LocalDate): Result<EspnImportBatch, EspnError> {
@@ -268,9 +266,7 @@ class EspnService(
                 .flatMap { it.picks }
                 .map { it.golferId }
                 .toSet()
-        val overrides =
-            tournamentLinkRepository.listByTournament(tournamentId)
-                .associate { it.espnCompetitorId to it.golferId }
+        val overrides = tournamentLinkService.overrideMap(tournamentId)
         return MatchingContext(golfers = golfers, rosterGolferIds = rosterIds, overrides = overrides)
     }
 

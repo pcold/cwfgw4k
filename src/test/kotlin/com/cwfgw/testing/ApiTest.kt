@@ -95,6 +95,7 @@ class ApiFixture {
             repository = tournamentLinkRepository,
             tournamentService = tournamentService,
             golferService = golferService,
+            tx = transactor,
         )
     var espnService: EspnService =
         EspnService(
@@ -103,7 +104,7 @@ class ApiFixture {
             golferService = golferService,
             teamService = teamService,
             seasonService = seasonService,
-            tournamentLinkRepository = tournamentLinkRepository,
+            tournamentLinkService = tournamentLinkService,
         )
     var adminService: AdminService =
         AdminService(

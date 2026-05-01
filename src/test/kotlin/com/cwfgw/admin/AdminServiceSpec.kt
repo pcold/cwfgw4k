@@ -19,6 +19,7 @@ import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
+import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentService
@@ -102,7 +103,13 @@ private class Fixture(
                 golferService = golferService,
                 teamService = teamService,
                 seasonService = SeasonService(seasonRepo, FakeTransactor()),
-                tournamentLinkRepository = FakeTournamentLinkRepository(),
+                tournamentLinkService =
+                    TournamentLinkService(
+                        FakeTournamentLinkRepository(),
+                        tournamentService,
+                        golferService,
+                        FakeTransactor(),
+                    ),
             )
         service =
             AdminService(

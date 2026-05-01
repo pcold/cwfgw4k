@@ -20,6 +20,7 @@ import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
+import com.cwfgw.tournamentLinks.TournamentLinkService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -100,7 +101,13 @@ private fun opsFixture(
                 golferService = golferService,
                 teamService = teamService,
                 seasonService = seasonService,
-                tournamentLinkRepository = FakeTournamentLinkRepository(),
+                tournamentLinkService =
+                    TournamentLinkService(
+                        FakeTournamentLinkRepository(),
+                        tournamentService,
+                        golferService,
+                        FakeTransactor(),
+                    ),
             )
         scoringService = ScoringService(scoringRepo, seasonService, tournamentService, teamService, FakeTransactor())
         tournamentOpsService = TournamentOpsService(tournamentService, scoringService, espnService)

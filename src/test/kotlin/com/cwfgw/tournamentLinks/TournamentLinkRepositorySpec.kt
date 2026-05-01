@@ -21,7 +21,7 @@ import java.util.UUID
 class TournamentLinkRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
-    val repository = TournamentLinkRepository(postgres.dsl)
+    val repository = TournamentLinkRepository()
     val leagueRepo = LeagueRepository(postgres.dsl)
     val seasonRepo = SeasonRepository()
     val tournamentRepo = TournamentRepository()
@@ -48,13 +48,14 @@ class TournamentLinkRepositorySpec : FunSpec({
         val tournamentId = seedTournament()
         val golfer = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick")) }
 
-        val saved = repository.upsert(tournamentId, espnCompetitorId = "abc-123", golferId = golfer.id)
+        val saved =
+            tx.update { repository.upsert(tournamentId, espnCompetitorId = "abc-123", golferId = golfer.id) }
 
         saved.tournamentId shouldBe tournamentId
         saved.espnCompetitorId shouldBe "abc-123"
         saved.golferId shouldBe golfer.id
 
-        repository.listByTournament(tournamentId) shouldHaveSize 1
+        tx.read { repository.listByTournament(tournamentId) } shouldHaveSize 1
     }
 
     test("upsert on existing key replaces the linked golfer") {
@@ -65,11 +66,11 @@ class TournamentLinkRepositorySpec : FunSpec({
                     golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick"))
             }
 
-        repository.upsert(tournamentId, "abc-123", first.id)
-        val updated = repository.upsert(tournamentId, "abc-123", second.id)
+        tx.update { repository.upsert(tournamentId, "abc-123", first.id) }
+        val updated = tx.update { repository.upsert(tournamentId, "abc-123", second.id) }
 
         updated.golferId shouldBe second.id
-        repository.listByTournament(tournamentId) shouldHaveSize 1
+        tx.read { repository.listByTournament(tournamentId) } shouldHaveSize 1
     }
 
     test("listByTournament scopes results to one tournament") {
@@ -77,29 +78,31 @@ class TournamentLinkRepositorySpec : FunSpec({
         val tournamentB = seedTournament()
         val golfer = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick")) }
 
-        repository.upsert(tournamentA, "abc-123", golfer.id)
-        repository.upsert(tournamentB, "xyz-789", golfer.id)
+        tx.update {
+            repository.upsert(tournamentA, "abc-123", golfer.id)
+            repository.upsert(tournamentB, "xyz-789", golfer.id)
+        }
 
-        repository.listByTournament(tournamentA).map { it.espnCompetitorId } shouldBe listOf("abc-123")
-        repository.listByTournament(tournamentB).map { it.espnCompetitorId } shouldBe listOf("xyz-789")
+        tx.read { repository.listByTournament(tournamentA) }.map { it.espnCompetitorId } shouldBe listOf("abc-123")
+        tx.read { repository.listByTournament(tournamentB) }.map { it.espnCompetitorId } shouldBe listOf("xyz-789")
     }
 
     test("delete removes the matching row and returns true") {
         val tournamentId = seedTournament()
         val golfer = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick")) }
-        repository.upsert(tournamentId, "abc-123", golfer.id)
+        tx.update { repository.upsert(tournamentId, "abc-123", golfer.id) }
 
-        repository.delete(tournamentId, "abc-123") shouldBe true
-        repository.listByTournament(tournamentId).shouldBeEmpty()
+        tx.update { repository.delete(tournamentId, "abc-123") } shouldBe true
+        tx.read { repository.listByTournament(tournamentId) }.shouldBeEmpty()
     }
 
     test("delete returns false when no matching row exists") {
         val tournamentId = seedTournament()
 
-        repository.delete(tournamentId, "never-stored") shouldBe false
+        tx.update { repository.delete(tournamentId, "never-stored") } shouldBe false
     }
 
     test("listByTournament returns an empty list for an unknown tournament") {
-        repository.listByTournament(TournamentId(UUID.randomUUID())).shouldBeEmpty()
+        tx.read { repository.listByTournament(TournamentId(UUID.randomUUID())) }.shouldBeEmpty()
     }
 })

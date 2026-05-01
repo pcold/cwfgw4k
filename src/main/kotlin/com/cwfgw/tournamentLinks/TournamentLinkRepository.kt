@@ -1,16 +1,18 @@
 package com.cwfgw.tournamentLinks
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.jooq.tables.references.TOURNAMENT_PLAYER_OVERRIDES
 import com.cwfgw.tournaments.TournamentId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jooq.DSLContext
 import org.jooq.Record
 
 interface TournamentLinkRepository {
+    context(ctx: TransactionContext)
     suspend fun listByTournament(tournamentId: TournamentId): List<TournamentPlayerOverride>
 
+    context(ctx: TransactionContext)
     suspend fun upsert(
         tournamentId: TournamentId,
         espnCompetitorId: String,
@@ -18,18 +20,20 @@ interface TournamentLinkRepository {
     ): TournamentPlayerOverride
 
     /** @return true if a row was deleted, false if no override existed for that pair. */
+    context(ctx: TransactionContext)
     suspend fun delete(
         tournamentId: TournamentId,
         espnCompetitorId: String,
     ): Boolean
 }
 
-fun TournamentLinkRepository(dsl: DSLContext): TournamentLinkRepository = JooqTournamentLinkRepository(dsl)
+fun TournamentLinkRepository(): TournamentLinkRepository = JooqTournamentLinkRepository()
 
-private class JooqTournamentLinkRepository(private val dsl: DSLContext) : TournamentLinkRepository {
+private class JooqTournamentLinkRepository : TournamentLinkRepository {
+    context(ctx: TransactionContext)
     override suspend fun listByTournament(tournamentId: TournamentId): List<TournamentPlayerOverride> =
         withContext(Dispatchers.IO) {
-            dsl.select(
+            ctx.dsl.select(
                 TOURNAMENT_PLAYER_OVERRIDES.TOURNAMENT_ID,
                 TOURNAMENT_PLAYER_OVERRIDES.ESPN_COMPETITOR_ID,
                 TOURNAMENT_PLAYER_OVERRIDES.GOLFER_ID,
@@ -40,6 +44,7 @@ private class JooqTournamentLinkRepository(private val dsl: DSLContext) : Tourna
                 .fetch(::toOverride)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun upsert(
         tournamentId: TournamentId,
         espnCompetitorId: String,
@@ -47,7 +52,7 @@ private class JooqTournamentLinkRepository(private val dsl: DSLContext) : Tourna
     ): TournamentPlayerOverride =
         withContext(Dispatchers.IO) {
             val inserted =
-                dsl.insertInto(TOURNAMENT_PLAYER_OVERRIDES)
+                ctx.dsl.insertInto(TOURNAMENT_PLAYER_OVERRIDES)
                     .set(TOURNAMENT_PLAYER_OVERRIDES.TOURNAMENT_ID, tournamentId.value)
                     .set(TOURNAMENT_PLAYER_OVERRIDES.ESPN_COMPETITOR_ID, espnCompetitorId)
                     .set(TOURNAMENT_PLAYER_OVERRIDES.GOLFER_ID, golferId.value)
@@ -66,12 +71,13 @@ private class JooqTournamentLinkRepository(private val dsl: DSLContext) : Tourna
             toOverride(inserted)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun delete(
         tournamentId: TournamentId,
         espnCompetitorId: String,
     ): Boolean =
         withContext(Dispatchers.IO) {
-            dsl.deleteFrom(TOURNAMENT_PLAYER_OVERRIDES)
+            ctx.dsl.deleteFrom(TOURNAMENT_PLAYER_OVERRIDES)
                 .where(TOURNAMENT_PLAYER_OVERRIDES.TOURNAMENT_ID.eq(tournamentId.value))
                 .and(TOURNAMENT_PLAYER_OVERRIDES.ESPN_COMPETITOR_ID.eq(espnCompetitorId))
                 .execute() > 0

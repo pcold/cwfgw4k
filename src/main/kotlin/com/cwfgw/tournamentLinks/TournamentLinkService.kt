@@ -1,5 +1,6 @@
 package com.cwfgw.tournamentLinks
 
+import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.result.Result
@@ -21,13 +22,14 @@ class TournamentLinkService(
     private val repository: TournamentLinkRepository,
     private val tournamentService: TournamentService,
     private val golferService: GolferService,
+    private val tx: Transactor,
 ) {
     suspend fun listByTournament(tournamentId: TournamentId): List<TournamentPlayerOverride> =
-        repository.listByTournament(tournamentId)
+        tx.read { repository.listByTournament(tournamentId) }
 
     /** Map a single tournament's overrides into the shape the matchers consume. */
     suspend fun overrideMap(tournamentId: TournamentId): Map<String, GolferId> =
-        repository.listByTournament(tournamentId).associate { it.espnCompetitorId to it.golferId }
+        tx.read { repository.listByTournament(tournamentId) }.associate { it.espnCompetitorId to it.golferId }
 
     suspend fun upsert(
         tournamentId: TournamentId,
@@ -42,7 +44,7 @@ class TournamentLinkService(
         if (golferService.get(request.golferId) == null) {
             return Result.Err(TournamentLinkError.GolferNotFound(request.golferId))
         }
-        val override = repository.upsert(tournamentId, request.espnCompetitorId, request.golferId)
+        val override = tx.update { repository.upsert(tournamentId, request.espnCompetitorId, request.golferId) }
         return Result.Ok(override)
     }
 
@@ -56,6 +58,6 @@ class TournamentLinkService(
         if (tournament.status == TournamentStatus.Completed) {
             return Result.Err(TournamentLinkError.TournamentFinalized(tournamentId))
         }
-        return Result.Ok(repository.delete(tournamentId, espnCompetitorId))
+        return Result.Ok(tx.update { repository.delete(tournamentId, espnCompetitorId) })
     }
 }

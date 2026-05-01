@@ -26,6 +26,7 @@ import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
+import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
@@ -222,7 +223,13 @@ private fun reportFixture(
                 golferService = golferService,
                 teamService = teamService,
                 seasonService = seasonService,
-                tournamentLinkRepository = FakeTournamentLinkRepository(),
+                tournamentLinkService =
+                    TournamentLinkService(
+                        FakeTournamentLinkRepository(),
+                        tournamentService,
+                        golferService,
+                        FakeTransactor(),
+                    ),
             )
         liveOverlayService = LiveOverlayService(previewEspnService)
         weeklyReportService =

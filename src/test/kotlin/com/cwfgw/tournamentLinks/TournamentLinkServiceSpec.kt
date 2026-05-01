@@ -69,6 +69,7 @@ private fun service(
         repository = FakeTournamentLinkRepository(initial = initialOverrides),
         tournamentService = TournamentService(FakeTournamentRepository(initial = tournaments), FakeTransactor()),
         golferService = GolferService(FakeGolferRepository(initial = golfers), FakeTransactor()),
+        tx = FakeTransactor(),
     )
 
 class TournamentLinkServiceSpec : FunSpec({

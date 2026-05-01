@@ -22,6 +22,7 @@ import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
+import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
@@ -50,6 +51,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
     val recentCalendarEntry =
         EspnCalendarEntry(id = "e-recent", label = "Recent Event", startDate = "2026-04-01T00:00Z")
 
+    @Suppress("LongMethod")
     fun fixture(
         seedGolfers: List<Golfer> = emptyList(),
         calendar: List<EspnCalendarEntry> = emptyList(),
@@ -83,7 +85,13 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
                 golferService = golferService,
                 teamService = teamService,
                 seasonService = SeasonService(seasonRepo, FakeTransactor()),
-                tournamentLinkRepository = FakeTournamentLinkRepository(),
+                tournamentLinkService =
+                    TournamentLinkService(
+                        FakeTournamentLinkRepository(),
+                        tournamentService,
+                        golferService,
+                        FakeTransactor(),
+                    ),
             )
         return TestFixture(
             golferRepo = golferRepo,

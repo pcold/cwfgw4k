@@ -17,6 +17,7 @@ import com.cwfgw.teams.TeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
+import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentService
 import io.kotest.assertions.throwables.shouldThrow
@@ -56,7 +57,13 @@ class AdminServiceConfirmRosterSpec : FunSpec({
                 golferService = golferService,
                 teamService = teamService,
                 seasonService = seasonService,
-                tournamentLinkRepository = TournamentLinkRepository(postgres.dsl),
+                tournamentLinkService =
+                    TournamentLinkService(
+                        TournamentLinkRepository(),
+                        tournamentService,
+                        golferService,
+                        tx,
+                    ),
             )
         // Bootstrap a league + season so confirmRoster has a target.
         val league =
