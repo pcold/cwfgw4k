@@ -1,5 +1,6 @@
 package com.cwfgw.users
 
+import com.cwfgw.db.Transactor
 import com.cwfgw.testing.postgresHarness
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
@@ -12,11 +13,11 @@ import java.util.UUID
 class UserRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
-    val repository = UserRepository(postgres.dsl)
+    val repository = UserRepository()
+    val tx = Transactor(postgres.dsl)
 
     test("create persists a user with default role 'user' and returns the public shape") {
-        val created =
-            repository.create(NewUser(username = "alice", passwordHash = "hash-1"))
+        val created = tx.update { repository.create(NewUser(username = "alice", passwordHash = "hash-1")) }
 
         created.username shouldBe "alice"
         created.role shouldBe UserRole.User
@@ -24,9 +25,9 @@ class UserRepositorySpec : FunSpec({
 
     test("create with explicit role 'admin' persists that role") {
         val created =
-            repository.create(
-                NewUser(username = "root", passwordHash = "hash-2", role = UserRole.Admin),
-            )
+            tx.update {
+                repository.create(NewUser(username = "root", passwordHash = "hash-2", role = UserRole.Admin))
+            }
 
         created.role shouldBe UserRole.Admin
     }
@@ -39,41 +40,41 @@ class UserRepositorySpec : FunSpec({
             .set(com.cwfgw.jooq.tables.references.USERS.ROLE, "superadmin")
             .execute()
 
-        repository.findByUsername("stray").shouldNotBeNull().role shouldBe UserRole.User
+        tx.read { repository.findByUsername("stray") }.shouldNotBeNull().role shouldBe UserRole.User
     }
 
     test("create rejects a duplicate username via the UNIQUE constraint") {
-        repository.create(NewUser(username = "alice", passwordHash = "hash-1"))
+        tx.update { repository.create(NewUser(username = "alice", passwordHash = "hash-1")) }
 
         shouldThrow<DataAccessException> {
-            repository.create(NewUser(username = "alice", passwordHash = "hash-other"))
+            tx.update { repository.create(NewUser(username = "alice", passwordHash = "hash-other")) }
         }
     }
 
     test("findById returns the persisted user") {
-        val created = repository.create(NewUser(username = "alice", passwordHash = "hash-1"))
+        val created = tx.update { repository.create(NewUser(username = "alice", passwordHash = "hash-1")) }
 
-        repository.findById(created.id).shouldNotBeNull().username shouldBe "alice"
+        tx.read { repository.findById(created.id) }.shouldNotBeNull().username shouldBe "alice"
     }
 
     test("findById returns null for an unknown id") {
-        repository.findById(UserId(UUID.randomUUID())).shouldBeNull()
+        tx.read { repository.findById(UserId(UUID.randomUUID())) }.shouldBeNull()
     }
 
     test("findByUsername returns the persisted user") {
-        repository.create(NewUser(username = "alice", passwordHash = "hash-1"))
+        tx.update { repository.create(NewUser(username = "alice", passwordHash = "hash-1")) }
 
-        repository.findByUsername("alice").shouldNotBeNull().username shouldBe "alice"
+        tx.read { repository.findByUsername("alice") }.shouldNotBeNull().username shouldBe "alice"
     }
 
     test("findByUsername returns null when no user has that username") {
-        repository.findByUsername("nobody").shouldBeNull()
+        tx.read { repository.findByUsername("nobody") }.shouldBeNull()
     }
 
     test("findCredentials returns the public user plus the stored password hash") {
-        repository.create(NewUser(username = "alice", passwordHash = "hash-secret"))
+        tx.update { repository.create(NewUser(username = "alice", passwordHash = "hash-secret")) }
 
-        val credentials = repository.findCredentials("alice")
+        val credentials = tx.read { repository.findCredentials("alice") }
 
         credentials.shouldNotBeNull()
         credentials.user.username shouldBe "alice"
@@ -81,18 +82,20 @@ class UserRepositorySpec : FunSpec({
     }
 
     test("findCredentials returns null when no user has that username") {
-        repository.findCredentials("nobody").shouldBeNull()
+        tx.read { repository.findCredentials("nobody") }.shouldBeNull()
     }
 
     test("countAll returns 0 on an empty table") {
-        repository.countAll() shouldBe 0L
+        tx.read { repository.countAll() } shouldBe 0L
     }
 
     test("countAll reflects the number of inserted users") {
-        repository.create(NewUser(username = "a", passwordHash = "h"))
-        repository.create(NewUser(username = "b", passwordHash = "h"))
-        repository.create(NewUser(username = "c", passwordHash = "h"))
+        tx.update {
+            repository.create(NewUser(username = "a", passwordHash = "h"))
+            repository.create(NewUser(username = "b", passwordHash = "h"))
+            repository.create(NewUser(username = "c", passwordHash = "h"))
+        }
 
-        repository.countAll() shouldBe 3L
+        tx.read { repository.countAll() } shouldBe 3L
     }
 })

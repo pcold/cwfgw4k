@@ -1,6 +1,7 @@
 package com.cwfgw.users
 
 import com.cwfgw.config.AuthConfig
+import com.cwfgw.db.Transactor
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val log = KotlinLogging.logger {}
@@ -15,9 +16,10 @@ private val log = KotlinLogging.logger {}
 suspend fun seedAdminIfEmpty(
     authService: AuthService,
     userRepository: UserRepository,
+    tx: Transactor,
     config: AuthConfig,
 ) {
-    if (userRepository.countAll() > 0) return
+    if (tx.read { userRepository.countAll() } > 0) return
 
     val username = config.adminUsername
     val password = config.adminPassword
@@ -30,6 +32,8 @@ suspend fun seedAdminIfEmpty(
     }
 
     val hash = authService.hashPassword(password)
-    userRepository.create(NewUser(username = username, passwordHash = hash, role = UserRole.Admin))
+    tx.update {
+        userRepository.create(NewUser(username = username, passwordHash = hash, role = UserRole.Admin))
+    }
     log.info { "Seeded initial admin user '$username'" }
 }

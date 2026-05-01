@@ -1,6 +1,7 @@
 package com.cwfgw.users
 
 import at.favre.lib.crypto.bcrypt.BCrypt
+import com.cwfgw.db.Transactor
 import com.cwfgw.result.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,10 +18,13 @@ import kotlinx.coroutines.withContext
  *
  * Sessions are stateless — the signed cookie carries the user id and the
  * Authentication plugin's session validator hydrates a [User] from the DB
- * per request. No session map lives here.
+ * per request. [findById] is the lookup the session validator uses; it
+ * lives on the service so callers don't need to know about [UserRepository]
+ * or transaction wiring.
  */
 class AuthService(
     private val userRepository: UserRepository,
+    private val tx: Transactor,
     private val cost: Int = DEFAULT_COST,
 ) {
     suspend fun login(
@@ -28,7 +32,8 @@ class AuthService(
         password: String,
     ): Result<User, AuthError> {
         val credentials =
-            userRepository.findCredentials(username) ?: return Result.Err(AuthError.InvalidCredentials)
+            tx.read { userRepository.findCredentials(username) }
+                ?: return Result.Err(AuthError.InvalidCredentials)
         val verified =
             withContext(Dispatchers.Default) {
                 BCrypt.verifyer()
@@ -37,6 +42,9 @@ class AuthService(
             }
         return if (verified) Result.Ok(credentials.user) else Result.Err(AuthError.InvalidCredentials)
     }
+
+    /** Hydrates a [User] for the per-request session validator. */
+    suspend fun findById(id: UserId): User? = tx.read { userRepository.findById(id) }
 
     /**
      * Produce a BCrypt hash for [plain]. Public so the boot-time admin

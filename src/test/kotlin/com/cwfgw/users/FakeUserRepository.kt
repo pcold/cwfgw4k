@@ -1,5 +1,6 @@
 package com.cwfgw.users
 
+import com.cwfgw.db.TransactionContext
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -14,16 +15,20 @@ class FakeUserRepository(
         initial.forEach { entry -> store[entry.user.id] = entry }
     }
 
+    context(ctx: TransactionContext)
     override suspend fun findById(id: UserId): User? = store[id]?.user
 
+    context(ctx: TransactionContext)
     override suspend fun findByUsername(username: String): User? =
         store.values.firstOrNull { it.user.username == username }?.user
 
+    context(ctx: TransactionContext)
     override suspend fun findCredentials(username: String): UserCredentials? =
         store.values
             .firstOrNull { it.user.username == username }
             ?.let { entry -> UserCredentials(user = entry.user, passwordHash = entry.passwordHash) }
 
+    context(ctx: TransactionContext)
     override suspend fun create(request: NewUser): User {
         require(store.values.none { it.user.username == request.username }) {
             "FakeUserRepository: duplicate username '${request.username}'"
@@ -39,6 +44,7 @@ class FakeUserRepository(
         return user
     }
 
+    context(ctx: TransactionContext)
     override suspend fun countAll(): Long = store.size.toLong()
 
     /** Test-only: drop every stored user. Lets specs simulate "user deleted from DB mid-session". */

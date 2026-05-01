@@ -139,7 +139,7 @@ class ApiFixture {
             scoringService = scoringService,
         )
     var userRepository: UserRepository = FakeUserRepository()
-    var authService: AuthService = AuthService(userRepository, cost = TEST_BCRYPT_COST)
+    var authService: AuthService = AuthService(userRepository, transactor, cost = TEST_BCRYPT_COST)
     var authSetup: AuthSetup =
         AuthSetup(
             sessionSecret = TEST_SESSION_SECRET.toByteArray(),
@@ -184,9 +184,11 @@ fun authenticatedApiTest(
     val fixture = ApiFixture().apply(configure)
     runBlocking {
         val hash = fixture.authService.hashPassword(TEST_ADMIN_PASSWORD)
-        fixture.userRepository.create(
-            NewUser(username = TEST_ADMIN_USERNAME, passwordHash = hash, role = UserRole.Admin),
-        )
+        with(noopTransactionContext) {
+            fixture.userRepository.create(
+                NewUser(username = TEST_ADMIN_USERNAME, passwordHash = hash, role = UserRole.Admin),
+            )
+        }
     }
     testApplication {
         application { module(fixture.toAppServices()) }
@@ -211,9 +213,11 @@ fun regularUserApiTest(
     val fixture = ApiFixture().apply(configure)
     runBlocking {
         val hash = fixture.authService.hashPassword(TEST_USER_PASSWORD)
-        fixture.userRepository.create(
-            NewUser(username = TEST_USER_USERNAME, passwordHash = hash, role = UserRole.User),
-        )
+        with(noopTransactionContext) {
+            fixture.userRepository.create(
+                NewUser(username = TEST_USER_USERNAME, passwordHash = hash, role = UserRole.User),
+            )
+        }
     }
     testApplication {
         application { module(fixture.toAppServices()) }
@@ -245,6 +249,7 @@ private fun ApiFixture.toAppServices(): AppServices =
         weeklyReportService = weeklyReportService,
         authService = authService,
         userRepository = userRepository,
+        transactor = transactor,
         authSetup = authSetup,
     )
 

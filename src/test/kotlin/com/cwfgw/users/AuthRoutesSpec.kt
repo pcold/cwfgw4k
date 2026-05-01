@@ -1,7 +1,9 @@
 package com.cwfgw.users
 
 import com.cwfgw.testing.ApiFixture
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
+import com.cwfgw.testing.noopTransactionContext
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -31,10 +33,12 @@ private fun withSeededAdmin(
 ): ApiFixture.() -> Unit =
     {
         val repo = FakeUserRepository()
-        val service = AuthService(repo, cost = TEST_BCRYPT_COST)
+        val service = AuthService(repo, FakeTransactor(), cost = TEST_BCRYPT_COST)
         runBlocking {
             val hash = service.hashPassword(password)
-            repo.create(NewUser(username = username, passwordHash = hash, role = UserRole.Admin))
+            with(noopTransactionContext) {
+                repo.create(NewUser(username = username, passwordHash = hash, role = UserRole.Admin))
+            }
         }
         userRepository = repo
         authService = service
@@ -137,10 +141,12 @@ class AuthRoutesSpec : FunSpec({
 
     test("a user deleted from the DB mid-session can no longer hit /me — revocation is immediate") {
         val repo = FakeUserRepository()
-        val service = AuthService(repo, cost = TEST_BCRYPT_COST)
+        val service = AuthService(repo, FakeTransactor(), cost = TEST_BCRYPT_COST)
         runBlocking {
             val hash = service.hashPassword("hunter2")
-            repo.create(NewUser(username = "admin", passwordHash = hash, role = UserRole.Admin))
+            with(noopTransactionContext) {
+                repo.create(NewUser(username = "admin", passwordHash = hash, role = UserRole.Admin))
+            }
         }
         apiTest(
             {

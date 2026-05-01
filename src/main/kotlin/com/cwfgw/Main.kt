@@ -85,7 +85,7 @@ fun main() {
     val database = Database.start(config.db)
     val httpClient = buildHttpClient()
     val services = buildServices(config, database, httpClient)
-    runBlocking { seedAdminIfEmpty(services.authService, services.userRepository, config.auth) }
+    runBlocking { seedAdminIfEmpty(services.authService, services.userRepository, services.transactor, config.auth) }
     embeddedServer(Netty, port = config.http.port, host = config.http.host) {
         module(services)
     }.start(wait = true)
@@ -104,7 +104,7 @@ internal fun buildServices(
     val tournamentService = TournamentService(TournamentRepository(), transactor)
     val golferRepository = GolferRepository()
     val golferService = GolferService(golferRepository, transactor)
-    val userRepository = UserRepository(database.dsl)
+    val userRepository = UserRepository()
     val linkRepo = TournamentLinkRepository()
     val tournamentLinkService = TournamentLinkService(linkRepo, tournamentService, golferService, transactor)
     val espnService =
@@ -154,8 +154,9 @@ internal fun buildServices(
         adminService = adminService,
         liveOverlayService = liveOverlayService,
         weeklyReportService = weeklyReportService,
-        authService = AuthService(userRepository),
+        authService = AuthService(userRepository, transactor),
         userRepository = userRepository,
+        transactor = transactor,
         authSetup =
             AuthSetup(
                 sessionSecret = config.auth.sessionSecret.toByteArray(),
@@ -241,7 +242,7 @@ fun Application.module(services: AppServices) {
         session<UserSession>(SESSION_AUTH_NAME) {
             validate { session ->
                 session.userId.toUserId()?.let { id ->
-                    services.userRepository.findById(id)?.let(::UserPrincipal)
+                    services.authService.findById(id)?.let(::UserPrincipal)
                 }
             }
         }

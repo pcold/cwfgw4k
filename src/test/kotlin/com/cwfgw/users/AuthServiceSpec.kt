@@ -1,6 +1,8 @@
 package com.cwfgw.users
 
 import com.cwfgw.result.Result
+import com.cwfgw.testing.FakeTransactor
+import com.cwfgw.testing.noopTransactionContext
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -12,8 +14,8 @@ private const val FAST_COST = 4
 
 class AuthServiceSpec : FunSpec({
 
-    test("hashPassword produces a BCrypt $2a-style hash, not the plaintext") {
-        val service = AuthService(FakeUserRepository(), cost = FAST_COST)
+    test("hashPassword produces a BCrypt \$2a-style hash, not the plaintext") {
+        val service = AuthService(FakeUserRepository(), FakeTransactor(), cost = FAST_COST)
 
         val hash = service.hashPassword("hunter2")
 
@@ -23,9 +25,12 @@ class AuthServiceSpec : FunSpec({
 
     test("login returns the public User when credentials verify") {
         val repo = FakeUserRepository()
-        val service = AuthService(repo, cost = FAST_COST)
+        val service = AuthService(repo, FakeTransactor(), cost = FAST_COST)
         val hash = service.hashPassword("hunter2")
-        val seeded = repo.create(NewUser(username = "alice", passwordHash = hash, role = UserRole.Admin))
+        val seeded =
+            with(noopTransactionContext) {
+                repo.create(NewUser(username = "alice", passwordHash = hash, role = UserRole.Admin))
+            }
 
         val result = service.login("alice", "hunter2").shouldBeInstanceOf<Result.Ok<User>>().value
 
@@ -35,21 +40,23 @@ class AuthServiceSpec : FunSpec({
 
     test("login returns InvalidCredentials when the password is wrong") {
         val repo = FakeUserRepository()
-        val service = AuthService(repo, cost = FAST_COST)
+        val service = AuthService(repo, FakeTransactor(), cost = FAST_COST)
         val hash = service.hashPassword("hunter2")
-        repo.create(NewUser(username = "alice", passwordHash = hash))
+        with(noopTransactionContext) {
+            repo.create(NewUser(username = "alice", passwordHash = hash))
+        }
 
         service.login("alice", "wrong-password") shouldBe Result.Err(AuthError.InvalidCredentials)
     }
 
     test("login returns InvalidCredentials when the username is unknown — no enumeration via different errors") {
-        val service = AuthService(FakeUserRepository(), cost = FAST_COST)
+        val service = AuthService(FakeUserRepository(), FakeTransactor(), cost = FAST_COST)
 
         service.login("nobody", "any") shouldBe Result.Err(AuthError.InvalidCredentials)
     }
 
     test("hashing the same password twice produces different hashes (salt is per-call)") {
-        val service = AuthService(FakeUserRepository(), cost = FAST_COST)
+        val service = AuthService(FakeUserRepository(), FakeTransactor(), cost = FAST_COST)
 
         val a = service.hashPassword("hunter2")
         val b = service.hashPassword("hunter2")

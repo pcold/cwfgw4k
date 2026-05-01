@@ -1,6 +1,7 @@
 package com.cwfgw
 
 import com.cwfgw.admin.AdminService
+import com.cwfgw.db.Transactor
 import com.cwfgw.drafts.DraftService
 import com.cwfgw.espn.EspnService
 import com.cwfgw.golfers.GolferService
@@ -43,5 +44,6 @@ data class AppServices(
     val weeklyReportService: WeeklyReportService,
     val authService: AuthService,
     val userRepository: UserRepository,
+    val transactor: Transactor,
     val authSetup: AuthSetup,
 )
