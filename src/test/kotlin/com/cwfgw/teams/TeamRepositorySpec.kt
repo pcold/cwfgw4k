@@ -28,13 +28,13 @@ class TeamRepositorySpec : FunSpec({
     val golferRepo = GolferRepository()
     val tx = Transactor(postgres.dsl)
     val seasonRepo = SeasonRepository()
-    val leagueRepo = LeagueRepository(postgres.dsl)
+    val leagueRepo = LeagueRepository()
     var seasonId = SeasonId(UUID.randomUUID())
 
     beforeEach {
-        val league = leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf"))
         seasonId =
             tx.update {
+                val league = leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf"))
                 seasonRepo.create(
                     CreateSeasonRequest(leagueId = league.id, name = "2026 Season", seasonYear = 2026),
                 )

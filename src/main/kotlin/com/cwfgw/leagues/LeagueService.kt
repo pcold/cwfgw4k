@@ -1,9 +1,14 @@
 package com.cwfgw.leagues
 
-class LeagueService(private val repository: LeagueRepository) {
-    suspend fun list(): List<League> = repository.findAll()
+import com.cwfgw.db.Transactor
 
-    suspend fun get(id: LeagueId): League? = repository.findById(id)
+class LeagueService(
+    private val repository: LeagueRepository,
+    private val tx: Transactor,
+) {
+    suspend fun list(): List<League> = tx.read { repository.findAll() }
 
-    suspend fun create(request: CreateLeagueRequest): League = repository.create(request)
+    suspend fun get(id: LeagueId): League? = tx.read { repository.findById(id) }
+
+    suspend fun create(request: CreateLeagueRequest): League = tx.update { repository.create(request) }
 }

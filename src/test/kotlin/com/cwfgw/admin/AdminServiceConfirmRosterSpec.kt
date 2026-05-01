@@ -42,7 +42,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
     val golferRepo = GolferRepository()
 
     fun newService(): AdminService {
-        val leagueRepo = LeagueRepository(postgres.dsl)
+        val leagueRepo = LeagueRepository()
         val seasonRepo = SeasonRepository()
         val tournamentRepo = TournamentRepository()
         val teamRepo = TeamRepository()
@@ -66,12 +66,9 @@ class AdminServiceConfirmRosterSpec : FunSpec({
                     ),
             )
         // Bootstrap a league + season so confirmRoster has a target.
-        val league =
-            runBlocking {
-                leagueRepo.create(CreateLeagueRequest(name = "Castlewood"))
-            }
         runBlocking {
             tx.update {
+                val league = leagueRepo.create(CreateLeagueRequest(name = "Castlewood"))
                 seasonRepo.create(
                     CreateSeasonRequest(leagueId = league.id, name = "2026 Spring", seasonYear = 2026),
                 )

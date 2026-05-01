@@ -22,15 +22,15 @@ class TournamentLinkRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
     val repository = TournamentLinkRepository()
-    val leagueRepo = LeagueRepository(postgres.dsl)
+    val leagueRepo = LeagueRepository()
     val seasonRepo = SeasonRepository()
     val tournamentRepo = TournamentRepository()
     val golferRepo = GolferRepository()
     val tx = Transactor(postgres.dsl)
 
-    suspend fun seedTournament(): TournamentId {
-        val league = leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf"))
-        return tx.update {
+    suspend fun seedTournament(): TournamentId =
+        tx.update {
+            val league = leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf"))
             val season =
                 seasonRepo.create(CreateSeasonRequest(leagueId = league.id, name = "2026 Season", seasonYear = 2026))
             tournamentRepo.create(
@@ -42,7 +42,6 @@ class TournamentLinkRepositorySpec : FunSpec({
                 ),
             ).id
         }
-    }
 
     test("upsert inserts a new override and listByTournament returns it") {
         val tournamentId = seedTournament()

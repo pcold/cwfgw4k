@@ -1,5 +1,6 @@
 package com.cwfgw.leagues
 
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import io.kotest.core.spec.style.FunSpec
@@ -20,10 +21,13 @@ private val CASTLEWOOD_CREATED_AT = Instant.parse("2026-01-01T00:00:00Z")
 private val CASTLEWOOD_SEED =
     League(id = CASTLEWOOD_ID, name = "Castlewood Fantasy Golf", createdAt = CASTLEWOOD_CREATED_AT)
 
+private fun seededLeagueService(): LeagueService =
+    LeagueService(FakeLeagueRepository(initial = listOf(CASTLEWOOD_SEED)), FakeTransactor())
+
 class LeagueRoutesSpec : FunSpec({
 
     test("GET /api/v1/leagues returns the seeded leagues") {
-        apiTest({ leagueService = LeagueService(FakeLeagueRepository(initial = listOf(CASTLEWOOD_SEED))) }) { client ->
+        apiTest({ leagueService = seededLeagueService() }) { client ->
             val response = client.get("/api/v1/leagues")
 
             response.status shouldBe HttpStatusCode.OK
@@ -33,7 +37,7 @@ class LeagueRoutesSpec : FunSpec({
     }
 
     test("GET /api/v1/leagues/{id} returns the league with 200") {
-        apiTest({ leagueService = LeagueService(FakeLeagueRepository(initial = listOf(CASTLEWOOD_SEED))) }) { client ->
+        apiTest({ leagueService = seededLeagueService() }) { client ->
             val response = client.get("/api/v1/leagues/${CASTLEWOOD_ID.value}")
 
             response.status shouldBe HttpStatusCode.OK
@@ -44,7 +48,7 @@ class LeagueRoutesSpec : FunSpec({
     }
 
     test("GET /api/v1/leagues/{unknown-uuid} returns 404") {
-        apiTest({ leagueService = LeagueService(FakeLeagueRepository(initial = listOf(CASTLEWOOD_SEED))) }) { client ->
+        apiTest({ leagueService = seededLeagueService() }) { client ->
             val response = client.get("/api/v1/leagues/${UUID.randomUUID()}")
 
             response.status shouldBe HttpStatusCode.NotFound
@@ -64,7 +68,7 @@ class LeagueRoutesSpec : FunSpec({
         val newCreatedAt = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeLeagueRepository(idFactory = { newId }, clock = { newCreatedAt })
 
-        authenticatedApiTest({ leagueService = LeagueService(fake) }) { client ->
+        authenticatedApiTest({ leagueService = LeagueService(fake, FakeTransactor()) }) { client ->
             val createResponse =
                 client.post("/api/v1/leagues") {
                     contentType(ContentType.Application.Json)

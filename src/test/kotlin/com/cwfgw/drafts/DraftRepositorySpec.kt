@@ -24,7 +24,7 @@ class DraftRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
     val repository = DraftRepository()
-    val leagueRepo = LeagueRepository(postgres.dsl)
+    val leagueRepo = LeagueRepository()
     val seasonRepo = SeasonRepository()
     val teamRepo = TeamRepository()
     val golferRepo = GolferRepository()
@@ -32,9 +32,9 @@ class DraftRepositorySpec : FunSpec({
     var seasonId = SeasonId(UUID.randomUUID())
 
     beforeEach {
-        val league = leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf"))
         seasonId =
             tx.update {
+                val league = leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf"))
                 seasonRepo.create(
                     CreateSeasonRequest(leagueId = league.id, name = "2026 Season", seasonYear = 2026),
                 )

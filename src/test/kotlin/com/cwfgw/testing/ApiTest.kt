@@ -75,7 +75,7 @@ const val TEST_USER_PASSWORD: String = "test-user-password-not-used-in-prod"
 class ApiFixture {
     var healthProbe: HealthProbe = HealthProbe { true }
     var transactor: Transactor = FakeTransactor()
-    var leagueService: LeagueService = LeagueService(FakeLeagueRepository())
+    var leagueService: LeagueService = LeagueService(FakeLeagueRepository(), transactor)
     var golferService: GolferService = GolferService(FakeGolferRepository(), transactor)
     var seasonService: SeasonService = SeasonService(FakeSeasonRepository(), transactor)
     var teamService: TeamService = TeamService(FakeTeamRepository(), transactor)

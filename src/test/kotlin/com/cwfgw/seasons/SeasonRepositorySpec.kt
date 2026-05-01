@@ -36,11 +36,11 @@ class SeasonRepositorySpec : FunSpec({
     val postgres = postgresHarness()
     val tx = Transactor(postgres.dsl)
     val repository = SeasonRepository()
-    val leagueRepo = LeagueRepository(postgres.dsl)
+    val leagueRepo = LeagueRepository()
     var castlewoodId = LeagueId(UUID.randomUUID())
 
     beforeEach {
-        castlewoodId = leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf")).id
+        castlewoodId = tx.update { leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf")) }.id
     }
 
     test("create uses DB defaults when request omits optional fields") {

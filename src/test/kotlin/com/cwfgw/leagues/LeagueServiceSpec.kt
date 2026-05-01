@@ -1,5 +1,6 @@
 package com.cwfgw.leagues
 
+import com.cwfgw.testing.FakeTransactor
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.nulls.shouldBeNull
@@ -23,19 +24,19 @@ private val BETA =
 class LeagueServiceSpec : FunSpec({
 
     test("list returns leagues from the repository sorted by name") {
-        val service = LeagueService(FakeLeagueRepository(initial = listOf(BETA, ALPHA)))
+        val service = LeagueService(FakeLeagueRepository(initial = listOf(BETA, ALPHA)), FakeTransactor())
 
         service.list() shouldContainExactly listOf(ALPHA, BETA)
     }
 
     test("get returns the league when present") {
-        val service = LeagueService(FakeLeagueRepository(initial = listOf(ALPHA)))
+        val service = LeagueService(FakeLeagueRepository(initial = listOf(ALPHA)), FakeTransactor())
 
         service.get(ALPHA.id) shouldBe ALPHA
     }
 
     test("get returns null when the id is unknown") {
-        val service = LeagueService(FakeLeagueRepository(initial = listOf(ALPHA)))
+        val service = LeagueService(FakeLeagueRepository(initial = listOf(ALPHA)), FakeTransactor())
 
         service.get(LeagueId(UUID.randomUUID())).shouldBeNull()
     }
@@ -44,7 +45,7 @@ class LeagueServiceSpec : FunSpec({
         val newId = LeagueId(UUID.fromString("00000000-0000-0000-0000-00000000000c"))
         val newCreatedAt = Instant.parse("2026-03-15T00:00:00Z")
         val fake = FakeLeagueRepository(idFactory = { newId }, clock = { newCreatedAt })
-        val service = LeagueService(fake)
+        val service = LeagueService(fake, FakeTransactor())
 
         val created = service.create(CreateLeagueRequest(name = "Gamma League"))
 

@@ -140,7 +140,7 @@ internal fun buildServices(
         )
     return AppServices(
         healthProbe = DatabaseHealthProbe(database.dsl),
-        leagueService = LeagueService(LeagueRepository(database.dsl)),
+        leagueService = LeagueService(LeagueRepository(), transactor),
         golferService = golferService,
         seasonService = seasonService,
         teamService = teamService,

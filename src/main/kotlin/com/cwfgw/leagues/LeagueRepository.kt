@@ -1,42 +1,48 @@
 package com.cwfgw.leagues
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.jooq.tables.references.LEAGUES
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jooq.DSLContext
 import org.jooq.Record
 
 interface LeagueRepository {
+    context(ctx: TransactionContext)
     suspend fun findAll(): List<League>
 
+    context(ctx: TransactionContext)
     suspend fun findById(id: LeagueId): League?
 
+    context(ctx: TransactionContext)
     suspend fun create(request: CreateLeagueRequest): League
 }
 
-fun LeagueRepository(dsl: DSLContext): LeagueRepository = JooqLeagueRepository(dsl)
+fun LeagueRepository(): LeagueRepository = JooqLeagueRepository()
 
-private class JooqLeagueRepository(private val dsl: DSLContext) : LeagueRepository {
+private class JooqLeagueRepository : LeagueRepository {
+    context(ctx: TransactionContext)
     override suspend fun findAll(): List<League> =
         withContext(Dispatchers.IO) {
-            dsl.select(LEAGUES.ID, LEAGUES.NAME, LEAGUES.CREATED_AT)
+            ctx.dsl.select(LEAGUES.ID, LEAGUES.NAME, LEAGUES.CREATED_AT)
                 .from(LEAGUES)
                 .orderBy(LEAGUES.NAME)
                 .fetch(::toLeague)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun findById(id: LeagueId): League? =
         withContext(Dispatchers.IO) {
-            dsl.select(LEAGUES.ID, LEAGUES.NAME, LEAGUES.CREATED_AT)
+            ctx.dsl.select(LEAGUES.ID, LEAGUES.NAME, LEAGUES.CREATED_AT)
                 .from(LEAGUES)
                 .where(LEAGUES.ID.eq(id.value))
                 .fetchOne(::toLeague)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun create(request: CreateLeagueRequest): League =
         withContext(Dispatchers.IO) {
             val inserted =
-                dsl.insertInto(LEAGUES)
+                ctx.dsl.insertInto(LEAGUES)
                     .set(LEAGUES.NAME, request.name)
                     .returning(LEAGUES.ID, LEAGUES.NAME, LEAGUES.CREATED_AT)
                     .fetchOne() ?: error("INSERT RETURNING produced no row for leagues")
