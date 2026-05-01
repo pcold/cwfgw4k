@@ -20,6 +20,7 @@ import com.cwfgw.scoring.FakeScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.seasons.SeasonOpsService
+import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamRepository
@@ -79,7 +80,8 @@ class ApiFixture {
     var leagueService: LeagueService = LeagueService(FakeLeagueRepository(), transactor)
     var golferRepository: GolferRepository = FakeGolferRepository()
     var golferService: GolferService = GolferService(golferRepository, transactor)
-    var seasonService: SeasonService = SeasonService(FakeSeasonRepository(), transactor)
+    var seasonRepository: SeasonRepository = FakeSeasonRepository()
+    var seasonService: SeasonService = SeasonService(seasonRepository, transactor)
     var teamRepository: TeamRepository = FakeTeamRepository()
     var teamService: TeamService = TeamService(teamRepository, transactor)
     var tournamentRepository: TournamentRepository = FakeTournamentRepository()
@@ -88,9 +90,9 @@ class ApiFixture {
     var scoringService: ScoringService =
         ScoringService(
             repository = FakeScoringRepository(),
-            seasonService = seasonService,
-            tournamentService = tournamentService,
-            teamService = teamService,
+            seasonRepository = seasonRepository,
+            tournamentRepository = tournamentRepository,
+            teamRepository = teamRepository,
             tx = transactor,
         )
     var tournamentLinkRepository: TournamentLinkRepository = FakeTournamentLinkRepository()

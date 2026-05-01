@@ -65,15 +65,16 @@ private fun opsFixture(initialTournaments: List<Tournament> = emptyList()): ApiF
             }
         }
         val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
+        val teamRepo = FakeTeamRepository()
         seasonService = SeasonService(seasonRepo, FakeTransactor())
         tournamentService = TournamentService(tournamentRepo, FakeTransactor())
-        teamService = TeamService(FakeTeamRepository(), FakeTransactor())
+        teamService = TeamService(teamRepo, FakeTransactor())
         scoringService =
             ScoringService(
                 FakeScoringRepository(),
-                seasonService,
-                tournamentService,
-                teamService,
+                seasonRepo,
+                tournamentRepo,
+                teamRepo,
                 FakeTransactor(),
             )
         seasonOpsService = SeasonOpsService(seasonService, tournamentService, scoringService)

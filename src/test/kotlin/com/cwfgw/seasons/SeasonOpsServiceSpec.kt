@@ -9,7 +9,6 @@ import com.cwfgw.scoring.FantasyScoreId
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamId
-import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournaments.CreateTournamentResultRequest
@@ -146,9 +145,8 @@ private class Fixture(
         }
         val seasonService = SeasonService(seasonRepo, FakeTransactor())
         val tournamentService = TournamentService(tournamentRepo, FakeTransactor())
-        val teamService = TeamService(teamRepo, FakeTransactor())
         val scoringService =
-            ScoringService(scoringRepo, seasonService, tournamentService, teamService, FakeTransactor())
+            ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo, FakeTransactor())
         service = SeasonOpsService(seasonService, tournamentService, scoringService)
     }
 }

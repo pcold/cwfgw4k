@@ -144,9 +144,9 @@ private fun withWorld(world: RouteWorld = RouteWorld()): ApiFixture.() -> Unit =
         scoringService =
             ScoringService(
                 repository = FakeScoringRepository(initialScores = world.initialScores),
-                seasonService = seasonService,
-                tournamentService = tournamentService,
-                teamService = teamService,
+                seasonRepository = seasonRepo,
+                tournamentRepository = tournamentRepo,
+                teamRepository = teamRepo,
                 tx = FakeTransactor(),
             )
     }

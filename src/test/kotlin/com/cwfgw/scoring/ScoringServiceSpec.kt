@@ -7,20 +7,17 @@ import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.seasons.Season
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRules
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.RosterEntryId
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
-import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentResult
 import com.cwfgw.tournaments.TournamentResultId
-import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -154,9 +151,9 @@ private class Fixture(
         service =
             ScoringService(
                 repository = scoring,
-                seasonService = SeasonService(seasonRepo, FakeTransactor()),
-                tournamentService = TournamentService(tournamentRepo, FakeTransactor()),
-                teamService = TeamService(teamRepo, FakeTransactor()),
+                seasonRepository = seasonRepo,
+                tournamentRepository = tournamentRepo,
+                teamRepository = teamRepo,
                 tx = FakeTransactor(),
             )
     }
@@ -354,9 +351,9 @@ class ScoringServiceSpec : FunSpec({
         val service =
             ScoringService(
                 repository = scoring,
-                seasonService = SeasonService(FakeSeasonRepository(initial = listOf(mkSeason())), FakeTransactor()),
-                tournamentService = TournamentService(FakeTournamentRepository(), FakeTransactor()),
-                teamService = TeamService(FakeTeamRepository(), FakeTransactor()),
+                seasonRepository = FakeSeasonRepository(initial = listOf(mkSeason())),
+                tournamentRepository = FakeTournamentRepository(),
+                teamRepository = FakeTeamRepository(),
                 tx = FakeTransactor(),
             )
 

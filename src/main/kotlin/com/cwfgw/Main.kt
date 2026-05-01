@@ -100,7 +100,8 @@ internal fun buildServices(
     val transactor = Transactor(database.dsl)
     val teamRepository = TeamRepository()
     val teamService = TeamService(teamRepository, transactor)
-    val seasonService = SeasonService(SeasonRepository(), transactor)
+    val seasonRepository = SeasonRepository()
+    val seasonService = SeasonService(seasonRepository, transactor)
     val tournamentRepository = TournamentRepository()
     val tournamentService = TournamentService(tournamentRepository, transactor)
     val golferRepository = GolferRepository()
@@ -119,7 +120,13 @@ internal fun buildServices(
             tournamentLinkService,
         )
     val scoringService =
-        ScoringService(ScoringRepository(), seasonService, tournamentService, teamService, transactor)
+        ScoringService(
+            ScoringRepository(),
+            seasonRepository,
+            tournamentRepository,
+            teamRepository,
+            transactor,
+        )
     val adminService =
         AdminService(
             tx = transactor,

@@ -109,7 +109,7 @@ private fun opsFixture(
                         FakeTransactor(),
                     ),
             )
-        scoringService = ScoringService(scoringRepo, seasonService, tournamentService, teamService, FakeTransactor())
+        scoringService = ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo, FakeTransactor())
         tournamentOpsService = TournamentOpsService(tournamentService, scoringService, espnService)
     }
 

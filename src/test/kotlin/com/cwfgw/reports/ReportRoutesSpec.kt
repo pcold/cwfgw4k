@@ -211,9 +211,9 @@ private fun reportFixture(
         scoringService =
             ScoringService(
                 repository = scoringRepo,
-                seasonService = seasonService,
-                tournamentService = tournamentService,
-                teamService = teamService,
+                seasonRepository = seasonRepo,
+                tournamentRepository = tournamentRepo,
+                teamRepository = teamRepo,
                 tx = FakeTransactor(),
             )
         val previewEspnService =

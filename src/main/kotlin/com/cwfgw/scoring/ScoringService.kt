@@ -5,16 +5,16 @@ import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.seasons.SeasonRules
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
-import com.cwfgw.teams.TeamService
+import com.cwfgw.teams.TeamRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
+import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentResult
-import com.cwfgw.tournaments.TournamentService
 import java.math.BigDecimal
 
 /**
@@ -26,12 +26,19 @@ import java.math.BigDecimal
  * [refreshStandings]) return [Result] so each multi-mode failure (season
  * missing, tournament missing, no teams) can drive its own HTTP status at the
  * route boundary.
+ *
+ * The compound flows depend on repositories directly (rather than fanning
+ * out through other services) so a season-missing/tournament-missing gate
+ * check, the data gather, and the eventual write all happen inside the
+ * same transaction. Calling another service mid-flow would open a fresh
+ * transaction on a different connection and break the snapshot.
  */
+@Suppress("LongParameterList")
 class ScoringService(
     private val repository: ScoringRepository,
-    private val seasonService: SeasonService,
-    private val tournamentService: TournamentService,
-    private val teamService: TeamService,
+    private val seasonRepository: SeasonRepository,
+    private val tournamentRepository: TournamentRepository,
+    private val teamRepository: TeamRepository,
     private val tx: Transactor,
 ) {
     suspend fun getScores(
@@ -54,65 +61,65 @@ class ScoringService(
     suspend fun calculateScores(
         seasonId: SeasonId,
         tournamentId: TournamentId,
-    ): Result<WeeklyScoreResult, ScoringError> {
-        seasonService.get(seasonId) ?: return Result.Err(ScoringError.SeasonNotFound)
-        val tournament = tournamentService.get(tournamentId) ?: return Result.Err(ScoringError.TournamentNotFound)
-        val rules = seasonService.getRules(seasonId) ?: SeasonRules.defaults()
-        val results = tournamentService.getResults(tournamentId)
-        val teams = teamService.listBySeason(seasonId)
-        val rostersByTeam = teams.associate { it.id to teamService.getRoster(it.id) }
-        val inputs =
-            ScoringInputs(
-                seasonId = seasonId,
-                tournamentId = tournamentId,
-                rules = rules,
-                multiplier = tournament.payoutMultiplier,
-                isTeamEvent = tournament.isTeamEvent,
-                results = results,
-                ownersByGolfer = ownersByGolfer(rostersByTeam.values.flatten()),
-            )
-
-        val perTeamResults =
-            tx.update {
+    ): Result<WeeklyScoreResult, ScoringError> =
+        tx.update {
+            seasonRepository.findById(seasonId) ?: return@update Result.Err(ScoringError.SeasonNotFound)
+            val tournament =
+                tournamentRepository.findById(tournamentId)
+                    ?: return@update Result.Err(ScoringError.TournamentNotFound)
+            val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
+            val results = tournamentRepository.getResults(tournamentId)
+            val teams = teamRepository.findBySeason(seasonId)
+            val rostersByTeam = teams.associate { it.id to teamRepository.getRoster(it.id) }
+            val inputs =
+                ScoringInputs(
+                    seasonId = seasonId,
+                    tournamentId = tournamentId,
+                    rules = rules,
+                    multiplier = tournament.payoutMultiplier,
+                    isTeamEvent = tournament.isTeamEvent,
+                    results = results,
+                    ownersByGolfer = ownersByGolfer(rostersByTeam.values.flatten()),
+                )
+            val perTeamResults =
                 teams.map { team ->
                     val roster = rostersByTeam[team.id] ?: emptyList()
                     val golferScores = roster.mapNotNull { entry -> scoreGolferForTeam(inputs, team.id, entry) }
                     team to golferScores
                 }
-            }
-        return Result.Ok(buildWeeklyResult(tournament, perTeamResults))
-    }
+            Result.Ok(buildWeeklyResult(tournament, perTeamResults))
+        }
 
-    suspend fun refreshStandings(seasonId: SeasonId): Result<List<SeasonStanding>, ScoringError> {
-        seasonService.get(seasonId) ?: return Result.Err(ScoringError.SeasonNotFound)
-        val teams = teamService.listBySeason(seasonId)
-        val standings =
-            tx.update {
+    suspend fun refreshStandings(seasonId: SeasonId): Result<List<SeasonStanding>, ScoringError> =
+        tx.update {
+            seasonRepository.findById(seasonId) ?: return@update Result.Err(ScoringError.SeasonNotFound)
+            val teams = teamRepository.findBySeason(seasonId)
+            val standings =
                 teams.map { team ->
                     val totals = repository.teamSeasonTotals(seasonId, team.id)
                     repository.upsertStanding(seasonId, team.id, totals.totalPoints, totals.tournamentsPlayed)
                 }
-            }
-        return Result.Ok(standings)
-    }
+            Result.Ok(standings)
+        }
 
-    suspend fun getSideBetStandings(seasonId: SeasonId): Result<SideBetStandings, ScoringError> {
-        seasonService.get(seasonId) ?: return Result.Err(ScoringError.SeasonNotFound)
-        val teams = teamService.listBySeason(seasonId)
-        if (teams.isEmpty()) return Result.Err(ScoringError.NoTeams)
-        val rules = seasonService.getRules(seasonId) ?: SeasonRules.defaults()
-        val context =
-            SideBetContext(
-                seasonId = seasonId,
-                teamNames = teams.associate { it.id to it.teamName },
-                numTeams = teams.size,
-                sideBetAmount = rules.sideBetAmount,
-                rosters = teams.flatMap { teamService.getRoster(it.id) },
-            )
-        val rounds = tx.read { rules.sideBetRounds.map { round -> buildSideBetRound(context, round) } }
-        val totals = teamSideBetTotals(teams, rounds, rules.sideBetAmount)
-        return Result.Ok(SideBetStandings(rounds = rounds, teamTotals = totals))
-    }
+    suspend fun getSideBetStandings(seasonId: SeasonId): Result<SideBetStandings, ScoringError> =
+        tx.read {
+            seasonRepository.findById(seasonId) ?: return@read Result.Err(ScoringError.SeasonNotFound)
+            val teams = teamRepository.findBySeason(seasonId)
+            if (teams.isEmpty()) return@read Result.Err(ScoringError.NoTeams)
+            val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
+            val context =
+                SideBetContext(
+                    seasonId = seasonId,
+                    teamNames = teams.associate { it.id to it.teamName },
+                    numTeams = teams.size,
+                    sideBetAmount = rules.sideBetAmount,
+                    rosters = teams.flatMap { teamRepository.getRoster(it.id) },
+                )
+            val rounds = rules.sideBetRounds.map { round -> buildSideBetRound(context, round) }
+            val totals = teamSideBetTotals(teams, rounds, rules.sideBetAmount)
+            Result.Ok(SideBetStandings(rounds = rounds, teamTotals = totals))
+        }
 
     context(ctx: TransactionContext)
     private suspend fun scoreGolferForTeam(

@@ -151,7 +151,7 @@ private class Fixture(
                 ),
             )
         val scoringService =
-            ScoringService(scoringRepo, seasonService, tournamentService, teamService, FakeTransactor())
+            ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo, FakeTransactor())
         service = TournamentOpsService(tournamentService, scoringService, espnService)
     }
 }
