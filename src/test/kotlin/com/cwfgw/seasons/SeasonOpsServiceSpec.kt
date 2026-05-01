@@ -139,11 +139,13 @@ private class Fixture(
         }
         initialResults.forEach { result ->
             kotlinx.coroutines.runBlocking {
-                tournamentRepo.upsertResult(result.tournamentId, asUpsertRequest(result))
+                with(noopTransactionContext) {
+                    tournamentRepo.upsertResult(result.tournamentId, asUpsertRequest(result))
+                }
             }
         }
         val seasonService = SeasonService(seasonRepo, FakeTransactor())
-        val tournamentService = TournamentService(tournamentRepo)
+        val tournamentService = TournamentService(tournamentRepo, FakeTransactor())
         val teamService = TeamService(teamRepo, FakeTransactor())
         val scoringService = ScoringService(scoringRepo, seasonService, tournamentService, teamService)
         service = SeasonOpsService(seasonService, tournamentService, scoringService)
@@ -216,10 +218,12 @@ class SeasonOpsServiceSpec : FunSpec({
         result.resultsDeleted shouldBe 1
         result.tournamentsReset shouldBe 2
 
-        fixture.tournamentRepo.getResults(SONY_ID).shouldBeEmpty()
-        fixture.scoringRepo.getScores(SEASON_ID, SONY_ID).shouldBeEmpty()
-        fixture.scoringRepo.getScores(SEASON_ID, MASTERS_ID).shouldBeEmpty()
-        fixture.tournamentRepo.findById(SONY_ID)?.status shouldBe TournamentStatus.Upcoming
-        fixture.tournamentRepo.findById(MASTERS_ID)?.status shouldBe TournamentStatus.Upcoming
+        with(noopTransactionContext) {
+            fixture.tournamentRepo.getResults(SONY_ID).shouldBeEmpty()
+            fixture.scoringRepo.getScores(SEASON_ID, SONY_ID).shouldBeEmpty()
+            fixture.scoringRepo.getScores(SEASON_ID, MASTERS_ID).shouldBeEmpty()
+            fixture.tournamentRepo.findById(SONY_ID)?.status shouldBe TournamentStatus.Upcoming
+            fixture.tournamentRepo.findById(MASTERS_ID)?.status shouldBe TournamentStatus.Upcoming
+        }
     }
 })

@@ -67,7 +67,7 @@ private fun service(
 ): TournamentLinkService =
     TournamentLinkService(
         repository = FakeTournamentLinkRepository(initial = initialOverrides),
-        tournamentService = TournamentService(FakeTournamentRepository(initial = tournaments)),
+        tournamentService = TournamentService(FakeTournamentRepository(initial = tournaments), FakeTransactor()),
         golferService = GolferService(FakeGolferRepository(initial = golfers), FakeTransactor()),
     )
 

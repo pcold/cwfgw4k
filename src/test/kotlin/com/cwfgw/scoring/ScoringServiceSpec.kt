@@ -155,7 +155,7 @@ private class Fixture(
             ScoringService(
                 repository = scoring,
                 seasonService = SeasonService(seasonRepo, FakeTransactor()),
-                tournamentService = TournamentService(tournamentRepo),
+                tournamentService = TournamentService(tournamentRepo, FakeTransactor()),
                 teamService = TeamService(teamRepo, FakeTransactor()),
             )
     }
@@ -354,7 +354,7 @@ class ScoringServiceSpec : FunSpec({
             ScoringService(
                 repository = scoring,
                 seasonService = SeasonService(FakeSeasonRepository(initial = listOf(mkSeason())), FakeTransactor()),
-                tournamentService = TournamentService(FakeTournamentRepository()),
+                tournamentService = TournamentService(FakeTournamentRepository(), FakeTransactor()),
                 teamService = TeamService(FakeTeamRepository(), FakeTransactor()),
             )
 

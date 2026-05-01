@@ -275,12 +275,11 @@ class SeasonRepositorySpec : FunSpec({
 
     test("delete cascades through teams + tournaments + team_rosters + draft_picks via the V010 FKs") {
         val teamRepo = TeamRepository()
-        val tournamentRepo = TournamentRepository(postgres.dsl)
+        val tournamentRepo = TournamentRepository()
         val draftRepo = DraftRepository(postgres.dsl)
         val golferRepo = GolferRepository()
 
-        // Stage 1: commit the migrated-repo writes so the unmigrated tournament/draft repos
-        // (which still autocommit through postgres.dsl) can see the season FK.
+        // Stage 1: migrated-repo writes share one tx. Stage 2 is the still-old-style draft repo.
         val (seasonId, team, golfer) =
             tx.update {
                 val season =
@@ -292,19 +291,18 @@ class SeasonRepositorySpec : FunSpec({
                         seasonId = season.id,
                         request = CreateTeamRequest(ownerName = "Owner", teamName = "Birdies"),
                     )
+                tournamentRepo.create(
+                    CreateTournamentRequest(
+                        name = "Sony Open",
+                        seasonId = season.id,
+                        startDate = java.time.LocalDate.parse("2026-01-15"),
+                        endDate = java.time.LocalDate.parse("2026-01-18"),
+                    ),
+                )
                 val golfer = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
                 teamRepo.addToRoster(team.id, AddToRosterRequest(golferId = golfer.id))
                 Triple(season.id, team, golfer)
             }
-        // Stage 2: tournament + draft writes via the still-old-style repos.
-        tournamentRepo.create(
-            CreateTournamentRequest(
-                name = "Sony Open",
-                seasonId = seasonId,
-                startDate = java.time.LocalDate.parse("2026-01-15"),
-                endDate = java.time.LocalDate.parse("2026-01-18"),
-            ),
-        )
         val draft = draftRepo.create(seasonId = seasonId, request = CreateDraftRequest())
         draftRepo.createPicks(
             draftId = draft.id,
@@ -322,7 +320,7 @@ class SeasonRepositorySpec : FunSpec({
 
         tx.read { repository.findById(seasonId) }.shouldBeNull()
         tx.read { teamRepo.findBySeason(seasonId) }.shouldBeEmpty()
-        tournamentRepo.findAll(seasonId = seasonId, status = null).shouldBeEmpty()
+        tx.read { tournamentRepo.findAll(seasonId = seasonId, status = null) }.shouldBeEmpty()
         postgres.dsl.fetchCount(TEAM_ROSTERS, TEAM_ROSTERS.TEAM_ID.eq(teamId.value)) shouldBe 0
         postgres.dsl.fetchCount(DRAFT_PICKS, DRAFT_PICKS.DRAFT_ID.eq(draftId.value)) shouldBe 0
     }

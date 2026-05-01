@@ -208,10 +208,14 @@ private class Fixture(
             }
         }
         initialResults.forEach { result ->
-            kotlinx.coroutines.runBlocking { tournamentRepo.upsertResult(result.tournamentId, asUpsertRequest(result)) }
+            kotlinx.coroutines.runBlocking {
+                with(noopTransactionContext) {
+                    tournamentRepo.upsertResult(result.tournamentId, asUpsertRequest(result))
+                }
+            }
         }
         val seasonService = SeasonService(seasonRepo, FakeTransactor())
-        val tournamentService = TournamentService(tournamentRepo)
+        val tournamentService = TournamentService(tournamentRepo, FakeTransactor())
         val teamService = TeamService(teamRepo, FakeTransactor())
         val golferService = GolferService(golferRepo, FakeTransactor())
         val scoringService =

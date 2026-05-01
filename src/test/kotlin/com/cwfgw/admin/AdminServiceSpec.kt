@@ -92,7 +92,7 @@ private class Fixture(
                 }
             }
         }
-        val tournamentService = TournamentService(tournamentRepo)
+        val tournamentService = TournamentService(tournamentRepo, FakeTransactor())
         val golferService = GolferService(golferRepo, FakeTransactor())
         val teamService = TeamService(teamRepo, FakeTransactor())
         val espnService =
@@ -220,7 +220,11 @@ class AdminServiceSpec : FunSpec({
 
         fixture.service.uploadSeason(SEASON_ID, SEASON_START, SEASON_END) shouldBe
             Result.Err(AdminError.SeasonNotFound(SEASON_ID))
-        fixture.tournamentRepo.findByPgaTournamentId("e-1") shouldBe null
+        runBlocking {
+            with(noopTransactionContext) {
+                fixture.tournamentRepo.findByPgaTournamentId("e-1") shouldBe null
+            }
+        }
     }
 
     test("uploadSeason returns UpstreamUnavailable when ESPN responds with a non-2xx") {
@@ -236,15 +240,17 @@ class AdminServiceSpec : FunSpec({
             Fixture(calendar = listOf(calendarEntry("e-1", "Sony Open", "2026-01-15T00:00Z")))
         // Pre-seed a tournament with the same pga id, simulating a prior import.
         runBlocking {
-            fixture.tournamentRepo.create(
-                CreateTournamentRequest(
-                    pgaTournamentId = "e-1",
-                    name = "Sony Open (already)",
-                    seasonId = SEASON_ID,
-                    startDate = LocalDate.parse("2026-01-15"),
-                    endDate = LocalDate.parse("2026-01-18"),
-                ),
-            )
+            with(noopTransactionContext) {
+                fixture.tournamentRepo.create(
+                    CreateTournamentRequest(
+                        pgaTournamentId = "e-1",
+                        name = "Sony Open (already)",
+                        seasonId = SEASON_ID,
+                        startDate = LocalDate.parse("2026-01-15"),
+                        endDate = LocalDate.parse("2026-01-18"),
+                    ),
+                )
+            }
         }
 
         val result =

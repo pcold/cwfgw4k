@@ -125,11 +125,13 @@ private class Fixture(
         }
         initialResults.forEach { result ->
             kotlinx.coroutines.runBlocking {
-                tournamentRepo.upsertResult(result.tournamentId, asUpsertRequest(result))
+                with(noopTransactionContext) {
+                    tournamentRepo.upsertResult(result.tournamentId, asUpsertRequest(result))
+                }
             }
         }
         val seasonService = SeasonService(seasonRepo, FakeTransactor())
-        val tournamentService = TournamentService(tournamentRepo)
+        val tournamentService = TournamentService(tournamentRepo, FakeTransactor())
         val teamService = TeamService(teamRepo, FakeTransactor())
         val golferService = GolferService(golferRepo, FakeTransactor())
         val espnClient = FakeEspnClient(tournamentsByDate = espnByDate, upstreamError = espnUpstreamError)
@@ -281,7 +283,9 @@ class TournamentOpsServiceSpec : FunSpec({
                 .value
 
         reset.status shouldBe TournamentStatus.Upcoming
-        fixture.tournamentRepo.getResults(MASTERS_ID).shouldBeEmpty()
-        fixture.scoringRepo.getScores(SEASON_ID, MASTERS_ID).shouldBeEmpty()
+        with(noopTransactionContext) {
+            fixture.tournamentRepo.getResults(MASTERS_ID).shouldBeEmpty()
+            fixture.scoringRepo.getScores(SEASON_ID, MASTERS_ID).shouldBeEmpty()
+        }
     }
 })

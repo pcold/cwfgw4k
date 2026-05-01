@@ -43,10 +43,10 @@ class AdminServiceConfirmRosterSpec : FunSpec({
     fun newService(): AdminService {
         val leagueRepo = LeagueRepository(postgres.dsl)
         val seasonRepo = SeasonRepository()
-        val tournamentRepo = TournamentRepository(postgres.dsl)
+        val tournamentRepo = TournamentRepository()
         val teamRepo = TeamRepository()
         val seasonService = SeasonService(seasonRepo, tx)
-        val tournamentService = TournamentService(tournamentRepo)
+        val tournamentService = TournamentService(tournamentRepo, tx)
         val golferService = GolferService(golferRepo, tx)
         val teamService = TeamService(teamRepo, tx)
         val espnService =

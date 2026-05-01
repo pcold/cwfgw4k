@@ -3,6 +3,7 @@ package com.cwfgw.tournaments
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.testing.ApiFixture
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import io.kotest.core.spec.style.FunSpec
@@ -48,7 +49,8 @@ private fun tournament(
 
 private fun tournaments(vararg seeded: Tournament): ApiFixture.() -> Unit =
     {
-        tournamentService = TournamentService(FakeTournamentRepository(initial = seeded.toList()))
+        tournamentService =
+            TournamentService(FakeTournamentRepository(initial = seeded.toList()), FakeTransactor())
     }
 
 class TournamentRoutesSpec : FunSpec({
@@ -120,7 +122,7 @@ class TournamentRoutesSpec : FunSpec({
         val newTime = Instant.parse("2026-04-01T00:00:00Z")
         val fake = FakeTournamentRepository(idFactory = { newId }, clock = { newTime })
 
-        authenticatedApiTest({ tournamentService = TournamentService(fake) }) { client ->
+        authenticatedApiTest({ tournamentService = TournamentService(fake, FakeTransactor()) }) { client ->
             val response =
                 client.post("/api/v1/tournaments") {
                     contentType(ContentType.Application.Json)

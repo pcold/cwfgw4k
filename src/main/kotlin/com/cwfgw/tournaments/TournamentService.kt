@@ -1,35 +1,43 @@
 package com.cwfgw.tournaments
 
+import com.cwfgw.db.Transactor
 import com.cwfgw.seasons.SeasonId
 
-class TournamentService(private val repository: TournamentRepository) {
+class TournamentService(
+    private val repository: TournamentRepository,
+    private val tx: Transactor,
+) {
     suspend fun list(
         seasonId: SeasonId?,
         status: TournamentStatus?,
-    ): List<Tournament> = repository.findAll(seasonId = seasonId, status = status)
+    ): List<Tournament> = tx.read { repository.findAll(seasonId = seasonId, status = status) }
 
-    suspend fun get(id: TournamentId): Tournament? = repository.findById(id)
+    suspend fun get(id: TournamentId): Tournament? = tx.read { repository.findById(id) }
 
     suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
-        repository.findByPgaTournamentId(pgaTournamentId)
+        tx.read { repository.findByPgaTournamentId(pgaTournamentId) }
 
-    suspend fun create(request: CreateTournamentRequest): Tournament = repository.create(request)
+    suspend fun create(request: CreateTournamentRequest): Tournament = tx.update { repository.create(request) }
 
     suspend fun update(
         id: TournamentId,
         request: UpdateTournamentRequest,
-    ): Tournament? = repository.update(id, request)
+    ): Tournament? = tx.update { repository.update(id, request) }
 
-    suspend fun getResults(tournamentId: TournamentId): List<TournamentResult> = repository.getResults(tournamentId)
+    suspend fun getResults(tournamentId: TournamentId): List<TournamentResult> =
+        tx.read { repository.getResults(tournamentId) }
 
     suspend fun importResults(
         tournamentId: TournamentId,
         requests: List<CreateTournamentResultRequest>,
-    ): List<TournamentResult> = requests.map { repository.upsertResult(tournamentId, it) }
+    ): List<TournamentResult> = tx.update { requests.map { repository.upsertResult(tournamentId, it) } }
 
-    suspend fun deleteResults(tournamentId: TournamentId): Int = repository.deleteResultsByTournament(tournamentId)
+    suspend fun deleteResults(tournamentId: TournamentId): Int =
+        tx.update { repository.deleteResultsByTournament(tournamentId) }
 
-    suspend fun deleteResultsBySeason(seasonId: SeasonId): Int = repository.deleteResultsBySeason(seasonId)
+    suspend fun deleteResultsBySeason(seasonId: SeasonId): Int =
+        tx.update { repository.deleteResultsBySeason(seasonId) }
 
-    suspend fun resetSeasonTournaments(seasonId: SeasonId): Int = repository.resetSeasonTournaments(seasonId)
+    suspend fun resetSeasonTournaments(seasonId: SeasonId): Int =
+        tx.update { repository.resetSeasonTournaments(seasonId) }
 }

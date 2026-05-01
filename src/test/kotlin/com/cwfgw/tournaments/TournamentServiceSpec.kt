@@ -2,6 +2,7 @@ package com.cwfgw.tournaments
 
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.testing.FakeTransactor
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -20,6 +21,7 @@ class TournamentServiceSpec : FunSpec({
     ): TournamentService =
         TournamentService(
             FakeTournamentRepository(initial = initial, initialResults = initialResults),
+            FakeTransactor(),
         )
 
     test("list with no filters returns all tournaments") {

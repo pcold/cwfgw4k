@@ -1,5 +1,6 @@
 package com.cwfgw.tournaments
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.jooq.tables.records.TournamentResultsRecord
 import com.cwfgw.jooq.tables.records.TournamentsRecord
@@ -8,46 +9,56 @@ import com.cwfgw.jooq.tables.references.TOURNAMENT_RESULTS
 import com.cwfgw.seasons.SeasonId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jooq.DSLContext
 import org.jooq.Field
 
 interface TournamentRepository {
+    context(ctx: TransactionContext)
     suspend fun findAll(
         seasonId: SeasonId?,
         status: TournamentStatus?,
     ): List<Tournament>
 
+    context(ctx: TransactionContext)
     suspend fun findById(id: TournamentId): Tournament?
 
+    context(ctx: TransactionContext)
     suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament?
 
+    context(ctx: TransactionContext)
     suspend fun create(request: CreateTournamentRequest): Tournament
 
+    context(ctx: TransactionContext)
     suspend fun update(
         id: TournamentId,
         request: UpdateTournamentRequest,
     ): Tournament?
 
+    context(ctx: TransactionContext)
     suspend fun getResults(tournamentId: TournamentId): List<TournamentResult>
 
+    context(ctx: TransactionContext)
     suspend fun upsertResult(
         tournamentId: TournamentId,
         request: CreateTournamentResultRequest,
     ): TournamentResult
 
     /** Wipe every leaderboard row for the given tournament. Returns the row count for logging. */
+    context(ctx: TransactionContext)
     suspend fun deleteResultsByTournament(tournamentId: TournamentId): Int
 
     /** Wipe every leaderboard row for every tournament in the given season. */
+    context(ctx: TransactionContext)
     suspend fun deleteResultsBySeason(seasonId: SeasonId): Int
 
     /** Reset every tournament in the season to status `Upcoming`. Returns the row count for logging. */
+    context(ctx: TransactionContext)
     suspend fun resetSeasonTournaments(seasonId: SeasonId): Int
 }
 
-fun TournamentRepository(dsl: DSLContext): TournamentRepository = JooqTournamentRepository(dsl)
+fun TournamentRepository(): TournamentRepository = JooqTournamentRepository()
 
-private class JooqTournamentRepository(private val dsl: DSLContext) : TournamentRepository {
+private class JooqTournamentRepository : TournamentRepository {
+    context(ctx: TransactionContext)
     override suspend fun findAll(
         seasonId: SeasonId?,
         status: TournamentStatus?,
@@ -58,38 +69,42 @@ private class JooqTournamentRepository(private val dsl: DSLContext) : Tournament
                     seasonId?.let { add(TOURNAMENTS.SEASON_ID.eq(it.value)) }
                     status?.let { add(TOURNAMENTS.STATUS.eq(it.value)) }
                 }
-            dsl.selectFrom(TOURNAMENTS)
+            ctx.dsl.selectFrom(TOURNAMENTS)
                 .where(conditions)
                 .orderBy(TOURNAMENTS.START_DATE.asc(), TOURNAMENTS.CREATED_AT.asc())
                 .fetch(::toTournament)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun findById(id: TournamentId): Tournament? =
         withContext(Dispatchers.IO) {
-            dsl.selectFrom(TOURNAMENTS)
+            ctx.dsl.selectFrom(TOURNAMENTS)
                 .where(TOURNAMENTS.ID.eq(id.value))
                 .fetchOne()
                 ?.let(::toTournament)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
         withContext(Dispatchers.IO) {
-            dsl.selectFrom(TOURNAMENTS)
+            ctx.dsl.selectFrom(TOURNAMENTS)
                 .where(TOURNAMENTS.PGA_TOURNAMENT_ID.eq(pgaTournamentId))
                 .fetchOne()
                 ?.let(::toTournament)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun create(request: CreateTournamentRequest): Tournament =
         withContext(Dispatchers.IO) {
             val inserted =
-                dsl.insertInto(TOURNAMENTS)
+                ctx.dsl.insertInto(TOURNAMENTS)
                     .set(insertAssignments(request))
                     .returning()
                     .fetchOne() ?: error("INSERT RETURNING produced no row for tournaments")
             toTournament(inserted)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun update(
         id: TournamentId,
         request: UpdateTournamentRequest,
@@ -97,12 +112,12 @@ private class JooqTournamentRepository(private val dsl: DSLContext) : Tournament
         withContext(Dispatchers.IO) {
             val changes = updateAssignments(request)
             if (changes.isEmpty()) {
-                dsl.selectFrom(TOURNAMENTS)
+                ctx.dsl.selectFrom(TOURNAMENTS)
                     .where(TOURNAMENTS.ID.eq(id.value))
                     .fetchOne()
                     ?.let(::toTournament)
             } else {
-                dsl.update(TOURNAMENTS)
+                ctx.dsl.update(TOURNAMENTS)
                     .set(changes)
                     .where(TOURNAMENTS.ID.eq(id.value))
                     .returning()
@@ -111,52 +126,57 @@ private class JooqTournamentRepository(private val dsl: DSLContext) : Tournament
             }
         }
 
+    context(ctx: TransactionContext)
     override suspend fun getResults(tournamentId: TournamentId): List<TournamentResult> =
         withContext(Dispatchers.IO) {
-            dsl.selectFrom(TOURNAMENT_RESULTS)
+            ctx.dsl.selectFrom(TOURNAMENT_RESULTS)
                 .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.eq(tournamentId.value))
                 .orderBy(TOURNAMENT_RESULTS.POSITION.asc().nullsLast(), TOURNAMENT_RESULTS.ID.asc())
                 .fetch(::toResult)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun deleteResultsByTournament(tournamentId: TournamentId): Int =
         withContext(Dispatchers.IO) {
-            dsl.deleteFrom(TOURNAMENT_RESULTS)
+            ctx.dsl.deleteFrom(TOURNAMENT_RESULTS)
                 .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.eq(tournamentId.value))
                 .execute()
         }
 
+    context(ctx: TransactionContext)
     override suspend fun deleteResultsBySeason(seasonId: SeasonId): Int =
         withContext(Dispatchers.IO) {
             val tournamentIds =
-                dsl.select(TOURNAMENTS.ID)
+                ctx.dsl.select(TOURNAMENTS.ID)
                     .from(TOURNAMENTS)
                     .where(TOURNAMENTS.SEASON_ID.eq(seasonId.value))
                     .fetch(TOURNAMENTS.ID)
             if (tournamentIds.isEmpty()) {
                 0
             } else {
-                dsl.deleteFrom(TOURNAMENT_RESULTS)
+                ctx.dsl.deleteFrom(TOURNAMENT_RESULTS)
                     .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.`in`(tournamentIds))
                     .execute()
             }
         }
 
+    context(ctx: TransactionContext)
     override suspend fun resetSeasonTournaments(seasonId: SeasonId): Int =
         withContext(Dispatchers.IO) {
-            dsl.update(TOURNAMENTS)
+            ctx.dsl.update(TOURNAMENTS)
                 .set(TOURNAMENTS.STATUS, TournamentStatus.Upcoming.value)
                 .where(TOURNAMENTS.SEASON_ID.eq(seasonId.value))
                 .execute()
         }
 
+    context(ctx: TransactionContext)
     override suspend fun upsertResult(
         tournamentId: TournamentId,
         request: CreateTournamentResultRequest,
     ): TournamentResult =
         withContext(Dispatchers.IO) {
             val upserted =
-                dsl.insertInto(TOURNAMENT_RESULTS)
+                ctx.dsl.insertInto(TOURNAMENT_RESULTS)
                     .set(resultInsertAssignments(tournamentId, request))
                     .onConflict(TOURNAMENT_RESULTS.TOURNAMENT_ID, TOURNAMENT_RESULTS.GOLFER_ID)
                     .doUpdate()

@@ -195,14 +195,16 @@ private fun reportFixture(
         val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
         initialResults.forEach { result ->
             kotlinx.coroutines.runBlocking {
-                tournamentRepo.upsertResult(result.tournamentId, asUpsertRequest(result))
+                with(noopTransactionContext) {
+                    tournamentRepo.upsertResult(result.tournamentId, asUpsertRequest(result))
+                }
             }
         }
         val teamRepo = FakeTeamRepository(initialTeams = initialTeams, initialRoster = initialRosters)
         val golferRepo = FakeGolferRepository(initial = initialGolfers)
         val scoringRepo = FakeScoringRepository(initialScores = initialScores)
         seasonService = SeasonService(seasonRepo, FakeTransactor())
-        tournamentService = TournamentService(tournamentRepo)
+        tournamentService = TournamentService(tournamentRepo, FakeTransactor())
         teamService = TeamService(teamRepo, FakeTransactor())
         golferService = GolferService(golferRepo, FakeTransactor())
         scoringService =

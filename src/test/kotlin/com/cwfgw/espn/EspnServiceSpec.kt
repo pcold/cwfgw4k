@@ -128,7 +128,7 @@ private class Fixture(
     val service: EspnService =
         EspnService(
             client = fakeClient,
-            tournamentService = TournamentService(tournamentRepo),
+            tournamentService = TournamentService(tournamentRepo, FakeTransactor()),
             golferService = GolferService(golferRepo, FakeTransactor()),
             teamService = TeamService(teamRepo, FakeTransactor()),
             seasonService = SeasonService(seasonRepo, FakeTransactor()),
@@ -326,7 +326,9 @@ class EspnServiceSpec : FunSpec({
 
         fixture.service.importByDate(START_DATE)
 
-        fixture.tournamentRepo.findById(TOURNAMENT_ID)?.status shouldBe TournamentStatus.Completed
+        with(noopTransactionContext) {
+            fixture.tournamentRepo.findById(TOURNAMENT_ID)?.status shouldBe TournamentStatus.Completed
+        }
     }
 
     test("importByDate flips is_team_event on the tournament once ESPN reports a team event") {
@@ -351,9 +353,11 @@ class EspnServiceSpec : FunSpec({
 
         fixture.service.importByDate(START_DATE)
 
-        fixture.tournamentRepo.findById(TOURNAMENT_ID)?.isTeamEvent shouldBe true
-        val results = fixture.tournamentRepo.getResults(TOURNAMENT_ID)
-        results.map { it.pairKey } shouldBe listOf("team:t1", "team:t1")
+        with(noopTransactionContext) {
+            fixture.tournamentRepo.findById(TOURNAMENT_ID)?.isTeamEvent shouldBe true
+            val results = fixture.tournamentRepo.getResults(TOURNAMENT_ID)
+            results.map { it.pairKey } shouldBe listOf("team:t1", "team:t1")
+        }
     }
 
     test("importForTournament returns TournamentNotFound when the id does not exist") {

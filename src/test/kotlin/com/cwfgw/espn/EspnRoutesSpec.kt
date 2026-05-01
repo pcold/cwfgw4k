@@ -9,6 +9,7 @@ import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
@@ -69,11 +70,13 @@ private fun withWiredService(
         val tournamentRepo = FakeTournamentRepository()
         val golferRepo = FakeGolferRepository()
         val teamRepo = FakeTeamRepository()
-        val tournamentSvc = TournamentService(tournamentRepo)
+        val tournamentSvc = TournamentService(tournamentRepo, FakeTransactor())
         // Seed via the repo's suspending API. The configure block runs on the test setup thread before any
         // HTTP request is made, so blocking here is fine and avoids forcing every spec to be suspend-aware.
         runBlocking {
-            seedTournaments.forEach { request -> tournamentRepo.create(request) }
+            with(noopTransactionContext) {
+                seedTournaments.forEach { request -> tournamentRepo.create(request) }
+            }
         }
         tournamentService = tournamentSvc
         golferService = GolferService(golferRepo, FakeTransactor())

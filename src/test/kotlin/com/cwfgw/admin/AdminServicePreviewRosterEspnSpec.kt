@@ -67,7 +67,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         val tournamentRepo = FakeTournamentRepository()
         val golferRepo = FakeGolferRepository(initial = seedGolfers)
         val teamRepo = FakeTeamRepository()
-        val tournamentService = TournamentService(tournamentRepo)
+        val tournamentService = TournamentService(tournamentRepo, FakeTransactor())
         val golferService = GolferService(golferRepo, FakeTransactor())
         val teamService = TeamService(teamRepo, FakeTransactor())
         val client =

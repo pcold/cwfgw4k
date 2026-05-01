@@ -87,7 +87,7 @@ private fun adminFixture(
         val tournamentRepo = FakeTournamentRepository()
         val teamRepo = FakeTeamRepository()
         seasonService = SeasonService(seasonRepo, FakeTransactor())
-        tournamentService = TournamentService(tournamentRepo)
+        tournamentService = TournamentService(tournamentRepo, FakeTransactor())
         golferService = GolferService(golferRepo, FakeTransactor())
         teamService = TeamService(teamRepo, FakeTransactor())
         espnService =

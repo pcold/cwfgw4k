@@ -30,7 +30,7 @@ class ScoringRepositorySpec : FunSpec({
     val leagueRepo = LeagueRepository(postgres.dsl)
     val seasonRepo = SeasonRepository()
     val teamRepo = TeamRepository()
-    val tournamentRepo = TournamentRepository(postgres.dsl)
+    val tournamentRepo = TournamentRepository()
     val golferRepo = GolferRepository()
     val tx = Transactor(postgres.dsl)
     var seasonId = SeasonId(UUID.randomUUID())
@@ -53,24 +53,26 @@ class ScoringRepositorySpec : FunSpec({
             teamA = teamRepo.create(seasonId, CreateTeamRequest(ownerName = "Alice", teamName = "Alpha")).id
             teamB = teamRepo.create(seasonId, CreateTeamRequest(ownerName = "Bob", teamName = "Bravo")).id
         }
-        tournamentA =
-            tournamentRepo.create(
-                CreateTournamentRequest(
-                    name = "Open A",
-                    seasonId = seasonId,
-                    startDate = LocalDate.parse("2026-04-01"),
-                    endDate = LocalDate.parse("2026-04-04"),
-                ),
-            ).id
-        tournamentB =
-            tournamentRepo.create(
-                CreateTournamentRequest(
-                    name = "Open B",
-                    seasonId = seasonId,
-                    startDate = LocalDate.parse("2026-04-08"),
-                    endDate = LocalDate.parse("2026-04-11"),
-                ),
-            ).id
+        tx.update {
+            tournamentA =
+                tournamentRepo.create(
+                    CreateTournamentRequest(
+                        name = "Open A",
+                        seasonId = seasonId,
+                        startDate = LocalDate.parse("2026-04-01"),
+                        endDate = LocalDate.parse("2026-04-04"),
+                    ),
+                ).id
+            tournamentB =
+                tournamentRepo.create(
+                    CreateTournamentRequest(
+                        name = "Open B",
+                        seasonId = seasonId,
+                        startDate = LocalDate.parse("2026-04-08"),
+                        endDate = LocalDate.parse("2026-04-11"),
+                    ),
+                ).id
+        }
         tx.update {
             golfer1 = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")).id
             golfer2 = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")).id
