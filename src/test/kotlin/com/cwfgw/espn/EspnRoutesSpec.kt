@@ -77,7 +77,7 @@ private fun withWiredService(
         }
         tournamentService = tournamentSvc
         golferService = GolferService(golferRepo, FakeTransactor())
-        teamService = TeamService(teamRepo)
+        teamService = TeamService(teamRepo, FakeTransactor())
         espnService =
             EspnService(
                 client =

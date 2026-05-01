@@ -1,8 +1,8 @@
 package com.cwfgw.teams
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
-import org.jooq.DSLContext
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -34,17 +34,19 @@ class FakeTeamRepository(
         rosterViews.putAll(initialRosterView)
     }
 
+    context(ctx: TransactionContext)
     override suspend fun findBySeason(seasonId: SeasonId): List<Team> =
         teams.values
             .filter { it.seasonId == seasonId }
             .sortedWith(teamOrdering)
 
+    context(ctx: TransactionContext)
     override suspend fun findById(id: TeamId): Team? = teams[id]
 
+    context(ctx: TransactionContext)
     override suspend fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
-        dsl: DSLContext?,
     ): Team {
         val now = clock()
         val team =
@@ -61,6 +63,7 @@ class FakeTeamRepository(
         return team
     }
 
+    context(ctx: TransactionContext)
     override suspend fun update(
         id: TeamId,
         request: UpdateTeamRequest,
@@ -77,15 +80,16 @@ class FakeTeamRepository(
         return updated
     }
 
+    context(ctx: TransactionContext)
     override suspend fun getRoster(teamId: TeamId): List<RosterEntry> =
         rosters.values
             .filter { it.teamId == teamId && it.droppedAt == null }
             .sortedWith(rosterOrdering)
 
+    context(ctx: TransactionContext)
     override suspend fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,
-        dsl: DSLContext?,
     ): RosterEntry {
         val entry =
             RosterEntry(
@@ -103,6 +107,7 @@ class FakeTeamRepository(
         return entry
     }
 
+    context(ctx: TransactionContext)
     override suspend fun dropFromRoster(
         teamId: TeamId,
         golferId: GolferId,
@@ -115,5 +120,7 @@ class FakeTeamRepository(
         return true
     }
 
-    override suspend fun getRosterView(seasonId: SeasonId): List<RosterViewTeam> = rosterViews[seasonId] ?: emptyList()
+    context(ctx: TransactionContext)
+    override suspend fun getRosterView(seasonId: SeasonId): List<RosterViewTeam> =
+        rosterViews[seasonId] ?: emptyList()
 }

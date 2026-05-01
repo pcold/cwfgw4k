@@ -10,6 +10,7 @@ import com.cwfgw.scoring.ScoringService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
@@ -139,7 +140,7 @@ private class Fixture(
         }
         val seasonService = SeasonService(seasonRepo)
         val tournamentService = TournamentService(tournamentRepo)
-        val teamService = TeamService(teamRepo)
+        val teamService = TeamService(teamRepo, FakeTransactor())
         val scoringService = ScoringService(scoringRepo, seasonService, tournamentService, teamService)
         service = SeasonOpsService(seasonService, tournamentService, scoringService)
     }

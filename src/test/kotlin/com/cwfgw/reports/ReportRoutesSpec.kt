@@ -200,7 +200,7 @@ private fun reportFixture(
         val scoringRepo = FakeScoringRepository(initialScores = initialScores)
         seasonService = SeasonService(seasonRepo)
         tournamentService = TournamentService(tournamentRepo)
-        teamService = TeamService(teamRepo)
+        teamService = TeamService(teamRepo, FakeTransactor())
         golferService = GolferService(golferRepo, FakeTransactor())
         scoringService =
             ScoringService(

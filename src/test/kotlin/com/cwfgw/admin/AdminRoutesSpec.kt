@@ -86,7 +86,7 @@ private fun adminFixture(
         seasonService = SeasonService(seasonRepo)
         tournamentService = TournamentService(tournamentRepo)
         golferService = GolferService(golferRepo, FakeTransactor())
-        teamService = TeamService(teamRepo)
+        teamService = TeamService(teamRepo, FakeTransactor())
         espnService =
             EspnService(
                 client = FakeEspnClient(calendar = calendar, upstreamError = upstreamError),
@@ -104,7 +104,7 @@ private fun adminFixture(
                 espnService = espnService,
                 golferService = golferService,
                 golferRepository = golferRepo,
-                teamService = teamService,
+                teamRepository = teamRepo,
             )
     }
 

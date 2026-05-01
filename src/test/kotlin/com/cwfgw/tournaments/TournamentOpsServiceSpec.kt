@@ -126,7 +126,7 @@ private class Fixture(
         }
         val seasonService = SeasonService(seasonRepo)
         val tournamentService = TournamentService(tournamentRepo)
-        val teamService = TeamService(teamRepo)
+        val teamService = TeamService(teamRepo, FakeTransactor())
         val golferService = GolferService(golferRepo, FakeTransactor())
         val espnClient = FakeEspnClient(tournamentsByDate = espnByDate, upstreamError = espnUpstreamError)
         val espnService =

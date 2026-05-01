@@ -92,7 +92,7 @@ private class Fixture(
         }
         val tournamentService = TournamentService(tournamentRepo)
         val golferService = GolferService(golferRepo, FakeTransactor())
-        val teamService = TeamService(teamRepo)
+        val teamService = TeamService(teamRepo, FakeTransactor())
         val espnService =
             EspnService(
                 client = FakeEspnClient(calendar = calendar, upstreamError = upstreamError),
@@ -110,7 +110,7 @@ private class Fixture(
                 espnService = espnService,
                 golferService = golferService,
                 golferRepository = golferRepo,
-                teamService = teamService,
+                teamRepository = teamRepo,
             )
     }
 }
@@ -539,7 +539,7 @@ class AdminServiceSpec : FunSpec({
             )
 
         fixture.service.confirmRoster(request) shouldBe Result.Err(AdminError.SeasonNotFound(SEASON_ID))
-        fixture.teamRepo.findBySeason(SEASON_ID).shouldBeEmpty()
+        with(noopTransactionContext) { fixture.teamRepo.findBySeason(SEASON_ID) }.shouldBeEmpty()
         with(noopTransactionContext) {
             fixture.golferRepo.findAll(activeOnly = false, search = null) shouldHaveSize 1
         }
@@ -594,7 +594,7 @@ class AdminServiceSpec : FunSpec({
                 .error
                 .shouldBeInstanceOf<AdminError.GolferIdsNotFound>()
         err.ids shouldContainExactlyInAnyOrder listOf(ghostA, ghostB)
-        fixture.teamRepo.findBySeason(SEASON_ID).shouldBeEmpty()
+        with(noopTransactionContext) { fixture.teamRepo.findBySeason(SEASON_ID) }.shouldBeEmpty()
     }
 
     test("confirmRoster on an empty teams list succeeds with zero counts and no writes") {
@@ -608,6 +608,6 @@ class AdminServiceSpec : FunSpec({
         result.teamsCreated shouldBe 0
         result.golfersCreated shouldBe 0
         result.teams.shouldBeEmpty()
-        fixture.teamRepo.findBySeason(SEASON_ID).shouldBeEmpty()
+        with(noopTransactionContext) { fixture.teamRepo.findBySeason(SEASON_ID) }.shouldBeEmpty()
     }
 })

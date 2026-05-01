@@ -121,7 +121,7 @@ private fun fixture(
         val linkRepo = FakeTournamentLinkRepository(initial = initialOverrides)
         tournamentService = TournamentService(FakeTournamentRepository(initial = tournaments))
         golferService = GolferService(FakeGolferRepository(initial = golfers), FakeTransactor())
-        teamService = TeamService(FakeTeamRepository())
+        teamService = TeamService(FakeTeamRepository(), FakeTransactor())
         seasonService = SeasonService(FakeSeasonRepository())
         tournamentLinkRepository = linkRepo
         tournamentLinkService = TournamentLinkService(linkRepo, tournamentService, golferService)

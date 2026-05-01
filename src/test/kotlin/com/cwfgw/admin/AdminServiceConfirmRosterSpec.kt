@@ -44,11 +44,11 @@ class AdminServiceConfirmRosterSpec : FunSpec({
         val leagueRepo = LeagueRepository(postgres.dsl)
         val seasonRepo = SeasonRepository(postgres.dsl)
         val tournamentRepo = TournamentRepository(postgres.dsl)
-        val teamRepo = TeamRepository(postgres.dsl)
+        val teamRepo = TeamRepository()
         val seasonService = SeasonService(seasonRepo)
         val tournamentService = TournamentService(tournamentRepo)
         val golferService = GolferService(golferRepo, tx)
-        val teamService = TeamService(teamRepo)
+        val teamService = TeamService(teamRepo, tx)
         val espnService =
             EspnService(
                 client = FakeEspnClient(),
@@ -75,7 +75,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
             espnService = espnService,
             golferService = golferService,
             golferRepository = golferRepo,
-            teamService = teamService,
+            teamRepository = teamRepo,
         )
     }
 
@@ -84,7 +84,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
             SeasonRepository(postgres.dsl).findAll(leagueId = null, seasonYear = null).single().id
         }
 
-    fun teamRepo() = TeamRepository(postgres.dsl)
+    fun teamRepo() = TeamRepository()
 
     test("Existing-only assignments persist team + roster atomically") {
         val service = newService()
@@ -139,7 +139,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
         val team = body.teams.single()
         team.teamName shouldBe "BROWN"
 
-        val roster = runBlocking { teamRepo().getRoster(team.id) }
+        val roster = runBlocking { tx.read { teamRepo().getRoster(team.id) } }
         roster shouldHaveSize 2
         roster.map { it.golferId } shouldContainExactly listOf(scottie.id, rory.id)
     }
@@ -178,7 +178,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
         val created =
             runBlocking { tx.read { golferRepo.findAll(activeOnly = false, search = null) } }
                 .single { it.firstName == "Scottie" && it.lastName == "Scheffler" }
-        runBlocking { teamRepo().getRoster(body.teams.single().id) }
+        runBlocking { tx.read { teamRepo().getRoster(body.teams.single().id) } }
             .single()
             .golferId shouldBe created.id
     }
@@ -189,15 +189,17 @@ class AdminServiceConfirmRosterSpec : FunSpec({
         // teams has UNIQUE (season_id, team_name). Pre-insert "WOMBLE" so the
         // second team in the request collides and the INSERT fails.
         runBlocking {
-            teamRepo().create(
-                seasonId = sid,
-                request =
-                    CreateTeamRequest(
-                        ownerName = "Pre-existing",
-                        teamName = "WOMBLE",
-                        teamNumber = 99,
-                    ),
-            )
+            tx.update {
+                teamRepo().create(
+                    seasonId = sid,
+                    request =
+                        CreateTeamRequest(
+                            ownerName = "Pre-existing",
+                            teamName = "WOMBLE",
+                            teamNumber = 99,
+                        ),
+                )
+            }
         }
 
         shouldThrow<Exception> {
@@ -231,7 +233,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
             }
         }
 
-        val teams = runBlocking { teamRepo().findBySeason(sid) }
+        val teams = runBlocking { tx.read { teamRepo().findBySeason(sid) } }
         teams.map { it.teamName } shouldContainExactly listOf("WOMBLE")
         val golfers =
             runBlocking { tx.read { golferRepo.findAll(activeOnly = false, search = null) } }

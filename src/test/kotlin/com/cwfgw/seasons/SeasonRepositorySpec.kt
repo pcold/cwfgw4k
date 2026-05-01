@@ -261,7 +261,7 @@ class SeasonRepositorySpec : FunSpec({
     }
 
     test("delete cascades through teams + tournaments + team_rosters + draft_picks via the V010 FKs") {
-        val teamRepo = TeamRepository(postgres.dsl)
+        val teamRepo = TeamRepository()
         val tournamentRepo = TournamentRepository(postgres.dsl)
         val draftRepo = DraftRepository(postgres.dsl)
         val golferRepo = GolferRepository()
@@ -272,10 +272,12 @@ class SeasonRepositorySpec : FunSpec({
                 CreateSeasonRequest(leagueId = castlewoodId, name = "2026 Summer", seasonYear = 2026),
             )
         val team =
-            teamRepo.create(
-                seasonId = season.id,
-                request = CreateTeamRequest(ownerName = "Owner", teamName = "Birdies"),
-            )
+            tx.update {
+                teamRepo.create(
+                    seasonId = season.id,
+                    request = CreateTeamRequest(ownerName = "Owner", teamName = "Birdies"),
+                )
+            }
         tournamentRepo.create(
             CreateTournamentRequest(
                 name = "Sony Open",
@@ -286,7 +288,7 @@ class SeasonRepositorySpec : FunSpec({
         )
         val golfer =
             tx.update { golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")) }
-        teamRepo.addToRoster(team.id, AddToRosterRequest(golferId = golfer.id))
+        tx.update { teamRepo.addToRoster(team.id, AddToRosterRequest(golferId = golfer.id)) }
         val draft = draftRepo.create(seasonId = season.id, request = CreateDraftRequest())
         draftRepo.createPicks(
             draftId = draft.id,
@@ -301,7 +303,7 @@ class SeasonRepositorySpec : FunSpec({
         repository.delete(season.id).shouldBeTrue()
 
         repository.findById(season.id).shouldBeNull()
-        teamRepo.findBySeason(season.id).shouldBeEmpty()
+        tx.read { teamRepo.findBySeason(season.id) }.shouldBeEmpty()
         tournamentRepo.findAll(seasonId = season.id, status = null).shouldBeEmpty()
         postgres.dsl.fetchCount(TEAM_ROSTERS, TEAM_ROSTERS.TEAM_ID.eq(team.id.value)) shouldBe 0
         postgres.dsl.fetchCount(DRAFT_PICKS, DRAFT_PICKS.DRAFT_ID.eq(draft.id.value)) shouldBe 0

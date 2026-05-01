@@ -78,7 +78,7 @@ class ApiFixture {
     var leagueService: LeagueService = LeagueService(FakeLeagueRepository())
     var golferService: GolferService = GolferService(FakeGolferRepository(), transactor)
     var seasonService: SeasonService = SeasonService(FakeSeasonRepository())
-    var teamService: TeamService = TeamService(FakeTeamRepository())
+    var teamService: TeamService = TeamService(FakeTeamRepository(), transactor)
     var tournamentService: TournamentService = TournamentService(FakeTournamentRepository())
     var draftService: DraftService = DraftService(FakeDraftRepository(), teamService)
     var scoringService: ScoringService =
@@ -112,7 +112,7 @@ class ApiFixture {
             espnService = espnService,
             golferService = golferService,
             golferRepository = FakeGolferRepository(),
-            teamService = teamService,
+            teamRepository = FakeTeamRepository(),
         )
     var liveOverlayService: LiveOverlayService = LiveOverlayService(espnService)
     var weeklyReportService: WeeklyReportService =

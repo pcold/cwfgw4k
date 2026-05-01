@@ -1,37 +1,38 @@
 package com.cwfgw.teams
 
+import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
-import org.jooq.DSLContext
 
-class TeamService(private val repository: TeamRepository) {
-    suspend fun listBySeason(seasonId: SeasonId): List<Team> = repository.findBySeason(seasonId)
+class TeamService(
+    private val repository: TeamRepository,
+    private val tx: Transactor,
+) {
+    suspend fun listBySeason(seasonId: SeasonId): List<Team> = tx.read { repository.findBySeason(seasonId) }
 
-    suspend fun get(id: TeamId): Team? = repository.findById(id)
+    suspend fun get(id: TeamId): Team? = tx.read { repository.findById(id) }
 
     suspend fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
-        dsl: DSLContext? = null,
-    ): Team = repository.create(seasonId, request, dsl)
+    ): Team = tx.update { repository.create(seasonId, request) }
 
     suspend fun update(
         id: TeamId,
         request: UpdateTeamRequest,
-    ): Team? = repository.update(id, request)
+    ): Team? = tx.update { repository.update(id, request) }
 
-    suspend fun getRoster(teamId: TeamId): List<RosterEntry> = repository.getRoster(teamId)
+    suspend fun getRoster(teamId: TeamId): List<RosterEntry> = tx.read { repository.getRoster(teamId) }
 
     suspend fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,
-        dsl: DSLContext? = null,
-    ): RosterEntry = repository.addToRoster(teamId, request, dsl)
+    ): RosterEntry = tx.update { repository.addToRoster(teamId, request) }
 
     suspend fun dropFromRoster(
         teamId: TeamId,
         golferId: GolferId,
-    ): Boolean = repository.dropFromRoster(teamId, golferId)
+    ): Boolean = tx.update { repository.dropFromRoster(teamId, golferId) }
 
-    suspend fun getRosterView(seasonId: SeasonId): List<RosterViewTeam> = repository.getRosterView(seasonId)
+    suspend fun getRosterView(seasonId: SeasonId): List<RosterViewTeam> = tx.read { repository.getRosterView(seasonId) }
 }

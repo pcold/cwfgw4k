@@ -26,7 +26,7 @@ class DraftRepositorySpec : FunSpec({
     val repository = DraftRepository(postgres.dsl)
     val leagueRepo = LeagueRepository(postgres.dsl)
     val seasonRepo = SeasonRepository(postgres.dsl)
-    val teamRepo = TeamRepository(postgres.dsl)
+    val teamRepo = TeamRepository()
     val golferRepo = GolferRepository()
     val tx = Transactor(postgres.dsl)
     var seasonId = SeasonId(UUID.randomUUID())
@@ -40,8 +40,10 @@ class DraftRepositorySpec : FunSpec({
     }
 
     suspend fun teamIds(): List<TeamId> =
-        listOf("Alpha", "Bravo", "Charlie").map { name ->
-            teamRepo.create(seasonId, CreateTeamRequest(ownerName = "Owner $name", teamName = name)).id
+        tx.update {
+            listOf("Alpha", "Bravo", "Charlie").map { name ->
+                teamRepo.create(seasonId, CreateTeamRequest(ownerName = "Owner $name", teamName = name)).id
+            }
         }
 
     test("create persists a draft with default status=pending and draftType=snake") {

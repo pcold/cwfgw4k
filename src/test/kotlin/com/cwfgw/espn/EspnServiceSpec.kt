@@ -130,7 +130,7 @@ private class Fixture(
             client = fakeClient,
             tournamentService = TournamentService(tournamentRepo),
             golferService = GolferService(golferRepo, FakeTransactor()),
-            teamService = TeamService(teamRepo),
+            teamService = TeamService(teamRepo, FakeTransactor()),
             seasonService = SeasonService(seasonRepo),
             tournamentLinkRepository = FakeTournamentLinkRepository(initial = initialOverrides),
         )

@@ -173,7 +173,7 @@ private class PreviewFixture(
                 client = FakeEspnClient(tournamentsByDate = tournamentsByDate, upstreamError = upstreamError),
                 tournamentService = TournamentService(tournamentRepo),
                 golferService = GolferService(golferRepo, FakeTransactor()),
-                teamService = TeamService(teamRepo),
+                teamService = TeamService(teamRepo, FakeTransactor()),
                 seasonService = SeasonService(seasonRepo),
                 tournamentLinkRepository = FakeTournamentLinkRepository(),
             )

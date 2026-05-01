@@ -1,5 +1,6 @@
 package com.cwfgw.teams
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.jooq.tables.records.TeamRostersRecord
 import com.cwfgw.jooq.tables.records.TeamsRecord
@@ -9,50 +10,49 @@ import com.cwfgw.jooq.tables.references.TEAM_ROSTERS
 import com.cwfgw.seasons.SeasonId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jooq.DSLContext
 import org.jooq.Field
 import org.jooq.impl.DSL
 import java.math.BigDecimal
 
 interface TeamRepository {
+    context(ctx: TransactionContext)
     suspend fun findBySeason(seasonId: SeasonId): List<Team>
 
+    context(ctx: TransactionContext)
     suspend fun findById(id: TeamId): Team?
 
-    /**
-     * Insert a team. The optional [dsl] override lets the caller supply a
-     * transactional DSLContext (from `dsl.transactionCoroutine { config -> ... }`)
-     * so the write joins an outer multi-repo transaction.
-     */
+    context(ctx: TransactionContext)
     suspend fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
-        dsl: DSLContext? = null,
     ): Team
 
+    context(ctx: TransactionContext)
     suspend fun update(
         id: TeamId,
         request: UpdateTeamRequest,
     ): Team?
 
+    context(ctx: TransactionContext)
     suspend fun getRoster(teamId: TeamId): List<RosterEntry>
 
-    /** [dsl] override behaves the same as on [create] — pass tx context to join an outer transaction. */
+    context(ctx: TransactionContext)
     suspend fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,
-        dsl: DSLContext? = null,
     ): RosterEntry
 
+    context(ctx: TransactionContext)
     suspend fun dropFromRoster(
         teamId: TeamId,
         golferId: GolferId,
     ): Boolean
 
+    context(ctx: TransactionContext)
     suspend fun getRosterView(seasonId: SeasonId): List<RosterViewTeam>
 }
 
-fun TeamRepository(dsl: DSLContext): TeamRepository = JooqTeamRepository(dsl)
+fun TeamRepository(): TeamRepository = JooqTeamRepository()
 
 private const val DEFAULT_ACQUIRED_VIA = "free_agent"
 private val DEFAULT_OWNERSHIP_PCT: BigDecimal = BigDecimal("100.00")
@@ -67,32 +67,33 @@ private data class RosterViewRow(
     val golferId: GolferId,
 )
 
-private class JooqTeamRepository(private val dsl: DSLContext) : TeamRepository {
+private class JooqTeamRepository : TeamRepository {
+    context(ctx: TransactionContext)
     override suspend fun findBySeason(seasonId: SeasonId): List<Team> =
         withContext(Dispatchers.IO) {
-            dsl.selectFrom(TEAMS)
+            ctx.dsl.selectFrom(TEAMS)
                 .where(TEAMS.SEASON_ID.eq(seasonId.value))
                 .orderBy(TEAMS.TEAM_NUMBER.asc().nullsLast(), TEAMS.TEAM_NAME.asc())
                 .fetch(::toTeam)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun findById(id: TeamId): Team? =
         withContext(Dispatchers.IO) {
-            dsl.selectFrom(TEAMS)
+            ctx.dsl.selectFrom(TEAMS)
                 .where(TEAMS.ID.eq(id.value))
                 .fetchOne()
                 ?.let(::toTeam)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
-        dsl: DSLContext?,
     ): Team =
         withContext(Dispatchers.IO) {
-            val ctx = dsl ?: this@JooqTeamRepository.dsl
             val inserted =
-                ctx.insertInto(TEAMS)
+                ctx.dsl.insertInto(TEAMS)
                     .set(TEAMS.SEASON_ID, seasonId.value)
                     .set(TEAMS.OWNER_NAME, request.ownerName)
                     .set(TEAMS.TEAM_NAME, request.teamName)
@@ -102,6 +103,7 @@ private class JooqTeamRepository(private val dsl: DSLContext) : TeamRepository {
             toTeam(inserted)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun update(
         id: TeamId,
         request: UpdateTeamRequest,
@@ -109,12 +111,12 @@ private class JooqTeamRepository(private val dsl: DSLContext) : TeamRepository {
         withContext(Dispatchers.IO) {
             val changes = updateAssignments(request)
             if (changes.isEmpty()) {
-                dsl.selectFrom(TEAMS)
+                ctx.dsl.selectFrom(TEAMS)
                     .where(TEAMS.ID.eq(id.value))
                     .fetchOne()
                     ?.let(::toTeam)
             } else {
-                dsl.update(TEAMS)
+                ctx.dsl.update(TEAMS)
                     .set(changes + (TEAMS.UPDATED_AT to DSL.currentOffsetDateTime()))
                     .where(TEAMS.ID.eq(id.value))
                     .returning()
@@ -123,24 +125,24 @@ private class JooqTeamRepository(private val dsl: DSLContext) : TeamRepository {
             }
         }
 
+    context(ctx: TransactionContext)
     override suspend fun getRoster(teamId: TeamId): List<RosterEntry> =
         withContext(Dispatchers.IO) {
-            dsl.selectFrom(TEAM_ROSTERS)
+            ctx.dsl.selectFrom(TEAM_ROSTERS)
                 .where(TEAM_ROSTERS.TEAM_ID.eq(teamId.value))
                 .and(TEAM_ROSTERS.DROPPED_AT.isNull)
                 .orderBy(TEAM_ROSTERS.DRAFT_ROUND.asc().nullsLast(), TEAM_ROSTERS.ACQUIRED_AT.asc())
                 .fetch(::toRosterEntry)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,
-        dsl: DSLContext?,
     ): RosterEntry =
         withContext(Dispatchers.IO) {
-            val ctx = dsl ?: this@JooqTeamRepository.dsl
             val inserted =
-                ctx.insertInto(TEAM_ROSTERS)
+                ctx.dsl.insertInto(TEAM_ROSTERS)
                     .set(TEAM_ROSTERS.TEAM_ID, teamId.value)
                     .set(TEAM_ROSTERS.GOLFER_ID, request.golferId.value)
                     .set(TEAM_ROSTERS.ACQUIRED_VIA, request.acquiredVia ?: DEFAULT_ACQUIRED_VIA)
@@ -151,13 +153,14 @@ private class JooqTeamRepository(private val dsl: DSLContext) : TeamRepository {
             toRosterEntry(inserted)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun dropFromRoster(
         teamId: TeamId,
         golferId: GolferId,
     ): Boolean =
         withContext(Dispatchers.IO) {
             val affected =
-                dsl.update(TEAM_ROSTERS)
+                ctx.dsl.update(TEAM_ROSTERS)
                     .set(TEAM_ROSTERS.DROPPED_AT, DSL.currentOffsetDateTime())
                     .set(TEAM_ROSTERS.IS_ACTIVE, false)
                     .where(TEAM_ROSTERS.TEAM_ID.eq(teamId.value))
@@ -167,6 +170,7 @@ private class JooqTeamRepository(private val dsl: DSLContext) : TeamRepository {
             affected > 0
         }
 
+    context(ctx: TransactionContext)
     override suspend fun getRosterView(seasonId: SeasonId): List<RosterViewTeam> =
         withContext(Dispatchers.IO) {
             val rows = fetchRosterViewRows(seasonId)
@@ -179,8 +183,9 @@ private class JooqTeamRepository(private val dsl: DSLContext) : TeamRepository {
             }
         }
 
+    context(ctx: TransactionContext)
     private fun fetchRosterViewRows(seasonId: SeasonId): List<RosterViewRow> =
-        dsl.select(
+        ctx.dsl.select(
             TEAMS.ID,
             TEAMS.TEAM_NAME,
             TEAM_ROSTERS.DRAFT_ROUND,

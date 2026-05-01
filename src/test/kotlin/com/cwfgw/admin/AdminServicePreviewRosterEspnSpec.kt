@@ -67,7 +67,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         val teamRepo = FakeTeamRepository()
         val tournamentService = TournamentService(tournamentRepo)
         val golferService = GolferService(golferRepo, FakeTransactor())
-        val teamService = TeamService(teamRepo)
+        val teamService = TeamService(teamRepo, FakeTransactor())
         val client =
             FakeEspnClient(
                 tournamentsByDate = scoreboards,
@@ -94,7 +94,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
                     espnService = espnService,
                     golferService = golferService,
                     golferRepository = golferRepo,
-                    teamService = teamService,
+                    teamRepository = teamRepo,
                 ),
         )
     }

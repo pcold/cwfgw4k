@@ -6,6 +6,7 @@ import com.cwfgw.scoring.ScoringService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.tournaments.FakeTournamentRepository
@@ -63,7 +64,7 @@ private fun opsFixture(initialTournaments: List<Tournament> = emptyList()): ApiF
         val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
         seasonService = SeasonService(seasonRepo)
         tournamentService = TournamentService(tournamentRepo)
-        teamService = TeamService(FakeTeamRepository())
+        teamService = TeamService(FakeTeamRepository(), FakeTransactor())
         scoringService =
             ScoringService(FakeScoringRepository(), seasonService, tournamentService, teamService)
         seasonOpsService = SeasonOpsService(seasonService, tournamentService, scoringService)

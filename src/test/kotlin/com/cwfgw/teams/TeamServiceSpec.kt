@@ -2,6 +2,7 @@ package com.cwfgw.teams
 
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.testing.FakeTransactor
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
@@ -36,14 +37,14 @@ class TeamServiceSpec : FunSpec({
     test("listBySeason returns only teams in the requested season") {
         val a = team(seasonId = SEASON_ONE, teamName = "Eagles")
         val b = team(seasonId = SEASON_TWO, teamName = "Hawks")
-        val service = TeamService(FakeTeamRepository(initialTeams = listOf(a, b)))
+        val service = TeamService(FakeTeamRepository(initialTeams = listOf(a, b)), FakeTransactor())
 
         service.listBySeason(SEASON_ONE).map { it.id } shouldContainExactlyInAnyOrder listOf(a.id)
     }
 
     test("get returns the team when present and null otherwise") {
         val existing = team()
-        val service = TeamService(FakeTeamRepository(initialTeams = listOf(existing)))
+        val service = TeamService(FakeTeamRepository(initialTeams = listOf(existing)), FakeTransactor())
 
         service.get(existing.id) shouldBe existing
         service.get(TeamId(UUID.randomUUID())).shouldBeNull()
@@ -53,7 +54,7 @@ class TeamServiceSpec : FunSpec({
         val newId = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000bb1"))
         val newTime = Instant.parse("2026-03-15T00:00:00Z")
         val fake = FakeTeamRepository(teamIdFactory = { newId }, clock = { newTime })
-        val service = TeamService(fake)
+        val service = TeamService(fake, FakeTransactor())
 
         val created = service.create(SEASON_ONE, CreateTeamRequest("Alice", "Eagles"))
 
@@ -63,7 +64,7 @@ class TeamServiceSpec : FunSpec({
     }
 
     test("addToRoster defaults acquired_via to free_agent and ownership_pct to 100") {
-        val service = TeamService(FakeTeamRepository())
+        val service = TeamService(FakeTeamRepository(), FakeTransactor())
         val teamId = TeamId(UUID.randomUUID())
         val golferId = GolferId(UUID.randomUUID())
 
@@ -74,7 +75,7 @@ class TeamServiceSpec : FunSpec({
     }
 
     test("dropFromRoster returns true for active entries and false otherwise") {
-        val service = TeamService(FakeTeamRepository())
+        val service = TeamService(FakeTeamRepository(), FakeTransactor())
         val teamId = TeamId(UUID.randomUUID())
         val golferId = GolferId(UUID.randomUUID())
 

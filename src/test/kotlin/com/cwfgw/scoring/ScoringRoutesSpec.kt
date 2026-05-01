@@ -14,6 +14,7 @@ import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.tournaments.FakeTournamentRepository
@@ -139,7 +140,7 @@ private fun withWorld(world: RouteWorld = RouteWorld()): ApiFixture.() -> Unit =
         val teamRepo = FakeTeamRepository(initialTeams = world.teams, initialRoster = world.rosters)
         seasonService = SeasonService(seasonRepo)
         tournamentService = TournamentService(tournamentRepo)
-        teamService = TeamService(teamRepo)
+        teamService = TeamService(teamRepo, FakeTransactor())
         scoringService =
             ScoringService(
                 repository = FakeScoringRepository(initialScores = world.initialScores),

@@ -15,7 +15,7 @@ import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.AddToRosterRequest
 import com.cwfgw.teams.CreateTeamRequest
 import com.cwfgw.teams.Team
-import com.cwfgw.teams.TeamService
+import com.cwfgw.teams.TeamRepository
 import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentService
@@ -52,7 +52,7 @@ class AdminService(
     private val espnService: EspnService,
     private val golferService: GolferService,
     private val golferRepository: GolferRepository,
-    private val teamService: TeamService,
+    private val teamRepository: TeamRepository,
 ) {
     suspend fun uploadSeason(
         seasonId: SeasonId,
@@ -332,45 +332,45 @@ class AdminService(
         tx: DSLContext,
         seasonId: SeasonId,
         team: ConfirmedTeam,
-    ): Pair<Team, Int> {
-        val createdTeam =
-            teamService.create(
-                seasonId = seasonId,
-                request =
-                    CreateTeamRequest(
-                        ownerName = team.teamName,
-                        teamName = team.teamName,
-                        teamNumber = team.teamNumber,
-                    ),
-                dsl = tx,
-            )
-        var newGolfers = 0
-        for (pick in team.picks) {
-            val golferId =
-                when (val assignment = pick.assignment) {
-                    is GolferAssignment.Existing -> assignment.golferId
-                    is GolferAssignment.New -> {
-                        newGolfers++
-                        val req = CreateGolferRequest(firstName = assignment.firstName, lastName = assignment.lastName)
-                        // GolferService.create captures its own non-tx Transactor; for this transactional
-                        // path we go straight to the repository so the new row joins the surrounding tx.
-                        with(TransactionContext(tx)) { golferRepository.create(req) }.id
+    ): Pair<Team, Int> =
+        // Repos are the right surface here: every write needs to join the
+        // surrounding tx, and the services capture their own (non-tx) Transactor.
+        with(TransactionContext(tx)) {
+            val createdTeam =
+                teamRepository.create(
+                    seasonId = seasonId,
+                    request =
+                        CreateTeamRequest(
+                            ownerName = team.teamName,
+                            teamName = team.teamName,
+                            teamNumber = team.teamNumber,
+                        ),
+                )
+            var newGolfers = 0
+            for (pick in team.picks) {
+                val golferId =
+                    when (val assignment = pick.assignment) {
+                        is GolferAssignment.Existing -> assignment.golferId
+                        is GolferAssignment.New -> {
+                            newGolfers++
+                            val req =
+                                CreateGolferRequest(firstName = assignment.firstName, lastName = assignment.lastName)
+                            golferRepository.create(req).id
+                        }
                     }
-                }
-            teamService.addToRoster(
-                teamId = createdTeam.id,
-                request =
-                    AddToRosterRequest(
-                        golferId = golferId,
-                        acquiredVia = ROSTER_ACQUIRED_VIA_DRAFT,
-                        draftRound = pick.round,
-                        ownershipPct = BigDecimal(pick.ownershipPct),
-                    ),
-                dsl = tx,
-            )
+                teamRepository.addToRoster(
+                    teamId = createdTeam.id,
+                    request =
+                        AddToRosterRequest(
+                            golferId = golferId,
+                            acquiredVia = ROSTER_ACQUIRED_VIA_DRAFT,
+                            draftRound = pick.round,
+                            ownershipPct = BigDecimal(pick.ownershipPct),
+                        ),
+                )
+            }
+            createdTeam to newGolfers
         }
-        return createdTeam to newGolfers
-    }
 
     private suspend fun findMissingGolferIds(teams: List<ConfirmedTeam>): List<GolferId> {
         val referencedIds =

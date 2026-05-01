@@ -14,6 +14,7 @@ import com.cwfgw.teams.RosterEntryId
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -155,7 +156,7 @@ private class Fixture(
                 repository = scoring,
                 seasonService = SeasonService(seasonRepo),
                 tournamentService = TournamentService(tournamentRepo),
-                teamService = TeamService(teamRepo),
+                teamService = TeamService(teamRepo, FakeTransactor()),
             )
     }
 }
@@ -354,7 +355,7 @@ class ScoringServiceSpec : FunSpec({
                 repository = scoring,
                 seasonService = SeasonService(FakeSeasonRepository(initial = listOf(mkSeason()))),
                 tournamentService = TournamentService(FakeTournamentRepository()),
-                teamService = TeamService(FakeTeamRepository()),
+                teamService = TeamService(FakeTeamRepository(), FakeTransactor()),
             )
 
         service.getScores(SEASON_ID, TOURNAMENT_ID) shouldBe listOf(score)

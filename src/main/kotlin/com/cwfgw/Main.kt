@@ -97,10 +97,11 @@ internal fun buildServices(
     database: Database,
     httpClient: HttpClient,
 ): AppServices {
-    val teamService = TeamService(TeamRepository(database.dsl))
+    val transactor = Transactor(database.dsl)
+    val teamRepository = TeamRepository()
+    val teamService = TeamService(teamRepository, transactor)
     val seasonService = SeasonService(SeasonRepository(database.dsl))
     val tournamentService = TournamentService(TournamentRepository(database.dsl))
-    val transactor = Transactor(database.dsl)
     val golferRepository = GolferRepository()
     val golferService = GolferService(golferRepository, transactor)
     val userRepository = UserRepository(database.dsl)
@@ -118,7 +119,7 @@ internal fun buildServices(
             espnService = espnService,
             golferService = golferService,
             golferRepository = golferRepository,
-            teamService = teamService,
+            teamRepository = teamRepository,
         )
     val liveOverlayService = LiveOverlayService(espnService)
     val weeklyReportService =

@@ -3,6 +3,7 @@ package com.cwfgw.teams
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.testing.ApiFixture
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import io.kotest.core.spec.style.FunSpec
@@ -61,7 +62,7 @@ private fun teamsAndRoster(
     roster: List<RosterEntry> = emptyList(),
 ): ApiFixture.() -> Unit =
     {
-        teamService = TeamService(FakeTeamRepository(initialTeams = teams, initialRoster = roster))
+        teamService = TeamService(FakeTeamRepository(initialTeams = teams, initialRoster = roster), FakeTransactor())
     }
 
 class TeamRoutesSpec : FunSpec({
@@ -100,7 +101,7 @@ class TeamRoutesSpec : FunSpec({
         val newTime = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeTeamRepository(teamIdFactory = { newId }, clock = { newTime })
 
-        authenticatedApiTest({ teamService = TeamService(fake) }) { client ->
+        authenticatedApiTest({ teamService = TeamService(fake, FakeTransactor()) }) { client ->
             val response =
                 client.post("/api/v1/seasons/${SEASON_ID.value}/teams") {
                     contentType(ContentType.Application.Json)
@@ -154,7 +155,7 @@ class TeamRoutesSpec : FunSpec({
                 clock = { newTime },
             )
 
-        authenticatedApiTest({ teamService = TeamService(fake) }) { client ->
+        authenticatedApiTest({ teamService = TeamService(fake, FakeTransactor()) }) { client ->
             val response =
                 client.post("/api/v1/seasons/${SEASON_ID.value}/teams/${eagles.id.value}/roster") {
                     contentType(ContentType.Application.Json)
@@ -277,7 +278,7 @@ class TeamRoutesSpec : FunSpec({
                 initialRosterView = mapOf(SEASON_ID to view),
             )
 
-        apiTest({ teamService = TeamService(fake) }) { client ->
+        apiTest({ teamService = TeamService(fake, FakeTransactor()) }) { client ->
             val response = client.get("/api/v1/seasons/${SEASON_ID.value}/rosters")
 
             response.status shouldBe HttpStatusCode.OK

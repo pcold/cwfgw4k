@@ -88,7 +88,7 @@ private fun opsFixture(
         val scoringRepo = FakeScoringRepository()
         seasonService = SeasonService(seasonRepo)
         tournamentService = TournamentService(tournamentRepo)
-        teamService = TeamService(teamRepo)
+        teamService = TeamService(teamRepo, FakeTransactor())
         golferService = GolferService(golferRepo, FakeTransactor())
         espnService =
             EspnService(
