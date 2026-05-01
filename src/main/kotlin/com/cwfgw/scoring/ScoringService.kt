@@ -1,5 +1,7 @@
 package com.cwfgw.scoring
 
+import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
@@ -30,19 +32,24 @@ class ScoringService(
     private val seasonService: SeasonService,
     private val tournamentService: TournamentService,
     private val teamService: TeamService,
+    private val tx: Transactor,
 ) {
     suspend fun getScores(
         seasonId: SeasonId,
         tournamentId: TournamentId,
-    ): List<FantasyScore> = repository.getScores(seasonId, tournamentId)
+    ): List<FantasyScore> = tx.read { repository.getScores(seasonId, tournamentId) }
 
-    suspend fun getStandings(seasonId: SeasonId): List<SeasonStanding> = repository.getStandings(seasonId)
+    suspend fun getStandings(seasonId: SeasonId): List<SeasonStanding> =
+        tx.read { repository.getStandings(seasonId) }
 
-    suspend fun deleteScoresByTournament(tournamentId: TournamentId): Int = repository.deleteByTournament(tournamentId)
+    suspend fun deleteScoresByTournament(tournamentId: TournamentId): Int =
+        tx.update { repository.deleteByTournament(tournamentId) }
 
-    suspend fun deleteScoresBySeason(seasonId: SeasonId): Int = repository.deleteBySeason(seasonId)
+    suspend fun deleteScoresBySeason(seasonId: SeasonId): Int =
+        tx.update { repository.deleteBySeason(seasonId) }
 
-    suspend fun deleteStandingsBySeason(seasonId: SeasonId): Int = repository.deleteStandingsBySeason(seasonId)
+    suspend fun deleteStandingsBySeason(seasonId: SeasonId): Int =
+        tx.update { repository.deleteStandingsBySeason(seasonId) }
 
     suspend fun calculateScores(
         seasonId: SeasonId,
@@ -66,10 +73,12 @@ class ScoringService(
             )
 
         val perTeamResults =
-            teams.map { team ->
-                val roster = rostersByTeam[team.id] ?: emptyList()
-                val golferScores = roster.mapNotNull { entry -> scoreGolferForTeam(inputs, team.id, entry) }
-                team to golferScores
+            tx.update {
+                teams.map { team ->
+                    val roster = rostersByTeam[team.id] ?: emptyList()
+                    val golferScores = roster.mapNotNull { entry -> scoreGolferForTeam(inputs, team.id, entry) }
+                    team to golferScores
+                }
             }
         return Result.Ok(buildWeeklyResult(tournament, perTeamResults))
     }
@@ -78,9 +87,11 @@ class ScoringService(
         seasonService.get(seasonId) ?: return Result.Err(ScoringError.SeasonNotFound)
         val teams = teamService.listBySeason(seasonId)
         val standings =
-            teams.map { team ->
-                val totals = repository.teamSeasonTotals(seasonId, team.id)
-                repository.upsertStanding(seasonId, team.id, totals.totalPoints, totals.tournamentsPlayed)
+            tx.update {
+                teams.map { team ->
+                    val totals = repository.teamSeasonTotals(seasonId, team.id)
+                    repository.upsertStanding(seasonId, team.id, totals.totalPoints, totals.tournamentsPlayed)
+                }
             }
         return Result.Ok(standings)
     }
@@ -98,11 +109,12 @@ class ScoringService(
                 sideBetAmount = rules.sideBetAmount,
                 rosters = teams.flatMap { teamService.getRoster(it.id) },
             )
-        val rounds = rules.sideBetRounds.map { round -> buildSideBetRound(context, round) }
+        val rounds = tx.read { rules.sideBetRounds.map { round -> buildSideBetRound(context, round) } }
         val totals = teamSideBetTotals(teams, rounds, rules.sideBetAmount)
         return Result.Ok(SideBetStandings(rounds = rounds, teamTotals = totals))
     }
 
+    context(ctx: TransactionContext)
     private suspend fun scoreGolferForTeam(
         inputs: ScoringInputs,
         teamId: TeamId,
@@ -170,6 +182,7 @@ class ScoringService(
         )
     }
 
+    context(ctx: TransactionContext)
     private suspend fun buildSideBetRound(
         context: SideBetContext,
         round: Int,

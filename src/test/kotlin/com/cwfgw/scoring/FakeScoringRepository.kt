@@ -1,5 +1,6 @@
 package com.cwfgw.scoring
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.teams.TeamId
@@ -27,6 +28,7 @@ class FakeScoringRepository(
         initialStandings.forEach { standings[it.id] = it }
     }
 
+    context(ctx: TransactionContext)
     override suspend fun getScores(
         seasonId: SeasonId,
         tournamentId: TournamentId,
@@ -35,11 +37,13 @@ class FakeScoringRepository(
             .filter { it.seasonId == seasonId && it.tournamentId == tournamentId }
             .sortedByDescending { it.points }
 
+    context(ctx: TransactionContext)
     override suspend fun getStandings(seasonId: SeasonId): List<SeasonStanding> =
         standings.values
             .filter { it.seasonId == seasonId }
             .sortedByDescending { it.totalPoints }
 
+    context(ctx: TransactionContext)
     override suspend fun upsertScore(record: UpsertScore): FantasyScore {
         val existing =
             scores.values.firstOrNull { existing ->
@@ -69,17 +73,20 @@ class FakeScoringRepository(
         return score
     }
 
+    context(ctx: TransactionContext)
     override suspend fun golferPointTotal(
         seasonId: SeasonId,
         teamId: TeamId,
         golferId: GolferId,
     ): BigDecimal = pointTotals[Triple(seasonId, teamId, golferId)] ?: BigDecimal.ZERO
 
+    context(ctx: TransactionContext)
     override suspend fun teamSeasonTotals(
         seasonId: SeasonId,
         teamId: TeamId,
     ): TeamSeasonTotals = teamTotals[seasonId to teamId] ?: TeamSeasonTotals(BigDecimal.ZERO, 0)
 
+    context(ctx: TransactionContext)
     override suspend fun upsertStanding(
         seasonId: SeasonId,
         teamId: TeamId,
@@ -104,18 +111,21 @@ class FakeScoringRepository(
         return standing
     }
 
+    context(ctx: TransactionContext)
     override suspend fun deleteByTournament(tournamentId: TournamentId): Int {
         val matching = scores.values.filter { it.tournamentId == tournamentId }
         matching.forEach { scores.remove(it.id) }
         return matching.size
     }
 
+    context(ctx: TransactionContext)
     override suspend fun deleteBySeason(seasonId: SeasonId): Int {
         val matching = scores.values.filter { it.seasonId == seasonId }
         matching.forEach { scores.remove(it.id) }
         return matching.size
     }
 
+    context(ctx: TransactionContext)
     override suspend fun deleteStandingsBySeason(seasonId: SeasonId): Int {
         val matching = standings.values.filter { it.seasonId == seasonId }
         matching.forEach { standings.remove(it.id) }

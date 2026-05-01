@@ -147,7 +147,8 @@ private class Fixture(
         val seasonService = SeasonService(seasonRepo, FakeTransactor())
         val tournamentService = TournamentService(tournamentRepo, FakeTransactor())
         val teamService = TeamService(teamRepo, FakeTransactor())
-        val scoringService = ScoringService(scoringRepo, seasonService, tournamentService, teamService)
+        val scoringService =
+            ScoringService(scoringRepo, seasonService, tournamentService, teamService, FakeTransactor())
         service = SeasonOpsService(seasonService, tournamentService, scoringService)
     }
 }

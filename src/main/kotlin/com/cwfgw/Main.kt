@@ -110,7 +110,7 @@ internal fun buildServices(
     val espnService =
         EspnService(EspnClient(httpClient), tournamentService, golferService, teamService, seasonService, linkRepo)
     val scoringService =
-        ScoringService(ScoringRepository(database.dsl), seasonService, tournamentService, teamService)
+        ScoringService(ScoringRepository(), seasonService, tournamentService, teamService, transactor)
     val adminService =
         AdminService(
             dsl = database.dsl,

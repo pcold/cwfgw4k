@@ -147,6 +147,7 @@ private fun withWorld(world: RouteWorld = RouteWorld()): ApiFixture.() -> Unit =
                 seasonService = seasonService,
                 tournamentService = tournamentService,
                 teamService = teamService,
+                tx = FakeTransactor(),
             )
     }
 

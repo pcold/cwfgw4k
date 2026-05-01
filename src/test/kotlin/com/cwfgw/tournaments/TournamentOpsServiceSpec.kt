@@ -144,7 +144,8 @@ private class Fixture(
                 seasonService,
                 FakeTournamentLinkRepository(),
             )
-        val scoringService = ScoringService(scoringRepo, seasonService, tournamentService, teamService)
+        val scoringService =
+            ScoringService(scoringRepo, seasonService, tournamentService, teamService, FakeTransactor())
         service = TournamentOpsService(tournamentService, scoringService, espnService)
     }
 }

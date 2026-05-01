@@ -157,6 +157,7 @@ private class Fixture(
                 seasonService = SeasonService(seasonRepo, FakeTransactor()),
                 tournamentService = TournamentService(tournamentRepo, FakeTransactor()),
                 teamService = TeamService(teamRepo, FakeTransactor()),
+                tx = FakeTransactor(),
             )
     }
 }
@@ -356,6 +357,7 @@ class ScoringServiceSpec : FunSpec({
                 seasonService = SeasonService(FakeSeasonRepository(initial = listOf(mkSeason())), FakeTransactor()),
                 tournamentService = TournamentService(FakeTournamentRepository(), FakeTransactor()),
                 teamService = TeamService(FakeTeamRepository(), FakeTransactor()),
+                tx = FakeTransactor(),
             )
 
         service.getScores(SEASON_ID, TOURNAMENT_ID) shouldBe listOf(score)

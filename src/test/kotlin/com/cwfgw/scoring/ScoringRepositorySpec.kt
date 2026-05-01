@@ -26,7 +26,7 @@ import java.util.UUID
 class ScoringRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
-    val repository = ScoringRepository(postgres.dsl)
+    val repository = ScoringRepository()
     val leagueRepo = LeagueRepository(postgres.dsl)
     val seasonRepo = SeasonRepository()
     val teamRepo = TeamRepository()
@@ -43,17 +43,13 @@ class ScoringRepositorySpec : FunSpec({
 
     beforeEach {
         val league = leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf"))
-        seasonId =
-            tx.update {
+        tx.update {
+            seasonId =
                 seasonRepo.create(
                     CreateSeasonRequest(leagueId = league.id, name = "2026 Season", seasonYear = 2026),
-                )
-            }.id
-        tx.update {
+                ).id
             teamA = teamRepo.create(seasonId, CreateTeamRequest(ownerName = "Alice", teamName = "Alpha")).id
             teamB = teamRepo.create(seasonId, CreateTeamRequest(ownerName = "Bob", teamName = "Bravo")).id
-        }
-        tx.update {
             tournamentA =
                 tournamentRepo.create(
                     CreateTournamentRequest(
@@ -72,8 +68,6 @@ class ScoringRepositorySpec : FunSpec({
                         endDate = LocalDate.parse("2026-04-11"),
                     ),
                 ).id
-        }
-        tx.update {
             golfer1 = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")).id
             golfer2 = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")).id
         }
@@ -100,15 +94,17 @@ class ScoringRepositorySpec : FunSpec({
         golfer: GolferId,
         breakdown: ScoreBreakdown,
     ): FantasyScore =
-        repository.upsertScore(
-            UpsertScore(
-                seasonId = seasonId,
-                teamId = team,
-                tournamentId = tournament,
-                golferId = golfer,
-                breakdown = breakdown,
-            ),
-        )
+        tx.update {
+            repository.upsertScore(
+                UpsertScore(
+                    seasonId = seasonId,
+                    teamId = team,
+                    tournamentId = tournament,
+                    golferId = golfer,
+                    breakdown = breakdown,
+                ),
+            )
+        }
 
     test("upsertScore inserts then updates the same row on conflict") {
         val first = upsert(teamA, tournamentA, golfer1, breakdown(1))
@@ -125,7 +121,7 @@ class ScoringRepositorySpec : FunSpec({
         upsert(teamB, tournamentA, golfer2, breakdown(2, payout = BigDecimal(12)))
         upsert(teamA, tournamentB, golfer1, breakdown(4, payout = BigDecimal(7)))
 
-        val scores = repository.getScores(seasonId, tournamentA)
+        val scores = tx.read { repository.getScores(seasonId, tournamentA) }
 
         scores.shouldHaveSize(2)
         scores.map { it.points.compareTo(BigDecimal(18)) }.first() shouldBe 0
@@ -138,7 +134,7 @@ class ScoringRepositorySpec : FunSpec({
         // Different team's points should be excluded
         upsert(teamB, tournamentA, golfer1, breakdown(1, payout = BigDecimal(99)))
 
-        repository.golferPointTotal(seasonId, teamA, golfer1).compareTo(BigDecimal(25)) shouldBe 0
+        tx.read { repository.golferPointTotal(seasonId, teamA, golfer1) }.compareTo(BigDecimal(25)) shouldBe 0
     }
 
     test("teamSeasonTotals sums points and counts distinct tournaments") {
@@ -146,22 +142,22 @@ class ScoringRepositorySpec : FunSpec({
         upsert(teamA, tournamentA, golfer2, breakdown(2, payout = BigDecimal(12)))
         upsert(teamA, tournamentB, golfer1, breakdown(4, payout = BigDecimal(7)))
 
-        val totals = repository.teamSeasonTotals(seasonId, teamA)
+        val totals = tx.read { repository.teamSeasonTotals(seasonId, teamA) }
 
         totals.totalPoints.compareTo(BigDecimal(37)) shouldBe 0
         totals.tournamentsPlayed shouldBe 2
     }
 
     test("teamSeasonTotals returns zeros when no scores exist") {
-        val totals = repository.teamSeasonTotals(seasonId, teamA)
+        val totals = tx.read { repository.teamSeasonTotals(seasonId, teamA) }
 
         totals.totalPoints.compareTo(BigDecimal.ZERO) shouldBe 0
         totals.tournamentsPlayed shouldBe 0
     }
 
     test("upsertStanding inserts then updates the same row on conflict") {
-        val first = repository.upsertStanding(seasonId, teamA, BigDecimal(50), 3)
-        val second = repository.upsertStanding(seasonId, teamA, BigDecimal(80), 5)
+        val first = tx.update { repository.upsertStanding(seasonId, teamA, BigDecimal(50), 3) }
+        val second = tx.update { repository.upsertStanding(seasonId, teamA, BigDecimal(80), 5) }
 
         first.id shouldBe second.id
         second.totalPoints.compareTo(BigDecimal(80)) shouldBe 0
@@ -169,10 +165,10 @@ class ScoringRepositorySpec : FunSpec({
     }
 
     test("getStandings returns standings for the season ordered by points desc") {
-        repository.upsertStanding(seasonId, teamA, BigDecimal(50), 3)
-        repository.upsertStanding(seasonId, teamB, BigDecimal(80), 4)
+        tx.update { repository.upsertStanding(seasonId, teamA, BigDecimal(50), 3) }
+        tx.update { repository.upsertStanding(seasonId, teamB, BigDecimal(80), 4) }
 
-        val standings = repository.getStandings(seasonId)
+        val standings = tx.read { repository.getStandings(seasonId) }
 
         standings.map { it.teamId } shouldBe listOf(teamB, teamA)
     }

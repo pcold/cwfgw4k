@@ -87,6 +87,7 @@ class ApiFixture {
             seasonService = seasonService,
             tournamentService = tournamentService,
             teamService = teamService,
+            tx = transactor,
         )
     var tournamentLinkRepository: TournamentLinkRepository = FakeTournamentLinkRepository()
     var tournamentLinkService: TournamentLinkService =

@@ -224,6 +224,7 @@ private class Fixture(
                 seasonService = seasonService,
                 tournamentService = tournamentService,
                 teamService = teamService,
+                tx = FakeTransactor(),
             )
         val espnService =
             EspnService(

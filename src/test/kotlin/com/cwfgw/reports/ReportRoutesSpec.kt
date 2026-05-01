@@ -213,6 +213,7 @@ private fun reportFixture(
                 seasonService = seasonService,
                 tournamentService = tournamentService,
                 teamService = teamService,
+                tx = FakeTransactor(),
             )
         val previewEspnService =
             EspnService(
