@@ -71,7 +71,7 @@ data class SeasonRules(
     val payouts: List<
         @Serializable(with = BigDecimalSerializer::class)
         BigDecimal,
-        >,
+    >,
     @Serializable(with = BigDecimalSerializer::class) val tieFloor: BigDecimal,
     val sideBetRounds: List<Int>,
     @Serializable(with = BigDecimalSerializer::class) val sideBetAmount: BigDecimal,

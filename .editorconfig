@@ -16,6 +16,17 @@ ktlint_standard_no-wildcard-imports = enabled
 ktlint_standard_spacing-around-colon = enabled
 ktlint_standard_final-newline = enabled
 
+# Roll back ktlint 1.x defaults that don't match this codebase's existing style.
+# The rules below ship enabled in ktlint 1.0+, but their reformat output
+# (multi-line class signatures, brace-every-when-arm, force-newline-before-dot)
+# adds significant churn and indent depth without improving readability.
+ktlint_standard_class-signature = disabled
+ktlint_standard_function-signature = disabled
+ktlint_standard_chain-method-continuation = disabled
+ktlint_standard_when-entry-bracing = disabled
+ktlint_standard_blank-line-between-when-conditions = disabled
+ktlint_standard_argument-list-wrapping = disabled
+
 [*.md]
 trim_trailing_whitespace = false
 

@@ -195,6 +195,7 @@ tasks.withType<io.gitlab.arturbosch.detekt.DetektCreateBaselineTask>().configure
 }
 
 ktlint {
+    version.set("1.8.0")
     verbose.set(true)
     outputToConsole.set(true)
     ignoreFailures.set(false)
