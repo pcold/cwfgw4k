@@ -1,49 +1,47 @@
 package com.cwfgw.golfers
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.jooq.tables.records.GolfersRecord
 import com.cwfgw.jooq.tables.references.GOLFERS
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jooq.Condition
-import org.jooq.DSLContext
 import org.jooq.Field
 import org.jooq.impl.DSL
 
 interface GolferRepository {
+    context(ctx: TransactionContext)
     suspend fun findAll(
         activeOnly: Boolean,
         search: String?,
     ): List<Golfer>
 
+    context(ctx: TransactionContext)
     suspend fun findById(id: GolferId): Golfer?
 
+    context(ctx: TransactionContext)
     suspend fun findByPgaPlayerId(pgaPlayerId: String): Golfer?
 
-    /**
-     * Insert a golfer. Pass [dsl] (typically the inner DSLContext from
-     * `dsl.transactionCoroutine { config -> ... }`) to join an outer
-     * multi-repo transaction; null uses the constructor-captured DSL.
-     */
-    suspend fun create(
-        request: CreateGolferRequest,
-        dsl: DSLContext? = null,
-    ): Golfer
+    context(ctx: TransactionContext)
+    suspend fun create(request: CreateGolferRequest): Golfer
 
+    context(ctx: TransactionContext)
     suspend fun update(
         id: GolferId,
         request: UpdateGolferRequest,
     ): Golfer?
 }
 
-fun GolferRepository(dsl: DSLContext): GolferRepository = JooqGolferRepository(dsl)
+fun GolferRepository(): GolferRepository = JooqGolferRepository()
 
-private class JooqGolferRepository(private val dsl: DSLContext) : GolferRepository {
+private class JooqGolferRepository : GolferRepository {
+    context(ctx: TransactionContext)
     override suspend fun findAll(
         activeOnly: Boolean,
         search: String?,
     ): List<Golfer> =
         withContext(Dispatchers.IO) {
-            dsl.selectFrom(GOLFERS)
+            ctx.dsl.selectFrom(GOLFERS)
                 .where(filterConditions(activeOnly, search))
                 .orderBy(
                     GOLFERS.WORLD_RANKING.asc().nullsLast(),
@@ -52,30 +50,29 @@ private class JooqGolferRepository(private val dsl: DSLContext) : GolferReposito
                 .fetch(::toGolfer)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun findById(id: GolferId): Golfer? =
         withContext(Dispatchers.IO) {
-            dsl.selectFrom(GOLFERS)
+            ctx.dsl.selectFrom(GOLFERS)
                 .where(GOLFERS.ID.eq(id.value))
                 .fetchOne()
                 ?.let(::toGolfer)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
         withContext(Dispatchers.IO) {
-            dsl.selectFrom(GOLFERS)
+            ctx.dsl.selectFrom(GOLFERS)
                 .where(GOLFERS.PGA_PLAYER_ID.eq(pgaPlayerId))
                 .fetchOne()
                 ?.let(::toGolfer)
         }
 
-    override suspend fun create(
-        request: CreateGolferRequest,
-        dsl: DSLContext?,
-    ): Golfer =
+    context(ctx: TransactionContext)
+    override suspend fun create(request: CreateGolferRequest): Golfer =
         withContext(Dispatchers.IO) {
-            val ctx = dsl ?: this@JooqGolferRepository.dsl
             val inserted =
-                ctx.insertInto(GOLFERS)
+                ctx.dsl.insertInto(GOLFERS)
                     .set(GOLFERS.PGA_PLAYER_ID, request.pgaPlayerId)
                     .set(GOLFERS.FIRST_NAME, request.firstName)
                     .set(GOLFERS.LAST_NAME, request.lastName)
@@ -86,6 +83,7 @@ private class JooqGolferRepository(private val dsl: DSLContext) : GolferReposito
             toGolfer(inserted)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun update(
         id: GolferId,
         request: UpdateGolferRequest,
@@ -93,12 +91,12 @@ private class JooqGolferRepository(private val dsl: DSLContext) : GolferReposito
         withContext(Dispatchers.IO) {
             val changes = updateAssignments(request)
             if (changes.isEmpty()) {
-                dsl.selectFrom(GOLFERS)
+                ctx.dsl.selectFrom(GOLFERS)
                     .where(GOLFERS.ID.eq(id.value))
                     .fetchOne()
                     ?.let(::toGolfer)
             } else {
-                dsl.update(GOLFERS)
+                ctx.dsl.update(GOLFERS)
                     .set(changes + (GOLFERS.UPDATED_AT to DSL.currentOffsetDateTime()))
                     .where(GOLFERS.ID.eq(id.value))
                     .returning()

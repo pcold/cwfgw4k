@@ -1,5 +1,6 @@
 package com.cwfgw.seasons
 
+import com.cwfgw.db.Transactor
 import com.cwfgw.drafts.CreateDraftRequest
 import com.cwfgw.drafts.DraftRepository
 import com.cwfgw.drafts.PickSlot
@@ -263,7 +264,8 @@ class SeasonRepositorySpec : FunSpec({
         val teamRepo = TeamRepository(postgres.dsl)
         val tournamentRepo = TournamentRepository(postgres.dsl)
         val draftRepo = DraftRepository(postgres.dsl)
-        val golferRepo = GolferRepository(postgres.dsl)
+        val golferRepo = GolferRepository()
+        val tx = Transactor(postgres.dsl)
 
         val season =
             repository.create(
@@ -283,7 +285,7 @@ class SeasonRepositorySpec : FunSpec({
             ),
         )
         val golfer =
-            golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
+            tx.update { golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")) }
         teamRepo.addToRoster(team.id, AddToRosterRequest(golferId = golfer.id))
         val draft = draftRepo.create(seasonId = season.id, request = CreateDraftRequest())
         draftRepo.createPicks(

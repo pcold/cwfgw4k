@@ -1,5 +1,6 @@
 package com.cwfgw.tournaments
 
+import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.leagues.CreateLeagueRequest
@@ -23,7 +24,8 @@ class TournamentRepositorySpec : FunSpec({
     val repository = TournamentRepository(postgres.dsl)
     val leagueRepo = LeagueRepository(postgres.dsl)
     val seasonRepo = SeasonRepository(postgres.dsl)
-    val golferRepo = GolferRepository(postgres.dsl)
+    val golferRepo = GolferRepository()
+    val tx = Transactor(postgres.dsl)
     var seasonId = SeasonId(UUID.randomUUID())
 
     beforeEach {
@@ -155,8 +157,11 @@ class TournamentRepositorySpec : FunSpec({
 
     test("upsertResult inserts a result and getResults returns it ordered by position") {
         val tournament = repository.create(create())
-        val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
-        val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
+        val (rory, scottie) =
+            tx.update {
+                golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) to
+                    golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
+            }
 
         repository.upsertResult(
             tournament.id,
@@ -175,7 +180,7 @@ class TournamentRepositorySpec : FunSpec({
 
     test("upsertResult replaces an existing row for the same tournament and golfer") {
         val tournament = repository.create(create())
-        val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
+        val rory = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }
 
         val initial =
             repository.upsertResult(

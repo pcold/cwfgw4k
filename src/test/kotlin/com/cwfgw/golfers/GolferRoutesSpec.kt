@@ -1,6 +1,7 @@
 package com.cwfgw.golfers
 
 import com.cwfgw.testing.ApiFixture
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import io.kotest.core.spec.style.FunSpec
@@ -43,7 +44,7 @@ private val TIGER =
 
 private fun golfers(vararg seeded: Golfer): ApiFixture.() -> Unit =
     {
-        golferService = GolferService(FakeGolferRepository(initial = seeded.toList()))
+        golferService = GolferService(FakeGolferRepository(initial = seeded.toList()), FakeTransactor())
     }
 
 class GolferRoutesSpec : FunSpec({
@@ -113,7 +114,7 @@ class GolferRoutesSpec : FunSpec({
         val newTime = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeGolferRepository(idFactory = { newId }, clock = { newTime })
 
-        authenticatedApiTest({ golferService = GolferService(fake) }) { client ->
+        authenticatedApiTest({ golferService = GolferService(fake, FakeTransactor()) }) { client ->
             val response =
                 client.post("/api/v1/golfers") {
                     contentType(ContentType.Application.Json)

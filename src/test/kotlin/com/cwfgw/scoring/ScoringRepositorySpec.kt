@@ -1,5 +1,6 @@
 package com.cwfgw.scoring
 
+import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferRepository
@@ -30,7 +31,8 @@ class ScoringRepositorySpec : FunSpec({
     val seasonRepo = SeasonRepository(postgres.dsl)
     val teamRepo = TeamRepository(postgres.dsl)
     val tournamentRepo = TournamentRepository(postgres.dsl)
-    val golferRepo = GolferRepository(postgres.dsl)
+    val golferRepo = GolferRepository()
+    val tx = Transactor(postgres.dsl)
     var seasonId = SeasonId(UUID.randomUUID())
     var teamA = TeamId(UUID.randomUUID())
     var teamB = TeamId(UUID.randomUUID())
@@ -65,8 +67,10 @@ class ScoringRepositorySpec : FunSpec({
                     endDate = LocalDate.parse("2026-04-11"),
                 ),
             ).id
-        golfer1 = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")).id
-        golfer2 = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")).id
+        tx.update {
+            golfer1 = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")).id
+            golfer2 = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")).id
+        }
     }
 
     fun breakdown(

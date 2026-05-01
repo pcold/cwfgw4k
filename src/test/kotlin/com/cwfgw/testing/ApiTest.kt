@@ -2,6 +2,7 @@ package com.cwfgw.testing
 
 import com.cwfgw.AppServices
 import com.cwfgw.admin.AdminService
+import com.cwfgw.db.Transactor
 import com.cwfgw.drafts.DraftService
 import com.cwfgw.drafts.FakeDraftRepository
 import com.cwfgw.espn.EspnService
@@ -73,8 +74,9 @@ const val TEST_USER_PASSWORD: String = "test-user-password-not-used-in-prod"
  */
 class ApiFixture {
     var healthProbe: HealthProbe = HealthProbe { true }
+    var transactor: Transactor = FakeTransactor()
     var leagueService: LeagueService = LeagueService(FakeLeagueRepository())
-    var golferService: GolferService = GolferService(FakeGolferRepository())
+    var golferService: GolferService = GolferService(FakeGolferRepository(), transactor)
     var seasonService: SeasonService = SeasonService(FakeSeasonRepository())
     var teamService: TeamService = TeamService(FakeTeamRepository())
     var tournamentService: TournamentService = TournamentService(FakeTournamentRepository())
@@ -109,6 +111,7 @@ class ApiFixture {
             tournamentService = tournamentService,
             espnService = espnService,
             golferService = golferService,
+            golferRepository = FakeGolferRepository(),
             teamService = teamService,
         )
     var liveOverlayService: LiveOverlayService = LiveOverlayService(espnService)

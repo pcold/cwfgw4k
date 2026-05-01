@@ -1,5 +1,6 @@
 package com.cwfgw.teams
 
+import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferRepository
@@ -24,7 +25,8 @@ class TeamRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
     val repository = TeamRepository(postgres.dsl)
-    val golferRepo = GolferRepository(postgres.dsl)
+    val golferRepo = GolferRepository()
+    val tx = Transactor(postgres.dsl)
     val seasonRepo = SeasonRepository(postgres.dsl)
     val leagueRepo = LeagueRepository(postgres.dsl)
     var seasonId = SeasonId(UUID.randomUUID())
@@ -71,7 +73,7 @@ class TeamRepositorySpec : FunSpec({
 
     test("addToRoster applies default acquired_via and ownership_pct") {
         val team = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
-        val golfer = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
+        val golfer = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }
 
         val entry = repository.addToRoster(team.id, AddToRosterRequest(golferId = golfer.id))
 
@@ -85,9 +87,14 @@ class TeamRepositorySpec : FunSpec({
 
     test("getRoster returns only active entries ordered by draft_round asc nulls last") {
         val team = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
-        val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
-        val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
-        val phil = golferRepo.create(CreateGolferRequest(firstName = "Phil", lastName = "Mickelson"))
+        val (rory, scottie, phil) =
+            tx.update {
+                Triple(
+                    golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")),
+                    golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")),
+                    golferRepo.create(CreateGolferRequest(firstName = "Phil", lastName = "Mickelson")),
+                )
+            }
 
         val roundedScottie =
             repository.addToRoster(
@@ -108,7 +115,7 @@ class TeamRepositorySpec : FunSpec({
 
     test("dropFromRoster soft-deletes and hides the entry from getRoster") {
         val team = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
-        val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
+        val rory = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }
         repository.addToRoster(team.id, AddToRosterRequest(golferId = rory.id))
 
         repository.dropFromRoster(team.id, rory.id).shouldBeTrue()
@@ -125,8 +132,11 @@ class TeamRepositorySpec : FunSpec({
     test("getRosterView groups picks by team, joining golfer names") {
         val alice = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
         val bob = repository.create(seasonId, CreateTeamRequest("Bob", "Hawks"))
-        val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
-        val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
+        val (rory, scottie) =
+            tx.update {
+                golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) to
+                    golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
+            }
 
         repository.addToRoster(
             alice.id,

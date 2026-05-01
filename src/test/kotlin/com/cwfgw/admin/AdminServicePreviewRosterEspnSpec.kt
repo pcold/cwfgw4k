@@ -19,6 +19,8 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
+import com.cwfgw.testing.FakeTransactor
+import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentService
@@ -64,7 +66,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         val golferRepo = FakeGolferRepository(initial = seedGolfers)
         val teamRepo = FakeTeamRepository()
         val tournamentService = TournamentService(tournamentRepo)
-        val golferService = GolferService(golferRepo)
+        val golferService = GolferService(golferRepo, FakeTransactor())
         val teamService = TeamService(teamRepo)
         val client =
             FakeEspnClient(
@@ -91,6 +93,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
                     tournamentService = tournamentService,
                     espnService = espnService,
                     golferService = golferService,
+                    golferRepository = golferRepo,
                     teamService = teamService,
                 ),
         )
@@ -125,7 +128,9 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         match.golferName shouldBe "Scottie Scheffler"
 
         // The ESPN-fish persisted the golfer with its pga_player_id so the next preview hits DB directly.
-        val persisted = f.golferRepo.findAll(activeOnly = false, search = null).single { it.pgaPlayerId == "espn-9478" }
+        val persisted =
+            with(noopTransactionContext) { f.golferRepo.findAll(activeOnly = false, search = null) }
+                .single { it.pgaPlayerId == "espn-9478" }
         persisted.firstName shouldBe "Scottie"
         persisted.lastName shouldBe "Scheffler"
     }
@@ -154,7 +159,9 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
 
         // Calendar fetch is the cheap canary that the fish-mode fallback ran. It should NOT have.
         f.client.calendarCalls shouldBe 0
-        f.golferRepo.findAll(activeOnly = false, search = null) shouldHaveSize 1
+        with(noopTransactionContext) {
+            f.golferRepo.findAll(activeOnly = false, search = null)
+        } shouldHaveSize 1
     }
 
     test("matches ESPN names with NFD-decomposable accents against unaccented roster spellings") {
@@ -260,7 +267,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
 
         // The synthetic team:5:1 id must NEVER land in golfers.pga_player_id, so the pick stays unmatched.
         result.unmatchedCount shouldBe 1
-        f.golferRepo.findAll(activeOnly = false, search = null).shouldHaveSize(0)
+        with(noopTransactionContext) { f.golferRepo.findAll(activeOnly = false, search = null) }.shouldHaveSize(0)
     }
 
     test("treats hyphens and spaces as equivalent so 'Byeong Hun An' matches ESPN's 'Byeong-Hun An'") {
@@ -333,7 +340,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
 
         f.service.previewRoster(tsv).shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
 
-        val golfers = f.golferRepo.findAll(activeOnly = false, search = null)
+        val golfers = with(noopTransactionContext) { f.golferRepo.findAll(activeOnly = false, search = null) }
         golfers shouldHaveSize 2
         golfers.count { it.pgaPlayerId == "espn-9478" } shouldBe 1
         golfers.single { it.pgaPlayerId == "espn-9999" }.firstName shouldBe "Brand"
@@ -360,7 +367,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         result.unmatchedCount shouldBe 1
         result.matchedCount shouldBe 0
         // No golfer was persisted because the fish step bailed cleanly.
-        f.golferRepo.findAll(activeOnly = false, search = null).shouldHaveSize(0)
+        with(noopTransactionContext) { f.golferRepo.findAll(activeOnly = false, search = null) }.shouldHaveSize(0)
     }
 })
 

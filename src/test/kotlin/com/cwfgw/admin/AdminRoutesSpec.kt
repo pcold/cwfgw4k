@@ -16,6 +16,7 @@ import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
@@ -84,7 +85,7 @@ private fun adminFixture(
         val teamRepo = FakeTeamRepository()
         seasonService = SeasonService(seasonRepo)
         tournamentService = TournamentService(tournamentRepo)
-        golferService = GolferService(golferRepo)
+        golferService = GolferService(golferRepo, FakeTransactor())
         teamService = TeamService(teamRepo)
         espnService =
             EspnService(
@@ -102,6 +103,7 @@ private fun adminFixture(
                 tournamentService = tournamentService,
                 espnService = espnService,
                 golferService = golferService,
+                golferRepository = golferRepo,
                 teamService = teamService,
             )
     }

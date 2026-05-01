@@ -1,5 +1,6 @@
 package com.cwfgw.golfers
 
+import com.cwfgw.db.Transactor
 import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -13,101 +14,121 @@ import java.util.UUID
 class GolferRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
-    val repository = GolferRepository(postgres.dsl)
+    val tx = Transactor(postgres.dsl)
+    val repository = GolferRepository()
 
     test("create persists the golfer and returns a row populated with id and updatedAt") {
         val created =
-            repository.create(
-                CreateGolferRequest(
-                    pgaPlayerId = "pga-001",
-                    firstName = "Scottie",
-                    lastName = "Scheffler",
-                    country = "USA",
-                    worldRanking = 1,
-                ),
-            )
+            tx.update {
+                repository.create(
+                    CreateGolferRequest(
+                        pgaPlayerId = "pga-001",
+                        firstName = "Scottie",
+                        lastName = "Scheffler",
+                        country = "USA",
+                        worldRanking = 1,
+                    ),
+                )
+            }
 
         created.firstName shouldBe "Scottie"
         created.active shouldBe true
-        repository.findById(created.id).shouldNotBeNull()
+        tx.read { repository.findById(created.id) }.shouldNotBeNull()
     }
 
     test("findAll with activeOnly=true excludes inactive golfers") {
-        val active = repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
-        val inactive = repository.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods"))
-        repository.update(inactive.id, UpdateGolferRequest(active = false))
+        val active =
+            tx.update { repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }
+        val inactive =
+            tx.update { repository.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods")) }
+        tx.update { repository.update(inactive.id, UpdateGolferRequest(active = false)) }
 
-        val result = repository.findAll(activeOnly = true, search = null)
+        val result = tx.read { repository.findAll(activeOnly = true, search = null) }
 
         result.map { it.id } shouldContainExactly listOf(active.id)
     }
 
     test("findAll with activeOnly=false returns every golfer") {
-        val a = repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy", worldRanking = 2))
-        val b = repository.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods", worldRanking = 1))
-        repository.update(b.id, UpdateGolferRequest(active = false))
+        val a =
+            tx.update {
+                repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy", worldRanking = 2))
+            }
+        val b =
+            tx.update {
+                repository.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods", worldRanking = 1))
+            }
+        tx.update { repository.update(b.id, UpdateGolferRequest(active = false)) }
 
-        val result = repository.findAll(activeOnly = false, search = null)
+        val result = tx.read { repository.findAll(activeOnly = false, search = null) }
 
         result.map { it.id } shouldContainExactly listOf(b.id, a.id)
     }
 
     test("findAll sorts by world_ranking asc nulls last then last_name") {
-        val unranked = repository.create(CreateGolferRequest(firstName = "Phil", lastName = "Mickelson"))
-        val ranked2 = repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy", worldRanking = 2))
+        val unranked =
+            tx.update { repository.create(CreateGolferRequest(firstName = "Phil", lastName = "Mickelson")) }
+        val ranked2 =
+            tx.update {
+                repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy", worldRanking = 2))
+            }
         val ranked1 =
-            repository.create(
-                CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler", worldRanking = 1),
-            )
+            tx.update {
+                repository.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler", worldRanking = 1))
+            }
 
-        val result = repository.findAll(activeOnly = true, search = null)
+        val result = tx.read { repository.findAll(activeOnly = true, search = null) }
 
         result.map { it.id } shouldContainInOrder listOf(ranked1.id, ranked2.id, unranked.id)
     }
 
     test("findAll search is case-insensitive substring over first and last name") {
-        val rory = repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
-        val tiger = repository.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods"))
-        repository.create(CreateGolferRequest(firstName = "Phil", lastName = "Mickelson"))
+        val rory = tx.update { repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }
+        val tiger = tx.update { repository.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods")) }
+        tx.update { repository.create(CreateGolferRequest(firstName = "Phil", lastName = "Mickelson")) }
 
-        val firstNameMatch = repository.findAll(activeOnly = true, search = "ROR")
+        val firstNameMatch = tx.read { repository.findAll(activeOnly = true, search = "ROR") }
         firstNameMatch.map { it.id } shouldContainExactly listOf(rory.id)
 
-        val lastNameMatch = repository.findAll(activeOnly = true, search = "wood")
+        val lastNameMatch = tx.read { repository.findAll(activeOnly = true, search = "wood") }
         lastNameMatch.map { it.id } shouldContainExactly listOf(tiger.id)
     }
 
     test("findById returns null for unknown id") {
-        repository.findById(GolferId(UUID.randomUUID())).shouldBeNull()
+        tx.read { repository.findById(GolferId(UUID.randomUUID())) }.shouldBeNull()
     }
 
     test("findByPgaPlayerId returns the golfer with that pga_player_id") {
-        repository.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods"))
+        tx.update { repository.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods")) }
         val scottie =
-            repository.create(
-                CreateGolferRequest(
-                    pgaPlayerId = "pga-001",
-                    firstName = "Scottie",
-                    lastName = "Scheffler",
-                ),
-            )
+            tx.update {
+                repository.create(
+                    CreateGolferRequest(
+                        pgaPlayerId = "pga-001",
+                        firstName = "Scottie",
+                        lastName = "Scheffler",
+                    ),
+                )
+            }
 
-        repository.findByPgaPlayerId("pga-001")?.id shouldBe scottie.id
+        tx.read { repository.findByPgaPlayerId("pga-001") }?.id shouldBe scottie.id
     }
 
     test("findByPgaPlayerId returns null when no golfer has that pga_player_id") {
-        repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
+        tx.update { repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }
 
-        repository.findByPgaPlayerId("missing").shouldBeNull()
+        tx.read { repository.findByPgaPlayerId("missing") }.shouldBeNull()
     }
 
     test("update applies only the supplied fields and bumps updated_at") {
         val created =
-            repository.create(
-                CreateGolferRequest(firstName = "Rory", lastName = "McIlroy", country = "NIR", worldRanking = 3),
-            )
+            tx.update {
+                repository.create(
+                    CreateGolferRequest(firstName = "Rory", lastName = "McIlroy", country = "NIR", worldRanking = 3),
+                )
+            }
 
-        val updated = repository.update(created.id, UpdateGolferRequest(worldRanking = 2, active = false))
+        val updated =
+            tx.update { repository.update(created.id, UpdateGolferRequest(worldRanking = 2, active = false)) }
 
         updated.shouldNotBeNull()
         updated.firstName shouldBe "Rory"
@@ -118,18 +139,20 @@ class GolferRepositorySpec : FunSpec({
     }
 
     test("update with no fields returns the existing row unchanged") {
-        val created = repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
+        val created = tx.update { repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }
 
-        val result = repository.update(created.id, UpdateGolferRequest())
+        val result = tx.update { repository.update(created.id, UpdateGolferRequest()) }
 
         result shouldBe created
     }
 
     test("update returns null for unknown id") {
-        repository.update(GolferId(UUID.randomUUID()), UpdateGolferRequest(firstName = "Ghost")).shouldBeNull()
+        tx.update {
+            repository.update(GolferId(UUID.randomUUID()), UpdateGolferRequest(firstName = "Ghost"))
+        }.shouldBeNull()
     }
 
     test("empty table returns an empty list") {
-        repository.findAll(activeOnly = true, search = null).shouldBeEmpty()
+        tx.read { repository.findAll(activeOnly = true, search = null) }.shouldBeEmpty()
     }
 })

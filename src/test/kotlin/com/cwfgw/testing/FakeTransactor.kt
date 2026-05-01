@@ -12,7 +12,7 @@ import org.jooq.impl.DSL
  * is opened, so this won't blow up against a connectionless DSL.
  */
 internal class FakeTransactor(
-    private val ctx: TransactionContext = TransactionContext(DSL.using(SQLDialect.POSTGRES)),
+    private val ctx: TransactionContext = noopTransactionContext,
 ) : Transactor {
     override suspend fun <A> read(block: suspend context(TransactionContext) () -> A): A =
         with(ctx) { block() }
@@ -20,3 +20,12 @@ internal class FakeTransactor(
     override suspend fun <A> update(block: suspend context(TransactionContext) () -> A): A =
         with(ctx) { block() }
 }
+
+/**
+ * A [TransactionContext] usable from tests that call a Fake repository directly
+ * (rather than going through a service). The wrapped DSL is a connectionless
+ * Postgres handle — fine for satisfying the `context(ctx: TransactionContext)`
+ * signature on a Fake whose body never reaches into `ctx.dsl`. Never execute
+ * SQL through this.
+ */
+internal val noopTransactionContext: TransactionContext = TransactionContext(DSL.using(SQLDialect.POSTGRES))

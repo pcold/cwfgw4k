@@ -1,5 +1,6 @@
 package com.cwfgw.drafts
 
+import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.UpdateGolferRequest
@@ -26,7 +27,8 @@ class DraftRepositorySpec : FunSpec({
     val leagueRepo = LeagueRepository(postgres.dsl)
     val seasonRepo = SeasonRepository(postgres.dsl)
     val teamRepo = TeamRepository(postgres.dsl)
-    val golferRepo = GolferRepository(postgres.dsl)
+    val golferRepo = GolferRepository()
+    val tx = Transactor(postgres.dsl)
     var seasonId = SeasonId(UUID.randomUUID())
 
     beforeEach {
@@ -106,7 +108,7 @@ class DraftRepositorySpec : FunSpec({
         val draft = repository.create(seasonId, CreateDraftRequest())
         val teams = teamIds()
         repository.createPicks(draft.id, listOf(PickSlot(teams[0], 1, 1)))
-        val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")).id
+        val rory = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }.id
 
         val made = repository.makePick(draft.id, pickNum = 1, golferId = rory)
 
@@ -119,9 +121,10 @@ class DraftRepositorySpec : FunSpec({
         val draft = repository.create(seasonId, CreateDraftRequest())
         val teams = teamIds()
         repository.createPicks(draft.id, listOf(PickSlot(teams[0], 1, 1)))
-        val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")).id
+        val rory = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }.id
         repository.makePick(draft.id, pickNum = 1, golferId = rory)
-        val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")).id
+        val scottie =
+            tx.update { golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")) }.id
 
         repository.makePick(draft.id, pickNum = 1, golferId = scottie).shouldBeNull()
     }
@@ -130,10 +133,14 @@ class DraftRepositorySpec : FunSpec({
         val draft = repository.create(seasonId, CreateDraftRequest())
         val teams = teamIds()
         repository.createPicks(draft.id, listOf(PickSlot(teams[0], 1, 1)))
-        val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")).id
-        val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")).id
-        val tiger = golferRepo.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods")).id
-        golferRepo.update(tiger, UpdateGolferRequest(active = false))
+        val (rory, scottie) =
+            tx.update {
+                val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")).id
+                val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")).id
+                val tiger = golferRepo.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods")).id
+                golferRepo.update(tiger, UpdateGolferRequest(active = false))
+                rory to scottie
+            }
         repository.makePick(draft.id, pickNum = 1, golferId = rory)
 
         val available = repository.getAvailableGolfers(draft.id)

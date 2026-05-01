@@ -25,6 +25,7 @@ import com.cwfgw.teams.RosterEntryId
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
@@ -208,7 +209,7 @@ private class Fixture(
         val seasonService = SeasonService(seasonRepo)
         val tournamentService = TournamentService(tournamentRepo)
         val teamService = TeamService(teamRepo)
-        val golferService = GolferService(golferRepo)
+        val golferService = GolferService(golferRepo, FakeTransactor())
         val scoringService =
             ScoringService(
                 repository = scoringRepo,

@@ -13,6 +13,8 @@ import com.cwfgw.teams.RosterViewPick
 import com.cwfgw.teams.RosterViewTeam
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
+import com.cwfgw.testing.FakeTransactor
+import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentPlayerOverride
 import com.cwfgw.tournaments.FakeTournamentRepository
@@ -127,7 +129,7 @@ private class Fixture(
         EspnService(
             client = fakeClient,
             tournamentService = TournamentService(tournamentRepo),
-            golferService = GolferService(golferRepo),
+            golferService = GolferService(golferRepo, FakeTransactor()),
             teamService = TeamService(teamRepo),
             seasonService = SeasonService(seasonRepo),
             tournamentLinkRepository = FakeTournamentLinkRepository(initial = initialOverrides),
@@ -216,8 +218,10 @@ class EspnServiceSpec : FunSpec({
                 .value
 
         batch.imported.single().created shouldBe 1
-        val created = fixture.golferRepo.findByPgaPlayerId("unknown-espn")
-        created shouldBe fixture.golferRepo.findByPgaPlayerId("unknown-espn") // smoke — it exists
+        val created = with(noopTransactionContext) { fixture.golferRepo.findByPgaPlayerId("unknown-espn") }
+        // smoke — it exists in the fake repo
+        val resaw = with(noopTransactionContext) { fixture.golferRepo.findByPgaPlayerId("unknown-espn") }
+        created shouldBe resaw
         created?.firstName shouldBe "Jim"
         created?.lastName shouldBe "Brandnew"
     }
@@ -249,7 +253,10 @@ class EspnServiceSpec : FunSpec({
 
         import.matched shouldBe 2
         // Griffin was auto-created without a pgaPlayerId (synthetic id must never pollute golfers)
-        val griffin = fixture.golferRepo.findAll(activeOnly = false, search = "Griffin").single()
+        val griffin =
+            with(noopTransactionContext) {
+                fixture.golferRepo.findAll(activeOnly = false, search = "Griffin")
+            }.single()
         griffin.pgaPlayerId shouldBe null
     }
 
@@ -302,7 +309,8 @@ class EspnServiceSpec : FunSpec({
 
         // Matched 1 (Smith → rosteredSmith); Jones auto-created → also matched.
         import.matched shouldBe 2
-        val smithResults = fixture.golferRepo.findByPgaPlayerId(rosteredSmith.pgaPlayerId ?: "-")
+        val smithResults =
+            with(noopTransactionContext) { fixture.golferRepo.findByPgaPlayerId(rosteredSmith.pgaPlayerId ?: "-") }
         // rosteredSmith has no pgaPlayerId; verify otherSmith wasn't pulled in instead.
         smithResults shouldBe null
     }
@@ -423,7 +431,9 @@ class EspnServiceSpec : FunSpec({
         import.matched shouldBe 1
         import.created shouldBe 0
         // The existing rory was used; no new golfer was created.
-        fixture.golferRepo.findAll(activeOnly = false, search = null).shouldHaveSize(1)
+        with(noopTransactionContext) {
+            fixture.golferRepo.findAll(activeOnly = false, search = null)
+        }.shouldHaveSize(1)
     }
 
     test("two ESPN competitors that map to the same Golfer surface as a collision") {
@@ -482,7 +492,9 @@ class EspnServiceSpec : FunSpec({
 
         // The two existing Smiths plus a new auto-created one (last name "Smith", empty first name).
         import.created shouldBe 1
-        fixture.golferRepo.findAll(activeOnly = false, search = "Smith").shouldHaveSize(3)
+        with(noopTransactionContext) {
+            fixture.golferRepo.findAll(activeOnly = false, search = "Smith")
+        }.shouldHaveSize(3)
     }
 
     test("re-importing the same event does not duplicate matched golfers") {
@@ -502,7 +514,9 @@ class EspnServiceSpec : FunSpec({
         fixture.service.importForTournament(TOURNAMENT_ID)
         fixture.service.importForTournament(TOURNAMENT_ID)
 
-        fixture.golferRepo.findAll(activeOnly = false, search = null).shouldHaveSize(1)
+        with(noopTransactionContext) {
+            fixture.golferRepo.findAll(activeOnly = false, search = null)
+        }.shouldHaveSize(1)
     }
 
     test("a manual override pins an ambiguous partner row to the chosen golfer instead of auto-create") {
@@ -536,6 +550,8 @@ class EspnServiceSpec : FunSpec({
         // No new golfer auto-created — the override mapped the partner row to Matt directly.
         import.created shouldBe 0
         import.matched shouldBe 1
-        fixture.golferRepo.findAll(activeOnly = false, search = "Fitzpatrick").shouldHaveSize(2)
+        with(noopTransactionContext) {
+            fixture.golferRepo.findAll(activeOnly = false, search = "Fitzpatrick")
+        }.shouldHaveSize(2)
     }
 })

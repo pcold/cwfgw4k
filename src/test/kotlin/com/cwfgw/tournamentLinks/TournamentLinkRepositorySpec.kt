@@ -1,5 +1,6 @@
 package com.cwfgw.tournamentLinks
 
+import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.leagues.CreateLeagueRequest
@@ -24,7 +25,8 @@ class TournamentLinkRepositorySpec : FunSpec({
     val leagueRepo = LeagueRepository(postgres.dsl)
     val seasonRepo = SeasonRepository(postgres.dsl)
     val tournamentRepo = TournamentRepository(postgres.dsl)
-    val golferRepo = GolferRepository(postgres.dsl)
+    val golferRepo = GolferRepository()
+    val tx = Transactor(postgres.dsl)
 
     suspend fun seedTournament(): TournamentId {
         val league = leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf"))
@@ -42,7 +44,7 @@ class TournamentLinkRepositorySpec : FunSpec({
 
     test("upsert inserts a new override and listByTournament returns it") {
         val tournamentId = seedTournament()
-        val golfer = golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick"))
+        val golfer = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick")) }
 
         val saved = repository.upsert(tournamentId, espnCompetitorId = "abc-123", golferId = golfer.id)
 
@@ -55,8 +57,11 @@ class TournamentLinkRepositorySpec : FunSpec({
 
     test("upsert on existing key replaces the linked golfer") {
         val tournamentId = seedTournament()
-        val first = golferRepo.create(CreateGolferRequest(firstName = "Alex", lastName = "Fitzpatrick"))
-        val second = golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick"))
+        val (first, second) =
+            tx.update {
+                golferRepo.create(CreateGolferRequest(firstName = "Alex", lastName = "Fitzpatrick")) to
+                    golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick"))
+            }
 
         repository.upsert(tournamentId, "abc-123", first.id)
         val updated = repository.upsert(tournamentId, "abc-123", second.id)
@@ -68,7 +73,7 @@ class TournamentLinkRepositorySpec : FunSpec({
     test("listByTournament scopes results to one tournament") {
         val tournamentA = seedTournament()
         val tournamentB = seedTournament()
-        val golfer = golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick"))
+        val golfer = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick")) }
 
         repository.upsert(tournamentA, "abc-123", golfer.id)
         repository.upsert(tournamentB, "xyz-789", golfer.id)
@@ -79,7 +84,7 @@ class TournamentLinkRepositorySpec : FunSpec({
 
     test("delete removes the matching row and returns true") {
         val tournamentId = seedTournament()
-        val golfer = golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick"))
+        val golfer = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick")) }
         repository.upsert(tournamentId, "abc-123", golfer.id)
 
         repository.delete(tournamentId, "abc-123") shouldBe true

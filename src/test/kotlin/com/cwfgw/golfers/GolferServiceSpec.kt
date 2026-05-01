@@ -1,5 +1,6 @@
 package com.cwfgw.golfers
 
+import com.cwfgw.testing.FakeTransactor
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.nulls.shouldBeNull
@@ -30,7 +31,7 @@ class GolferServiceSpec : FunSpec({
     test("list passes activeOnly and search to the repository") {
         val active = golfer(firstName = "Rory", lastName = "McIlroy", worldRanking = 2)
         val inactive = golfer(firstName = "Tiger", lastName = "Woods", worldRanking = 1, active = false)
-        val service = GolferService(FakeGolferRepository(initial = listOf(active, inactive)))
+        val service = GolferService(FakeGolferRepository(initial = listOf(active, inactive)), FakeTransactor())
 
         val activeOnly = service.list(activeOnly = true, search = null).map { it.id }
         activeOnly shouldContainExactly listOf(active.id)
@@ -44,7 +45,7 @@ class GolferServiceSpec : FunSpec({
 
     test("get returns the golfer when present and null otherwise") {
         val rory = golfer(firstName = "Rory", lastName = "McIlroy")
-        val service = GolferService(FakeGolferRepository(initial = listOf(rory)))
+        val service = GolferService(FakeGolferRepository(initial = listOf(rory)), FakeTransactor())
 
         service.get(rory.id) shouldBe rory
         service.get(GolferId(UUID.randomUUID())).shouldBeNull()
@@ -54,7 +55,7 @@ class GolferServiceSpec : FunSpec({
         val newId = GolferId(UUID.fromString("00000000-0000-0000-0000-0000000000aa"))
         val newTime = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeGolferRepository(idFactory = { newId }, clock = { newTime })
-        val service = GolferService(fake)
+        val service = GolferService(fake, FakeTransactor())
 
         val created =
             service.create(
@@ -74,7 +75,7 @@ class GolferServiceSpec : FunSpec({
                 initial = listOf(rory),
                 clock = { Instant.parse("2026-03-15T12:00:00Z") },
             )
-        val service = GolferService(fake)
+        val service = GolferService(fake, FakeTransactor())
 
         val updated = service.update(rory.id, UpdateGolferRequest(worldRanking = 1))
         updated?.worldRanking shouldBe 1

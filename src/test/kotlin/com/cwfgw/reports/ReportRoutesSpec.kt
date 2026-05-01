@@ -22,6 +22,7 @@ import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.CreateTournamentResultRequest
@@ -200,7 +201,7 @@ private fun reportFixture(
         seasonService = SeasonService(seasonRepo)
         tournamentService = TournamentService(tournamentRepo)
         teamService = TeamService(teamRepo)
-        golferService = GolferService(golferRepo)
+        golferService = GolferService(golferRepo, FakeTransactor())
         scoringService =
             ScoringService(
                 repository = scoringRepo,

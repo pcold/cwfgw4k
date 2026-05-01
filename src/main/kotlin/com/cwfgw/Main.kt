@@ -4,6 +4,7 @@ import com.cwfgw.admin.AdminService
 import com.cwfgw.admin.adminRoutes
 import com.cwfgw.config.AppConfig
 import com.cwfgw.db.Database
+import com.cwfgw.db.Transactor
 import com.cwfgw.drafts.DraftRepository
 import com.cwfgw.drafts.DraftService
 import com.cwfgw.drafts.draftRoutes
@@ -90,6 +91,7 @@ fun main() {
     }.start(wait = true)
 }
 
+@Suppress("LongMethod")
 internal fun buildServices(
     config: AppConfig,
     database: Database,
@@ -98,7 +100,9 @@ internal fun buildServices(
     val teamService = TeamService(TeamRepository(database.dsl))
     val seasonService = SeasonService(SeasonRepository(database.dsl))
     val tournamentService = TournamentService(TournamentRepository(database.dsl))
-    val golferService = GolferService(GolferRepository(database.dsl))
+    val transactor = Transactor(database.dsl)
+    val golferRepository = GolferRepository()
+    val golferService = GolferService(golferRepository, transactor)
     val userRepository = UserRepository(database.dsl)
     val linkRepo = TournamentLinkRepository(database.dsl)
     val tournamentLinkService = TournamentLinkService(linkRepo, tournamentService, golferService)
@@ -107,7 +111,15 @@ internal fun buildServices(
     val scoringService =
         ScoringService(ScoringRepository(database.dsl), seasonService, tournamentService, teamService)
     val adminService =
-        AdminService(database.dsl, seasonService, tournamentService, espnService, golferService, teamService)
+        AdminService(
+            dsl = database.dsl,
+            seasonService = seasonService,
+            tournamentService = tournamentService,
+            espnService = espnService,
+            golferService = golferService,
+            golferRepository = golferRepository,
+            teamService = teamService,
+        )
     val liveOverlayService = LiveOverlayService(espnService)
     val weeklyReportService =
         WeeklyReportService(

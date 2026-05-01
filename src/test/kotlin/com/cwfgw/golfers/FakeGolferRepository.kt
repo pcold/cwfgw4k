@@ -1,6 +1,6 @@
 package com.cwfgw.golfers
 
-import org.jooq.DSLContext
+import com.cwfgw.db.TransactionContext
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -20,6 +20,7 @@ class FakeGolferRepository(
         initial.forEach { golfer -> store[golfer.id] = golfer }
     }
 
+    context(ctx: TransactionContext)
     override suspend fun findAll(
         activeOnly: Boolean,
         search: String?,
@@ -30,15 +31,15 @@ class FakeGolferRepository(
             .sortedWith(golferOrdering)
     }
 
+    context(ctx: TransactionContext)
     override suspend fun findById(id: GolferId): Golfer? = store[id]
 
+    context(ctx: TransactionContext)
     override suspend fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
         store.values.firstOrNull { it.pgaPlayerId == pgaPlayerId }
 
-    override suspend fun create(
-        request: CreateGolferRequest,
-        dsl: DSLContext?,
-    ): Golfer {
+    context(ctx: TransactionContext)
+    override suspend fun create(request: CreateGolferRequest): Golfer {
         val golfer =
             Golfer(
                 id = idFactory(),
@@ -54,6 +55,7 @@ class FakeGolferRepository(
         return golfer
     }
 
+    context(ctx: TransactionContext)
     override suspend fun update(
         id: GolferId,
         request: UpdateGolferRequest,

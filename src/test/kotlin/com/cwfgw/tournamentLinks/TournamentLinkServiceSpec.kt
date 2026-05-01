@@ -6,6 +6,7 @@ import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -67,7 +68,7 @@ private fun service(
     TournamentLinkService(
         repository = FakeTournamentLinkRepository(initial = initialOverrides),
         tournamentService = TournamentService(FakeTournamentRepository(initial = tournaments)),
-        golferService = GolferService(FakeGolferRepository(initial = golfers)),
+        golferService = GolferService(FakeGolferRepository(initial = golfers), FakeTransactor()),
     )
 
 class TournamentLinkServiceSpec : FunSpec({

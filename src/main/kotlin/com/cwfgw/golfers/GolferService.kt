@@ -1,24 +1,25 @@
 package com.cwfgw.golfers
 
-import org.jooq.DSLContext
+import com.cwfgw.db.Transactor
 
-class GolferService(private val repository: GolferRepository) {
+class GolferService(
+    private val repository: GolferRepository,
+    private val tx: Transactor,
+) {
     suspend fun list(
         activeOnly: Boolean,
         search: String?,
-    ): List<Golfer> = repository.findAll(activeOnly, search)
+    ): List<Golfer> = tx.read { repository.findAll(activeOnly, search) }
 
-    suspend fun get(id: GolferId): Golfer? = repository.findById(id)
+    suspend fun get(id: GolferId): Golfer? = tx.read { repository.findById(id) }
 
-    suspend fun findByPgaPlayerId(pgaPlayerId: String): Golfer? = repository.findByPgaPlayerId(pgaPlayerId)
+    suspend fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
+        tx.read { repository.findByPgaPlayerId(pgaPlayerId) }
 
-    suspend fun create(
-        request: CreateGolferRequest,
-        dsl: DSLContext? = null,
-    ): Golfer = repository.create(request, dsl)
+    suspend fun create(request: CreateGolferRequest): Golfer = tx.update { repository.create(request) }
 
     suspend fun update(
         id: GolferId,
         request: UpdateGolferRequest,
-    ): Golfer? = repository.update(id, request)
+    ): Golfer? = tx.update { repository.update(id, request) }
 }

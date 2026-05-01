@@ -15,6 +15,7 @@ import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
@@ -88,7 +89,7 @@ private fun opsFixture(
         seasonService = SeasonService(seasonRepo)
         tournamentService = TournamentService(tournamentRepo)
         teamService = TeamService(teamRepo)
-        golferService = GolferService(golferRepo)
+        golferService = GolferService(golferRepo, FakeTransactor())
         espnService =
             EspnService(
                 client = FakeEspnClient(tournamentsByDate = espnByDate),

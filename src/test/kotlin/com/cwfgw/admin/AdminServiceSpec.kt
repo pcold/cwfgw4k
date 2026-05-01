@@ -16,6 +16,8 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
+import com.cwfgw.testing.FakeTransactor
+import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
@@ -89,7 +91,7 @@ private class Fixture(
             }
         }
         val tournamentService = TournamentService(tournamentRepo)
-        val golferService = GolferService(golferRepo)
+        val golferService = GolferService(golferRepo, FakeTransactor())
         val teamService = TeamService(teamRepo)
         val espnService =
             EspnService(
@@ -107,6 +109,7 @@ private class Fixture(
                 tournamentService = tournamentService,
                 espnService = espnService,
                 golferService = golferService,
+                golferRepository = golferRepo,
                 teamService = teamService,
             )
     }
@@ -537,7 +540,9 @@ class AdminServiceSpec : FunSpec({
 
         fixture.service.confirmRoster(request) shouldBe Result.Err(AdminError.SeasonNotFound(SEASON_ID))
         fixture.teamRepo.findBySeason(SEASON_ID).shouldBeEmpty()
-        fixture.golferRepo.findAll(activeOnly = false, search = null) shouldHaveSize 1
+        with(noopTransactionContext) {
+            fixture.golferRepo.findAll(activeOnly = false, search = null) shouldHaveSize 1
+        }
     }
 
     test("confirmRoster collects all bad existing-golfer ids into one GolferIdsNotFound and writes nothing") {

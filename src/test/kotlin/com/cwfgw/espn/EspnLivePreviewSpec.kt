@@ -16,6 +16,7 @@ import com.cwfgw.teams.RosterEntryId
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
@@ -171,7 +172,7 @@ private class PreviewFixture(
             EspnService(
                 client = FakeEspnClient(tournamentsByDate = tournamentsByDate, upstreamError = upstreamError),
                 tournamentService = TournamentService(tournamentRepo),
-                golferService = GolferService(golferRepo),
+                golferService = GolferService(golferRepo, FakeTransactor()),
                 teamService = TeamService(teamRepo),
                 seasonService = SeasonService(seasonRepo),
                 tournamentLinkRepository = FakeTournamentLinkRepository(),

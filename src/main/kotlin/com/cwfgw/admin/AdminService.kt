@@ -1,11 +1,13 @@
 package com.cwfgw.admin
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.espn.EspnCalendarEntry
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnUpstreamException
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
@@ -42,12 +44,14 @@ private val log = KotlinLogging.logger {}
  * Re-runs are safe: any ESPN entry already linked to a tournament lands in
  * the `skipped` list with a clear reason, never overwrites or duplicates.
  */
+@Suppress("LongParameterList")
 class AdminService(
     private val dsl: DSLContext,
     private val seasonService: SeasonService,
     private val tournamentService: TournamentService,
     private val espnService: EspnService,
     private val golferService: GolferService,
+    private val golferRepository: GolferRepository,
     private val teamService: TeamService,
 ) {
     suspend fun uploadSeason(
@@ -348,7 +352,9 @@ class AdminService(
                     is GolferAssignment.New -> {
                         newGolfers++
                         val req = CreateGolferRequest(firstName = assignment.firstName, lastName = assignment.lastName)
-                        golferService.create(request = req, dsl = tx).id
+                        // GolferService.create captures its own non-tx Transactor; for this transactional
+                        // path we go straight to the repository so the new row joins the surrounding tx.
+                        with(TransactionContext(tx)) { golferRepository.create(req) }.id
                     }
                 }
             teamService.addToRoster(

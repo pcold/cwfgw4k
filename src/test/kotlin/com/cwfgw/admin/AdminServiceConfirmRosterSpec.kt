@@ -1,5 +1,6 @@
 package com.cwfgw.admin
 
+import com.cwfgw.db.Transactor
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.CreateGolferRequest
@@ -36,16 +37,17 @@ import kotlinx.coroutines.runBlocking
 class AdminServiceConfirmRosterSpec : FunSpec({
 
     val postgres = postgresHarness()
+    val tx = Transactor(postgres.dsl)
+    val golferRepo = GolferRepository()
 
     fun newService(): AdminService {
         val leagueRepo = LeagueRepository(postgres.dsl)
         val seasonRepo = SeasonRepository(postgres.dsl)
         val tournamentRepo = TournamentRepository(postgres.dsl)
-        val golferRepo = GolferRepository(postgres.dsl)
         val teamRepo = TeamRepository(postgres.dsl)
         val seasonService = SeasonService(seasonRepo)
         val tournamentService = TournamentService(tournamentRepo)
-        val golferService = GolferService(golferRepo)
+        val golferService = GolferService(golferRepo, tx)
         val teamService = TeamService(teamRepo)
         val espnService =
             EspnService(
@@ -72,6 +74,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
             tournamentService = tournamentService,
             espnService = espnService,
             golferService = golferService,
+            golferRepository = golferRepo,
             teamService = teamService,
         )
     }
@@ -83,25 +86,22 @@ class AdminServiceConfirmRosterSpec : FunSpec({
 
     fun teamRepo() = TeamRepository(postgres.dsl)
 
-    fun golferRepo() = GolferRepository(postgres.dsl)
-
     test("Existing-only assignments persist team + roster atomically") {
         val service = newService()
         val sid = seasonId()
         val scottie =
             runBlocking {
-                golferRepo().create(
-                    CreateGolferRequest(
-                        firstName = "Scottie",
-                        lastName = "Scheffler",
-                    ),
-                )
+                tx.update {
+                    golferRepo.create(
+                        CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"),
+                    )
+                }
             }
         val rory =
             runBlocking {
-                golferRepo().create(
-                    CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"),
-                )
+                tx.update {
+                    golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
+                }
             }
 
         val result =
@@ -176,7 +176,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
         val body = result.shouldBeInstanceOf<Result.Ok<RosterUploadResult>>().value
         body.golfersCreated shouldBe 1
         val created =
-            runBlocking { golferRepo().findAll(activeOnly = false, search = null) }
+            runBlocking { tx.read { golferRepo.findAll(activeOnly = false, search = null) } }
                 .single { it.firstName == "Scottie" && it.lastName == "Scheffler" }
         runBlocking { teamRepo().getRoster(body.teams.single().id) }
             .single()
@@ -234,7 +234,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
         val teams = runBlocking { teamRepo().findBySeason(sid) }
         teams.map { it.teamName } shouldContainExactly listOf("WOMBLE")
         val golfers =
-            runBlocking { golferRepo().findAll(activeOnly = false, search = null) }
+            runBlocking { tx.read { golferRepo.findAll(activeOnly = false, search = null) } }
         golfers.filter { it.firstName == "First" }.shouldBeEmpty()
     }
 })
