@@ -276,11 +276,10 @@ class SeasonRepositorySpec : FunSpec({
     test("delete cascades through teams + tournaments + team_rosters + draft_picks via the V010 FKs") {
         val teamRepo = TeamRepository()
         val tournamentRepo = TournamentRepository()
-        val draftRepo = DraftRepository(postgres.dsl)
+        val draftRepo = DraftRepository()
         val golferRepo = GolferRepository()
 
-        // Stage 1: migrated-repo writes share one tx. Stage 2 is the still-old-style draft repo.
-        val (seasonId, team, golfer) =
+        val (seasonId, teamId, draftId) =
             tx.update {
                 val season =
                     repository.create(
@@ -301,16 +300,14 @@ class SeasonRepositorySpec : FunSpec({
                 )
                 val golfer = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
                 teamRepo.addToRoster(team.id, AddToRosterRequest(golferId = golfer.id))
-                Triple(season.id, team, golfer)
+                val draft = draftRepo.create(seasonId = season.id, request = CreateDraftRequest())
+                draftRepo.createPicks(
+                    draftId = draft.id,
+                    slots = listOf(PickSlot(teamId = team.id, roundNum = 1, pickNum = 1)),
+                )
+                draftRepo.makePick(draftId = draft.id, pickNum = 1, golferId = golfer.id)
+                Triple(season.id, team.id, draft.id)
             }
-        val draft = draftRepo.create(seasonId = seasonId, request = CreateDraftRequest())
-        draftRepo.createPicks(
-            draftId = draft.id,
-            slots = listOf(PickSlot(teamId = team.id, roundNum = 1, pickNum = 1)),
-        )
-        draftRepo.makePick(draftId = draft.id, pickNum = 1, golferId = golfer.id)
-        val teamId = team.id
-        val draftId = draft.id
 
         // Sanity: rows are present before we cascade them away.
         postgres.dsl.fetchCount(TEAM_ROSTERS, TEAM_ROSTERS.TEAM_ID.eq(teamId.value)) shouldBe 1

@@ -1,5 +1,6 @@
 package com.cwfgw.drafts
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
@@ -23,9 +24,11 @@ class FakeDraftRepository(
         initialPicks.forEach { picks[it.id] = it }
     }
 
+    context(ctx: TransactionContext)
     override suspend fun findBySeason(seasonId: SeasonId): Draft? =
         drafts.values.firstOrNull { it.seasonId == seasonId }
 
+    context(ctx: TransactionContext)
     override suspend fun create(
         seasonId: SeasonId,
         request: CreateDraftRequest,
@@ -44,6 +47,7 @@ class FakeDraftRepository(
         return draft
     }
 
+    context(ctx: TransactionContext)
     override suspend fun updateStatus(
         id: DraftId,
         status: String,
@@ -60,11 +64,13 @@ class FakeDraftRepository(
         return updated
     }
 
+    context(ctx: TransactionContext)
     override suspend fun getPicks(draftId: DraftId): List<DraftPick> =
         picks.values
             .filter { it.draftId == draftId }
             .sortedBy { it.pickNum }
 
+    context(ctx: TransactionContext)
     override suspend fun createPicks(
         draftId: DraftId,
         slots: List<PickSlot>,
@@ -84,6 +90,7 @@ class FakeDraftRepository(
             pick
         }
 
+    context(ctx: TransactionContext)
     override suspend fun makePick(
         draftId: DraftId,
         pickNum: Int,
@@ -98,6 +105,7 @@ class FakeDraftRepository(
         return updated
     }
 
+    context(ctx: TransactionContext)
     override suspend fun getAvailableGolfers(draftId: DraftId): List<Golfer> {
         val pickedIds =
             picks.values

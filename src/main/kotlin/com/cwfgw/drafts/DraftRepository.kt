@@ -1,5 +1,6 @@
 package com.cwfgw.drafts
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.jooq.tables.records.DraftPicksRecord
@@ -11,35 +12,41 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.teams.TeamId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jooq.DSLContext
 import org.jooq.impl.DSL
 
 interface DraftRepository {
+    context(ctx: TransactionContext)
     suspend fun findBySeason(seasonId: SeasonId): Draft?
 
+    context(ctx: TransactionContext)
     suspend fun create(
         seasonId: SeasonId,
         request: CreateDraftRequest,
     ): Draft
 
+    context(ctx: TransactionContext)
     suspend fun updateStatus(
         id: DraftId,
         status: String,
     ): Draft?
 
+    context(ctx: TransactionContext)
     suspend fun getPicks(draftId: DraftId): List<DraftPick>
 
+    context(ctx: TransactionContext)
     suspend fun createPicks(
         draftId: DraftId,
         slots: List<PickSlot>,
     ): List<DraftPick>
 
+    context(ctx: TransactionContext)
     suspend fun makePick(
         draftId: DraftId,
         pickNum: Int,
         golferId: GolferId,
     ): DraftPick?
 
+    context(ctx: TransactionContext)
     suspend fun getAvailableGolfers(draftId: DraftId): List<Golfer>
 }
 
@@ -49,24 +56,26 @@ data class PickSlot(
     val pickNum: Int,
 )
 
-fun DraftRepository(dsl: DSLContext): DraftRepository = JooqDraftRepository(dsl)
+fun DraftRepository(): DraftRepository = JooqDraftRepository()
 
-private class JooqDraftRepository(private val dsl: DSLContext) : DraftRepository {
+private class JooqDraftRepository : DraftRepository {
+    context(ctx: TransactionContext)
     override suspend fun findBySeason(seasonId: SeasonId): Draft? =
         withContext(Dispatchers.IO) {
-            dsl.selectFrom(DRAFTS)
+            ctx.dsl.selectFrom(DRAFTS)
                 .where(DRAFTS.SEASON_ID.eq(seasonId.value))
                 .fetchOne()
                 ?.let(::toDraft)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun create(
         seasonId: SeasonId,
         request: CreateDraftRequest,
     ): Draft =
         withContext(Dispatchers.IO) {
             val inserted =
-                dsl.insertInto(DRAFTS)
+                ctx.dsl.insertInto(DRAFTS)
                     .set(DRAFTS.SEASON_ID, seasonId.value)
                     .set(DRAFTS.DRAFT_TYPE, request.draftType ?: DEFAULT_DRAFT_TYPE)
                     .returning()
@@ -74,6 +83,7 @@ private class JooqDraftRepository(private val dsl: DSLContext) : DraftRepository
             toDraft(inserted)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun updateStatus(
         id: DraftId,
         status: String,
@@ -87,7 +97,7 @@ private class JooqDraftRepository(private val dsl: DSLContext) : DraftRepository
                         "completed" -> put(DRAFTS.COMPLETED_AT, DSL.currentOffsetDateTime())
                     }
                 }
-            dsl.update(DRAFTS)
+            ctx.dsl.update(DRAFTS)
                 .set(assignments)
                 .where(DRAFTS.ID.eq(id.value))
                 .returning()
@@ -95,43 +105,42 @@ private class JooqDraftRepository(private val dsl: DSLContext) : DraftRepository
                 ?.let(::toDraft)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun getPicks(draftId: DraftId): List<DraftPick> =
         withContext(Dispatchers.IO) {
-            dsl.selectFrom(DRAFT_PICKS)
+            ctx.dsl.selectFrom(DRAFT_PICKS)
                 .where(DRAFT_PICKS.DRAFT_ID.eq(draftId.value))
                 .orderBy(DRAFT_PICKS.PICK_NUM.asc())
                 .fetch(::toPick)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun createPicks(
         draftId: DraftId,
         slots: List<PickSlot>,
     ): List<DraftPick> =
         withContext(Dispatchers.IO) {
-            if (slots.isEmpty()) return@withContext emptyList()
-            dsl.transactionResult { config ->
-                val tx = config.dsl()
-                slots.map { slot ->
-                    val inserted =
-                        tx.insertInto(DRAFT_PICKS)
-                            .set(DRAFT_PICKS.DRAFT_ID, draftId.value)
-                            .set(DRAFT_PICKS.TEAM_ID, slot.teamId.value)
-                            .set(DRAFT_PICKS.ROUND_NUM, slot.roundNum)
-                            .set(DRAFT_PICKS.PICK_NUM, slot.pickNum)
-                            .returning()
-                            .fetchOne() ?: error("INSERT RETURNING produced no row for draft_picks")
-                    toPick(inserted)
-                }
+            slots.map { slot ->
+                val inserted =
+                    ctx.dsl.insertInto(DRAFT_PICKS)
+                        .set(DRAFT_PICKS.DRAFT_ID, draftId.value)
+                        .set(DRAFT_PICKS.TEAM_ID, slot.teamId.value)
+                        .set(DRAFT_PICKS.ROUND_NUM, slot.roundNum)
+                        .set(DRAFT_PICKS.PICK_NUM, slot.pickNum)
+                        .returning()
+                        .fetchOne() ?: error("INSERT RETURNING produced no row for draft_picks")
+                toPick(inserted)
             }
         }
 
+    context(ctx: TransactionContext)
     override suspend fun makePick(
         draftId: DraftId,
         pickNum: Int,
         golferId: GolferId,
     ): DraftPick? =
         withContext(Dispatchers.IO) {
-            dsl.update(DRAFT_PICKS)
+            ctx.dsl.update(DRAFT_PICKS)
                 .set(DRAFT_PICKS.GOLFER_ID, golferId.value)
                 .set(DRAFT_PICKS.PICKED_AT, DSL.currentOffsetDateTime())
                 .where(DRAFT_PICKS.DRAFT_ID.eq(draftId.value))
@@ -142,6 +151,7 @@ private class JooqDraftRepository(private val dsl: DSLContext) : DraftRepository
                 ?.let(::toPick)
         }
 
+    context(ctx: TransactionContext)
     override suspend fun getAvailableGolfers(draftId: DraftId): List<Golfer> =
         withContext(Dispatchers.IO) {
             val pickedGolferIds =
@@ -149,7 +159,7 @@ private class JooqDraftRepository(private val dsl: DSLContext) : DraftRepository
                     .from(DRAFT_PICKS)
                     .where(DRAFT_PICKS.DRAFT_ID.eq(draftId.value))
                     .and(DRAFT_PICKS.GOLFER_ID.isNotNull)
-            dsl.selectFrom(GOLFERS)
+            ctx.dsl.selectFrom(GOLFERS)
                 .where(GOLFERS.ACTIVE.eq(true))
                 .and(GOLFERS.ID.notIn(pickedGolferIds))
                 .orderBy(GOLFERS.WORLD_RANKING.asc().nullsLast(), GOLFERS.LAST_NAME.asc())

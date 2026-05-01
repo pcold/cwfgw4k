@@ -37,6 +37,7 @@ private fun service(
     DraftService(
         FakeDraftRepository(initialDrafts = drafts, initialPicks = picks),
         TeamService(FakeTeamRepository(), FakeTransactor()),
+        FakeTransactor(),
     )
 
 class DraftServiceSpec : FunSpec({

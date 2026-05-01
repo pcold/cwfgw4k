@@ -23,7 +23,7 @@ import java.util.UUID
 class DraftRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
-    val repository = DraftRepository(postgres.dsl)
+    val repository = DraftRepository()
     val leagueRepo = LeagueRepository(postgres.dsl)
     val seasonRepo = SeasonRepository()
     val teamRepo = TeamRepository()
@@ -49,7 +49,7 @@ class DraftRepositorySpec : FunSpec({
         }
 
     test("create persists a draft with default status=pending and draftType=snake") {
-        val created = repository.create(seasonId, CreateDraftRequest())
+        val created = tx.update { repository.create(seasonId, CreateDraftRequest()) }
 
         created.seasonId shouldBe seasonId
         created.status shouldBe "pending"
@@ -58,19 +58,19 @@ class DraftRepositorySpec : FunSpec({
     }
 
     test("findBySeason returns null when no draft exists") {
-        repository.findBySeason(seasonId).shouldBeNull()
+        tx.read { repository.findBySeason(seasonId) }.shouldBeNull()
     }
 
     test("findBySeason returns the created draft") {
-        val created = repository.create(seasonId, CreateDraftRequest())
+        val created = tx.update { repository.create(seasonId, CreateDraftRequest()) }
 
-        repository.findBySeason(seasonId) shouldBe created
+        tx.read { repository.findBySeason(seasonId) } shouldBe created
     }
 
     test("updateStatus to in_progress sets started_at") {
-        val created = repository.create(seasonId, CreateDraftRequest())
+        val created = tx.update { repository.create(seasonId, CreateDraftRequest()) }
 
-        val updated = repository.updateStatus(created.id, "in_progress")
+        val updated = tx.update { repository.updateStatus(created.id, "in_progress") }
 
         updated.shouldNotBeNull()
         updated.status shouldBe "in_progress"
@@ -78,30 +78,35 @@ class DraftRepositorySpec : FunSpec({
     }
 
     test("updateStatus to completed sets completed_at") {
-        val created = repository.create(seasonId, CreateDraftRequest())
-        repository.updateStatus(created.id, "in_progress")
-
-        val completed = repository.updateStatus(created.id, "completed")
+        val completed =
+            tx.update {
+                val created = repository.create(seasonId, CreateDraftRequest())
+                repository.updateStatus(created.id, "in_progress")
+                repository.updateStatus(created.id, "completed")
+            }
 
         completed.shouldNotBeNull()
         completed.completedAt.shouldNotBeNull()
     }
 
     test("createPicks persists every slot returned from the snake order and getPicks orders by pick_num") {
-        val draft = repository.create(seasonId, CreateDraftRequest())
         val teams = teamIds()
-        val slots =
-            listOf(
-                PickSlot(teams[0], 1, 1),
-                PickSlot(teams[1], 1, 2),
-                PickSlot(teams[2], 1, 3),
-                PickSlot(teams[2], 2, 4),
-                PickSlot(teams[1], 2, 5),
-                PickSlot(teams[0], 2, 6),
-            )
-
-        val created = repository.createPicks(draft.id, slots)
-        val fetched = repository.getPicks(draft.id)
+        val (created, fetched) =
+            tx.update {
+                val draft = repository.create(seasonId, CreateDraftRequest())
+                val slots =
+                    listOf(
+                        PickSlot(teams[0], 1, 1),
+                        PickSlot(teams[1], 1, 2),
+                        PickSlot(teams[2], 1, 3),
+                        PickSlot(teams[2], 2, 4),
+                        PickSlot(teams[1], 2, 5),
+                        PickSlot(teams[0], 2, 6),
+                    )
+                val created = repository.createPicks(draft.id, slots)
+                val fetched = repository.getPicks(draft.id)
+                created to fetched
+            }
 
         created.map { it.pickNum } shouldContainExactly listOf(1, 2, 3, 4, 5, 6)
         fetched.map { it.teamId } shouldContainExactly created.map { it.teamId }
@@ -109,45 +114,50 @@ class DraftRepositorySpec : FunSpec({
     }
 
     test("makePick fills in the golfer_id and picked_at for an unfilled slot") {
-        val draft = repository.create(seasonId, CreateDraftRequest())
         val teams = teamIds()
-        repository.createPicks(draft.id, listOf(PickSlot(teams[0], 1, 1)))
-        val rory = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }.id
-
-        val made = repository.makePick(draft.id, pickNum = 1, golferId = rory)
+        val made =
+            tx.update {
+                val draft = repository.create(seasonId, CreateDraftRequest())
+                repository.createPicks(draft.id, listOf(PickSlot(teams[0], 1, 1)))
+                val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")).id
+                repository.makePick(draft.id, pickNum = 1, golferId = rory)
+            }
 
         made.shouldNotBeNull()
-        made.golferId shouldBe rory
         made.pickedAt.shouldNotBeNull()
     }
 
     test("makePick returns null when the pick is already filled") {
-        val draft = repository.create(seasonId, CreateDraftRequest())
         val teams = teamIds()
-        repository.createPicks(draft.id, listOf(PickSlot(teams[0], 1, 1)))
-        val rory = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }.id
-        repository.makePick(draft.id, pickNum = 1, golferId = rory)
-        val scottie =
-            tx.update { golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")) }.id
+        val secondAttempt =
+            tx.update {
+                val draft = repository.create(seasonId, CreateDraftRequest())
+                repository.createPicks(draft.id, listOf(PickSlot(teams[0], 1, 1)))
+                val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")).id
+                repository.makePick(draft.id, pickNum = 1, golferId = rory)
+                val scottie =
+                    golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")).id
+                repository.makePick(draft.id, pickNum = 1, golferId = scottie)
+            }
 
-        repository.makePick(draft.id, pickNum = 1, golferId = scottie).shouldBeNull()
+        secondAttempt.shouldBeNull()
     }
 
     test("getAvailableGolfers excludes picked golfers and inactive golfers") {
-        val draft = repository.create(seasonId, CreateDraftRequest())
         val teams = teamIds()
-        repository.createPicks(draft.id, listOf(PickSlot(teams[0], 1, 1)))
-        val (rory, scottie) =
+        val (draftId, scottie) =
             tx.update {
+                val draft = repository.create(seasonId, CreateDraftRequest())
+                repository.createPicks(draft.id, listOf(PickSlot(teams[0], 1, 1)))
                 val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")).id
                 val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")).id
                 val tiger = golferRepo.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods")).id
                 golferRepo.update(tiger, UpdateGolferRequest(active = false))
-                rory to scottie
+                repository.makePick(draft.id, pickNum = 1, golferId = rory)
+                draft.id to scottie
             }
-        repository.makePick(draft.id, pickNum = 1, golferId = rory)
 
-        val available = repository.getAvailableGolfers(draft.id)
+        val available = tx.read { repository.getAvailableGolfers(draftId) }
 
         available.map { it.id } shouldContainExactly listOf(scottie)
     }

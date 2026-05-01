@@ -141,7 +141,7 @@ internal fun buildServices(
         tournamentLinkService = tournamentLinkService,
         tournamentOpsService = TournamentOpsService(tournamentService, scoringService, espnService),
         seasonOpsService = SeasonOpsService(seasonService, tournamentService, scoringService),
-        draftService = DraftService(DraftRepository(database.dsl), teamService),
+        draftService = DraftService(DraftRepository(), teamService, transactor),
         scoringService = scoringService,
         espnService = espnService,
         adminService = adminService,

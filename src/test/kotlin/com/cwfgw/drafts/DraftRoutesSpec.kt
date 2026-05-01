@@ -4,6 +4,7 @@ import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.teams.TeamId
 import com.cwfgw.testing.ApiFixture
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import io.kotest.core.spec.style.FunSpec
@@ -41,7 +42,7 @@ private fun withDraft(
     {
         val teamService = this.teamService
         val fake = FakeDraftRepository(initialDrafts = drafts, initialPicks = picks)
-        draftService = DraftService(fake, teamService)
+        draftService = DraftService(fake, teamService, FakeTransactor())
     }
 
 class DraftRoutesSpec : FunSpec({
