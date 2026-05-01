@@ -120,7 +120,7 @@ internal fun buildServices(
         ScoringService(ScoringRepository(), seasonService, tournamentService, teamService, transactor)
     val adminService =
         AdminService(
-            dsl = database.dsl,
+            tx = transactor,
             seasonService = seasonService,
             tournamentService = tournamentService,
             espnService = espnService,

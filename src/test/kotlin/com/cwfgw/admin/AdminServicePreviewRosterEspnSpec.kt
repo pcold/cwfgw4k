@@ -30,8 +30,6 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
-import org.jooq.SQLDialect
-import org.jooq.impl.DSL
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -98,7 +96,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
             client = client,
             service =
                 AdminService(
-                    dsl = DSL.using(SQLDialect.POSTGRES),
+                    tx = FakeTransactor(),
                     seasonService = SeasonService(seasonRepo, FakeTransactor()),
                     tournamentService = tournamentService,
                     espnService = espnService,

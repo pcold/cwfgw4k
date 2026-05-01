@@ -32,9 +32,6 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
-import org.jooq.DSLContext
-import org.jooq.SQLDialect
-import org.jooq.impl.DSL
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -113,7 +110,7 @@ private class Fixture(
             )
         service =
             AdminService(
-                dsl = stubDsl(),
+                tx = FakeTransactor(),
                 seasonService = SeasonService(seasonRepo, FakeTransactor()),
                 tournamentService = tournamentService,
                 espnService = espnService,
@@ -123,11 +120,6 @@ private class Fixture(
             )
     }
 }
-
-// confirmRoster's transactional path is exercised in AdminServiceConfirmRosterSpec
-// against a real Postgres harness; the fake-fixture tests in this file only
-// reach validation-path branches that short-circuit before the transaction.
-private fun stubDsl(): DSLContext = DSL.using(SQLDialect.POSTGRES)
 
 class AdminServiceSpec : FunSpec({
 

@@ -75,7 +75,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
             }
         }
         return AdminService(
-            dsl = postgres.dsl,
+            tx = tx,
             seasonService = seasonService,
             tournamentService = tournamentService,
             espnService = espnService,

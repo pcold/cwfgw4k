@@ -1,6 +1,7 @@
 package com.cwfgw.admin
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.Transactor
 import com.cwfgw.espn.EspnCalendarEntry
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnUpstreamException
@@ -20,8 +21,6 @@ import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentService
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.jooq.DSLContext
-import org.jooq.kotlin.coroutines.transactionCoroutine
 import java.math.BigDecimal
 import java.text.Normalizer
 import java.time.LocalDate
@@ -46,7 +45,7 @@ private val log = KotlinLogging.logger {}
  */
 @Suppress("LongParameterList")
 class AdminService(
-    private val dsl: DSLContext,
+    private val tx: Transactor,
     private val seasonService: SeasonService,
     private val tournamentService: TournamentService,
     private val espnService: EspnService,
@@ -309,12 +308,11 @@ class AdminService(
             return Result.Ok(RosterUploadResult(teamsCreated = 0, golfersCreated = 0, teams = emptyList()))
         }
 
-        return dsl.transactionCoroutine { config ->
-            val tx = config.dsl()
+        return tx.update {
             var golfersCreated = 0
             val createdTeams = mutableListOf<Team>()
             for (team in request.teams) {
-                val (createdTeam, newGolfers) = persistConfirmedTeam(tx, request.seasonId, team)
+                val (createdTeam, newGolfers) = persistConfirmedTeam(request.seasonId, team)
                 createdTeams += createdTeam
                 golfersCreated += newGolfers
             }
@@ -328,49 +326,49 @@ class AdminService(
         }
     }
 
+    // Repos are the right surface here: every write needs to join the
+    // surrounding tx, and the services capture their own Transactor and
+    // would each open a fresh nested transaction.
+    context(ctx: TransactionContext)
     private suspend fun persistConfirmedTeam(
-        tx: DSLContext,
         seasonId: SeasonId,
         team: ConfirmedTeam,
-    ): Pair<Team, Int> =
-        // Repos are the right surface here: every write needs to join the
-        // surrounding tx, and the services capture their own (non-tx) Transactor.
-        with(TransactionContext(tx)) {
-            val createdTeam =
-                teamRepository.create(
-                    seasonId = seasonId,
-                    request =
-                        CreateTeamRequest(
-                            ownerName = team.teamName,
-                            teamName = team.teamName,
-                            teamNumber = team.teamNumber,
-                        ),
-                )
-            var newGolfers = 0
-            for (pick in team.picks) {
-                val golferId =
-                    when (val assignment = pick.assignment) {
-                        is GolferAssignment.Existing -> assignment.golferId
-                        is GolferAssignment.New -> {
-                            newGolfers++
-                            val req =
-                                CreateGolferRequest(firstName = assignment.firstName, lastName = assignment.lastName)
-                            golferRepository.create(req).id
-                        }
+    ): Pair<Team, Int> {
+        val createdTeam =
+            teamRepository.create(
+                seasonId = seasonId,
+                request =
+                    CreateTeamRequest(
+                        ownerName = team.teamName,
+                        teamName = team.teamName,
+                        teamNumber = team.teamNumber,
+                    ),
+            )
+        var newGolfers = 0
+        for (pick in team.picks) {
+            val golferId =
+                when (val assignment = pick.assignment) {
+                    is GolferAssignment.Existing -> assignment.golferId
+                    is GolferAssignment.New -> {
+                        newGolfers++
+                        val req =
+                            CreateGolferRequest(firstName = assignment.firstName, lastName = assignment.lastName)
+                        golferRepository.create(req).id
                     }
-                teamRepository.addToRoster(
-                    teamId = createdTeam.id,
-                    request =
-                        AddToRosterRequest(
-                            golferId = golferId,
-                            acquiredVia = ROSTER_ACQUIRED_VIA_DRAFT,
-                            draftRound = pick.round,
-                            ownershipPct = BigDecimal(pick.ownershipPct),
-                        ),
-                )
-            }
-            createdTeam to newGolfers
+                }
+            teamRepository.addToRoster(
+                teamId = createdTeam.id,
+                request =
+                    AddToRosterRequest(
+                        golferId = golferId,
+                        acquiredVia = ROSTER_ACQUIRED_VIA_DRAFT,
+                        draftRound = pick.round,
+                        ownershipPct = BigDecimal(pick.ownershipPct),
+                    ),
+            )
         }
+        return createdTeam to newGolfers
+    }
 
     private suspend fun findMissingGolferIds(teams: List<ConfirmedTeam>): List<GolferId> {
         val referencedIds =
