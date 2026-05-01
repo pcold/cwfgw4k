@@ -131,7 +131,7 @@ private class Fixture(
             tournamentService = TournamentService(tournamentRepo),
             golferService = GolferService(golferRepo, FakeTransactor()),
             teamService = TeamService(teamRepo, FakeTransactor()),
-            seasonService = SeasonService(seasonRepo),
+            seasonService = SeasonService(seasonRepo, FakeTransactor()),
             tournamentLinkRepository = FakeTournamentLinkRepository(initial = initialOverrides),
         )
 }

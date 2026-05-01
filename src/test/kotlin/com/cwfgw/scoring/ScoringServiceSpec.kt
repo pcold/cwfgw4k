@@ -154,7 +154,7 @@ private class Fixture(
         service =
             ScoringService(
                 repository = scoring,
-                seasonService = SeasonService(seasonRepo),
+                seasonService = SeasonService(seasonRepo, FakeTransactor()),
                 tournamentService = TournamentService(tournamentRepo),
                 teamService = TeamService(teamRepo, FakeTransactor()),
             )
@@ -353,7 +353,7 @@ class ScoringServiceSpec : FunSpec({
         val service =
             ScoringService(
                 repository = scoring,
-                seasonService = SeasonService(FakeSeasonRepository(initial = listOf(mkSeason()))),
+                seasonService = SeasonService(FakeSeasonRepository(initial = listOf(mkSeason())), FakeTransactor()),
                 tournamentService = TournamentService(FakeTournamentRepository()),
                 teamService = TeamService(FakeTeamRepository(), FakeTransactor()),
             )

@@ -28,7 +28,7 @@ class ScoringRepositorySpec : FunSpec({
     val postgres = postgresHarness()
     val repository = ScoringRepository(postgres.dsl)
     val leagueRepo = LeagueRepository(postgres.dsl)
-    val seasonRepo = SeasonRepository(postgres.dsl)
+    val seasonRepo = SeasonRepository()
     val teamRepo = TeamRepository()
     val tournamentRepo = TournamentRepository(postgres.dsl)
     val golferRepo = GolferRepository()
@@ -44,9 +44,11 @@ class ScoringRepositorySpec : FunSpec({
     beforeEach {
         val league = leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf"))
         seasonId =
-            seasonRepo.create(
-                CreateSeasonRequest(leagueId = league.id, name = "2026 Season", seasonYear = 2026),
-            ).id
+            tx.update {
+                seasonRepo.create(
+                    CreateSeasonRequest(leagueId = league.id, name = "2026 Season", seasonYear = 2026),
+                )
+            }.id
         tx.update {
             teamA = teamRepo.create(seasonId, CreateTeamRequest(ownerName = "Alice", teamName = "Alpha")).id
             teamB = teamRepo.create(seasonId, CreateTeamRequest(ownerName = "Bob", teamName = "Bravo")).id

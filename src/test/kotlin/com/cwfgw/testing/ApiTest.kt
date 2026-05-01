@@ -77,7 +77,7 @@ class ApiFixture {
     var transactor: Transactor = FakeTransactor()
     var leagueService: LeagueService = LeagueService(FakeLeagueRepository())
     var golferService: GolferService = GolferService(FakeGolferRepository(), transactor)
-    var seasonService: SeasonService = SeasonService(FakeSeasonRepository())
+    var seasonService: SeasonService = SeasonService(FakeSeasonRepository(), transactor)
     var teamService: TeamService = TeamService(FakeTeamRepository(), transactor)
     var tournamentService: TournamentService = TournamentService(FakeTournamentRepository())
     var draftService: DraftService = DraftService(FakeDraftRepository(), teamService)

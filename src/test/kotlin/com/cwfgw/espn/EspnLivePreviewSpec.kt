@@ -17,6 +17,7 @@ import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
+import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
@@ -164,9 +165,11 @@ private class PreviewFixture(
 
     init {
         kotlinx.coroutines.runBlocking {
-            seasonRepo.create(
-                CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
-            )
+            with(noopTransactionContext) {
+                seasonRepo.create(
+                    CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
+                )
+            }
         }
         service =
             EspnService(
@@ -174,7 +177,7 @@ private class PreviewFixture(
                 tournamentService = TournamentService(tournamentRepo),
                 golferService = GolferService(golferRepo, FakeTransactor()),
                 teamService = TeamService(teamRepo, FakeTransactor()),
-                seasonService = SeasonService(seasonRepo),
+                seasonService = SeasonService(seasonRepo, FakeTransactor()),
                 tournamentLinkRepository = FakeTournamentLinkRepository(),
             )
     }

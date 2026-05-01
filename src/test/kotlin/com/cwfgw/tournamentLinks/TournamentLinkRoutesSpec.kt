@@ -122,7 +122,7 @@ private fun fixture(
         tournamentService = TournamentService(FakeTournamentRepository(initial = tournaments))
         golferService = GolferService(FakeGolferRepository(initial = golfers), FakeTransactor())
         teamService = TeamService(FakeTeamRepository(), FakeTransactor())
-        seasonService = SeasonService(FakeSeasonRepository())
+        seasonService = SeasonService(FakeSeasonRepository(), FakeTransactor())
         tournamentLinkRepository = linkRepo
         tournamentLinkService = TournamentLinkService(linkRepo, tournamentService, golferService)
         espnService =

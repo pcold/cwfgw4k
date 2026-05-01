@@ -85,9 +85,11 @@ private class Fixture(
             FakeSeasonRepository(idFactory = { seasonId })
         if (seedSeason) {
             runBlocking {
-                seasonRepo.create(
-                    CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
-                )
+                with(noopTransactionContext) {
+                    seasonRepo.create(
+                        CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
+                    )
+                }
             }
         }
         val tournamentService = TournamentService(tournamentRepo)
@@ -99,13 +101,13 @@ private class Fixture(
                 tournamentService = tournamentService,
                 golferService = golferService,
                 teamService = teamService,
-                seasonService = SeasonService(seasonRepo),
+                seasonService = SeasonService(seasonRepo, FakeTransactor()),
                 tournamentLinkRepository = FakeTournamentLinkRepository(),
             )
         service =
             AdminService(
                 dsl = stubDsl(),
-                seasonService = SeasonService(seasonRepo),
+                seasonService = SeasonService(seasonRepo, FakeTransactor()),
                 tournamentService = tournamentService,
                 espnService = espnService,
                 golferService = golferService,

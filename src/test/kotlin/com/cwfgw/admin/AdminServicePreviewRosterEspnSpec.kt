@@ -60,7 +60,9 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         val leagueId = LeagueId(UUID.fromString("00000000-0000-0000-0000-000000000111"))
         val seasonRepo = FakeSeasonRepository(idFactory = { seasonId })
         runBlocking {
-            seasonRepo.create(CreateSeasonRequest(leagueId = leagueId, name = "2026 Season", seasonYear = 2026))
+            with(noopTransactionContext) {
+                seasonRepo.create(CreateSeasonRequest(leagueId = leagueId, name = "2026 Season", seasonYear = 2026))
+            }
         }
         val tournamentRepo = FakeTournamentRepository()
         val golferRepo = FakeGolferRepository(initial = seedGolfers)
@@ -80,7 +82,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
                 tournamentService = tournamentService,
                 golferService = golferService,
                 teamService = teamService,
-                seasonService = SeasonService(seasonRepo),
+                seasonService = SeasonService(seasonRepo, FakeTransactor()),
                 tournamentLinkRepository = FakeTournamentLinkRepository(),
             )
         return TestFixture(
@@ -89,7 +91,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
             service =
                 AdminService(
                     dsl = DSL.using(SQLDialect.POSTGRES),
-                    seasonService = SeasonService(seasonRepo),
+                    seasonService = SeasonService(seasonRepo, FakeTransactor()),
                     tournamentService = tournamentService,
                     espnService = espnService,
                     golferService = golferService,

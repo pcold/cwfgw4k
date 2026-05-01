@@ -19,6 +19,7 @@ import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentService
@@ -75,15 +76,17 @@ private fun adminFixture(
         val seasonRepo = FakeSeasonRepository(idFactory = { SEASON_ID })
         if (seedSeason) {
             runBlocking {
-                seasonRepo.create(
-                    CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
-                )
+                with(noopTransactionContext) {
+                    seasonRepo.create(
+                        CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
+                    )
+                }
             }
         }
         val golferRepo = FakeGolferRepository(initial = seedGolfers)
         val tournamentRepo = FakeTournamentRepository()
         val teamRepo = FakeTeamRepository()
-        seasonService = SeasonService(seasonRepo)
+        seasonService = SeasonService(seasonRepo, FakeTransactor())
         tournamentService = TournamentService(tournamentRepo)
         golferService = GolferService(golferRepo, FakeTransactor())
         teamService = TeamService(teamRepo, FakeTransactor())

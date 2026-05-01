@@ -9,6 +9,7 @@ import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -57,12 +58,14 @@ private fun opsFixture(initialTournaments: List<Tournament> = emptyList()): ApiF
     {
         val seasonRepo = FakeSeasonRepository(idFactory = { SEASON_ID })
         kotlinx.coroutines.runBlocking {
-            seasonRepo.create(
-                CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
-            )
+            with(noopTransactionContext) {
+                seasonRepo.create(
+                    CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
+                )
+            }
         }
         val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
-        seasonService = SeasonService(seasonRepo)
+        seasonService = SeasonService(seasonRepo, FakeTransactor())
         tournamentService = TournamentService(tournamentRepo)
         teamService = TeamService(FakeTeamRepository(), FakeTransactor())
         scoringService =

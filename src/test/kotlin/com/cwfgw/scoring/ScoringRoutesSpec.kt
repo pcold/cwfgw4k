@@ -138,7 +138,7 @@ private fun withWorld(world: RouteWorld = RouteWorld()): ApiFixture.() -> Unit =
         val tournamentRepo =
             FakeTournamentRepository(initial = listOfNotNull(world.tournament), initialResults = world.results)
         val teamRepo = FakeTeamRepository(initialTeams = world.teams, initialRoster = world.rosters)
-        seasonService = SeasonService(seasonRepo)
+        seasonService = SeasonService(seasonRepo, FakeTransactor())
         tournamentService = TournamentService(tournamentRepo)
         teamService = TeamService(teamRepo, FakeTransactor())
         scoringService =

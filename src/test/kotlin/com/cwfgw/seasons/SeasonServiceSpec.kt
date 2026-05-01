@@ -1,6 +1,7 @@
 package com.cwfgw.seasons
 
 import com.cwfgw.leagues.LeagueId
+import com.cwfgw.testing.FakeTransactor
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
@@ -40,7 +41,7 @@ class SeasonServiceSpec : FunSpec({
         val a = season(name = "L1 2026", leagueId = LEAGUE_ONE, seasonYear = 2026)
         val b = season(name = "L2 2026", leagueId = LEAGUE_TWO, seasonYear = 2026)
         val c = season(name = "L1 2025", leagueId = LEAGUE_ONE, seasonYear = 2025)
-        val service = SeasonService(FakeSeasonRepository(initial = listOf(a, b, c)))
+        val service = SeasonService(FakeSeasonRepository(initial = listOf(a, b, c)), FakeTransactor())
 
         val byLeague = service.list(leagueId = LEAGUE_ONE, seasonYear = null).map { it.id }
         byLeague shouldContainExactlyInAnyOrder listOf(a.id, c.id)
@@ -56,7 +57,7 @@ class SeasonServiceSpec : FunSpec({
         val newId = SeasonId(UUID.fromString("00000000-0000-0000-0000-00000000cccc"))
         val newTime = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeSeasonRepository(idFactory = { newId }, clock = { newTime })
-        val service = SeasonService(fake)
+        val service = SeasonService(fake, FakeTransactor())
 
         val created =
             service.create(
@@ -71,7 +72,7 @@ class SeasonServiceSpec : FunSpec({
     test("update delegates to the repository and returns null for unknown id") {
         val existing = season(name = "Orig")
         val fake = FakeSeasonRepository(initial = listOf(existing), clock = { Instant.parse("2026-04-01T00:00:00Z") })
-        val service = SeasonService(fake)
+        val service = SeasonService(fake, FakeTransactor())
 
         val updated = service.update(existing.id, UpdateSeasonRequest(status = "active"))
         updated?.status shouldBe "active"
@@ -82,7 +83,7 @@ class SeasonServiceSpec : FunSpec({
 
     test("getRules returns defaults for a season with no custom rules") {
         val existing = season()
-        val service = SeasonService(FakeSeasonRepository(initial = listOf(existing)))
+        val service = SeasonService(FakeSeasonRepository(initial = listOf(existing)), FakeTransactor())
 
         val rules = service.getRules(existing.id)
 
@@ -91,7 +92,7 @@ class SeasonServiceSpec : FunSpec({
     }
 
     test("getRules returns null for unknown season") {
-        val service = SeasonService(FakeSeasonRepository())
+        val service = SeasonService(FakeSeasonRepository(), FakeTransactor())
         service.getRules(SeasonId(UUID.randomUUID())).shouldBeNull()
     }
 })

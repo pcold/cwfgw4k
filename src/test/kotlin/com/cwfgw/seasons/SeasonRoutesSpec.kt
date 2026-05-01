@@ -2,6 +2,7 @@ package com.cwfgw.seasons
 
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.testing.ApiFixture
+import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import io.kotest.core.spec.style.FunSpec
@@ -45,7 +46,7 @@ private fun season(
 
 private fun seasons(vararg seeded: Season): ApiFixture.() -> Unit =
     {
-        seasonService = SeasonService(FakeSeasonRepository(initial = seeded.toList()))
+        seasonService = SeasonService(FakeSeasonRepository(initial = seeded.toList()), FakeTransactor())
     }
 
 class SeasonRoutesSpec : FunSpec({
@@ -130,7 +131,7 @@ class SeasonRoutesSpec : FunSpec({
         val newTime = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeSeasonRepository(idFactory = { newId }, clock = { newTime })
 
-        authenticatedApiTest({ seasonService = SeasonService(fake) }) { client ->
+        authenticatedApiTest({ seasonService = SeasonService(fake, FakeTransactor()) }) { client ->
             val response =
                 client.post("/api/v1/seasons") {
                     contentType(ContentType.Application.Json)

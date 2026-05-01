@@ -27,16 +27,18 @@ class TeamRepositorySpec : FunSpec({
     val repository = TeamRepository()
     val golferRepo = GolferRepository()
     val tx = Transactor(postgres.dsl)
-    val seasonRepo = SeasonRepository(postgres.dsl)
+    val seasonRepo = SeasonRepository()
     val leagueRepo = LeagueRepository(postgres.dsl)
     var seasonId = SeasonId(UUID.randomUUID())
 
     beforeEach {
         val league = leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf"))
         seasonId =
-            seasonRepo.create(
-                CreateSeasonRequest(leagueId = league.id, name = "2026 Season", seasonYear = 2026),
-            ).id
+            tx.update {
+                seasonRepo.create(
+                    CreateSeasonRequest(leagueId = league.id, name = "2026 Season", seasonYear = 2026),
+                )
+            }.id
     }
 
     test("create persists the team under a season") {

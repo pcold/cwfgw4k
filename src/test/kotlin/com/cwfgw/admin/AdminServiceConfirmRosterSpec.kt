@@ -42,10 +42,10 @@ class AdminServiceConfirmRosterSpec : FunSpec({
 
     fun newService(): AdminService {
         val leagueRepo = LeagueRepository(postgres.dsl)
-        val seasonRepo = SeasonRepository(postgres.dsl)
+        val seasonRepo = SeasonRepository()
         val tournamentRepo = TournamentRepository(postgres.dsl)
         val teamRepo = TeamRepository()
-        val seasonService = SeasonService(seasonRepo)
+        val seasonService = SeasonService(seasonRepo, tx)
         val tournamentService = TournamentService(tournamentRepo)
         val golferService = GolferService(golferRepo, tx)
         val teamService = TeamService(teamRepo, tx)
@@ -64,9 +64,11 @@ class AdminServiceConfirmRosterSpec : FunSpec({
                 leagueRepo.create(CreateLeagueRequest(name = "Castlewood"))
             }
         runBlocking {
-            seasonRepo.create(
-                CreateSeasonRequest(leagueId = league.id, name = "2026 Spring", seasonYear = 2026),
-            )
+            tx.update {
+                seasonRepo.create(
+                    CreateSeasonRequest(leagueId = league.id, name = "2026 Spring", seasonYear = 2026),
+                )
+            }
         }
         return AdminService(
             dsl = postgres.dsl,
@@ -81,7 +83,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
 
     fun seasonId() =
         runBlocking {
-            SeasonRepository(postgres.dsl).findAll(leagueId = null, seasonYear = null).single().id
+            tx.read { SeasonRepository().findAll(leagueId = null, seasonYear = null) }.single().id
         }
 
     fun teamRepo() = TeamRepository()

@@ -24,6 +24,7 @@ import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
+import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
@@ -170,7 +171,7 @@ private fun scoreRow(
  * services so the WeeklyReportService captured into [ApiFixture] sees
  * the seeded repos rather than the empty defaults.
  */
-@Suppress("LongParameterList")
+@Suppress("LongParameterList", "LongMethod")
 private fun reportFixture(
     seedSeason: Boolean = true,
     initialTournaments: List<Tournament> = emptyList(),
@@ -184,9 +185,11 @@ private fun reportFixture(
         val seasonRepo = FakeSeasonRepository(idFactory = { SEASON_ID })
         if (seedSeason) {
             kotlinx.coroutines.runBlocking {
-                seasonRepo.create(
-                    CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
-                )
+                with(noopTransactionContext) {
+                    seasonRepo.create(
+                        CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
+                    )
+                }
             }
         }
         val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
@@ -198,7 +201,7 @@ private fun reportFixture(
         val teamRepo = FakeTeamRepository(initialTeams = initialTeams, initialRoster = initialRosters)
         val golferRepo = FakeGolferRepository(initial = initialGolfers)
         val scoringRepo = FakeScoringRepository(initialScores = initialScores)
-        seasonService = SeasonService(seasonRepo)
+        seasonService = SeasonService(seasonRepo, FakeTransactor())
         tournamentService = TournamentService(tournamentRepo)
         teamService = TeamService(teamRepo, FakeTransactor())
         golferService = GolferService(golferRepo, FakeTransactor())

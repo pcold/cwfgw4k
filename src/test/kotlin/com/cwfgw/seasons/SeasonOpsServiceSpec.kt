@@ -11,6 +11,7 @@ import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
+import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
@@ -128,9 +129,12 @@ private class Fixture(
     init {
         if (seedSeason) {
             kotlinx.coroutines.runBlocking {
-                seasonRepo.create(
-                    CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
-                )
+                with(noopTransactionContext) {
+
+                    seasonRepo.create(
+                        CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
+                    )
+                }
             }
         }
         initialResults.forEach { result ->
@@ -138,7 +142,7 @@ private class Fixture(
                 tournamentRepo.upsertResult(result.tournamentId, asUpsertRequest(result))
             }
         }
-        val seasonService = SeasonService(seasonRepo)
+        val seasonService = SeasonService(seasonRepo, FakeTransactor())
         val tournamentService = TournamentService(tournamentRepo)
         val teamService = TeamService(teamRepo, FakeTransactor())
         val scoringService = ScoringService(scoringRepo, seasonService, tournamentService, teamService)
