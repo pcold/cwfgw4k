@@ -382,11 +382,77 @@ Rules:
   returns domain types, not jOOQ records.
 - **MUST NOT** expose jOOQ-generated types outside the repository package.
   Map to domain types explicitly at the repository boundary.
-- **MUST** wrap blocking JDBC calls in `withContext(Dispatchers.IO)` or use
-  jOOQ's coroutine-friendly execution.
-- **MUST** use explicit transactions (`dsl.transaction { ... }`) for
-  multi-statement atomic operations. Pass the transactional `DSLContext`
-  through as a parameter; do not capture an outer one.
+- **MUST** wrap blocking JDBC calls in `withContext(Dispatchers.IO)`.
+- **MUST NOT** capture a `DSLContext` in a repository constructor or pass one
+  through as a method argument. Repositories declare every method with
+  `context(ctx: TransactionContext)` and read the DSL via `ctx.dsl`. The
+  no-arg factory shape is `fun XRepository(): XRepository = JooqXRepository()`.
+- **MUST** capture a `com.cwfgw.db.Transactor` in services that touch
+  repositories. Wrap reads in `tx.read { repository.x(...) }` and writes in
+  `tx.update { repository.x(...) }`. `Transactor.read` opens a
+  `REPEATABLE READ READ ONLY` transaction so callers get a consistent
+  snapshot; `Transactor.update` is the read-write counterpart.
+
+#### Cross-repo flows (transactional consistency)
+
+When a service operation needs read-then-write atomicity — or a consistent
+read snapshot — across more than one repository, the gate checks, data
+gather, and write all need to run inside a single `tx.read` / `tx.update`.
+Two rules follow from that:
+
+- **MUST** depend on the relevant repositories directly when the flow needs
+  to thread them through one transaction. Do not call into another service
+  (e.g. `tournamentService.get(...)`) from inside a transactional flow:
+  every service captures its own `Transactor` and would open a new
+  transaction on a fresh connection, breaking the snapshot.
+
+  ```kotlin
+  // RIGHT — gate + write share one tx
+  class TournamentLinkService(
+      private val repository: TournamentLinkRepository,
+      private val tournamentRepository: TournamentRepository,
+      private val golferRepository: GolferRepository,
+      private val tx: Transactor,
+  ) {
+      suspend fun upsert(...) =
+          tx.update {
+              val tournament = tournamentRepository.findById(id)
+                  ?: return@update Result.Err(...)
+              if (tournament.status == Completed) return@update Result.Err(...)
+              if (golferRepository.findById(req.golferId) == null) {
+                  return@update Result.Err(...)
+              }
+              Result.Ok(repository.upsert(...))
+          }
+  }
+
+  // WRONG — each service call opens a new transaction
+  class TournamentLinkService(
+      private val tournamentService: TournamentService,
+      private val golferService: GolferService,
+      private val repository: TournamentLinkRepository,
+      private val tx: Transactor,
+  ) {
+      suspend fun upsert(...): Result<...> {
+          val tournament = tournamentService.get(id) ?: return Result.Err(...)  // tx 1
+          if (tournament.status == Completed) return Result.Err(...)
+          if (golferService.get(req.golferId) == null) return Result.Err(...)   // tx 2
+          val o = tx.update { repository.upsert(...) }                           // tx 3
+          return Result.Ok(o)                                                    // race window!
+      }
+  }
+  ```
+
+- **MAY** use other services for top-level guards that don't need to share
+  the transaction with subsequent work — e.g. an early
+  `service.get(id) ?: return Result.Err(NotFound)` that just produces a
+  clean error return when the entity is missing. The window only matters
+  when the gathered data branches into a *write*.
+
+`AdminService.confirmRoster` and `ScoringService.calculateScores` are the
+reference shape: take the relevant repositories as constructor parameters
+alongside any services used for non-transactional work, and run the whole
+gather + write sequence inside one `tx.update`.
 
 ### kotlinx.serialization
 
