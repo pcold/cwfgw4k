@@ -145,8 +145,8 @@ private class Fixture(
                 seasonService,
                 TournamentLinkService(
                     FakeTournamentLinkRepository(),
-                    tournamentService,
-                    golferService,
+                    tournamentRepo,
+                    golferRepo,
                     FakeTransactor(),
                 ),
             )

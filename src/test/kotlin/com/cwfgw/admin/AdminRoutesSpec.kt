@@ -99,8 +99,8 @@ private fun adminFixture(
                 tournamentLinkService =
                     TournamentLinkService(
                         FakeTournamentLinkRepository(),
-                        tournamentService,
-                        golferService,
+                        tournamentRepo,
+                        golferRepo,
                         FakeTransactor(),
                     ),
             )

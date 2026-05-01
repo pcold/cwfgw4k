@@ -104,8 +104,8 @@ private fun opsFixture(
                 tournamentLinkService =
                     TournamentLinkService(
                         FakeTournamentLinkRepository(),
-                        tournamentService,
-                        golferService,
+                        tournamentRepo,
+                        golferRepo,
                         FakeTransactor(),
                     ),
             )

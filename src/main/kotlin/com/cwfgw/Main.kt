@@ -101,12 +101,14 @@ internal fun buildServices(
     val teamRepository = TeamRepository()
     val teamService = TeamService(teamRepository, transactor)
     val seasonService = SeasonService(SeasonRepository(), transactor)
-    val tournamentService = TournamentService(TournamentRepository(), transactor)
+    val tournamentRepository = TournamentRepository()
+    val tournamentService = TournamentService(tournamentRepository, transactor)
     val golferRepository = GolferRepository()
     val golferService = GolferService(golferRepository, transactor)
     val userRepository = UserRepository()
     val linkRepo = TournamentLinkRepository()
-    val tournamentLinkService = TournamentLinkService(linkRepo, tournamentService, golferService, transactor)
+    val tournamentLinkService =
+        TournamentLinkService(linkRepo, tournamentRepository, golferRepository, transactor)
     val espnService =
         EspnService(
             EspnClient(httpClient),

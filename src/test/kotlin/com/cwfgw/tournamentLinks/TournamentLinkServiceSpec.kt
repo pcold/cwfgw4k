@@ -3,14 +3,12 @@ package com.cwfgw.tournamentLinks
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
-import com.cwfgw.golfers.GolferService
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
-import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
@@ -67,8 +65,8 @@ private fun service(
 ): TournamentLinkService =
     TournamentLinkService(
         repository = FakeTournamentLinkRepository(initial = initialOverrides),
-        tournamentService = TournamentService(FakeTournamentRepository(initial = tournaments), FakeTransactor()),
-        golferService = GolferService(FakeGolferRepository(initial = golfers), FakeTransactor()),
+        tournamentRepository = FakeTournamentRepository(initial = tournaments),
+        golferRepository = FakeGolferRepository(initial = golfers),
         tx = FakeTransactor(),
     )
 

@@ -226,8 +226,8 @@ private fun reportFixture(
                 tournamentLinkService =
                     TournamentLinkService(
                         FakeTournamentLinkRepository(),
-                        tournamentService,
-                        golferService,
+                        tournamentRepo,
+                        golferRepo,
                         FakeTransactor(),
                     ),
             )

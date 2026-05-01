@@ -103,8 +103,8 @@ private class Fixture(
                 tournamentLinkService =
                     TournamentLinkService(
                         FakeTournamentLinkRepository(),
-                        tournamentService,
-                        golferService,
+                        tournamentRepo,
+                        golferRepo,
                         FakeTransactor(),
                     ),
             )

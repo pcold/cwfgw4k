@@ -119,13 +119,17 @@ private fun fixture(
 ): ApiFixture.() -> Unit =
     {
         val linkRepo = FakeTournamentLinkRepository(initial = initialOverrides)
-        tournamentService = TournamentService(FakeTournamentRepository(initial = tournaments), FakeTransactor())
-        golferService = GolferService(FakeGolferRepository(initial = golfers), FakeTransactor())
+        val tournamentRepo = FakeTournamentRepository(initial = tournaments)
+        val golferRepo = FakeGolferRepository(initial = golfers)
+        tournamentRepository = tournamentRepo
+        golferRepository = golferRepo
+        tournamentService = TournamentService(tournamentRepo, FakeTransactor())
+        golferService = GolferService(golferRepo, FakeTransactor())
         teamService = TeamService(FakeTeamRepository(), FakeTransactor())
         seasonService = SeasonService(FakeSeasonRepository(), FakeTransactor())
         tournamentLinkRepository = linkRepo
         tournamentLinkService =
-            TournamentLinkService(linkRepo, tournamentService, golferService, FakeTransactor())
+            TournamentLinkService(linkRepo, tournamentRepo, golferRepo, FakeTransactor())
         espnService =
             EspnService(
                 client = FakeEspnClient(tournamentsByDate = scoreboard),

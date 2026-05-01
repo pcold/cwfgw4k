@@ -97,8 +97,8 @@ private fun withWiredService(
                 tournamentLinkService =
                     TournamentLinkService(
                         FakeTournamentLinkRepository(),
-                        tournamentSvc,
-                        golferService,
+                        tournamentRepo,
+                        golferRepo,
                         FakeTransactor(),
                     ),
             )

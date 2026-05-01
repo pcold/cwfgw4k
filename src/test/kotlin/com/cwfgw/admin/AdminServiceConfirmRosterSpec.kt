@@ -60,8 +60,8 @@ class AdminServiceConfirmRosterSpec : FunSpec({
                 tournamentLinkService =
                     TournamentLinkService(
                         TournamentLinkRepository(),
-                        tournamentService,
-                        golferService,
+                        tournamentRepo,
+                        golferRepo,
                         tx,
                     ),
             )

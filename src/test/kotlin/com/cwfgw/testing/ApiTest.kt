@@ -8,6 +8,7 @@ import com.cwfgw.drafts.FakeDraftRepository
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
+import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.health.HealthProbe
 import com.cwfgw.leagues.FakeLeagueRepository
@@ -27,6 +28,7 @@ import com.cwfgw.tournamentLinks.TournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentOpsService
+import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.users.AuthService
 import com.cwfgw.users.AuthSetup
@@ -74,10 +76,12 @@ class ApiFixture {
     var healthProbe: HealthProbe = HealthProbe { true }
     var transactor: Transactor = FakeTransactor()
     var leagueService: LeagueService = LeagueService(FakeLeagueRepository(), transactor)
-    var golferService: GolferService = GolferService(FakeGolferRepository(), transactor)
+    var golferRepository: GolferRepository = FakeGolferRepository()
+    var golferService: GolferService = GolferService(golferRepository, transactor)
     var seasonService: SeasonService = SeasonService(FakeSeasonRepository(), transactor)
     var teamService: TeamService = TeamService(FakeTeamRepository(), transactor)
-    var tournamentService: TournamentService = TournamentService(FakeTournamentRepository(), transactor)
+    var tournamentRepository: TournamentRepository = FakeTournamentRepository()
+    var tournamentService: TournamentService = TournamentService(tournamentRepository, transactor)
     var draftService: DraftService = DraftService(FakeDraftRepository(), teamService, transactor)
     var scoringService: ScoringService =
         ScoringService(
@@ -91,8 +95,8 @@ class ApiFixture {
     var tournamentLinkService: TournamentLinkService =
         TournamentLinkService(
             repository = tournamentLinkRepository,
-            tournamentService = tournamentService,
-            golferService = golferService,
+            tournamentRepository = tournamentRepository,
+            golferRepository = golferRepository,
             tx = transactor,
         )
     var espnService: EspnService =
