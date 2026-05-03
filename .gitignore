@@ -22,3 +22,4 @@ out/
 # dev.properties.example. The Gradle `run` and `seed` tasks load this file
 # and inject each entry as an environment variable.
 dev.properties
+scheduled_tasks.lock

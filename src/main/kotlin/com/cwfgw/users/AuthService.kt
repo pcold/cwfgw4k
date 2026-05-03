@@ -32,7 +32,7 @@ class AuthService(
         password: String,
     ): Result<User, AuthError> {
         val credentials =
-            tx.read { userRepository.findCredentials(username) }
+            tx.get { userRepository.findCredentials(username) }
                 ?: return Result.Err(AuthError.InvalidCredentials)
         val verified =
             withContext(Dispatchers.Default) {
@@ -44,7 +44,7 @@ class AuthService(
     }
 
     /** Hydrates a [User] for the per-request session validator. */
-    suspend fun findById(id: UserId): User? = tx.read { userRepository.findById(id) }
+    suspend fun findById(id: UserId): User? = tx.get { userRepository.findById(id) }
 
     /**
      * Produce a BCrypt hash for [plain]. Public so the boot-time admin

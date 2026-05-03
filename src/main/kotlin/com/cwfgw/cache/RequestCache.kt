@@ -46,28 +46,43 @@ class RequestCache(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     /**
-     * Cache-aside fetch keyed by [key]. On hit returns the cached JSON
-     * body. On miss invokes [fetch], stores its return value with [ttl],
-     * and returns it. The hit path does no serialization. [routeTemplate]
-     * is the bounded-cardinality label used in the structured log line.
+     * Cache-aside fetch keyed by [key]. Three discrete phases:
+     *  1. `tx.get` for the hit lookup — auto-commit single-statement read,
+     *     no BEGIN / COMMIT / SET TRANSACTION round-trips. Connection is
+     *     held only for the SELECT itself.
+     *  2. On miss, [fetch] runs OUTSIDE any cache transaction — critical
+     *     under load because [fetch] is the actual handler, which itself
+     *     opens transactions through services. Holding a connection across
+     *     [fetch] would consume two pool slots per request and exhaust the
+     *     pool well before request count.
+     *  3. `tx.update` to write the entry — short, independent transaction.
+     *
+     * The hit path does no serialization. [routeTemplate] is the
+     * bounded-cardinality label used in the structured log line.
+     *
+     * Two concurrent requests for the same missing key will both run
+     * [fetch] and both write — accepted at this scale for the simpler
+     * connection-management story; if the workload changes to make
+     * dedupe matter, gate inside `fetch` or front with a Caffeine
+     * single-flight layer.
      */
     suspend fun cachedJsonGet(
         key: String,
         routeTemplate: String,
         ttl: Duration = defaultTtl,
         fetch: suspend () -> String,
-    ): String =
-        tx.update {
-            repository.get(key)?.let { hit ->
-                log.info { "cwfgw4k.cache event=hit route=$routeTemplate" }
-                return@update hit
-            }
-            log.info { "cwfgw4k.cache event=miss route=$routeTemplate" }
-            val fresh = fetch()
-            repository.put(key, fresh, clock.instant().plus(ttl))
-            log.info { "cwfgw4k.cache event=put route=$routeTemplate ttl_seconds=${ttl.seconds}" }
-            fresh
+    ): String {
+        val hit = tx.get { repository.get(key) }
+        if (hit != null) {
+            log.info { "cwfgw4k.cache event=hit route=$routeTemplate" }
+            return hit
         }
+        log.info { "cwfgw4k.cache event=miss route=$routeTemplate" }
+        val fresh = fetch()
+        tx.update { repository.put(key, fresh, clock.instant().plus(ttl)) }
+        log.info { "cwfgw4k.cache event=put route=$routeTemplate ttl_seconds=${ttl.seconds}" }
+        return fresh
+    }
 
     /** Background-sweep entry point. Logs how many rows were deleted for dashboard tracking. */
     suspend fun deleteExpired(): Int {

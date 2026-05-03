@@ -63,10 +63,27 @@ steps:
       - '--allow-unauthenticated'
       - '--add-cloudsql-instances=${PROJECT_ID}:${_REGION}:${_SQL_INSTANCE}'
       - '--set-secrets=DB_PASSWORD=cwfgw4k-db-password:latest,AUTH_SESSION_SECRET=cwfgw4k-session-secret:latest,AUTH_ADMIN_PASSWORD=cwfgw4k-admin-password:latest'
-      - '--set-env-vars=DB_JDBC_URL=jdbc:postgresql:///${_DB_NAME}?cloudSqlInstance=${PROJECT_ID}:${_REGION}:${_SQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DB_USER=${_DB_USER},DB_SCHEMA=${_DB_SCHEMA},AUTH_ADMIN_USERNAME=admin'
-      - '--memory=512Mi'
-      - '--min-instances=0'
-      - '--max-instances=2'
+      - '--set-env-vars=DB_JDBC_URL=jdbc:postgresql:///${_DB_NAME}?cloudSqlInstance=${PROJECT_ID}:${_REGION}:${_SQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DB_USER=${_DB_USER},DB_SCHEMA=${_DB_SCHEMA},DB_POOL=10,AUTH_ADMIN_USERNAME=admin'
+      # Memory: 1Gi container with -Xmx512m in the Dockerfile leaves ~half the
+      # box for non-heap JVM (metaspace, JIT code cache, Netty direct buffers,
+      # JDBC buffers, thread stacks). Bump container + heap together if real
+      # load shows OOM-kill events in Cloud Run logs.
+      - '--memory=1Gi'
+      # Concurrency: Cloud Run defaults to 80 reqs per instance; with our
+      # JVM sizing and a per-instance pool of 10 connections, 20 in-flight
+      # requests per instance is the sustainable target — pool slots are
+      # released between cache hit / miss / put phases so 2x oversubscription
+      # is fine. Cap there and let max-instances absorb spikes.
+      - '--concurrency=20'
+      # Keep one instance warm so the first user (and post-deploy traffic)
+      # doesn't pay JVM bootstrap + Flyway migrations on every cold path.
+      - '--min-instances=1'
+      # 5 instances × 20 concurrency = 100 in-flight slots, well over the
+      # ~50-user target. Cloud SQL connection ceiling: 5 instances × DB_POOL=10
+      # = 50 connections, fits comfortably in db-g1-small (max 50) and any
+      # higher tier. db-f1-micro (max 25) would not — verify the tier with
+      # `gcloud sql instances describe cwfgw4k-prod` before bumping further.
+      - '--max-instances=5'
 
 substitutions:
   _REGION: us-west1

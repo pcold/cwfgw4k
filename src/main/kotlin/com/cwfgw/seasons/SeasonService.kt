@@ -10,9 +10,9 @@ class SeasonService(
     suspend fun list(
         leagueId: LeagueId?,
         seasonYear: Int?,
-    ): List<Season> = tx.read { repository.findAll(leagueId, seasonYear) }
+    ): List<Season> = tx.get { repository.findAll(leagueId, seasonYear) }
 
-    suspend fun get(id: SeasonId): Season? = tx.read { repository.findById(id) }
+    suspend fun get(id: SeasonId): Season? = tx.get { repository.findById(id) }
 
     suspend fun create(request: CreateSeasonRequest): Season = tx.update { repository.create(request) }
 
@@ -21,7 +21,7 @@ class SeasonService(
         request: UpdateSeasonRequest,
     ): Season? = tx.update { repository.update(id, request) }
 
-    suspend fun getRules(id: SeasonId): SeasonRules? = tx.read { repository.getRules(id) }
+    suspend fun getRules(id: SeasonId): SeasonRules? = tx.get { repository.getRules(id) }
 
     suspend fun delete(id: SeasonId): Boolean = tx.update { repository.delete(id) }
 }

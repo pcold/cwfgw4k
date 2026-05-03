@@ -9,12 +9,12 @@ class GolferService(
     suspend fun list(
         activeOnly: Boolean,
         search: String?,
-    ): List<Golfer> = tx.read { repository.findAll(activeOnly, search) }
+    ): List<Golfer> = tx.get { repository.findAll(activeOnly, search) }
 
-    suspend fun get(id: GolferId): Golfer? = tx.read { repository.findById(id) }
+    suspend fun get(id: GolferId): Golfer? = tx.get { repository.findById(id) }
 
     suspend fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
-        tx.read { repository.findByPgaPlayerId(pgaPlayerId) }
+        tx.get { repository.findByPgaPlayerId(pgaPlayerId) }
 
     suspend fun create(request: CreateGolferRequest): Golfer = tx.update { repository.create(request) }
 

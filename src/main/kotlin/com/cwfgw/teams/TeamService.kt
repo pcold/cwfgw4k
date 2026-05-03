@@ -8,9 +8,9 @@ class TeamService(
     private val repository: TeamRepository,
     private val tx: Transactor,
 ) {
-    suspend fun listBySeason(seasonId: SeasonId): List<Team> = tx.read { repository.findBySeason(seasonId) }
+    suspend fun listBySeason(seasonId: SeasonId): List<Team> = tx.get { repository.findBySeason(seasonId) }
 
-    suspend fun get(id: TeamId): Team? = tx.read { repository.findById(id) }
+    suspend fun get(id: TeamId): Team? = tx.get { repository.findById(id) }
 
     suspend fun create(
         seasonId: SeasonId,
@@ -22,7 +22,7 @@ class TeamService(
         request: UpdateTeamRequest,
     ): Team? = tx.update { repository.update(id, request) }
 
-    suspend fun getRoster(teamId: TeamId): List<RosterEntry> = tx.read { repository.getRoster(teamId) }
+    suspend fun getRoster(teamId: TeamId): List<RosterEntry> = tx.get { repository.getRoster(teamId) }
 
     suspend fun addToRoster(
         teamId: TeamId,
@@ -34,5 +34,5 @@ class TeamService(
         golferId: GolferId,
     ): Boolean = tx.update { repository.dropFromRoster(teamId, golferId) }
 
-    suspend fun getRosterView(seasonId: SeasonId): List<RosterViewTeam> = tx.read { repository.getRosterView(seasonId) }
+    suspend fun getRosterView(seasonId: SeasonId): List<RosterViewTeam> = tx.get { repository.getRosterView(seasonId) }
 }

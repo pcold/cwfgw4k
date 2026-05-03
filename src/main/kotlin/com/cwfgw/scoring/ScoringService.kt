@@ -44,10 +44,10 @@ class ScoringService(
     suspend fun getScores(
         seasonId: SeasonId,
         tournamentId: TournamentId,
-    ): List<FantasyScore> = tx.read { repository.getScores(seasonId, tournamentId) }
+    ): List<FantasyScore> = tx.get { repository.getScores(seasonId, tournamentId) }
 
     suspend fun getStandings(seasonId: SeasonId): List<SeasonStanding> =
-        tx.read { repository.getStandings(seasonId) }
+        tx.get { repository.getStandings(seasonId) }
 
     suspend fun deleteScoresByTournament(tournamentId: TournamentId): Int =
         tx.update { repository.deleteByTournament(tournamentId) }

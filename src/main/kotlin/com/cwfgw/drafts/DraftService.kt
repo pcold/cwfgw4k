@@ -23,7 +23,7 @@ class DraftService(
     private val teamRepository: TeamRepository,
     private val tx: Transactor,
 ) {
-    suspend fun get(seasonId: SeasonId): Draft? = tx.read { repository.findBySeason(seasonId) }
+    suspend fun get(seasonId: SeasonId): Draft? = tx.get { repository.findBySeason(seasonId) }
 
     suspend fun create(
         seasonId: SeasonId,

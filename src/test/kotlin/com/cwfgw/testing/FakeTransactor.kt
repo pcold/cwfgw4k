@@ -7,13 +7,16 @@ import org.jooq.impl.DSL
 
 /**
  * In-memory [Transactor] for service and route specs whose repositories are
- * Fakes that never touch [TransactionContext.dsl]. Both [read] and [update]
- * just run the block with a stub [TransactionContext] — no real transaction
- * is opened, so this won't blow up against a connectionless DSL.
+ * Fakes that never touch [TransactionContext.dsl]. All three methods just
+ * run the block with a stub [TransactionContext] — no real transaction is
+ * opened, so this won't blow up against a connectionless DSL.
  */
 internal class FakeTransactor(
     private val ctx: TransactionContext = noopTransactionContext,
 ) : Transactor {
+    override suspend fun <A> get(block: suspend context(TransactionContext) () -> A): A =
+        with(ctx) { block() }
+
     override suspend fun <A> read(block: suspend context(TransactionContext) () -> A): A =
         with(ctx) { block() }
 

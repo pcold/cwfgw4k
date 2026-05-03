@@ -19,7 +19,7 @@ suspend fun seedAdminIfEmpty(
     tx: Transactor,
     config: AuthConfig,
 ) {
-    if (tx.read { userRepository.countAll() } > 0) return
+    if (tx.get { userRepository.countAll() } > 0) return
 
     val username = config.adminUsername
     val password = config.adminPassword

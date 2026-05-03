@@ -29,11 +29,11 @@ class TournamentLinkService(
     private val tx: Transactor,
 ) {
     suspend fun listByTournament(tournamentId: TournamentId): List<TournamentPlayerOverride> =
-        tx.read { repository.listByTournament(tournamentId) }
+        tx.get { repository.listByTournament(tournamentId) }
 
     /** Map a single tournament's overrides into the shape the matchers consume. */
     suspend fun overrideMap(tournamentId: TournamentId): Map<String, GolferId> =
-        tx.read { repository.listByTournament(tournamentId) }.associate { it.espnCompetitorId to it.golferId }
+        tx.get { repository.listByTournament(tournamentId) }.associate { it.espnCompetitorId to it.golferId }
 
     suspend fun upsert(
         tournamentId: TournamentId,

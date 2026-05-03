@@ -10,12 +10,12 @@ class TournamentService(
     suspend fun list(
         seasonId: SeasonId?,
         status: TournamentStatus?,
-    ): List<Tournament> = tx.read { repository.findAll(seasonId = seasonId, status = status) }
+    ): List<Tournament> = tx.get { repository.findAll(seasonId = seasonId, status = status) }
 
-    suspend fun get(id: TournamentId): Tournament? = tx.read { repository.findById(id) }
+    suspend fun get(id: TournamentId): Tournament? = tx.get { repository.findById(id) }
 
     suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
-        tx.read { repository.findByPgaTournamentId(pgaTournamentId) }
+        tx.get { repository.findByPgaTournamentId(pgaTournamentId) }
 
     suspend fun create(request: CreateTournamentRequest): Tournament = tx.update { repository.create(request) }
 
@@ -25,7 +25,7 @@ class TournamentService(
     ): Tournament? = tx.update { repository.update(id, request) }
 
     suspend fun getResults(tournamentId: TournamentId): List<TournamentResult> =
-        tx.read { repository.getResults(tournamentId) }
+        tx.get { repository.getResults(tournamentId) }
 
     suspend fun importResults(
         tournamentId: TournamentId,
