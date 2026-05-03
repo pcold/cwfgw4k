@@ -19,3 +19,13 @@ auth:
   # we never bake in a default password.
   adminUsername: ${AUTH_ADMIN_USERNAME:-}
   adminPassword: ${AUTH_ADMIN_PASSWORD:-}
+
+cache:
+  # Default TTL for cached GET responses. Routes can pass per-call overrides.
+  # Start at 5 minutes; tune up if upstream load is still high, down if liveness
+  # complaints come in.
+  defaultTtlSeconds: ${CACHE_DEFAULT_TTL_SECONDS:-300}
+  # Interval for the background coroutine that deletes expired rows. Default
+  # matches TTL: at steady state the table holds at most ~1 TTL window of stale
+  # rows before sweep clears them.
+  sweepIntervalSeconds: ${CACHE_SWEEP_INTERVAL_SECONDS:-300}

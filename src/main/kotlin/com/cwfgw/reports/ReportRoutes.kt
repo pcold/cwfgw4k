@@ -1,5 +1,7 @@
 package com.cwfgw.reports
 
+import com.cwfgw.cache.RequestCache
+import com.cwfgw.cache.cachedRespond
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.toGolferId
 import com.cwfgw.http.DomainError
@@ -9,18 +11,20 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.toSeasonId
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.toTournamentId
-import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 
-fun Route.reportRoutes(service: WeeklyReportService) {
+fun Route.reportRoutes(
+    service: WeeklyReportService,
+    cache: RequestCache,
+) {
     route("/seasons/{id}") {
-        get("/report") { getSeasonReport(service) }
-        get("/report/{tournamentId}") { getReport(service) }
-        get("/rankings") { getRankings(service) }
-        get("/golfer/{golferId}/history") { getGolferHistory(service) }
+        get("/report") { getSeasonReport(service, cache) }
+        get("/report/{tournamentId}") { getReport(service, cache) }
+        get("/rankings") { getRankings(service, cache) }
+        get("/golfer/{golferId}/history") { getGolferHistory(service, cache) }
     }
 }
 
@@ -33,24 +37,42 @@ private fun RoutingContext.tournamentId(): TournamentId =
 private fun RoutingContext.golferId(): GolferId =
     call.parameters["golferId"]?.toGolferId() ?: throw DomainError.Validation("invalid golfer id")
 
-private suspend fun RoutingContext.getSeasonReport(service: WeeklyReportService) {
+private suspend fun RoutingContext.getSeasonReport(
+    service: WeeklyReportService,
+    cache: RequestCache,
+) {
+    val sid = seasonId()
     val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
-    call.respond(service.getSeasonReport(seasonId(), live = live).orThrow())
+    cachedRespond(cache) { service.getSeasonReport(sid, live = live).orThrow() }
 }
 
-private suspend fun RoutingContext.getReport(service: WeeklyReportService) {
+private suspend fun RoutingContext.getReport(
+    service: WeeklyReportService,
+    cache: RequestCache,
+) {
+    val sid = seasonId()
+    val tid = tournamentId()
     val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
-    call.respond(service.getReport(seasonId(), tournamentId(), live = live).orThrow())
+    cachedRespond(cache) { service.getReport(sid, tid, live = live).orThrow() }
 }
 
-private suspend fun RoutingContext.getRankings(service: WeeklyReportService) {
+private suspend fun RoutingContext.getRankings(
+    service: WeeklyReportService,
+    cache: RequestCache,
+) {
+    val sid = seasonId()
     val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
     val through = optionalQueryParam("through", String::toTournamentId)
-    call.respond(service.getRankings(seasonId(), throughTournamentId = through, live = live).orThrow())
+    cachedRespond(cache) { service.getRankings(sid, throughTournamentId = through, live = live).orThrow() }
 }
 
-private suspend fun RoutingContext.getGolferHistory(service: WeeklyReportService) {
-    call.respond(service.getGolferHistory(seasonId(), golferId()).orThrow())
+private suspend fun RoutingContext.getGolferHistory(
+    service: WeeklyReportService,
+    cache: RequestCache,
+) {
+    val sid = seasonId()
+    val gid = golferId()
+    cachedRespond(cache) { service.getGolferHistory(sid, gid).orThrow() }
 }
 
 private fun ReportError.toDomainError(): DomainError =

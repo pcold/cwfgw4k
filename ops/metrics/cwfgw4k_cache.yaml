@@ -1,0 +1,33 @@
+# Log-based counter metric for cache events emitted by RequestCache.
+# Sibling of cwfgw4k_request_count: same shape (one count per log line),
+# different label set tailored to cache hit-rate analysis.
+#
+# Source log lines (INFO):
+#   cwfgw4k.cache event=hit  route=/api/v1/scoring/:id/:id
+#   cwfgw4k.cache event=miss route=/api/v1/scoring/:id/:id
+#   cwfgw4k.cache event=put  route=/api/v1/scoring/:id/:id ttl_seconds=300
+#   cwfgw4k.cache event=sweep deleted=12
+#
+# Apply with:
+#   gcloud logging metrics create cwfgw4k_cache \
+#     --project=cwfgw4k \
+#     --config-from-file=ops/metrics/cwfgw4k_cache.yaml
+name: cwfgw4k_cache
+description: Cache event count (hit, miss, put, sweep) emitted by RequestCache
+filter: |
+  resource.type="cloud_run_revision"
+  AND resource.labels.service_name="cwfgw4k"
+  AND textPayload:"cwfgw4k.cache"
+metricDescriptor:
+  metricKind: DELTA
+  valueType: INT64
+  labels:
+    - key: event
+      valueType: STRING
+      description: hit | miss | put | sweep
+    - key: route
+      valueType: STRING
+      description: Normalized route template (UUIDs → :id, numeric segments → :n). Empty on sweep events.
+labelExtractors:
+  event: REGEXP_EXTRACT(textPayload, "event=([a-z]+)")
+  route: REGEXP_EXTRACT(textPayload, "route=(\\S+)")

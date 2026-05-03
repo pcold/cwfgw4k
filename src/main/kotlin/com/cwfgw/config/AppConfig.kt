@@ -8,6 +8,7 @@ data class AppConfig(
     val http: HttpConfig,
     val db: DbConfig,
     val auth: AuthConfig,
+    val cache: CacheConfig,
 ) {
     companion object {
         fun load(overrides: Map<String, Any> = emptyMap()): AppConfig =
@@ -34,4 +35,16 @@ data class AuthConfig(
     val sessionMaxAgeSeconds: Long,
     val adminUsername: String?,
     val adminPassword: String?,
+)
+
+/**
+ * Tuning for the Postgres-backed request cache. [defaultTtlSeconds] is the
+ * default expiry for newly-stored entries; routes can pass an explicit TTL
+ * override per call. [sweepIntervalSeconds] controls how often the
+ * background coroutine deletes expired rows; setting it to TTL keeps the
+ * table at most ~one TTL window of stale rows.
+ */
+data class CacheConfig(
+    val defaultTtlSeconds: Long,
+    val sweepIntervalSeconds: Long,
 )

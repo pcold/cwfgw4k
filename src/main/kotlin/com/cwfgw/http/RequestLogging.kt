@@ -23,7 +23,7 @@ private val NUMERIC_SEGMENT = Regex("(?<=/)\\d+(?=/|$)")
  *    keeps the separator intact so consecutive numeric segments each match on
  *    their own instead of the first one gobbling the slash.
  */
-internal fun normalizeRoute(path: String): String =
+fun normalizeRoute(path: String): String =
     when {
         path.startsWith("/assets/") -> "/assets/*"
         else -> NUMERIC_SEGMENT.replace(UUID_SEGMENT.replace(path, ":id"), ":n")

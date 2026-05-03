@@ -2,6 +2,8 @@ package com.cwfgw.testing
 
 import com.cwfgw.AppServices
 import com.cwfgw.admin.AdminService
+import com.cwfgw.cache.FakeCacheRepository
+import com.cwfgw.cache.RequestCache
 import com.cwfgw.db.Transactor
 import com.cwfgw.drafts.DraftService
 import com.cwfgw.drafts.FakeDraftRepository
@@ -53,6 +55,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
+import java.time.Duration
 
 @OptIn(ExperimentalSerializationApi::class)
 private val TEST_JSON =
@@ -146,6 +149,8 @@ class ApiFixture {
         )
     var userRepository: UserRepository = FakeUserRepository()
     var authService: AuthService = AuthService(userRepository, transactor, cost = TEST_BCRYPT_COST)
+    var requestCache: RequestCache =
+        RequestCache(FakeCacheRepository(), transactor, defaultTtl = Duration.ofMinutes(5))
     var authSetup: AuthSetup =
         AuthSetup(
             sessionSecret = TEST_SESSION_SECRET.toByteArray(),
@@ -156,6 +161,11 @@ class ApiFixture {
 private const val TEST_BCRYPT_COST = 4
 private const val TEST_SESSION_MAX_AGE = 3_600L
 private const val TEST_SESSION_SECRET = "test-only-session-secret-not-used-in-prod"
+
+// Long enough that the launchCacheSweep coroutine never fires inside a single
+// test's lifetime. The fake transactor + fake cache repo would be safe to
+// call, but skipping the loop entirely avoids stray log lines.
+private const val TEST_SWEEP_INTERVAL_SECONDS: Long = 3_600L
 
 /**
  * Spin up a Ktor test application with every domain wired to fake-backed services; the optional
@@ -256,6 +266,8 @@ private fun ApiFixture.toAppServices(): AppServices =
         authService = authService,
         userRepository = userRepository,
         transactor = transactor,
+        requestCache = requestCache,
+        sweepIntervalSeconds = TEST_SWEEP_INTERVAL_SECONDS,
         authSetup = authSetup,
     )
 

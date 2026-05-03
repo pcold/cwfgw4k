@@ -1,6 +1,7 @@
 package com.cwfgw
 
 import com.cwfgw.admin.AdminService
+import com.cwfgw.cache.RequestCache
 import com.cwfgw.db.Transactor
 import com.cwfgw.drafts.DraftService
 import com.cwfgw.espn.EspnService
@@ -45,5 +46,7 @@ data class AppServices(
     val authService: AuthService,
     val userRepository: UserRepository,
     val transactor: Transactor,
+    val requestCache: RequestCache,
+    val sweepIntervalSeconds: Long,
     val authSetup: AuthSetup,
 )

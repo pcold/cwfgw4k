@@ -2,6 +2,8 @@ package com.cwfgw
 
 import com.cwfgw.admin.AdminService
 import com.cwfgw.admin.adminRoutes
+import com.cwfgw.cache.CacheRepository
+import com.cwfgw.cache.RequestCache
 import com.cwfgw.config.AppConfig
 import com.cwfgw.db.Database
 import com.cwfgw.db.Transactor
@@ -16,6 +18,7 @@ import com.cwfgw.golfers.GolferService
 import com.cwfgw.golfers.golferRoutes
 import com.cwfgw.health.DatabaseHealthProbe
 import com.cwfgw.health.healthRoutes
+import com.cwfgw.http.appJson
 import com.cwfgw.http.installErrorHandling
 import com.cwfgw.http.installRequestLogging
 import com.cwfgw.http.spaFallback
@@ -54,6 +57,7 @@ import com.cwfgw.users.UserSession
 import com.cwfgw.users.authRoutes
 import com.cwfgw.users.seedAdminIfEmpty
 import com.cwfgw.users.toUserId
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
@@ -71,11 +75,14 @@ import io.ktor.server.routing.routing
 import io.ktor.server.sessions.SessionTransportTransformerMessageAuthentication
 import io.ktor.server.sessions.Sessions
 import io.ktor.server.sessions.cookie
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNamingStrategy
+import org.jooq.exception.DataAccessException
 import java.security.KeyStore
+import java.sql.SQLException
+import java.time.Duration
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
 
@@ -98,6 +105,12 @@ internal fun buildServices(
     httpClient: HttpClient,
 ): AppServices {
     val transactor = Transactor(database.dsl)
+    val requestCache =
+        RequestCache(
+            repository = CacheRepository(),
+            tx = transactor,
+            defaultTtl = Duration.ofSeconds(config.cache.defaultTtlSeconds),
+        )
     val teamRepository = TeamRepository()
     val teamService = TeamService(teamRepository, transactor)
     val seasonRepository = SeasonRepository()
@@ -166,6 +179,8 @@ internal fun buildServices(
         authService = AuthService(userRepository, transactor),
         userRepository = userRepository,
         transactor = transactor,
+        requestCache = requestCache,
+        sweepIntervalSeconds = config.cache.sweepIntervalSeconds,
         authSetup =
             AuthSetup(
                 sessionSecret = config.auth.sessionSecret.toByteArray(),
@@ -228,16 +243,9 @@ internal fun requireValidAuthSecret(auth: com.cwfgw.config.AuthConfig) {
     }
 }
 
-@OptIn(ExperimentalSerializationApi::class)
 fun Application.module(services: AppServices) {
     install(ContentNegotiation) {
-        json(
-            Json {
-                ignoreUnknownKeys = true
-                encodeDefaults = true
-                namingStrategy = JsonNamingStrategy.SnakeCase
-            },
-        )
+        json(appJson)
     }
     install(Sessions) {
         cookie<UserSession>("cwfgw_session") {
@@ -258,12 +266,40 @@ fun Application.module(services: AppServices) {
     }
     installRequestLogging()
     installErrorHandling()
+    launchCacheSweep(services.requestCache, services.sweepIntervalSeconds)
     routing {
         apiRoutes(services)
         staticRoutes()
         spaFallback()
     }
 }
+
+/**
+ * Launch the periodic cache sweep on the application's coroutine scope so it
+ * inherits the lifecycle of the embedded server. The loop logs each
+ * iteration via [RequestCache.deleteExpired]; failures don't tear the
+ * application down — we log and try again next interval.
+ */
+private fun Application.launchCacheSweep(
+    requestCache: RequestCache,
+    sweepIntervalSeconds: Long,
+) {
+    val intervalMs = sweepIntervalSeconds * 1000L
+    launch {
+        while (isActive) {
+            try {
+                requestCache.deleteExpired()
+            } catch (e: SQLException) {
+                cacheSweepLog.warn(e) { "Cache sweep failed; retrying after interval" }
+            } catch (e: DataAccessException) {
+                cacheSweepLog.warn(e) { "Cache sweep failed; retrying after interval" }
+            }
+            delay(intervalMs)
+        }
+    }
+}
+
+private val cacheSweepLog = KotlinLogging.logger("com.cwfgw.cache.Sweep")
 
 private fun Routing.apiRoutes(services: AppServices) {
     route("/api/v1") {
@@ -272,15 +308,15 @@ private fun Routing.apiRoutes(services: AppServices) {
         golferRoutes(services.golferService)
         seasonRoutes(services.seasonService)
         teamRoutes(services.teamService)
-        tournamentRoutes(services.tournamentService)
+        tournamentRoutes(services.tournamentService, services.requestCache)
         tournamentOpsRoutes(services.tournamentOpsService)
         seasonOpsRoutes(services.seasonOpsService)
         draftRoutes(services.draftService)
-        scoringRoutes(services.scoringService)
+        scoringRoutes(services.scoringService, services.requestCache)
         espnRoutes(services.espnService)
         adminRoutes(services.adminService)
         tournamentLinkRoutes(services.espnService, services.tournamentLinkService)
-        reportRoutes(services.weeklyReportService)
+        reportRoutes(services.weeklyReportService, services.requestCache)
         authRoutes(services.authService)
     }
 }

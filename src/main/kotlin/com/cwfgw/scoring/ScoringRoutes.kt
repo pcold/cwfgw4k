@@ -1,5 +1,7 @@
 package com.cwfgw.scoring
 
+import com.cwfgw.cache.RequestCache
+import com.cwfgw.cache.cachedRespond
 import com.cwfgw.http.DomainError
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
@@ -16,12 +18,15 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 
-fun Route.scoringRoutes(service: ScoringService) {
+fun Route.scoringRoutes(
+    service: ScoringService,
+    cache: RequestCache,
+) {
     route("/seasons/{seasonId}") {
-        get("/standings") { getStandings(service) }
+        get("/standings") { getStandings(service, cache) }
         route("/scoring") {
-            get("/side-bets") { getSideBetStandings(service) }
-            get("/{tournamentId}") { getScores(service) }
+            get("/side-bets") { getSideBetStandings(service, cache) }
+            get("/{tournamentId}") { getScores(service, cache) }
             authenticate(SESSION_AUTH_NAME) {
                 post("/refresh-standings") { refreshStandings(service) }
                 post("/calculate/{tournamentId}") { calculateScores(service) }
@@ -49,12 +54,21 @@ private fun <T> Result<T, ScoringError>.orThrow(): T =
         is Result.Err -> throw error.toDomainError()
     }
 
-private suspend fun RoutingContext.getStandings(service: ScoringService) {
-    call.respond(service.getStandings(seasonId()))
+private suspend fun RoutingContext.getStandings(
+    service: ScoringService,
+    cache: RequestCache,
+) {
+    val sid = seasonId()
+    cachedRespond(cache) { service.getStandings(sid) }
 }
 
-private suspend fun RoutingContext.getScores(service: ScoringService) {
-    call.respond(service.getScores(seasonId(), tournamentId()))
+private suspend fun RoutingContext.getScores(
+    service: ScoringService,
+    cache: RequestCache,
+) {
+    val sid = seasonId()
+    val tid = tournamentId()
+    cachedRespond(cache) { service.getScores(sid, tid) }
 }
 
 private suspend fun RoutingContext.calculateScores(service: ScoringService) {
@@ -67,6 +81,10 @@ private suspend fun RoutingContext.refreshStandings(service: ScoringService) {
     call.respond(service.refreshStandings(seasonId()).orThrow())
 }
 
-private suspend fun RoutingContext.getSideBetStandings(service: ScoringService) {
-    call.respond(service.getSideBetStandings(seasonId()).orThrow())
+private suspend fun RoutingContext.getSideBetStandings(
+    service: ScoringService,
+    cache: RequestCache,
+) {
+    val sid = seasonId()
+    cachedRespond(cache) { service.getSideBetStandings(sid).orThrow() }
 }

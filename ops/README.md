@@ -17,12 +17,15 @@ ingestion cost — the charts read from:
   `container/startup_latencies`.
 - **Cloud SQL built-ins** (free): `database/cpu/utilization`,
   `database/postgresql/num_backends`.
-- **Four user log-based metrics** (free under the 20-metric/project quota):
+- **Five user log-based metrics** (free under the 20-metric/project quota):
   `cwfgw4k_unhandled_errors`, `cwfgw4k_espn_failures`, `cwfgw4k_requests`,
-  `cwfgw4k_request_count`. The first three are counters; `cwfgw4k_requests` is a
-  duration distribution (used for P95 latency), and `cwfgw4k_request_count` is
-  its counter sibling over the same log line — xyCharts need a scalar metric
-  to rank series for top-N plotting, which distributions can't provide.
+  `cwfgw4k_request_count`, `cwfgw4k_cache`. The first three plus the last are
+  counters; `cwfgw4k_requests` is a duration distribution (used for P95
+  latency), and `cwfgw4k_request_count` is its counter sibling over the same
+  log line — xyCharts need a scalar metric to rank series for top-N plotting,
+  which distributions can't provide. `cwfgw4k_cache` counts hit / miss / put /
+  sweep events emitted by `RequestCache` and is labeled by event type and
+  normalized route.
 
 ## One-time setup
 
@@ -87,7 +90,30 @@ gcloud logging metrics create cwfgw4k_request_count \
   --config-from-file=ops/metrics/cwfgw4k_request_count.yaml
 ```
 
-### 5. Import the dashboards
+### 5. Create the `cwfgw4k_cache` counter metric
+
+Counts cache events (hit, miss, put, sweep) emitted by `RequestCache`.
+Labeled by `event` and normalized `route` so dashboards can compute hit
+rate per endpoint.
+
+```bash
+gcloud logging metrics create cwfgw4k_cache \
+  --project=cwfgw4k \
+  --config-from-file=ops/metrics/cwfgw4k_cache.yaml
+```
+
+Suggested dashboard panels:
+
+- **Cache hit rate by route** — `count(event=hit) / (count(event=hit) + count(event=miss))`
+  per `route`. Healthy: ≥ 0.7 on hot endpoints; surprisingly low values usually
+  mean the URI carries a high-cardinality query param the key doesn't normalize.
+- **Cache writes per minute** — `count(event=put)` over time. Maps to upstream
+  load (every put is a miss that called the underlying service / repo).
+- **Sweep size** — `count(event=sweep)` is one per run; pair with the same log
+  line's `deleted=N` if you want a row-count panel (regex-extract a separate
+  metric for that).
+
+### 6. Import the dashboards
 
 ```bash
 gcloud monitoring dashboards create \
@@ -99,7 +125,7 @@ gcloud monitoring dashboards create \
   --config-from-file=ops/dashboards/api-usage.json
 ```
 
-### 6. Enable Cloud SQL Query Insights
+### 7. Enable Cloud SQL Query Insights
 
 Turns on per-statement latency + plan capture for the `cwfgw4k-prod`
 instance. Query string length is pinned at the 4500-byte max so normalized

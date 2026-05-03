@@ -1,5 +1,7 @@
 package com.cwfgw.tournaments
 
+import com.cwfgw.cache.RequestCache
+import com.cwfgw.cache.cachedRespond
 import com.cwfgw.http.DomainError
 import com.cwfgw.http.optionalQueryParam
 import com.cwfgw.seasons.toSeasonId
@@ -16,11 +18,14 @@ import io.ktor.server.routing.post
 import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 
-fun Route.tournamentRoutes(service: TournamentService) {
+fun Route.tournamentRoutes(
+    service: TournamentService,
+    cache: RequestCache,
+) {
     route("/tournaments") {
         get { listTournaments(service) }
         get("/{id}") { getTournament(service) }
-        get("/{id}/results") { getResults(service) }
+        get("/{id}/results") { getResults(service, cache) }
         authenticate(SESSION_AUTH_NAME) {
             post { createTournament(service) }
             put("/{id}") { updateTournament(service) }
@@ -59,8 +64,12 @@ private suspend fun RoutingContext.updateTournament(service: TournamentService) 
     call.respond(tournament)
 }
 
-private suspend fun RoutingContext.getResults(service: TournamentService) {
-    call.respond(service.getResults(tournamentId()))
+private suspend fun RoutingContext.getResults(
+    service: TournamentService,
+    cache: RequestCache,
+) {
+    val id = tournamentId()
+    cachedRespond(cache) { service.getResults(id) }
 }
 
 private suspend fun RoutingContext.importResults(service: TournamentService) {
