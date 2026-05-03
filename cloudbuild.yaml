@@ -75,9 +75,13 @@ steps:
       # released between cache hit / miss / put phases so 2x oversubscription
       # is fine. Cap there and let max-instances absorb spikes.
       - '--concurrency=20'
-      # Keep one instance warm so the first user (and post-deploy traffic)
-      # doesn't pay JVM bootstrap + Flyway migrations on every cold path.
-      - '--min-instances=1'
+      # Cost-optimized: scale to zero when idle. Trade-off — the first
+      # user after an idle period pays ~10–15s cold start (Cloud Run
+      # container boot + JVM bootstrap + Flyway scan). Acceptable for a
+      # low-traffic app whose users tolerate occasional spinup. Bump back
+      # to 1 once paid traffic justifies the always-on cost (~$47/mo for
+      # 1 vCPU × 1Gi at always-allocated rates).
+      - '--min-instances=0'
       # 5 instances × 20 concurrency = 100 in-flight slots, well over the
       # ~50-user target. Cloud SQL connection ceiling: 5 instances × DB_POOL=10
       # = 50 connections, fits comfortably in db-g1-small (max 50) and any
