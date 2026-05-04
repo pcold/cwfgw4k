@@ -82,12 +82,14 @@ steps:
       # to 1 once paid traffic justifies the always-on cost (~$47/mo for
       # 1 vCPU × 1Gi at always-allocated rates).
       - '--min-instances=0'
-      # 5 instances × 20 concurrency = 100 in-flight slots, well over the
-      # ~50-user target. Cloud SQL connection ceiling: 5 instances × DB_POOL=10
-      # = 50 connections, fits comfortably in db-g1-small (max 50) and any
-      # higher tier. db-f1-micro (max 25) would not — verify the tier with
-      # `gcloud sql instances describe cwfgw4k-prod` before bumping further.
-      - '--max-instances=5'
+      # 4 instances × 20 concurrency = 80 in-flight slots — still plenty for
+      # the ~50-user target. Cloud SQL connection ceiling: 4 instances ×
+      # DB_POOL=10 = 40 connections used, leaving 10 free for psql / Flyway
+      # during deploys / Cloud SQL internal use on the db-g1-small tier
+      # (max 50). On higher SQL tiers (db-custom-* or larger) we could push
+      # to 5+ instances; verify with `gcloud sql instances describe cwfgw4k-prod`
+      # before bumping.
+      - '--max-instances=4'
 
 substitutions:
   _REGION: us-west1
