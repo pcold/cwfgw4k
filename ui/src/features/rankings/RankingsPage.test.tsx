@@ -75,7 +75,7 @@ describe('RankingsPage', () => {
     tournamentsMock.mockReset();
   });
 
-  it('loads the full season rankings by default', async () => {
+  it('defaults to All Tournaments when every tournament is finalized', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournament]);
@@ -103,6 +103,27 @@ describe('RankingsPage', () => {
     await user.selectOptions(select, 'tn-7');
 
     expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', true, 'tn-7');
+  });
+
+  it('defaults to the earliest non-finalized tournament when one exists', async () => {
+    const completed: Tournament = { ...tournament, id: 'tn-completed', status: 'completed' };
+    const upcoming: Tournament = {
+      ...tournament,
+      id: 'tn-upcoming',
+      status: 'upcoming',
+      startDate: '2026-04-01',
+      endDate: '2026-04-04',
+      week: '13',
+    };
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([completed, upcoming]);
+    rankingsMock.mockResolvedValue(rankings);
+
+    renderWithProviders(<RankingsPage />);
+
+    await screen.findByRole('heading', { name: /Team Standings/i });
+    expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', true, 'tn-upcoming');
   });
 
   it('shows an error message when rankings fail to load', async () => {

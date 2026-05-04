@@ -226,6 +226,39 @@ describe('PlayerRankingsPage', () => {
     );
   });
 
+  it('defaults the through-selector to the earliest non-finalized tournament', async () => {
+    const completed = tournament({
+      id: 'tn-completed',
+      startDate: '2026-03-01',
+      status: 'completed',
+    });
+    const upcoming = tournament({
+      id: 'tn-upcoming',
+      startDate: '2026-04-01',
+      status: 'upcoming',
+    });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([completed, upcoming]);
+    rostersMock.mockResolvedValue(rosters);
+    tournamentReportMock.mockImplementation((_s: string, tournamentId: string) =>
+      Promise.resolve(
+        report(tournamentId, {
+          teams: [team({ cells: [row({ golferId: 'g-1', earnings: 18, topTens: 1 })] })],
+        }),
+      ),
+    );
+
+    renderWithProviders(<PlayerRankingsPage />);
+
+    // The through-selector should preselect the earliest non-finalized
+    // tournament (tn-upcoming), not "All Tournaments". Wait for the
+    // tournaments query to populate the option list before asserting.
+    await screen.findByRole('option', { name: /tn-upcoming|Sample Open.*upcoming/i });
+    const select = screen.getByLabelText(/Through/i) as HTMLSelectElement;
+    expect(select.value).toBe('tn-upcoming');
+  });
+
   it('shows an empty state when no players have a top 10', async () => {
     const tournA = tournament({ id: 'tn-a', name: 'Open A' });
     leaguesMock.mockResolvedValue([league]);

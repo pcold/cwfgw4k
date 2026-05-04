@@ -4,7 +4,7 @@ import { api } from '@/shared/api/client';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
-import { tournamentLabel } from '@/shared/util/tournament';
+import { earliestUnfinalized, tournamentLabel } from '@/shared/util/tournament';
 import type { Tournament, WeeklyReport } from '@/shared/api/types';
 import { buildPlayerRankings } from './playerRankingsModel';
 import PlayerRankingsView from './PlayerRankingsView';
@@ -51,7 +51,9 @@ function tournamentsToFetch(
 function PlayerRankingsPage() {
   const { seasonId, live } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
-  const [throughTournamentId, setThroughTournamentId] = useState<string>(ALL_TOURNAMENTS);
+  // null = use the computed default (earliest non-finalized tournament, or
+  // ALL_TOURNAMENTS if every tournament is completed).
+  const [throughOverride, setThroughOverride] = useState<string | null>(null);
   const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
@@ -65,6 +67,11 @@ function PlayerRankingsPage() {
   });
 
   const tournaments = tournamentsQuery.data ?? [];
+  const defaultThrough =
+    tournamentsQuery.data === undefined
+      ? null
+      : (earliestUnfinalized(tournamentsQuery.data) ?? ALL_TOURNAMENTS);
+  const throughTournamentId = throughOverride ?? defaultThrough ?? ALL_TOURNAMENTS;
   const targets = tournamentsToFetch(tournaments, throughTournamentId, live);
 
   const reportQueries = useQueries({
@@ -97,7 +104,7 @@ function PlayerRankingsPage() {
               id="player-rankings-through"
               className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"
               value={throughTournamentId}
-              onChange={(e) => setThroughTournamentId(e.target.value)}
+              onChange={(e) => setThroughOverride(e.target.value)}
             >
               <option value={ALL_TOURNAMENTS}>All Tournaments</option>
               {tournaments.map((t) => (

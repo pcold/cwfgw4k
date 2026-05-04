@@ -3,7 +3,7 @@ import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
-import { tournamentLabel } from '@/shared/util/tournament';
+import { earliestUnfinalized, tournamentLabel } from '@/shared/util/tournament';
 import RankingsView from './RankingsView';
 
 const ALL_TOURNAMENTS = '';
@@ -11,24 +11,29 @@ const ALL_TOURNAMENTS = '';
 function RankingsPage() {
   const { seasonId, live } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
-  const [throughTournamentId, setThroughTournamentId] = useState<string>(ALL_TOURNAMENTS);
+  // null = user hasn't picked yet, use the computed default; "" = user
+  // explicitly picked All Tournaments; "<uuid>" = explicit tournament.
+  const [throughOverride, setThroughOverride] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
     queryKey: ['tournaments', seasonId],
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
 
+  const tournaments = tournamentsQuery.data;
+  const defaultThrough =
+    tournaments === undefined ? null : (earliestUnfinalized(tournaments) ?? ALL_TOURNAMENTS);
+  const throughTournamentId = throughOverride ?? defaultThrough;
+
   const rankingsQuery = useQuery({
     queryKey: ['rankings', seasonId, live, throughTournamentId],
     queryFn:
-      seasonId === null
+      seasonId === null || throughTournamentId === null
         ? skipToken
         : () => api.rankings(seasonId, live, throughTournamentId || undefined),
   });
 
   if (leaguesGate) return leaguesGate;
-
-  const tournaments = tournamentsQuery.data ?? [];
 
   return (
     <div className="space-y-4">
@@ -42,11 +47,11 @@ function RankingsPage() {
         <select
           id="rankings-through-tournament"
           className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"
-          value={throughTournamentId}
-          onChange={(e) => setThroughTournamentId(e.target.value)}
+          value={throughTournamentId ?? ALL_TOURNAMENTS}
+          onChange={(e) => setThroughOverride(e.target.value)}
         >
           <option value={ALL_TOURNAMENTS}>All Tournaments</option>
-          {tournaments.map((t) => (
+          {(tournaments ?? []).map((t) => (
             <option key={t.id} value={t.id}>
               {tournamentLabel(t)}
             </option>
