@@ -249,6 +249,102 @@
             ]
           }
         }
+      },
+
+      {
+        "xPos": 0,
+        "yPos": 16,
+        "width": 12,
+        "height": 1,
+        "widget": {
+          "title": "Cache",
+          "text": {
+            "content": "RequestCache events emitted by cachedRespond — populated by the `cwfgw4k_cache` log-based metric. A healthy hit rate on warm endpoints is > 0.7. Writes (`event=put`) map directly to upstream load — every put is a miss that hit the underlying service.",
+            "format": "MARKDOWN"
+          }
+        }
+      },
+
+      {
+        "xPos": 0,
+        "yPos": 17,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Cache events over time",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "STACKED_AREA",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"logging.googleapis.com/user/cwfgw4k_cache\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.labels.event"]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 17,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Cache hit rate by route",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "yAxis": { "label": "hit rate (0.0 – 1.0)", "scale": "LINEAR" },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesQueryLanguage": "fetch cloud_run_revision::logging.googleapis.com/user/cwfgw4k_cache | filter resource.service_name == 'cwfgw4k' && (metric.event == 'hit' || metric.event == 'miss') | align rate(5m) | every 1m | group_by [metric.route, metric.event], .sum | { hit: filter metric.event == 'hit'; miss: filter metric.event == 'miss' } | ratio | window 5m"
+                }
+              }
+            ]
+          }
+        }
+      },
+
+      {
+        "xPos": 0,
+        "yPos": 21,
+        "width": 12,
+        "height": 4,
+        "widget": {
+          "title": "Cache writes (put) by route",
+          "xyChart": {
+            "chartOptions": { "mode": "COLOR" },
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "timeSeriesQuery": {
+                  "timeSeriesFilter": {
+                    "filter": "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"cwfgw4k\" AND metric.type = \"logging.googleapis.com/user/cwfgw4k_cache\" AND metric.labels.event = \"put\"",
+                    "aggregation": {
+                      "alignmentPeriod": "60s",
+                      "perSeriesAligner": "ALIGN_DELTA",
+                      "crossSeriesReducer": "REDUCE_SUM",
+                      "groupByFields": ["metric.labels.route"]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
       }
     ]
   }
