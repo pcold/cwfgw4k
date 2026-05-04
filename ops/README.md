@@ -226,6 +226,34 @@ the staging instance is alive; teardown happens promptly after the burst.
 Requires the caller to have these IAM roles on the cwfgw4k project:
 `Cloud SQL Admin`, `Cloud Run Admin`, `Secret Manager Secret Accessor`.
 
+### Reproducing a wedge with `stress.sh`
+
+`run.sh` walks endpoints sequentially against a single tournament_id, so
+single-flight collapses concurrent misses onto one fetch and the access
+pattern that wedged prod on May 3 (multi-tournament parallel fan-out
+where every `report/<tid>?live=true` is a distinct cache key) never
+shows up. `ops/load-test/stress.sh` is the alternate driver — it auto-
+discovers every non-completed tournament in the season and fires one
+parallel `hey` process per URL plus the cheap uncached endpoints
+(`/leagues`, `/tournaments`) so we can see whether they starve while
+the heavy paths are inflight.
+
+```bash
+# Spin up a staging clone and keep it.
+ops/load-test/spin-staging.sh --keep
+
+# Run stress against it (URL printed by spin-staging).
+ops/load-test/stress.sh https://cwfgw4k-staging-... <SEASON_UUID> -c 10 -d 300s
+
+# Tear down when done.
+ops/load-test/spin-staging.sh --teardown <SUFFIX>
+```
+
+What to watch in Cloud Logging during the run:
+- `cwfgw4k.db.pool waiting=N` sustained > 0 — pool exhaustion in progress
+- 504s on `/api/v1/leagues` or `/api/v1/tournaments` — wedge reproduced
+- `cwfgw4k.cache event=coalesced` count vs `event=miss` — single-flight effectiveness
+
 ## Cost expectations
 
 At this app's traffic, everything on this dashboard is under GCP's free tier:

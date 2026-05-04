@@ -47,6 +47,7 @@ TEARDOWN_SUFFIX=""
 SEASON_ID=""
 TOURNAMENT_ID=""
 ACTIVE_TID=""
+DRIVER=run
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -59,6 +60,7 @@ while [[ $# -gt 0 ]]; do
     --keep) KEEP=1; shift ;;
     --list) LIST=1; shift ;;
     --teardown) TEARDOWN_SUFFIX=${2:-}; shift 2 ;;
+    --driver) DRIVER=${2:-}; shift 2 ;;
     *) echo "Unknown flag: $1" >&2; exit 2 ;;
   esac
 done
@@ -200,10 +202,24 @@ echo
 sleep 5
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-ARGS=("$URL" "$SEASON_ID")
-[[ -n "$TOURNAMENT_ID" ]] && ARGS+=("$TOURNAMENT_ID")
-ARGS+=(-c "$CONCURRENCY" -d "$DURATION" -t "$TIMEOUT")
-"$SCRIPT_DIR/run.sh" "${ARGS[@]}"
+case $DRIVER in
+  run)
+    ARGS=("$URL" "$SEASON_ID")
+    [[ -n "$TOURNAMENT_ID" ]] && ARGS+=("$TOURNAMENT_ID")
+    ARGS+=(-c "$CONCURRENCY" -d "$DURATION" -t "$TIMEOUT")
+    "$SCRIPT_DIR/run.sh" "${ARGS[@]}"
+    ;;
+  stress)
+    "$SCRIPT_DIR/stress.sh" "$URL" "$SEASON_ID" -c "$CONCURRENCY" -d "$DURATION" -t "$TIMEOUT"
+    ;;
+  none)
+    echo "==> --driver=none specified; skipping load test."
+    ;;
+  *)
+    echo "Unknown --driver: $DRIVER (expected: run | stress | none)" >&2
+    exit 2
+    ;;
+esac
 
 echo
 echo "==> Load test complete. Logs to cross-reference (10-minute window):"
