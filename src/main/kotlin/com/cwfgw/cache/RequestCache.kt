@@ -9,9 +9,11 @@ import io.ktor.server.request.path
 import io.ktor.server.request.uri
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.RoutingContext
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.serialization.serializer
 import java.time.Clock
 import java.time.Duration
+import java.util.concurrent.ConcurrentHashMap
 
 private val log = KotlinLogging.logger {}
 
@@ -46,25 +48,34 @@ class RequestCache(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     /**
-     * Cache-aside fetch keyed by [key]. Three discrete phases:
-     *  1. `tx.get` for the hit lookup — auto-commit single-statement read,
-     *     no BEGIN / COMMIT / SET TRANSACTION round-trips. Connection is
-     *     held only for the SELECT itself.
-     *  2. On miss, [fetch] runs OUTSIDE any cache transaction — critical
-     *     under load because [fetch] is the actual handler, which itself
-     *     opens transactions through services. Holding a connection across
-     *     [fetch] would consume two pool slots per request and exhaust the
-     *     pool well before request count.
-     *  3. `tx.update` to write the entry — short, independent transaction.
+     * Tracks the in-flight loader for each cache key so concurrent misses
+     * coalesce onto a single [fetch] call. Bounded by request concurrency
+     * (entries are removed in the loader's finally block); not a leak.
+     */
+    private val inFlight = ConcurrentHashMap<String, CompletableDeferred<String>>()
+
+    /**
+     * Cache-aside fetch keyed by [key]. Single-flight per key:
+     *  1. `tx.get` checks the Postgres cache. Auto-commit single-statement
+     *     read; connection held only for the SELECT itself.
+     *  2. On miss, try to claim the in-flight slot for [key] via an atomic
+     *     `putIfAbsent` on a [CompletableDeferred]. If we lose the race we
+     *     await the existing loader's deferred — no second [fetch], no
+     *     second `tx.update`.
+     *  3. The winning caller runs [fetch] outside any cache transaction
+     *     (critical under load — [fetch] is the real handler that opens
+     *     its own service transactions; holding a connection across it
+     *     would consume two pool slots per request) and writes via
+     *     `tx.update`.
+     *  4. The loader completes the deferred (success or failure) and
+     *     atomically removes itself from the in-flight map.
      *
      * The hit path does no serialization. [routeTemplate] is the
      * bounded-cardinality label used in the structured log line.
      *
-     * Two concurrent requests for the same missing key will both run
-     * [fetch] and both write — accepted at this scale for the simpler
-     * connection-management story; if the workload changes to make
-     * dedupe matter, gate inside `fetch` or front with a Caffeine
-     * single-flight layer.
+     * Loader exceptions are NOT cached — the deferred fails, all current
+     * waiters re-throw, the in-flight entry is removed, and the next call
+     * retries fresh. The Postgres entry is only written on success.
      */
     suspend fun cachedJsonGet(
         key: String,
@@ -77,11 +88,35 @@ class RequestCache(
             log.info { "cwfgw4k.cache event=hit route=$routeTemplate" }
             return hit
         }
+
+        val ours = CompletableDeferred<String>()
+        val existing = inFlight.putIfAbsent(key, ours)
+        if (existing != null) {
+            log.info { "cwfgw4k.cache event=coalesced route=$routeTemplate" }
+            return existing.await()
+        }
+
         log.info { "cwfgw4k.cache event=miss route=$routeTemplate" }
-        val fresh = fetch()
-        tx.update { repository.put(key, fresh, clock.instant().plus(ttl)) }
-        log.info { "cwfgw4k.cache event=put route=$routeTemplate ttl_seconds=${ttl.seconds}" }
-        return fresh
+        // Catching Throwable here is intentional: the deferred MUST be
+        // completed (success or failure) so coalesced waiters never hang.
+        // We rethrow immediately so the calling coroutine sees the failure
+        // exactly as the underlying [fetch] reported it.
+        @Suppress("TooGenericExceptionCaught")
+        try {
+            val fresh = fetch()
+            tx.update { repository.put(key, fresh, clock.instant().plus(ttl)) }
+            log.info { "cwfgw4k.cache event=put route=$routeTemplate ttl_seconds=${ttl.seconds}" }
+            ours.complete(fresh)
+            return fresh
+        } catch (t: Throwable) {
+            ours.completeExceptionally(t)
+            throw t
+        } finally {
+            // Atomic remove only if our deferred is still the registered one,
+            // so a same-key request that arrives after we complete but before
+            // we clean up doesn't get a stale stub.
+            inFlight.remove(key, ours)
+        }
     }
 
     /** Background-sweep entry point. Logs how many rows were deleted for dashboard tracking. */

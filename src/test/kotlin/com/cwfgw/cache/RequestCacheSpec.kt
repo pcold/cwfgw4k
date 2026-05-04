@@ -4,6 +4,10 @@ import com.cwfgw.testing.FakeTransactor
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -12,6 +16,10 @@ import java.util.concurrent.atomic.AtomicInteger
 
 private const val TEST_KEY = "/api/v1/scoring/abc/def"
 private const val TEST_ROUTE = "/api/v1/scoring/:id/:id"
+
+// Brief pause to let all concurrent callers register on the in-flight map
+// before the gated fetch resolves.
+private const val SETTLE_MS: Long = 50
 
 private class StepClock(start: Instant = Instant.parse("2026-05-03T00:00:00Z")) : Clock() {
     private var current: Instant = start
@@ -73,6 +81,31 @@ class RequestCacheSpec : FunSpec({
         cache.cachedJsonGet(TEST_KEY, TEST_ROUTE, fetch = fetch)
 
         calls.get() shouldBe 2
+    }
+
+    test("concurrent misses for the same key coalesce to a single fetch (single-flight)") {
+        val cache = RequestCache(FakeCacheRepository(), FakeTransactor(), defaultTtl = Duration.ofMinutes(5))
+        val gate = CompletableDeferred<String>()
+        val fetchStarted = AtomicInteger(0)
+        val fetch: suspend () -> String = {
+            fetchStarted.incrementAndGet()
+            gate.await()
+        }
+
+        val results =
+            coroutineScope {
+                val concurrent = (1..10).map { async { cache.cachedJsonGet(TEST_KEY, TEST_ROUTE, fetch = fetch) } }
+                // Give the in-flight registration time to settle for all 10
+                // callers before we resolve the gate. With single-flight only
+                // the first reaches `fetch`; the others coalesce.
+                Thread.sleep(SETTLE_MS)
+                gate.complete("[\"shared\"]")
+                concurrent.awaitAll()
+            }
+
+        results.size shouldBe 10
+        results.forEach { it shouldBe "[\"shared\"]" }
+        fetchStarted.get() shouldBe 1
     }
 
     test("deleteExpired purges only the entries past their expiry") {
