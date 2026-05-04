@@ -75,13 +75,16 @@ steps:
       # released between cache hit / miss / put phases so 2x oversubscription
       # is fine. Cap there and let max-instances absorb spikes.
       - '--concurrency=20'
-      # Cost-optimized: scale to zero when idle. Trade-off — the first
-      # user after an idle period pays ~10–15s cold start (Cloud Run
-      # container boot + JVM bootstrap + Flyway scan). Acceptable for a
-      # low-traffic app whose users tolerate occasional spinup. Bump back
-      # to 1 once paid traffic justifies the always-on cost (~$47/mo for
-      # 1 vCPU × 1Gi at always-allocated rates).
-      - '--min-instances=0'
+      # min-instances=1: keep one warm instance at all times (~$45/mo).
+      # Was 0 (scale to zero); flipped back after a repeating prod wedge
+      # where the first request after an idle period blocked 90s while
+      # Hikari refilled stale connections — occasionally hitting Broken
+      # Pipe during the TLS handshake to Cloud SQL via the in-process
+      # socket factory. Keeping one instance warm sidesteps that whole
+      # class of failure. Drop back to 0 only if (a) we're confident
+      # the connection-refill path is robust and (b) cost matters more
+      # than the cold-start UX.
+      - '--min-instances=1'
       # 10 instances × 20 concurrency = 200 in-flight slots — comfortable
       # headroom well beyond the ~50-user target so Cloud Run can scale
       # smoothly through spike traffic. Cloud SQL connection ceiling on
