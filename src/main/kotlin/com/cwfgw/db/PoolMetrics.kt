@@ -1,7 +1,15 @@
 package com.cwfgw.db
 
 import com.zaxxer.hikari.HikariDataSource
+import com.zaxxer.hikari.metrics.IMetricsTracker
+import com.zaxxer.hikari.metrics.MetricsTrackerFactory
+import com.zaxxer.hikari.metrics.PoolStats
+import io.github.oshai.kotlinlogging.KotlinLogging
 import javax.sql.DataSource
+
+private val acquireLog = KotlinLogging.logger("com.cwfgw.db.SlowAcquire")
+
+private const val SLOW_ACQUIRE_THRESHOLD_MS: Long = 500
 
 /**
  * Thin read-only view over [HikariDataSource]'s pool counters, kept
@@ -45,3 +53,31 @@ data class PoolSnapshot(
  * Main.kt launcher silently skips the polling loop for them.
  */
 fun DataSource.poolMetricsOrNull(): PoolMetrics? = (this as? HikariDataSource)?.let(::PoolMetrics)
+
+/**
+ * Hikari [MetricsTrackerFactory] that emits one structured WARN line for
+ * every connection acquisition slower than [SLOW_ACQUIRE_THRESHOLD_MS]:
+ * `cwfgw4k.db.slow_acquire duration_ms=N`. Routine fast acquisitions
+ * (the typical case) stay silent so we don't drown the request log.
+ *
+ * Wired in [Database.start]. The signal we care about is whether
+ * pool-side waiting (vs. query-side latency vs. tx-coordination latency)
+ * is what's eating a request — without this they're indistinguishable.
+ */
+object SlowAcquireMetricsTrackerFactory : MetricsTrackerFactory {
+    override fun create(
+        poolName: String,
+        poolStats: PoolStats,
+    ): IMetricsTracker = SlowAcquireTracker
+}
+
+private object SlowAcquireTracker : IMetricsTracker {
+    override fun recordConnectionAcquiredNanos(elapsedAcquiredNanos: Long) {
+        val elapsedMs = elapsedAcquiredNanos / NANOS_PER_MS
+        if (elapsedMs >= SLOW_ACQUIRE_THRESHOLD_MS) {
+            acquireLog.warn { "cwfgw4k.db.slow_acquire duration_ms=$elapsedMs" }
+        }
+    }
+}
+
+private const val NANOS_PER_MS: Long = 1_000_000

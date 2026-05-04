@@ -33,6 +33,7 @@ class Database(val dataSource: DataSource, val dsl: DSLContext) {
                         //   fast as a 500 instead of pegging an instance into 504-land.
                         addDataSourceProperty("connectTimeout", PG_CONNECT_TIMEOUT_SECONDS)
                         addDataSourceProperty("socketTimeout", PG_SOCKET_TIMEOUT_SECONDS)
+                        metricsTrackerFactory = SlowAcquireMetricsTrackerFactory
                     },
                 )
             Flyway.configure()

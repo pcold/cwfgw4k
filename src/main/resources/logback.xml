@@ -1,5 +1,33 @@
 <configuration>
+    <!--
+      Cloud Logging tags stdout lines as severity DEFAULT and stderr lines
+      as severity ERROR. Plain logback level prefixes are not parsed by
+      Cloud Run, so without splitting our `logger.error("Unhandled error
+      on …")` lines would still arrive as severity DEFAULT and disappear
+      from `severity>=ERROR` queries. Splitting INFO-and-below to stdout,
+      WARN-and-above to stderr lets the standard severity filter work.
+    -->
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.out</target>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>DENY</onMatch>
+            <onMismatch>NEUTRAL</onMismatch>
+        </filter>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>DENY</onMatch>
+            <onMismatch>NEUTRAL</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.err</target>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARN</level>
+        </filter>
         <encoder>
             <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
         </encoder>
@@ -8,5 +36,6 @@
     <logger name="io.netty" level="INFO"/>
     <root level="INFO">
         <appender-ref ref="STDOUT"/>
+        <appender-ref ref="STDERR"/>
     </root>
 </configuration>
