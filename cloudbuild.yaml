@@ -63,7 +63,7 @@ steps:
       - '--allow-unauthenticated'
       - '--add-cloudsql-instances=${PROJECT_ID}:${_REGION}:${_SQL_INSTANCE}'
       - '--set-secrets=DB_PASSWORD=cwfgw4k-db-password:latest,AUTH_SESSION_SECRET=cwfgw4k-session-secret:latest,AUTH_ADMIN_PASSWORD=cwfgw4k-admin-password:latest'
-      - '--set-env-vars=DB_JDBC_URL=jdbc:postgresql:///${_DB_NAME}?cloudSqlInstance=${PROJECT_ID}:${_REGION}:${_SQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DB_USER=${_DB_USER},DB_SCHEMA=${_DB_SCHEMA},DB_POOL=10,AUTH_ADMIN_USERNAME=admin'
+      - '--set-env-vars=DB_JDBC_URL=jdbc:postgresql:///${_DB_NAME}?cloudSqlInstance=${PROJECT_ID}:${_REGION}:${_SQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DB_USER=${_DB_USER},DB_SCHEMA=${_DB_SCHEMA},DB_POOL=15,AUTH_ADMIN_USERNAME=admin'
       # Memory: 1Gi container with -Xmx512m in the Dockerfile leaves ~half the
       # box for non-heap JVM (metaspace, JIT code cache, Netty direct buffers,
       # JDBC buffers, thread stacks). Bump container + heap together if real
@@ -82,14 +82,14 @@ steps:
       # to 1 once paid traffic justifies the always-on cost (~$47/mo for
       # 1 vCPU × 1Gi at always-allocated rates).
       - '--min-instances=0'
-      # 4 instances × 20 concurrency = 80 in-flight slots — still plenty for
-      # the ~50-user target. Cloud SQL connection ceiling: 4 instances ×
-      # DB_POOL=10 = 40 connections used, leaving 10 free for psql / Flyway
-      # during deploys / Cloud SQL internal use on the db-g1-small tier
-      # (max 50). On higher SQL tiers (db-custom-* or larger) we could push
-      # to 5+ instances; verify with `gcloud sql instances describe cwfgw4k-prod`
-      # before bumping.
-      - '--max-instances=4'
+      # 10 instances × 20 concurrency = 200 in-flight slots — comfortable
+      # headroom well beyond the ~50-user target so Cloud Run can scale
+      # smoothly through spike traffic. Cloud SQL connection ceiling on
+      # db-custom-1-3840 is 200; 10 × DB_POOL=15 = 150 leaves 50 free for
+      # psql, Flyway during deploy, and Cloud SQL internal use. If the SQL
+      # tier ever shrinks, drop max-instances or DB_POOL to keep total
+      # connections ≤ tier max - 10.
+      - '--max-instances=10'
 
 substitutions:
   _REGION: us-west1
