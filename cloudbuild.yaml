@@ -90,6 +90,15 @@ steps:
       # tier ever shrinks, drop max-instances or DB_POOL to keep total
       # connections ≤ tier max - 10.
       - '--max-instances=10'
+      # Request timeout: 90s. Cloud Run's default is 300s; we lower it
+      # because no legitimate endpoint has any business taking longer than
+      # ~5s end-to-end (cold cache miss with one ESPN call ~1.7s, full
+      # report build ~2s). A 300s ceiling means a wedged request sits on
+      # an instance burning a concurrency slot and (if it's mid-tx) a DB
+      # pool slot for five minutes; 90s is the smallest cap that won't
+      # clip cold-start + cache rebuild scenarios while letting the system
+      # recover three times faster from any future hang.
+      - '--timeout=90'
 
 substitutions:
   _REGION: us-west1

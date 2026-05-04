@@ -6,7 +6,9 @@ import com.cwfgw.cache.CacheRepository
 import com.cwfgw.cache.RequestCache
 import com.cwfgw.config.AppConfig
 import com.cwfgw.db.Database
+import com.cwfgw.db.PoolMetrics
 import com.cwfgw.db.Transactor
+import com.cwfgw.db.poolMetricsOrNull
 import com.cwfgw.drafts.DraftRepository
 import com.cwfgw.drafts.DraftService
 import com.cwfgw.drafts.draftRoutes
@@ -94,7 +96,7 @@ fun main() {
     val services = buildServices(config, database, httpClient)
     runBlocking { seedAdminIfEmpty(services.authService, services.userRepository, services.transactor, config.auth) }
     embeddedServer(Netty, port = config.http.port, host = config.http.host) {
-        module(services)
+        module(services, database.dataSource.poolMetricsOrNull())
     }.start(wait = true)
 }
 
@@ -243,7 +245,10 @@ internal fun requireValidAuthSecret(auth: com.cwfgw.config.AuthConfig) {
     }
 }
 
-fun Application.module(services: AppServices) {
+fun Application.module(
+    services: AppServices,
+    poolMetrics: PoolMetrics? = null,
+) {
     install(ContentNegotiation) {
         json(appJson)
     }
@@ -267,6 +272,7 @@ fun Application.module(services: AppServices) {
     installRequestLogging()
     installErrorHandling()
     launchCacheSweep(services.requestCache, services.sweepIntervalSeconds)
+    poolMetrics?.let(::launchPoolMetricsLog)
     routing {
         apiRoutes(services)
         staticRoutes()
@@ -300,6 +306,35 @@ private fun Application.launchCacheSweep(
 }
 
 private val cacheSweepLog = KotlinLogging.logger("com.cwfgw.cache.Sweep")
+
+/**
+ * Periodically log a structured snapshot of the HikariCP pool counters so
+ * Cloud Logging captures connection pressure during incidents. The
+ * `waiting` field is the load-bearing one — a sustained non-zero value
+ * means requests are queueing for a connection, which is the canonical
+ * symptom of pool exhaustion the May 3 incident lacked visibility into.
+ *
+ * Format: `cwfgw4k.db.pool active=N idle=M waiting=W total=T`. Metrics
+ * derive from this via REGEXP_EXTRACT in the same shape as
+ * `cwfgw4k.cache` and `cwfgw4k.request` log lines.
+ */
+private fun Application.launchPoolMetricsLog(metrics: PoolMetrics) {
+    val intervalMs = POOL_METRICS_INTERVAL_SECONDS * 1000L
+    launch {
+        while (isActive) {
+            val snapshot = metrics.snapshot()
+            poolMetricsLog.info {
+                "cwfgw4k.db.pool active=${snapshot.active} idle=${snapshot.idle} " +
+                    "waiting=${snapshot.waiting} total=${snapshot.total}"
+            }
+            delay(intervalMs)
+        }
+    }
+}
+
+private val poolMetricsLog = KotlinLogging.logger("com.cwfgw.db.PoolMetrics")
+
+private const val POOL_METRICS_INTERVAL_SECONDS: Long = 30
 
 private fun Routing.apiRoutes(services: AppServices) {
     route("/api/v1") {
