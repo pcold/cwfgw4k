@@ -976,18 +976,25 @@ internal fun buildRosterIndex(
     golferMap: Map<GolferId, Golfer>,
 ): Map<GolferId, PlayerRosterInfo> {
     val teamNameById = teams.associate { it.id to it.teamName }
-    val byGolfer = mutableMapOf<GolferId, PlayerRosterInfo>()
-    for (entry in allRosters) {
-        val teamName = teamNameById[entry.teamId] ?: continue
-        val golfer = golferMap[entry.golferId] ?: continue
-        byGolfer[entry.golferId] =
-            PlayerRosterInfo(
-                teamName = teamName,
-                draftRound = entry.draftRound ?: continue,
-                fullName = "${golfer.firstName} ${golfer.lastName}",
-            )
-    }
-    return byGolfer
+    return allRosters
+        .mapNotNull { entry -> rosterIndexEntry(entry, teamNameById, golferMap) }
+        .toMap()
+}
+
+private fun rosterIndexEntry(
+    entry: RosterEntry,
+    teamNameById: Map<TeamId, String>,
+    golferMap: Map<GolferId, Golfer>,
+): Pair<GolferId, PlayerRosterInfo>? {
+    val teamName = teamNameById[entry.teamId] ?: return null
+    val golfer = golferMap[entry.golferId] ?: return null
+    val draftRound = entry.draftRound ?: return null
+    return entry.golferId to
+        PlayerRosterInfo(
+            teamName = teamName,
+            draftRound = draftRound,
+            fullName = "${golfer.firstName} ${golfer.lastName}",
+        )
 }
 
 /**
@@ -1023,34 +1030,56 @@ internal fun buildPlayerRankingsAcc(
             )
     }
 
-    val undrafted = mutableMapOf<String, UndraftedAgg>()
     val resultsByTournament = allResults.groupBy { it.tournamentId }
-    for (result in allResults) {
-        val position = result.position ?: continue
-        if (position > TOP_TEN_CUTOFF) continue
-        if (result.golferId in rosteredGolferIds) continue
-        val tournament = tournamentsById[result.tournamentId] ?: continue
-        val golfer = golferMap[result.golferId] ?: continue
-        val tournamentResults = resultsByTournament[result.tournamentId].orEmpty()
-        val numTied = tournamentResults.count { it.position == position }
-        val payout =
-            PayoutTable.tieSplitPayout(
-                position = position,
-                numTied = numTied,
-                multiplier = tournament.payoutMultiplier,
-                rules = rules,
-                isTeamEvent = tournament.isTeamEvent,
-            )
-        val name = "${golfer.firstName.firstOrNull() ?: '?'}. ${golfer.lastName}"
-        val existing = undrafted[name] ?: UndraftedAgg(topTens = 0, totalEarnings = BigDecimal.ZERO)
-        undrafted[name] =
-            existing.copy(
-                topTens = existing.topTens + 1,
-                totalEarnings = existing.totalEarnings.add(payout),
-            )
+    val undrafted = mutableMapOf<String, UndraftedAgg>()
+    allResults.forEach { result ->
+        undraftedRowFromResult(result, tournamentsById, rosteredGolferIds, golferMap, resultsByTournament, rules)
+            ?.let { (name, payout) ->
+                val existing = undrafted[name] ?: UndraftedAgg(topTens = 0, totalEarnings = BigDecimal.ZERO)
+                undrafted[name] =
+                    existing.copy(
+                        topTens = existing.topTens + 1,
+                        totalEarnings = existing.totalEarnings.add(payout),
+                    )
+            }
     }
 
     return PlayerRankingsAcc(drafted = drafted.toMap(), undrafted = undrafted.toMap())
+}
+
+/**
+ * Compute the (display name, payout) pair contributed by one
+ * [TournamentResult], or null when it doesn't qualify (no position,
+ * outside the top-10, rostered, or missing the lookup data). Pulled
+ * out of [buildPlayerRankingsAcc] so the loop body is a one-liner and
+ * detekt sees a single early-exit per branch instead of a stack of
+ * `continue`s.
+ */
+@Suppress("LongParameterList")
+private fun undraftedRowFromResult(
+    result: TournamentResult,
+    tournamentsById: Map<TournamentId, Tournament>,
+    rosteredGolferIds: Set<GolferId>,
+    golferMap: Map<GolferId, Golfer>,
+    resultsByTournament: Map<TournamentId, List<TournamentResult>>,
+    rules: SeasonRules,
+): Pair<String, BigDecimal>? {
+    val position = result.position ?: return null
+    if (position > TOP_TEN_CUTOFF) return null
+    if (result.golferId in rosteredGolferIds) return null
+    val tournament = tournamentsById[result.tournamentId] ?: return null
+    val golfer = golferMap[result.golferId] ?: return null
+    val numTied = resultsByTournament[result.tournamentId].orEmpty().count { it.position == position }
+    val payout =
+        PayoutTable.tieSplitPayout(
+            position = position,
+            numTied = numTied,
+            multiplier = tournament.payoutMultiplier,
+            rules = rules,
+            isTeamEvent = tournament.isTeamEvent,
+        )
+    val name = "${golfer.firstName.firstOrNull() ?: '?'}. ${golfer.lastName}"
+    return name to payout
 }
 
 internal fun composePlayerRankings(

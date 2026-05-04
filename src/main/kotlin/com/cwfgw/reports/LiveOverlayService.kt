@@ -2,6 +2,7 @@ package com.cwfgw.reports
 
 import com.cwfgw.espn.EspnLivePreview
 import com.cwfgw.espn.EspnService
+import com.cwfgw.espn.PreviewLeaderboardEntry
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.result.Result
 import com.cwfgw.result.getOrElse
@@ -593,38 +594,51 @@ internal fun foldLivePlayerRankings(
     rules: SeasonRules,
 ): PlayerRankingsAcc {
     val drafted = acc.drafted.toMutableMap()
-    for (teamScore in preview.teams) {
-        for (golferScore in teamScore.golferScores) {
-            val existing = drafted[golferScore.golferId] ?: DraftedAgg(topTens = 0, totalEarnings = BigDecimal.ZERO)
-            drafted[golferScore.golferId] =
-                existing.copy(
-                    topTens = existing.topTens + 1,
-                    totalEarnings = existing.totalEarnings.add(golferScore.payout),
-                )
-        }
+    preview.teams.flatMap { it.golferScores }.forEach { golferScore ->
+        val existing = drafted[golferScore.golferId] ?: DraftedAgg(topTens = 0, totalEarnings = BigDecimal.ZERO)
+        drafted[golferScore.golferId] =
+            existing.copy(
+                topTens = existing.topTens + 1,
+                totalEarnings = existing.totalEarnings.add(golferScore.payout),
+            )
     }
 
     val undrafted = acc.undrafted.toMutableMap()
     val tiedAtPosition = preview.leaderboard.groupingBy { it.position }.eachCount()
-    for (entry in preview.leaderboard) {
-        if (entry.rostered) continue
-        if (entry.position > TOP_TEN) continue
-        val numTied = tiedAtPosition[entry.position] ?: 1
-        val payout =
-            PayoutTable.tieSplitPayout(
-                position = entry.position,
-                numTied = numTied,
-                multiplier = preview.payoutMultiplier,
-                rules = rules,
-                isTeamEvent = preview.isTeamEvent,
-            )
-        val existing = undrafted[entry.name] ?: UndraftedAgg(topTens = 0, totalEarnings = BigDecimal.ZERO)
-        undrafted[entry.name] =
-            existing.copy(
-                topTens = existing.topTens + 1,
-                totalEarnings = existing.totalEarnings.add(payout),
-            )
+    preview.leaderboard.forEach { entry ->
+        liveUndraftedPayout(entry, preview, rules, tiedAtPosition)?.let { payout ->
+            val existing = undrafted[entry.name] ?: UndraftedAgg(topTens = 0, totalEarnings = BigDecimal.ZERO)
+            undrafted[entry.name] =
+                existing.copy(
+                    topTens = existing.topTens + 1,
+                    totalEarnings = existing.totalEarnings.add(payout),
+                )
+        }
     }
 
     return acc.copy(drafted = drafted.toMap(), undrafted = undrafted.toMap())
+}
+
+/**
+ * Per-leaderboard-entry payout contribution for the live undrafted
+ * branch, or null when the entry doesn't qualify (rostered or outside
+ * the top-10). Pulled out of [foldLivePlayerRankings] so the loop body
+ * stays linear instead of a stack of `continue` early exits.
+ */
+private fun liveUndraftedPayout(
+    entry: PreviewLeaderboardEntry,
+    preview: EspnLivePreview,
+    rules: SeasonRules,
+    tiedAtPosition: Map<Int, Int>,
+): BigDecimal? {
+    if (entry.rostered) return null
+    if (entry.position > TOP_TEN) return null
+    val numTied = tiedAtPosition[entry.position] ?: 1
+    return PayoutTable.tieSplitPayout(
+        position = entry.position,
+        numTied = numTied,
+        multiplier = preview.payoutMultiplier,
+        rules = rules,
+        isTeamEvent = preview.isTeamEvent,
+    )
 }
