@@ -254,6 +254,33 @@ What to watch in Cloud Logging during the run:
 - 504s on `/api/v1/leagues` or `/api/v1/tournaments` — wedge reproduced
 - `cwfgw4k.cache event=coalesced` count vs `event=miss` — single-flight effectiveness
 
+### Reproducing the idle-then-hit wedge with `soak.sh`
+
+`stress.sh` keeps an instance pegged so connections never get a chance
+to age out. The May 4 prod wedge was the opposite shape: instance alive
+but quiet, pool slowly fills with stale sockets, then the first new
+request after the idle window hangs for 90s while Hikari refills (and
+occasionally hits Broken Pipe during the TLS handshake to Cloud SQL via
+the in-process socket factory). `ops/load-test/soak.sh` reproduces
+that timeline end-to-end.
+
+```bash
+# Default: 30-min idle, 5-min canary window @ 30s interval.
+ops/load-test/soak.sh
+
+# Longer idle, longer canary window:
+ops/load-test/soak.sh -i 60 -w 600 -c 60
+
+# Leave staging up afterward to poke at:
+ops/load-test/soak.sh --keep
+```
+
+A wedge looks like one row in the canary table at >5s flanked by
+sub-second rows. A healthy run shows every canary <1s. Staging
+instances created by soak.sh use `min-instances=1`, matching the
+production config — soak is testing whether *that* config holds up
+under idle, not whether a cold-start path is fast.
+
 ## Cost expectations
 
 At this app's traffic, everything on this dashboard is under GCP's free tier:
