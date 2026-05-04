@@ -42,13 +42,6 @@ private val log = KotlinLogging.logger {}
  */
 class LiveOverlayService(private val espnService: EspnService) {
     /**
-     * Overlay live data onto the season-aggregate report. Walks every
-     * non-completed tournament chronologically, folding each one's
-     * live preview into the running report via [mergeLiveData] in
-     * additive mode (live amounts add to existing rather than
-     * replacing, so completed tournaments' earnings stay intact).
-     */
-    /**
      * Fold ESPN previews for each non-completed candidate into a player-
      * rankings accumulator. Drafted golfers gain one increment + their
      * ownership-adjusted live payout per (team rostering them, projected
@@ -60,7 +53,7 @@ class LiveOverlayService(private val espnService: EspnService) {
      * preview failures fall through silently — the operator sees the
      * locked-in numbers rather than an error banner.
      */
-    suspend fun overlayPlayerRankings(
+    internal suspend fun overlayPlayerRankings(
         seasonId: SeasonId,
         base: PlayerRankingsAcc,
         candidates: List<Tournament>,
@@ -76,6 +69,13 @@ class LiveOverlayService(private val espnService: EspnService) {
         }
     }
 
+    /**
+     * Overlay live data onto the season-aggregate report. Walks every
+     * non-completed tournament chronologically, folding each one's
+     * live preview into the running report via [mergeLiveData] in
+     * additive mode (live amounts add to existing rather than
+     * replacing, so completed tournaments' earnings stay intact).
+     */
     suspend fun overlaySeasonReport(
         seasonId: SeasonId,
         baseReport: WeeklyReport,
