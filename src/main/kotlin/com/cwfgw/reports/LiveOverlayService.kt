@@ -47,6 +47,34 @@ class LiveOverlayService(private val espnService: EspnService) {
      * additive mode (live amounts add to existing rather than
      * replacing, so completed tournaments' earnings stay intact).
      */
+    /**
+     * Fold ESPN previews for each non-completed candidate into a player-
+     * rankings accumulator. Drafted golfers gain one increment + their
+     * ownership-adjusted live payout per (team rostering them, projected
+     * top-10), mirroring the per-cell counting [WeeklyReportService]
+     * uses for completed tournaments. Unrostered top-10 leaderboard
+     * entries are folded into the undrafted bucket by display name with
+     * a payout computed from [PayoutTable.tieSplitPayout] so the live
+     * and persisted paths share a single payout shape. Per-tournament
+     * preview failures fall through silently — the operator sees the
+     * locked-in numbers rather than an error banner.
+     */
+    suspend fun overlayPlayerRankings(
+        seasonId: SeasonId,
+        base: PlayerRankingsAcc,
+        candidates: List<Tournament>,
+        rules: SeasonRules,
+    ): PlayerRankingsAcc {
+        if (candidates.isEmpty()) return base
+        return candidates.sortedWith(tournamentOrdering).fold(base) { acc, tournament ->
+            val previews =
+                fetchPreviewsOrLog(seasonId, tournament.startDate, "player rankings live overlay ${tournament.name}")
+                    ?: return@fold acc
+            val matched = matchPreview(previews, tournament) ?: return@fold acc
+            foldLivePlayerRankings(acc, matched, rules)
+        }
+    }
+
     suspend fun overlaySeasonReport(
         seasonId: SeasonId,
         baseReport: WeeklyReport,
@@ -558,3 +586,45 @@ private inline fun <T, E> Result<T, E>.onErr(action: (E) -> Unit): Result<T, E> 
 }
 
 private const val TOP_TEN = 10
+
+internal fun foldLivePlayerRankings(
+    acc: PlayerRankingsAcc,
+    preview: EspnLivePreview,
+    rules: SeasonRules,
+): PlayerRankingsAcc {
+    val drafted = acc.drafted.toMutableMap()
+    for (teamScore in preview.teams) {
+        for (golferScore in teamScore.golferScores) {
+            val existing = drafted[golferScore.golferId] ?: DraftedAgg(topTens = 0, totalEarnings = BigDecimal.ZERO)
+            drafted[golferScore.golferId] =
+                existing.copy(
+                    topTens = existing.topTens + 1,
+                    totalEarnings = existing.totalEarnings.add(golferScore.payout),
+                )
+        }
+    }
+
+    val undrafted = acc.undrafted.toMutableMap()
+    val tiedAtPosition = preview.leaderboard.groupingBy { it.position }.eachCount()
+    for (entry in preview.leaderboard) {
+        if (entry.rostered) continue
+        if (entry.position > TOP_TEN) continue
+        val numTied = tiedAtPosition[entry.position] ?: 1
+        val payout =
+            PayoutTable.tieSplitPayout(
+                position = entry.position,
+                numTied = numTied,
+                multiplier = preview.payoutMultiplier,
+                rules = rules,
+                isTeamEvent = preview.isTeamEvent,
+            )
+        val existing = undrafted[entry.name] ?: UndraftedAgg(topTens = 0, totalEarnings = BigDecimal.ZERO)
+        undrafted[entry.name] =
+            existing.copy(
+                topTens = existing.topTens + 1,
+                totalEarnings = existing.totalEarnings.add(payout),
+            )
+    }
+
+    return acc.copy(drafted = drafted.toMap(), undrafted = undrafted.toMap())
+}

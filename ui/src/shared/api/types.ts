@@ -104,6 +104,21 @@ export interface Rankings {
   live: boolean | null;
 }
 
+export interface PlayerRankingsRow {
+  key: string;
+  golferId: string | null;
+  name: string;
+  topTens: number;
+  totalEarnings: number;
+  teamName: string | null;
+  draftRound: number | null;
+}
+
+export interface PlayerRankings {
+  players: PlayerRankingsRow[];
+  live: boolean | null;
+}
+
 export interface RosterPick {
   round: number;
   golferName: string;

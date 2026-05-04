@@ -24,6 +24,7 @@ fun Route.reportRoutes(
         get("/report") { getSeasonReport(service, cache) }
         get("/report/{tournamentId}") { getReport(service, cache) }
         get("/rankings") { getRankings(service, cache) }
+        get("/player-rankings") { getPlayerRankings(service, cache) }
         get("/golfer/{golferId}/history") { getGolferHistory(service, cache) }
     }
 }
@@ -64,6 +65,16 @@ private suspend fun RoutingContext.getRankings(
     val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
     val through = optionalQueryParam("through", String::toTournamentId)
     cachedRespond(cache) { service.getRankings(sid, throughTournamentId = through, live = live).orThrow() }
+}
+
+private suspend fun RoutingContext.getPlayerRankings(
+    service: WeeklyReportService,
+    cache: RequestCache,
+) {
+    val sid = seasonId()
+    val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
+    val through = optionalQueryParam("through", String::toTournamentId)
+    cachedRespond(cache) { service.getPlayerRankings(sid, throughTournamentId = through, live = live).orThrow() }
 }
 
 private suspend fun RoutingContext.getGolferHistory(

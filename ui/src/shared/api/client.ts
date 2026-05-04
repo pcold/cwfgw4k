@@ -4,6 +4,7 @@ import type {
   Golfer,
   GolferHistory,
   League,
+  PlayerRankings,
   Rankings,
   RosterConfirmResult,
   RosterConfirmTeamInput,
@@ -161,6 +162,13 @@ export const api = {
     if (throughTournamentId) params.set('through', throughTournamentId);
     const qs = params.toString();
     return getJson<Rankings>(`/api/v1/seasons/${seasonId}/rankings${qs ? `?${qs}` : ''}`);
+  },
+  playerRankings: (seasonId: string, live: boolean, throughTournamentId?: string) => {
+    const params = new URLSearchParams();
+    if (live) params.set('live', 'true');
+    if (throughTournamentId) params.set('through', throughTournamentId);
+    const qs = params.toString();
+    return getJson<PlayerRankings>(`/api/v1/seasons/${seasonId}/player-rankings${qs ? `?${qs}` : ''}`);
   },
   rosters: (seasonId: string) => getJson<RosterTeam[]>(`/api/v1/seasons/${seasonId}/rosters`),
   tournaments: (seasonId: string) =>

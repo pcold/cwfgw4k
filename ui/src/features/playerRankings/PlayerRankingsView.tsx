@@ -3,7 +3,7 @@ import { formatMoney } from '@/shared/util/money';
 import ColumnHeaderFilter, {
   type ColumnHeaderFilterOption,
 } from '@/shared/components/ColumnHeaderFilter';
-import type { PlayerRankingsRow } from './playerRankingsModel';
+import type { PlayerRankingsRow } from '@/shared/api/types';
 
 interface Props {
   players: PlayerRankingsRow[];

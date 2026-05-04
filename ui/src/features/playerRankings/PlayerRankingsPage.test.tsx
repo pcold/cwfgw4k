@@ -5,31 +5,24 @@ import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import PlayerRankingsPage from './PlayerRankingsPage';
 import type {
   League,
-  ReportCell,
-  ReportTeamColumn,
-  RosterTeam,
+  PlayerRankings,
+  PlayerRankingsRow,
   Season,
   Tournament,
-  WeeklyReport,
 } from '@/shared/api/types';
 
 const leaguesMock = vi.fn();
 const seasonsMock = vi.fn();
 const tournamentsMock = vi.fn();
-const rostersMock = vi.fn();
-const tournamentReportMock = vi.fn();
+const playerRankingsMock = vi.fn();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
     tournaments: (id: string) => tournamentsMock(id),
-    rosters: (id: string) => rostersMock(id),
-    tournamentReport: (seasonId: string, tournamentId: string, live: boolean) =>
-      tournamentReportMock(seasonId, tournamentId, live),
-    seasonReport: vi.fn(),
-    rankings: vi.fn(),
-    golferHistory: vi.fn(),
+    playerRankings: (seasonId: string, live: boolean, throughTournamentId?: string) =>
+      playerRankingsMock(seasonId, live, throughTournamentId),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -67,108 +60,58 @@ function tournament(overrides: Partial<Tournament>): Tournament {
   };
 }
 
-function row(overrides: Partial<ReportCell>): ReportCell {
+function row(overrides: Partial<PlayerRankingsRow>): PlayerRankingsRow {
   return {
-    round: 1,
-    golferName: 'SCHEFFLER',
+    key: 'g:g-1',
     golferId: 'g-1',
-    positionStr: 'T1',
-    scoreToPar: '-12',
-    earnings: 0,
-    topTens: 0,
-    ownershipPct: 100,
-    seasonEarnings: 0,
-    seasonTopTens: 0,
-    pairKey: null,
-    ...overrides,
-  };
-}
-
-function team(overrides: Partial<ReportTeamColumn>): ReportTeamColumn {
-  return {
-    teamId: 't-1',
+    name: 'Scottie Scheffler',
+    topTens: 1,
+    totalEarnings: 18,
     teamName: 'Aces',
-    ownerName: 'Alice',
-    cells: [],
-    topTenEarnings: 0,
-    weeklyTotal: 0,
-    previous: 0,
-    subtotal: 0,
-    topTenCount: 0,
-    topTenMoney: 0,
-    sideBets: 0,
-    totalCash: 0,
+    draftRound: 1,
     ...overrides,
   };
 }
 
-function report(tournamentId: string, overrides: Partial<WeeklyReport>): WeeklyReport {
+function rankings(overrides: Partial<PlayerRankings>): PlayerRankings {
   return {
-    tournament: {
-      id: tournamentId,
-      name: 'Open',
-      startDate: '2026-03-01',
-      endDate: '2026-03-04',
-      status: 'completed',
-      payoutMultiplier: 1,
-      week: '9',
-    },
-    teams: [],
-    undraftedTopTens: [],
-    sideBetDetail: [],
-    standingsOrder: [],
+    players: [],
     live: false,
-    liveLeaderboard: [],
     ...overrides,
   };
 }
-
-const rosters: RosterTeam[] = [
-  {
-    teamId: 't-1',
-    teamName: 'Aces',
-    picks: [
-      { round: 1, golferName: 'Scottie Scheffler', ownershipPct: 100, golferId: 'g-1' },
-    ],
-  },
-];
 
 describe('PlayerRankingsPage', () => {
   beforeEach(() => {
     leaguesMock.mockReset();
     seasonsMock.mockReset();
     tournamentsMock.mockReset();
-    rostersMock.mockReset();
-    tournamentReportMock.mockReset();
+    playerRankingsMock.mockReset();
   });
 
-  it('aggregates drafted and undrafted top tens across all completed tournaments', async () => {
+  it('renders rows from the player-rankings endpoint', async () => {
     const tournA = tournament({ id: 'tn-a', name: 'Open A', startDate: '2026-03-01' });
     const tournB = tournament({ id: 'tn-b', name: 'Open B', startDate: '2026-03-15' });
 
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournA, tournB]);
-    rostersMock.mockResolvedValue(rosters);
-
-    tournamentReportMock.mockImplementation((_s: string, tournamentId: string) => {
-      if (tournamentId === 'tn-a') {
-        return Promise.resolve(
-          report('tn-a', {
-            teams: [team({ cells: [row({ golferId: 'g-1', earnings: 18, topTens: 1 })] })],
-            undraftedTopTens: [
-              { name: 'P. Mickelson', position: 5, payout: 8, scoreToPar: '-3', pairKey: null },
-            ],
+    playerRankingsMock.mockResolvedValue(
+      rankings({
+        players: [
+          row({ key: 'g:g-1', golferId: 'g-1', name: 'Scottie Scheffler', topTens: 2, totalEarnings: 30 }),
+          row({
+            key: 'u:P. Mickelson',
+            golferId: null,
+            name: 'P. Mickelson',
+            topTens: 1,
+            totalEarnings: 8,
+            teamName: null,
+            draftRound: null,
           }),
-        );
-      }
-      return Promise.resolve(
-        report('tn-b', {
-          teams: [team({ cells: [row({ golferId: 'g-1', earnings: 12, topTens: 1 })] })],
-          undraftedTopTens: [],
-        }),
-      );
-    });
+        ],
+      }),
+    );
 
     renderWithProviders(<PlayerRankingsPage />);
 
@@ -191,19 +134,18 @@ describe('PlayerRankingsPage', () => {
     expect(phil[4]).toHaveTextContent('undrafted');
   });
 
-  it('limits the aggregation when a "through" tournament is selected', async () => {
+  it('refetches with a different through param when the selector changes', async () => {
     const tournA = tournament({ id: 'tn-a', name: 'Open A', startDate: '2026-03-01' });
     const tournB = tournament({ id: 'tn-b', name: 'Open B', startDate: '2026-03-15' });
 
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournA, tournB]);
-    rostersMock.mockResolvedValue(rosters);
-    tournamentReportMock.mockImplementation((_s: string, tournamentId: string) => {
-      const earnings = tournamentId === 'tn-a' ? 18 : 12;
+    playerRankingsMock.mockImplementation((_s: string, _live: boolean, throughId?: string) => {
+      const total = throughId === 'tn-a' ? 18 : 30;
       return Promise.resolve(
-        report(tournamentId, {
-          teams: [team({ cells: [row({ golferId: 'g-1', earnings, topTens: 1 })] })],
+        rankings({
+          players: [row({ totalEarnings: total })],
         }),
       );
     });
@@ -211,7 +153,6 @@ describe('PlayerRankingsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<PlayerRankingsPage />);
     await screen.findByText('Scottie Scheffler');
-    // All Tournaments: $18 + $12 = $30
     expect(within(screen.getAllByRole('row')[1]).getAllByRole('cell')[3]).toHaveTextContent(
       '$30.00',
     );
@@ -219,11 +160,8 @@ describe('PlayerRankingsPage', () => {
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-a');
 
-    // Through tn-a only: $18
     await screen.findByText('$18.00');
-    expect(within(screen.getAllByRole('row')[1]).getAllByRole('cell')[3]).toHaveTextContent(
-      '$18.00',
-    );
+    expect(playerRankingsMock).toHaveBeenCalledWith('sn-1', false, 'tn-a');
   });
 
   it('defaults the through-selector to the earliest non-finalized tournament', async () => {
@@ -240,20 +178,10 @@ describe('PlayerRankingsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([completed, upcoming]);
-    rostersMock.mockResolvedValue(rosters);
-    tournamentReportMock.mockImplementation((_s: string, tournamentId: string) =>
-      Promise.resolve(
-        report(tournamentId, {
-          teams: [team({ cells: [row({ golferId: 'g-1', earnings: 18, topTens: 1 })] })],
-        }),
-      ),
-    );
+    playerRankingsMock.mockResolvedValue(rankings({}));
 
     renderWithProviders(<PlayerRankingsPage />);
 
-    // The through-selector should preselect the earliest non-finalized
-    // tournament (tn-upcoming), not "All Tournaments". Wait for the
-    // tournaments query to populate the option list before asserting.
     await screen.findByRole('option', { name: /tn-upcoming|Sample Open.*upcoming/i });
     const select = screen.getByLabelText(/Through/i) as HTMLSelectElement;
     expect(select.value).toBe('tn-upcoming');
@@ -264,8 +192,7 @@ describe('PlayerRankingsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournA]);
-    rostersMock.mockResolvedValue(rosters);
-    tournamentReportMock.mockResolvedValue(report('tn-a', {}));
+    playerRankingsMock.mockResolvedValue(rankings({ players: [] }));
 
     renderWithProviders(<PlayerRankingsPage />);
     expect(
@@ -273,15 +200,14 @@ describe('PlayerRankingsPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('surfaces an error when a report query fails', async () => {
+  it('surfaces an error when the player-rankings query fails', async () => {
     const tournA = tournament({ id: 'tn-a', name: 'Open A' });
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournA]);
-    rostersMock.mockResolvedValue(rosters);
-    tournamentReportMock.mockRejectedValue(new Error('boom'));
+    playerRankingsMock.mockRejectedValue(new Error('boom'));
 
     renderWithProviders(<PlayerRankingsPage />);
-    expect(await screen.findByText(/Failed to load reports/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Failed to load player rankings/i)).toBeInTheDocument();
   });
 });

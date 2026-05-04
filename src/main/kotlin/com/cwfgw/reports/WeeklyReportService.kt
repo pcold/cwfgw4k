@@ -195,6 +195,63 @@ class WeeklyReportService(
     }
 
     /**
+     * Per-golfer rankings across the season — replaces the legacy UI
+     * flow that fetched one [getReport] per tournament and aggregated
+     * client-side. Loads all the same data that flow needed (rosters,
+     * scores, results, golfers) once, walks it in pure code, and
+     * returns one response. Live overlay folds ESPN previews in via
+     * [LiveOverlayService.overlayPlayerRankings] so non-finalized
+     * tournaments contribute projected earnings to the totals.
+     */
+    suspend fun getPlayerRankings(
+        seasonId: SeasonId,
+        throughTournamentId: TournamentId? = null,
+        live: Boolean = false,
+    ): Result<PlayerRankings, ReportError> {
+        seasonService.get(seasonId) ?: return Result.Err(ReportError.SeasonNotFound(seasonId))
+        val through =
+            throughTournamentId?.let { id ->
+                tournamentService.get(id) ?: return Result.Err(ReportError.TournamentNotFound(id))
+            }
+
+        val rules = seasonService.getRules(seasonId) ?: SeasonRules.defaults()
+        val teams = teamService.listBySeason(seasonId)
+        val allGolfers = golferService.list(activeOnly = false, search = null)
+        val golferMap = allGolfers.associateBy { it.id }
+        val completed = tournamentService.list(seasonId, status = TournamentStatus.Completed)
+        val included = filterThroughTournament(completed, through)
+        val allRosters = teams.flatMap { teamService.getRoster(it.id) }
+        val rosteredGolferIds = allRosters.map { it.golferId }.toSet()
+        val allScores = included.flatMap { scoringService.getScores(seasonId, it.id) }
+        val allResults = included.flatMap { tournamentService.getResults(it.id) }
+
+        val baseAcc =
+            buildPlayerRankingsAcc(
+                allScores = allScores,
+                allResults = allResults,
+                tournamentsById = included.associateBy { it.id },
+                rosteredGolferIds = rosteredGolferIds,
+                golferMap = golferMap,
+                rules = rules,
+            )
+
+        val finalAcc =
+            if (!live) {
+                baseAcc
+            } else {
+                liveOverlayService.overlayPlayerRankings(
+                    seasonId = seasonId,
+                    base = baseAcc,
+                    candidates = liveCandidatesFor(seasonId, through),
+                    rules = rules,
+                )
+            }
+
+        val rosterIndex = buildRosterIndex(teams, allRosters, golferMap)
+        return Result.Ok(composePlayerRankings(finalAcc, rosterIndex, golferMap, live = live))
+    }
+
+    /**
      * Live candidates for a rankings overlay: every non-completed
      * tournament strictly before the cutoff, plus the cutoff itself if
      * it's also non-completed. Sorted chronologically so the overlay
@@ -895,3 +952,142 @@ private const val TOP_TEN_CUTOFF = 10
 // Sentinel position fed to [PayoutTable.tieSplitPayout] when the result has no position —
 // past the payout zone so the table returns 0.
 private const val NEVER_PAID_POSITION = 99
+
+// ----- Player rankings assembly -----
+
+/**
+ * Per-golfer roster context used to populate `teamName` / `draftRound`
+ * on drafted [PlayerRankingsRow] entries. If a golfer is rostered by
+ * multiple teams (rare but legal — drafted across multiple fantasy
+ * teams), the LAST team encountered wins. Order is whatever the
+ * caller produces; in practice [WeeklyReportService.getPlayerRankings]
+ * passes them in `teamService.listBySeason` order which is stable
+ * across requests.
+ */
+internal data class PlayerRosterInfo(
+    val teamName: String,
+    val draftRound: Int,
+    val fullName: String,
+)
+
+internal fun buildRosterIndex(
+    teams: List<Team>,
+    allRosters: List<RosterEntry>,
+    golferMap: Map<GolferId, Golfer>,
+): Map<GolferId, PlayerRosterInfo> {
+    val teamNameById = teams.associate { it.id to it.teamName }
+    val byGolfer = mutableMapOf<GolferId, PlayerRosterInfo>()
+    for (entry in allRosters) {
+        val teamName = teamNameById[entry.teamId] ?: continue
+        val golfer = golferMap[entry.golferId] ?: continue
+        byGolfer[entry.golferId] =
+            PlayerRosterInfo(
+                teamName = teamName,
+                draftRound = entry.draftRound ?: continue,
+                fullName = "${golfer.firstName} ${golfer.lastName}",
+            )
+    }
+    return byGolfer
+}
+
+/**
+ * Build the base accumulator from completed-tournament data:
+ *  - Drafted rows come from [FantasyScore]: each row is one (team,
+ *    golfer, tournament) finish where the golfer top-10'd. We sum
+ *    ownership-adjusted `points` and count rows so a golfer rostered
+ *    by N teams who top-10s once contributes N to `topTens` and the
+ *    sum of their ownership-adjusted slices to earnings — matching
+ *    the legacy UI semantic where each cell counted independently.
+ *  - Undrafted rows come from [TournamentResult]: top-10 finishes by
+ *    golfers no team rostered, with payouts computed via the same
+ *    [PayoutTable.tieSplitPayout] helper [buildUndraftedAgg] uses for
+ *    per-tournament reports. Keyed by display name because the
+ *    matching ESPN-leaderboard path doesn't carry golferId.
+ */
+@Suppress("LongParameterList")
+internal fun buildPlayerRankingsAcc(
+    allScores: List<FantasyScore>,
+    allResults: List<TournamentResult>,
+    tournamentsById: Map<TournamentId, Tournament>,
+    rosteredGolferIds: Set<GolferId>,
+    golferMap: Map<GolferId, Golfer>,
+    rules: SeasonRules,
+): PlayerRankingsAcc {
+    val drafted = mutableMapOf<GolferId, DraftedAgg>()
+    for (score in allScores) {
+        val existing = drafted[score.golferId] ?: DraftedAgg(topTens = 0, totalEarnings = BigDecimal.ZERO)
+        drafted[score.golferId] =
+            existing.copy(
+                topTens = existing.topTens + 1,
+                totalEarnings = existing.totalEarnings.add(score.points),
+            )
+    }
+
+    val undrafted = mutableMapOf<String, UndraftedAgg>()
+    val resultsByTournament = allResults.groupBy { it.tournamentId }
+    for (result in allResults) {
+        val position = result.position ?: continue
+        if (position > TOP_TEN_CUTOFF) continue
+        if (result.golferId in rosteredGolferIds) continue
+        val tournament = tournamentsById[result.tournamentId] ?: continue
+        val golfer = golferMap[result.golferId] ?: continue
+        val tournamentResults = resultsByTournament[result.tournamentId].orEmpty()
+        val numTied = tournamentResults.count { it.position == position }
+        val payout =
+            PayoutTable.tieSplitPayout(
+                position = position,
+                numTied = numTied,
+                multiplier = tournament.payoutMultiplier,
+                rules = rules,
+                isTeamEvent = tournament.isTeamEvent,
+            )
+        val name = "${golfer.firstName.firstOrNull() ?: '?'}. ${golfer.lastName}"
+        val existing = undrafted[name] ?: UndraftedAgg(topTens = 0, totalEarnings = BigDecimal.ZERO)
+        undrafted[name] =
+            existing.copy(
+                topTens = existing.topTens + 1,
+                totalEarnings = existing.totalEarnings.add(payout),
+            )
+    }
+
+    return PlayerRankingsAcc(drafted = drafted.toMap(), undrafted = undrafted.toMap())
+}
+
+internal fun composePlayerRankings(
+    acc: PlayerRankingsAcc,
+    rosterIndex: Map<GolferId, PlayerRosterInfo>,
+    golferMap: Map<GolferId, Golfer>,
+    live: Boolean,
+): PlayerRankings {
+    val draftedRows =
+        acc.drafted.entries.map { (golferId, agg) ->
+            val roster = rosterIndex[golferId]
+            val golfer = golferMap[golferId]
+            PlayerRankingsRow(
+                key = "g:${golferId.value}",
+                golferId = golferId,
+                name = roster?.fullName ?: golfer?.let { "${it.firstName} ${it.lastName}" } ?: "?",
+                topTens = agg.topTens,
+                totalEarnings = agg.totalEarnings,
+                teamName = roster?.teamName,
+                draftRound = roster?.draftRound,
+            )
+        }
+    val undraftedRows =
+        acc.undrafted.entries.map { (name, agg) ->
+            PlayerRankingsRow(
+                key = "u:$name",
+                golferId = null,
+                name = name,
+                topTens = agg.topTens,
+                totalEarnings = agg.totalEarnings,
+            )
+        }
+    val sorted =
+        (draftedRows + undraftedRows).sortedWith(
+            compareByDescending<PlayerRankingsRow> { it.totalEarnings }
+                .thenByDescending { it.topTens }
+                .thenBy { it.name },
+        )
+    return PlayerRankings(players = sorted, live = live)
+}
