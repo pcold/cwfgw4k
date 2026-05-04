@@ -5,6 +5,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
+import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
 import { mutationError } from '@/shared/util/mutationError';
 import { defaultScoreboardTournament, tournamentLabel } from '@/shared/util/tournament';
 import type { WeeklyReport } from '@/shared/api/types';
@@ -12,7 +13,7 @@ import PlayerLinksPanel from './PlayerLinksPanel';
 import ScoreboardView from './ScoreboardView';
 
 function ScoreboardPage() {
-  const { seasonId, live } = useLeagueSeason();
+  const { seasonId } = useLeagueSeason();
   const { authenticated, isAdmin } = useAuth();
   const leaguesGate = useLeaguesGate();
   const queryClient = useQueryClient();
@@ -36,12 +37,14 @@ function ScoreboardPage() {
       ? userTournamentId
       : defaultScoreboardTournament(tournaments);
 
+  const liveOverlay = useLiveOverlay(tournaments, tournamentId);
+
   const reportQuery = useQuery({
-    queryKey: ['tournamentReport', seasonId, tournamentId, live],
+    queryKey: ['tournamentReport', seasonId, tournamentId, liveOverlay.effectiveLive],
     queryFn:
       seasonId === null || tournamentId === null
         ? skipToken
-        : () => api.tournamentReport(seasonId, tournamentId, live),
+        : () => api.tournamentReport(seasonId, tournamentId, liveOverlay.effectiveLive),
   });
 
   const finalizeMutation = useMutation({
@@ -119,6 +122,7 @@ function ScoreboardPage() {
                   </option>
                 ))}
               </select>
+              <LiveOverlayCheckbox state={liveOverlay} id="scoreboard-live-overlay" />
             </div>
 
             <QueryState query={reportQuery} label="scoreboard">

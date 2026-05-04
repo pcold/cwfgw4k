@@ -3,13 +3,14 @@ import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
+import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
 import { earliestUnfinalized, tournamentLabel } from '@/shared/util/tournament';
 import RankingsView from './RankingsView';
 
 const ALL_TOURNAMENTS = '';
 
 function RankingsPage() {
-  const { seasonId, live } = useLeagueSeason();
+  const { seasonId } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
   // null = user hasn't picked yet, use the computed default; "" = user
   // explicitly picked All Tournaments; "<uuid>" = explicit tournament.
@@ -25,12 +26,15 @@ function RankingsPage() {
     tournaments === undefined ? null : (earliestUnfinalized(tournaments) ?? ALL_TOURNAMENTS);
   const throughTournamentId = throughOverride ?? defaultThrough;
 
+  const liveOverlay = useLiveOverlay(tournaments ?? [], throughTournamentId);
+
   const rankingsQuery = useQuery({
-    queryKey: ['rankings', seasonId, live, throughTournamentId],
+    queryKey: ['rankings', seasonId, liveOverlay.effectiveLive, throughTournamentId],
     queryFn:
       seasonId === null || throughTournamentId === null
         ? skipToken
-        : () => api.rankings(seasonId, live, throughTournamentId || undefined),
+        : () =>
+            api.rankings(seasonId, liveOverlay.effectiveLive, throughTournamentId || undefined),
   });
 
   if (leaguesGate) return leaguesGate;
@@ -57,6 +61,7 @@ function RankingsPage() {
             </option>
           ))}
         </select>
+        <LiveOverlayCheckbox state={liveOverlay} id="rankings-live-overlay" />
       </div>
 
       <QueryState query={rankingsQuery} label="standings">

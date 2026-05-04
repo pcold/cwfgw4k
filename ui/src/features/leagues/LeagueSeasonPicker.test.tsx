@@ -75,12 +75,7 @@ describe('LeagueSeasonPicker', () => {
     expect(await screen.findByRole('option', { name: '2026 Shadow' })).toBeInTheDocument();
   });
 
-  it('toggles the live overlay checkbox', async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<LeagueSeasonPicker />);
-    const checkbox = await screen.findByRole('checkbox', { name: /Live overlay/i });
-    expect(checkbox).toBeChecked();
-    await user.click(checkbox);
-    expect(checkbox).not.toBeChecked();
-  });
+  // The Live overlay checkbox lives per-page now (LiveOverlayCheckbox), only
+  // visible when the active tournament selection is the season's earliest
+  // non-finalized event. The picker no longer renders it.
 });

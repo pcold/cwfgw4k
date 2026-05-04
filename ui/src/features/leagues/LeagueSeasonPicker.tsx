@@ -44,15 +44,13 @@ function LeagueSeasonPicker() {
           </select>
         </label>
 
-        <label className="flex items-center gap-2 cursor-pointer w-full sm:w-auto sm:ml-auto py-1">
-          <input
-            type="checkbox"
-            checked={ctx.live}
-            onChange={(e) => ctx.setLive(e.target.checked)}
-            className="accent-green-500 w-4 h-4"
-          />
-          <span className="text-gray-400">Live overlay</span>
-        </label>
+        {/*
+          The live overlay is now scoped per-view: each page that shows a
+          single tournament renders its own checkbox, only when the active
+          tournament is the season's earliest non-finalized event (where
+          live data actually adds signal). Past-completed / future / "All
+          Tournaments" views skip ESPN entirely. See useLiveOverlayToggle.
+        */}
       </div>
     </div>
   );

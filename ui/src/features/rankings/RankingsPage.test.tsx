@@ -86,7 +86,9 @@ describe('RankingsPage', () => {
     expect(await screen.findByRole('heading', { name: /Team Standings/i })).toBeInTheDocument();
     const table = screen.getByRole('table');
     expect(within(table).getByText('Aces')).toBeInTheDocument();
-    expect(rankingsMock).toHaveBeenCalledWith('sn-1', true, undefined);
+    // Only the earliest non-finalized tournament view triggers live=true.
+    // Test data here is fully completed → effective live is false.
+    expect(rankingsMock).toHaveBeenCalledWith('sn-1', false, undefined);
   });
 
   it('passes the selected tournament as the "through" parameter', async () => {
@@ -102,7 +104,8 @@ describe('RankingsPage', () => {
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-7');
 
-    expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', true, 'tn-7');
+    // tn-7 is completed in this test data → effective live is false.
+    expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', false, 'tn-7');
   });
 
   it('defaults to the earliest non-finalized tournament when one exists', async () => {

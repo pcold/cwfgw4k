@@ -4,6 +4,7 @@ import { api } from '@/shared/api/client';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
+import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
 import { earliestUnfinalized, tournamentLabel } from '@/shared/util/tournament';
 import WeeklyReportView from './WeeklyReportView';
 import type { Season, WeeklyReport } from '@/shared/api/types';
@@ -15,7 +16,7 @@ function downloadPdf(report: WeeklyReport, season: Season | null): Promise<void>
 const ALL_TOURNAMENTS = '';
 
 function WeeklyReportPage() {
-  const { seasonId, seasons, live } = useLeagueSeason();
+  const { seasonId, seasons } = useLeagueSeason();
   const currentSeason = seasons?.find((s) => s.id === seasonId) ?? null;
   const leaguesGate = useLeaguesGate();
   const [userTournamentId, setUserTournamentId] = useState<string | null>(null);
@@ -30,16 +31,17 @@ function WeeklyReportPage() {
   // Derived rather than synced: user's pick wins, otherwise the earliest
   // unfinalized tournament, otherwise the "All Tournaments" sentinel.
   const effectiveId = userTournamentId ?? earliestUnfinalized(tournaments) ?? ALL_TOURNAMENTS;
+  const liveOverlay = useLiveOverlay(tournaments, effectiveId || null);
 
   const reportQuery = useQuery({
-    queryKey: ['report', seasonId, effectiveId, live],
+    queryKey: ['report', seasonId, effectiveId, liveOverlay.effectiveLive],
     queryFn:
       seasonId === null
         ? skipToken
         : () =>
             effectiveId === ALL_TOURNAMENTS
-              ? api.seasonReport(seasonId, live)
-              : api.tournamentReport(seasonId, effectiveId, live),
+              ? api.seasonReport(seasonId, liveOverlay.effectiveLive)
+              : api.tournamentReport(seasonId, effectiveId, liveOverlay.effectiveLive),
   });
 
   if (leaguesGate) return leaguesGate;
@@ -74,6 +76,7 @@ function WeeklyReportPage() {
         >
           Download PDF
         </button>
+        <LiveOverlayCheckbox state={liveOverlay} id="weekly-report-live-overlay" />
       </div>
 
       <QueryState query={reportQuery} label="report">

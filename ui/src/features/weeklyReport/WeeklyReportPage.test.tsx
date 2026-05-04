@@ -119,7 +119,8 @@ describe('WeeklyReportPage', () => {
     renderWithProviders(<WeeklyReportPage />);
 
     expect(await screen.findByRole('heading', { name: /All Tournaments/i })).toBeInTheDocument();
-    expect(seasonReportMock).toHaveBeenCalledWith('sn-1', true);
+    // All Tournaments view never triggers live overlay.
+    expect(seasonReportMock).toHaveBeenCalledWith('sn-1', false);
     expect(tournamentReportMock).not.toHaveBeenCalled();
   });
 
@@ -135,13 +136,15 @@ describe('WeeklyReportPage', () => {
     renderWithProviders(<WeeklyReportPage />);
 
     expect(await screen.findByRole('heading', { name: /Sample Open/i })).toBeInTheDocument();
+    // tn-1 is the earliest non-finalized tournament → live overlay applies.
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
 
     const select = screen.getByLabelText(/Tournament/i);
     await user.selectOptions(select, '');
 
     expect(await screen.findByRole('heading', { name: /All Tournaments/i })).toBeInTheDocument();
-    expect(seasonReportMock).toHaveBeenCalledWith('sn-1', true);
+    // Switching to All Tournaments suppresses the live overlay.
+    expect(seasonReportMock).toHaveBeenCalledWith('sn-1', false);
   });
 
   it('defaults to All Tournaments when every tournament is already completed', async () => {
@@ -153,7 +156,8 @@ describe('WeeklyReportPage', () => {
     renderWithProviders(<WeeklyReportPage />);
 
     expect(await screen.findByRole('heading', { name: /All Tournaments/i })).toBeInTheDocument();
-    expect(seasonReportMock).toHaveBeenCalledWith('sn-1', true);
+    // All Tournaments view never triggers live overlay.
+    expect(seasonReportMock).toHaveBeenCalledWith('sn-1', false);
     expect(tournamentReportMock).not.toHaveBeenCalled();
   });
 

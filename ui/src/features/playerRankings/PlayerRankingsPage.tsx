@@ -4,6 +4,7 @@ import { api } from '@/shared/api/client';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
+import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
 import { earliestUnfinalized, tournamentLabel } from '@/shared/util/tournament';
 import type { Tournament, WeeklyReport } from '@/shared/api/types';
 import { buildPlayerRankings } from './playerRankingsModel';
@@ -49,7 +50,7 @@ function tournamentsToFetch(
 }
 
 function PlayerRankingsPage() {
-  const { seasonId, live } = useLeagueSeason();
+  const { seasonId } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
   // null = use the computed default (earliest non-finalized tournament, or
   // ALL_TOURNAMENTS if every tournament is completed).
@@ -72,7 +73,8 @@ function PlayerRankingsPage() {
       ? null
       : (earliestUnfinalized(tournamentsQuery.data) ?? ALL_TOURNAMENTS);
   const throughTournamentId = throughOverride ?? defaultThrough ?? ALL_TOURNAMENTS;
-  const targets = tournamentsToFetch(tournaments, throughTournamentId, live);
+  const liveOverlay = useLiveOverlay(tournaments, throughTournamentId || null);
+  const targets = tournamentsToFetch(tournaments, throughTournamentId, liveOverlay.effectiveLive);
 
   const reportQueries = useQueries({
     queries: targets.map((target) => ({
@@ -113,6 +115,7 @@ function PlayerRankingsPage() {
                 </option>
               ))}
             </select>
+            <LiveOverlayCheckbox state={liveOverlay} id="player-rankings-live-overlay" />
           </div>
         </div>
 
