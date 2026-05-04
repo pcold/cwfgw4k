@@ -125,7 +125,7 @@ internal fun buildServices(
         TournamentLinkService(linkRepo, tournamentRepository, golferRepository, transactor)
     val espnService =
         EspnService(
-            EspnClient(httpClient),
+            EspnClient(httpClient, config.espn),
             tournamentService,
             golferService,
             teamService,

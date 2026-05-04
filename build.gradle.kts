@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.cloud.sql.postgres)
 
     implementation(libs.bcrypt)
+    implementation(libs.caffeine)
     implementation(libs.bundles.hoplite)
 
     implementation(libs.kotlin.logging)

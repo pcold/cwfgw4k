@@ -1,5 +1,6 @@
 package com.cwfgw.espn
 
+import com.cwfgw.config.EspnConfig
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -120,6 +121,8 @@ private fun arbCompetitors(): Arb<List<EspnCompetitor>> =
             )
         }
     }
+
+private val TEST_ESPN_CONFIG = EspnConfig(scoreboardCacheTtlSeconds = 300, scoreboardCacheMaxSize = 256)
 
 class EspnClientSpec : FunSpec({
 
@@ -509,7 +512,7 @@ class EspnClientSpec : FunSpec({
                     headers = headersOf("Content-Type", "application/json"),
                 )
             }
-        val client = EspnClient(HttpClient(mockEngine), baseUrl = "https://mock.test/scoreboard")
+        val client = EspnClient(HttpClient(mockEngine), TEST_ESPN_CONFIG, baseUrl = "https://mock.test/scoreboard")
 
         val tournaments = client.fetchScoreboard(LocalDate.parse("2026-04-15"))
 
@@ -520,7 +523,7 @@ class EspnClientSpec : FunSpec({
     test("fetchScoreboard throws EspnUpstreamException with the upstream status on non-200") {
         val mockEngine =
             MockEngine { _ -> respondError(HttpStatusCode.InternalServerError, "upstream boom") }
-        val client = EspnClient(HttpClient(mockEngine), baseUrl = "https://mock.test/scoreboard")
+        val client = EspnClient(HttpClient(mockEngine), TEST_ESPN_CONFIG, baseUrl = "https://mock.test/scoreboard")
 
         val thrown =
             shouldThrow<EspnUpstreamException> {
@@ -595,7 +598,7 @@ class EspnClientSpec : FunSpec({
                     headers = headersOf("Content-Type", "application/json"),
                 )
             }
-        val client = EspnClient(HttpClient(mockEngine), baseUrl = "https://mock.test/scoreboard")
+        val client = EspnClient(HttpClient(mockEngine), TEST_ESPN_CONFIG, baseUrl = "https://mock.test/scoreboard")
 
         val entries = client.fetchCalendar()
 
@@ -606,7 +609,7 @@ class EspnClientSpec : FunSpec({
     test("fetchCalendar throws EspnUpstreamException on a non-200 response") {
         val mockEngine =
             MockEngine { _ -> respondError(HttpStatusCode.BadGateway, "upstream") }
-        val client = EspnClient(HttpClient(mockEngine), baseUrl = "https://mock.test/scoreboard")
+        val client = EspnClient(HttpClient(mockEngine), TEST_ESPN_CONFIG, baseUrl = "https://mock.test/scoreboard")
 
         val thrown = shouldThrow<EspnUpstreamException> { client.fetchCalendar() }
         thrown.status shouldBe HttpStatusCode.BadGateway.value

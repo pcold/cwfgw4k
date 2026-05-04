@@ -1,14 +1,26 @@
 package com.cwfgw.espn
 
+import com.cwfgw.config.EspnConfig
+import com.github.benmanes.caffeine.cache.AsyncCache
+import com.github.benmanes.caffeine.cache.Caffeine
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.future.await
+import kotlinx.coroutines.future.future
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.time.Duration
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+
+private val log = KotlinLogging.logger {}
 
 /**
  * Fetches PGA leaderboards from ESPN's public scoreboard API.
@@ -41,8 +53,134 @@ const val ESPN_DEFAULT_BASE_URL: String =
 
 fun EspnClient(
     httpClient: HttpClient,
+    config: EspnConfig,
     baseUrl: String = ESPN_DEFAULT_BASE_URL,
-): EspnClient = HttpEspnClient(httpClient, baseUrl)
+): EspnClient =
+    CachingEspnClient(
+        delegate = HttpEspnClient(httpClient, baseUrl),
+        scoreboardTtl = Duration.ofSeconds(config.scoreboardCacheTtlSeconds),
+        scoreboardMaxSize = config.scoreboardCacheMaxSize,
+    )
+
+/**
+ * Wraps an [EspnClient] with an in-process Caffeine [AsyncCache] over
+ * both [fetchScoreboard] and [fetchCalendar]. One cache per JVM (Cloud
+ * Run instance) — fan-out from parallel report-rebuilds across different
+ * Postgres cache keys still need the same handful of ESPN dates, and this
+ * layer dedupes them.
+ *
+ * Single-flight: when N coroutines call `fetchScoreboard(date)` for the
+ * same date concurrently, only the first triggers the underlying ESPN
+ * call; the others await the same `CompletableFuture`. That's exactly
+ * the thundering-herd fix the report path needs — no more N parallel
+ * ESPN calls for the same date.
+ *
+ * Cache-aside semantics on errors: if the underlying call throws, the
+ * future fails, Caffeine evicts the entry, and the next call retries
+ * fresh. Errors are not cached.
+ *
+ * Each event emits a structured log line shaped like the request cache
+ * logs:
+ *   `cwfgw4k.espn event=hit|miss|error endpoint=scoreboard date=YYYY-MM-DD [duration_ms=N]`
+ *
+ * Calendar entries use `endpoint=calendar` and `date=-` so the log shape
+ * stays uniform.
+ */
+internal class CachingEspnClient(
+    private val delegate: EspnClient,
+    scoreboardTtl: Duration,
+    scoreboardMaxSize: Long,
+) : EspnClient {
+    // Long-lived scope tied to the JVM lifetime. SupervisorJob so one
+    // failed ESPN load doesn't poison sibling loads.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private val scoreboardCache: AsyncCache<LocalDate, List<EspnTournament>> =
+        Caffeine.newBuilder()
+            .expireAfterWrite(scoreboardTtl)
+            .maximumSize(scoreboardMaxSize)
+            .buildAsync()
+    private val calendarCache: AsyncCache<Unit, List<EspnCalendarEntry>> =
+        Caffeine.newBuilder()
+            .expireAfterWrite(scoreboardTtl)
+            .maximumSize(1)
+            .buildAsync()
+
+    override suspend fun fetchScoreboard(date: LocalDate): List<EspnTournament> {
+        val precheck = scoreboardCache.getIfPresent(date)
+        if (precheck != null && precheck.isDone && !precheck.isCompletedExceptionally) {
+            log.info { "cwfgw4k.espn event=hit endpoint=scoreboard date=$date" }
+            return precheck.await()
+        }
+        try {
+            return scoreboardCache
+                .get(date) { _, _ ->
+                    scope.future { loadScoreboard(date) }
+                }
+                .await()
+        } catch (e: EspnUpstreamException) {
+            // Caffeine evicts failed futures asynchronously; force eviction
+            // synchronously so the next caller retries instead of awaiting
+            // the same failed future.
+            scoreboardCache.synchronous().invalidate(date)
+            throw e
+        }
+    }
+
+    override suspend fun fetchCalendar(): List<EspnCalendarEntry> {
+        val precheck = calendarCache.getIfPresent(Unit)
+        if (precheck != null && precheck.isDone && !precheck.isCompletedExceptionally) {
+            log.info { "cwfgw4k.espn event=hit endpoint=calendar date=-" }
+            return precheck.await()
+        }
+        try {
+            return calendarCache
+                .get(Unit) { _, _ ->
+                    scope.future { loadCalendar() }
+                }
+                .await()
+        } catch (e: EspnUpstreamException) {
+            calendarCache.synchronous().invalidate(Unit)
+            throw e
+        }
+    }
+
+    private suspend fun loadScoreboard(date: LocalDate): List<EspnTournament> {
+        val started = System.currentTimeMillis()
+        try {
+            val fresh = delegate.fetchScoreboard(date)
+            log.info {
+                "cwfgw4k.espn event=miss endpoint=scoreboard date=$date " +
+                    "duration_ms=${System.currentTimeMillis() - started}"
+            }
+            return fresh
+        } catch (e: EspnUpstreamException) {
+            log.warn(e) {
+                "cwfgw4k.espn event=error endpoint=scoreboard date=$date " +
+                    "duration_ms=${System.currentTimeMillis() - started}"
+            }
+            throw e
+        }
+    }
+
+    private suspend fun loadCalendar(): List<EspnCalendarEntry> {
+        val started = System.currentTimeMillis()
+        try {
+            val fresh = delegate.fetchCalendar()
+            log.info {
+                "cwfgw4k.espn event=miss endpoint=calendar date=- " +
+                    "duration_ms=${System.currentTimeMillis() - started}"
+            }
+            return fresh
+        } catch (e: EspnUpstreamException) {
+            log.warn(e) {
+                "cwfgw4k.espn event=error endpoint=calendar date=- " +
+                    "duration_ms=${System.currentTimeMillis() - started}"
+            }
+            throw e
+        }
+    }
+}
 
 private class HttpEspnClient(
     private val httpClient: HttpClient,

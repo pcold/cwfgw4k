@@ -29,3 +29,11 @@ cache:
   # matches TTL: at steady state the table holds at most ~1 TTL window of stale
   # rows before sweep clears them.
   sweepIntervalSeconds: ${CACHE_SWEEP_INTERVAL_SECONDS:-300}
+
+espn:
+  # In-process Caffeine cache for ESPN scoreboard responses keyed by date.
+  # Default 5 minutes — keeps live leaderboards relatively live while
+  # absorbing fan-out bursts (multiple report cache keys all needing today's
+  # ESPN data dedupe to one ESPN call).
+  scoreboardCacheTtlSeconds: ${ESPN_SCOREBOARD_CACHE_TTL_SECONDS:-300}
+  scoreboardCacheMaxSize: ${ESPN_SCOREBOARD_CACHE_MAX_SIZE:-256}

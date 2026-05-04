@@ -21,6 +21,7 @@ ktlint-gradle = "14.2.0"
 kover = "0.9.1"
 node-gradle = "7.1.0"
 cloud-sql-postgres = "1.25.1"
+caffeine = "3.2.0"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
@@ -54,6 +55,8 @@ jooq-codegen = { module = "org.jooq:jooq-codegen", version.ref = "jooq" }
 jooq-meta = { module = "org.jooq:jooq-meta", version.ref = "jooq" }
 
 bcrypt = { module = "at.favre.lib:bcrypt", version.ref = "bcrypt" }
+
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 
 hoplite-core = { module = "com.sksamuel.hoplite:hoplite-core", version.ref = "hoplite" }
 hoplite-yaml = { module = "com.sksamuel.hoplite:hoplite-yaml", version.ref = "hoplite" }

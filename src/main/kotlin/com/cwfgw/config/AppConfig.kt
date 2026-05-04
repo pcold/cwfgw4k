@@ -9,6 +9,7 @@ data class AppConfig(
     val db: DbConfig,
     val auth: AuthConfig,
     val cache: CacheConfig,
+    val espn: EspnConfig,
 ) {
     companion object {
         fun load(overrides: Map<String, Any> = emptyMap()): AppConfig =
@@ -47,4 +48,21 @@ data class AuthConfig(
 data class CacheConfig(
     val defaultTtlSeconds: Long,
     val sweepIntervalSeconds: Long,
+)
+
+/**
+ * In-process Caffeine cache fronting the ESPN HTTP client. Sits inside a
+ * single JVM (so each Cloud Run instance has its own) and dedupes concurrent
+ * scoreboard / calendar fetches to ESPN within the TTL window. Layered
+ * below the Postgres response cache: when the response cache misses and the
+ * handler reaches into ESPN, this layer serves from in-process if any other
+ * request fetched the same date / calendar in the last TTL.
+ *
+ * Default 300s — short enough for live leaderboards to stay relatively
+ * fresh, long enough to absorb fan-out bursts (e.g. N parallel report
+ * rebuilds across different cache keys all hitting the same ESPN date).
+ */
+data class EspnConfig(
+    val scoreboardCacheTtlSeconds: Long,
+    val scoreboardCacheMaxSize: Long,
 )
