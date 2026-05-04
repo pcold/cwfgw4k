@@ -189,6 +189,43 @@ UUIDs become `:id`, pure-numeric segments become `:n`, and Vite hashed assets
 under `/assets/` collapse to one bucket. That keeps cardinality bounded across
 deploys.
 
+## Load testing against an ephemeral staging clone
+
+`ops/load-test/spin-staging.sh` clones the prod Cloud SQL instance into a
+fresh, timestamped staging instance, deploys an ephemeral Cloud Run
+revision pointing at the clone, runs `ops/load-test/run.sh` against it,
+and tears everything down on exit (trap-based, so Ctrl-C and failures
+clean up too). Use it to test config or code changes against realistic
+data without touching the live service.
+
+```bash
+# Default 10 concurrency, 30s duration. Defaults match prod provisioning
+# except min-instances=1 to remove cold-start variance from measurements.
+ops/load-test/spin-staging.sh
+
+# Heavier burst.
+ops/load-test/spin-staging.sh -c 25 -d 60s
+
+# Skip teardown for poking at the staging revision afterward.
+ops/load-test/spin-staging.sh --keep
+
+# List every staging env still alive in the project.
+ops/load-test/spin-staging.sh --list
+
+# Tear one down by its YYYYMMDD-HHMMSS suffix (full instance name also accepted).
+ops/load-test/spin-staging.sh --teardown 20260503-141500
+```
+
+What it creates (deleted on exit unless `--keep`):
+- Cloud SQL instance: `staging-YYYYMMDD-HHMMSS` (clone of `cwfgw4k-prod`)
+- Cloud Run service: `cwfgw4k-staging-YYYYMMDD-HHMMSS`
+
+Cost: roughly $1–2 per run. The clone bring-up is the dominant ~5–10 min
+the staging instance is alive; teardown happens promptly after the burst.
+
+Requires the caller to have these IAM roles on the cwfgw4k project:
+`Cloud SQL Admin`, `Cloud Run Admin`, `Secret Manager Secret Accessor`.
+
 ## Cost expectations
 
 At this app's traffic, everything on this dashboard is under GCP's free tier:

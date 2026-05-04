@@ -18,8 +18,13 @@
 # Required:
 #   $1  — base URL (no trailing slash)
 #   $2  — season UUID for the cached season-scoped endpoints
-#   $3  — tournament UUID (optional; only needed for the per-tournament
-#         report and scoring routes — script skips them if absent)
+#   $3  — tournament UUID (optional; only used for the per-tournament
+#         report / scoring / results routes — skipped if absent).
+#         Prefer a *completed* tournament here: upcoming/in-progress ones
+#         can have empty result/scoring rows, which makes the per-tournament
+#         endpoints return `[]` and stops exercising the cache+scoring path
+#         under realistic data. spin-staging.sh picks the most recently
+#         completed tournament for this argument by default.
 #
 # Optional flags (passed through to every hey invocation):
 #   -c N    concurrency per endpoint (default 10)
