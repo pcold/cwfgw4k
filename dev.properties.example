@@ -15,6 +15,11 @@ DB_SCHEMA=cwfgw4k
 # with a blank value. Generate with: openssl rand -hex 32
 AUTH_SESSION_SECRET=
 
+# The session cookie's `Secure` attribute. Default in application.yaml is true
+# (prod-safe). Local dev runs over plain http://localhost:8080 where browsers
+# refuse to accept Secure cookies, so override to false here.
+AUTH_COOKIE_SECURE=false
+
 # Optional admin bootstrap. If both are set AND the users table is empty at
 # startup, an admin user is seeded with these credentials. If either is missing
 # the seeder logs a warning and skips — we never bake in a default password.

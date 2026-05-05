@@ -75,6 +75,7 @@ class AppBootSpec : FunSpec({
                 sessionMaxAgeSeconds = 3600,
                 adminUsername = null,
                 adminPassword = null,
+                cookieSecure = true,
             )
 
         shouldThrow<IllegalArgumentException> { requireValidAuthSecret(blankSecret) }
@@ -87,6 +88,7 @@ class AppBootSpec : FunSpec({
                 sessionMaxAgeSeconds = 3600,
                 adminUsername = null,
                 adminPassword = null,
+                cookieSecure = true,
             )
 
         // No exception expected.

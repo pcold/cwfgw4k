@@ -36,6 +36,7 @@ data class AuthConfig(
     val sessionMaxAgeSeconds: Long,
     val adminUsername: String?,
     val adminPassword: String?,
+    val cookieSecure: Boolean,
 )
 
 /**

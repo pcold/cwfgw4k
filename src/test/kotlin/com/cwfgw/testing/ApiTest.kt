@@ -155,6 +155,7 @@ class ApiFixture {
         AuthSetup(
             sessionSecret = TEST_SESSION_SECRET.toByteArray(),
             sessionMaxAgeSeconds = TEST_SESSION_MAX_AGE,
+            cookieSecure = false,
         )
 }
 

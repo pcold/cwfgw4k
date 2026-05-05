@@ -18,6 +18,7 @@ private fun authConfig(
         sessionMaxAgeSeconds = 3600,
         adminUsername = username,
         adminPassword = password,
+        cookieSecure = true,
     )
 
 class AdminSeederSpec : FunSpec({

@@ -19,6 +19,11 @@ auth:
   # we never bake in a default password.
   adminUsername: ${AUTH_ADMIN_USERNAME:-}
   adminPassword: ${AUTH_ADMIN_PASSWORD:-}
+  # Mark the session cookie `Secure` so browsers only ever send it over HTTPS.
+  # Default true = prod-safe. Local development against http://localhost:8080
+  # needs AUTH_COOKIE_SECURE=false because Secure cookies aren't accepted on
+  # plain-HTTP origins.
+  cookieSecure: ${AUTH_COOKIE_SECURE:-true}
 
 cache:
   # Default TTL for cached GET responses. Routes can pass per-call overrides.

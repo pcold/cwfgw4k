@@ -29,4 +29,5 @@ data class UserSession(val userId: String)
 data class AuthSetup(
     val sessionSecret: ByteArray,
     val sessionMaxAgeSeconds: Long,
+    val cookieSecure: Boolean,
 )
