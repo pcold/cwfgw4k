@@ -38,6 +38,7 @@ IMAGE_REPO=${REGION}-docker.pkg.dev/${PROJECT}/cwfgw4k/cwfgw4k:latest
 IDLE_MINUTES=30
 CANARY_WINDOW_SECONDS=300
 CANARY_INTERVAL_SECONDS=30
+MIN_INSTANCES=1
 KEEP=0
 
 while [[ $# -gt 0 ]]; do
@@ -45,6 +46,7 @@ while [[ $# -gt 0 ]]; do
     -i) IDLE_MINUTES=$2; shift 2 ;;
     -w) CANARY_WINDOW_SECONDS=$2; shift 2 ;;
     -c) CANARY_INTERVAL_SECONDS=$2; shift 2 ;;
+    -m) MIN_INSTANCES=$2; shift 2 ;;
     --keep) KEEP=1; shift ;;
     *) echo "Unknown flag: $1" >&2; exit 2 ;;
   esac
@@ -100,7 +102,7 @@ gcloud run deploy "$STAGING_SERVICE" \
   --set-env-vars="DB_JDBC_URL=${DB_JDBC_URL},DB_USER=cwfgw4k,DB_SCHEMA=cwfgw4k,DB_POOL=15,AUTH_ADMIN_USERNAME=admin" \
   --memory=1Gi \
   --concurrency=20 \
-  --min-instances=1 \
+  --min-instances="$MIN_INSTANCES" \
   --max-instances=10 \
   --timeout=90 \
   --quiet
