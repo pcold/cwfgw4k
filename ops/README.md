@@ -157,6 +157,46 @@ gcloud monitoring dashboards update <dashboard-name> \
   --config-from-file=ops/dashboards/operational-health.json
 ```
 
+### 8. Configure alerting policies
+
+Three policies in `ops/alerts/` cover the user-visible failure modes
+without crying wolf on transient blips:
+
+| Policy file | Fires when | Why |
+| --- | --- | --- |
+| `cwfgw4k-5xx-rate.yaml` | More than 5 5xx in any 5-min window | Catches sustained user-facing errors (wedges, deploy failures, ESPN cascades). Single 5xx is ignored. |
+| `cwfgw4k-unhandled-errors.yaml` | Any unhandled exception in 5 min | Application bugs that escape `installErrorHandling`. Single occurrence fires — these are usually real. |
+| `cwfgw4k-espn-failures.yaml` | More than 5 ESPN warnings/errors in 10 min | Sustained ESPN integration trouble (vs. the routine flake the live overlay already swallows). |
+
+Notification routes through one SMS channel — recreate it if needed:
+
+```bash
+gcloud beta monitoring channels create \
+  --project=cwfgw4k \
+  --type=sms \
+  --display-name="cwfgw4k oncall" \
+  --channel-labels="number=+1XXXXXXXXXX"
+```
+
+The channel ID returned by that command needs to be substituted into
+each policy's `notificationChannels` field before re-applying. The
+ones currently in the YAMLs reference the channel from the May 4
+setup.
+
+Apply each policy:
+
+```bash
+gcloud monitoring policies create --project=cwfgw4k --policy-from-file=ops/alerts/cwfgw4k-5xx-rate.yaml
+gcloud monitoring policies create --project=cwfgw4k --policy-from-file=ops/alerts/cwfgw4k-unhandled-errors.yaml
+gcloud monitoring policies create --project=cwfgw4k --policy-from-file=ops/alerts/cwfgw4k-espn-failures.yaml
+```
+
+List installed policies:
+
+```bash
+gcloud monitoring policies list --project=cwfgw4k --format='table(displayName,name)'
+```
+
 ## What's on the Operational Health dashboard
 
 | Tile | Source | Reading it |

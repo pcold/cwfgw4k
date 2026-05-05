@@ -1,0 +1,49 @@
+# Fires the moment an unhandled exception escapes installErrorHandling.
+# These are application bugs — the user-facing 500 is the symptom, but the
+# stack trace in Cloud Logging is what tells us what's actually broken.
+#
+# The log-based metric `cwfgw4k_unhandled_errors` was created in the
+# initial ops/README.md setup; its filter matches `severity>=ERROR
+# AND textPayload:"Unhandled error on"`. With the May 4 logback fix
+# (WARN+ to stderr) those lines now arrive at severity ERROR in Cloud
+# Logging, so the metric counts what we expect.
+#
+# Apply with:
+#   gcloud monitoring policies create \
+#     --project=cwfgw4k \
+#     --policy-from-file=ops/alerts/cwfgw4k-unhandled-errors.yaml
+displayName: "cwfgw4k unhandled errors"
+combiner: OR
+conditions:
+  - displayName: "Any unhandled exception in 5 min"
+    conditionThreshold:
+      filter: |-
+        metric.type="logging.googleapis.com/user/cwfgw4k_unhandled_errors"
+        AND resource.type="cloud_run_revision"
+      aggregations:
+        - alignmentPeriod: 300s
+          perSeriesAligner: ALIGN_SUM
+          crossSeriesReducer: REDUCE_SUM
+      comparison: COMPARISON_GT
+      thresholdValue: 0
+      duration: 0s
+      trigger:
+        count: 1
+notificationChannels:
+  - projects/cwfgw4k/notificationChannels/1773824351378106961
+documentation:
+  content: |
+    An unhandled exception escaped `installErrorHandling`.
+
+    Find the stack:
+
+        resource.type="cloud_run_revision"
+        AND resource.labels.service_name="cwfgw4k"
+        AND severity>=ERROR
+        AND textPayload:"Unhandled error"
+
+    Single occurrence is enough to fire — these are usually real bugs,
+    not transient infrastructure issues.
+  mimeType: text/markdown
+alertStrategy:
+  autoClose: 1800s

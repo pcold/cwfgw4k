@@ -1,0 +1,48 @@
+# Fires when ESPN integration is generating sustained warnings/errors.
+# Single ESPN flakes happen — the live overlay's fetchPreviewsOrLog
+# already swallows them and returns the un-overlaid base report. We
+# only care when the rate sustains, since that means our scoreboard
+# stops reflecting in-progress tournaments.
+#
+# The log-based metric `cwfgw4k_espn_failures` was created in the
+# initial ops/README.md setup.
+#
+# Apply with:
+#   gcloud monitoring policies create \
+#     --project=cwfgw4k \
+#     --policy-from-file=ops/alerts/cwfgw4k-espn-failures.yaml
+displayName: "cwfgw4k ESPN integration failures"
+combiner: OR
+conditions:
+  - displayName: "More than 5 ESPN warnings/errors in 10 min"
+    conditionThreshold:
+      filter: |-
+        metric.type="logging.googleapis.com/user/cwfgw4k_espn_failures"
+        AND resource.type="cloud_run_revision"
+      aggregations:
+        - alignmentPeriod: 600s
+          perSeriesAligner: ALIGN_SUM
+          crossSeriesReducer: REDUCE_SUM
+      comparison: COMPARISON_GT
+      thresholdValue: 5
+      duration: 0s
+      trigger:
+        count: 1
+notificationChannels:
+  - projects/cwfgw4k/notificationChannels/1773824351378106961
+documentation:
+  content: |
+    More than 5 ESPN warnings/errors in 10 min — sustained issue.
+
+    Look for the structured failure reason:
+
+        resource.type="cloud_run_revision"
+        AND resource.labels.service_name="cwfgw4k"
+        AND textPayload:"cwfgw4k.espn event=error"
+
+    Common causes:
+    - ESPN upstream is sick (often transient — wait it out)
+    - Our matching logic is rejecting valid ESPN data (bug, file an issue)
+  mimeType: text/markdown
+alertStrategy:
+  autoClose: 1800s

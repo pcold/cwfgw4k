@@ -1,0 +1,50 @@
+# Fires when sustained 5xx responses leave the Cloud Run service.
+#
+# 5 5xx responses inside any 5-min window is the threshold — for a
+# 50-user app the normal rate is ~0, so this fires on real issues
+# (sustained outage, wedge, deploy failure) while ignoring isolated
+# blips like a single failed request.
+#
+# Apply with:
+#   gcloud monitoring policies create \
+#     --project=cwfgw4k \
+#     --policy-from-file=ops/alerts/cwfgw4k-5xx-rate.yaml
+displayName: "cwfgw4k 5xx rate"
+combiner: OR
+conditions:
+  - displayName: "More than 5 5xx in 5 min"
+    conditionThreshold:
+      filter: |-
+        metric.type="run.googleapis.com/request_count"
+        AND resource.type="cloud_run_revision"
+        AND resource.labels.service_name="cwfgw4k"
+        AND metric.labels.response_code_class="5xx"
+      aggregations:
+        - alignmentPeriod: 300s
+          perSeriesAligner: ALIGN_SUM
+          crossSeriesReducer: REDUCE_SUM
+      comparison: COMPARISON_GT
+      thresholdValue: 5
+      duration: 0s
+      trigger:
+        count: 1
+notificationChannels:
+  - projects/cwfgw4k/notificationChannels/1773824351378106961
+documentation:
+  content: |
+    Sustained 5xx responses on cwfgw4k Cloud Run service.
+
+    Triage:
+    - `severity>=ERROR` in Cloud Logging for application exception stacks
+      (logback now routes WARN+ to stderr → severity ERROR in Cloud Logging)
+    - `cwfgw4k.db.slow_tx kind=…` for slow tx blocks
+    - `cwfgw4k.db.slow_acquire duration_ms=…` for pool wait
+    - `cwfgw4k.db.pool waiting=N` for pool exhaustion
+
+    Common causes:
+    - Cold-start blip (single instance starting after idle); usually self-heals
+    - DB connection refill flakiness (Broken Pipe); see `severity>=ERROR`
+    - Application bug; see `cwfgw4k_unhandled_errors` alert
+  mimeType: text/markdown
+alertStrategy:
+  autoClose: 1800s
