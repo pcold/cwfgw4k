@@ -48,6 +48,7 @@ SEASON_ID=""
 TOURNAMENT_ID=""
 ACTIVE_TID=""
 DRIVER=run
+TIER=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -61,6 +62,7 @@ while [[ $# -gt 0 ]]; do
     --list) LIST=1; shift ;;
     --teardown) TEARDOWN_SUFFIX=${2:-}; shift 2 ;;
     --driver) DRIVER=${2:-}; shift 2 ;;
+    --tier) TIER=${2:-}; shift 2 ;;
     *) echo "Unknown flag: $1" >&2; exit 2 ;;
   esac
 done
@@ -130,6 +132,12 @@ trap cleanup EXIT
 
 echo "==> Cloning $PROD_SQL into $STAGING_SQL — typically 5–10 min..."
 gcloud sql instances clone "$PROD_SQL" "$STAGING_SQL" --project="$PROJECT"
+
+if [[ -n "$TIER" ]]; then
+  echo
+  echo "==> Patching $STAGING_SQL down to $TIER..."
+  gcloud sql instances patch "$STAGING_SQL" --tier="$TIER" --project="$PROJECT" --quiet
+fi
 
 echo
 echo "==> Deploying $STAGING_SERVICE against the cloned database..."
