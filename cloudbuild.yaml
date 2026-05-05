@@ -75,16 +75,17 @@ steps:
       # released between cache hit / miss / put phases so 2x oversubscription
       # is fine. Cap there and let max-instances absorb spikes.
       - '--concurrency=20'
-      # min-instances=1: keep one warm instance at all times (~$45/mo).
-      # Was 0 (scale to zero); flipped back after a repeating prod wedge
-      # where the first request after an idle period blocked 90s while
-      # Hikari refilled stale connections — occasionally hitting Broken
-      # Pipe during the TLS handshake to Cloud SQL via the in-process
-      # socket factory. Keeping one instance warm sidesteps that whole
-      # class of failure. Drop back to 0 only if (a) we're confident
-      # the connection-refill path is robust and (b) cost matters more
-      # than the cold-start UX.
-      - '--min-instances=1'
+      # min-instances=0: scale to zero when idle. We briefly ran with =1
+      # after a wedge incident where the first request after an idle
+      # period blocked 90s while Hikari refilled stale Cloud SQL
+      # connections (and occasionally hit Broken Pipe during the TLS
+      # handshake via the in-process socket factory). The fix landed in
+      # 9d9043b (Postgres connectTimeout/socketTimeout + reverted Hikari
+      # recycling) and was validated by ops/load-test/soak.sh -m 0:
+      # 30 min idle → first canary 7s (legitimate JVM cold start), all
+      # subsequent canaries < 500ms, no 5xx anywhere. Saves ~$45/mo
+      # vs. always-warm; cost is the ~7s first-user-of-the-morning hit.
+      - '--min-instances=0'
       # 10 instances × 20 concurrency = 200 in-flight slots — comfortable
       # headroom well beyond the ~50-user target so Cloud Run can scale
       # smoothly through spike traffic. Cloud SQL connection ceiling on
