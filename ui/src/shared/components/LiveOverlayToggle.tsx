@@ -1,17 +1,18 @@
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
-import { earliestUnfinalized } from '@/shared/util/tournament';
 import type { Tournament } from '@/shared/api/types';
 
 /**
  * Decide whether the live overlay applies to the given tournament selection
  * and (when it does) the value to pass through to API calls.
  *
- * Live overlay only adds signal for the season's earliest non-finalized
- * tournament — that's the one currently in play (or about to start) where
- * ESPN's projected payouts matter. Past-completed events are immutable, so
- * the overlay is wasted ESPN traffic. Future events haven't started, so
- * there's nothing live to show. "All Tournaments" rollups likewise never
- * benefit.
+ * Live overlay only adds signal for tournaments in the season's current
+ * week — i.e. the week containing the earliest non-completed tournament.
+ * That's where ESPN's projected payouts matter. Past-completed events are
+ * immutable, future events haven't started, and "All Tournaments" rollups
+ * never benefit. Multi-tournament weeks (e.g. a regular tour event plus an
+ * opposite-field event) are common enough that scoping to a single id
+ * leaves the second tournament permanently non-live; same-week scoping
+ * keeps both eligible while the week is in flight.
  *
  * Returns:
  *   eligible — show the toggle? false hides it everywhere.
@@ -30,8 +31,14 @@ export function useLiveOverlay(
   tournamentId: string | null,
 ): LiveOverlayState {
   const { live, setLive } = useLeagueSeason();
-  const earliestId = earliestUnfinalized(tournaments);
-  const eligible = tournamentId !== null && earliestId !== null && tournamentId === earliestId;
+  const earliest = tournaments.find((t) => t.status !== 'completed') ?? null;
+  const selected = tournaments.find((t) => t.id === tournamentId) ?? null;
+  const eligible =
+    selected !== null &&
+    earliest !== null &&
+    selected.status !== 'completed' &&
+    (selected.id === earliest.id ||
+      (selected.week !== null && selected.week === earliest.week));
   return {
     eligible,
     effectiveLive: eligible && live,

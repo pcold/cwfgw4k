@@ -177,6 +177,45 @@ describe('ScoreboardPage', () => {
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-completed', false);
   });
 
+  it('keeps the live overlay eligible for a second non-completed tournament in the same week', async () => {
+    // Two-tournament week: a regular tour event and an opposite-field event
+    // both in flight under week "10". The earliest non-completed tournament
+    // is the first one, but the second one is also currently live and should
+    // benefit from the overlay. Regression guard for #live-overlay-week.
+    const oppositeFieldTournament: Tournament = {
+      ...activeTournament,
+      id: 'tn-active-b',
+      name: 'Opposite Field Open',
+    };
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament, oppositeFieldTournament]);
+    tournamentReportMock.mockImplementation((_s, id) =>
+      Promise.resolve(
+        buildReport(id === 'tn-active' ? 'Current Open' : 'Opposite Field Open', id),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    await screen.findByRole('heading', { name: /Current Open/i });
+    await waitFor(() => {
+      expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-active', true);
+    });
+
+    const select = screen.getByLabelText(/Tournament/i);
+    await user.selectOptions(select, 'tn-active-b');
+
+    expect(
+      await screen.findByRole('heading', { name: /Opposite Field Open/i }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-active-b', true);
+    });
+    expect(screen.getByRole('checkbox', { name: /Live overlay/i })).toBeInTheDocument();
+  });
+
   it('shows an empty state when the season has no tournaments', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
