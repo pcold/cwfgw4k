@@ -37,14 +37,28 @@ export function useLiveOverlay(
     selected !== null &&
     earliest !== null &&
     selected.status !== 'completed' &&
-    (selected.id === earliest.id ||
-      (selected.week !== null && selected.week === earliest.week));
+    (selected.id === earliest.id || sameWeekNumber(selected.week, earliest.week));
   return {
     eligible,
     effectiveLive: eligible && live,
     toggleLive: setLive,
     liveChecked: live,
   };
+}
+
+// Multi-tournament weeks get suffixed labels like "4a" / "4b" (see
+// AdminService.assignWeeks). The leading digits are the shared week number
+// — that's what determines whether two events are concurrently in flight.
+function sameWeekNumber(a: string | null, b: string | null): boolean {
+  const left = weekNumber(a);
+  const right = weekNumber(b);
+  return left !== null && left === right;
+}
+
+function weekNumber(week: string | null): string | null {
+  if (week === null) return null;
+  const match = week.match(/^\d+/);
+  return match === null ? null : match[0];
 }
 
 interface LiveOverlayCheckboxProps {

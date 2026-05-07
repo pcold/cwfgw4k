@@ -178,18 +178,22 @@ describe('ScoreboardPage', () => {
   });
 
   it('keeps the live overlay eligible for a second non-completed tournament in the same week', async () => {
-    // Two-tournament week: a regular tour event and an opposite-field event
-    // both in flight under week "10". The earliest non-completed tournament
-    // is the first one, but the second one is also currently live and should
-    // benefit from the overlay. Regression guard for #live-overlay-week.
-    const oppositeFieldTournament: Tournament = {
+    // Two-tournament week: AdminService.assignWeeks suffixes the labels as
+    // "Na" / "Nb" when two events share an ISO week, so the earliest event
+    // and its opposite-field partner have *different* week strings (e.g.
+    // "10a" vs "10b") that share the same numeric prefix. The eligibility
+    // check must compare on the prefix, not on the full label, otherwise
+    // the opposite-field event silently drops the live overlay.
+    const truist: Tournament = { ...activeTournament, week: '10a' };
+    const oneFlight: Tournament = {
       ...activeTournament,
       id: 'tn-active-b',
       name: 'Opposite Field Open',
+      week: '10b',
     };
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
-    tournamentsMock.mockResolvedValue([activeTournament, oppositeFieldTournament]);
+    tournamentsMock.mockResolvedValue([truist, oneFlight]);
     tournamentReportMock.mockImplementation((_s, id) =>
       Promise.resolve(
         buildReport(id === 'tn-active' ? 'Current Open' : 'Opposite Field Open', id),
