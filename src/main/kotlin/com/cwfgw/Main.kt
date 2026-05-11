@@ -134,9 +134,10 @@ internal fun buildServices(
             seasonService,
             tournamentLinkService,
         )
+    val scoringRepository = ScoringRepository()
     val scoringService =
         ScoringService(
-            ScoringRepository(),
+            scoringRepository,
             seasonRepository,
             tournamentRepository,
             teamRepository,
@@ -155,12 +156,13 @@ internal fun buildServices(
     val liveOverlayService = LiveOverlayService(espnService)
     val weeklyReportService =
         WeeklyReportService(
-            seasonService,
-            tournamentService,
-            teamService,
-            golferService,
-            scoringService,
-            liveOverlayService,
+            seasonRepository = seasonRepository,
+            tournamentRepository = tournamentRepository,
+            teamRepository = teamRepository,
+            golferRepository = golferRepository,
+            scoringRepository = scoringRepository,
+            liveOverlayService = liveOverlayService,
+            tx = transactor,
         )
     return AppServices(
         healthProbe = DatabaseHealthProbe(database.dsl),

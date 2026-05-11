@@ -1,24 +1,26 @@
 package com.cwfgw.reports
 
+import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
-import com.cwfgw.golfers.GolferService
+import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.result.Result
+import com.cwfgw.result.getOrElse
 import com.cwfgw.scoring.FantasyScore
 import com.cwfgw.scoring.PayoutTable
-import com.cwfgw.scoring.ScoringService
+import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.seasons.SeasonRules
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
-import com.cwfgw.teams.TeamService
+import com.cwfgw.teams.TeamRepository
 import com.cwfgw.tournaments.ESPN_SCHEDULE_ZONE
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
+import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentResult
-import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.TournamentStatus
 import com.cwfgw.tournaments.isLiveOverlayCandidate
 import java.math.BigDecimal
@@ -28,16 +30,29 @@ import java.time.LocalDate
  * Builds the operator-facing weekly report — the 13-column × 8-round grid
  * the league has used for years, plus the surrounding totals (weekly +/-,
  * standings, side-bet detail, undrafted top-10s). The non-live variant
- * snapshots whatever's currently in the DB; the live overlay (Phase 2)
- * will merge in-progress ESPN scoreboard data on top.
+ * snapshots whatever's currently in the DB; the live overlay merges
+ * in-progress ESPN scoreboard data on top.
+ *
+ * Each public read method pre-loads its inputs inside one
+ * `tx.read { … }` block before running the pure assembly + optional live
+ * overlay. That's a deliberate departure from the usual "compose
+ * services" shape — calling another service mid-gather would let each
+ * sub-call open its own pool checkout, which is exactly the per-request
+ * connection-borrow churn the May 10 cold-start wedge surfaced. Reading
+ * everything from repositories under one `tx.read` collapses that to one
+ * Hikari validation per request and gives Postgres-MVCC snapshot
+ * consistency across the gathered data for free. The pattern mirrors
+ * [com.cwfgw.scoring.ScoringService] / [com.cwfgw.admin.AdminService].
  */
+@Suppress("LongParameterList")
 class WeeklyReportService(
-    private val seasonService: SeasonService,
-    private val tournamentService: TournamentService,
-    private val teamService: TeamService,
-    private val golferService: GolferService,
-    private val scoringService: ScoringService,
+    private val seasonRepository: SeasonRepository,
+    private val tournamentRepository: TournamentRepository,
+    private val teamRepository: TeamRepository,
+    private val golferRepository: GolferRepository,
+    private val scoringRepository: ScoringRepository,
     private val liveOverlayService: LiveOverlayService,
+    private val tx: Transactor,
 ) {
     /**
      * Render the report as of one specific tournament. Loads everything the
@@ -51,50 +66,68 @@ class WeeklyReportService(
         tournamentId: TournamentId,
         live: Boolean = false,
     ): Result<WeeklyReport, ReportError> {
-        seasonService.get(seasonId) ?: return Result.Err(ReportError.SeasonNotFound(seasonId))
-        val tournament =
-            tournamentService.get(tournamentId)
-                ?: return Result.Err(ReportError.TournamentNotFound(tournamentId))
-
-        val rules = seasonService.getRules(seasonId) ?: SeasonRules.defaults()
-        val teams = teamService.listBySeason(seasonId)
-        val results = tournamentService.getResults(tournamentId)
-        val allGolfers = golferService.list(activeOnly = false, search = null)
-        val scores = scoringService.getScores(seasonId, tournamentId)
-        val allCompletedTournaments = tournamentService.list(seasonId, status = TournamentStatus.Completed)
-        val allRosters = teams.flatMap { teamService.getRoster(it.id) }
-        val allScores = allCompletedTournaments.flatMap { scoringService.getScores(seasonId, it.id) }
-
-        val inputs =
-            WeeklyReportInputs(
-                rules = rules,
-                teams = teams,
-                tournament = tournament,
-                results = results,
-                allGolfers = allGolfers,
-                scores = scores,
-                allCompletedTournaments = allCompletedTournaments,
-                allRosters = allRosters,
-                allScores = allScores,
-            )
-        val baseReport = assembleWeeklyReport(inputs)
         val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
-        if (!live || !tournament.isLiveOverlayCandidate(today)) return Result.Ok(baseReport)
+        val prepared = gatherReport(seasonId, tournamentId).getOrElse { return Result.Err(it) }
+        if (!live || !prepared.tournament.isLiveOverlayCandidate(today)) return Result.Ok(prepared.baseReport)
 
         val priorNonCompleted =
-            tournamentService.listLiveCandidates(seasonId, today)
-                .filter { it.id != tournamentId && isBefore(it, tournament) }
+            prepared.allTournaments.filter { candidate ->
+                candidate.isLiveOverlayCandidate(today) &&
+                    candidate.id != tournamentId &&
+                    isBefore(candidate, prepared.tournament)
+            }
         return Result.Ok(
             liveOverlayService.overlayReport(
                 seasonId = seasonId,
-                baseReport = baseReport,
-                rules = rules,
+                baseReport = prepared.baseReport,
+                rules = prepared.rules,
                 priorNonCompleted = priorNonCompleted,
-                selectedTournament = tournament,
+                selectedTournament = prepared.tournament,
                 tournamentId = tournamentId,
             ),
         )
     }
+
+    private suspend fun gatherReport(
+        seasonId: SeasonId,
+        tournamentId: TournamentId,
+    ): Result<ReportPrepared, ReportError> =
+        tx.read {
+            seasonRepository.findById(seasonId)
+                ?: return@read Result.Err(ReportError.SeasonNotFound(seasonId))
+            val tournament =
+                tournamentRepository.findById(tournamentId)
+                    ?: return@read Result.Err(ReportError.TournamentNotFound(tournamentId))
+            val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
+            val teams = teamRepository.findBySeason(seasonId)
+            val results = tournamentRepository.getResults(tournamentId)
+            val allGolfers = golferRepository.findAll(activeOnly = false, search = null)
+            val scores = scoringRepository.getScores(seasonId, tournamentId)
+            val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
+            val allCompletedTournaments = allTournaments.filter { it.status == TournamentStatus.Completed }
+            val allRosters = teams.flatMap { teamRepository.getRoster(it.id) }
+            val allScores = allCompletedTournaments.flatMap { scoringRepository.getScores(seasonId, it.id) }
+            val inputs =
+                WeeklyReportInputs(
+                    rules = rules,
+                    teams = teams,
+                    tournament = tournament,
+                    results = results,
+                    allGolfers = allGolfers,
+                    scores = scores,
+                    allCompletedTournaments = allCompletedTournaments,
+                    allRosters = allRosters,
+                    allScores = allScores,
+                )
+            Result.Ok(
+                ReportPrepared(
+                    baseReport = assembleWeeklyReport(inputs),
+                    tournament = tournament,
+                    rules = rules,
+                    allTournaments = allTournaments,
+                ),
+            )
+        }
 
     /**
      * Season-aggregate report: same wire shape as [getReport] but every
@@ -106,31 +139,44 @@ class WeeklyReportService(
         seasonId: SeasonId,
         live: Boolean = false,
     ): Result<WeeklyReport, ReportError> {
-        seasonService.get(seasonId) ?: return Result.Err(ReportError.SeasonNotFound(seasonId))
+        val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
+        val gathered: Result<SeasonReportPrepared, ReportError> =
+            tx.read {
+                seasonRepository.findById(seasonId)
+                    ?: return@read Result.Err(ReportError.SeasonNotFound(seasonId))
+                val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
+                val teams = teamRepository.findBySeason(seasonId)
+                val allGolfers = golferRepository.findAll(activeOnly = false, search = null)
+                val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
+                val completed = allTournaments.filter { it.status == TournamentStatus.Completed }
+                val allRosters = teams.flatMap { teamRepository.getRoster(it.id) }
+                val allScores = completed.flatMap { scoringRepository.getScores(seasonId, it.id) }
+                val allResults = completed.flatMap { tournamentRepository.getResults(it.id) }
+                val inputs =
+                    SeasonReportInputs(
+                        rules = rules,
+                        teams = teams,
+                        allGolfers = allGolfers,
+                        completed = completed,
+                        allRosters = allRosters,
+                        allScores = allScores,
+                        allResults = allResults,
+                    )
+                Result.Ok(
+                    SeasonReportPrepared(
+                        baseReport = assembleSeasonReport(inputs),
+                        rules = rules,
+                        allTournaments = allTournaments,
+                    ),
+                )
+            }
+        val prepared = gathered.getOrElse { return Result.Err(it) }
+        if (!live) return Result.Ok(prepared.baseReport)
 
-        val rules = seasonService.getRules(seasonId) ?: SeasonRules.defaults()
-        val teams = teamService.listBySeason(seasonId)
-        val allGolfers = golferService.list(activeOnly = false, search = null)
-        val completed = tournamentService.list(seasonId, status = TournamentStatus.Completed)
-        val allRosters = teams.flatMap { teamService.getRoster(it.id) }
-        val allScores = completed.flatMap { scoringService.getScores(seasonId, it.id) }
-        val allResults = completed.flatMap { tournamentService.getResults(it.id) }
-
-        val inputs =
-            SeasonReportInputs(
-                rules = rules,
-                teams = teams,
-                allGolfers = allGolfers,
-                completed = completed,
-                allRosters = allRosters,
-                allScores = allScores,
-                allResults = allResults,
-            )
-        val baseReport = assembleSeasonReport(inputs)
-        if (!live) return Result.Ok(baseReport)
-
-        val nonCompleted = tournamentService.listLiveCandidates(seasonId)
-        return Result.Ok(liveOverlayService.overlaySeasonReport(seasonId, baseReport, rules, nonCompleted))
+        val nonCompleted = prepared.allTournaments.filter { it.isLiveOverlayCandidate(today) }
+        return Result.Ok(
+            liveOverlayService.overlaySeasonReport(seasonId, prepared.baseReport, prepared.rules, nonCompleted),
+        )
     }
 
     /**
@@ -144,26 +190,70 @@ class WeeklyReportService(
         throughTournamentId: TournamentId? = null,
         live: Boolean = false,
     ): Result<Rankings, ReportError> {
-        seasonService.get(seasonId) ?: return Result.Err(ReportError.SeasonNotFound(seasonId))
-        val through =
-            throughTournamentId?.let { id ->
-                tournamentService.get(id) ?: return Result.Err(ReportError.TournamentNotFound(id))
-            }
+        val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
+        val prepared =
+            gatherRankings(seasonId, throughTournamentId).getOrElse { return Result.Err(it) }
+        if (!live) return Result.Ok(prepared.baseRankings)
 
-        val rules = seasonService.getRules(seasonId) ?: SeasonRules.defaults()
-        val teams = teamService.listBySeason(seasonId)
-        val completed = tournamentService.list(seasonId, status = TournamentStatus.Completed)
-        val included = filterThroughTournament(completed, through)
-        val allRosters = teams.flatMap { teamService.getRoster(it.id) }
-        val allScores = included.flatMap { scoringService.getScores(seasonId, it.id) }
+        val liveCandidates = liveCandidatesFor(prepared.allTournaments, today, prepared.through)
+        return Result.Ok(
+            liveOverlayService.overlayRankings(
+                seasonId,
+                prepared.baseRankings,
+                liveCandidates,
+                prepared.rankingsContext,
+            ),
+        )
+    }
 
-        val sideBetPerRound =
-            buildSideBetPerRound(rules, allRosters, allScores, teams.size, rules.sideBetAmount)
+    private suspend fun gatherRankings(
+        seasonId: SeasonId,
+        throughTournamentId: TournamentId?,
+    ): Result<RankingsPrepared, ReportError> =
+        tx.read {
+            seasonRepository.findById(seasonId)
+                ?: return@read Result.Err(ReportError.SeasonNotFound(seasonId))
+            val through =
+                throughTournamentId?.let { id ->
+                    tournamentRepository.findById(id)
+                        ?: return@read Result.Err(ReportError.TournamentNotFound(id))
+                }
+            val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
+            val teams = teamRepository.findBySeason(seasonId)
+            val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
+            val completed = allTournaments.filter { it.status == TournamentStatus.Completed }
+            val included = filterThroughTournament(completed, through)
+            val allRosters = teams.flatMap { teamRepository.getRoster(it.id) }
+            val allScores = included.flatMap { scoringRepository.getScores(seasonId, it.id) }
+            val sideBetPerRound =
+                buildSideBetPerRound(rules, allRosters, allScores, teams.size, rules.sideBetAmount)
+            val baseRankings = buildBaseRankings(teams, included, allScores, sideBetPerRound)
+            Result.Ok(
+                RankingsPrepared(
+                    baseRankings = baseRankings,
+                    allTournaments = allTournaments,
+                    through = through,
+                    rankingsContext =
+                        RankingsContext(
+                            allRosters = allRosters,
+                            rules = rules,
+                            sideBetPerRound = sideBetPerRound,
+                            numTeams = teams.size,
+                        ),
+                ),
+            )
+        }
+
+    private fun buildBaseRankings(
+        teams: List<Team>,
+        included: List<Tournament>,
+        allScores: List<FantasyScore>,
+        sideBetPerRound: List<SideBetRoundSnapshot>,
+    ): Rankings {
         val sideBets = aggregateSideBets(sideBetPerRound)
         val sortedIncluded = included.sortedWith(tournamentOrdering)
         val history = buildCumulativeHistory(sortedIncluded, allScores, teams)
         val currentTotals = history.lastOrNull() ?: teams.associate { it.id to BigDecimal.ZERO }
-
         val baseTeams =
             teams.map { team ->
                 val subtotal = currentTotals[team.id] ?: BigDecimal.ZERO
@@ -174,26 +264,17 @@ class WeeklyReportService(
                     subtotal = subtotal,
                     sideBets = teamSideBets,
                     totalCash = subtotal.add(teamSideBets),
-                    series = history.map { snapshot -> (snapshot[team.id] ?: BigDecimal.ZERO).add(teamSideBets) },
+                    series =
+                        history.map { snapshot ->
+                            (snapshot[team.id] ?: BigDecimal.ZERO).add(teamSideBets)
+                        },
                 )
             }.sortedByDescending { it.totalCash }
-        val baseRankings =
-            Rankings(
-                teams = baseTeams,
-                weeks = sortedIncluded.map { it.week ?: "" },
-                tournamentNames = sortedIncluded.map { it.name },
-            )
-        if (!live) return Result.Ok(baseRankings)
-
-        val liveCandidates = liveCandidatesFor(seasonId, through)
-        val ctx =
-            RankingsContext(
-                allRosters = allRosters,
-                rules = rules,
-                sideBetPerRound = sideBetPerRound,
-                numTeams = teams.size,
-            )
-        return Result.Ok(liveOverlayService.overlayRankings(seasonId, baseRankings, liveCandidates, ctx))
+        return Rankings(
+            teams = baseTeams,
+            weeks = sortedIncluded.map { it.week ?: "" },
+            tournamentNames = sortedIncluded.map { it.name },
+        )
     }
 
     /**
@@ -210,61 +291,83 @@ class WeeklyReportService(
         throughTournamentId: TournamentId? = null,
         live: Boolean = false,
     ): Result<PlayerRankings, ReportError> {
-        seasonService.get(seasonId) ?: return Result.Err(ReportError.SeasonNotFound(seasonId))
-        val through =
-            throughTournamentId?.let { id ->
-                tournamentService.get(id) ?: return Result.Err(ReportError.TournamentNotFound(id))
-            }
-
-        val rules = seasonService.getRules(seasonId) ?: SeasonRules.defaults()
-        val teams = teamService.listBySeason(seasonId)
-        val allGolfers = golferService.list(activeOnly = false, search = null)
-        val golferMap = allGolfers.associateBy { it.id }
-        val completed = tournamentService.list(seasonId, status = TournamentStatus.Completed)
-        val included = filterThroughTournament(completed, through)
-        val allRosters = teams.flatMap { teamService.getRoster(it.id) }
-        val rosteredGolferIds = allRosters.map { it.golferId }.toSet()
-        val allScores = included.flatMap { scoringService.getScores(seasonId, it.id) }
-        val allResults = included.flatMap { tournamentService.getResults(it.id) }
-
-        val baseAcc =
-            buildPlayerRankingsAcc(
-                allScores = allScores,
-                allResults = allResults,
-                tournamentsById = included.associateBy { it.id },
-                rosteredGolferIds = rosteredGolferIds,
-                golferMap = golferMap,
-                rules = rules,
-            )
+        val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
+        val prepared =
+            gatherPlayerRankings(seasonId, throughTournamentId).getOrElse { return Result.Err(it) }
 
         val finalAcc =
             if (!live) {
-                baseAcc
+                prepared.baseAcc
             } else {
                 liveOverlayService.overlayPlayerRankings(
                     seasonId = seasonId,
-                    base = baseAcc,
-                    candidates = liveCandidatesFor(seasonId, through),
-                    rules = rules,
+                    base = prepared.baseAcc,
+                    candidates = liveCandidatesFor(prepared.allTournaments, today, prepared.through),
+                    rules = prepared.rules,
                 )
             }
 
-        val rosterIndex = buildRosterIndex(teams, allRosters, golferMap)
-        return Result.Ok(composePlayerRankings(finalAcc, rosterIndex, golferMap, live = live))
+        return Result.Ok(composePlayerRankings(finalAcc, prepared.rosterIndex, prepared.golferMap, live = live))
     }
+
+    private suspend fun gatherPlayerRankings(
+        seasonId: SeasonId,
+        throughTournamentId: TournamentId?,
+    ): Result<PlayerRankingsPrepared, ReportError> =
+        tx.read {
+            seasonRepository.findById(seasonId)
+                ?: return@read Result.Err(ReportError.SeasonNotFound(seasonId))
+            val through =
+                throughTournamentId?.let { id ->
+                    tournamentRepository.findById(id)
+                        ?: return@read Result.Err(ReportError.TournamentNotFound(id))
+                }
+            val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
+            val teams = teamRepository.findBySeason(seasonId)
+            val allGolfers = golferRepository.findAll(activeOnly = false, search = null)
+            val golferMap = allGolfers.associateBy { it.id }
+            val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
+            val completed = allTournaments.filter { it.status == TournamentStatus.Completed }
+            val included = filterThroughTournament(completed, through)
+            val allRosters = teams.flatMap { teamRepository.getRoster(it.id) }
+            val rosteredGolferIds = allRosters.map { it.golferId }.toSet()
+            val allScores = included.flatMap { scoringRepository.getScores(seasonId, it.id) }
+            val allResults = included.flatMap { tournamentRepository.getResults(it.id) }
+            val baseAcc =
+                buildPlayerRankingsAcc(
+                    allScores = allScores,
+                    allResults = allResults,
+                    tournamentsById = included.associateBy { it.id },
+                    rosteredGolferIds = rosteredGolferIds,
+                    golferMap = golferMap,
+                    rules = rules,
+                )
+            Result.Ok(
+                PlayerRankingsPrepared(
+                    baseAcc = baseAcc,
+                    allTournaments = allTournaments,
+                    through = through,
+                    rules = rules,
+                    rosterIndex = buildRosterIndex(teams, allRosters, golferMap),
+                    golferMap = golferMap,
+                ),
+            )
+        }
 
     /**
      * Live candidates for a rankings overlay: every non-completed
      * tournament strictly before the cutoff, plus the cutoff itself if
      * it's also non-completed. Sorted chronologically so the overlay
-     * folds them in the order they'd actually play out.
+     * folds them in the order they'd actually play out. Pure — operates
+     * on the already-loaded tournament list inside the request, so it
+     * doesn't reopen a transaction.
      */
-    private suspend fun liveCandidatesFor(
-        seasonId: SeasonId,
+    private fun liveCandidatesFor(
+        allTournaments: List<Tournament>,
+        today: LocalDate,
         through: Tournament?,
     ): List<Tournament> {
-        val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
-        val liveCandidates = tournamentService.listLiveCandidates(seasonId, today)
+        val liveCandidates = allTournaments.filter { it.isLiveOverlayCandidate(today) }
         val candidates =
             if (through == null) {
                 liveCandidates
@@ -286,47 +389,90 @@ class WeeklyReportService(
     suspend fun getGolferHistory(
         seasonId: SeasonId,
         golferId: GolferId,
-    ): Result<GolferHistory, ReportError> {
-        seasonService.get(seasonId) ?: return Result.Err(ReportError.SeasonNotFound(seasonId))
-        val golfer = golferService.get(golferId) ?: return Result.Err(ReportError.GolferNotFound(golferId))
+    ): Result<GolferHistory, ReportError> =
+        tx.read {
+            seasonRepository.findById(seasonId)
+                ?: return@read Result.Err(ReportError.SeasonNotFound(seasonId))
+            val golfer =
+                golferRepository.findById(golferId)
+                    ?: return@read Result.Err(ReportError.GolferNotFound(golferId))
+            val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
+            val completed =
+                tournamentRepository
+                    .findAll(seasonId = seasonId, status = TournamentStatus.Completed)
+            val byTournament = completed.associateWith { tournamentRepository.getResults(it.id) }
 
-        val rules = seasonService.getRules(seasonId) ?: SeasonRules.defaults()
-        val completed = tournamentService.list(seasonId, status = TournamentStatus.Completed)
-        val byTournament =
-            completed.associateWith { tournamentService.getResults(it.id) }
+            val entries =
+                byTournament
+                    .mapNotNull { (tournament, results) ->
+                        val mine =
+                            results.firstOrNull { result ->
+                                result.golferId == golferId &&
+                                    (result.position ?: Int.MAX_VALUE) <= TOP_TEN_CUTOFF
+                            } ?: return@mapNotNull null
+                        val position = mine.position ?: return@mapNotNull null
+                        val numTied = results.count { it.position == position }
+                        val payout =
+                            PayoutTable.tieSplitPayout(
+                                position = position,
+                                numTied = numTied,
+                                multiplier = tournament.payoutMultiplier,
+                                rules = rules,
+                                isTeamEvent = tournament.isTeamEvent,
+                            )
+                        GolferHistoryEntry(tournament = tournament.name, position = position, earnings = payout)
+                    }
+                    .sortedBy { it.position }
 
-        val entries =
-            byTournament
-                .mapNotNull { (tournament, results) ->
-                    val mine =
-                        results.firstOrNull { result ->
-                            result.golferId == golferId && (result.position ?: Int.MAX_VALUE) <= TOP_TEN_CUTOFF
-                        } ?: return@mapNotNull null
-                    val position = mine.position ?: return@mapNotNull null
-                    val numTied = results.count { it.position == position }
-                    val payout =
-                        PayoutTable.tieSplitPayout(
-                            position = position,
-                            numTied = numTied,
-                            multiplier = tournament.payoutMultiplier,
-                            rules = rules,
-                            isTeamEvent = tournament.isTeamEvent,
-                        )
-                    GolferHistoryEntry(tournament = tournament.name, position = position, earnings = payout)
-                }
-                .sortedBy { it.position }
-
-        return Result.Ok(
-            GolferHistory(
-                golferName = "${golfer.firstName} ${golfer.lastName}",
-                golferId = golfer.id,
-                totalEarnings = entries.fold(BigDecimal.ZERO) { acc, entry -> acc.add(entry.earnings) },
-                topTens = entries.size,
-                results = entries,
-            ),
-        )
-    }
+            Result.Ok(
+                GolferHistory(
+                    golferName = "${golfer.firstName} ${golfer.lastName}",
+                    golferId = golfer.id,
+                    totalEarnings = entries.fold(BigDecimal.ZERO) { acc, entry -> acc.add(entry.earnings) },
+                    topTens = entries.size,
+                    results = entries,
+                ),
+            )
+        }
 }
+
+/**
+ * Output of each public method's `tx.read` gather block — the base
+ * assembled result plus whatever the live-overlay decision and call
+ * need afterwards. Holding `allTournaments` (rather than just
+ * `liveCandidates`) lets the overlay path apply its own date filter
+ * client-side without reopening the transaction, and reuses the same
+ * single SQL query for both the completed-only and live-candidate
+ * views inside the gather block.
+ */
+private data class ReportPrepared(
+    val baseReport: WeeklyReport,
+    val tournament: Tournament,
+    val rules: SeasonRules,
+    val allTournaments: List<Tournament>,
+)
+
+private data class SeasonReportPrepared(
+    val baseReport: WeeklyReport,
+    val rules: SeasonRules,
+    val allTournaments: List<Tournament>,
+)
+
+private data class RankingsPrepared(
+    val baseRankings: Rankings,
+    val allTournaments: List<Tournament>,
+    val through: Tournament?,
+    val rankingsContext: RankingsContext,
+)
+
+private data class PlayerRankingsPrepared(
+    val baseAcc: PlayerRankingsAcc,
+    val allTournaments: List<Tournament>,
+    val through: Tournament?,
+    val rules: SeasonRules,
+    val rosterIndex: Map<GolferId, PlayerRosterInfo>,
+    val golferMap: Map<GolferId, Golfer>,
+)
 
 /**
  * Bag of pre-loaded data the pure [assembleWeeklyReport] needs. Bundled

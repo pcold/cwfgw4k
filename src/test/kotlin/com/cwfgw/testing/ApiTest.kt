@@ -19,6 +19,7 @@ import com.cwfgw.module
 import com.cwfgw.reports.LiveOverlayService
 import com.cwfgw.reports.WeeklyReportService
 import com.cwfgw.scoring.FakeScoringRepository
+import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.seasons.SeasonOpsService
@@ -90,9 +91,10 @@ class ApiFixture {
     var tournamentRepository: TournamentRepository = FakeTournamentRepository()
     var tournamentService: TournamentService = TournamentService(tournamentRepository, transactor)
     var draftService: DraftService = DraftService(FakeDraftRepository(), teamRepository, transactor)
+    var scoringRepository: ScoringRepository = FakeScoringRepository()
     var scoringService: ScoringService =
         ScoringService(
-            repository = FakeScoringRepository(),
+            repository = scoringRepository,
             seasonRepository = seasonRepository,
             tournamentRepository = tournamentRepository,
             teamRepository = teamRepository,
@@ -128,12 +130,13 @@ class ApiFixture {
     var liveOverlayService: LiveOverlayService = LiveOverlayService(espnService)
     var weeklyReportService: WeeklyReportService =
         WeeklyReportService(
-            seasonService = seasonService,
-            tournamentService = tournamentService,
-            teamService = teamService,
-            golferService = golferService,
-            scoringService = scoringService,
+            seasonRepository = seasonRepository,
+            tournamentRepository = tournamentRepository,
+            teamRepository = teamRepository,
+            golferRepository = golferRepository,
+            scoringRepository = scoringRepository,
             liveOverlayService = liveOverlayService,
+            tx = transactor,
         )
     var tournamentOpsService: TournamentOpsService =
         TournamentOpsService(

@@ -234,12 +234,13 @@ private fun reportFixture(
         liveOverlayService = LiveOverlayService(previewEspnService)
         weeklyReportService =
             WeeklyReportService(
-                seasonService = seasonService,
-                tournamentService = tournamentService,
-                teamService = teamService,
-                golferService = golferService,
-                scoringService = scoringService,
+                seasonRepository = seasonRepo,
+                tournamentRepository = tournamentRepo,
+                teamRepository = teamRepo,
+                golferRepository = golferRepo,
+                scoringRepository = scoringRepo,
                 liveOverlayService = liveOverlayService,
+                tx = FakeTransactor(),
             )
     }
 

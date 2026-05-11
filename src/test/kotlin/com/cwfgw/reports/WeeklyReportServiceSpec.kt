@@ -219,14 +219,6 @@ private class Fixture(
         val tournamentService = TournamentService(tournamentRepo, FakeTransactor())
         val teamService = TeamService(teamRepo, FakeTransactor())
         val golferService = GolferService(golferRepo, FakeTransactor())
-        val scoringService =
-            ScoringService(
-                repository = scoringRepo,
-                seasonRepository = seasonRepo,
-                tournamentRepository = tournamentRepo,
-                teamRepository = teamRepo,
-                tx = FakeTransactor(),
-            )
         val espnService =
             EspnService(
                 client = espnClient,
@@ -244,12 +236,13 @@ private class Fixture(
             )
         service =
             WeeklyReportService(
-                seasonService = seasonService,
-                tournamentService = tournamentService,
-                teamService = teamService,
-                golferService = golferService,
-                scoringService = scoringService,
+                seasonRepository = seasonRepo,
+                tournamentRepository = tournamentRepo,
+                teamRepository = teamRepo,
+                golferRepository = golferRepo,
+                scoringRepository = scoringRepo,
                 liveOverlayService = LiveOverlayService(espnService),
+                tx = FakeTransactor(),
             )
     }
 }
