@@ -14,12 +14,15 @@ import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
+import com.cwfgw.tournaments.ESPN_SCHEDULE_ZONE
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentResult
 import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.TournamentStatus
+import com.cwfgw.tournaments.isLiveOverlayCandidate
 import java.math.BigDecimal
+import java.time.LocalDate
 
 /**
  * Builds the operator-facing weekly report — the 13-column × 8-round grid
@@ -75,11 +78,12 @@ class WeeklyReportService(
                 allScores = allScores,
             )
         val baseReport = assembleWeeklyReport(inputs)
-        if (!live) return Result.Ok(baseReport)
+        val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
+        if (!live || !tournament.isLiveOverlayCandidate(today)) return Result.Ok(baseReport)
 
         val priorNonCompleted =
-            tournamentService.list(seasonId, status = null)
-                .filter { it.status != TournamentStatus.Completed && it.id != tournamentId && isBefore(it, tournament) }
+            tournamentService.listLiveCandidates(seasonId, today)
+                .filter { it.id != tournamentId && isBefore(it, tournament) }
         return Result.Ok(
             liveOverlayService.overlayReport(
                 seasonId = seasonId,
@@ -125,9 +129,7 @@ class WeeklyReportService(
         val baseReport = assembleSeasonReport(inputs)
         if (!live) return Result.Ok(baseReport)
 
-        val nonCompleted =
-            tournamentService.list(seasonId, status = null)
-                .filter { it.status != TournamentStatus.Completed }
+        val nonCompleted = tournamentService.listLiveCandidates(seasonId)
         return Result.Ok(liveOverlayService.overlaySeasonReport(seasonId, baseReport, rules, nonCompleted))
     }
 
@@ -261,17 +263,16 @@ class WeeklyReportService(
         seasonId: SeasonId,
         through: Tournament?,
     ): List<Tournament> {
-        val nonCompleted =
-            tournamentService.list(seasonId, status = null)
-                .filter { it.status != TournamentStatus.Completed }
+        val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
+        val liveCandidates = tournamentService.listLiveCandidates(seasonId, today)
         val candidates =
             if (through == null) {
-                nonCompleted
+                liveCandidates
             } else {
-                val priorNonCompleted = nonCompleted.filter { isBefore(it, through) }
+                val priorLiveCandidates = liveCandidates.filter { isBefore(it, through) }
                 val selectedIfLive =
-                    if (through.status != TournamentStatus.Completed) listOf(through) else emptyList()
-                priorNonCompleted + selectedIfLive
+                    if (through.isLiveOverlayCandidate(today)) listOf(through) else emptyList()
+                priorLiveCandidates + selectedIfLive
             }
         return candidates.sortedWith(tournamentOrdering)
     }

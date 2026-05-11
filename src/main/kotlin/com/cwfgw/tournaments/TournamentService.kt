@@ -2,6 +2,7 @@ package com.cwfgw.tournaments
 
 import com.cwfgw.db.Transactor
 import com.cwfgw.seasons.SeasonId
+import java.time.LocalDate
 
 class TournamentService(
     private val repository: TournamentRepository,
@@ -11,6 +12,18 @@ class TournamentService(
         seasonId: SeasonId?,
         status: TournamentStatus?,
     ): List<Tournament> = tx.get { repository.findAll(seasonId = seasonId, status = status) }
+
+    /**
+     * Tournaments in [seasonId] that the live-overlay path should fan out
+     * over: not finalized, and started on or before [today]. See
+     * [isLiveOverlayCandidate] for the rule and the rationale.
+     */
+    suspend fun listLiveCandidates(
+        seasonId: SeasonId,
+        today: LocalDate = LocalDate.now(ESPN_SCHEDULE_ZONE),
+    ): List<Tournament> =
+        tx.get { repository.findAll(seasonId = seasonId, status = null) }
+            .filter { it.isLiveOverlayCandidate(today) }
 
     suspend fun get(id: TournamentId): Tournament? = tx.get { repository.findById(id) }
 

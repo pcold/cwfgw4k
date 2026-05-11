@@ -53,22 +53,59 @@ class TournamentServiceSpec : FunSpec({
         result.shouldNotBeNull()
         result.map { it.position } shouldContainExactly listOf(1, 2)
     }
+
+    test("listLiveCandidates excludes completed and future tournaments") {
+        val today = LocalDate.parse("2026-05-10")
+        val finishedLastWeek =
+            tournament(
+                name = "Wells Fargo",
+                startDate = LocalDate.parse("2026-05-03"),
+                status = TournamentStatus.Completed,
+            )
+        val playingNow =
+            tournament(
+                name = "Truist Championship",
+                startDate = LocalDate.parse("2026-05-08"),
+                status = TournamentStatus.InProgress,
+            )
+        val opensToday =
+            tournament(
+                name = "Late-Add Open",
+                startDate = today,
+                status = TournamentStatus.Upcoming,
+            )
+        val nextWeek =
+            tournament(
+                name = "PGA Championship",
+                startDate = LocalDate.parse("2026-05-14"),
+                status = TournamentStatus.Upcoming,
+            )
+
+        val candidates =
+            service(initial = listOf(finishedLastWeek, playingNow, opensToday, nextWeek))
+                .listLiveCandidates(seasonId = SEASON_ID, today = today)
+
+        candidates.map { it.id } shouldContainExactlyInAnyOrder listOf(playingNow.id, opensToday.id)
+    }
 })
 
+@Suppress("LongParameterList")
 private fun tournament(
     id: TournamentId = TournamentId(UUID.randomUUID()),
     name: String = "The Masters",
     seasonId: SeasonId = SEASON_ID,
+    startDate: LocalDate = LocalDate.parse("2026-04-09"),
+    status: TournamentStatus = TournamentStatus.Upcoming,
 ): Tournament =
     Tournament(
         id = id,
         pgaTournamentId = null,
         name = name,
         seasonId = seasonId,
-        startDate = LocalDate.parse("2026-04-09"),
-        endDate = LocalDate.parse("2026-04-12"),
+        startDate = startDate,
+        endDate = startDate.plusDays(3),
         courseName = null,
-        status = TournamentStatus.Upcoming,
+        status = status,
         purseAmount = null,
         payoutMultiplier = java.math.BigDecimal("1.0000"),
         week = null,
