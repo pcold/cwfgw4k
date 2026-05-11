@@ -2,6 +2,7 @@ package com.cwfgw.reports
 
 import com.cwfgw.espn.EspnLivePreview
 import com.cwfgw.espn.EspnService
+import com.cwfgw.espn.LivePreviewContext
 import com.cwfgw.espn.PreviewLeaderboardEntry
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.result.Result
@@ -60,9 +61,10 @@ class LiveOverlayService(private val espnService: EspnService) {
         rules: SeasonRules,
     ): PlayerRankingsAcc {
         if (candidates.isEmpty()) return base
+        val previewCtx = espnService.loadLivePreviewContext(seasonId, candidates)
         return candidates.sortedWith(tournamentOrdering).fold(base) { acc, tournament ->
             val previews =
-                fetchPreviewsOrLog(seasonId, tournament.startDate, "player rankings live overlay ${tournament.name}")
+                fetchPreviewsOrLog(previewCtx, tournament.startDate, "player rankings live overlay ${tournament.name}")
                     ?: return@fold acc
             val matched = matchPreview(previews, tournament) ?: return@fold acc
             foldLivePlayerRankings(acc, matched, rules)
@@ -83,9 +85,10 @@ class LiveOverlayService(private val espnService: EspnService) {
         nonCompleted: List<Tournament>,
     ): WeeklyReport {
         if (nonCompleted.isEmpty()) return baseReport
+        val previewCtx = espnService.loadLivePreviewContext(seasonId, nonCompleted)
         return nonCompleted.sortedWith(tournamentOrdering).fold(baseReport) { acc, tournament ->
             val previews =
-                fetchPreviewsOrLog(seasonId, tournament.startDate, "season live overlay ${tournament.name}")
+                fetchPreviewsOrLog(previewCtx, tournament.startDate, "season live overlay ${tournament.name}")
                     ?: return@fold acc
             val matched = matchPreview(previews, tournament) ?: return@fold acc
             mergeLiveData(acc, listOf(matched), rules, additive = true)
@@ -105,19 +108,20 @@ class LiveOverlayService(private val espnService: EspnService) {
         ctx: RankingsContext,
     ): Rankings {
         if (liveCandidates.isEmpty()) return baseRankings
+        val previewCtx = espnService.loadLivePreviewContext(seasonId, liveCandidates)
         return liveCandidates.fold(baseRankings to ctx) { (rankings, rollingCtx), tournament ->
-            tryOverlayCandidate(seasonId, rankings, tournament, rollingCtx) ?: (rankings to rollingCtx)
+            tryOverlayCandidate(previewCtx, rankings, tournament, rollingCtx) ?: (rankings to rollingCtx)
         }.first
     }
 
     internal suspend fun tryOverlayCandidate(
-        seasonId: SeasonId,
+        previewCtx: LivePreviewContext,
         rankings: Rankings,
         tournament: Tournament,
         ctx: RankingsContext,
     ): Pair<Rankings, RankingsContext>? {
         val previews =
-            fetchPreviewsOrLog(seasonId, tournament.startDate, "rankings live overlay ${tournament.name}")
+            fetchPreviewsOrLog(previewCtx, tournament.startDate, "rankings live overlay ${tournament.name}")
                 ?: return null
         val matched = matchPreview(previews, tournament) ?: return null
         return overlayLiveRankings(rankings, tournament, matched, ctx)
@@ -143,29 +147,31 @@ class LiveOverlayService(private val espnService: EspnService) {
         // hitting ESPN can't change the numbers and just costs latency / quota.
         if (selectedTournament.status == TournamentStatus.Completed) return baseReport
 
+        val previewCtx = espnService.loadLivePreviewContext(seasonId, priorNonCompleted + selectedTournament)
+
         val withPrior =
             priorNonCompleted.sortedWith(tournamentOrdering)
                 .fold(baseReport) { acc, prior ->
                     val previews =
-                        fetchPreviewsOrLog(seasonId, prior.startDate, "prior live overlay")
+                        fetchPreviewsOrLog(previewCtx, prior.startDate, "prior live overlay")
                             ?: return@fold acc
                     val matched = matchPreview(previews, prior) ?: return@fold acc
                     overlayPriorLivePreview(acc, matched, rules)
                 }
 
         val previews =
-            fetchPreviewsOrLog(seasonId, selectedTournament.startDate, "live overlay $tournamentId")
+            fetchPreviewsOrLog(previewCtx, selectedTournament.startDate, "live overlay $tournamentId")
                 ?: return withPrior
         val matched = matchPreview(previews, selectedTournament) ?: return withPrior
         return mergeLiveData(withPrior, listOf(matched), rules, additive = false)
     }
 
     private suspend fun fetchPreviewsOrLog(
-        seasonId: SeasonId,
+        previewCtx: LivePreviewContext,
         date: java.time.LocalDate,
         context: String,
     ): List<EspnLivePreview>? =
-        espnService.previewByDate(seasonId, date)
+        espnService.previewByDate(previewCtx, date)
             .onErr { error -> log.warn { "$context: ESPN preview failed: $error" } }
             .getOrElse { null }
 }
