@@ -109,13 +109,18 @@ class ApiFixture {
             tx = transactor,
         )
     var espnService: EspnService =
-        EspnService(
+        testEspnService(
             client = FakeEspnClient(),
             tournamentService = tournamentService,
             golferService = golferService,
             teamService = teamService,
-            seasonService = seasonService,
             tournamentLinkService = tournamentLinkService,
+            seasonRepository = seasonRepository,
+            golferRepository = golferRepository,
+            teamRepository = teamRepository,
+            tournamentRepository = tournamentRepository,
+            linkRepository = tournamentLinkRepository,
+            tx = transactor,
         )
     var adminService: AdminService =
         AdminService(

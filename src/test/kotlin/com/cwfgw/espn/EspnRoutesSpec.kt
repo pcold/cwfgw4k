@@ -10,6 +10,7 @@ import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.CreateTournamentRequest
@@ -71,7 +72,8 @@ private fun withWiredService(
         val tournamentRepo = FakeTournamentRepository()
         val golferRepo = FakeGolferRepository()
         val teamRepo = FakeTeamRepository()
-        val tournamentSvc = TournamentService(tournamentRepo, FakeTransactor())
+        val sharedTx = transactor
+        val tournamentSvc = TournamentService(tournamentRepo, sharedTx)
         // Seed via the repo's suspending API. The configure block runs on the test setup thread before any
         // HTTP request is made, so blocking here is fine and avoids forcing every spec to be suspend-aware.
         runBlocking {
@@ -80,10 +82,11 @@ private fun withWiredService(
             }
         }
         tournamentService = tournamentSvc
-        golferService = GolferService(golferRepo, FakeTransactor())
-        teamService = TeamService(teamRepo, FakeTransactor())
+        golferService = GolferService(golferRepo, sharedTx)
+        teamService = TeamService(teamRepo, sharedTx)
+        val linkRepo = FakeTournamentLinkRepository()
         espnService =
-            EspnService(
+            testEspnService(
                 client =
                     FakeEspnClient(
                         tournamentsByDate = tournaments,
@@ -93,14 +96,13 @@ private fun withWiredService(
                 tournamentService = tournamentSvc,
                 golferService = golferService,
                 teamService = teamService,
-                seasonService = seasonService,
-                tournamentLinkService =
-                    TournamentLinkService(
-                        FakeTournamentLinkRepository(),
-                        tournamentRepo,
-                        golferRepo,
-                        FakeTransactor(),
-                    ),
+                tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, sharedTx),
+                seasonRepository = seasonRepository,
+                golferRepository = golferRepo,
+                teamRepository = teamRepo,
+                tournamentRepository = tournamentRepo,
+                linkRepository = linkRepo,
+                tx = sharedTx,
             )
     }
 

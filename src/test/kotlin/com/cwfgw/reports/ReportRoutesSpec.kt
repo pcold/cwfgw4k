@@ -1,6 +1,5 @@
 package com.cwfgw.reports
 
-import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
@@ -25,6 +24,7 @@ import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.CreateTournamentResultRequest
@@ -216,20 +216,21 @@ private fun reportFixture(
                 teamRepository = teamRepo,
                 tx = FakeTransactor(),
             )
+        val sharedTx = FakeTransactor()
+        val linkRepo = FakeTournamentLinkRepository()
         val previewEspnService =
-            EspnService(
+            testEspnService(
                 client = FakeEspnClient(),
                 tournamentService = tournamentService,
                 golferService = golferService,
                 teamService = teamService,
-                seasonService = seasonService,
-                tournamentLinkService =
-                    TournamentLinkService(
-                        FakeTournamentLinkRepository(),
-                        tournamentRepo,
-                        golferRepo,
-                        FakeTransactor(),
-                    ),
+                tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, sharedTx),
+                seasonRepository = seasonRepo,
+                golferRepository = golferRepo,
+                teamRepository = teamRepo,
+                tournamentRepository = tournamentRepo,
+                linkRepository = linkRepo,
+                tx = sharedTx,
             )
         liveOverlayService = LiveOverlayService(previewEspnService)
         weeklyReportService =

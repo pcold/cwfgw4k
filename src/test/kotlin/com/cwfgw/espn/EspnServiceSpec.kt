@@ -7,7 +7,6 @@ import com.cwfgw.golfers.GolferService
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.seasons.SeasonId
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.RosterViewPick
 import com.cwfgw.teams.RosterViewTeam
@@ -126,22 +125,23 @@ private class Fixture(
     val golferRepo = FakeGolferRepository(initial = initialGolfers)
     val teamRepo = FakeTeamRepository(initialRosterView = rosterView)
     val seasonRepo = FakeSeasonRepository()
-    private val tournamentService = TournamentService(tournamentRepo, FakeTransactor())
-    private val golferService = GolferService(golferRepo, FakeTransactor())
+    val linkRepo = FakeTournamentLinkRepository(initial = initialOverrides)
+    private val transactor = FakeTransactor()
+    private val tournamentService = TournamentService(tournamentRepo, transactor)
+    private val golferService = GolferService(golferRepo, transactor)
     val service: EspnService =
         EspnService(
             client = fakeClient,
             tournamentService = tournamentService,
             golferService = golferService,
-            teamService = TeamService(teamRepo, FakeTransactor()),
-            seasonService = SeasonService(seasonRepo, FakeTransactor()),
-            tournamentLinkService =
-                TournamentLinkService(
-                    FakeTournamentLinkRepository(initial = initialOverrides),
-                    tournamentRepo,
-                    golferRepo,
-                    FakeTransactor(),
-                ),
+            teamService = TeamService(teamRepo, transactor),
+            tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, transactor),
+            seasonRepository = seasonRepo,
+            golferRepository = golferRepo,
+            teamRepository = teamRepo,
+            tournamentRepository = tournamentRepo,
+            linkRepository = linkRepo,
+            tx = transactor,
         )
 }
 

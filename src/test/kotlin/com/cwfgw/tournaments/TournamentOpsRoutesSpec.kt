@@ -1,6 +1,5 @@
 package com.cwfgw.tournaments
 
-import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnTournament
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
@@ -19,6 +18,7 @@ import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import io.kotest.core.spec.style.FunSpec
@@ -90,26 +90,27 @@ private fun opsFixture(
         val teamRepo = FakeTeamRepository()
         val golferRepo = FakeGolferRepository()
         val scoringRepo = FakeScoringRepository()
-        seasonService = SeasonService(seasonRepo, FakeTransactor())
-        tournamentService = TournamentService(tournamentRepo, FakeTransactor())
-        teamService = TeamService(teamRepo, FakeTransactor())
-        golferService = GolferService(golferRepo, FakeTransactor())
+        val sharedTx = transactor
+        seasonService = SeasonService(seasonRepo, sharedTx)
+        tournamentService = TournamentService(tournamentRepo, sharedTx)
+        teamService = TeamService(teamRepo, sharedTx)
+        golferService = GolferService(golferRepo, sharedTx)
+        val linkRepo = FakeTournamentLinkRepository()
         espnService =
-            EspnService(
+            testEspnService(
                 client = FakeEspnClient(tournamentsByDate = espnByDate),
                 tournamentService = tournamentService,
                 golferService = golferService,
                 teamService = teamService,
-                seasonService = seasonService,
-                tournamentLinkService =
-                    TournamentLinkService(
-                        FakeTournamentLinkRepository(),
-                        tournamentRepo,
-                        golferRepo,
-                        FakeTransactor(),
-                    ),
+                tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, sharedTx),
+                seasonRepository = seasonRepo,
+                golferRepository = golferRepo,
+                teamRepository = teamRepo,
+                tournamentRepository = tournamentRepo,
+                linkRepository = linkRepo,
+                tx = sharedTx,
             )
-        scoringService = ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo, FakeTransactor())
+        scoringService = ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo, sharedTx)
         tournamentOpsService = TournamentOpsService(tournamentService, scoringService, espnService)
     }
 

@@ -127,12 +127,17 @@ internal fun buildServices(
         TournamentLinkService(linkRepo, tournamentRepository, golferRepository, transactor)
     val espnService =
         EspnService(
-            EspnClient(httpClient, config.espn),
-            tournamentService,
-            golferService,
-            teamService,
-            seasonService,
-            tournamentLinkService,
+            client = EspnClient(httpClient, config.espn),
+            tournamentService = tournamentService,
+            golferService = golferService,
+            teamService = teamService,
+            tournamentLinkService = tournamentLinkService,
+            seasonRepository = seasonRepository,
+            golferRepository = golferRepository,
+            teamRepository = teamRepository,
+            tournamentRepository = tournamentRepository,
+            linkRepository = linkRepo,
+            tx = transactor,
         )
     val scoringRepository = ScoringRepository()
     val scoringService =

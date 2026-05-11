@@ -1,7 +1,6 @@
 package com.cwfgw.tournamentLinks
 
 import com.cwfgw.espn.EspnCompetitor
-import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnStatus
 import com.cwfgw.espn.EspnTournament
 import com.cwfgw.espn.FakeEspnClient
@@ -17,6 +16,7 @@ import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -121,23 +121,30 @@ private fun fixture(
         val linkRepo = FakeTournamentLinkRepository(initial = initialOverrides)
         val tournamentRepo = FakeTournamentRepository(initial = tournaments)
         val golferRepo = FakeGolferRepository(initial = golfers)
+        val teamRepo = FakeTeamRepository()
+        val seasonRepo = FakeSeasonRepository()
+        val sharedTx = transactor
         tournamentRepository = tournamentRepo
         golferRepository = golferRepo
-        tournamentService = TournamentService(tournamentRepo, FakeTransactor())
-        golferService = GolferService(golferRepo, FakeTransactor())
-        teamService = TeamService(FakeTeamRepository(), FakeTransactor())
-        seasonService = SeasonService(FakeSeasonRepository(), FakeTransactor())
+        tournamentService = TournamentService(tournamentRepo, sharedTx)
+        golferService = GolferService(golferRepo, sharedTx)
+        teamService = TeamService(teamRepo, sharedTx)
+        seasonService = SeasonService(seasonRepo, sharedTx)
         tournamentLinkRepository = linkRepo
-        tournamentLinkService =
-            TournamentLinkService(linkRepo, tournamentRepo, golferRepo, FakeTransactor())
+        tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, sharedTx)
         espnService =
-            EspnService(
+            testEspnService(
                 client = FakeEspnClient(tournamentsByDate = scoreboard),
                 tournamentService = tournamentService,
                 golferService = golferService,
                 teamService = teamService,
-                seasonService = seasonService,
                 tournamentLinkService = tournamentLinkService,
+                seasonRepository = seasonRepo,
+                golferRepository = golferRepo,
+                teamRepository = teamRepo,
+                tournamentRepository = tournamentRepo,
+                linkRepository = linkRepo,
+                tx = sharedTx,
             )
     }
 

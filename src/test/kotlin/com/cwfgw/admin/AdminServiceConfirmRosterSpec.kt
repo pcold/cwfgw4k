@@ -1,7 +1,6 @@
 package com.cwfgw.admin
 
 import com.cwfgw.db.Transactor
-import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
@@ -16,6 +15,7 @@ import com.cwfgw.teams.CreateTeamRequest
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.postgresHarness
+import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.TournamentRepository
@@ -50,20 +50,20 @@ class AdminServiceConfirmRosterSpec : FunSpec({
         val tournamentService = TournamentService(tournamentRepo, tx)
         val golferService = GolferService(golferRepo, tx)
         val teamService = TeamService(teamRepo, tx)
+        val linkRepo = TournamentLinkRepository()
         val espnService =
-            EspnService(
+            testEspnService(
                 client = FakeEspnClient(),
                 tournamentService = tournamentService,
                 golferService = golferService,
                 teamService = teamService,
-                seasonService = seasonService,
-                tournamentLinkService =
-                    TournamentLinkService(
-                        TournamentLinkRepository(),
-                        tournamentRepo,
-                        golferRepo,
-                        tx,
-                    ),
+                tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, tx),
+                seasonRepository = seasonRepo,
+                golferRepository = golferRepo,
+                teamRepository = teamRepo,
+                tournamentRepository = tournamentRepo,
+                linkRepository = linkRepo,
+                tx = tx,
             )
         // Bootstrap a league + season so confirmRoster has a target.
         runBlocking {

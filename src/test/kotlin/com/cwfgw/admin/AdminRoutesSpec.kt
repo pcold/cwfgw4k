@@ -1,7 +1,6 @@
 package com.cwfgw.admin
 
 import com.cwfgw.espn.EspnCalendarEntry
-import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnUpstreamException
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
@@ -20,6 +19,7 @@ import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.FakeTournamentRepository
@@ -85,28 +85,29 @@ private fun adminFixture(
         val golferRepo = FakeGolferRepository(initial = seedGolfers)
         val tournamentRepo = FakeTournamentRepository()
         val teamRepo = FakeTeamRepository()
-        seasonService = SeasonService(seasonRepo, FakeTransactor())
-        tournamentService = TournamentService(tournamentRepo, FakeTransactor())
-        golferService = GolferService(golferRepo, FakeTransactor())
-        teamService = TeamService(teamRepo, FakeTransactor())
+        val transactor = FakeTransactor()
+        seasonService = SeasonService(seasonRepo, transactor)
+        tournamentService = TournamentService(tournamentRepo, transactor)
+        golferService = GolferService(golferRepo, transactor)
+        teamService = TeamService(teamRepo, transactor)
+        val linkRepo = FakeTournamentLinkRepository()
         espnService =
-            EspnService(
+            testEspnService(
                 client = FakeEspnClient(calendar = calendar, upstreamError = upstreamError),
                 tournamentService = tournamentService,
                 golferService = golferService,
                 teamService = teamService,
-                seasonService = seasonService,
-                tournamentLinkService =
-                    TournamentLinkService(
-                        FakeTournamentLinkRepository(),
-                        tournamentRepo,
-                        golferRepo,
-                        FakeTransactor(),
-                    ),
+                tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, transactor),
+                seasonRepository = seasonRepo,
+                golferRepository = golferRepo,
+                teamRepository = teamRepo,
+                tournamentRepository = tournamentRepo,
+                linkRepository = linkRepo,
+                tx = transactor,
             )
         adminService =
             AdminService(
-                tx = FakeTransactor(),
+                tx = transactor,
                 seasonService = seasonService,
                 tournamentService = tournamentService,
                 espnService = espnService,

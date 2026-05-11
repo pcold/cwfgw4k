@@ -1,25 +1,31 @@
 package com.cwfgw.espn
 
+import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.result.Result
 import com.cwfgw.result.getOrElse
 import com.cwfgw.scoring.PayoutTable
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.seasons.SeasonRules
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
+import com.cwfgw.teams.TeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.tournamentLinks.TournamentCompetitorListing
 import com.cwfgw.tournamentLinks.TournamentCompetitorView
+import com.cwfgw.tournamentLinks.TournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
+import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.TournamentStatus
 import com.cwfgw.tournaments.UpdateTournamentRequest
@@ -46,13 +52,19 @@ private val log = KotlinLogging.logger {}
  *    their `pga_player_id`; team-partner rows skip that since the id is
  *    synthetic (`team:X:N`).
  */
+@Suppress("LongParameterList")
 class EspnService(
     private val client: EspnClient,
     private val tournamentService: TournamentService,
     private val golferService: GolferService,
     private val teamService: TeamService,
-    private val seasonService: SeasonService,
     private val tournamentLinkService: TournamentLinkService,
+    private val seasonRepository: SeasonRepository,
+    private val golferRepository: GolferRepository,
+    private val teamRepository: TeamRepository,
+    private val tournamentRepository: TournamentRepository,
+    private val linkRepository: TournamentLinkRepository,
+    private val tx: Transactor,
 ) {
     /**
      * Fetch ESPN's season calendar. Pass-through to the client; surfaced on
@@ -128,24 +140,67 @@ class EspnService(
         date: LocalDate,
     ): Result<List<EspnLivePreview>, EspnError> {
         val events = fetchOrFail(date).getOrElse { return Result.Err(it) }
-        val rules = seasonService.getRules(seasonId) ?: SeasonRules.defaults()
-        val golfers = golferService.list(activeOnly = false, search = null)
-        val teams = teamService.listBySeason(seasonId)
-        val rosters = teams.flatMap { teamService.getRoster(it.id) }
-        val dbTournamentsForDate =
-            tournamentService.list(seasonId, status = null).filter { it.startDate == date }
-        val overridesByTournament = loadOverridesByTournament(dbTournamentsForDate)
+        val state = tx.read { gatherLivePreviewState(seasonId, date) }
         return Result.Ok(
-            buildLivePreviews(events, golfers, teams, rosters, dbTournamentsForDate, rules, overridesByTournament),
+            buildLivePreviews(
+                events = events,
+                allGolfers = state.golfers,
+                teams = state.teams,
+                rosters = state.rosters,
+                dbTournamentsForDate = state.dbTournamentsForDate,
+                rules = state.rules,
+                overridesByTournament = state.overridesByTournament,
+            ),
         )
     }
 
-    private suspend fun loadOverridesByTournament(
-        tournaments: List<Tournament>,
-    ): Map<TournamentId, Map<String, GolferId>> =
-        tournaments.associate { tournament ->
-            tournament.id to tournamentLinkService.overrideMap(tournament.id)
-        }
+    /**
+     * Single-snapshot gather for [previewByDate]. Folding every per-event
+     * service round-trip — rules, golfer list, team list, per-team rosters,
+     * tournament list, per-tournament override maps — into one
+     * `REPEATABLE READ READ ONLY` transaction is the cold-start wedge fix:
+     * the prior shape opened ~3 + numTeams + numTournamentsForDate
+     * separate Hikari checkouts per call, and the live-overlay loop calls
+     * us once per non-completed event, so a 1-CPU instance with three
+     * parallel live requests was spending most of its budget on
+     * BEGIN/COMMIT round-trips before the wedge.
+     */
+    context(ctx: TransactionContext)
+    private suspend fun gatherLivePreviewState(
+        seasonId: SeasonId,
+        date: LocalDate,
+    ): LivePreviewState {
+        val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
+        val golfers = golferRepository.findAll(activeOnly = false, search = null)
+        val teams = teamRepository.findBySeason(seasonId)
+        val rosters = teams.flatMap { teamRepository.getRoster(it.id) }
+        val dbTournamentsForDate =
+            tournamentRepository.findAll(seasonId = seasonId, status = null)
+                .filter { it.startDate == date }
+        val overridesByTournament =
+            dbTournamentsForDate.associate { tournament ->
+                tournament.id to
+                    linkRepository.listByTournament(tournament.id)
+                        .associate { it.espnCompetitorId to it.golferId }
+            }
+        return LivePreviewState(
+            rules = rules,
+            golfers = golfers,
+            teams = teams,
+            rosters = rosters,
+            dbTournamentsForDate = dbTournamentsForDate,
+            overridesByTournament = overridesByTournament,
+        )
+    }
+
+    private data class LivePreviewState(
+        val rules: SeasonRules,
+        val golfers: List<Golfer>,
+        val teams: List<Team>,
+        val rosters: List<RosterEntry>,
+        val dbTournamentsForDate: List<Tournament>,
+        val overridesByTournament: Map<TournamentId, Map<String, GolferId>>,
+    )
 
     suspend fun importByDate(date: LocalDate): Result<EspnImportBatch, EspnError> {
         val events = fetchOrFail(date).getOrElse { return Result.Err(it) }
