@@ -1,37 +1,49 @@
 #!/usr/bin/env bash
 #
-# Reproduce the May 10 prod wedge in a staging clone: spin a staging
-# environment at the same CPU/memory profile as prod, force a freshly
-# started instance for each iteration, send a tiny burst of parallel
-# requests against the heavy live-overlay endpoints, and record per-
-# request HTTP code + latency.
+# Reproduce the dispatcher-starvation wedge in a staging clone: spin a
+# staging environment at the same CPU/memory profile as prod, force a
+# fresh instance for each iteration, fire a tiny burst of parallel
+# requests against the report endpoints, and record per-request HTTP
+# code + latency. Used to verify CWF-24 and to bisect any future regress.
 #
-# What the wedge looks like: at 1Gi / 1CPU, a freshly-started instance
-# that gets hit immediately with parallel `/report/<tid>?live=true` and
-# `/rankings?live=true` (both cache-miss, both fan out internally into
-# per-tournament ESPN scoring) pegs its single CPU. The PoolMetrics
-# scheduled coroutine stops emitting, the Netty event loop keeps
-# accepting on :8080 so Cloud Run's startup-probe stays green, and every
-# in-flight DB-touching request times out at the Cloud Run 90s ceiling.
-# Pool stays `waiting=0` throughout — this is NOT pool exhaustion.
+# What the wedge actually is: jOOQ's transactionCoroutine bridges the
+# reactive transaction publisher to coroutines on top of blocking JDBC.
+# When the call dispatcher is Dispatchers.Default (max(2, #CPUs)
+# threads — 2 on a 1-vCPU instance), 3+ concurrent tx.read / tx.update
+# calls can deadlock: every Default thread is blocked on JDBC, and the
+# Reactor subscribers awaiting their results have no thread to resume
+# on. The awaiting coroutines are parked on a Reactor subscriber
+# (not a Kotlin-native suspension), so DebugProbes can't see them.
+# Symptoms: requests log cache event=fetch-enter and then nothing for
+# 90s; no thread carries app code; Hikari sits idle. Fixed by CWF-24
+# (wrap Transactor methods in withContext(Dispatchers.IO)).
+#
+# This is concurrency-shaped, not cold-shaped. Cold start was the
+# reliable repro because per-request latency is higher on a cold
+# instance (no JIT, no warm Hikari, no Caffeine), so more requests
+# overlap in time at a given arrival rate. Once the fix is in, the
+# harness's role is regression detection — re-run after any change
+# that touches Transactor, ScoringService composables, or jOOQ deps.
 #
 # Why this and not stress.sh / soak.sh:
 #   - stress.sh drives sustained concurrency against a warm instance.
-#     Won't ever reproduce a cold-start wedge.
+#     Useful for warm-throughput regressions; less reliable at
+#     producing the cold-start concurrency window where the dispatcher
+#     bug fires most easily.
 #   - soak.sh reproduces idle→first-hit (May 4 broken-pipe shape) with
-#     a single-request canary. Won't catch parallel-fan-out CPU starvation.
+#     a single-request canary. Single-request flows won't deadlock —
+#     the bug needs concurrency.
 #
 # Forcing a cold start: each iteration bumps a COLD_BURST_NONCE env var
 # on the staging service, which creates a new revision and makes Cloud
-# Run start a fresh instance for it. That's faster (and more reliable)
-# than waiting for scale-to-zero, and matches the prod shape — the
-# wedge happened to an autoscale-spun new instance, not to a long-lived
-# one.
+# Run start a fresh instance for it. Faster (and more reliable) than
+# waiting for scale-to-zero, and produces the wider concurrency window
+# we want to exercise.
 #
-# Default profile matches prod's pre-May-10 config (1Gi / 1CPU,
+# Default profile matches prod's pre-CWF-24 config (1Gi / 1CPU,
 # min-instances=0, concurrency=20). Use -m / -C to verify a fix at a
-# different profile (e.g. -m 2Gi -C 2 to confirm the resource bump
-# actually clears the wedge).
+# different profile (e.g. -m 2Gi -C 2 raises the dispatcher's thread
+# count and would mask the bug).
 #
 # Cost: roughly $1-2 base (Cloud SQL clone), plus a few minutes of
 # Cloud Run time. Far cheaper than running stress for an hour.
