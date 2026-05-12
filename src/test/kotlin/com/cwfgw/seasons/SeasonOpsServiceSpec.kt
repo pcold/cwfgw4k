@@ -143,11 +143,14 @@ private class Fixture(
                 }
             }
         }
-        val seasonService = SeasonService(seasonRepo, FakeTransactor())
-        val tournamentService = TournamentService(tournamentRepo, FakeTransactor())
-        val scoringService =
-            ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo, FakeTransactor())
-        service = SeasonOpsService(seasonService, tournamentService, scoringService)
+        val transactor = FakeTransactor()
+        service =
+            SeasonOpsService(
+                seasonRepository = seasonRepo,
+                tournamentRepository = tournamentRepo,
+                scoringRepository = scoringRepo,
+                tx = transactor,
+            )
     }
 }
 

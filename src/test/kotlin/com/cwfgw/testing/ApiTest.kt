@@ -146,14 +146,18 @@ class ApiFixture {
     var tournamentOpsService: TournamentOpsService =
         TournamentOpsService(
             tournamentService = tournamentService,
+            tournamentRepository = tournamentRepository,
             scoringService = scoringService,
+            scoringRepository = scoringRepository,
             espnService = espnService,
+            tx = transactor,
         )
     var seasonOpsService: SeasonOpsService =
         SeasonOpsService(
-            seasonService = seasonService,
-            tournamentService = tournamentService,
-            scoringService = scoringService,
+            seasonRepository = seasonRepository,
+            tournamentRepository = tournamentRepository,
+            scoringRepository = scoringRepository,
+            tx = transactor,
         )
     var userRepository: UserRepository = FakeUserRepository()
     var authService: AuthService = AuthService(userRepository, transactor, cost = TEST_BCRYPT_COST)

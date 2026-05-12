@@ -186,8 +186,22 @@ internal fun buildServices(
         teamService = teamService,
         tournamentService = tournamentService,
         tournamentLinkService = tournamentLinkService,
-        tournamentOpsService = TournamentOpsService(tournamentService, scoringService, espnService),
-        seasonOpsService = SeasonOpsService(seasonService, tournamentService, scoringService),
+        tournamentOpsService =
+            TournamentOpsService(
+                tournamentService = tournamentService,
+                tournamentRepository = tournamentRepository,
+                scoringService = scoringService,
+                scoringRepository = scoringRepository,
+                espnService = espnService,
+                tx = transactor,
+            ),
+        seasonOpsService =
+            SeasonOpsService(
+                seasonRepository = seasonRepository,
+                tournamentRepository = tournamentRepository,
+                scoringRepository = scoringRepository,
+                tx = transactor,
+            ),
         draftService = DraftService(DraftRepository(), teamRepository, transactor),
         scoringService = scoringService,
         espnService = espnService,

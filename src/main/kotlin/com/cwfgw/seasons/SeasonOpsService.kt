@@ -1,8 +1,9 @@
 package com.cwfgw.seasons
 
+import com.cwfgw.db.Transactor
 import com.cwfgw.result.Result
-import com.cwfgw.scoring.ScoringService
-import com.cwfgw.tournaments.TournamentService
+import com.cwfgw.scoring.ScoringRepository
+import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentStatus
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.Serializable
@@ -20,11 +21,20 @@ private val log = KotlinLogging.logger {}
  * machines are conceptually distinct — one's per-tournament lifecycle,
  * one's whole-season lifecycle. Both share a similar dep set, but
  * sharing a class would only be incidental.
+ *
+ * Depends on the relevant repositories directly (rather than fanning out
+ * through other services) so each operation's gate check, data gather,
+ * and write all happen inside the same transaction. Calling another
+ * service mid-flow would open a fresh transaction on a different
+ * connection and split the operation across multiple commit boundaries
+ * — the [com.cwfgw.admin.AdminService.confirmRoster] reference shape
+ * documents the pattern in `src/CLAUDE.md`.
  */
 class SeasonOpsService(
-    private val seasonService: SeasonService,
-    private val tournamentService: TournamentService,
-    private val scoringService: ScoringService,
+    private val seasonRepository: SeasonRepository,
+    private val tournamentRepository: TournamentRepository,
+    private val scoringRepository: ScoringRepository,
+    private val tx: Transactor,
 ) {
     /**
      * Lock a season as completed once every tournament has been
@@ -35,22 +45,24 @@ class SeasonOpsService(
      * [SeasonOpsError.IncompleteTournaments] listing every
      * not-yet-completed tournament so the operator sees what's left.
      */
-    suspend fun finalizeSeason(seasonId: SeasonId): Result<Season, SeasonOpsError> {
-        val season =
-            seasonService.get(seasonId) ?: return Result.Err(SeasonOpsError.SeasonNotFound(seasonId))
-        val tournaments = tournamentService.list(seasonId, status = null)
-        if (tournaments.isEmpty()) return Result.Err(SeasonOpsError.SeasonHasNoTournaments)
-        val incomplete =
-            tournaments.filter { it.status != TournamentStatus.Completed }.sortedBy { it.startDate }
-        if (incomplete.isNotEmpty()) {
-            return Result.Err(SeasonOpsError.IncompleteTournaments(incomplete))
-        }
+    suspend fun finalizeSeason(seasonId: SeasonId): Result<Season, SeasonOpsError> =
+        tx.update {
+            val season =
+                seasonRepository.findById(seasonId)
+                    ?: return@update Result.Err(SeasonOpsError.SeasonNotFound(seasonId))
+            val tournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
+            if (tournaments.isEmpty()) return@update Result.Err(SeasonOpsError.SeasonHasNoTournaments)
+            val incomplete =
+                tournaments.filter { it.status != TournamentStatus.Completed }.sortedBy { it.startDate }
+            if (incomplete.isNotEmpty()) {
+                return@update Result.Err(SeasonOpsError.IncompleteTournaments(incomplete))
+            }
 
-        log.info { "Finalizing season '${season.name}' (${tournaments.size} tournaments)..." }
-        val updated =
-            seasonService.update(seasonId, UpdateSeasonRequest(status = SEASON_STATUS_COMPLETED))
-        return Result.Ok(updated ?: season)
-    }
+            log.info { "Finalizing season '${season.name}' (${tournaments.size} tournaments)..." }
+            val updated =
+                seasonRepository.update(seasonId, UpdateSeasonRequest(status = SEASON_STATUS_COMPLETED))
+            Result.Ok(updated ?: season)
+        }
 
     /**
      * Wipe every score / result / standing for the season and revert
@@ -58,28 +70,30 @@ class SeasonOpsService(
      * the operator is responsible for confirming intent at the UI layer.
      * Returns counts so the operator sees what was actually deleted.
      */
-    suspend fun cleanSeasonResults(seasonId: SeasonId): Result<CleanSeasonResult, SeasonOpsError> {
-        val season =
-            seasonService.get(seasonId) ?: return Result.Err(SeasonOpsError.SeasonNotFound(seasonId))
+    suspend fun cleanSeasonResults(seasonId: SeasonId): Result<CleanSeasonResult, SeasonOpsError> =
+        tx.update {
+            val season =
+                seasonRepository.findById(seasonId)
+                    ?: return@update Result.Err(SeasonOpsError.SeasonNotFound(seasonId))
 
-        log.info { "Cleaning all results for season '${season.name}'..." }
-        val scoresDeleted = scoringService.deleteScoresBySeason(seasonId)
-        val resultsDeleted = tournamentService.deleteResultsBySeason(seasonId)
-        val standingsDeleted = scoringService.deleteStandingsBySeason(seasonId)
-        val tournamentsReset = tournamentService.resetSeasonTournaments(seasonId)
-        log.info {
-            "Cleaned season '${season.name}': $scoresDeleted scores, $resultsDeleted results, " +
-                "$standingsDeleted standings deleted; $tournamentsReset tournaments reset to upcoming"
+            log.info { "Cleaning all results for season '${season.name}'..." }
+            val scoresDeleted = scoringRepository.deleteBySeason(seasonId)
+            val resultsDeleted = tournamentRepository.deleteResultsBySeason(seasonId)
+            val standingsDeleted = scoringRepository.deleteStandingsBySeason(seasonId)
+            val tournamentsReset = tournamentRepository.resetSeasonTournaments(seasonId)
+            log.info {
+                "Cleaned season '${season.name}': $scoresDeleted scores, $resultsDeleted results, " +
+                    "$standingsDeleted standings deleted; $tournamentsReset tournaments reset to upcoming"
+            }
+            Result.Ok(
+                CleanSeasonResult(
+                    scoresDeleted = scoresDeleted,
+                    resultsDeleted = resultsDeleted,
+                    standingsDeleted = standingsDeleted,
+                    tournamentsReset = tournamentsReset,
+                ),
+            )
         }
-        return Result.Ok(
-            CleanSeasonResult(
-                scoresDeleted = scoresDeleted,
-                resultsDeleted = resultsDeleted,
-                standingsDeleted = standingsDeleted,
-                tournamentsReset = tournamentsReset,
-            ),
-        )
-    }
 }
 
 /**

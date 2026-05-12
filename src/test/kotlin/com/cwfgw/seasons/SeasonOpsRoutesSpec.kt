@@ -66,18 +66,19 @@ private fun opsFixture(initialTournaments: List<Tournament> = emptyList()): ApiF
         }
         val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
         val teamRepo = FakeTeamRepository()
-        seasonService = SeasonService(seasonRepo, FakeTransactor())
-        tournamentService = TournamentService(tournamentRepo, FakeTransactor())
-        teamService = TeamService(teamRepo, FakeTransactor())
-        scoringService =
-            ScoringService(
-                FakeScoringRepository(),
-                seasonRepo,
-                tournamentRepo,
-                teamRepo,
-                FakeTransactor(),
+        val scoringRepo = FakeScoringRepository()
+        val sharedTx = transactor
+        seasonService = SeasonService(seasonRepo, sharedTx)
+        tournamentService = TournamentService(tournamentRepo, sharedTx)
+        teamService = TeamService(teamRepo, sharedTx)
+        scoringService = ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo, sharedTx)
+        seasonOpsService =
+            SeasonOpsService(
+                seasonRepository = seasonRepo,
+                tournamentRepository = tournamentRepo,
+                scoringRepository = scoringRepo,
+                tx = sharedTx,
             )
-        seasonOpsService = SeasonOpsService(seasonService, tournamentService, scoringService)
     }
 
 class SeasonOpsRoutesSpec : FunSpec({

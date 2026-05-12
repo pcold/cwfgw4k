@@ -111,7 +111,15 @@ private fun opsFixture(
                 tx = sharedTx,
             )
         scoringService = ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo, sharedTx)
-        tournamentOpsService = TournamentOpsService(tournamentService, scoringService, espnService)
+        tournamentOpsService =
+            TournamentOpsService(
+                tournamentService = tournamentService,
+                tournamentRepository = tournamentRepo,
+                scoringService = scoringService,
+                scoringRepository = scoringRepo,
+                espnService = espnService,
+                tx = sharedTx,
+            )
     }
 
 class TournamentOpsRoutesSpec : FunSpec({
