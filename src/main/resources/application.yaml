@@ -42,3 +42,11 @@ espn:
   # ESPN data dedupe to one ESPN call).
   scoreboardCacheTtlSeconds: ${ESPN_SCOREBOARD_CACHE_TTL_SECONDS:-300}
   scoreboardCacheMaxSize: ${ESPN_SCOREBOARD_CACHE_MAX_SIZE:-256}
+
+debug:
+  # Diagnostic endpoints (thread + coroutine dump). Off by default — only
+  # ops/load-test/cold-burst.sh's staging deploys flip this on. Enabling
+  # also installs kotlinx.coroutines.debug.DebugProbes, which has
+  # measurable per-launch overhead, so leaving it off in prod is
+  # intentional.
+  enabled: ${DEBUG_ENDPOINTS_ENABLED:-false}

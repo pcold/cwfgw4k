@@ -121,7 +121,7 @@ gcloud run deploy "$STAGING_SERVICE" \
   --allow-unauthenticated \
   --add-cloudsql-instances="${PROJECT}:${REGION}:${STAGING_SQL}" \
   --set-secrets="DB_PASSWORD=cwfgw4k-db-password:latest,AUTH_SESSION_SECRET=cwfgw4k-session-secret:latest,AUTH_ADMIN_PASSWORD=cwfgw4k-admin-password:latest" \
-  --set-env-vars="DB_JDBC_URL=${DB_JDBC_URL},DB_USER=cwfgw4k,DB_SCHEMA=cwfgw4k,DB_POOL=15,AUTH_ADMIN_USERNAME=admin,COLD_BURST_NONCE=0" \
+  --set-env-vars="DB_JDBC_URL=${DB_JDBC_URL},DB_USER=cwfgw4k,DB_SCHEMA=cwfgw4k,DB_POOL=15,AUTH_ADMIN_USERNAME=admin,COLD_BURST_NONCE=0,DEBUG_ENDPOINTS_ENABLED=true" \
   --memory="$MEMORY" \
   --cpu="$CPU" \
   --concurrency="$CONCURRENCY" \
@@ -195,6 +195,8 @@ for iter in $(seq 1 "$ITERATIONS"); do
   curl -fsS -o /dev/null "$URL/" || true
 
   tmpdir=$(mktemp -d)
+  dump_dir="${DUMP_DIR:-/tmp}/cold-burst-${SUFFIX}/iter-${iter}"
+  mkdir -p "$dump_dir"
   echo "    Firing ${PARALLEL} parallel hits across ${#TARGETS[@]} endpoints simultaneously..."
   i=0
   for slot in $(seq 1 "$PARALLEL"); do
@@ -206,6 +208,20 @@ for iter in $(seq 1 "$ITERATIONS"); do
         -w '%{http_code} %{time_total}' \
         "$target" 2>/dev/null || echo "ERR -")
       echo "$slot $target $out" >"$tmpdir/$slot"
+    ) &
+  done
+
+  # Capture thread + coroutine dumps mid-wedge. Three snapshots span the
+  # bulk of the 90s Cloud Run window so a parked coroutine's stack shows
+  # up even if it's blocked in a different state at one of the moments.
+  # `curl --max-time 20` so a wedged /debug response doesn't itself hang
+  # the harness — the dump endpoint runs on the same instance as the
+  # wedged handlers, but its IO-dispatcher work is small and should still
+  # land. If it doesn't, the empty file is itself a signal.
+  for offset in 10 30 60; do
+    (
+      sleep "$offset"
+      curl -sS --max-time 20 -o "$dump_dir/+${offset}s.txt" "$URL/debug/threads" 2>/dev/null || true
     ) &
   done
   wait
@@ -233,6 +249,7 @@ for iter in $(seq 1 "$ITERATIONS"); do
   if [[ $iter_wedge -eq 1 ]]; then
     WEDGES=$((WEDGES + 1))
     echo "    >>> WEDGE SIGNAL on iteration $iter (504 or latency ≥30s)"
+    echo "    Thread/coroutine dumps captured in: $dump_dir"
   fi
   echo
 done

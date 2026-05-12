@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+
 package com.cwfgw
 
 import com.cwfgw.admin.AdminService
@@ -9,6 +11,7 @@ import com.cwfgw.db.Database
 import com.cwfgw.db.PoolMetrics
 import com.cwfgw.db.Transactor
 import com.cwfgw.db.poolMetricsOrNull
+import com.cwfgw.debug.debugRoutes
 import com.cwfgw.drafts.DraftRepository
 import com.cwfgw.drafts.DraftService
 import com.cwfgw.drafts.draftRoutes
@@ -77,6 +80,7 @@ import io.ktor.server.routing.routing
 import io.ktor.server.sessions.SessionTransportTransformerMessageAuthentication
 import io.ktor.server.sessions.Sessions
 import io.ktor.server.sessions.cookie
+import kotlinx.coroutines.debug.DebugProbes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -91,6 +95,10 @@ import javax.net.ssl.X509TrustManager
 fun main() {
     val config = AppConfig.load()
     requireValidAuthSecret(config.auth)
+    // Install before any coroutines are launched so DebugProbes sees their creation sites.
+    // Gated on the same flag that mounts /debug/threads — the probes have non-trivial
+    // overhead and prod doesn't need them.
+    if (config.debug.enabled) DebugProbes.install()
     val database = Database.start(config.db)
     val httpClient = buildHttpClient()
     val services = buildServices(config, database, httpClient)
@@ -196,6 +204,7 @@ internal fun buildServices(
                 sessionMaxAgeSeconds = config.auth.sessionMaxAgeSeconds,
                 cookieSecure = config.auth.cookieSecure,
             ),
+        debugEnabled = config.debug.enabled,
     )
 }
 
@@ -294,6 +303,7 @@ fun Application.module(
     poolMetrics?.let(::launchPoolMetricsLog)
     routing {
         apiRoutes(services)
+        if (services.debugEnabled) debugRoutes()
         staticRoutes()
         spaFallback()
     }

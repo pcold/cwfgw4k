@@ -10,6 +10,7 @@ data class AppConfig(
     val auth: AuthConfig,
     val cache: CacheConfig,
     val espn: EspnConfig,
+    val debug: DebugConfig,
 ) {
     companion object {
         fun load(overrides: Map<String, Any> = emptyMap()): AppConfig =
@@ -67,3 +68,16 @@ data class EspnConfig(
     val scoreboardCacheTtlSeconds: Long,
     val scoreboardCacheMaxSize: Long,
 )
+
+/**
+ * Toggle for diagnostic endpoints that expose runtime state (thread +
+ * coroutine dumps). Off by default — production never sets the env var,
+ * so the routes don't register. Staging deploys driven by
+ * `ops/load-test/cold-burst.sh` flip it on so the harness can capture
+ * point-in-time stack snapshots while the service is wedged.
+ *
+ * `DebugProbes` installation has non-trivial overhead (every coroutine
+ * launch records its call site), so its `install()` call is gated on
+ * the same flag rather than always-on.
+ */
+data class DebugConfig(val enabled: Boolean)

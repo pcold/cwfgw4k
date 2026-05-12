@@ -49,4 +49,11 @@ data class AppServices(
     val requestCache: RequestCache,
     val sweepIntervalSeconds: Long,
     val authSetup: AuthSetup,
+    /**
+     * When true, [com.cwfgw.debug.debugRoutes] are mounted at `/debug`
+     * and `kotlinx.coroutines.debug.DebugProbes` is installed. Off by
+     * default; flipped on by the cold-burst harness via the
+     * `DEBUG_ENDPOINTS_ENABLED` env var.
+     */
+    val debugEnabled: Boolean,
 )

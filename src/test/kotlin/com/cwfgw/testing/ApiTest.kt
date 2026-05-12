@@ -278,6 +278,7 @@ private fun ApiFixture.toAppServices(): AppServices =
         requestCache = requestCache,
         sweepIntervalSeconds = TEST_SWEEP_INTERVAL_SECONDS,
         authSetup = authSetup,
+        debugEnabled = false,
     )
 
 private fun ApplicationTestBuilder.createJsonClient(): HttpClient =

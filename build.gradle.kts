@@ -43,6 +43,7 @@ dependencies {
     implementation(libs.bundles.ktor.client)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.debug)
 
     implementation(libs.bundles.jooq)
     implementation(libs.hikari)
