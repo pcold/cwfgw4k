@@ -1,6 +1,8 @@
 package com.cwfgw.db
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jooq.DSLContext
 import org.jooq.kotlin.coroutines.transactionCoroutine
 
@@ -45,24 +47,42 @@ private val log = KotlinLogging.logger("com.cwfgw.db.Transactor")
 private class JooqTransactor(private val rootDsl: DSLContext) : Transactor {
     private val rootContext: TransactionContext = TransactionContext(rootDsl)
 
+    // CWF-24: every body runs under `withContext(Dispatchers.IO)`. jOOQ's
+    // [transactionCoroutine] bridges Reactor publishers to coroutines on top
+    // of a blocking JDBC driver — see the doc note at
+    // https://www.jooq.org/doc/latest/manual/sql-building/kotlin-sql-building/kotlin-coroutines/.
+    // If the bridge runs on the caller's dispatcher and the caller is on
+    // Dispatchers.Default (max(2, #CPUs) threads — i.e. 2 on a 1-vCPU
+    // Cloud Run instance), four concurrent transactions can wedge: every
+    // worker is blocked on JDBC and there's nobody left to resume the
+    // Reactor subscriber awaiting the result. Dispatchers.IO defaults to
+    // 64 threads, so the bridge has the headroom it needs.
     override suspend fun <A> get(block: suspend context(TransactionContext) () -> A): A =
-        timed("get") { with(rootContext) { block() } }
+        timed("get") {
+            withContext(Dispatchers.IO) {
+                with(rootContext) { block() }
+            }
+        }
 
     override suspend fun <A> read(block: suspend context(TransactionContext) () -> A): A =
         timed("read") {
-            rootDsl.transactionCoroutine { config ->
-                val txDsl = config.dsl()
-                // Must run before any other statement in the transaction; PG rejects
-                // SET TRANSACTION after the snapshot has been taken by a real query.
-                txDsl.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
-                with(TransactionContext(txDsl)) { block() }
+            withContext(Dispatchers.IO) {
+                rootDsl.transactionCoroutine { config ->
+                    val txDsl = config.dsl()
+                    // Must run before any other statement in the transaction; PG rejects
+                    // SET TRANSACTION after the snapshot has been taken by a real query.
+                    txDsl.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+                    with(TransactionContext(txDsl)) { block() }
+                }
             }
         }
 
     override suspend fun <A> update(block: suspend context(TransactionContext) () -> A): A =
         timed("update") {
-            rootDsl.transactionCoroutine { config ->
-                with(TransactionContext(config.dsl())) { block() }
+            withContext(Dispatchers.IO) {
+                rootDsl.transactionCoroutine { config ->
+                    with(TransactionContext(config.dsl())) { block() }
+                }
             }
         }
 
