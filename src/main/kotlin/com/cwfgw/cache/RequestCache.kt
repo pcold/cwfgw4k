@@ -101,14 +101,31 @@ class RequestCache(
         // completed (success or failure) so coalesced waiters never hang.
         // We rethrow immediately so the calling coroutine sees the failure
         // exactly as the underlying [fetch] reported it.
+        //
+        // CWF-22: the fetch enter/exit/error trio bookends the user-supplied
+        // lambda. A wedge that lands in code outside DebugProbes' visibility
+        // (jOOQ Reactor bridge, Caffeine CompletableFuture) won't show up in
+        // background dumps; the only way to confirm "we entered fetch and
+        // never came back" is from log lines on each side of the call.
         @Suppress("TooGenericExceptionCaught")
         try {
+            val fetchStarted = System.currentTimeMillis()
+            log.info { "cwfgw4k.cache event=fetch-enter route=$routeTemplate" }
             val fresh = fetch()
+            log.info {
+                "cwfgw4k.cache event=fetch-exit route=$routeTemplate " +
+                    "duration_ms=${System.currentTimeMillis() - fetchStarted}"
+            }
             tx.update { repository.put(key, fresh, clock.instant().plus(ttl)) }
             log.info { "cwfgw4k.cache event=put route=$routeTemplate ttl_seconds=${ttl.seconds}" }
             ours.complete(fresh)
             return fresh
         } catch (t: Throwable) {
+            // Log every exit-via-throw so a wedge that bypasses the
+            // installErrorHandling sink (cancellation, dispatcher-internal
+            // failure) still leaves a trail. The throwable is attached at
+            // WARN so Cloud Logging severity filters surface it.
+            log.warn(t) { "cwfgw4k.cache event=error route=$routeTemplate" }
             ours.completeExceptionally(t)
             throw t
         } finally {
