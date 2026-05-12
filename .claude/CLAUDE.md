@@ -154,8 +154,18 @@ When an AI assistant generates code against this guide:
 - AI **SHOULD** match the existing code style of the file being edited when
   it diverges slightly from this document. Consistency within a file is more
   important than global uniformity.
-- AI **MUST** pause for review before `git commit`. The pause includes
-  (1) a recap of the diff and (2) a test coverage review listing what
-  is well covered, gaps worth filling (with rationale), and gaps
-  deliberately skipped. User agreement to a plan is not a commit
-  signal.
+- AI **MUST** pause for review before `git commit`. The pause includes:
+  1. A recap of the diff.
+  2. A test coverage review — what's well covered, gaps worth filling
+     (with rationale), and gaps deliberately skipped.
+  3. A style audit against this guide and the per-stack files.
+     Explicitly check the patterns most often missed (representative,
+     not exhaustive — the per-stack files are authoritative):
+     `var` in production code; `!!` anywhere including tests;
+     non-local returns from lambdas; missing KDoc on new public
+     surface; embedded type names; `runCatching` / `runBlocking` /
+     `Throwable` catching outside framework boundaries; new
+     dependencies introduced silently.
+  Each potential violation must be fixed or explicitly justified
+  before the commit proposal. User agreement to a plan is not a
+  commit signal.
