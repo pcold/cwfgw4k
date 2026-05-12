@@ -62,45 +62,64 @@ class ScoringService(
         seasonId: SeasonId,
         tournamentId: TournamentId,
     ): Result<WeeklyScoreResult, ScoringError> =
-        tx.update {
-            seasonRepository.findById(seasonId) ?: return@update Result.Err(ScoringError.SeasonNotFound)
-            val tournament =
-                tournamentRepository.findById(tournamentId)
-                    ?: return@update Result.Err(ScoringError.TournamentNotFound)
-            val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
-            val results = tournamentRepository.getResults(tournamentId)
-            val teams = teamRepository.findBySeason(seasonId)
-            val rostersByTeam = teams.associate { it.id to teamRepository.getRoster(it.id) }
-            val inputs =
-                ScoringInputs(
-                    seasonId = seasonId,
-                    tournamentId = tournamentId,
-                    rules = rules,
-                    multiplier = tournament.payoutMultiplier,
-                    isTeamEvent = tournament.isTeamEvent,
-                    results = results,
-                    ownersByGolfer = ownersByGolfer(rostersByTeam.values.flatten()),
-                )
-            val perTeamResults =
-                teams.map { team ->
-                    val roster = rostersByTeam[team.id] ?: emptyList()
-                    val golferScores = roster.mapNotNull { entry -> scoreGolferForTeam(inputs, team.id, entry) }
-                    team to golferScores
-                }
-            Result.Ok(buildWeeklyResult(tournament, perTeamResults))
-        }
+        tx.update { calculateScoresIn(seasonId, tournamentId) }
+
+    /**
+     * Composable variant of [calculateScores]: runs the same logic inside
+     * the caller's transaction context instead of opening a fresh one.
+     * Used by orchestration services (e.g. [com.cwfgw.tournaments.TournamentOpsService])
+     * that need score calculation to atomically share a transaction with
+     * subsequent writes — see the "Cross-repo flows" rule in
+     * `src/CLAUDE.md`. The standalone [calculateScores] is just this
+     * wrapped in [Transactor.update].
+     */
+    context(ctx: TransactionContext)
+    internal suspend fun calculateScoresIn(
+        seasonId: SeasonId,
+        tournamentId: TournamentId,
+    ): Result<WeeklyScoreResult, ScoringError> {
+        seasonRepository.findById(seasonId) ?: return Result.Err(ScoringError.SeasonNotFound)
+        val tournament =
+            tournamentRepository.findById(tournamentId)
+                ?: return Result.Err(ScoringError.TournamentNotFound)
+        val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
+        val results = tournamentRepository.getResults(tournamentId)
+        val teams = teamRepository.findBySeason(seasonId)
+        val rostersByTeam = teams.associate { it.id to teamRepository.getRoster(it.id) }
+        val inputs =
+            ScoringInputs(
+                seasonId = seasonId,
+                tournamentId = tournamentId,
+                rules = rules,
+                multiplier = tournament.payoutMultiplier,
+                isTeamEvent = tournament.isTeamEvent,
+                results = results,
+                ownersByGolfer = ownersByGolfer(rostersByTeam.values.flatten()),
+            )
+        val perTeamResults =
+            teams.map { team ->
+                val roster = rostersByTeam[team.id] ?: emptyList()
+                val golferScores = roster.mapNotNull { entry -> scoreGolferForTeam(inputs, team.id, entry) }
+                team to golferScores
+            }
+        return Result.Ok(buildWeeklyResult(tournament, perTeamResults))
+    }
 
     suspend fun refreshStandings(seasonId: SeasonId): Result<List<SeasonStanding>, ScoringError> =
-        tx.update {
-            seasonRepository.findById(seasonId) ?: return@update Result.Err(ScoringError.SeasonNotFound)
-            val teams = teamRepository.findBySeason(seasonId)
-            val standings =
-                teams.map { team ->
-                    val totals = repository.teamSeasonTotals(seasonId, team.id)
-                    repository.upsertStanding(seasonId, team.id, totals.totalPoints, totals.tournamentsPlayed)
-                }
-            Result.Ok(standings)
-        }
+        tx.update { refreshStandingsIn(seasonId) }
+
+    /** Composable variant of [refreshStandings]; see [calculateScoresIn] for the rationale. */
+    context(ctx: TransactionContext)
+    internal suspend fun refreshStandingsIn(seasonId: SeasonId): Result<List<SeasonStanding>, ScoringError> {
+        seasonRepository.findById(seasonId) ?: return Result.Err(ScoringError.SeasonNotFound)
+        val teams = teamRepository.findBySeason(seasonId)
+        val standings =
+            teams.map { team ->
+                val totals = repository.teamSeasonTotals(seasonId, team.id)
+                repository.upsertStanding(seasonId, team.id, totals.totalPoints, totals.tournamentsPlayed)
+            }
+        return Result.Ok(standings)
+    }
 
     suspend fun getSideBetStandings(seasonId: SeasonId): Result<SideBetStandings, ScoringError> =
         tx.read {
