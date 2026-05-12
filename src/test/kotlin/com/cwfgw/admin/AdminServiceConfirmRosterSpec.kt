@@ -49,15 +49,10 @@ class AdminServiceConfirmRosterSpec : FunSpec({
         val seasonService = SeasonService(seasonRepo, tx)
         val tournamentService = TournamentService(tournamentRepo, tx)
         val golferService = GolferService(golferRepo, tx)
-        val teamService = TeamService(teamRepo, tx)
         val linkRepo = TournamentLinkRepository()
         val espnService =
             testEspnService(
                 client = FakeEspnClient(),
-                tournamentService = tournamentService,
-                golferService = golferService,
-                teamService = teamService,
-                tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, tx),
                 seasonRepository = seasonRepo,
                 golferRepository = golferRepo,
                 teamRepository = teamRepo,

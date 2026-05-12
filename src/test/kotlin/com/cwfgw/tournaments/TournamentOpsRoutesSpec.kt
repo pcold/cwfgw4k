@@ -99,10 +99,6 @@ private fun opsFixture(
         espnService =
             testEspnService(
                 client = FakeEspnClient(tournamentsByDate = espnByDate),
-                tournamentService = tournamentService,
-                golferService = golferService,
-                teamService = teamService,
-                tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, sharedTx),
                 seasonRepository = seasonRepo,
                 golferRepository = golferRepo,
                 teamRepository = teamRepo,

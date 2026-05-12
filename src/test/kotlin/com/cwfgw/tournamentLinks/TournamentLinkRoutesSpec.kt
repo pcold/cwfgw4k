@@ -135,10 +135,6 @@ private fun fixture(
         espnService =
             testEspnService(
                 client = FakeEspnClient(tournamentsByDate = scoreboard),
-                tournamentService = tournamentService,
-                golferService = golferService,
-                teamService = teamService,
-                tournamentLinkService = tournamentLinkService,
                 seasonRepository = seasonRepo,
                 golferRepository = golferRepo,
                 teamRepository = teamRepo,

@@ -172,16 +172,10 @@ private class PreviewFixture(
             }
         }
         val transactor = FakeTransactor()
-        val tournamentService = TournamentService(tournamentRepo, transactor)
-        val golferService = GolferService(golferRepo, transactor)
         val linkRepo = FakeTournamentLinkRepository()
         service =
             EspnService(
                 client = FakeEspnClient(tournamentsByDate = tournamentsByDate, upstreamError = upstreamError),
-                tournamentService = tournamentService,
-                golferService = golferService,
-                teamService = TeamService(teamRepo, transactor),
-                tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, transactor),
                 seasonRepository = seasonRepo,
                 golferRepository = golferRepo,
                 teamRepository = teamRepo,

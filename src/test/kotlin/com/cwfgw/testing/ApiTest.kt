@@ -111,10 +111,6 @@ class ApiFixture {
     var espnService: EspnService =
         testEspnService(
             client = FakeEspnClient(),
-            tournamentService = tournamentService,
-            golferService = golferService,
-            teamService = teamService,
-            tournamentLinkService = tournamentLinkService,
             seasonRepository = seasonRepository,
             golferRepository = golferRepository,
             teamRepository = teamRepository,

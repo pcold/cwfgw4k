@@ -221,10 +221,6 @@ private fun reportFixture(
         val previewEspnService =
             testEspnService(
                 client = FakeEspnClient(),
-                tournamentService = tournamentService,
-                golferService = golferService,
-                teamService = teamService,
-                tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, sharedTx),
                 seasonRepository = seasonRepo,
                 golferRepository = golferRepo,
                 teamRepository = teamRepo,

@@ -94,10 +94,6 @@ private fun adminFixture(
         espnService =
             testEspnService(
                 client = FakeEspnClient(calendar = calendar, upstreamError = upstreamError),
-                tournamentService = tournamentService,
-                golferService = golferService,
-                teamService = teamService,
-                tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, transactor),
                 seasonRepository = seasonRepo,
                 golferRepository = golferRepo,
                 teamRepository = teamRepo,

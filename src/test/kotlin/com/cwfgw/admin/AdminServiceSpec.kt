@@ -93,15 +93,10 @@ private class Fixture(
         val transactor = FakeTransactor()
         val tournamentService = TournamentService(tournamentRepo, transactor)
         val golferService = GolferService(golferRepo, transactor)
-        val teamService = TeamService(teamRepo, transactor)
         val linkRepo = FakeTournamentLinkRepository()
         val espnService =
             testEspnService(
                 client = FakeEspnClient(calendar = calendar, upstreamError = upstreamError),
-                tournamentService = tournamentService,
-                golferService = golferService,
-                teamService = teamService,
-                tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, transactor),
                 seasonRepository = seasonRepo,
                 golferRepository = golferRepo,
                 teamRepository = teamRepo,

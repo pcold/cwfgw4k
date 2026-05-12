@@ -127,15 +127,9 @@ private class Fixture(
     val seasonRepo = FakeSeasonRepository()
     val linkRepo = FakeTournamentLinkRepository(initial = initialOverrides)
     private val transactor = FakeTransactor()
-    private val tournamentService = TournamentService(tournamentRepo, transactor)
-    private val golferService = GolferService(golferRepo, transactor)
     val service: EspnService =
         EspnService(
             client = fakeClient,
-            tournamentService = tournamentService,
-            golferService = golferService,
-            teamService = TeamService(teamRepo, transactor),
-            tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, transactor),
             seasonRepository = seasonRepo,
             golferRepository = golferRepo,
             teamRepository = teamRepo,

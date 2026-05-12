@@ -6,7 +6,6 @@ import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.golfers.GolferService
 import com.cwfgw.result.Result
 import com.cwfgw.result.getOrElse
 import com.cwfgw.scoring.PayoutTable
@@ -17,16 +16,13 @@ import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamRepository
-import com.cwfgw.teams.TeamService
 import com.cwfgw.tournamentLinks.TournamentCompetitorListing
 import com.cwfgw.tournamentLinks.TournamentCompetitorView
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
-import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentRepository
-import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.TournamentStatus
 import com.cwfgw.tournaments.UpdateTournamentRequest
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -55,10 +51,6 @@ private val log = KotlinLogging.logger {}
 @Suppress("LongParameterList")
 class EspnService(
     private val client: EspnClient,
-    private val tournamentService: TournamentService,
-    private val golferService: GolferService,
-    private val teamService: TeamService,
-    private val tournamentLinkService: TournamentLinkService,
     private val seasonRepository: SeasonRepository,
     private val golferRepository: GolferRepository,
     private val teamRepository: TeamRepository,
@@ -246,30 +238,45 @@ class EspnService(
     )
 
     suspend fun importByDate(date: LocalDate): Result<EspnImportBatch, EspnError> {
-        val events = fetchOrFail(date).getOrElse { return Result.Err(it) }
-        val imported = mutableListOf<EspnImport>()
-        val unlinked = mutableListOf<UnlinkedEvent>()
-        for (event in events.filter { it.completed }) {
-            val tournament = tournamentService.findByPgaTournamentId(event.espnId)
-            if (tournament == null) {
-                unlinked += UnlinkedEvent(espnEventId = event.espnId, espnEventName = event.name)
-            } else {
-                imported += runImport(tournament, event)
-            }
-        }
-        return Result.Ok(EspnImportBatch(imported = imported, unlinked = unlinked))
+        val events = fetchEspnEvents(date).getOrElse { return Result.Err(it) }
+        return Result.Ok(
+            tx.update {
+                val imported = mutableListOf<EspnImport>()
+                val unlinked = mutableListOf<UnlinkedEvent>()
+                for (event in events.filter { it.completed }) {
+                    val tournament = tournamentRepository.findByPgaTournamentId(event.espnId)
+                    if (tournament == null) {
+                        unlinked += UnlinkedEvent(espnEventId = event.espnId, espnEventName = event.name)
+                    } else {
+                        imported += persistImportIn(tournament, event)
+                    }
+                }
+                EspnImportBatch(imported = imported, unlinked = unlinked)
+            },
+        )
     }
 
     suspend fun importForTournament(tournamentId: TournamentId): Result<EspnImport, EspnError> {
         val tournament =
-            tournamentService.get(tournamentId) ?: return Result.Err(EspnError.TournamentNotFound(tournamentId))
+            tx.get { tournamentRepository.findById(tournamentId) }
+                ?: return Result.Err(EspnError.TournamentNotFound(tournamentId))
         val espnId =
             tournament.pgaTournamentId ?: return Result.Err(EspnError.TournamentNotLinked(tournamentId))
-        val events = fetchOrFail(tournament.startDate).getOrElse { return Result.Err(it) }
+        val events = fetchEspnEvents(tournament.startDate).getOrElse { return Result.Err(it) }
         val event =
             events.firstOrNull { it.espnId == espnId } ?: return Result.Err(EspnError.EventNotInScoreboard(espnId))
-        return Result.Ok(runImport(tournament, event))
+        return Result.Ok(tx.update { persistImportIn(tournament, event) })
     }
+
+    /**
+     * Network-only ESPN scoreboard fetch — wraps the upstream client and
+     * maps the typed exception to [EspnError]. Exposed to orchestration
+     * services (e.g. [com.cwfgw.tournaments.TournamentOpsService]) that
+     * need to separate the network call from the persistence step so the
+     * latter can join an outer `tx.update` without holding a Postgres
+     * connection across an HTTP round trip (CWF-25).
+     */
+    suspend fun fetchEspnEvents(date: LocalDate): Result<List<EspnTournament>, EspnError> = fetchOrFail(date)
 
     /**
      * Dry-run "what would each ESPN competitor link to right now?" for the
@@ -284,24 +291,27 @@ class EspnService(
      */
     suspend fun listCompetitorsForLinking(tournamentId: TournamentId): Result<TournamentCompetitorListing, EspnError> {
         val tournament =
-            tournamentService.get(tournamentId) ?: return Result.Err(EspnError.TournamentNotFound(tournamentId))
+            tx.get { tournamentRepository.findById(tournamentId) }
+                ?: return Result.Err(EspnError.TournamentNotFound(tournamentId))
         val espnId =
             tournament.pgaTournamentId ?: return Result.Err(EspnError.TournamentNotLinked(tournamentId))
         val events = fetchOrFail(tournament.startDate).getOrElse { return Result.Err(it) }
         val event =
             events.firstOrNull { it.espnId == espnId } ?: return Result.Err(EspnError.EventNotInScoreboard(espnId))
 
-        val context = buildMatchingContext(tournament.seasonId, tournamentId)
         val views =
-            event.competitors.map { competitor ->
-                TournamentCompetitorView(
-                    espnCompetitorId = competitor.espnId,
-                    name = competitor.name,
-                    position = competitor.position,
-                    isTeamPartner = competitor.isTeamPartner,
-                    linkedGolfer = locateExistingGolfer(competitor, context),
-                    hasOverride = competitor.espnId in context.overrides,
-                )
+            tx.read {
+                val context = buildMatchingContextIn(tournament.seasonId, tournamentId)
+                event.competitors.map { competitor ->
+                    TournamentCompetitorView(
+                        espnCompetitorId = competitor.espnId,
+                        name = competitor.name,
+                        position = competitor.position,
+                        isTeamPartner = competitor.isTeamPartner,
+                        linkedGolfer = locateExistingGolferIn(competitor, context),
+                        hasOverride = competitor.espnId in context.overrides,
+                    )
+                }
             }
         return Result.Ok(
             TournamentCompetitorListing(
@@ -320,12 +330,24 @@ class EspnService(
             Result.Err(EspnError.UpstreamUnavailable(e.status))
         }
 
-    private suspend fun runImport(
+    /**
+     * Persist one ESPN event's results, golfer matches, and any
+     * tournament-level fact updates inside the caller's transaction.
+     * Composes the match-or-create matcher, the per-competitor upserts,
+     * and the tournament status/team-event sync — all using repositories
+     * so the writes join the outer `tx.update`.
+     *
+     * Used by [importByDate], [importForTournament], and by
+     * [com.cwfgw.tournaments.TournamentOpsService.finalizeTournament]
+     * to keep the whole finalize flow atomic (CWF-25).
+     */
+    context(ctx: TransactionContext)
+    internal suspend fun persistImportIn(
         tournament: Tournament,
         event: EspnTournament,
     ): EspnImport {
-        val context = buildMatchingContext(tournament.seasonId, tournament.id)
-        val matches = event.competitors.map { matchOrCreate(it, context) }
+        val matchingContext = buildMatchingContextIn(tournament.seasonId, tournament.id)
+        val matches = event.competitors.map { matchOrCreateIn(it, matchingContext) }
 
         val matchedPairs =
             event.competitors
@@ -339,8 +361,8 @@ class EspnService(
         val createdCount = matches.count { it?.created == true }
         val collisions = detectCollisions(matchedPairs)
 
-        persistResults(tournament.id, matchedPairs)
-        syncTournamentFromEvent(tournament, event)
+        persistResultsIn(tournament.id, matchedPairs)
+        syncTournamentFromEventIn(tournament, event)
 
         return EspnImport(
             tournamentId = tournament.id,
@@ -354,30 +376,34 @@ class EspnService(
         )
     }
 
-    private suspend fun buildMatchingContext(
+    context(ctx: TransactionContext)
+    private suspend fun buildMatchingContextIn(
         seasonId: SeasonId,
         tournamentId: TournamentId,
     ): MatchingContext {
-        val golfers = golferService.list(activeOnly = false, search = null)
+        val golfers = golferRepository.findAll(activeOnly = false, search = null)
         val rosterIds =
-            teamService.getRosterView(seasonId)
+            teamRepository.getRosterView(seasonId)
                 .flatMap { it.picks }
                 .map { it.golferId }
                 .toSet()
-        val overrides = tournamentLinkService.overrideMap(tournamentId)
+        val overrides =
+            linkRepository.listByTournament(tournamentId)
+                .associate { it.espnCompetitorId to it.golferId }
         return MatchingContext(golfers = golfers, rosterGolferIds = rosterIds, overrides = overrides)
     }
 
-    private suspend fun matchOrCreate(
+    context(ctx: TransactionContext)
+    private suspend fun matchOrCreateIn(
         competitor: EspnCompetitor,
         context: MatchingContext,
     ): GolferMatch? {
-        val existing = locateExistingGolfer(competitor, context)
+        val existing = locateExistingGolferIn(competitor, context)
         if (existing != null) return GolferMatch(existing.id, created = false)
 
         val (firstName, lastName) = splitName(competitor.name) ?: return null
         val created =
-            golferService.create(
+            golferRepository.create(
                 CreateGolferRequest(
                     pgaPlayerId = if (competitor.isTeamPartner) null else competitor.espnId,
                     firstName = firstName,
@@ -387,17 +413,18 @@ class EspnService(
         return GolferMatch(created.id, created = true)
     }
 
-    private suspend fun locateExistingGolfer(
+    context(ctx: TransactionContext)
+    private suspend fun locateExistingGolferIn(
         competitor: EspnCompetitor,
         context: MatchingContext,
     ): Golfer? {
         // Manual override wins. Lets an admin disambiguate ESPN partner rows
         // (last-name only) when multiple rostered golfers share the surname.
         context.overrides[competitor.espnId]?.let { golferId ->
-            golferService.get(golferId)?.let { return it }
+            golferRepository.findById(golferId)?.let { return it }
         }
         if (!competitor.isTeamPartner) {
-            golferService.findByPgaPlayerId(competitor.espnId)?.let { return it }
+            golferRepository.findByPgaPlayerId(competitor.espnId)?.let { return it }
         }
         val fullNameMatch =
             context.golfers.singleOrNull { matchesFullName(it, competitor.name) }
@@ -412,7 +439,8 @@ class EspnService(
         }
     }
 
-    private suspend fun persistResults(
+    context(ctx: TransactionContext)
+    private suspend fun persistResultsIn(
         tournamentId: TournamentId,
         matchedPairs: List<Pair<EspnCompetitor, GolferMatch>>,
     ) {
@@ -431,7 +459,7 @@ class EspnService(
                     pairKey = competitor.pairKey,
                 )
             }
-        if (requests.isNotEmpty()) tournamentService.importResults(tournamentId, requests)
+        requests.forEach { tournamentRepository.upsertResult(tournamentId, it) }
     }
 
     /**
@@ -441,7 +469,8 @@ class EspnService(
      * calendar alone — partner rows only show up in the scoreboard
      * payload). Updates only when something actually changes.
      */
-    private suspend fun syncTournamentFromEvent(
+    context(ctx: TransactionContext)
+    private suspend fun syncTournamentFromEventIn(
         tournament: Tournament,
         event: EspnTournament,
     ) {
@@ -449,7 +478,7 @@ class EspnService(
             if (event.completed && tournament.status != TournamentStatus.Completed) TournamentStatus.Completed else null
         val teamEventChange = event.isTeamEvent.takeIf { it != tournament.isTeamEvent }
         if (statusChange == null && teamEventChange == null) return
-        tournamentService.update(
+        tournamentRepository.update(
             tournament.id,
             UpdateTournamentRequest(status = statusChange, isTeamEvent = teamEventChange),
         )
