@@ -98,6 +98,15 @@ class FakeTournamentRepository(
             .sortedWith(resultOrdering)
 
     context(ctx: TransactionContext)
+    override suspend fun getResultsByTournaments(ids: Collection<TournamentId>): List<TournamentResult> {
+        if (ids.isEmpty()) return emptyList()
+        val idSet = ids.toSet()
+        return results.values
+            .filter { it.tournamentId in idSet }
+            .sortedWith(compareBy<TournamentResult> { it.tournamentId.value }.then(resultOrdering))
+    }
+
+    context(ctx: TransactionContext)
     override suspend fun deleteResultsByTournament(tournamentId: TournamentId): Int {
         val matching = results.values.filter { it.tournamentId == tournamentId }
         matching.forEach { results.remove(it.id) }

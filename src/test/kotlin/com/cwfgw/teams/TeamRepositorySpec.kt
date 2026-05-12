@@ -140,6 +140,52 @@ class TeamRepositorySpec : FunSpec({
         }
     }
 
+    test("findRostersBySeason returns active entries across every team in the season") {
+        tx.update {
+            val alice = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
+            val bob = repository.create(seasonId, CreateTeamRequest("Bob", "Hawks"))
+            val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
+            val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
+            val phil = golferRepo.create(CreateGolferRequest(firstName = "Phil", lastName = "Mickelson"))
+
+            repository.addToRoster(alice.id, AddToRosterRequest(golferId = rory.id, draftRound = 1))
+            repository.addToRoster(alice.id, AddToRosterRequest(golferId = scottie.id, draftRound = 2))
+            val dropped = repository.addToRoster(bob.id, AddToRosterRequest(golferId = phil.id, draftRound = 1))
+            repository.dropFromRoster(bob.id, phil.id)
+
+            val rosters = repository.findRostersBySeason(seasonId)
+
+            rosters shouldHaveSize 2
+            rosters.map { it.golferId } shouldContainExactly listOf(rory.id, scottie.id)
+            rosters.none { it.id == dropped.id } shouldBe true
+        }
+    }
+
+    test("findRostersBySeason excludes entries from other seasons") {
+        val otherSeasonId =
+            tx.update {
+                seasonRepo.create(
+                    CreateSeasonRequest(
+                        leagueId =
+                            leagueRepo.create(CreateLeagueRequest(name = "Sibling League")).id,
+                        name = "Other 2026",
+                        seasonYear = 2026,
+                    ),
+                )
+            }.id
+
+        tx.update {
+            val team = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
+            val otherTeam = repository.create(otherSeasonId, CreateTeamRequest("Carol", "Wolves"))
+            val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
+            val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
+            repository.addToRoster(team.id, AddToRosterRequest(golferId = rory.id))
+            repository.addToRoster(otherTeam.id, AddToRosterRequest(golferId = scottie.id))
+
+            repository.findRostersBySeason(seasonId).map { it.golferId } shouldContainExactly listOf(rory.id)
+        }
+    }
+
     test("getRosterView groups picks by team, joining golfer names") {
         tx.update {
             val alice = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))

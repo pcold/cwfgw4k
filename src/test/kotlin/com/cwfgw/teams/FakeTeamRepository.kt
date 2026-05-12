@@ -87,6 +87,14 @@ class FakeTeamRepository(
             .sortedWith(rosterOrdering)
 
     context(ctx: TransactionContext)
+    override suspend fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry> {
+        val teamIdsInSeason = teams.values.filter { it.seasonId == seasonId }.map { it.id }.toSet()
+        return rosters.values
+            .filter { it.teamId in teamIdsInSeason && it.droppedAt == null }
+            .sortedWith(compareBy<RosterEntry> { it.teamId.value }.then(rosterOrdering))
+    }
+
+    context(ctx: TransactionContext)
     override suspend fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,

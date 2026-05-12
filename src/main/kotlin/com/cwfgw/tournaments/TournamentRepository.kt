@@ -36,6 +36,16 @@ interface TournamentRepository {
     context(ctx: TransactionContext)
     suspend fun getResults(tournamentId: TournamentId): List<TournamentResult>
 
+    /**
+     * Single-query alternative to `tournaments.flatMap { getResults(it.id) }`.
+     * Returns every leaderboard row for the supplied tournament ids in one
+     * query. Empty input returns an empty list. Ordered by
+     * `(tournament_id, position nulls last, id)` so `groupBy { it.tournamentId }`
+     * at the call site preserves per-tournament order.
+     */
+    context(ctx: TransactionContext)
+    suspend fun getResultsByTournaments(ids: Collection<TournamentId>): List<TournamentResult>
+
     context(ctx: TransactionContext)
     suspend fun upsertResult(
         tournamentId: TournamentId,
@@ -134,6 +144,21 @@ private class JooqTournamentRepository : TournamentRepository {
                 .orderBy(TOURNAMENT_RESULTS.POSITION.asc().nullsLast(), TOURNAMENT_RESULTS.ID.asc())
                 .fetch(::toResult)
         }
+
+    context(ctx: TransactionContext)
+    override suspend fun getResultsByTournaments(ids: Collection<TournamentId>): List<TournamentResult> {
+        if (ids.isEmpty()) return emptyList()
+        return withContext(Dispatchers.IO) {
+            ctx.dsl.selectFrom(TOURNAMENT_RESULTS)
+                .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.`in`(ids.map { it.value }))
+                .orderBy(
+                    TOURNAMENT_RESULTS.TOURNAMENT_ID.asc(),
+                    TOURNAMENT_RESULTS.POSITION.asc().nullsLast(),
+                    TOURNAMENT_RESULTS.ID.asc(),
+                )
+                .fetch(::toResult)
+        }
+    }
 
     context(ctx: TransactionContext)
     override suspend fun deleteResultsByTournament(tournamentId: TournamentId): Int =

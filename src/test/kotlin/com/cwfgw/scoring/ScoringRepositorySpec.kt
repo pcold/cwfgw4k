@@ -172,4 +172,31 @@ class ScoringRepositorySpec : FunSpec({
 
         standings.map { it.teamId } shouldBe listOf(teamB, teamA)
     }
+
+    test("getScoresBySeason with null tournamentIds returns every score for the season") {
+        upsert(teamA, tournamentA, golfer1, breakdown(1))
+        upsert(teamA, tournamentB, golfer1, breakdown(4, payout = BigDecimal(7)))
+        upsert(teamB, tournamentA, golfer2, breakdown(2, payout = BigDecimal(12)))
+
+        val scores = tx.read { repository.getScoresBySeason(seasonId, tournamentIds = null) }
+
+        scores shouldHaveSize 3
+    }
+
+    test("getScoresBySeason restricts by tournamentIds when provided") {
+        upsert(teamA, tournamentA, golfer1, breakdown(1))
+        upsert(teamA, tournamentB, golfer1, breakdown(4, payout = BigDecimal(7)))
+
+        val scores =
+            tx.read { repository.getScoresBySeason(seasonId, tournamentIds = listOf(tournamentB)) }
+
+        scores shouldHaveSize 1
+        scores.single().tournamentId shouldBe tournamentB
+    }
+
+    test("getScoresBySeason returns empty for an empty tournamentIds collection") {
+        upsert(teamA, tournamentA, golfer1, breakdown(1))
+
+        tx.read { repository.getScoresBySeason(seasonId, tournamentIds = emptyList()) } shouldBe emptyList()
+    }
 })

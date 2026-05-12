@@ -38,6 +38,21 @@ class FakeScoringRepository(
             .sortedByDescending { it.points }
 
     context(ctx: TransactionContext)
+    override suspend fun getScoresBySeason(
+        seasonId: SeasonId,
+        tournamentIds: Collection<TournamentId>?,
+    ): List<FantasyScore> {
+        if (tournamentIds != null && tournamentIds.isEmpty()) return emptyList()
+        val tournamentFilter = tournamentIds?.toSet()
+        return scores.values
+            .filter {
+                it.seasonId == seasonId &&
+                    (tournamentFilter == null || it.tournamentId in tournamentFilter)
+            }
+            .sortedWith(compareBy<FantasyScore> { it.tournamentId.value }.thenByDescending { it.points })
+    }
+
+    context(ctx: TransactionContext)
     override suspend fun getStandings(seasonId: SeasonId): List<SeasonStanding> =
         standings.values
             .filter { it.seasonId == seasonId }

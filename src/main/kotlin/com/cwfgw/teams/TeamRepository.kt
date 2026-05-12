@@ -36,6 +36,16 @@ interface TeamRepository {
     context(ctx: TransactionContext)
     suspend fun getRoster(teamId: TeamId): List<RosterEntry>
 
+    /**
+     * Single-query alternative to `findBySeason(seasonId).flatMap { getRoster(it.id) }`.
+     * Returns every active (non-dropped) roster entry across every team in the
+     * season, ordered by `(team_id, draft_round, acquired_at)` for deterministic
+     * grouping at the call site. Replaces the N+1 pattern in `WeeklyReportService`,
+     * `ScoringService`, and `EspnService`.
+     */
+    context(ctx: TransactionContext)
+    suspend fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry>
+
     context(ctx: TransactionContext)
     suspend fun addToRoster(
         teamId: TeamId,
@@ -132,6 +142,24 @@ private class JooqTeamRepository : TeamRepository {
                 .where(TEAM_ROSTERS.TEAM_ID.eq(teamId.value))
                 .and(TEAM_ROSTERS.DROPPED_AT.isNull)
                 .orderBy(TEAM_ROSTERS.DRAFT_ROUND.asc().nullsLast(), TEAM_ROSTERS.ACQUIRED_AT.asc())
+                .fetch(::toRosterEntry)
+        }
+
+    context(ctx: TransactionContext)
+    override suspend fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry> =
+        withContext(Dispatchers.IO) {
+            ctx.dsl.selectFrom(TEAM_ROSTERS)
+                .where(
+                    TEAM_ROSTERS.TEAM_ID.`in`(
+                        DSL.select(TEAMS.ID).from(TEAMS).where(TEAMS.SEASON_ID.eq(seasonId.value)),
+                    ),
+                )
+                .and(TEAM_ROSTERS.DROPPED_AT.isNull)
+                .orderBy(
+                    TEAM_ROSTERS.TEAM_ID.asc(),
+                    TEAM_ROSTERS.DRAFT_ROUND.asc().nullsLast(),
+                    TEAM_ROSTERS.ACQUIRED_AT.asc(),
+                )
                 .fetch(::toRosterEntry)
         }
 

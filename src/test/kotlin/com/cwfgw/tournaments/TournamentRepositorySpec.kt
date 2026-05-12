@@ -11,6 +11,7 @@ import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -195,6 +196,32 @@ class TournamentRepositorySpec : FunSpec({
 
         results.map { it.golferId } shouldContainExactly listOf(scottie.id, rory.id)
         results.first().earnings shouldBe 2_500_000
+    }
+
+    test("getResultsByTournaments returns rows for every supplied tournament in one query") {
+        val ids =
+            tx.update {
+                val a = repository.create(create(name = "Open A", startDate = LocalDate.parse("2026-04-01")))
+                val b = repository.create(create(name = "Open B", startDate = LocalDate.parse("2026-04-08")))
+                val c = repository.create(create(name = "Open C", startDate = LocalDate.parse("2026-04-15")))
+                val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
+                val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
+                repository.upsertResult(a.id, CreateTournamentResultRequest(golferId = rory.id, position = 1))
+                repository.upsertResult(b.id, CreateTournamentResultRequest(golferId = scottie.id, position = 1))
+                // Tournament c has no results — its id is passed in but should contribute zero rows.
+                Triple(a.id, b.id, c.id)
+            }
+
+        val results = tx.read { repository.getResultsByTournaments(listOf(ids.first, ids.second, ids.third)) }
+
+        val byTournament = results.groupBy { it.tournamentId }
+        byTournament.keys shouldContainExactlyInAnyOrder setOf(ids.first, ids.second)
+        byTournament.getValue(ids.first).single().position shouldBe 1
+        byTournament.getValue(ids.second).single().position shouldBe 1
+    }
+
+    test("getResultsByTournaments returns empty for an empty id collection") {
+        tx.read { repository.getResultsByTournaments(emptyList()) } shouldBe emptyList()
     }
 
     test("upsertResult replaces an existing row for the same tournament and golfer") {

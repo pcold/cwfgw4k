@@ -22,6 +22,20 @@ interface ScoringRepository {
         tournamentId: TournamentId,
     ): List<FantasyScore>
 
+    /**
+     * Single-query alternative to `tournaments.flatMap { getScores(seasonId, it.id) }`.
+     * Returns every score for the season; when [tournamentIds] is non-null, restricts
+     * to scores whose `tournament_id` is in that set. An empty [tournamentIds] returns
+     * an empty list (matches the flatMap semantics — flatMap over an empty list is
+     * empty, not "all tournaments"). Ordered by `(tournament_id, points desc)` so
+     * `groupBy { it.tournamentId }` at the call site preserves per-tournament order.
+     */
+    context(ctx: TransactionContext)
+    suspend fun getScoresBySeason(
+        seasonId: SeasonId,
+        tournamentIds: Collection<TournamentId>? = null,
+    ): List<FantasyScore>
+
     context(ctx: TransactionContext)
     suspend fun getStandings(seasonId: SeasonId): List<SeasonStanding>
 
@@ -95,6 +109,27 @@ private class JooqScoringRepository : ScoringRepository {
                 .orderBy(FANTASY_SCORES.POINTS.desc())
                 .fetch(::toFantasyScore)
         }
+
+    context(ctx: TransactionContext)
+    override suspend fun getScoresBySeason(
+        seasonId: SeasonId,
+        tournamentIds: Collection<TournamentId>?,
+    ): List<FantasyScore> {
+        if (tournamentIds != null && tournamentIds.isEmpty()) return emptyList()
+        val condition =
+            if (tournamentIds == null) {
+                FANTASY_SCORES.SEASON_ID.eq(seasonId.value)
+            } else {
+                FANTASY_SCORES.SEASON_ID.eq(seasonId.value)
+                    .and(FANTASY_SCORES.TOURNAMENT_ID.`in`(tournamentIds.map { it.value }))
+            }
+        return withContext(Dispatchers.IO) {
+            ctx.dsl.selectFrom(FANTASY_SCORES)
+                .where(condition)
+                .orderBy(FANTASY_SCORES.TOURNAMENT_ID.asc(), FANTASY_SCORES.POINTS.desc())
+                .fetch(::toFantasyScore)
+        }
+    }
 
     context(ctx: TransactionContext)
     override suspend fun getStandings(seasonId: SeasonId): List<SeasonStanding> =
