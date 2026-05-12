@@ -184,7 +184,6 @@ internal fun buildServices(
         tournamentLinkService = tournamentLinkService,
         tournamentOpsService =
             TournamentOpsService(
-                tournamentService = tournamentService,
                 tournamentRepository = tournamentRepository,
                 scoringService = scoringService,
                 scoringRepository = scoringRepository,

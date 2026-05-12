@@ -109,7 +109,6 @@ private fun opsFixture(
         scoringService = ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo, sharedTx)
         tournamentOpsService =
             TournamentOpsService(
-                tournamentService = tournamentService,
                 tournamentRepository = tournamentRepo,
                 scoringService = scoringService,
                 scoringRepository = scoringRepo,

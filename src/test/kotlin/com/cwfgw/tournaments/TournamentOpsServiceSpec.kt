@@ -131,7 +131,6 @@ private class Fixture(
             }
         }
         val transactor = FakeTransactor()
-        val tournamentService = TournamentService(tournamentRepo, transactor)
         val espnClient = FakeEspnClient(tournamentsByDate = espnByDate, upstreamError = espnUpstreamError)
         val linkRepo = FakeTournamentLinkRepository()
         val espnService =
@@ -148,7 +147,6 @@ private class Fixture(
             ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo, transactor)
         service =
             TournamentOpsService(
-                tournamentService = tournamentService,
                 tournamentRepository = tournamentRepo,
                 scoringService = scoringService,
                 scoringRepository = scoringRepo,

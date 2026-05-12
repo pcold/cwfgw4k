@@ -141,7 +141,6 @@ class ApiFixture {
         )
     var tournamentOpsService: TournamentOpsService =
         TournamentOpsService(
-            tournamentService = tournamentService,
             tournamentRepository = tournamentRepository,
             scoringService = scoringService,
             scoringRepository = scoringRepository,
