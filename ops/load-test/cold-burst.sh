@@ -37,9 +37,10 @@
 # Cloud Run time. Far cheaper than running stress for an hour.
 #
 # Usage:
-#   ops/load-test/cold-burst.sh                          # defaults: 3 iter, parallel=4
+#   ops/load-test/cold-burst.sh                          # defaults: 3 iter, parallel=4, live
 #   ops/load-test/cold-burst.sh -n 5 -p 6                # 5 iterations, 6 parallel each
 #   ops/load-test/cold-burst.sh -m 2Gi -C 2              # verify fix at the bumped profile
+#   ops/load-test/cold-burst.sh -M nonlive               # bisect: same routes without ?live=true
 #   ops/load-test/cold-burst.sh --keep                   # leave staging alive
 #
 # Requires: gcloud, jq, curl.
@@ -59,6 +60,7 @@ CONCURRENCY=20
 KEEP=0
 SEASON_ID=""
 TOURNAMENT_ID=""
+MODE=live
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -69,10 +71,20 @@ while [[ $# -gt 0 ]]; do
     -c) CONCURRENCY=$2; shift 2 ;;
     -s) SEASON_ID=$2; shift 2 ;;
     -T) TOURNAMENT_ID=$2; shift 2 ;;
+    # CWF-23 bisect: `live` hits ?live=true (the wedge path); `nonlive` hits the
+    # same routes without the overlay query so the burst exercises only
+    # gatherReport/jOOQ. Wedge in both modes → jOOQ transactionCoroutine bridge;
+    # wedge only in live → the live-overlay path (ESPN/Caffeine).
+    -M) MODE=$2; shift 2 ;;
     --keep) KEEP=1; shift ;;
     *) echo "Unknown flag: $1" >&2; exit 2 ;;
   esac
 done
+
+case $MODE in
+  live|nonlive) : ;;
+  *) echo "Invalid mode: $MODE (expected: live | nonlive)" >&2; exit 2 ;;
+esac
 
 for cmd in gcloud jq curl; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -105,6 +117,7 @@ echo "    Memory / CPU:       ${MEMORY} / ${CPU} vCPU"
 echo "    Concurrency:        ${CONCURRENCY}"
 echo "    Iterations:         ${ITERATIONS}"
 echo "    Parallel per burst: ${PARALLEL}"
+echo "    Mode:               ${MODE}"
 echo
 
 echo "==> Cloning $PROD_SQL into $STAGING_SQL — typically 5–10 min..."
@@ -155,13 +168,20 @@ if [[ -z "$TOURNAMENT_ID" ]]; then
 fi
 echo "==> season=$SEASON_ID tournament=$TOURNAMENT_ID (non-completed → ?live=true exercises the overlay)"
 
-# Three heavy live-overlay paths that fan out into per-tournament ESPN
-# previews. These are the ones the access log showed cache-missing
-# during the May 10 wedge window.
+# Three heavy report paths used for the burst. In `live` mode each carries
+# `?live=true` so the handler fans into the overlay (ESPN previews via
+# Caffeine, per-candidate loadLivePreviewContext). In `nonlive` mode the
+# same routes are hit without the query — the handler only runs
+# gatherReport (one tx.read). Comparing wedge rates between the two modes
+# is the CWF-23 bisect.
+case $MODE in
+  live) QS="?live=true" ;;
+  nonlive) QS="" ;;
+esac
 TARGETS=(
-  "$URL/api/v1/seasons/$SEASON_ID/report/$TOURNAMENT_ID?live=true"
-  "$URL/api/v1/seasons/$SEASON_ID/rankings?live=true"
-  "$URL/api/v1/seasons/$SEASON_ID/player-rankings?live=true"
+  "$URL/api/v1/seasons/$SEASON_ID/report/$TOURNAMENT_ID$QS"
+  "$URL/api/v1/seasons/$SEASON_ID/rankings$QS"
+  "$URL/api/v1/seasons/$SEASON_ID/player-rankings$QS"
 )
 
 echo
