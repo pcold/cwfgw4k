@@ -168,11 +168,10 @@ class EspnService(
         candidates: List<Tournament>,
     ): LivePreviewContext =
         tx.read {
-            val teams = teamRepository.findBySeason(seasonId)
             LivePreviewContext.from(
                 allGolfers = golferRepository.findAll(activeOnly = false, search = null),
-                teams = teams,
-                rosters = teams.flatMap { teamRepository.getRoster(it.id) },
+                teams = teamRepository.findBySeason(seasonId),
+                rosters = teamRepository.findRostersBySeason(seasonId),
                 rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults(),
                 tournaments = candidates,
                 overridesByTournament =
@@ -217,7 +216,7 @@ class EspnService(
         val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
         val golfers = golferRepository.findAll(activeOnly = false, search = null)
         val teams = teamRepository.findBySeason(seasonId)
-        val rosters = teams.flatMap { teamRepository.getRoster(it.id) }
+        val rosters = teamRepository.findRostersBySeason(seasonId)
         val dbTournamentsForDate =
             tournamentRepository.findAll(seasonId = seasonId, status = null)
                 .filter { it.startDate == date }

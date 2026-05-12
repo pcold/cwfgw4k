@@ -105,8 +105,9 @@ class WeeklyReportService(
             val scores = scoringRepository.getScores(seasonId, tournamentId)
             val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
             val allCompletedTournaments = allTournaments.filter { it.status == TournamentStatus.Completed }
-            val allRosters = teams.flatMap { teamRepository.getRoster(it.id) }
-            val allScores = allCompletedTournaments.flatMap { scoringRepository.getScores(seasonId, it.id) }
+            val allRosters = teamRepository.findRostersBySeason(seasonId)
+            val allScores =
+                scoringRepository.getScoresBySeason(seasonId, allCompletedTournaments.map { it.id })
             val inputs =
                 WeeklyReportInputs(
                     rules = rules,
@@ -149,9 +150,10 @@ class WeeklyReportService(
                 val allGolfers = golferRepository.findAll(activeOnly = false, search = null)
                 val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
                 val completed = allTournaments.filter { it.status == TournamentStatus.Completed }
-                val allRosters = teams.flatMap { teamRepository.getRoster(it.id) }
-                val allScores = completed.flatMap { scoringRepository.getScores(seasonId, it.id) }
-                val allResults = completed.flatMap { tournamentRepository.getResults(it.id) }
+                val completedIds = completed.map { it.id }
+                val allRosters = teamRepository.findRostersBySeason(seasonId)
+                val allScores = scoringRepository.getScoresBySeason(seasonId, completedIds)
+                val allResults = tournamentRepository.getResultsByTournaments(completedIds)
                 val inputs =
                     SeasonReportInputs(
                         rules = rules,
@@ -223,8 +225,8 @@ class WeeklyReportService(
             val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
             val completed = allTournaments.filter { it.status == TournamentStatus.Completed }
             val included = filterThroughTournament(completed, through)
-            val allRosters = teams.flatMap { teamRepository.getRoster(it.id) }
-            val allScores = included.flatMap { scoringRepository.getScores(seasonId, it.id) }
+            val allRosters = teamRepository.findRostersBySeason(seasonId)
+            val allScores = scoringRepository.getScoresBySeason(seasonId, included.map { it.id })
             val sideBetPerRound =
                 buildSideBetPerRound(rules, allRosters, allScores, teams.size, rules.sideBetAmount)
             val baseRankings = buildBaseRankings(teams, included, allScores, sideBetPerRound)
@@ -329,10 +331,11 @@ class WeeklyReportService(
             val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
             val completed = allTournaments.filter { it.status == TournamentStatus.Completed }
             val included = filterThroughTournament(completed, through)
-            val allRosters = teams.flatMap { teamRepository.getRoster(it.id) }
+            val includedIds = included.map { it.id }
+            val allRosters = teamRepository.findRostersBySeason(seasonId)
             val rosteredGolferIds = allRosters.map { it.golferId }.toSet()
-            val allScores = included.flatMap { scoringRepository.getScores(seasonId, it.id) }
-            val allResults = included.flatMap { tournamentRepository.getResults(it.id) }
+            val allScores = scoringRepository.getScoresBySeason(seasonId, includedIds)
+            val allResults = tournamentRepository.getResultsByTournaments(includedIds)
             val baseAcc =
                 buildPlayerRankingsAcc(
                     allScores = allScores,
@@ -400,7 +403,11 @@ class WeeklyReportService(
             val completed =
                 tournamentRepository
                     .findAll(seasonId = seasonId, status = TournamentStatus.Completed)
-            val byTournament = completed.associateWith { tournamentRepository.getResults(it.id) }
+            val resultsByTournamentId =
+                tournamentRepository.getResultsByTournaments(completed.map { it.id })
+                    .groupBy { it.tournamentId }
+            val byTournament =
+                completed.associateWith { resultsByTournamentId[it.id] ?: emptyList() }
 
             val entries =
                 byTournament

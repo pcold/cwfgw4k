@@ -85,7 +85,7 @@ class ScoringService(
         val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
         val results = tournamentRepository.getResults(tournamentId)
         val teams = teamRepository.findBySeason(seasonId)
-        val rostersByTeam = teams.associate { it.id to teamRepository.getRoster(it.id) }
+        val rostersByTeam = teamRepository.findRostersBySeason(seasonId).groupBy { it.teamId }
         val inputs =
             ScoringInputs(
                 seasonId = seasonId,
@@ -133,7 +133,7 @@ class ScoringService(
                     teamNames = teams.associate { it.id to it.teamName },
                     numTeams = teams.size,
                     sideBetAmount = rules.sideBetAmount,
-                    rosters = teams.flatMap { teamRepository.getRoster(it.id) },
+                    rosters = teamRepository.findRostersBySeason(seasonId),
                 )
             val rounds = rules.sideBetRounds.map { round -> buildSideBetRound(context, round) }
             val totals = teamSideBetTotals(teams, rounds, rules.sideBetAmount)
