@@ -66,9 +66,18 @@ steps:
       - '--set-env-vars=DB_JDBC_URL=jdbc:postgresql:///${_DB_NAME}?cloudSqlInstance=${PROJECT_ID}:${_REGION}:${_SQL_INSTANCE}&socketFactory=com.google.cloud.sql.postgres.SocketFactory,DB_USER=${_DB_USER},DB_SCHEMA=${_DB_SCHEMA},DB_POOL=15,AUTH_ADMIN_USERNAME=admin'
       # Memory: 1Gi container with -Xmx512m in the Dockerfile leaves ~half the
       # box for non-heap JVM (metaspace, JIT code cache, Netty direct buffers,
-      # JDBC buffers, thread stacks). Bump container + heap together if real
-      # load shows OOM-kill events in Cloud Run logs.
+      # JDBC buffers, thread stacks). Steady-state prod p99 memory util sits
+      # at ~18%, so we're comfortably under. Bump container + heap together
+      # if real load shows OOM-kill events in Cloud Run logs.
       - '--memory=1Gi'
+      # CPU: 2 vCPU. CWF-24 fixed the dispatcher-starvation wedge at 1 vCPU,
+      # so 1 here would be functionally correct. Keeping 2 as a defensive
+      # margin: the same total Dispatchers.Default thread budget (max(2,
+      # #CPUs) = 2 in either case) but twice the wall-clock CPU, so each
+      # request completes faster and the concurrent-overlap window where
+      # the bug *would* fire (if CWF-24 ever regressed) shrinks. Cost is
+      # within the Cloud Run free tier at our traffic level.
+      - '--cpu=2'
       # Concurrency: Cloud Run defaults to 80 reqs per instance; with our
       # JVM sizing and a per-instance pool of 10 connections, 20 in-flight
       # requests per instance is the sustainable target — pool slots are

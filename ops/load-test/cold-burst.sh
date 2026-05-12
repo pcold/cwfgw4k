@@ -40,10 +40,12 @@
 # waiting for scale-to-zero, and produces the wider concurrency window
 # we want to exercise.
 #
-# Default profile matches prod's pre-CWF-24 config (1Gi / 1CPU,
-# min-instances=0, concurrency=20). Use -m / -C to verify a fix at a
-# different profile (e.g. -m 2Gi -C 2 raises the dispatcher's thread
-# count and would mask the bug).
+# Default profile matches prod (1Gi / 2 vCPU, min-instances=0,
+# concurrency=20). Pass `-C 1` to drop to the sharper pre-CWF-24 profile
+# for regression testing — the wedge is structurally still possible at
+# either CPU count (Dispatchers.Default = max(2, #CPUs) = 2 in both
+# cases), but the 1-vCPU profile widens the overlap window so a
+# regressed CWF-24 fix fails fast and obviously instead of probabilistically.
 #
 # Cost: roughly $1-2 base (Cloud SQL clone), plus a few minutes of
 # Cloud Run time. Far cheaper than running stress for an hour.
@@ -67,7 +69,10 @@ IMAGE_REPO=${REGION}-docker.pkg.dev/${PROJECT}/cwfgw4k/cwfgw4k:latest
 ITERATIONS=3
 PARALLEL=4
 MEMORY=1Gi
-CPU=1
+# Defaults match current prod (1Gi / 2 vCPU after CWF-24). Pass `-C 1` to
+# repro the dispatcher-starvation wedge at the sharper pre-CWF-24 profile
+# — useful as a regression check that the fix still holds.
+CPU=2
 CONCURRENCY=20
 KEEP=0
 SEASON_ID=""

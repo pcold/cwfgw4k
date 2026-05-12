@@ -101,6 +101,7 @@ gcloud run deploy "$STAGING_SERVICE" \
   --set-secrets="DB_PASSWORD=cwfgw4k-db-password:latest,AUTH_SESSION_SECRET=cwfgw4k-session-secret:latest,AUTH_ADMIN_PASSWORD=cwfgw4k-admin-password:latest" \
   --set-env-vars="DB_JDBC_URL=${DB_JDBC_URL},DB_USER=cwfgw4k,DB_SCHEMA=cwfgw4k,DB_POOL=15,AUTH_ADMIN_USERNAME=admin" \
   --memory=1Gi \
+  --cpu=2 \
   --concurrency=20 \
   --min-instances="$MIN_INSTANCES" \
   --max-instances=10 \
