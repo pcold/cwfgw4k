@@ -13,10 +13,10 @@ permissions:
   id-token: write
 
 jobs:
-  # Automation mode: a prompt is supplied, so the action runs on every
-  # pull_request event without an @claude mention. A run with neither a
-  # prompt nor a trigger phrase exits "Trigger result: false" — supplying
-  # the prompt below is what makes the review run on every PR.
+  # Runs on every pull_request event without an @claude mention. The
+  # prompt below carries the review instructions; track_progress makes the
+  # action post a tracking comment that delivers the result — without it a
+  # clean review (no inline findings) leaves no visible summary (CWF-32).
   pr-review:
     name: Automated PR review
     if: github.event_name == 'pull_request'
@@ -29,6 +29,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           use_sticky_comment: true
+          track_progress: true
           prompt: |
             You are reviewing this pull request as the cwfgw4k pre-merge gate.
 
