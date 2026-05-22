@@ -102,7 +102,7 @@ class TournamentOpsService(
      * pre-CWF-25 behavior.
      */
     context(ctx: TransactionContext)
-    private suspend fun persistEspnEventsIn(
+    private fun persistEspnEventsIn(
         tournament: Tournament,
         events: List<EspnTournament>,
     ) {
@@ -118,7 +118,7 @@ class TournamentOpsService(
     }
 
     context(ctx: TransactionContext)
-    private suspend fun findEarlierUnfinalized(tournament: Tournament): List<Tournament> {
+    private fun findEarlierUnfinalized(tournament: Tournament): List<Tournament> {
         val upcoming = tournamentRepository.findAll(seasonId = tournament.seasonId, status = TournamentStatus.Upcoming)
         val inProgress =
             tournamentRepository.findAll(seasonId = tournament.seasonId, status = TournamentStatus.InProgress)
@@ -128,7 +128,7 @@ class TournamentOpsService(
     }
 
     context(ctx: TransactionContext)
-    private suspend fun findLaterCompleted(tournament: Tournament): List<Tournament> =
+    private fun findLaterCompleted(tournament: Tournament): List<Tournament> =
         tournamentRepository.findAll(seasonId = tournament.seasonId, status = TournamentStatus.Completed)
             .filter { it.id != tournament.id && it.startDate.isAfter(tournament.startDate) }
             .sortedBy { it.startDate }

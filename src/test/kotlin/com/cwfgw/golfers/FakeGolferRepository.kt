@@ -21,7 +21,7 @@ class FakeGolferRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun findAll(
+    override fun findAll(
         activeOnly: Boolean,
         search: String?,
     ): List<Golfer> {
@@ -32,14 +32,14 @@ class FakeGolferRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun findById(id: GolferId): Golfer? = store[id]
+    override fun findById(id: GolferId): Golfer? = store[id]
 
     context(ctx: TransactionContext)
-    override suspend fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
+    override fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
         store.values.firstOrNull { it.pgaPlayerId == pgaPlayerId }
 
     context(ctx: TransactionContext)
-    override suspend fun create(request: CreateGolferRequest): Golfer {
+    override fun create(request: CreateGolferRequest): Golfer {
         val golfer =
             Golfer(
                 id = idFactory(),
@@ -56,7 +56,7 @@ class FakeGolferRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun update(
+    override fun update(
         id: GolferId,
         request: UpdateGolferRequest,
     ): Golfer? {

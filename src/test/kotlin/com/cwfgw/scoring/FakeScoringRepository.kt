@@ -29,7 +29,7 @@ class FakeScoringRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun getScores(
+    override fun getScores(
         seasonId: SeasonId,
         tournamentId: TournamentId,
     ): List<FantasyScore> =
@@ -38,7 +38,7 @@ class FakeScoringRepository(
             .sortedByDescending { it.points }
 
     context(ctx: TransactionContext)
-    override suspend fun getScoresBySeason(
+    override fun getScoresBySeason(
         seasonId: SeasonId,
         tournamentIds: Collection<TournamentId>?,
     ): List<FantasyScore> {
@@ -53,13 +53,13 @@ class FakeScoringRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun getStandings(seasonId: SeasonId): List<SeasonStanding> =
+    override fun getStandings(seasonId: SeasonId): List<SeasonStanding> =
         standings.values
             .filter { it.seasonId == seasonId }
             .sortedByDescending { it.totalPoints }
 
     context(ctx: TransactionContext)
-    override suspend fun upsertScore(record: UpsertScore): FantasyScore {
+    override fun upsertScore(record: UpsertScore): FantasyScore {
         val existing =
             scores.values.firstOrNull { existing ->
                 existing.seasonId == record.seasonId &&
@@ -89,20 +89,20 @@ class FakeScoringRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun golferPointTotal(
+    override fun golferPointTotal(
         seasonId: SeasonId,
         teamId: TeamId,
         golferId: GolferId,
     ): BigDecimal = pointTotals[Triple(seasonId, teamId, golferId)] ?: BigDecimal.ZERO
 
     context(ctx: TransactionContext)
-    override suspend fun teamSeasonTotals(
+    override fun teamSeasonTotals(
         seasonId: SeasonId,
         teamId: TeamId,
     ): TeamSeasonTotals = teamTotals[seasonId to teamId] ?: TeamSeasonTotals(BigDecimal.ZERO, 0)
 
     context(ctx: TransactionContext)
-    override suspend fun upsertStanding(
+    override fun upsertStanding(
         seasonId: SeasonId,
         teamId: TeamId,
         totalPoints: BigDecimal,
@@ -127,21 +127,21 @@ class FakeScoringRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun deleteByTournament(tournamentId: TournamentId): Int {
+    override fun deleteByTournament(tournamentId: TournamentId): Int {
         val matching = scores.values.filter { it.tournamentId == tournamentId }
         matching.forEach { scores.remove(it.id) }
         return matching.size
     }
 
     context(ctx: TransactionContext)
-    override suspend fun deleteBySeason(seasonId: SeasonId): Int {
+    override fun deleteBySeason(seasonId: SeasonId): Int {
         val matching = scores.values.filter { it.seasonId == seasonId }
         matching.forEach { scores.remove(it.id) }
         return matching.size
     }
 
     context(ctx: TransactionContext)
-    override suspend fun deleteStandingsBySeason(seasonId: SeasonId): Int {
+    override fun deleteStandingsBySeason(seasonId: SeasonId): Int {
         val matching = standings.values.filter { it.seasonId == seasonId }
         matching.forEach { standings.remove(it.id) }
         return matching.size

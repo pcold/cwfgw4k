@@ -16,13 +16,13 @@ class FakeCacheRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun get(key: String): String? {
+    override fun get(key: String): String? {
         val entry = store[key] ?: return null
         return if (entry.expiresAt.isAfter(clock.instant())) entry.value else null
     }
 
     context(ctx: TransactionContext)
-    override suspend fun put(
+    override fun put(
         key: String,
         value: String,
         expiresAt: Instant,
@@ -31,7 +31,7 @@ class FakeCacheRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun deleteExpired(): Int {
+    override fun deleteExpired(): Int {
         val now = clock.instant()
         val expired = store.entries.filter { !it.value.expiresAt.isAfter(now) }
         expired.forEach { store.remove(it.key) }

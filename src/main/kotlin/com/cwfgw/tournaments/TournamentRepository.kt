@@ -7,34 +7,32 @@ import com.cwfgw.jooq.tables.records.TournamentsRecord
 import com.cwfgw.jooq.tables.references.TOURNAMENTS
 import com.cwfgw.jooq.tables.references.TOURNAMENT_RESULTS
 import com.cwfgw.seasons.SeasonId
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.jooq.Field
 
 interface TournamentRepository {
     context(ctx: TransactionContext)
-    suspend fun findAll(
+    fun findAll(
         seasonId: SeasonId?,
         status: TournamentStatus?,
     ): List<Tournament>
 
     context(ctx: TransactionContext)
-    suspend fun findById(id: TournamentId): Tournament?
+    fun findById(id: TournamentId): Tournament?
 
     context(ctx: TransactionContext)
-    suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament?
+    fun findByPgaTournamentId(pgaTournamentId: String): Tournament?
 
     context(ctx: TransactionContext)
-    suspend fun create(request: CreateTournamentRequest): Tournament
+    fun create(request: CreateTournamentRequest): Tournament
 
     context(ctx: TransactionContext)
-    suspend fun update(
+    fun update(
         id: TournamentId,
         request: UpdateTournamentRequest,
     ): Tournament?
 
     context(ctx: TransactionContext)
-    suspend fun getResults(tournamentId: TournamentId): List<TournamentResult>
+    fun getResults(tournamentId: TournamentId): List<TournamentResult>
 
     /**
      * Single-query alternative to `tournaments.flatMap { getResults(it.id) }`.
@@ -44,172 +42,155 @@ interface TournamentRepository {
      * at the call site preserves per-tournament order.
      */
     context(ctx: TransactionContext)
-    suspend fun getResultsByTournaments(ids: Collection<TournamentId>): List<TournamentResult>
+    fun getResultsByTournaments(ids: Collection<TournamentId>): List<TournamentResult>
 
     context(ctx: TransactionContext)
-    suspend fun upsertResult(
+    fun upsertResult(
         tournamentId: TournamentId,
         request: CreateTournamentResultRequest,
     ): TournamentResult
 
     /** Wipe every leaderboard row for the given tournament. Returns the row count for logging. */
     context(ctx: TransactionContext)
-    suspend fun deleteResultsByTournament(tournamentId: TournamentId): Int
+    fun deleteResultsByTournament(tournamentId: TournamentId): Int
 
     /** Wipe every leaderboard row for every tournament in the given season. */
     context(ctx: TransactionContext)
-    suspend fun deleteResultsBySeason(seasonId: SeasonId): Int
+    fun deleteResultsBySeason(seasonId: SeasonId): Int
 
     /** Reset every tournament in the season to status `Upcoming`. Returns the row count for logging. */
     context(ctx: TransactionContext)
-    suspend fun resetSeasonTournaments(seasonId: SeasonId): Int
+    fun resetSeasonTournaments(seasonId: SeasonId): Int
 }
 
 fun TournamentRepository(): TournamentRepository = JooqTournamentRepository()
 
 private class JooqTournamentRepository : TournamentRepository {
     context(ctx: TransactionContext)
-    override suspend fun findAll(
+    override fun findAll(
         seasonId: SeasonId?,
         status: TournamentStatus?,
-    ): List<Tournament> =
-        withContext(Dispatchers.IO) {
-            val conditions =
-                buildList {
-                    seasonId?.let { add(TOURNAMENTS.SEASON_ID.eq(it.value)) }
-                    status?.let { add(TOURNAMENTS.STATUS.eq(it.value)) }
-                }
-            ctx.dsl.selectFrom(TOURNAMENTS)
-                .where(conditions)
-                .orderBy(TOURNAMENTS.START_DATE.asc(), TOURNAMENTS.CREATED_AT.asc())
-                .fetch(::toTournament)
-        }
+    ): List<Tournament> {
+        val conditions =
+            buildList {
+                seasonId?.let { add(TOURNAMENTS.SEASON_ID.eq(it.value)) }
+                status?.let { add(TOURNAMENTS.STATUS.eq(it.value)) }
+            }
+        return ctx.dsl.selectFrom(TOURNAMENTS)
+            .where(conditions)
+            .orderBy(TOURNAMENTS.START_DATE.asc(), TOURNAMENTS.CREATED_AT.asc())
+            .fetch(::toTournament)
+    }
 
     context(ctx: TransactionContext)
-    override suspend fun findById(id: TournamentId): Tournament? =
-        withContext(Dispatchers.IO) {
+    override fun findById(id: TournamentId): Tournament? =
+        ctx.dsl.selectFrom(TOURNAMENTS)
+            .where(TOURNAMENTS.ID.eq(id.value))
+            .fetchOne()
+            ?.let(::toTournament)
+
+    context(ctx: TransactionContext)
+    override fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
+        ctx.dsl.selectFrom(TOURNAMENTS)
+            .where(TOURNAMENTS.PGA_TOURNAMENT_ID.eq(pgaTournamentId))
+            .fetchOne()
+            ?.let(::toTournament)
+
+    context(ctx: TransactionContext)
+    override fun create(request: CreateTournamentRequest): Tournament {
+        val inserted =
+            ctx.dsl.insertInto(TOURNAMENTS)
+                .set(insertAssignments(request))
+                .returning()
+                .fetchOne() ?: error("INSERT RETURNING produced no row for tournaments")
+        return toTournament(inserted)
+    }
+
+    context(ctx: TransactionContext)
+    override fun update(
+        id: TournamentId,
+        request: UpdateTournamentRequest,
+    ): Tournament? {
+        val changes = updateAssignments(request)
+        return if (changes.isEmpty()) {
             ctx.dsl.selectFrom(TOURNAMENTS)
                 .where(TOURNAMENTS.ID.eq(id.value))
                 .fetchOne()
                 ?.let(::toTournament)
-        }
-
-    context(ctx: TransactionContext)
-    override suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.selectFrom(TOURNAMENTS)
-                .where(TOURNAMENTS.PGA_TOURNAMENT_ID.eq(pgaTournamentId))
+        } else {
+            ctx.dsl.update(TOURNAMENTS)
+                .set(changes)
+                .where(TOURNAMENTS.ID.eq(id.value))
+                .returning()
                 .fetchOne()
                 ?.let(::toTournament)
-        }
-
-    context(ctx: TransactionContext)
-    override suspend fun create(request: CreateTournamentRequest): Tournament =
-        withContext(Dispatchers.IO) {
-            val inserted =
-                ctx.dsl.insertInto(TOURNAMENTS)
-                    .set(insertAssignments(request))
-                    .returning()
-                    .fetchOne() ?: error("INSERT RETURNING produced no row for tournaments")
-            toTournament(inserted)
-        }
-
-    context(ctx: TransactionContext)
-    override suspend fun update(
-        id: TournamentId,
-        request: UpdateTournamentRequest,
-    ): Tournament? =
-        withContext(Dispatchers.IO) {
-            val changes = updateAssignments(request)
-            if (changes.isEmpty()) {
-                ctx.dsl.selectFrom(TOURNAMENTS)
-                    .where(TOURNAMENTS.ID.eq(id.value))
-                    .fetchOne()
-                    ?.let(::toTournament)
-            } else {
-                ctx.dsl.update(TOURNAMENTS)
-                    .set(changes)
-                    .where(TOURNAMENTS.ID.eq(id.value))
-                    .returning()
-                    .fetchOne()
-                    ?.let(::toTournament)
-            }
-        }
-
-    context(ctx: TransactionContext)
-    override suspend fun getResults(tournamentId: TournamentId): List<TournamentResult> =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.selectFrom(TOURNAMENT_RESULTS)
-                .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.eq(tournamentId.value))
-                .orderBy(TOURNAMENT_RESULTS.POSITION.asc().nullsLast(), TOURNAMENT_RESULTS.ID.asc())
-                .fetch(::toResult)
-        }
-
-    context(ctx: TransactionContext)
-    override suspend fun getResultsByTournaments(ids: Collection<TournamentId>): List<TournamentResult> {
-        if (ids.isEmpty()) return emptyList()
-        return withContext(Dispatchers.IO) {
-            ctx.dsl.selectFrom(TOURNAMENT_RESULTS)
-                .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.`in`(ids.map { it.value }))
-                .orderBy(
-                    TOURNAMENT_RESULTS.TOURNAMENT_ID.asc(),
-                    TOURNAMENT_RESULTS.POSITION.asc().nullsLast(),
-                    TOURNAMENT_RESULTS.ID.asc(),
-                )
-                .fetch(::toResult)
         }
     }
 
     context(ctx: TransactionContext)
-    override suspend fun deleteResultsByTournament(tournamentId: TournamentId): Int =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.deleteFrom(TOURNAMENT_RESULTS)
-                .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.eq(tournamentId.value))
-                .execute()
-        }
+    override fun getResults(tournamentId: TournamentId): List<TournamentResult> =
+        ctx.dsl.selectFrom(TOURNAMENT_RESULTS)
+            .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.eq(tournamentId.value))
+            .orderBy(TOURNAMENT_RESULTS.POSITION.asc().nullsLast(), TOURNAMENT_RESULTS.ID.asc())
+            .fetch(::toResult)
 
     context(ctx: TransactionContext)
-    override suspend fun deleteResultsBySeason(seasonId: SeasonId): Int =
-        withContext(Dispatchers.IO) {
-            val tournamentIds =
-                ctx.dsl.select(TOURNAMENTS.ID)
-                    .from(TOURNAMENTS)
-                    .where(TOURNAMENTS.SEASON_ID.eq(seasonId.value))
-                    .fetch(TOURNAMENTS.ID)
-            if (tournamentIds.isEmpty()) {
-                0
-            } else {
-                ctx.dsl.deleteFrom(TOURNAMENT_RESULTS)
-                    .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.`in`(tournamentIds))
-                    .execute()
-            }
-        }
+    override fun getResultsByTournaments(ids: Collection<TournamentId>): List<TournamentResult> {
+        if (ids.isEmpty()) return emptyList()
+        return ctx.dsl.selectFrom(TOURNAMENT_RESULTS)
+            .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.`in`(ids.map { it.value }))
+            .orderBy(
+                TOURNAMENT_RESULTS.TOURNAMENT_ID.asc(),
+                TOURNAMENT_RESULTS.POSITION.asc().nullsLast(),
+                TOURNAMENT_RESULTS.ID.asc(),
+            )
+            .fetch(::toResult)
+    }
 
     context(ctx: TransactionContext)
-    override suspend fun resetSeasonTournaments(seasonId: SeasonId): Int =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.update(TOURNAMENTS)
-                .set(TOURNAMENTS.STATUS, TournamentStatus.Upcoming.value)
+    override fun deleteResultsByTournament(tournamentId: TournamentId): Int =
+        ctx.dsl.deleteFrom(TOURNAMENT_RESULTS)
+            .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.eq(tournamentId.value))
+            .execute()
+
+    context(ctx: TransactionContext)
+    override fun deleteResultsBySeason(seasonId: SeasonId): Int {
+        val tournamentIds =
+            ctx.dsl.select(TOURNAMENTS.ID)
+                .from(TOURNAMENTS)
                 .where(TOURNAMENTS.SEASON_ID.eq(seasonId.value))
+                .fetch(TOURNAMENTS.ID)
+        return if (tournamentIds.isEmpty()) {
+            0
+        } else {
+            ctx.dsl.deleteFrom(TOURNAMENT_RESULTS)
+                .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.`in`(tournamentIds))
                 .execute()
         }
+    }
 
     context(ctx: TransactionContext)
-    override suspend fun upsertResult(
+    override fun resetSeasonTournaments(seasonId: SeasonId): Int =
+        ctx.dsl.update(TOURNAMENTS)
+            .set(TOURNAMENTS.STATUS, TournamentStatus.Upcoming.value)
+            .where(TOURNAMENTS.SEASON_ID.eq(seasonId.value))
+            .execute()
+
+    context(ctx: TransactionContext)
+    override fun upsertResult(
         tournamentId: TournamentId,
         request: CreateTournamentResultRequest,
-    ): TournamentResult =
-        withContext(Dispatchers.IO) {
-            val upserted =
-                ctx.dsl.insertInto(TOURNAMENT_RESULTS)
-                    .set(resultInsertAssignments(tournamentId, request))
-                    .onConflict(TOURNAMENT_RESULTS.TOURNAMENT_ID, TOURNAMENT_RESULTS.GOLFER_ID)
-                    .doUpdate()
-                    .set(resultUpdateAssignments(request))
-                    .returning()
-                    .fetchOne() ?: error("UPSERT RETURNING produced no row for tournament_results")
-            toResult(upserted)
-        }
+    ): TournamentResult {
+        val upserted =
+            ctx.dsl.insertInto(TOURNAMENT_RESULTS)
+                .set(resultInsertAssignments(tournamentId, request))
+                .onConflict(TOURNAMENT_RESULTS.TOURNAMENT_ID, TOURNAMENT_RESULTS.GOLFER_ID)
+                .doUpdate()
+                .set(resultUpdateAssignments(request))
+                .returning()
+                .fetchOne() ?: error("UPSERT RETURNING produced no row for tournament_results")
+        return toResult(upserted)
+    }
 
     private fun insertAssignments(request: CreateTournamentRequest): Map<Field<*>, Any?> =
         buildMap {

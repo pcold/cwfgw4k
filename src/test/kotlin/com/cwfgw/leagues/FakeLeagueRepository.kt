@@ -17,13 +17,13 @@ class FakeLeagueRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun findAll(): List<League> = store.values.sortedBy { it.name }
+    override fun findAll(): List<League> = store.values.sortedBy { it.name }
 
     context(ctx: TransactionContext)
-    override suspend fun findById(id: LeagueId): League? = store[id]
+    override fun findById(id: LeagueId): League? = store[id]
 
     context(ctx: TransactionContext)
-    override suspend fun create(request: CreateLeagueRequest): League {
+    override fun create(request: CreateLeagueRequest): League {
         val league = League(id = idFactory(), name = request.name, createdAt = clock())
         store[league.id] = league
         return league

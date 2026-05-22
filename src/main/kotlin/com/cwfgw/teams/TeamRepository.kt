@@ -8,33 +8,31 @@ import com.cwfgw.jooq.tables.references.GOLFERS
 import com.cwfgw.jooq.tables.references.TEAMS
 import com.cwfgw.jooq.tables.references.TEAM_ROSTERS
 import com.cwfgw.seasons.SeasonId
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.jooq.Field
 import org.jooq.impl.DSL
 import java.math.BigDecimal
 
 interface TeamRepository {
     context(ctx: TransactionContext)
-    suspend fun findBySeason(seasonId: SeasonId): List<Team>
+    fun findBySeason(seasonId: SeasonId): List<Team>
 
     context(ctx: TransactionContext)
-    suspend fun findById(id: TeamId): Team?
+    fun findById(id: TeamId): Team?
 
     context(ctx: TransactionContext)
-    suspend fun create(
+    fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
     ): Team
 
     context(ctx: TransactionContext)
-    suspend fun update(
+    fun update(
         id: TeamId,
         request: UpdateTeamRequest,
     ): Team?
 
     context(ctx: TransactionContext)
-    suspend fun getRoster(teamId: TeamId): List<RosterEntry>
+    fun getRoster(teamId: TeamId): List<RosterEntry>
 
     /**
      * Single-query alternative to `findBySeason(seasonId).flatMap { getRoster(it.id) }`.
@@ -44,22 +42,22 @@ interface TeamRepository {
      * `ScoringService`, and `EspnService`.
      */
     context(ctx: TransactionContext)
-    suspend fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry>
+    fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry>
 
     context(ctx: TransactionContext)
-    suspend fun addToRoster(
+    fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,
     ): RosterEntry
 
     context(ctx: TransactionContext)
-    suspend fun dropFromRoster(
+    fun dropFromRoster(
         teamId: TeamId,
         golferId: GolferId,
     ): Boolean
 
     context(ctx: TransactionContext)
-    suspend fun getRosterView(seasonId: SeasonId): List<RosterViewTeam>
+    fun getRosterView(seasonId: SeasonId): List<RosterViewTeam>
 }
 
 fun TeamRepository(): TeamRepository = JooqTeamRepository()
@@ -79,137 +77,124 @@ private data class RosterViewRow(
 
 private class JooqTeamRepository : TeamRepository {
     context(ctx: TransactionContext)
-    override suspend fun findBySeason(seasonId: SeasonId): List<Team> =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.selectFrom(TEAMS)
-                .where(TEAMS.SEASON_ID.eq(seasonId.value))
-                .orderBy(TEAMS.TEAM_NUMBER.asc().nullsLast(), TEAMS.TEAM_NAME.asc())
-                .fetch(::toTeam)
-        }
+    override fun findBySeason(seasonId: SeasonId): List<Team> =
+        ctx.dsl.selectFrom(TEAMS)
+            .where(TEAMS.SEASON_ID.eq(seasonId.value))
+            .orderBy(TEAMS.TEAM_NUMBER.asc().nullsLast(), TEAMS.TEAM_NAME.asc())
+            .fetch(::toTeam)
 
     context(ctx: TransactionContext)
-    override suspend fun findById(id: TeamId): Team? =
-        withContext(Dispatchers.IO) {
+    override fun findById(id: TeamId): Team? =
+        ctx.dsl.selectFrom(TEAMS)
+            .where(TEAMS.ID.eq(id.value))
+            .fetchOne()
+            ?.let(::toTeam)
+
+    context(ctx: TransactionContext)
+    override fun create(
+        seasonId: SeasonId,
+        request: CreateTeamRequest,
+    ): Team {
+        val inserted =
+            ctx.dsl.insertInto(TEAMS)
+                .set(TEAMS.SEASON_ID, seasonId.value)
+                .set(TEAMS.OWNER_NAME, request.ownerName)
+                .set(TEAMS.TEAM_NAME, request.teamName)
+                .set(TEAMS.TEAM_NUMBER, request.teamNumber)
+                .returning()
+                .fetchOne() ?: error("INSERT RETURNING produced no row for teams")
+        return toTeam(inserted)
+    }
+
+    context(ctx: TransactionContext)
+    override fun update(
+        id: TeamId,
+        request: UpdateTeamRequest,
+    ): Team? {
+        val changes = updateAssignments(request)
+        return if (changes.isEmpty()) {
             ctx.dsl.selectFrom(TEAMS)
                 .where(TEAMS.ID.eq(id.value))
                 .fetchOne()
                 ?.let(::toTeam)
+        } else {
+            ctx.dsl.update(TEAMS)
+                .set(changes + (TEAMS.UPDATED_AT to DSL.currentOffsetDateTime()))
+                .where(TEAMS.ID.eq(id.value))
+                .returning()
+                .fetchOne()
+                ?.let(::toTeam)
         }
+    }
 
     context(ctx: TransactionContext)
-    override suspend fun create(
-        seasonId: SeasonId,
-        request: CreateTeamRequest,
-    ): Team =
-        withContext(Dispatchers.IO) {
-            val inserted =
-                ctx.dsl.insertInto(TEAMS)
-                    .set(TEAMS.SEASON_ID, seasonId.value)
-                    .set(TEAMS.OWNER_NAME, request.ownerName)
-                    .set(TEAMS.TEAM_NAME, request.teamName)
-                    .set(TEAMS.TEAM_NUMBER, request.teamNumber)
-                    .returning()
-                    .fetchOne() ?: error("INSERT RETURNING produced no row for teams")
-            toTeam(inserted)
-        }
+    override fun getRoster(teamId: TeamId): List<RosterEntry> =
+        ctx.dsl.selectFrom(TEAM_ROSTERS)
+            .where(TEAM_ROSTERS.TEAM_ID.eq(teamId.value))
+            .and(TEAM_ROSTERS.DROPPED_AT.isNull)
+            .orderBy(TEAM_ROSTERS.DRAFT_ROUND.asc().nullsLast(), TEAM_ROSTERS.ACQUIRED_AT.asc())
+            .fetch(::toRosterEntry)
 
     context(ctx: TransactionContext)
-    override suspend fun update(
-        id: TeamId,
-        request: UpdateTeamRequest,
-    ): Team? =
-        withContext(Dispatchers.IO) {
-            val changes = updateAssignments(request)
-            if (changes.isEmpty()) {
-                ctx.dsl.selectFrom(TEAMS)
-                    .where(TEAMS.ID.eq(id.value))
-                    .fetchOne()
-                    ?.let(::toTeam)
-            } else {
-                ctx.dsl.update(TEAMS)
-                    .set(changes + (TEAMS.UPDATED_AT to DSL.currentOffsetDateTime()))
-                    .where(TEAMS.ID.eq(id.value))
-                    .returning()
-                    .fetchOne()
-                    ?.let(::toTeam)
-            }
-        }
+    override fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry> =
+        ctx.dsl.selectFrom(TEAM_ROSTERS)
+            .where(
+                TEAM_ROSTERS.TEAM_ID.`in`(
+                    DSL.select(TEAMS.ID).from(TEAMS).where(TEAMS.SEASON_ID.eq(seasonId.value)),
+                ),
+            )
+            .and(TEAM_ROSTERS.DROPPED_AT.isNull)
+            .orderBy(
+                TEAM_ROSTERS.TEAM_ID.asc(),
+                TEAM_ROSTERS.DRAFT_ROUND.asc().nullsLast(),
+                TEAM_ROSTERS.ACQUIRED_AT.asc(),
+            )
+            .fetch(::toRosterEntry)
 
     context(ctx: TransactionContext)
-    override suspend fun getRoster(teamId: TeamId): List<RosterEntry> =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.selectFrom(TEAM_ROSTERS)
-                .where(TEAM_ROSTERS.TEAM_ID.eq(teamId.value))
-                .and(TEAM_ROSTERS.DROPPED_AT.isNull)
-                .orderBy(TEAM_ROSTERS.DRAFT_ROUND.asc().nullsLast(), TEAM_ROSTERS.ACQUIRED_AT.asc())
-                .fetch(::toRosterEntry)
-        }
-
-    context(ctx: TransactionContext)
-    override suspend fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry> =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.selectFrom(TEAM_ROSTERS)
-                .where(
-                    TEAM_ROSTERS.TEAM_ID.`in`(
-                        DSL.select(TEAMS.ID).from(TEAMS).where(TEAMS.SEASON_ID.eq(seasonId.value)),
-                    ),
-                )
-                .and(TEAM_ROSTERS.DROPPED_AT.isNull)
-                .orderBy(
-                    TEAM_ROSTERS.TEAM_ID.asc(),
-                    TEAM_ROSTERS.DRAFT_ROUND.asc().nullsLast(),
-                    TEAM_ROSTERS.ACQUIRED_AT.asc(),
-                )
-                .fetch(::toRosterEntry)
-        }
-
-    context(ctx: TransactionContext)
-    override suspend fun addToRoster(
+    override fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,
-    ): RosterEntry =
-        withContext(Dispatchers.IO) {
-            val inserted =
-                ctx.dsl.insertInto(TEAM_ROSTERS)
-                    .set(TEAM_ROSTERS.TEAM_ID, teamId.value)
-                    .set(TEAM_ROSTERS.GOLFER_ID, request.golferId.value)
-                    .set(TEAM_ROSTERS.ACQUIRED_VIA, request.acquiredVia ?: DEFAULT_ACQUIRED_VIA)
-                    .set(TEAM_ROSTERS.DRAFT_ROUND, request.draftRound)
-                    .set(TEAM_ROSTERS.OWNERSHIP_PCT, request.ownershipPct ?: DEFAULT_OWNERSHIP_PCT)
-                    .returning()
-                    .fetchOne() ?: error("INSERT RETURNING produced no row for team_rosters")
-            toRosterEntry(inserted)
-        }
+    ): RosterEntry {
+        val inserted =
+            ctx.dsl.insertInto(TEAM_ROSTERS)
+                .set(TEAM_ROSTERS.TEAM_ID, teamId.value)
+                .set(TEAM_ROSTERS.GOLFER_ID, request.golferId.value)
+                .set(TEAM_ROSTERS.ACQUIRED_VIA, request.acquiredVia ?: DEFAULT_ACQUIRED_VIA)
+                .set(TEAM_ROSTERS.DRAFT_ROUND, request.draftRound)
+                .set(TEAM_ROSTERS.OWNERSHIP_PCT, request.ownershipPct ?: DEFAULT_OWNERSHIP_PCT)
+                .returning()
+                .fetchOne() ?: error("INSERT RETURNING produced no row for team_rosters")
+        return toRosterEntry(inserted)
+    }
 
     context(ctx: TransactionContext)
-    override suspend fun dropFromRoster(
+    override fun dropFromRoster(
         teamId: TeamId,
         golferId: GolferId,
-    ): Boolean =
-        withContext(Dispatchers.IO) {
-            val affected =
-                ctx.dsl.update(TEAM_ROSTERS)
-                    .set(TEAM_ROSTERS.DROPPED_AT, DSL.currentOffsetDateTime())
-                    .set(TEAM_ROSTERS.IS_ACTIVE, false)
-                    .where(TEAM_ROSTERS.TEAM_ID.eq(teamId.value))
-                    .and(TEAM_ROSTERS.GOLFER_ID.eq(golferId.value))
-                    .and(TEAM_ROSTERS.DROPPED_AT.isNull)
-                    .execute()
-            affected > 0
-        }
+    ): Boolean {
+        val affected =
+            ctx.dsl.update(TEAM_ROSTERS)
+                .set(TEAM_ROSTERS.DROPPED_AT, DSL.currentOffsetDateTime())
+                .set(TEAM_ROSTERS.IS_ACTIVE, false)
+                .where(TEAM_ROSTERS.TEAM_ID.eq(teamId.value))
+                .and(TEAM_ROSTERS.GOLFER_ID.eq(golferId.value))
+                .and(TEAM_ROSTERS.DROPPED_AT.isNull)
+                .execute()
+        return affected > 0
+    }
 
     context(ctx: TransactionContext)
-    override suspend fun getRosterView(seasonId: SeasonId): List<RosterViewTeam> =
-        withContext(Dispatchers.IO) {
-            val rows = fetchRosterViewRows(seasonId)
-            rows.groupBy { it.teamId to it.teamName }.map { (key, picks) ->
-                RosterViewTeam(
-                    teamId = key.first,
-                    teamName = key.second,
-                    picks = picks.map(::toRosterViewPick),
-                )
-            }
+    override fun getRosterView(seasonId: SeasonId): List<RosterViewTeam> {
+        val rows = fetchRosterViewRows(seasonId)
+        return rows.groupBy { it.teamId to it.teamName }.map { (key, picks) ->
+            RosterViewTeam(
+                teamId = key.first,
+                teamName = key.second,
+                picks = picks.map(::toRosterViewPick),
+            )
         }
+    }
 
     context(ctx: TransactionContext)
     private fun fetchRosterViewRows(seasonId: SeasonId): List<RosterViewRow> =

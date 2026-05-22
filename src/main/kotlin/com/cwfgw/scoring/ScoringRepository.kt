@@ -9,15 +9,13 @@ import com.cwfgw.jooq.tables.references.SEASON_STANDINGS
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.TournamentId
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.jooq.Field
 import org.jooq.impl.DSL
 import java.math.BigDecimal
 
 interface ScoringRepository {
     context(ctx: TransactionContext)
-    suspend fun getScores(
+    fun getScores(
         seasonId: SeasonId,
         tournamentId: TournamentId,
     ): List<FantasyScore>
@@ -31,32 +29,32 @@ interface ScoringRepository {
      * `groupBy { it.tournamentId }` at the call site preserves per-tournament order.
      */
     context(ctx: TransactionContext)
-    suspend fun getScoresBySeason(
+    fun getScoresBySeason(
         seasonId: SeasonId,
         tournamentIds: Collection<TournamentId>? = null,
     ): List<FantasyScore>
 
     context(ctx: TransactionContext)
-    suspend fun getStandings(seasonId: SeasonId): List<SeasonStanding>
+    fun getStandings(seasonId: SeasonId): List<SeasonStanding>
 
     context(ctx: TransactionContext)
-    suspend fun upsertScore(record: UpsertScore): FantasyScore
+    fun upsertScore(record: UpsertScore): FantasyScore
 
     context(ctx: TransactionContext)
-    suspend fun golferPointTotal(
+    fun golferPointTotal(
         seasonId: SeasonId,
         teamId: TeamId,
         golferId: GolferId,
     ): BigDecimal
 
     context(ctx: TransactionContext)
-    suspend fun teamSeasonTotals(
+    fun teamSeasonTotals(
         seasonId: SeasonId,
         teamId: TeamId,
     ): TeamSeasonTotals
 
     context(ctx: TransactionContext)
-    suspend fun upsertStanding(
+    fun upsertStanding(
         seasonId: SeasonId,
         teamId: TeamId,
         totalPoints: BigDecimal,
@@ -65,15 +63,15 @@ interface ScoringRepository {
 
     /** Wipe every fantasy score for the given tournament. Returns the row count for logging. */
     context(ctx: TransactionContext)
-    suspend fun deleteByTournament(tournamentId: TournamentId): Int
+    fun deleteByTournament(tournamentId: TournamentId): Int
 
     /** Wipe every fantasy score for the season across all tournaments. */
     context(ctx: TransactionContext)
-    suspend fun deleteBySeason(seasonId: SeasonId): Int
+    fun deleteBySeason(seasonId: SeasonId): Int
 
     /** Wipe every standings row for the season. */
     context(ctx: TransactionContext)
-    suspend fun deleteStandingsBySeason(seasonId: SeasonId): Int
+    fun deleteStandingsBySeason(seasonId: SeasonId): Int
 }
 
 data class TeamSeasonTotals(
@@ -98,20 +96,18 @@ fun ScoringRepository(): ScoringRepository = JooqScoringRepository()
 
 private class JooqScoringRepository : ScoringRepository {
     context(ctx: TransactionContext)
-    override suspend fun getScores(
+    override fun getScores(
         seasonId: SeasonId,
         tournamentId: TournamentId,
     ): List<FantasyScore> =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.selectFrom(FANTASY_SCORES)
-                .where(FANTASY_SCORES.SEASON_ID.eq(seasonId.value))
-                .and(FANTASY_SCORES.TOURNAMENT_ID.eq(tournamentId.value))
-                .orderBy(FANTASY_SCORES.POINTS.desc())
-                .fetch(::toFantasyScore)
-        }
+        ctx.dsl.selectFrom(FANTASY_SCORES)
+            .where(FANTASY_SCORES.SEASON_ID.eq(seasonId.value))
+            .and(FANTASY_SCORES.TOURNAMENT_ID.eq(tournamentId.value))
+            .orderBy(FANTASY_SCORES.POINTS.desc())
+            .fetch(::toFantasyScore)
 
     context(ctx: TransactionContext)
-    override suspend fun getScoresBySeason(
+    override fun getScoresBySeason(
         seasonId: SeasonId,
         tournamentIds: Collection<TournamentId>?,
     ): List<FantasyScore> {
@@ -123,132 +119,117 @@ private class JooqScoringRepository : ScoringRepository {
                 FANTASY_SCORES.SEASON_ID.eq(seasonId.value)
                     .and(FANTASY_SCORES.TOURNAMENT_ID.`in`(tournamentIds.map { it.value }))
             }
-        return withContext(Dispatchers.IO) {
-            ctx.dsl.selectFrom(FANTASY_SCORES)
-                .where(condition)
-                .orderBy(FANTASY_SCORES.TOURNAMENT_ID.asc(), FANTASY_SCORES.POINTS.desc())
-                .fetch(::toFantasyScore)
-        }
+        return ctx.dsl.selectFrom(FANTASY_SCORES)
+            .where(condition)
+            .orderBy(FANTASY_SCORES.TOURNAMENT_ID.asc(), FANTASY_SCORES.POINTS.desc())
+            .fetch(::toFantasyScore)
     }
 
     context(ctx: TransactionContext)
-    override suspend fun getStandings(seasonId: SeasonId): List<SeasonStanding> =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.selectFrom(SEASON_STANDINGS)
-                .where(SEASON_STANDINGS.SEASON_ID.eq(seasonId.value))
-                .orderBy(SEASON_STANDINGS.TOTAL_POINTS.desc())
-                .fetch(::toSeasonStanding)
-        }
+    override fun getStandings(seasonId: SeasonId): List<SeasonStanding> =
+        ctx.dsl.selectFrom(SEASON_STANDINGS)
+            .where(SEASON_STANDINGS.SEASON_ID.eq(seasonId.value))
+            .orderBy(SEASON_STANDINGS.TOTAL_POINTS.desc())
+            .fetch(::toSeasonStanding)
 
     context(ctx: TransactionContext)
-    override suspend fun upsertScore(record: UpsertScore): FantasyScore =
-        withContext(Dispatchers.IO) {
-            val upserted =
-                ctx.dsl.insertInto(FANTASY_SCORES)
-                    .set(scoreInsertAssignments(record))
-                    .onConflict(
-                        FANTASY_SCORES.SEASON_ID,
-                        FANTASY_SCORES.TEAM_ID,
-                        FANTASY_SCORES.TOURNAMENT_ID,
-                        FANTASY_SCORES.GOLFER_ID,
-                    )
-                    .doUpdate()
-                    .set(scoreUpdateAssignments(record.breakdown))
-                    .returning()
-                    .fetchOne() ?: error("UPSERT RETURNING produced no row for fantasy_scores")
-            toFantasyScore(upserted)
-        }
+    override fun upsertScore(record: UpsertScore): FantasyScore {
+        val upserted =
+            ctx.dsl.insertInto(FANTASY_SCORES)
+                .set(scoreInsertAssignments(record))
+                .onConflict(
+                    FANTASY_SCORES.SEASON_ID,
+                    FANTASY_SCORES.TEAM_ID,
+                    FANTASY_SCORES.TOURNAMENT_ID,
+                    FANTASY_SCORES.GOLFER_ID,
+                )
+                .doUpdate()
+                .set(scoreUpdateAssignments(record.breakdown))
+                .returning()
+                .fetchOne() ?: error("UPSERT RETURNING produced no row for fantasy_scores")
+        return toFantasyScore(upserted)
+    }
 
     context(ctx: TransactionContext)
-    override suspend fun golferPointTotal(
+    override fun golferPointTotal(
         seasonId: SeasonId,
         teamId: TeamId,
         golferId: GolferId,
     ): BigDecimal =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.select(DSL.coalesce(DSL.sum(FANTASY_SCORES.POINTS), BigDecimal.ZERO))
-                .from(FANTASY_SCORES)
-                .where(FANTASY_SCORES.SEASON_ID.eq(seasonId.value))
-                .and(FANTASY_SCORES.TEAM_ID.eq(teamId.value))
-                .and(FANTASY_SCORES.GOLFER_ID.eq(golferId.value))
-                .fetchOne(0, BigDecimal::class.java) ?: BigDecimal.ZERO
-        }
+        ctx.dsl.select(DSL.coalesce(DSL.sum(FANTASY_SCORES.POINTS), BigDecimal.ZERO))
+            .from(FANTASY_SCORES)
+            .where(FANTASY_SCORES.SEASON_ID.eq(seasonId.value))
+            .and(FANTASY_SCORES.TEAM_ID.eq(teamId.value))
+            .and(FANTASY_SCORES.GOLFER_ID.eq(golferId.value))
+            .fetchOne(0, BigDecimal::class.java) ?: BigDecimal.ZERO
 
     context(ctx: TransactionContext)
-    override suspend fun teamSeasonTotals(
+    override fun teamSeasonTotals(
         seasonId: SeasonId,
         teamId: TeamId,
-    ): TeamSeasonTotals =
-        withContext(Dispatchers.IO) {
-            val totalField = DSL.coalesce(DSL.sum(FANTASY_SCORES.POINTS), BigDecimal.ZERO)
-            val countField = DSL.countDistinct(FANTASY_SCORES.TOURNAMENT_ID)
-            ctx.dsl.select(totalField, countField)
-                .from(FANTASY_SCORES)
-                .where(FANTASY_SCORES.SEASON_ID.eq(seasonId.value))
-                .and(FANTASY_SCORES.TEAM_ID.eq(teamId.value))
-                .fetchOne { record ->
-                    TeamSeasonTotals(
-                        totalPoints = record.value1() ?: BigDecimal.ZERO,
-                        tournamentsPlayed = record.value2() ?: 0,
-                    )
-                } ?: TeamSeasonTotals(BigDecimal.ZERO, 0)
-        }
+    ): TeamSeasonTotals {
+        val totalField = DSL.coalesce(DSL.sum(FANTASY_SCORES.POINTS), BigDecimal.ZERO)
+        val countField = DSL.countDistinct(FANTASY_SCORES.TOURNAMENT_ID)
+        return ctx.dsl.select(totalField, countField)
+            .from(FANTASY_SCORES)
+            .where(FANTASY_SCORES.SEASON_ID.eq(seasonId.value))
+            .and(FANTASY_SCORES.TEAM_ID.eq(teamId.value))
+            .fetchOne { record ->
+                TeamSeasonTotals(
+                    totalPoints = record.value1() ?: BigDecimal.ZERO,
+                    tournamentsPlayed = record.value2() ?: 0,
+                )
+            } ?: TeamSeasonTotals(BigDecimal.ZERO, 0)
+    }
 
     context(ctx: TransactionContext)
-    override suspend fun deleteByTournament(tournamentId: TournamentId): Int =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.deleteFrom(FANTASY_SCORES)
-                .where(FANTASY_SCORES.TOURNAMENT_ID.eq(tournamentId.value))
-                .execute()
-        }
+    override fun deleteByTournament(tournamentId: TournamentId): Int =
+        ctx.dsl.deleteFrom(FANTASY_SCORES)
+            .where(FANTASY_SCORES.TOURNAMENT_ID.eq(tournamentId.value))
+            .execute()
 
     context(ctx: TransactionContext)
-    override suspend fun deleteBySeason(seasonId: SeasonId): Int =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.deleteFrom(FANTASY_SCORES)
-                .where(FANTASY_SCORES.SEASON_ID.eq(seasonId.value))
-                .execute()
-        }
+    override fun deleteBySeason(seasonId: SeasonId): Int =
+        ctx.dsl.deleteFrom(FANTASY_SCORES)
+            .where(FANTASY_SCORES.SEASON_ID.eq(seasonId.value))
+            .execute()
 
     context(ctx: TransactionContext)
-    override suspend fun deleteStandingsBySeason(seasonId: SeasonId): Int =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.deleteFrom(SEASON_STANDINGS)
-                .where(SEASON_STANDINGS.SEASON_ID.eq(seasonId.value))
-                .execute()
-        }
+    override fun deleteStandingsBySeason(seasonId: SeasonId): Int =
+        ctx.dsl.deleteFrom(SEASON_STANDINGS)
+            .where(SEASON_STANDINGS.SEASON_ID.eq(seasonId.value))
+            .execute()
 
     context(ctx: TransactionContext)
-    override suspend fun upsertStanding(
+    override fun upsertStanding(
         seasonId: SeasonId,
         teamId: TeamId,
         totalPoints: BigDecimal,
         tournamentsPlayed: Int,
-    ): SeasonStanding =
-        withContext(Dispatchers.IO) {
-            val insertValues =
-                mapOf<Field<*>, Any?>(
-                    SEASON_STANDINGS.SEASON_ID to seasonId.value,
-                    SEASON_STANDINGS.TEAM_ID to teamId.value,
-                    SEASON_STANDINGS.TOTAL_POINTS to totalPoints,
-                    SEASON_STANDINGS.TOURNAMENTS_PLAYED to tournamentsPlayed,
-                )
-            val updateValues =
-                mapOf<Field<*>, Any?>(
-                    SEASON_STANDINGS.TOTAL_POINTS to totalPoints,
-                    SEASON_STANDINGS.TOURNAMENTS_PLAYED to tournamentsPlayed,
-                    SEASON_STANDINGS.LAST_UPDATED to DSL.currentOffsetDateTime(),
-                )
-            val upserted =
-                ctx.dsl.insertInto(SEASON_STANDINGS)
-                    .set(insertValues)
-                    .onConflict(SEASON_STANDINGS.SEASON_ID, SEASON_STANDINGS.TEAM_ID)
-                    .doUpdate()
-                    .set(updateValues)
-                    .returning()
-                    .fetchOne() ?: error("UPSERT RETURNING produced no row for season_standings")
-            toSeasonStanding(upserted)
-        }
+    ): SeasonStanding {
+        val insertValues =
+            mapOf<Field<*>, Any?>(
+                SEASON_STANDINGS.SEASON_ID to seasonId.value,
+                SEASON_STANDINGS.TEAM_ID to teamId.value,
+                SEASON_STANDINGS.TOTAL_POINTS to totalPoints,
+                SEASON_STANDINGS.TOURNAMENTS_PLAYED to tournamentsPlayed,
+            )
+        val updateValues =
+            mapOf<Field<*>, Any?>(
+                SEASON_STANDINGS.TOTAL_POINTS to totalPoints,
+                SEASON_STANDINGS.TOURNAMENTS_PLAYED to tournamentsPlayed,
+                SEASON_STANDINGS.LAST_UPDATED to DSL.currentOffsetDateTime(),
+            )
+        val upserted =
+            ctx.dsl.insertInto(SEASON_STANDINGS)
+                .set(insertValues)
+                .onConflict(SEASON_STANDINGS.SEASON_ID, SEASON_STANDINGS.TEAM_ID)
+                .doUpdate()
+                .set(updateValues)
+                .returning()
+                .fetchOne() ?: error("UPSERT RETURNING produced no row for season_standings")
+        return toSeasonStanding(upserted)
+    }
 
     private fun scoreInsertAssignments(record: UpsertScore): Map<Field<*>, Any?> =
         mapOf(

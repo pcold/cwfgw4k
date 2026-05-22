@@ -35,16 +35,16 @@ class FakeTeamRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun findBySeason(seasonId: SeasonId): List<Team> =
+    override fun findBySeason(seasonId: SeasonId): List<Team> =
         teams.values
             .filter { it.seasonId == seasonId }
             .sortedWith(teamOrdering)
 
     context(ctx: TransactionContext)
-    override suspend fun findById(id: TeamId): Team? = teams[id]
+    override fun findById(id: TeamId): Team? = teams[id]
 
     context(ctx: TransactionContext)
-    override suspend fun create(
+    override fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
     ): Team {
@@ -64,7 +64,7 @@ class FakeTeamRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun update(
+    override fun update(
         id: TeamId,
         request: UpdateTeamRequest,
     ): Team? {
@@ -81,13 +81,13 @@ class FakeTeamRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun getRoster(teamId: TeamId): List<RosterEntry> =
+    override fun getRoster(teamId: TeamId): List<RosterEntry> =
         rosters.values
             .filter { it.teamId == teamId && it.droppedAt == null }
             .sortedWith(rosterOrdering)
 
     context(ctx: TransactionContext)
-    override suspend fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry> {
+    override fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry> {
         val teamIdsInSeason = teams.values.filter { it.seasonId == seasonId }.map { it.id }.toSet()
         return rosters.values
             .filter { it.teamId in teamIdsInSeason && it.droppedAt == null }
@@ -95,7 +95,7 @@ class FakeTeamRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun addToRoster(
+    override fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,
     ): RosterEntry {
@@ -116,7 +116,7 @@ class FakeTeamRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun dropFromRoster(
+    override fun dropFromRoster(
         teamId: TeamId,
         golferId: GolferId,
     ): Boolean {
@@ -129,6 +129,6 @@ class FakeTeamRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun getRosterView(seasonId: SeasonId): List<RosterViewTeam> =
+    override fun getRosterView(seasonId: SeasonId): List<RosterViewTeam> =
         rosterViews[seasonId] ?: emptyList()
 }

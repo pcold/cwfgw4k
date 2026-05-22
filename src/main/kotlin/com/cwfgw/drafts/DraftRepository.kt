@@ -10,44 +10,42 @@ import com.cwfgw.jooq.tables.references.DRAFT_PICKS
 import com.cwfgw.jooq.tables.references.GOLFERS
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.teams.TeamId
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.jooq.impl.DSL
 
 interface DraftRepository {
     context(ctx: TransactionContext)
-    suspend fun findBySeason(seasonId: SeasonId): Draft?
+    fun findBySeason(seasonId: SeasonId): Draft?
 
     context(ctx: TransactionContext)
-    suspend fun create(
+    fun create(
         seasonId: SeasonId,
         request: CreateDraftRequest,
     ): Draft
 
     context(ctx: TransactionContext)
-    suspend fun updateStatus(
+    fun updateStatus(
         id: DraftId,
         status: String,
     ): Draft?
 
     context(ctx: TransactionContext)
-    suspend fun getPicks(draftId: DraftId): List<DraftPick>
+    fun getPicks(draftId: DraftId): List<DraftPick>
 
     context(ctx: TransactionContext)
-    suspend fun createPicks(
+    fun createPicks(
         draftId: DraftId,
         slots: List<PickSlot>,
     ): List<DraftPick>
 
     context(ctx: TransactionContext)
-    suspend fun makePick(
+    fun makePick(
         draftId: DraftId,
         pickNum: Int,
         golferId: GolferId,
     ): DraftPick?
 
     context(ctx: TransactionContext)
-    suspend fun getAvailableGolfers(draftId: DraftId): List<Golfer>
+    fun getAvailableGolfers(draftId: DraftId): List<Golfer>
 }
 
 data class PickSlot(
@@ -60,122 +58,111 @@ fun DraftRepository(): DraftRepository = JooqDraftRepository()
 
 private class JooqDraftRepository : DraftRepository {
     context(ctx: TransactionContext)
-    override suspend fun findBySeason(seasonId: SeasonId): Draft? =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.selectFrom(DRAFTS)
-                .where(DRAFTS.SEASON_ID.eq(seasonId.value))
-                .fetchOne()
-                ?.let(::toDraft)
-        }
+    override fun findBySeason(seasonId: SeasonId): Draft? =
+        ctx.dsl.selectFrom(DRAFTS)
+            .where(DRAFTS.SEASON_ID.eq(seasonId.value))
+            .fetchOne()
+            ?.let(::toDraft)
 
     context(ctx: TransactionContext)
-    override suspend fun create(
+    override fun create(
         seasonId: SeasonId,
         request: CreateDraftRequest,
-    ): Draft =
-        withContext(Dispatchers.IO) {
-            val inserted =
-                ctx.dsl.insertInto(DRAFTS)
-                    .set(DRAFTS.SEASON_ID, seasonId.value)
-                    .set(DRAFTS.DRAFT_TYPE, request.draftType ?: DEFAULT_DRAFT_TYPE)
-                    .returning()
-                    .fetchOne() ?: error("INSERT RETURNING produced no row for drafts")
-            toDraft(inserted)
-        }
+    ): Draft {
+        val inserted =
+            ctx.dsl.insertInto(DRAFTS)
+                .set(DRAFTS.SEASON_ID, seasonId.value)
+                .set(DRAFTS.DRAFT_TYPE, request.draftType ?: DEFAULT_DRAFT_TYPE)
+                .returning()
+                .fetchOne() ?: error("INSERT RETURNING produced no row for drafts")
+        return toDraft(inserted)
+    }
 
     context(ctx: TransactionContext)
-    override suspend fun updateStatus(
+    override fun updateStatus(
         id: DraftId,
         status: String,
-    ): Draft? =
-        withContext(Dispatchers.IO) {
-            val assignments =
-                buildMap<org.jooq.Field<*>, Any?> {
-                    put(DRAFTS.STATUS, status)
-                    when (status) {
-                        "in_progress" -> put(DRAFTS.STARTED_AT, DSL.currentOffsetDateTime())
-                        "completed" -> put(DRAFTS.COMPLETED_AT, DSL.currentOffsetDateTime())
-                    }
+    ): Draft? {
+        val assignments =
+            buildMap<org.jooq.Field<*>, Any?> {
+                put(DRAFTS.STATUS, status)
+                when (status) {
+                    "in_progress" -> put(DRAFTS.STARTED_AT, DSL.currentOffsetDateTime())
+                    "completed" -> put(DRAFTS.COMPLETED_AT, DSL.currentOffsetDateTime())
                 }
-            ctx.dsl.update(DRAFTS)
-                .set(assignments)
-                .where(DRAFTS.ID.eq(id.value))
-                .returning()
-                .fetchOne()
-                ?.let(::toDraft)
-        }
+            }
+        return ctx.dsl.update(DRAFTS)
+            .set(assignments)
+            .where(DRAFTS.ID.eq(id.value))
+            .returning()
+            .fetchOne()
+            ?.let(::toDraft)
+    }
 
     context(ctx: TransactionContext)
-    override suspend fun getPicks(draftId: DraftId): List<DraftPick> =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.selectFrom(DRAFT_PICKS)
-                .where(DRAFT_PICKS.DRAFT_ID.eq(draftId.value))
-                .orderBy(DRAFT_PICKS.PICK_NUM.asc())
-                .fetch(::toPick)
-        }
+    override fun getPicks(draftId: DraftId): List<DraftPick> =
+        ctx.dsl.selectFrom(DRAFT_PICKS)
+            .where(DRAFT_PICKS.DRAFT_ID.eq(draftId.value))
+            .orderBy(DRAFT_PICKS.PICK_NUM.asc())
+            .fetch(::toPick)
 
     context(ctx: TransactionContext)
-    override suspend fun createPicks(
+    override fun createPicks(
         draftId: DraftId,
         slots: List<PickSlot>,
     ): List<DraftPick> =
-        withContext(Dispatchers.IO) {
-            slots.map { slot ->
-                val inserted =
-                    ctx.dsl.insertInto(DRAFT_PICKS)
-                        .set(DRAFT_PICKS.DRAFT_ID, draftId.value)
-                        .set(DRAFT_PICKS.TEAM_ID, slot.teamId.value)
-                        .set(DRAFT_PICKS.ROUND_NUM, slot.roundNum)
-                        .set(DRAFT_PICKS.PICK_NUM, slot.pickNum)
-                        .returning()
-                        .fetchOne() ?: error("INSERT RETURNING produced no row for draft_picks")
-                toPick(inserted)
-            }
+        slots.map { slot ->
+            val inserted =
+                ctx.dsl.insertInto(DRAFT_PICKS)
+                    .set(DRAFT_PICKS.DRAFT_ID, draftId.value)
+                    .set(DRAFT_PICKS.TEAM_ID, slot.teamId.value)
+                    .set(DRAFT_PICKS.ROUND_NUM, slot.roundNum)
+                    .set(DRAFT_PICKS.PICK_NUM, slot.pickNum)
+                    .returning()
+                    .fetchOne() ?: error("INSERT RETURNING produced no row for draft_picks")
+            toPick(inserted)
         }
 
     context(ctx: TransactionContext)
-    override suspend fun makePick(
+    override fun makePick(
         draftId: DraftId,
         pickNum: Int,
         golferId: GolferId,
     ): DraftPick? =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.update(DRAFT_PICKS)
-                .set(DRAFT_PICKS.GOLFER_ID, golferId.value)
-                .set(DRAFT_PICKS.PICKED_AT, DSL.currentOffsetDateTime())
-                .where(DRAFT_PICKS.DRAFT_ID.eq(draftId.value))
-                .and(DRAFT_PICKS.PICK_NUM.eq(pickNum))
-                .and(DRAFT_PICKS.GOLFER_ID.isNull)
-                .returning()
-                .fetchOne()
-                ?.let(::toPick)
-        }
+        ctx.dsl.update(DRAFT_PICKS)
+            .set(DRAFT_PICKS.GOLFER_ID, golferId.value)
+            .set(DRAFT_PICKS.PICKED_AT, DSL.currentOffsetDateTime())
+            .where(DRAFT_PICKS.DRAFT_ID.eq(draftId.value))
+            .and(DRAFT_PICKS.PICK_NUM.eq(pickNum))
+            .and(DRAFT_PICKS.GOLFER_ID.isNull)
+            .returning()
+            .fetchOne()
+            ?.let(::toPick)
 
     context(ctx: TransactionContext)
-    override suspend fun getAvailableGolfers(draftId: DraftId): List<Golfer> =
-        withContext(Dispatchers.IO) {
-            val pickedGolferIds =
-                DSL.select(DRAFT_PICKS.GOLFER_ID)
-                    .from(DRAFT_PICKS)
-                    .where(DRAFT_PICKS.DRAFT_ID.eq(draftId.value))
-                    .and(DRAFT_PICKS.GOLFER_ID.isNotNull)
-            ctx.dsl.selectFrom(GOLFERS)
-                .where(GOLFERS.ACTIVE.eq(true))
-                .and(GOLFERS.ID.notIn(pickedGolferIds))
-                .orderBy(GOLFERS.WORLD_RANKING.asc().nullsLast(), GOLFERS.LAST_NAME.asc())
-                .fetch { record ->
-                    Golfer(
-                        id = GolferId(checkNotNull(record.id)),
-                        pgaPlayerId = record.pgaPlayerId,
-                        firstName = record.firstName,
-                        lastName = record.lastName,
-                        country = record.country,
-                        worldRanking = record.worldRanking,
-                        active = checkNotNull(record.active),
-                        updatedAt = checkNotNull(record.updatedAt).toInstant(),
-                    )
-                }
-        }
+    override fun getAvailableGolfers(draftId: DraftId): List<Golfer> {
+        val pickedGolferIds =
+            DSL.select(DRAFT_PICKS.GOLFER_ID)
+                .from(DRAFT_PICKS)
+                .where(DRAFT_PICKS.DRAFT_ID.eq(draftId.value))
+                .and(DRAFT_PICKS.GOLFER_ID.isNotNull)
+        return ctx.dsl.selectFrom(GOLFERS)
+            .where(GOLFERS.ACTIVE.eq(true))
+            .and(GOLFERS.ID.notIn(pickedGolferIds))
+            .orderBy(GOLFERS.WORLD_RANKING.asc().nullsLast(), GOLFERS.LAST_NAME.asc())
+            .fetch { record ->
+                Golfer(
+                    id = GolferId(checkNotNull(record.id)),
+                    pgaPlayerId = record.pgaPlayerId,
+                    firstName = record.firstName,
+                    lastName = record.lastName,
+                    country = record.country,
+                    worldRanking = record.worldRanking,
+                    active = checkNotNull(record.active),
+                    updatedAt = checkNotNull(record.updatedAt).toInstant(),
+                )
+            }
+    }
 
     private fun toDraft(record: DraftsRecord): Draft =
         Draft(

@@ -6,33 +6,31 @@ import com.cwfgw.jooq.tables.references.SEASONS
 import com.cwfgw.jooq.tables.references.SEASON_RULE_PAYOUTS
 import com.cwfgw.jooq.tables.references.SEASON_RULE_SIDE_BET_ROUNDS
 import com.cwfgw.leagues.LeagueId
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.impl.DSL
 
 interface SeasonRepository {
     context(ctx: TransactionContext)
-    suspend fun findAll(
+    fun findAll(
         leagueId: LeagueId?,
         seasonYear: Int?,
     ): List<Season>
 
     context(ctx: TransactionContext)
-    suspend fun findById(id: SeasonId): Season?
+    fun findById(id: SeasonId): Season?
 
     context(ctx: TransactionContext)
-    suspend fun create(request: CreateSeasonRequest): Season
+    fun create(request: CreateSeasonRequest): Season
 
     context(ctx: TransactionContext)
-    suspend fun update(
+    fun update(
         id: SeasonId,
         request: UpdateSeasonRequest,
     ): Season?
 
     context(ctx: TransactionContext)
-    suspend fun getRules(id: SeasonId): SeasonRules?
+    fun getRules(id: SeasonId): SeasonRules?
 
     /**
      * Delete a season and everything that hangs off it (teams, tournaments,
@@ -41,54 +39,49 @@ interface SeasonRepository {
      * Single SQL DELETE — the FKs migrated in V010 cascade the subtree.
      */
     context(ctx: TransactionContext)
-    suspend fun delete(id: SeasonId): Boolean
+    fun delete(id: SeasonId): Boolean
 }
 
 fun SeasonRepository(): SeasonRepository = JooqSeasonRepository()
 
 private class JooqSeasonRepository : SeasonRepository {
     context(ctx: TransactionContext)
-    override suspend fun findAll(
+    override fun findAll(
         leagueId: LeagueId?,
         seasonYear: Int?,
     ): List<Season> =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.selectFrom(SEASONS)
-                .where(filterConditions(leagueId, seasonYear))
-                .orderBy(
-                    SEASONS.SEASON_YEAR.desc(),
-                    SEASONS.SEASON_NUMBER.desc(),
-                    SEASONS.CREATED_AT.desc(),
-                )
-                .fetch(::toSeason)
-        }
+        ctx.dsl.selectFrom(SEASONS)
+            .where(filterConditions(leagueId, seasonYear))
+            .orderBy(
+                SEASONS.SEASON_YEAR.desc(),
+                SEASONS.SEASON_NUMBER.desc(),
+                SEASONS.CREATED_AT.desc(),
+            )
+            .fetch(::toSeason)
 
     context(ctx: TransactionContext)
-    override suspend fun findById(id: SeasonId): Season? =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.selectFrom(SEASONS)
-                .where(SEASONS.ID.eq(id.value))
-                .fetchOne()
-                ?.let(::toSeason)
-        }
+    override fun findById(id: SeasonId): Season? =
+        ctx.dsl.selectFrom(SEASONS)
+            .where(SEASONS.ID.eq(id.value))
+            .fetchOne()
+            ?.let(::toSeason)
 
     // The seasons-row insert plus per-position payouts and per-round side-bet
     // rounds need to be atomic. Callers reach this through tx.update { }, so
     // ctx.dsl is already transactional — every statement here joins that
     // outer transaction without a nested transactionResult.
     context(ctx: TransactionContext)
-    override suspend fun create(request: CreateSeasonRequest): Season =
-        withContext(Dispatchers.IO) {
-            val values = insertAssignments(request)
-            val inserted =
-                ctx.dsl.insertInto(SEASONS)
-                    .set(values)
-                    .returning()
-                    .fetchOne() ?: error("INSERT RETURNING produced no row for seasons")
-            val season = toSeason(inserted)
-            request.rules?.let { writeRules(season.id, it) }
-            season
-        }
+    override fun create(request: CreateSeasonRequest): Season {
+        val values = insertAssignments(request)
+        val inserted =
+            ctx.dsl.insertInto(SEASONS)
+                .set(values)
+                .returning()
+                .fetchOne() ?: error("INSERT RETURNING produced no row for seasons")
+        val season = toSeason(inserted)
+        request.rules?.let { writeRules(season.id, it) }
+        return season
+    }
 
     context(ctx: TransactionContext)
     private fun writeRules(
@@ -111,76 +104,72 @@ private class JooqSeasonRepository : SeasonRepository {
     }
 
     context(ctx: TransactionContext)
-    override suspend fun update(
+    override fun update(
         id: SeasonId,
         request: UpdateSeasonRequest,
-    ): Season? =
-        withContext(Dispatchers.IO) {
-            val changes = updateAssignments(request)
-            if (changes.isEmpty()) {
-                ctx.dsl.selectFrom(SEASONS)
-                    .where(SEASONS.ID.eq(id.value))
-                    .fetchOne()
-                    ?.let(::toSeason)
-            } else {
-                ctx.dsl.update(SEASONS)
-                    .set(changes + (SEASONS.UPDATED_AT to DSL.currentOffsetDateTime()))
-                    .where(SEASONS.ID.eq(id.value))
-                    .returning()
-                    .fetchOne()
-                    ?.let(::toSeason)
-            }
+    ): Season? {
+        val changes = updateAssignments(request)
+        return if (changes.isEmpty()) {
+            ctx.dsl.selectFrom(SEASONS)
+                .where(SEASONS.ID.eq(id.value))
+                .fetchOne()
+                ?.let(::toSeason)
+        } else {
+            ctx.dsl.update(SEASONS)
+                .set(changes + (SEASONS.UPDATED_AT to DSL.currentOffsetDateTime()))
+                .where(SEASONS.ID.eq(id.value))
+                .returning()
+                .fetchOne()
+                ?.let(::toSeason)
         }
+    }
 
     context(ctx: TransactionContext)
-    override suspend fun getRules(id: SeasonId): SeasonRules? =
-        withContext(Dispatchers.IO) {
-            val season =
-                ctx.dsl.selectFrom(SEASONS)
-                    .where(SEASONS.ID.eq(id.value))
-                    .fetchOne() ?: return@withContext null
+    override fun getRules(id: SeasonId): SeasonRules? {
+        val season =
+            ctx.dsl.selectFrom(SEASONS)
+                .where(SEASONS.ID.eq(id.value))
+                .fetchOne() ?: return null
 
-            val payouts =
-                ctx.dsl.select(SEASON_RULE_PAYOUTS.AMOUNT)
-                    .from(SEASON_RULE_PAYOUTS)
-                    .where(SEASON_RULE_PAYOUTS.SEASON_ID.eq(id.value))
-                    .orderBy(SEASON_RULE_PAYOUTS.POSITION.asc())
-                    .fetch { record ->
-                        checkNotNull(record[SEASON_RULE_PAYOUTS.AMOUNT]) {
-                            "season_rule_payouts.amount is NOT NULL but returned null"
-                        }
+        val payouts =
+            ctx.dsl.select(SEASON_RULE_PAYOUTS.AMOUNT)
+                .from(SEASON_RULE_PAYOUTS)
+                .where(SEASON_RULE_PAYOUTS.SEASON_ID.eq(id.value))
+                .orderBy(SEASON_RULE_PAYOUTS.POSITION.asc())
+                .fetch { record ->
+                    checkNotNull(record[SEASON_RULE_PAYOUTS.AMOUNT]) {
+                        "season_rule_payouts.amount is NOT NULL but returned null"
                     }
+                }
 
-            val sideBetRounds =
-                ctx.dsl.select(SEASON_RULE_SIDE_BET_ROUNDS.ROUND)
-                    .from(SEASON_RULE_SIDE_BET_ROUNDS)
-                    .where(SEASON_RULE_SIDE_BET_ROUNDS.SEASON_ID.eq(id.value))
-                    .orderBy(SEASON_RULE_SIDE_BET_ROUNDS.ROUND.asc())
-                    .fetch { record ->
-                        checkNotNull(record[SEASON_RULE_SIDE_BET_ROUNDS.ROUND]) {
-                            "season_rule_side_bet_rounds.round is NOT NULL but returned null"
-                        }
+        val sideBetRounds =
+            ctx.dsl.select(SEASON_RULE_SIDE_BET_ROUNDS.ROUND)
+                .from(SEASON_RULE_SIDE_BET_ROUNDS)
+                .where(SEASON_RULE_SIDE_BET_ROUNDS.SEASON_ID.eq(id.value))
+                .orderBy(SEASON_RULE_SIDE_BET_ROUNDS.ROUND.asc())
+                .fetch { record ->
+                    checkNotNull(record[SEASON_RULE_SIDE_BET_ROUNDS.ROUND]) {
+                        "season_rule_side_bet_rounds.round is NOT NULL but returned null"
                     }
+                }
 
-            SeasonRules(
-                payouts = payouts.ifEmpty { SeasonRules.DEFAULT_PAYOUTS },
-                tieFloor =
-                    checkNotNull(season.tieFloor) {
-                        "seasons.tie_floor is NOT NULL but returned null"
-                    },
-                sideBetRounds = sideBetRounds.ifEmpty { SeasonRules.DEFAULT_SIDE_BET_ROUNDS },
-                sideBetAmount =
-                    checkNotNull(season.sideBetAmount) {
-                        "seasons.side_bet_amount is NOT NULL but returned null"
-                    },
-            )
-        }
+        return SeasonRules(
+            payouts = payouts.ifEmpty { SeasonRules.DEFAULT_PAYOUTS },
+            tieFloor =
+                checkNotNull(season.tieFloor) {
+                    "seasons.tie_floor is NOT NULL but returned null"
+                },
+            sideBetRounds = sideBetRounds.ifEmpty { SeasonRules.DEFAULT_SIDE_BET_ROUNDS },
+            sideBetAmount =
+                checkNotNull(season.sideBetAmount) {
+                    "seasons.side_bet_amount is NOT NULL but returned null"
+                },
+        )
+    }
 
     context(ctx: TransactionContext)
-    override suspend fun delete(id: SeasonId): Boolean =
-        withContext(Dispatchers.IO) {
-            ctx.dsl.deleteFrom(SEASONS).where(SEASONS.ID.eq(id.value)).execute() > 0
-        }
+    override fun delete(id: SeasonId): Boolean =
+        ctx.dsl.deleteFrom(SEASONS).where(SEASONS.ID.eq(id.value)).execute() > 0
 
     private fun filterConditions(
         leagueId: LeagueId?,

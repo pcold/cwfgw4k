@@ -201,7 +201,7 @@ class EspnService(
      * BEGIN/COMMIT round-trips before the wedge.
      */
     context(ctx: TransactionContext)
-    private suspend fun gatherLivePreviewState(
+    private fun gatherLivePreviewState(
         seasonId: SeasonId,
         date: LocalDate,
     ): LivePreviewState {
@@ -342,7 +342,7 @@ class EspnService(
      * to keep the whole finalize flow atomic (CWF-25).
      */
     context(ctx: TransactionContext)
-    internal suspend fun persistImportIn(
+    internal fun persistImportIn(
         tournament: Tournament,
         event: EspnTournament,
     ): EspnImport {
@@ -377,7 +377,7 @@ class EspnService(
     }
 
     context(ctx: TransactionContext)
-    private suspend fun buildMatchingContextIn(
+    private fun buildMatchingContextIn(
         seasonId: SeasonId,
         tournamentId: TournamentId,
     ): MatchingContext {
@@ -394,7 +394,7 @@ class EspnService(
     }
 
     context(ctx: TransactionContext)
-    private suspend fun matchOrCreateIn(
+    private fun matchOrCreateIn(
         competitor: EspnCompetitor,
         context: MatchingContext,
     ): GolferMatch? {
@@ -414,7 +414,7 @@ class EspnService(
     }
 
     context(ctx: TransactionContext)
-    private suspend fun locateExistingGolferIn(
+    private fun locateExistingGolferIn(
         competitor: EspnCompetitor,
         context: MatchingContext,
     ): Golfer? {
@@ -440,7 +440,7 @@ class EspnService(
     }
 
     context(ctx: TransactionContext)
-    private suspend fun persistResultsIn(
+    private fun persistResultsIn(
         tournamentId: TournamentId,
         matchedPairs: List<Pair<EspnCompetitor, GolferMatch>>,
     ) {
@@ -470,7 +470,7 @@ class EspnService(
      * payload). Updates only when something actually changes.
      */
     context(ctx: TransactionContext)
-    private suspend fun syncTournamentFromEventIn(
+    private fun syncTournamentFromEventIn(
         tournament: Tournament,
         event: EspnTournament,
     ) {

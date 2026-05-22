@@ -330,7 +330,7 @@ class AdminService(
     // surrounding tx, and the services capture their own Transactor and
     // would each open a fresh nested transaction.
     context(ctx: TransactionContext)
-    private suspend fun persistConfirmedTeam(
+    private fun persistConfirmedTeam(
         seasonId: SeasonId,
         team: ConfirmedTeam,
     ): Pair<Team, Int> {
