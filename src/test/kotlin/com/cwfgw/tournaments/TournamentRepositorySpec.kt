@@ -26,7 +26,7 @@ class TournamentRepositorySpec : FunSpec({
     val leagueRepo = LeagueRepository()
     val seasonRepo = SeasonRepository()
     val golferRepo = GolferRepository()
-    val tx = Transactor(postgres.dsl)
+    val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
     var seasonId = SeasonId(UUID.randomUUID())
 
     beforeEach {

@@ -48,7 +48,7 @@ import java.time.LocalDate
 class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
 
     val postgres = postgresHarness()
-    val tx = Transactor(postgres.dsl)
+    val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
     val leagueRepo = LeagueRepository()
     val seasonRepo = SeasonRepository()
     val tournamentRepo = TournamentRepository()

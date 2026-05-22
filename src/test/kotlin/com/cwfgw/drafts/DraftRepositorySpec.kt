@@ -28,7 +28,7 @@ class DraftRepositorySpec : FunSpec({
     val seasonRepo = SeasonRepository()
     val teamRepo = TeamRepository()
     val golferRepo = GolferRepository()
-    val tx = Transactor(postgres.dsl)
+    val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
     var seasonId = SeasonId(UUID.randomUUID())
 
     beforeEach {

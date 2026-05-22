@@ -12,7 +12,7 @@ class LeagueRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
     val repository = LeagueRepository()
-    val tx = Transactor(postgres.dsl)
+    val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
 
     test("findAll returns created leagues sorted by name") {
         tx.update {

@@ -51,7 +51,6 @@ flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.
 cloud-sql-postgres = { module = "com.google.cloud.sql:postgres-socket-factory", version.ref = "cloud-sql-postgres" }
 jooq = { module = "org.jooq:jooq", version.ref = "jooq" }
 jooq-kotlin = { module = "org.jooq:jooq-kotlin", version.ref = "jooq" }
-jooq-kotlin-coroutines = { module = "org.jooq:jooq-kotlin-coroutines", version.ref = "jooq" }
 jooq-codegen = { module = "org.jooq:jooq-codegen", version.ref = "jooq" }
 jooq-meta = { module = "org.jooq:jooq-meta", version.ref = "jooq" }
 
@@ -89,7 +88,7 @@ ktor-client = [
     "ktor-client-cio",
     "ktor-client-content-negotiation",
 ]
-jooq = ["jooq", "jooq-kotlin", "jooq-kotlin-coroutines"]
+jooq = ["jooq", "jooq-kotlin"]
 hoplite = ["hoplite-core", "hoplite-yaml"]
 kotest = [
     "kotest-runner-junit5",

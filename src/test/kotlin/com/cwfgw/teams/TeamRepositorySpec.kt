@@ -26,7 +26,7 @@ class TeamRepositorySpec : FunSpec({
     val postgres = postgresHarness()
     val repository = TeamRepository()
     val golferRepo = GolferRepository()
-    val tx = Transactor(postgres.dsl)
+    val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
     val seasonRepo = SeasonRepository()
     val leagueRepo = LeagueRepository()
     var seasonId = SeasonId(UUID.randomUUID())

@@ -14,7 +14,7 @@ class UserRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
     val repository = UserRepository()
-    val tx = Transactor(postgres.dsl)
+    val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
 
     test("create persists a user with default role 'user' and returns the public shape") {
         val created = tx.update { repository.create(NewUser(username = "alice", passwordHash = "hash-1")) }

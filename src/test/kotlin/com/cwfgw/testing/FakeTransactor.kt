@@ -14,13 +14,13 @@ import org.jooq.impl.DSL
 internal class FakeTransactor(
     private val ctx: TransactionContext = noopTransactionContext,
 ) : Transactor {
-    override suspend fun <A> get(block: suspend context(TransactionContext) () -> A): A =
+    override suspend fun <A> get(block: context(TransactionContext) () -> A): A =
         with(ctx) { block() }
 
-    override suspend fun <A> read(block: suspend context(TransactionContext) () -> A): A =
+    override suspend fun <A> read(block: context(TransactionContext) () -> A): A =
         with(ctx) { block() }
 
-    override suspend fun <A> update(block: suspend context(TransactionContext) () -> A): A =
+    override suspend fun <A> update(block: context(TransactionContext) () -> A): A =
         with(ctx) { block() }
 }
 

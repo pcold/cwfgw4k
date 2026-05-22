@@ -115,7 +115,7 @@ internal fun buildServices(
     database: Database,
     httpClient: HttpClient,
 ): AppServices {
-    val transactor = Transactor(database.dsl)
+    val transactor = Transactor(database.dsl, config.db.maxPoolSize)
     val requestCache =
         RequestCache(
             repository = CacheRepository(),

@@ -34,7 +34,7 @@ import java.util.UUID
 class SeasonRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
-    val tx = Transactor(postgres.dsl)
+    val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
     val repository = SeasonRepository()
     val leagueRepo = LeagueRepository()
     var castlewoodId = LeagueId(UUID.randomUUID())

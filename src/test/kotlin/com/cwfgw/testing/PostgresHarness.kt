@@ -29,6 +29,8 @@ internal class PostgresHarness(
 ) {
     val dsl: DSLContext = DSL.using(dataSource, SQLDialect.POSTGRES)
 
+    val maxPoolSize: Int = dataSource.maximumPoolSize
+
     fun reset() {
         val tables =
             dsl.meta()
