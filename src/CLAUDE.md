@@ -251,7 +251,8 @@ Rules:
   - `Dispatchers.Default` for CPU-bound work
   - No `Dispatchers.Main` in this codebase
 - **MUST** wrap blocking Java APIs in `withContext(Dispatchers.IO)` when
-  calling from coroutines.
+  calling from coroutines — the one exception is blocking JDBC reached
+  through the `Transactor`, which confines it centrally (see jOOQ below).
 - **MUST NOT** swallow `CancellationException`. Let it propagate.
 - **SHOULD** check `isActive` or `yield()` in long-running loops.
 
@@ -326,7 +327,13 @@ Rules:
   returns domain types, not jOOQ records.
 - **MUST NOT** expose jOOQ-generated types outside the repository package.
   Map to domain types explicitly at the repository boundary.
-- **MUST** wrap blocking JDBC calls in `withContext(Dispatchers.IO)`.
+- **MUST NOT** wrap repository jOOQ calls in `withContext`. Repository
+  methods are plain blocking (non-`suspend`) functions. Confining blocking
+  JDBC off the request path is the `Transactor`'s single responsibility —
+  it runs every `get` / `read` / `update` block on one `Dispatchers.IO`
+  view sized to the connection pool. A per-method `withContext` is
+  redundant nesting and would let the call escape that pool-sized
+  dispatcher.
 - **MUST NOT** capture a `DSLContext` in a repository constructor or pass one
   through as a method argument. Repositories declare every method with
   `context(ctx: TransactionContext)` and read the DSL via `ctx.dsl`. The
