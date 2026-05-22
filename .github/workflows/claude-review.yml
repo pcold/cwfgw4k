@@ -1,0 +1,79 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  # Automation mode: a prompt is supplied, so the action runs on every
+  # pull_request event without an @claude mention. A run with neither a
+  # prompt nor a trigger phrase exits "Trigger result: false" — supplying
+  # the prompt below is what makes the review run on every PR.
+  pr-review:
+    name: Automated PR review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          use_sticky_comment: true
+          prompt: |
+            You are reviewing this pull request as the cwfgw4k pre-merge gate.
+
+            First read the review contract:
+            - .claude/CLAUDE.md — cross-cutting rules: hygiene, naming,
+              change scope, and "Working with AI Assistants".
+            - src/CLAUDE.md for any change under src/ (Kotlin / Ktor /
+              jOOQ rules).
+            - ui/CLAUDE.md for any change under ui/ (React / TypeScript
+              rules).
+
+            Then review the diff (use `gh pr diff` and `gh pr view`) for:
+            - Correctness and the MUST / MUST NOT rules in those guides.
+            - Test coverage: flag a production change with no
+              corresponding test as a gap worth filling.
+            - Change scope: one logical change per PR; flag bundled
+              unrelated changes, or a CLAUDE.md update mixed with the
+              work that motivated it.
+
+            Leave an inline comment on the specific line for each concrete
+            finding. Classify every finding as DEFECT (a MUST violation),
+            NEEDS JUSTIFICATION (a SHOULD violation), or NIT. Do not
+            nitpick generated code or pure mechanical renames.
+
+            Finish with one summary comment: counts by severity and a
+            verdict of BLOCK (any defects), PROCEED WITH JUSTIFICATIONS,
+            or CLEAN. Be concise. Do not modify the branch.
+          claude_args: |
+            --model claude-sonnet-4-6
+            --allowedTools "Read,Grep,Glob,Bash(gh pr diff:*),Bash(gh pr view:*),mcp__github_inline_comment__create_inline_comment"
+
+  # Tag mode: NO prompt. The action stays dormant until a comment contains
+  # the trigger phrase, then responds conversationally. Supplying a prompt
+  # here would silently convert this into automation mode.
+  claude-mention:
+    name: "@claude on demand"
+    if: github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          trigger_phrase: "@claude"
+          use_sticky_comment: true
+          claude_args: "--model claude-sonnet-4-6"
