@@ -32,7 +32,7 @@ class ScoringRepositorySpec : FunSpec({
     val teamRepo = TeamRepository()
     val tournamentRepo = TournamentRepository()
     val golferRepo = GolferRepository()
-    val tx = Transactor(postgres.dsl)
+    val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
     var seasonId = SeasonId(UUID.randomUUID())
     var teamA = TeamId(UUID.randomUUID())
     var teamB = TeamId(UUID.randomUUID())

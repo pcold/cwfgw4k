@@ -26,7 +26,7 @@ class TournamentLinkRepositorySpec : FunSpec({
     val seasonRepo = SeasonRepository()
     val tournamentRepo = TournamentRepository()
     val golferRepo = GolferRepository()
-    val tx = Transactor(postgres.dsl)
+    val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
 
     suspend fun seedTournament(): TournamentId =
         tx.update {

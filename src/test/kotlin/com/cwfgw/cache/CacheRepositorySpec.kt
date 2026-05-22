@@ -11,7 +11,7 @@ class CacheRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
     val repository = CacheRepository()
-    val tx = Transactor(postgres.dsl)
+    val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
 
     test("get returns null when no entry exists") {
         tx.read { repository.get("missing") }.shouldBeNull()

@@ -14,7 +14,7 @@ import java.util.UUID
 class GolferRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
-    val tx = Transactor(postgres.dsl)
+    val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
     val repository = GolferRepository()
 
     test("create persists the golfer and returns a row populated with id and updatedAt") {

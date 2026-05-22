@@ -1,10 +1,10 @@
 package com.cwfgw.db
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jooq.DSLContext
-import org.jooq.kotlin.coroutines.transactionCoroutine
 
 /**
  * Bridges the root [DSLContext] into a [TransactionContext] that repositories
@@ -24,6 +24,12 @@ import org.jooq.kotlin.coroutines.transactionCoroutine
  * - [update] opens a default-isolation read/write transaction. The block is
  *   committed atomically on normal return and rolled back if it throws.
  *
+ * The `block` is **not** `suspend` — deliberately. Every entry point runs
+ * blocking jOOQ work and holds a pooled connection for its duration;
+ * suspending while a connection is checked out is the failure mode this
+ * contract forbids by construction. Compose suspending work *around*
+ * `get`/`read`/`update`, never inside the block.
+ *
  * Each entry point is wrapped with a slow-tx watchdog: if a single tx takes
  * longer than [SLOW_TX_THRESHOLD_MS], a structured WARN log line is
  * emitted (`cwfgw4k.db.slow_tx kind=… duration_ms=…`). Cloud Logging picks
@@ -31,43 +37,54 @@ import org.jooq.kotlin.coroutines.transactionCoroutine
  * a fingerprint we can grep without a debugger.
  */
 interface Transactor {
-    suspend fun <A> get(block: suspend context(TransactionContext) () -> A): A
+    suspend fun <A> get(block: context(TransactionContext) () -> A): A
 
-    suspend fun <A> read(block: suspend context(TransactionContext) () -> A): A
+    suspend fun <A> read(block: context(TransactionContext) () -> A): A
 
-    suspend fun <A> update(block: suspend context(TransactionContext) () -> A): A
+    suspend fun <A> update(block: context(TransactionContext) () -> A): A
 }
 
-fun Transactor(dsl: DSLContext): Transactor = JooqTransactor(dsl)
+/**
+ * Build a [Transactor] over [dsl]. [maxPoolSize] must be the size of the
+ * Hikari pool backing [dsl]: blocking JDBC is confined to a [Dispatchers.IO]
+ * view capped at exactly that many concurrent coroutines, so a coroutine
+ * that wins a dispatcher slot is always able to check out a connection.
+ */
+fun Transactor(dsl: DSLContext, maxPoolSize: Int): Transactor = JooqTransactor(dsl, maxPoolSize)
 
 private const val SLOW_TX_THRESHOLD_MS: Long = 3_000
 
 private val log = KotlinLogging.logger("com.cwfgw.db.Transactor")
 
-private class JooqTransactor(private val rootDsl: DSLContext) : Transactor {
+private class JooqTransactor(
+    private val rootDsl: DSLContext,
+    maxPoolSize: Int,
+) : Transactor {
     private val rootContext: TransactionContext = TransactionContext(rootDsl)
 
-    // CWF-24: every body runs under `withContext(Dispatchers.IO)`. jOOQ's
-    // [transactionCoroutine] bridges Reactor publishers to coroutines on top
-    // of a blocking JDBC driver — see the doc note at
-    // https://www.jooq.org/doc/latest/manual/sql-building/kotlin-sql-building/kotlin-coroutines/.
-    // If the bridge runs on the caller's dispatcher and the caller is on
-    // Dispatchers.Default (max(2, #CPUs) threads — i.e. 2 on a 1-vCPU
-    // Cloud Run instance), four concurrent transactions can wedge: every
-    // worker is blocked on JDBC and there's nobody left to resume the
-    // Reactor subscriber awaiting the result. Dispatchers.IO defaults to
-    // 64 threads, so the bridge has the headroom it needs.
-    override suspend fun <A> get(block: suspend context(TransactionContext) () -> A): A =
+    // CWF-24 / CWF-30: blocking jOOQ is confined to exactly one place — a
+    // `Dispatchers.IO` view capped at the connection-pool size. `read` and
+    // `update` run the blocking `transactionResult`: a transaction parks one
+    // thread on the JDBC socket for its duration and frees it on return.
+    // There is no Reactor-to-coroutine bridge to wedge, so the worst case
+    // under concurrency degrades to a predictable throughput throttle —
+    // coroutines queue on the dispatcher — never a deadlock. Sizing the cap
+    // to the pool keeps the dispatcher the single backpressure point: a
+    // coroutine holding a slot can always acquire a connection, so no thread
+    // parks inside Hikari's `getConnection()`.
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(maxPoolSize)
+
+    override suspend fun <A> get(block: context(TransactionContext) () -> A): A =
         timed("get") {
-            withContext(Dispatchers.IO) {
+            withContext(dispatcher) {
                 with(rootContext) { block() }
             }
         }
 
-    override suspend fun <A> read(block: suspend context(TransactionContext) () -> A): A =
+    override suspend fun <A> read(block: context(TransactionContext) () -> A): A =
         timed("read") {
-            withContext(Dispatchers.IO) {
-                rootDsl.transactionCoroutine { config ->
+            withContext(dispatcher) {
+                rootDsl.transactionResult { config ->
                     val txDsl = config.dsl()
                     // Must run before any other statement in the transaction; PG rejects
                     // SET TRANSACTION after the snapshot has been taken by a real query.
@@ -77,10 +94,10 @@ private class JooqTransactor(private val rootDsl: DSLContext) : Transactor {
             }
         }
 
-    override suspend fun <A> update(block: suspend context(TransactionContext) () -> A): A =
+    override suspend fun <A> update(block: context(TransactionContext) () -> A): A =
         timed("update") {
-            withContext(Dispatchers.IO) {
-                rootDsl.transactionCoroutine { config ->
+            withContext(dispatcher) {
+                rootDsl.transactionResult { config ->
                     with(TransactionContext(config.dsl())) { block() }
                 }
             }

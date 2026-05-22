@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
+import java.util.concurrent.CountDownLatch
 
 /**
  * Real-DB coverage for the [Transactor] interface contract.
@@ -23,7 +24,7 @@ import kotlinx.coroutines.runBlocking
 class TransactorSpec : FunSpec({
 
     val postgres = postgresHarness()
-    val transactor = Transactor(postgres.dsl)
+    val transactor = Transactor(postgres.dsl, postgres.maxPoolSize)
 
     test("update commits the block's writes when it returns normally") {
         transactor.update { insertLeague("Castlewood") }
@@ -46,7 +47,7 @@ class TransactorSpec : FunSpec({
     test("read sees a consistent snapshot across statements even when a writer commits mid-block") {
         runBlocking {
             val readStarted = CompletableDeferred<Unit>()
-            val writerCommitted = CompletableDeferred<Unit>()
+            val writerCommitted = CountDownLatch(1)
 
             coroutineScope {
                 val readJob =
@@ -62,7 +63,7 @@ class TransactorSpec : FunSpec({
 
                 readStarted.await()
                 postgres.dsl.insertInto(LEAGUES).set(LEAGUES.NAME, "concurrent").execute()
-                writerCommitted.complete(Unit)
+                writerCommitted.countDown()
 
                 val (before, after) = readJob.await()
                 before shouldBe 0

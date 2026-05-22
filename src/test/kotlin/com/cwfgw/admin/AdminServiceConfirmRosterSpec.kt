@@ -38,7 +38,7 @@ import kotlinx.coroutines.runBlocking
 class AdminServiceConfirmRosterSpec : FunSpec({
 
     val postgres = postgresHarness()
-    val tx = Transactor(postgres.dsl)
+    val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
     val golferRepo = GolferRepository()
 
     fun newService(): AdminService {
