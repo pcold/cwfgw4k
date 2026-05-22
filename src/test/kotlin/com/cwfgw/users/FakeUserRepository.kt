@@ -16,20 +16,20 @@ class FakeUserRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun findById(id: UserId): User? = store[id]?.user
+    override fun findById(id: UserId): User? = store[id]?.user
 
     context(ctx: TransactionContext)
-    override suspend fun findByUsername(username: String): User? =
+    override fun findByUsername(username: String): User? =
         store.values.firstOrNull { it.user.username == username }?.user
 
     context(ctx: TransactionContext)
-    override suspend fun findCredentials(username: String): UserCredentials? =
+    override fun findCredentials(username: String): UserCredentials? =
         store.values
             .firstOrNull { it.user.username == username }
             ?.let { entry -> UserCredentials(user = entry.user, passwordHash = entry.passwordHash) }
 
     context(ctx: TransactionContext)
-    override suspend fun create(request: NewUser): User {
+    override fun create(request: NewUser): User {
         require(store.values.none { it.user.username == request.username }) {
             "FakeUserRepository: duplicate username '${request.username}'"
         }
@@ -45,7 +45,7 @@ class FakeUserRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun countAll(): Long = store.size.toLong()
+    override fun countAll(): Long = store.size.toLong()
 
     /** Test-only: drop every stored user. Lets specs simulate "user deleted from DB mid-session". */
     fun reset() {

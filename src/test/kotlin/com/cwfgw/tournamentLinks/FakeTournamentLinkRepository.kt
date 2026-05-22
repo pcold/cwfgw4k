@@ -15,13 +15,13 @@ class FakeTournamentLinkRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun listByTournament(tournamentId: TournamentId): List<TournamentPlayerOverride> =
+    override fun listByTournament(tournamentId: TournamentId): List<TournamentPlayerOverride> =
         store.values
             .filter { it.tournamentId == tournamentId }
             .sortedBy { it.espnCompetitorId }
 
     context(ctx: TransactionContext)
-    override suspend fun upsert(
+    override fun upsert(
         tournamentId: TournamentId,
         espnCompetitorId: String,
         golferId: GolferId,
@@ -37,7 +37,7 @@ class FakeTournamentLinkRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun delete(
+    override fun delete(
         tournamentId: TournamentId,
         espnCompetitorId: String,
     ): Boolean = store.remove(tournamentId to espnCompetitorId) != null

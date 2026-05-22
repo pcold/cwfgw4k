@@ -163,38 +163,38 @@ private class ThrowingOnUpsertStandingScoringRepository(
     private val delegate: ScoringRepository,
 ) : ScoringRepository {
     context(ctx: TransactionContext)
-    override suspend fun getScores(
+    override fun getScores(
         seasonId: SeasonId,
         tournamentId: TournamentId,
     ): List<FantasyScore> = delegate.getScores(seasonId, tournamentId)
 
     context(ctx: TransactionContext)
-    override suspend fun getScoresBySeason(
+    override fun getScoresBySeason(
         seasonId: SeasonId,
         tournamentIds: Collection<TournamentId>?,
     ): List<FantasyScore> = delegate.getScoresBySeason(seasonId, tournamentIds)
 
     context(ctx: TransactionContext)
-    override suspend fun getStandings(seasonId: SeasonId): List<SeasonStanding> = delegate.getStandings(seasonId)
+    override fun getStandings(seasonId: SeasonId): List<SeasonStanding> = delegate.getStandings(seasonId)
 
     context(ctx: TransactionContext)
-    override suspend fun upsertScore(record: UpsertScore): FantasyScore = delegate.upsertScore(record)
+    override fun upsertScore(record: UpsertScore): FantasyScore = delegate.upsertScore(record)
 
     context(ctx: TransactionContext)
-    override suspend fun golferPointTotal(
+    override fun golferPointTotal(
         seasonId: SeasonId,
         teamId: TeamId,
         golferId: GolferId,
     ): BigDecimal = delegate.golferPointTotal(seasonId, teamId, golferId)
 
     context(ctx: TransactionContext)
-    override suspend fun teamSeasonTotals(
+    override fun teamSeasonTotals(
         seasonId: SeasonId,
         teamId: TeamId,
     ): TeamSeasonTotals = delegate.teamSeasonTotals(seasonId, teamId)
 
     context(ctx: TransactionContext)
-    override suspend fun upsertStanding(
+    override fun upsertStanding(
         seasonId: SeasonId,
         teamId: TeamId,
         totalPoints: BigDecimal,
@@ -202,14 +202,14 @@ private class ThrowingOnUpsertStandingScoringRepository(
     ): Nothing = error("Forced rollback in test — refreshStandings should not have reached upsertStanding")
 
     context(ctx: TransactionContext)
-    override suspend fun deleteByTournament(tournamentId: TournamentId): Int =
+    override fun deleteByTournament(tournamentId: TournamentId): Int =
         delegate.deleteByTournament(tournamentId)
 
     context(ctx: TransactionContext)
-    override suspend fun deleteBySeason(seasonId: SeasonId): Int =
+    override fun deleteBySeason(seasonId: SeasonId): Int =
         delegate.deleteBySeason(seasonId)
 
     context(ctx: TransactionContext)
-    override suspend fun deleteStandingsBySeason(seasonId: SeasonId): Int =
+    override fun deleteStandingsBySeason(seasonId: SeasonId): Int =
         delegate.deleteStandingsBySeason(seasonId)
 }

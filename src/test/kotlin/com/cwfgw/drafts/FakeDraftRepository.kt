@@ -25,11 +25,11 @@ class FakeDraftRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun findBySeason(seasonId: SeasonId): Draft? =
+    override fun findBySeason(seasonId: SeasonId): Draft? =
         drafts.values.firstOrNull { it.seasonId == seasonId }
 
     context(ctx: TransactionContext)
-    override suspend fun create(
+    override fun create(
         seasonId: SeasonId,
         request: CreateDraftRequest,
     ): Draft {
@@ -48,7 +48,7 @@ class FakeDraftRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun updateStatus(
+    override fun updateStatus(
         id: DraftId,
         status: String,
     ): Draft? {
@@ -65,13 +65,13 @@ class FakeDraftRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun getPicks(draftId: DraftId): List<DraftPick> =
+    override fun getPicks(draftId: DraftId): List<DraftPick> =
         picks.values
             .filter { it.draftId == draftId }
             .sortedBy { it.pickNum }
 
     context(ctx: TransactionContext)
-    override suspend fun createPicks(
+    override fun createPicks(
         draftId: DraftId,
         slots: List<PickSlot>,
     ): List<DraftPick> =
@@ -91,7 +91,7 @@ class FakeDraftRepository(
         }
 
     context(ctx: TransactionContext)
-    override suspend fun makePick(
+    override fun makePick(
         draftId: DraftId,
         pickNum: Int,
         golferId: GolferId,
@@ -106,7 +106,7 @@ class FakeDraftRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun getAvailableGolfers(draftId: DraftId): List<Golfer> {
+    override fun getAvailableGolfers(draftId: DraftId): List<Golfer> {
         val pickedIds =
             picks.values
                 .filter { it.draftId == draftId }

@@ -74,7 +74,7 @@ class ScoringService(
      * wrapped in [Transactor.update].
      */
     context(ctx: TransactionContext)
-    internal suspend fun calculateScoresIn(
+    internal fun calculateScoresIn(
         seasonId: SeasonId,
         tournamentId: TournamentId,
     ): Result<WeeklyScoreResult, ScoringError> {
@@ -110,7 +110,7 @@ class ScoringService(
 
     /** Composable variant of [refreshStandings]; see [calculateScoresIn] for the rationale. */
     context(ctx: TransactionContext)
-    internal suspend fun refreshStandingsIn(seasonId: SeasonId): Result<List<SeasonStanding>, ScoringError> {
+    internal fun refreshStandingsIn(seasonId: SeasonId): Result<List<SeasonStanding>, ScoringError> {
         seasonRepository.findById(seasonId) ?: return Result.Err(ScoringError.SeasonNotFound)
         val teams = teamRepository.findBySeason(seasonId)
         val standings =
@@ -141,7 +141,7 @@ class ScoringService(
         }
 
     context(ctx: TransactionContext)
-    private suspend fun scoreGolferForTeam(
+    private fun scoreGolferForTeam(
         inputs: ScoringInputs,
         teamId: TeamId,
         entry: RosterEntry,
@@ -209,7 +209,7 @@ class ScoringService(
     }
 
     context(ctx: TransactionContext)
-    private suspend fun buildSideBetRound(
+    private fun buildSideBetRound(
         context: SideBetContext,
         round: Int,
     ): SideBetRound {

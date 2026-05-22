@@ -26,7 +26,7 @@ class FakeSeasonRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun findAll(
+    override fun findAll(
         leagueId: LeagueId?,
         seasonYear: Int?,
     ): List<Season> =
@@ -38,10 +38,10 @@ class FakeSeasonRepository(
             .sortedWith(seasonOrdering)
 
     context(ctx: TransactionContext)
-    override suspend fun findById(id: SeasonId): Season? = store[id]
+    override fun findById(id: SeasonId): Season? = store[id]
 
     context(ctx: TransactionContext)
-    override suspend fun create(request: CreateSeasonRequest): Season {
+    override fun create(request: CreateSeasonRequest): Season {
         val now = clock()
         // Mirrors the real repo: when `rules` is supplied it overrides the
         // top-level tieFloor/sideBetAmount and persists payouts + side-bet
@@ -69,7 +69,7 @@ class FakeSeasonRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun update(
+    override fun update(
         id: SeasonId,
         request: UpdateSeasonRequest,
     ): Season? {
@@ -89,7 +89,7 @@ class FakeSeasonRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun getRules(id: SeasonId): SeasonRules? {
+    override fun getRules(id: SeasonId): SeasonRules? {
         val season = store[id] ?: return null
         val custom = rulesStore[id]
         return SeasonRules(
@@ -101,7 +101,7 @@ class FakeSeasonRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun delete(id: SeasonId): Boolean {
+    override fun delete(id: SeasonId): Boolean {
         rulesStore.remove(id)
         return store.remove(id) != null
     }

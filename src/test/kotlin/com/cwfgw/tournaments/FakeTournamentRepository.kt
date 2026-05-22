@@ -30,7 +30,7 @@ class FakeTournamentRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun findAll(
+    override fun findAll(
         seasonId: SeasonId?,
         status: TournamentStatus?,
     ): List<Tournament> =
@@ -42,14 +42,14 @@ class FakeTournamentRepository(
             .toList()
 
     context(ctx: TransactionContext)
-    override suspend fun findById(id: TournamentId): Tournament? = tournaments[id]
+    override fun findById(id: TournamentId): Tournament? = tournaments[id]
 
     context(ctx: TransactionContext)
-    override suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
+    override fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
         tournaments.values.firstOrNull { it.pgaTournamentId == pgaTournamentId }
 
     context(ctx: TransactionContext)
-    override suspend fun create(request: CreateTournamentRequest): Tournament {
+    override fun create(request: CreateTournamentRequest): Tournament {
         val tournament =
             Tournament(
                 id = idFactory(),
@@ -71,7 +71,7 @@ class FakeTournamentRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun update(
+    override fun update(
         id: TournamentId,
         request: UpdateTournamentRequest,
     ): Tournament? {
@@ -92,13 +92,13 @@ class FakeTournamentRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun getResults(tournamentId: TournamentId): List<TournamentResult> =
+    override fun getResults(tournamentId: TournamentId): List<TournamentResult> =
         results.values
             .filter { it.tournamentId == tournamentId }
             .sortedWith(resultOrdering)
 
     context(ctx: TransactionContext)
-    override suspend fun getResultsByTournaments(ids: Collection<TournamentId>): List<TournamentResult> {
+    override fun getResultsByTournaments(ids: Collection<TournamentId>): List<TournamentResult> {
         if (ids.isEmpty()) return emptyList()
         val idSet = ids.toSet()
         return results.values
@@ -107,14 +107,14 @@ class FakeTournamentRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun deleteResultsByTournament(tournamentId: TournamentId): Int {
+    override fun deleteResultsByTournament(tournamentId: TournamentId): Int {
         val matching = results.values.filter { it.tournamentId == tournamentId }
         matching.forEach { results.remove(it.id) }
         return matching.size
     }
 
     context(ctx: TransactionContext)
-    override suspend fun deleteResultsBySeason(seasonId: SeasonId): Int {
+    override fun deleteResultsBySeason(seasonId: SeasonId): Int {
         val tournamentIds = tournaments.values.filter { it.seasonId == seasonId }.map { it.id }.toSet()
         val matching = results.values.filter { it.tournamentId in tournamentIds }
         matching.forEach { results.remove(it.id) }
@@ -122,14 +122,14 @@ class FakeTournamentRepository(
     }
 
     context(ctx: TransactionContext)
-    override suspend fun resetSeasonTournaments(seasonId: SeasonId): Int {
+    override fun resetSeasonTournaments(seasonId: SeasonId): Int {
         val matching = tournaments.values.filter { it.seasonId == seasonId }
         matching.forEach { tournaments[it.id] = it.copy(status = TournamentStatus.Upcoming) }
         return matching.size
     }
 
     context(ctx: TransactionContext)
-    override suspend fun upsertResult(
+    override fun upsertResult(
         tournamentId: TournamentId,
         request: CreateTournamentResultRequest,
     ): TournamentResult {
