@@ -318,11 +318,12 @@ private fun parseEvent(event: EspnEventJson): EspnTournament {
             ?: error("ESPN event ${event.id} has no competitions")
     val parsed = competitorRows.flatMapIndexed(::parseCompetitor)
     val isTeamEvent = parsed.any { it.isTeamPartner }
+    val completed = event.status?.type?.completed ?: false
     return EspnTournament(
         espnId = event.id,
         name = event.name,
-        completed = event.status?.type?.completed ?: false,
-        competitors = assignPositions(parsed),
+        completed = completed,
+        competitors = assignPositions(parsed, completed = completed),
         isTeamEvent = isTeamEvent,
     )
 }
@@ -402,8 +403,15 @@ private fun parseScoreToPar(score: String): Int? =
  * Position advances by the number of distinct teams in each group — in team
  * events two partners share one slot so ties match ESPN's per-team numbering
  * (1, T2, T4, T8 …). Competitors without a score sink to the bottom.
+ *
+ * Once [completed] is true a tie for the lead is resolved by playoff rather
+ * than shared — see [breakLeadTie]. Ties below the lead remain genuine shared
+ * finishes.
  */
-internal fun assignPositions(competitors: List<EspnCompetitor>): List<EspnCompetitor> {
+internal fun assignPositions(
+    competitors: List<EspnCompetitor>,
+    completed: Boolean,
+): List<EspnCompetitor> {
     val sorted =
         competitors.sortedWith(
             compareBy({ it.scoreToPar ?: Int.MAX_VALUE }, { it.order }),
@@ -418,12 +426,38 @@ internal fun assignPositions(competitors: List<EspnCompetitor>): List<EspnCompet
             groups += mutableListOf(competitor)
         }
     }
+    val rankedGroups = if (completed) breakLeadTie(groups) else groups
     val positioned = mutableListOf<EspnCompetitor>()
     var nextPosition = 1
-    for (group in groups) {
+    for (group in rankedGroups) {
         val teamCount = group.map { it.pairKey ?: it.espnId }.distinct().size
         positioned += group.map { it.copy(position = nextPosition) }
         nextPosition += teamCount
     }
     return positioned
+}
+
+/**
+ * Resolve a tie for the lead at a completed event.
+ *
+ * In stroke play a tie for the lead is decided by a sudden-death playoff, so a
+ * completed event never has co-leaders — exactly one entry finishes first. ESPN
+ * reflects this only in `order` (1 = playoff winner, 2 = runner-up); its `score`
+ * field is unreliable here, sometimes folding the winner's extra-hole birdie in
+ * (−13 vs −12) and sometimes leaving both level (−12 vs −12). So when the top
+ * group holds more than one team we split it into one group per team ranked by
+ * `order`, giving the winner sole 1st and the rest the following places. Groups
+ * below the lead are untouched — those are genuine shared finishes (T2, T3, …).
+ */
+private fun breakLeadTie(
+    groups: List<MutableList<EspnCompetitor>>,
+): List<MutableList<EspnCompetitor>> {
+    val lead = groups.firstOrNull() ?: return groups
+    val leadTeams = lead.groupBy { it.pairKey ?: it.espnId }
+    if (leadTeams.size <= 1) return groups
+    val splitLead =
+        leadTeams.values
+            .sortedBy { team -> team.minOf { it.order } }
+            .map { it.toMutableList() }
+    return splitLead + groups.drop(1)
 }

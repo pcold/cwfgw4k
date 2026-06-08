@@ -9,6 +9,7 @@ import io.kotest.matchers.comparables.shouldBeLessThanOrEqualTo
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.property.Arb
+import io.kotest.property.arbitrary.boolean
 import io.kotest.property.arbitrary.int
 import io.kotest.property.arbitrary.list
 import io.kotest.property.arbitrary.map
@@ -102,6 +103,27 @@ private fun arbScore(): Arb<ScoreFixture> =
             }
         ScoreFixture(scoreStr = str, scoreToPar = n)
     }
+
+private fun leaderboardCompetitor(
+    espnId: String,
+    order: Int,
+    scoreStr: String,
+    scoreToPar: Int,
+    pairKey: String? = null,
+): EspnCompetitor =
+    EspnCompetitor(
+        espnId = espnId,
+        name = "Player $espnId",
+        order = order,
+        scoreStr = scoreStr,
+        scoreToPar = scoreToPar,
+        totalStrokes = null,
+        roundScores = emptyList(),
+        position = 0,
+        status = EspnStatus.Active,
+        isTeamPartner = pairKey != null,
+        pairKey = pairKey,
+    )
 
 private fun arbCompetitors(): Arb<List<EspnCompetitor>> =
     Arb.list(arbScore(), 1..13).map { scores ->
@@ -406,20 +428,24 @@ class EspnClientSpec : FunSpec({
     }
 
     test("team-event positions advance by team count, not partner count") {
+        // A tie below the lead stays a genuine shared finish (the lead itself is
+        // playoff-resolved once complete — see the playoff tests below).
         val json =
             scoreboard(
                 eventName = "Zurich Classic",
                 competitors =
                     listOf(
                         teamCompetitor("1", "Novak/Griffin", 1, "-28"),
-                        teamCompetitor("2", "Smith/Jones", 2, "-28"),
+                        teamCompetitor("2", "Smith/Jones", 2, "-25"),
                         teamCompetitor("3", "Alpha/Beta", 3, "-25"),
+                        teamCompetitor("4", "Gamma/Delta", 4, "-20"),
                     ),
             )
 
         val competitors = parseScoreboard(json).single().competitors
-        competitors.count { it.position == 1 } shouldBe 4
-        competitors.count { it.position == 3 } shouldBe 2
+        competitors.count { it.position == 1 } shouldBe 2
+        competitors.count { it.position == 2 } shouldBe 4
+        competitors.count { it.position == 4 } shouldBe 2
     }
 
     test("non-team event does not mark isTeamEvent") {
@@ -465,20 +491,20 @@ class EspnClientSpec : FunSpec({
     // ----- assignPositions: algebraic invariants -----
 
     test("assignPositions: output size equals input size") {
-        checkAll(arbCompetitors()) { competitors ->
-            assignPositions(competitors).size shouldBe competitors.size
+        checkAll(arbCompetitors(), Arb.boolean()) { competitors, completed ->
+            assignPositions(competitors, completed = completed).size shouldBe competitors.size
         }
     }
 
     test("assignPositions: positions start at 1 for the best-scoring competitor") {
-        checkAll(arbCompetitors()) { competitors ->
-            assignPositions(competitors).minOf { it.position } shouldBe 1
+        checkAll(arbCompetitors(), Arb.boolean()) { competitors, completed ->
+            assignPositions(competitors, completed = completed).minOf { it.position } shouldBe 1
         }
     }
 
-    test("assignPositions: any two competitors with the same scoreStr end up with the same position") {
+    test("assignPositions: while live, any two competitors with the same scoreStr share a position") {
         checkAll(arbCompetitors()) { competitors ->
-            val byScore = assignPositions(competitors).groupBy { it.scoreStr }
+            val byScore = assignPositions(competitors, completed = false).groupBy { it.scoreStr }
             byScore.values.forEach { sharedScoreGroup ->
                 sharedScoreGroup.map { it.position }.distinct().size shouldBe 1
             }
@@ -486,8 +512,8 @@ class EspnClientSpec : FunSpec({
     }
 
     test("assignPositions: a strictly better score never gets a strictly larger position") {
-        checkAll(arbCompetitors()) { competitors ->
-            val positioned = assignPositions(competitors)
+        checkAll(arbCompetitors(), Arb.boolean()) { competitors, completed ->
+            val positioned = assignPositions(competitors, completed = completed)
             val pairs = positioned.flatMap { a -> positioned.map { b -> a to b } }
             pairs.forEach { (a, b) ->
                 val aScore = a.scoreToPar
@@ -497,6 +523,70 @@ class EspnClientSpec : FunSpec({
                 }
             }
         }
+    }
+
+    // ----- assignPositions: playoff resolution of a tie for the lead -----
+
+    test("assignPositions: a completed tie for the lead is broken by order into 1st and 2nd") {
+        val poston = leaderboardCompetitor(espnId = "poston", order = 1, scoreStr = "-12", scoreToPar = -12)
+        val gerard = leaderboardCompetitor(espnId = "gerard", order = 2, scoreStr = "-12", scoreToPar = -12)
+        val clark = leaderboardCompetitor(espnId = "clark", order = 3, scoreStr = "-11", scoreToPar = -11)
+
+        val positioned =
+            assignPositions(listOf(gerard, poston, clark), completed = true)
+                .associateBy { it.espnId }
+
+        positioned.getValue("poston").position shouldBe 1
+        positioned.getValue("gerard").position shouldBe 2
+        positioned.getValue("clark").position shouldBe 3
+    }
+
+    test("assignPositions: an unfinished tie for the lead stays shared (order is only tee-time live)") {
+        val leaders =
+            listOf(
+                leaderboardCompetitor(espnId = "a", order = 1, scoreStr = "-12", scoreToPar = -12),
+                leaderboardCompetitor(espnId = "b", order = 2, scoreStr = "-12", scoreToPar = -12),
+            )
+
+        assignPositions(leaders, completed = false).map { it.position } shouldContainExactly listOf(1, 1)
+    }
+
+    test("assignPositions: a completed team-event playoff keeps partners together at 1st and 2nd") {
+        val winners =
+            listOf(
+                leaderboardCompetitor(espnId = "w1", order = 1, scoreStr = "-25", scoreToPar = -25, pairKey = "team:w"),
+                leaderboardCompetitor(espnId = "w2", order = 1, scoreStr = "-25", scoreToPar = -25, pairKey = "team:w"),
+            )
+        val runnersUp =
+            listOf(
+                leaderboardCompetitor(espnId = "r1", order = 2, scoreStr = "-25", scoreToPar = -25, pairKey = "team:r"),
+                leaderboardCompetitor(espnId = "r2", order = 2, scoreStr = "-25", scoreToPar = -25, pairKey = "team:r"),
+            )
+
+        val positioned =
+            assignPositions(runnersUp + winners, completed = true).associateBy { it.espnId }
+
+        positioned.getValue("w1").position shouldBe 1
+        positioned.getValue("w2").position shouldBe 1
+        positioned.getValue("r1").position shouldBe 2
+        positioned.getValue("r2").position shouldBe 2
+    }
+
+    test("assignPositions: a completed tie below the lead stays a genuine shared finish") {
+        val winner = leaderboardCompetitor(espnId = "winner", order = 1, scoreStr = "-13", scoreToPar = -13)
+        val tiedForSecond =
+            listOf(
+                leaderboardCompetitor(espnId = "x", order = 2, scoreStr = "-11", scoreToPar = -11),
+                leaderboardCompetitor(espnId = "y", order = 3, scoreStr = "-11", scoreToPar = -11),
+            )
+
+        val positioned =
+            assignPositions(listOf(winner) + tiedForSecond, completed = true)
+                .associateBy { it.espnId }
+
+        positioned.getValue("winner").position shouldBe 1
+        positioned.getValue("x").position shouldBe 2
+        positioned.getValue("y").position shouldBe 2
     }
 
     // ----- fetchScoreboard: HTTP layer via MockEngine -----
