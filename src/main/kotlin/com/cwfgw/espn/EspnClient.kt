@@ -426,7 +426,7 @@ internal fun assignPositions(
             groups += mutableListOf(competitor)
         }
     }
-    val rankedGroups = if (completed) breakLeadTie(groups) else groups
+    val rankedGroups: List<List<EspnCompetitor>> = if (completed) breakLeadTie(groups) else groups
     val positioned = mutableListOf<EspnCompetitor>()
     var nextPosition = 1
     for (group in rankedGroups) {
@@ -450,14 +450,11 @@ internal fun assignPositions(
  * below the lead are untouched — those are genuine shared finishes (T2, T3, …).
  */
 private fun breakLeadTie(
-    groups: List<MutableList<EspnCompetitor>>,
-): List<MutableList<EspnCompetitor>> {
+    groups: List<List<EspnCompetitor>>,
+): List<List<EspnCompetitor>> {
     val lead = groups.firstOrNull() ?: return groups
     val leadTeams = lead.groupBy { it.pairKey ?: it.espnId }
     if (leadTeams.size <= 1) return groups
-    val splitLead =
-        leadTeams.values
-            .sortedBy { team -> team.minOf { it.order } }
-            .map { it.toMutableList() }
+    val splitLead = leadTeams.values.sortedBy { team -> team.minOf { it.order } }
     return splitLead + groups.drop(1)
 }
