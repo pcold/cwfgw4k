@@ -435,7 +435,17 @@ class EspnService(
         return when (lastNameMatches.size) {
             0 -> null
             1 -> lastNameMatches.single()
-            else -> lastNameMatches.singleOrNull { it.id in context.rosterGolferIds }
+            else ->
+                // Team-event partners arrive as last-name-only, so preferring the rostered golfer on
+                // ambiguity is the only way to resolve them. Regular competitors carry a full name and a
+                // stable ESPN id; guessing on surname alone risks silently attaching an unrelated golfer's
+                // result to an existing rostered golfer who happens to share the surname (CWF-35 — an
+                // unfamiliar co-sanctioned-event player named "Lee" collided into a rostered "Lee").
+                if (competitor.isTeamPartner) {
+                    lastNameMatches.singleOrNull { it.id in context.rosterGolferIds }
+                } else {
+                    null
+                }
         }
     }
 

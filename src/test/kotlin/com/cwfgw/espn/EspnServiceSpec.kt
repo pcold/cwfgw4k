@@ -318,6 +318,69 @@ class EspnServiceSpec : FunSpec({
         smithResults shouldBe null
     }
 
+    test("non-team competitor with an ambiguous last name does not collide into a rostered golfer") {
+        // Regression for CWF-35: a co-sanctioned event brings in a player ESPN has never sent us
+        // before ("Junghwan Lee"). He shares a surname with both a rostered golfer ("Min Woo Lee")
+        // and an unrostered one ("K.H. Lee"). Before the fix, the ambiguous last-name fallback
+        // applied its "prefer the rostered golfer" heuristic to every competitor, so Junghwan Lee's
+        // result silently overwrote Min Woo Lee's real result via the same golferId.
+        val minWooLee = golfer(UUID.randomUUID(), "Min Woo", "Lee", pgaPlayerId = "4410932")
+        val khLee = golfer(UUID.randomUUID(), "K.H.", "Lee", pgaPlayerId = "7083")
+        val teamId = TeamId(UUID.randomUUID())
+        val rosterView =
+            mapOf(
+                SEASON_ID to
+                    listOf(
+                        RosterViewTeam(
+                            teamId = teamId,
+                            teamName = "Poczik",
+                            picks =
+                                listOf(
+                                    RosterViewPick(
+                                        round = 1,
+                                        golferName = "Min Woo Lee",
+                                        ownershipPct = BigDecimal("100.00"),
+                                        golferId = minWooLee.id,
+                                    ),
+                                ),
+                        ),
+                    ),
+            )
+        val event =
+            espnTournament(
+                espnId = "401580999",
+                competitors =
+                    listOf(
+                        espnCompetitor("4410932", "Min Woo Lee", 2, -15),
+                        espnCompetitor("11312", "Junghwan Lee", 118, 3),
+                    ),
+            )
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(tournament(pgaTournamentId = "401580999")),
+                initialGolfers = listOf(minWooLee, khLee),
+                rosterView = rosterView,
+                tournamentsByDate = mapOf(START_DATE to listOf(event)),
+            )
+
+        val import =
+            fixture.service.importByDate(START_DATE)
+                .shouldBeInstanceOf<Result.Ok<EspnImportBatch>>()
+                .value
+                .imported
+                .single()
+
+        import.collisions shouldHaveSize 0
+        import.created shouldBe 1
+
+        with(noopTransactionContext) {
+            val results = fixture.tournamentRepo.getResults(TOURNAMENT_ID)
+            val minWooResult = results.single { it.golferId == minWooLee.id }
+            minWooResult.position shouldBe 2
+            minWooResult.scoreToPar shouldBe -15
+        }
+    }
+
     test("importByDate marks the tournament completed when ESPN says it finished") {
         val event = espnTournament(completed = true, competitors = emptyList())
         val fixture =
