@@ -320,19 +320,37 @@ describe('api client', () => {
     expect((err as ApiError).message).toBe('cannot edit completed');
   });
 
-  it('importSeasonSchedule() POSTs the date range with the season in the path', async () => {
-    fetchMock.mockResolvedValueOnce(mockJson({ created: [], skipped: [] }));
-    await api.importSeasonSchedule({
+  it('previewSeasonSchedule() POSTs the date range with the season in the path', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({ entries: [], skipped: [] }));
+    await api.previewSeasonSchedule({
       seasonId: 'sn 1',
       startDate: '2026-01-01',
       endDate: '2026-04-01',
     });
     const call = fetchMock.mock.calls[0];
-    expect(call[0]).toBe('/api/v1/admin/seasons/sn%201/upload');
+    expect(call[0]).toBe('/api/v1/admin/seasons/sn%201/upload/preview');
     expect((call[1] as RequestInit).method).toBe('POST');
     expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
       start_date: '2026-01-01',
       end_date: '2026-04-01',
+    });
+  });
+
+  it('confirmSeasonSchedule() POSTs the kept entries with the season in the path', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({ created: [], skipped: [] }));
+    await api.confirmSeasonSchedule({
+      seasonId: 'sn 1',
+      entries: [
+        { espnEventId: 'e-1', name: 'Sony Open', startDate: '2026-01-15', endDate: '2026-01-18' },
+      ],
+    });
+    const call = fetchMock.mock.calls[0];
+    expect(call[0]).toBe('/api/v1/admin/seasons/sn%201/upload/confirm');
+    expect((call[1] as RequestInit).method).toBe('POST');
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+      entries: [
+        { espn_event_id: 'e-1', name: 'Sony Open', start_date: '2026-01-15', end_date: '2026-01-18' },
+      ],
     });
   });
 

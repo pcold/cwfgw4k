@@ -10,9 +10,10 @@ import kotlinx.serialization.Serializable
 import java.time.LocalDate
 
 /**
- * Body of `POST /api/v1/admin/seasons/{id}/upload`. Date range is inclusive
- * on both ends — any ESPN calendar entry whose start date falls in the range
- * lands as a tournament. The seasonId comes from the path, not the body.
+ * Body of `POST /api/v1/admin/seasons/{id}/upload/preview`. Date range is
+ * inclusive on both ends — any ESPN calendar entry whose start date falls in
+ * the range is returned as a candidate. The seasonId comes from the path,
+ * not the body. Nothing is written to the DB by the preview call.
  */
 @Serializable
 data class UploadSeasonRequest(
@@ -21,11 +22,60 @@ data class UploadSeasonRequest(
 )
 
 /**
- * Result of a season-import call. The created list goes back to the UI as the
- * editable preview where operators set per-tournament multipliers and submit
- * back via the existing `PUT /api/v1/tournaments/{id}` route. Skipped entries
- * are surfaced with a reason so the operator knows why a calendar row didn't
- * land — almost always "already linked," which is the safe re-run case.
+ * Result of a season-schedule preview call. `entries` are candidate
+ * tournaments the operator can drop before confirming — e.g. an ESPN
+ * calendar entry like the Presidents Cup that isn't part of this league's
+ * season. Week labels are computed over the full candidate set so they stay
+ * chronologically consistent; dropping an entry before confirm closes the
+ * gap because [AdminService.confirmSeasonSchedule] recomputes labels over
+ * only the entries the operator kept.
+ */
+@Serializable
+data class SeasonSchedulePreviewResult(
+    val entries: List<PreviewedTournament>,
+    val skipped: List<SkippedEntry>,
+)
+
+@Serializable
+data class PreviewedTournament(
+    val espnEventId: String,
+    val name: String,
+    @Serializable(with = LocalDateSerializer::class) val startDate: LocalDate,
+    @Serializable(with = LocalDateSerializer::class) val endDate: LocalDate,
+    val week: String,
+)
+
+/**
+ * Body of `POST /api/v1/admin/seasons/{id}/upload/confirm`. `entries` is
+ * the operator-reviewed subset of a prior [SeasonSchedulePreviewResult] —
+ * typically the same list minus any rows the operator dropped. Week labels
+ * are not carried over from the preview; the service recomputes them from
+ * [entries] alone so removed rows don't leave a numbering gap.
+ */
+@Serializable
+data class ConfirmSeasonScheduleRequest(
+    val entries: List<ConfirmedTournamentEntry>,
+)
+
+@Serializable
+data class ConfirmedTournamentEntry(
+    val espnEventId: String,
+    val name: String,
+    @Serializable(with = LocalDateSerializer::class) val startDate: LocalDate,
+    @Serializable(with = LocalDateSerializer::class) val endDate: LocalDate,
+)
+
+/** Carry a preview candidate straight into a confirm call, dropping the preview-only `week`. */
+fun PreviewedTournament.toConfirmedEntry(): ConfirmedTournamentEntry =
+    ConfirmedTournamentEntry(espnEventId = espnEventId, name = name, startDate = startDate, endDate = endDate)
+
+/**
+ * Result of a season-schedule confirm call. The created list goes back to
+ * the UI as the editable preview where operators set per-tournament
+ * multipliers and submit back via the existing `PUT /api/v1/tournaments/{id}`
+ * route. Skipped entries are surfaced with a reason so the operator knows
+ * why a row didn't land — almost always "already linked," which covers a
+ * confirm that races a second operator's import of the same event.
  */
 @Serializable
 data class SeasonImportResult(

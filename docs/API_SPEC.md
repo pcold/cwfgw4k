@@ -212,7 +212,7 @@ the response falls back to the base report.
 
 | Method | Path                                                     | Auth | Description                                                                            |
 |--------|----------------------------------------------------------|------|----------------------------------------------------------------------------------------|
-| GET    | `/api/v1/espn/calendar`                                  | No   | Read ESPN's PGA season schedule (`EspnCalendarEntry[]`). Used by admin uploadSeason    |
+| GET    | `/api/v1/espn/calendar`                                  | No   | Read ESPN's PGA season schedule (`EspnCalendarEntry[]`). Used by admin previewSeasonSchedule |
 | POST   | `/api/v1/espn/import?date=YYYY-MM-DD`                    | Yes  | Import every completed event for the given date; results auto-link to existing tournaments by `pga_tournament_id` |
 | POST   | `/api/v1/espn/import/tournament/{tournamentId}`          | Yes  | Import results for one specific (already-linked) tournament                             |
 
@@ -220,7 +220,8 @@ the response falls back to the base report.
 
 | Method | Path                                              | Auth | Description                                                                                    |
 |--------|---------------------------------------------------|------|------------------------------------------------------------------------------------------------|
-| POST   | `/api/v1/admin/seasons/{id}/upload`               | Yes  | Pull ESPN's calendar for the date range in the body and create one tournament per entry. Body: `{ "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD" }`. Returns `SeasonImportResult` |
+| POST   | `/api/v1/admin/seasons/{id}/upload/preview`       | Yes  | Pull ESPN's calendar for the date range in the body and return candidate tournaments — no DB writes. Body: `{ "start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD" }`. Returns `SeasonSchedulePreviewResult` |
+| POST   | `/api/v1/admin/seasons/{id}/upload/confirm`       | Yes  | Create one tournament per operator-kept entry from a prior preview call. Body: `ConfirmSeasonScheduleRequest`. Returns `SeasonImportResult` |
 | POST   | `/api/v1/admin/roster/preview`                    | Yes  | Preview a roster TSV/CSV. Body is `text/plain` (the raw roster). Returns `RosterPreviewResult` describing per-pick match status. If any pick can't be matched to an existing golfer the service pulls ESPN's recent active-player pool and persists any newly-discovered athletes (with their `pga_player_id`) before re-matching — so this endpoint is a *write* on the golfers table, not strictly read-only |
 | POST   | `/api/v1/admin/roster/confirm`                    | Yes  | Persist an operator-confirmed roster. Body: `ConfirmRosterRequest`. Returns `RosterUploadResult` with deletion counts and persisted teams |
 
@@ -399,6 +400,30 @@ data class GolferHistory(
 ### Admin
 
 ```kotlin
+data class SeasonSchedulePreviewResult(
+    val entries: List<PreviewedTournament>,
+    val skipped: List<SkippedEntry>,
+)
+
+data class PreviewedTournament(
+    val espnEventId: String,
+    val name: String,
+    val startDate: LocalDate,
+    val endDate: LocalDate,
+    val week: String,
+)
+
+data class ConfirmSeasonScheduleRequest(
+    val entries: List<ConfirmedTournamentEntry>,
+)
+
+data class ConfirmedTournamentEntry(
+    val espnEventId: String,
+    val name: String,
+    val startDate: LocalDate,
+    val endDate: LocalDate,
+)
+
 data class SeasonImportResult(
     val created: List<Tournament>,
     val skipped: List<SkippedEntry>,

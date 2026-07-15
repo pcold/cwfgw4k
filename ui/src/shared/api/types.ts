@@ -201,6 +201,30 @@ export interface SeasonImportResult {
   skipped: SkippedSeasonImportEntry[];
 }
 
+// A candidate tournament from GET-ing ESPN's calendar for a date range,
+// before anything is written to the DB. The operator drops rows that
+// aren't part of the league's season (e.g. the Presidents Cup) before
+// confirming — see UploadScheduleSection.
+export interface PreviewedTournament {
+  espnEventId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  week: string;
+}
+
+export interface SeasonSchedulePreviewResult {
+  entries: PreviewedTournament[];
+  skipped: SkippedSeasonImportEntry[];
+}
+
+export interface ConfirmedTournamentEntry {
+  espnEventId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+}
+
 export interface GolferCandidate {
   golferId: string;
   name: string;

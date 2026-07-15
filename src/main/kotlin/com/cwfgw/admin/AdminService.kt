@@ -32,13 +32,20 @@ private val log = KotlinLogging.logger {}
 /**
  * Operator tooling for bulk season + roster setup.
  *
- * `uploadSeason` is the season-creation flow: given a date range, fetch
- * ESPN's calendar, filter to events whose start date falls in the range,
- * and create one tournament per event with `pgaTournamentId` already
- * linked. Tournaments come back at multiplier 1.0; the UI then lets the
- * operator edit multipliers via the existing `PUT /api/v1/tournaments/{id}`
- * route, so this service deliberately doesn't accept a per-tournament
- * multiplier override on import — it would just duplicate that path.
+ * The season-creation flow is preview-then-confirm:
+ * [previewSeasonSchedule] fetches ESPN's calendar, filters to events whose
+ * start date falls in the given range, and returns them as candidates —
+ * no DB writes. The operator reviews the list and drops anything that
+ * isn't part of this league's season (e.g. the Presidents Cup, which ESPN's
+ * calendar includes but this game never scores). [confirmSeasonSchedule]
+ * then creates one tournament per entry the operator kept, with
+ * `pgaTournamentId` already linked. Week labels are recomputed at confirm
+ * time from just the kept entries, so dropping a candidate closes the
+ * numbering gap rather than leaving one. Tournaments come back at
+ * multiplier 1.0; the UI then lets the operator edit multipliers via the
+ * existing `PUT /api/v1/tournaments/{id}` route, so this service
+ * deliberately doesn't accept a per-tournament multiplier override — it
+ * would just duplicate that path.
  *
  * Re-runs are safe: any ESPN entry already linked to a tournament lands in
  * the `skipped` list with a clear reason, never overwrites or duplicates.
@@ -53,31 +60,58 @@ class AdminService(
     private val golferRepository: GolferRepository,
     private val teamRepository: TeamRepository,
 ) {
-    suspend fun uploadSeason(
+    suspend fun previewSeasonSchedule(
         seasonId: SeasonId,
         startDate: LocalDate,
         endDate: LocalDate,
-    ): Result<SeasonImportResult, AdminError> {
+    ): Result<SeasonSchedulePreviewResult, AdminError> {
         seasonService.get(seasonId) ?: return Result.Err(AdminError.SeasonNotFound(seasonId))
 
         val calendar =
             try {
                 espnService.fetchCalendar()
             } catch (e: EspnUpstreamException) {
-                log.warn(e) { "ESPN calendar fetch failed during admin season import (status ${e.status})" }
+                log.warn(e) { "ESPN calendar fetch failed during admin season preview (status ${e.status})" }
                 return Result.Err(AdminError.UpstreamUnavailable(e.status))
             }
 
-        val created = mutableListOf<Tournament>()
         val skipped = mutableListOf<SkippedEntry>()
+        val entries = mutableListOf<PreviewedTournament>()
         // ESPN's calendar response doesn't carry a "week N" concept, so we
         // synthesize one from chronologically-sorted in-range entries. Two
         // tournaments in the same ISO calendar week get suffixed "Na" / "Nb"
         // (the 'b' is conventionally the alternate-field event, but we can't
         // tell which is which from ESPN — operators correct via the UI).
         val datedEntries = parseAndFilterByRange(calendar, startDate, endDate, skipped)
-        for ((entry, date, week) in assignWeeks(datedEntries)) {
-            when (val outcome = importOne(entry, date, week, seasonId)) {
+        for ((pair, week) in assignSequentialWeekLabels(datedEntries) { it.second }) {
+            val (entry, date) = pair
+            val existing = tournamentService.findByPgaTournamentId(entry.id)
+            if (existing != null) {
+                skipped += SkippedEntry(entry.id, entry.label, "already linked to tournament ${existing.id.value}")
+            } else {
+                entries +=
+                    PreviewedTournament(
+                        espnEventId = entry.id,
+                        name = entry.label,
+                        startDate = date,
+                        endDate = date.plusDays(DEFAULT_TOURNAMENT_DAYS),
+                        week = week,
+                    )
+            }
+        }
+        return Result.Ok(SeasonSchedulePreviewResult(entries = entries, skipped = skipped))
+    }
+
+    suspend fun confirmSeasonSchedule(
+        seasonId: SeasonId,
+        entries: List<ConfirmedTournamentEntry>,
+    ): Result<SeasonImportResult, AdminError> {
+        seasonService.get(seasonId) ?: return Result.Err(AdminError.SeasonNotFound(seasonId))
+
+        val created = mutableListOf<Tournament>()
+        val skipped = mutableListOf<SkippedEntry>()
+        for ((entry, week) in assignSequentialWeekLabels(entries) { it.startDate }) {
+            when (val outcome = createOrSkip(entry, week, seasonId)) {
                 is EntryOutcome.Created -> created += outcome.tournament
                 is EntryOutcome.Skipped -> skipped += outcome.entry
             }
@@ -103,19 +137,27 @@ class AdminService(
             }
         }
 
-    private fun assignWeeks(
-        entries: List<Pair<EspnCalendarEntry, LocalDate>>,
-    ): List<Triple<EspnCalendarEntry, LocalDate, String>> {
+    /**
+     * Assign sequential week labels (1, 2, 3a, 3b, …) to [items] in
+     * chronological order, grouping same-ISO-week items so multi-event
+     * weeks share a number with an a/b suffix. Used both to label preview
+     * candidates and to relabel the confirmed subset, so dropping a
+     * candidate before confirm closes the numbering gap.
+     */
+    private fun <T> assignSequentialWeekLabels(
+        items: List<T>,
+        dateOf: (T) -> LocalDate,
+    ): List<Pair<T, String>> {
         val grouped =
-            entries.sortedBy { it.second }
-                .groupBy { (_, date) -> date.weekKey() }
+            items.sortedBy(dateOf)
+                .groupBy { dateOf(it).weekKey() }
                 .values
                 .toList()
         return grouped.flatMapIndexed { weekIndex, group ->
             val weekNumber = weekIndex + 1
-            group.mapIndexed { positionInWeek, (entry, date) ->
+            group.mapIndexed { positionInWeek, item ->
                 val label = if (group.size == 1) "$weekNumber" else "$weekNumber${'a' + positionInWeek}"
-                Triple(entry, date, label)
+                item to label
             }
         }
     }
@@ -379,26 +421,25 @@ class AdminService(
         return referencedIds.filter { golferService.get(it) == null }
     }
 
-    private suspend fun importOne(
-        entry: EspnCalendarEntry,
-        startDate: LocalDate,
+    private suspend fun createOrSkip(
+        entry: ConfirmedTournamentEntry,
         week: String,
         seasonId: SeasonId,
     ): EntryOutcome {
-        val existing = tournamentService.findByPgaTournamentId(entry.id)
+        val existing = tournamentService.findByPgaTournamentId(entry.espnEventId)
         if (existing != null) {
             return EntryOutcome.Skipped(
-                SkippedEntry(entry.id, entry.label, "already linked to tournament ${existing.id.value}"),
+                SkippedEntry(entry.espnEventId, entry.name, "already linked to tournament ${existing.id.value}"),
             )
         }
         val created =
             tournamentService.create(
                 CreateTournamentRequest(
-                    pgaTournamentId = entry.id,
-                    name = entry.label,
+                    pgaTournamentId = entry.espnEventId,
+                    name = entry.name,
                     seasonId = seasonId,
-                    startDate = startDate,
-                    endDate = startDate.plusDays(DEFAULT_TOURNAMENT_DAYS),
+                    startDate = entry.startDate,
+                    endDate = entry.endDate,
                     week = week,
                 ),
             )

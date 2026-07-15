@@ -119,7 +119,7 @@ private class Fixture(
 
 class AdminServiceSpec : FunSpec({
 
-    test("uploadSeason creates one tournament per ESPN entry that falls inside the date range") {
+    test("previewSeasonSchedule returns one candidate per ESPN entry that falls inside the date range") {
         val fixture =
             Fixture(
                 calendar =
@@ -130,29 +130,38 @@ class AdminServiceSpec : FunSpec({
             )
 
         val result =
-            fixture.service.uploadSeason(SEASON_ID, SEASON_START, SEASON_END)
-                .shouldBeInstanceOf<Result.Ok<SeasonImportResult>>()
+            fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END)
+                .shouldBeInstanceOf<Result.Ok<SeasonSchedulePreviewResult>>()
                 .value
 
-        result.created shouldHaveSize 2
+        result.entries shouldHaveSize 2
         result.skipped.shouldBeEmpty()
-        result.created.map { it.name } shouldBe listOf("Sony Open", "American Express")
+        result.entries.map { it.name } shouldBe listOf("Sony Open", "American Express")
     }
 
-    test("created tournaments link the ESPN id, default to a 4-day Thu→Sun window, and use multiplier 1.0") {
+    test("preview candidates carry the ESPN id and a 4-day Thu→Sun window; confirm defaults to multiplier 1.0") {
         val fixture =
             Fixture(calendar = listOf(calendarEntry("e-1", "The Masters", "2026-04-09T00:00Z")))
 
+        val preview =
+            fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END)
+                .shouldBeInstanceOf<Result.Ok<SeasonSchedulePreviewResult>>()
+                .value
+                .entries
+                .single()
+
+        preview.espnEventId shouldBe "e-1"
+        preview.startDate shouldBe LocalDate.parse("2026-04-09")
+        preview.endDate shouldBe LocalDate.parse("2026-04-12")
+
         val tournament =
-            fixture.service.uploadSeason(SEASON_ID, SEASON_START, SEASON_END)
+            fixture.service.confirmSeasonSchedule(SEASON_ID, listOf(preview.toConfirmedEntry()))
                 .shouldBeInstanceOf<Result.Ok<SeasonImportResult>>()
                 .value
                 .created
                 .single()
 
         tournament.pgaTournamentId shouldBe "e-1"
-        tournament.startDate shouldBe LocalDate.parse("2026-04-09")
-        tournament.endDate shouldBe LocalDate.parse("2026-04-12")
         tournament.payoutMultiplier.compareTo(java.math.BigDecimal.ONE) shouldBe 0
     }
 
@@ -171,8 +180,22 @@ class AdminServiceSpec : FunSpec({
                     ),
             )
 
+        val preview =
+            fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END)
+                .shouldBeInstanceOf<Result.Ok<SeasonSchedulePreviewResult>>()
+                .value
+                .entries
+
+        preview.map { it.name to it.week } shouldBe
+            listOf(
+                "Sony Open" to "1",
+                "American Express" to "2",
+                "The Masters" to "3a",
+                "Corales Puntacana" to "3b",
+            )
+
         val created =
-            fixture.service.uploadSeason(SEASON_ID, SEASON_START, SEASON_END)
+            fixture.service.confirmSeasonSchedule(SEASON_ID, preview.map { it.toConfirmedEntry() })
                 .shouldBeInstanceOf<Result.Ok<SeasonImportResult>>()
                 .value
                 .created
@@ -183,6 +206,45 @@ class AdminServiceSpec : FunSpec({
                 "American Express" to "2",
                 "The Masters" to "3a",
                 "Corales Puntacana" to "3b",
+            )
+    }
+
+    test("dropping a candidate before confirm closes its numbering gap instead of leaving one") {
+        // The Masters and Corales Puntacana share week 3 (a/b); dropping the
+        // Masters before confirm should leave Corales Puntacana as week 3
+        // alone, and the following event should still be week 4 — not 5.
+        val fixture =
+            Fixture(
+                calendar =
+                    listOf(
+                        calendarEntry("e-1", "Sony Open", "2026-01-15T00:00Z"),
+                        calendarEntry("e-2", "American Express", "2026-01-22T00:00Z"),
+                        calendarEntry("e-3a", "The Masters", "2026-04-09T00:00Z"),
+                        calendarEntry("e-3b", "Corales Puntacana", "2026-04-09T00:00Z"),
+                        calendarEntry("e-4", "RBC Heritage", "2026-04-16T00:00Z"),
+                    ),
+            )
+
+        val preview =
+            fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END)
+                .shouldBeInstanceOf<Result.Ok<SeasonSchedulePreviewResult>>()
+                .value
+                .entries
+
+        val kept = preview.filterNot { it.name == "The Masters" }.map { it.toConfirmedEntry() }
+
+        val created =
+            fixture.service.confirmSeasonSchedule(SEASON_ID, kept)
+                .shouldBeInstanceOf<Result.Ok<SeasonImportResult>>()
+                .value
+                .created
+
+        created.map { it.name to it.week } shouldBe
+            listOf(
+                "Sony Open" to "1",
+                "American Express" to "2",
+                "Corales Puntacana" to "3",
+                "RBC Heritage" to "4",
             )
     }
 
@@ -198,22 +260,22 @@ class AdminServiceSpec : FunSpec({
             )
 
         val result =
-            fixture.service.uploadSeason(SEASON_ID, SEASON_START, SEASON_END)
-                .shouldBeInstanceOf<Result.Ok<SeasonImportResult>>()
+            fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END)
+                .shouldBeInstanceOf<Result.Ok<SeasonSchedulePreviewResult>>()
                 .value
 
-        result.created.map { it.name } shouldBe listOf("InRange")
+        result.entries.map { it.name } shouldBe listOf("InRange")
         result.skipped.shouldBeEmpty()
     }
 
-    test("uploadSeason returns SeasonNotFound when the season id doesn't exist (and never hits ESPN)") {
+    test("previewSeasonSchedule returns SeasonNotFound when the season id doesn't exist (and never hits ESPN)") {
         val fixture =
             Fixture(
                 seedSeason = false,
                 calendar = listOf(calendarEntry("e-1", "Sony Open", "2026-01-15T00:00Z")),
             )
 
-        fixture.service.uploadSeason(SEASON_ID, SEASON_START, SEASON_END) shouldBe
+        fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END) shouldBe
             Result.Err(AdminError.SeasonNotFound(SEASON_ID))
         runBlocking {
             with(noopTransactionContext) {
@@ -222,18 +284,36 @@ class AdminServiceSpec : FunSpec({
         }
     }
 
-    test("uploadSeason returns UpstreamUnavailable when ESPN responds with a non-2xx") {
+    test("previewSeasonSchedule returns UpstreamUnavailable when ESPN responds with a non-2xx") {
         val fixture =
             Fixture(upstreamError = EspnUpstreamException(status = 503, message = "Service Unavailable"))
 
-        fixture.service.uploadSeason(SEASON_ID, SEASON_START, SEASON_END) shouldBe
+        fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END) shouldBe
             Result.Err(AdminError.UpstreamUnavailable(503))
     }
 
-    test("entries already linked to a tournament land in skipped, not created — so re-runs are safe") {
-        val fixture =
-            Fixture(calendar = listOf(calendarEntry("e-1", "Sony Open", "2026-01-15T00:00Z")))
-        // Pre-seed a tournament with the same pga id, simulating a prior import.
+    test("confirmSeasonSchedule returns SeasonNotFound when the season id doesn't exist (and writes nothing)") {
+        val fixture = Fixture(seedSeason = false)
+        val entry =
+            ConfirmedTournamentEntry(
+                espnEventId = "e-1",
+                name = "Sony Open",
+                startDate = LocalDate.parse("2026-01-15"),
+                endDate = LocalDate.parse("2026-01-18"),
+            )
+
+        fixture.service.confirmSeasonSchedule(SEASON_ID, listOf(entry)) shouldBe
+            Result.Err(AdminError.SeasonNotFound(SEASON_ID))
+        runBlocking {
+            with(noopTransactionContext) {
+                fixture.tournamentRepo.findByPgaTournamentId("e-1") shouldBe null
+            }
+        }
+    }
+
+    test("a candidate already linked to a tournament by the time confirm runs lands in skipped, not created") {
+        val fixture = Fixture()
+        // Pre-seed a tournament with the same pga id, simulating a race with a second operator's confirm.
         runBlocking {
             with(noopTransactionContext) {
                 fixture.tournamentRepo.create(
@@ -247,9 +327,16 @@ class AdminServiceSpec : FunSpec({
                 )
             }
         }
+        val entry =
+            ConfirmedTournamentEntry(
+                espnEventId = "e-1",
+                name = "Sony Open",
+                startDate = LocalDate.parse("2026-01-15"),
+                endDate = LocalDate.parse("2026-01-18"),
+            )
 
         val result =
-            fixture.service.uploadSeason(SEASON_ID, SEASON_START, SEASON_END)
+            fixture.service.confirmSeasonSchedule(SEASON_ID, listOf(entry))
                 .shouldBeInstanceOf<Result.Ok<SeasonImportResult>>()
                 .value
 
@@ -263,20 +350,32 @@ class AdminServiceSpec : FunSpec({
             Fixture(calendar = listOf(calendarEntry("e-bad", "BadDate", "not-a-date")))
 
         val result =
-            fixture.service.uploadSeason(SEASON_ID, SEASON_START, SEASON_END)
-                .shouldBeInstanceOf<Result.Ok<SeasonImportResult>>()
+            fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END)
+                .shouldBeInstanceOf<Result.Ok<SeasonSchedulePreviewResult>>()
                 .value
 
-        result.created.shouldBeEmpty()
+        result.entries.shouldBeEmpty()
         result.skipped.single().espnEventId shouldBe "e-bad"
         result.skipped.single().reason.shouldContain("could not parse")
     }
 
-    test("an empty ESPN calendar returns an empty SeasonImportResult, not an error") {
+    test("an empty ESPN calendar returns an empty preview, not an error") {
         val fixture = Fixture(calendar = emptyList())
 
         val result =
-            fixture.service.uploadSeason(SEASON_ID, SEASON_START, SEASON_END)
+            fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END)
+                .shouldBeInstanceOf<Result.Ok<SeasonSchedulePreviewResult>>()
+                .value
+
+        result.entries.shouldBeEmpty()
+        result.skipped.shouldBeEmpty()
+    }
+
+    test("confirmSeasonSchedule on an empty entry list succeeds with no writes") {
+        val fixture = Fixture()
+
+        val result =
+            fixture.service.confirmSeasonSchedule(SEASON_ID, emptyList())
                 .shouldBeInstanceOf<Result.Ok<SeasonImportResult>>()
                 .value
 

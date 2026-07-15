@@ -18,7 +18,8 @@ import io.ktor.server.routing.route
 fun Route.adminRoutes(service: AdminService) {
     route("/admin") {
         authenticate(SESSION_AUTH_NAME) {
-            post("/seasons/{id}/upload") { uploadSeason(service) }
+            post("/seasons/{id}/upload/preview") { previewSeasonSchedule(service) }
+            post("/seasons/{id}/upload/confirm") { confirmSeasonSchedule(service) }
             post("/roster/preview") { previewRoster(service) }
             post("/roster/confirm") { confirmRoster(service) }
         }
@@ -28,11 +29,18 @@ fun Route.adminRoutes(service: AdminService) {
 private fun RoutingContext.seasonId(): SeasonId =
     call.parameters["id"]?.toSeasonId() ?: throw DomainError.Validation("invalid season id")
 
-private suspend fun RoutingContext.uploadSeason(service: AdminService) {
+private suspend fun RoutingContext.previewSeasonSchedule(service: AdminService) {
     requireAdmin()
     val id = seasonId()
     val body = call.receive<UploadSeasonRequest>()
-    call.respond(service.uploadSeason(id, body.startDate, body.endDate).orThrow())
+    call.respond(service.previewSeasonSchedule(id, body.startDate, body.endDate).orThrow())
+}
+
+private suspend fun RoutingContext.confirmSeasonSchedule(service: AdminService) {
+    requireAdmin()
+    val id = seasonId()
+    val body = call.receive<ConfirmSeasonScheduleRequest>()
+    call.respond(service.confirmSeasonSchedule(id, body.entries).orThrow())
 }
 
 private suspend fun RoutingContext.previewRoster(service: AdminService) {

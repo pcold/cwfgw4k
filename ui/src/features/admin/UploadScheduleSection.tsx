@@ -1,9 +1,21 @@
 import { useState } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import type { League, Season, SeasonImportResult, Tournament } from '@/shared/api/types';
+import type {
+  ConfirmedTournamentEntry,
+  League,
+  PreviewedTournament,
+  Season,
+  SeasonImportResult,
+  SeasonSchedulePreviewResult,
+  Tournament,
+} from '@/shared/api/types';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
+
+function toConfirmedEntry(entry: PreviewedTournament): ConfirmedTournamentEntry {
+  return { espnEventId: entry.espnEventId, name: entry.name, startDate: entry.startDate, endDate: entry.endDate };
+}
 
 function UploadScheduleSection() {
   const queryClient = useQueryClient();
@@ -20,28 +32,53 @@ function UploadScheduleSection() {
   const [seasonId, setSeasonId] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  // Tournaments returned by the import POST. Stored locally so we can edit
+
+  // Candidates from the ESPN calendar, not yet written to the DB. The
+  // operator drops rows that aren't part of the season (e.g. the
+  // Presidents Cup) before confirming. Held as the whole result object
+  // (rather than separate arrays) so the review panel stays visible —
+  // keyed off "a preview ran", not "entries remain" — even after the
+  // operator removes the last candidate.
+  const [previewResult, setPreviewResult] = useState<SeasonSchedulePreviewResult | null>(null);
+
+  // Tournaments returned by the confirm POST. Stored locally so we can edit
   // each row's multiplier in place and patch them via PUT one at a time.
   const [createdTournaments, setCreatedTournaments] = useState<Tournament[]>([]);
   const [skippedSummary, setSkippedSummary] = useState<SeasonImportResult['skipped']>([]);
 
-  const importMutation = useMutation({
-    mutationFn: () => api.importSeasonSchedule({ seasonId, startDate, endDate }),
+  const previewMutation = useMutation({
+    mutationFn: () => api.previewSeasonSchedule({ seasonId, startDate, endDate }),
+    onSuccess: (result) => {
+      setPreviewResult(result);
+      setCreatedTournaments([]);
+      setSkippedSummary([]);
+    },
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: () =>
+      api.confirmSeasonSchedule({
+        seasonId,
+        entries: (previewResult?.entries ?? []).map(toConfirmedEntry),
+      }),
     onSuccess: (result) => {
       setCreatedTournaments(result.created);
       setSkippedSummary(result.skipped);
+      setPreviewResult(null);
       void queryClient.invalidateQueries({ queryKey: ['tournaments'] });
     },
   });
 
-  const errorMessage = mutationError(importMutation.error);
+  const previewErrorMessage = mutationError(previewMutation.error);
+  const confirmErrorMessage = mutationError(confirmMutation.error);
 
-  const disabled =
-    importMutation.isPending ||
-    !seasonId ||
-    !startDate ||
-    !endDate ||
-    startDate > endDate;
+  const previewDisabled =
+    previewMutation.isPending || !seasonId || !startDate || !endDate || startDate > endDate;
+
+  const removePreviewEntry = (espnEventId: string) =>
+    setPreviewResult((prev) =>
+      prev ? { ...prev, entries: prev.entries.filter((entry) => entry.espnEventId !== espnEventId) } : prev,
+    );
 
   return (
     <div className="bg-gray-800 rounded-lg p-6">
@@ -49,10 +86,13 @@ function UploadScheduleSection() {
         Import Season Schedule from ESPN
       </h3>
       <p className="text-xs text-gray-400 mb-4">
-        Pulls the PGA tour calendar from ESPN for the date range and creates a tournament for
-        every event whose start date falls inside it. Week labels (1, 2, 3a, 3b…) are assigned
-        chronologically. Re-running on a season skips events already linked. After import, edit
-        the per-tournament payout multiplier inline and Save each row to push the change.
+        Pulls the PGA tour calendar from ESPN for the date range and previews a tournament for
+        every event whose start date falls inside it — nothing is created yet. Remove any events
+        that aren&apos;t part of this league&apos;s season (e.g. the Presidents Cup), then confirm.
+        Week labels (1, 2, 3a, 3b…) are assigned chronologically over whatever you keep, so
+        removing an event closes its numbering gap. Re-running on a season skips events already
+        linked. After confirming, edit the per-tournament payout multiplier inline and Save each
+        row to push the change.
       </p>
 
       <div className="flex flex-wrap gap-4 mb-4">
@@ -125,18 +165,29 @@ function UploadScheduleSection() {
       <div className="flex items-center gap-4">
         <button
           type="button"
-          onClick={() => importMutation.mutate()}
-          disabled={disabled}
+          onClick={() => previewMutation.mutate()}
+          disabled={previewDisabled}
           className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
         >
-          {importMutation.isPending ? 'Importing…' : 'Import from ESPN'}
+          {previewMutation.isPending ? 'Fetching…' : 'Preview Import'}
         </button>
-        {errorMessage ? (
+        {previewErrorMessage ? (
           <span role="alert" className="text-red-400 text-sm">
-            {errorMessage}
+            {previewErrorMessage}
           </span>
         ) : null}
       </div>
+
+      {previewResult ? (
+        <SchedulePreview
+          entries={previewResult.entries}
+          skipped={previewResult.skipped}
+          onRemove={removePreviewEntry}
+          onConfirm={() => confirmMutation.mutate()}
+          confirmPending={confirmMutation.isPending}
+          confirmErrorMessage={confirmErrorMessage}
+        />
+      ) : null}
 
       {createdTournaments.length > 0 || skippedSummary.length > 0 ? (
         <ImportResult
@@ -149,6 +200,98 @@ function UploadScheduleSection() {
           }
         />
       ) : null}
+    </div>
+  );
+}
+
+interface SchedulePreviewProps {
+  entries: PreviewedTournament[];
+  skipped: SeasonImportResult['skipped'];
+  onRemove: (espnEventId: string) => void;
+  onConfirm: () => void;
+  confirmPending: boolean;
+  confirmErrorMessage: string | null;
+}
+
+function SchedulePreview({
+  entries,
+  skipped,
+  onRemove,
+  onConfirm,
+  confirmPending,
+  confirmErrorMessage,
+}: SchedulePreviewProps) {
+  return (
+    <div className="mt-6 pt-4 border-t border-gray-700">
+      <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+        Review Before Confirming
+      </h4>
+
+      {skipped.length > 0 ? (
+        <div className="mb-4 px-3 py-2 bg-yellow-900/30 border border-yellow-700 rounded text-yellow-300 text-xs">
+          <div className="font-semibold mb-1">Skipped ESPN entries:</div>
+          <ul className="space-y-0.5">
+            {skipped.map((s) => (
+              <li key={s.espnEventId}>
+                <span className="font-mono">{s.espnEventName}</span> — {s.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {entries.length > 0 ? (
+        <table className="w-full text-sm mb-4">
+          <thead className="bg-gray-700 text-gray-300 text-xs uppercase tracking-wider">
+            <tr>
+              <th className="px-3 py-2 text-left">Wk</th>
+              <th className="px-3 py-2 text-left">Tournament</th>
+              <th className="px-3 py-2 text-left">Dates</th>
+              <th className="px-3 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry) => (
+              <tr key={entry.espnEventId} className="border-t border-gray-700">
+                <td className="px-3 py-2 text-gray-400 font-mono">{entry.week}</td>
+                <td className="px-3 py-2 font-medium">{entry.name}</td>
+                <td className="px-3 py-2 text-gray-400 text-xs">
+                  {entry.startDate} to {entry.endDate}
+                </td>
+                <td className="px-3 py-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => onRemove(entry.espnEventId)}
+                    className="text-red-400 hover:text-red-300"
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="text-xs text-gray-400 mb-4">
+          Every candidate was removed — confirming now would create nothing.
+        </p>
+      )}
+
+      <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={confirmPending || entries.length === 0}
+          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+        >
+          {confirmPending ? 'Confirming…' : 'Confirm Import'}
+        </button>
+        {confirmErrorMessage ? (
+          <span role="alert" className="text-red-400 text-sm">
+            {confirmErrorMessage}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import type {
   CleanSeasonResult,
+  ConfirmedTournamentEntry,
   CreateGolferRequest,
   Golfer,
   GolferHistory,
@@ -11,6 +12,7 @@ import type {
   RosterPreview,
   RosterTeam,
   SeasonImportResult,
+  SeasonSchedulePreviewResult,
   Season,
   SeasonRules,
   Tournament,
@@ -238,10 +240,15 @@ export const api = {
     seasonYear: number;
     rules: SeasonRules;
   }) => postJson<Season>('/api/v1/seasons', input),
-  importSeasonSchedule: (input: { seasonId: string; startDate: string; endDate: string }) =>
-    postJson<SeasonImportResult>(
-      `/api/v1/admin/seasons/${encodeURIComponent(input.seasonId)}/upload`,
+  previewSeasonSchedule: (input: { seasonId: string; startDate: string; endDate: string }) =>
+    postJson<SeasonSchedulePreviewResult>(
+      `/api/v1/admin/seasons/${encodeURIComponent(input.seasonId)}/upload/preview`,
       { startDate: input.startDate, endDate: input.endDate },
+    ),
+  confirmSeasonSchedule: (input: { seasonId: string; entries: ConfirmedTournamentEntry[] }) =>
+    postJson<SeasonImportResult>(
+      `/api/v1/admin/seasons/${encodeURIComponent(input.seasonId)}/upload/confirm`,
+      { entries: input.entries },
     ),
   // The backend's previewRoster route consumes the raw TSV/CSV body via
   // receiveText() rather than a JSON envelope, so post the text as-is.
