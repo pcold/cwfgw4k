@@ -8,6 +8,7 @@ import com.cwfgw.admin.GolferAssignment
 import com.cwfgw.admin.PickMatch
 import com.cwfgw.admin.PreviewTeam
 import com.cwfgw.admin.RosterPreviewResult
+import com.cwfgw.admin.toConfirmedEntry
 import com.cwfgw.buildHttpClient
 import com.cwfgw.buildServices
 import com.cwfgw.config.AppConfig
@@ -30,8 +31,9 @@ private val log = KotlinLogging.logger {}
  * (which also runs every Flyway migration), then composes the real
  * service graph to populate one full 2026 season:
  *   - create league + season
- *   - call [com.cwfgw.admin.AdminService.uploadSeason] (pulls ESPN
- *     calendar for the date range)
+ *   - call [com.cwfgw.admin.AdminService.previewSeasonSchedule] then
+ *     [com.cwfgw.admin.AdminService.confirmSeasonSchedule] (pulls ESPN
+ *     calendar for the date range, auto-confirming every candidate)
  *   - call [com.cwfgw.admin.AdminService.previewRoster] +
  *     [com.cwfgw.admin.AdminService.confirmRoster] (auto-accept
  *     ambiguous, create new golfers for unmatched)
@@ -86,22 +88,32 @@ private suspend fun seedSeason(
         )
     log.info { "Created season '${season.name}' (${season.id.value})" }
 
-    val upload =
-        services.adminService.uploadSeason(season.id, seed.startDate, seed.endDate).orThrow("uploadSeason")
+    val schedulePreview =
+        services.adminService.previewSeasonSchedule(season.id, seed.startDate, seed.endDate)
+            .orThrow("previewSeasonSchedule")
     log.info {
-        "Uploaded ${upload.created.size} tournaments from ESPN calendar; ${upload.skipped.size} skipped"
+        "Previewed ${schedulePreview.entries.size} tournaments from ESPN calendar; " +
+            "${schedulePreview.skipped.size} skipped"
+    }
+    val upload =
+        services.adminService.confirmSeasonSchedule(
+            season.id,
+            schedulePreview.entries.map { it.toConfirmedEntry() },
+        ).orThrow("confirmSeasonSchedule")
+    log.info {
+        "Confirmed ${upload.created.size} tournaments; ${upload.skipped.size} skipped"
     }
 
     applyMajorMultipliers(upload.created, seed.majorNamePatterns, services)
 
-    val preview = services.adminService.previewRoster(seed.rosterText).orThrow("previewRoster")
+    val rosterPreview = services.adminService.previewRoster(seed.rosterText).orThrow("previewRoster")
     log.info {
-        "Roster preview: ${preview.totalPicks} picks — ${preview.matchedCount} matched, " +
-            "${preview.ambiguousCount} ambiguous, ${preview.unmatchedCount} unmatched"
+        "Roster preview: ${rosterPreview.totalPicks} picks — ${rosterPreview.matchedCount} matched, " +
+            "${rosterPreview.ambiguousCount} ambiguous, ${rosterPreview.unmatchedCount} unmatched"
     }
 
     val confirm =
-        services.adminService.confirmRoster(toConfirmRequest(season.id, preview)).orThrow("confirmRoster")
+        services.adminService.confirmRoster(toConfirmRequest(season.id, rosterPreview)).orThrow("confirmRoster")
     log.info {
         "Confirmed roster: ${confirm.teamsCreated} teams, ${confirm.golfersCreated} new golfers created"
     }

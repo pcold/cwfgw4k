@@ -124,8 +124,8 @@ class EspnService(
      * The DB tournament for an ESPN event is resolved by exact
      * `pga_tournament_id` match; if no DB row exists we fall through to
      * the ESPN-only defaults (multiplier 1.0). With the calendar-driven
-     * uploadSeason flow every operator-managed tournament is linked, so
-     * the unlinked branch is essentially defensive.
+     * confirmSeasonSchedule flow every operator-managed tournament is
+     * linked, so the unlinked branch is essentially defensive.
      */
     suspend fun previewByDate(
         seasonId: SeasonId,
@@ -475,8 +475,8 @@ class EspnService(
     /**
      * After a scoreboard pass, sync any tournament-level facts ESPN just
      * revealed: the completed flag (so finalize can move on) and the
-     * team-event flag (admin uploadSeason can't know this from the
-     * calendar alone — partner rows only show up in the scoreboard
+     * team-event flag (admin confirmSeasonSchedule can't know this from
+     * the calendar alone — partner rows only show up in the scoreboard
      * payload). Updates only when something actually changes.
      */
     context(ctx: TransactionContext)

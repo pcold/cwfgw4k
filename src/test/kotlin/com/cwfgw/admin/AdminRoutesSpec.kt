@@ -121,12 +121,12 @@ private fun calendarEntry(
 
 class AdminRoutesSpec : FunSpec({
 
-    // ----- POST /api/v1/admin/seasons/{id}/upload -----
+    // ----- POST /api/v1/admin/seasons/{id}/upload/preview -----
 
-    test("POST /api/v1/admin/seasons/{id}/upload returns 401 without an authenticated session") {
+    test("POST /api/v1/admin/seasons/{id}/upload/preview returns 401 without an authenticated session") {
         apiTest(adminFixture()) { client ->
             val response =
-                client.post("/api/v1/admin/seasons/${SEASON_ID.value}/upload") {
+                client.post("/api/v1/admin/seasons/${SEASON_ID.value}/upload/preview") {
                     contentType(ContentType.Application.Json)
                     setBody(UploadSeasonRequest(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31")))
                 }
@@ -134,7 +134,7 @@ class AdminRoutesSpec : FunSpec({
         }
     }
 
-    test("POST /api/v1/admin/seasons/{id}/upload returns 200 with the import result on success") {
+    test("POST /api/v1/admin/seasons/{id}/upload/preview returns 200 with candidate entries and writes nothing") {
         val configure =
             adminFixture(
                 calendar =
@@ -145,21 +145,21 @@ class AdminRoutesSpec : FunSpec({
             )
         authenticatedApiTest(configure) { client ->
             val response =
-                client.post("/api/v1/admin/seasons/${SEASON_ID.value}/upload") {
+                client.post("/api/v1/admin/seasons/${SEASON_ID.value}/upload/preview") {
                     contentType(ContentType.Application.Json)
                     setBody(UploadSeasonRequest(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31")))
                 }
             response.status shouldBe HttpStatusCode.OK
-            val body: SeasonImportResult = response.body()
-            body.created shouldHaveSize 2
-            body.created.map { it.name } shouldBe listOf("Sony Open", "American Express")
+            val body: SeasonSchedulePreviewResult = response.body()
+            body.entries shouldHaveSize 2
+            body.entries.map { it.name } shouldBe listOf("Sony Open", "American Express")
         }
     }
 
-    test("POST /api/v1/admin/seasons/{id}/upload returns 404 when the season doesn't exist") {
+    test("POST /api/v1/admin/seasons/{id}/upload/preview returns 404 when the season doesn't exist") {
         authenticatedApiTest(adminFixture(seedSeason = false)) { client ->
             val response =
-                client.post("/api/v1/admin/seasons/${SEASON_ID.value}/upload") {
+                client.post("/api/v1/admin/seasons/${SEASON_ID.value}/upload/preview") {
                     contentType(ContentType.Application.Json)
                     setBody(UploadSeasonRequest(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31")))
                 }
@@ -167,12 +167,12 @@ class AdminRoutesSpec : FunSpec({
         }
     }
 
-    test("POST /api/v1/admin/seasons/{id}/upload returns 502 when ESPN is unavailable") {
+    test("POST /api/v1/admin/seasons/{id}/upload/preview returns 502 when ESPN is unavailable") {
         val configure =
             adminFixture(upstreamError = EspnUpstreamException(status = 503, message = "Service Unavailable"))
         authenticatedApiTest(configure) { client ->
             val response =
-                client.post("/api/v1/admin/seasons/${SEASON_ID.value}/upload") {
+                client.post("/api/v1/admin/seasons/${SEASON_ID.value}/upload/preview") {
                     contentType(ContentType.Application.Json)
                     setBody(UploadSeasonRequest(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31")))
                 }
@@ -180,14 +180,69 @@ class AdminRoutesSpec : FunSpec({
         }
     }
 
-    test("POST /api/v1/admin/seasons/{non-uuid}/upload returns 400 for an unparseable id") {
+    test("POST /api/v1/admin/seasons/{non-uuid}/upload/preview returns 400 for an unparseable id") {
         authenticatedApiTest(adminFixture()) { client ->
             val response =
-                client.post("/api/v1/admin/seasons/not-a-uuid/upload") {
+                client.post("/api/v1/admin/seasons/not-a-uuid/upload/preview") {
                     contentType(ContentType.Application.Json)
                     setBody(UploadSeasonRequest(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31")))
                 }
             response.status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    // ----- POST /api/v1/admin/seasons/{id}/upload/confirm -----
+
+    test("POST /api/v1/admin/seasons/{id}/upload/confirm returns 401 without an authenticated session") {
+        apiTest(adminFixture()) { client ->
+            val response =
+                client.post("/api/v1/admin/seasons/${SEASON_ID.value}/upload/confirm") {
+                    contentType(ContentType.Application.Json)
+                    setBody(ConfirmSeasonScheduleRequest(entries = emptyList()))
+                }
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("POST /api/v1/admin/seasons/{id}/upload/confirm creates a tournament per kept entry, renumbering weeks") {
+        authenticatedApiTest(adminFixture()) { client ->
+            val request =
+                ConfirmSeasonScheduleRequest(
+                    entries =
+                        listOf(
+                            ConfirmedTournamentEntry(
+                                espnEventId = "e-1",
+                                name = "Sony Open",
+                                startDate = LocalDate.parse("2026-01-15"),
+                                endDate = LocalDate.parse("2026-01-18"),
+                            ),
+                            ConfirmedTournamentEntry(
+                                espnEventId = "e-2",
+                                name = "American Express",
+                                startDate = LocalDate.parse("2026-01-22"),
+                                endDate = LocalDate.parse("2026-01-25"),
+                            ),
+                        ),
+                )
+            val response =
+                client.post("/api/v1/admin/seasons/${SEASON_ID.value}/upload/confirm") {
+                    contentType(ContentType.Application.Json)
+                    setBody(request)
+                }
+            response.status shouldBe HttpStatusCode.OK
+            val body: SeasonImportResult = response.body()
+            body.created.map { it.name to it.week } shouldBe listOf("Sony Open" to "1", "American Express" to "2")
+        }
+    }
+
+    test("POST /api/v1/admin/seasons/{id}/upload/confirm returns 404 when the season doesn't exist") {
+        authenticatedApiTest(adminFixture(seedSeason = false)) { client ->
+            val response =
+                client.post("/api/v1/admin/seasons/${SEASON_ID.value}/upload/confirm") {
+                    contentType(ContentType.Application.Json)
+                    setBody(ConfirmSeasonScheduleRequest(entries = emptyList()))
+                }
+            response.status shouldBe HttpStatusCode.NotFound
         }
     }
 

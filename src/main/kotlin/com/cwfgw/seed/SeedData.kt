@@ -6,7 +6,7 @@ import java.time.LocalDate
  * Canonical dev-seed payload. The roster TSV is loaded from a resource
  * file rather than embedded as a string literal so it stays diffable
  * and editable without touching source. Date range covers the actual
- * 2026 summer PGA window so [com.cwfgw.admin.AdminService.uploadSeason]
+ * 2026 summer PGA window so [com.cwfgw.admin.AdminService.previewSeasonSchedule]
  * pulls real ESPN events when the seed runs.
  */
 data class SeasonSeed(
@@ -18,8 +18,8 @@ data class SeasonSeed(
     val rosterText: String,
     /**
      * Substrings (case-insensitive) that mark a tournament as a 2x major.
-     * After uploadSeason creates the calendar, every imported tournament
-     * whose name contains any of these substrings gets its
+     * After the confirm step creates the calendar, every imported
+     * tournament whose name contains any of these substrings gets its
      * payoutMultiplier bumped to 2.
      */
     val majorNamePatterns: List<String> = emptyList(),
