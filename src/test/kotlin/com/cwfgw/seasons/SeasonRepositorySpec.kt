@@ -43,7 +43,7 @@ class SeasonRepositorySpec : FunSpec({
         castlewoodId = tx.update { leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf")) }.id
     }
 
-    test("create uses DB defaults when request omits optional fields") {
+    test("create uses defaults and starts season_number at 1 when request omits optional fields") {
         tx.update {
             val created =
                 repository.create(
@@ -58,6 +58,34 @@ class SeasonRepositorySpec : FunSpec({
             created.maxTeams shouldBe 10
             created.tieFloor.compareTo(BigDecimal.ONE) shouldBe 0
             created.sideBetAmount.compareTo(BigDecimal(15)) shouldBe 0
+        }
+    }
+
+    test("create auto-increments season_number for the same league and year") {
+        tx.update {
+            val first =
+                repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "Spring", seasonYear = 2026))
+            val second =
+                repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "Fall", seasonYear = 2026))
+
+            first.seasonNumber shouldBe 1
+            second.seasonNumber shouldBe 2
+        }
+    }
+
+    test("create restarts season_number at 1 for a different year or league") {
+        tx.update {
+            repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "2026 S1", seasonYear = 2026))
+            repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "2026 S2", seasonYear = 2026))
+            val nextYear =
+                repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "2027 S1", seasonYear = 2027))
+
+            val otherLeague = leagueRepo.create(CreateLeagueRequest(name = "Other League")).id
+            val otherLeagueSeason =
+                repository.create(CreateSeasonRequest(leagueId = otherLeague, name = "2026 S1", seasonYear = 2026))
+
+            nextYear.seasonNumber shouldBe 1
+            otherLeagueSeason.seasonNumber shouldBe 1
         }
     }
 

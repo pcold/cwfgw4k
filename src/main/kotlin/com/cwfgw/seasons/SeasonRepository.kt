@@ -72,7 +72,8 @@ private class JooqSeasonRepository : SeasonRepository {
     // outer transaction without a nested transactionResult.
     context(ctx: TransactionContext)
     override fun create(request: CreateSeasonRequest): Season {
-        val values = insertAssignments(request)
+        val seasonNumber = request.seasonNumber ?: nextSeasonNumber(request.leagueId, request.seasonYear)
+        val values = insertAssignments(request, seasonNumber)
         val inserted =
             ctx.dsl.insertInto(SEASONS)
                 .set(values)
@@ -81,6 +82,23 @@ private class JooqSeasonRepository : SeasonRepository {
         val season = toSeason(inserted)
         request.rules?.let { writeRules(season.id, it) }
         return season
+    }
+
+    // Auto-increments within a league + year so callers (the admin UI in
+    // particular) don't need to know the highest existing season_number.
+    // Falls back to 1 when this is the first season for that league + year.
+    context(ctx: TransactionContext)
+    private fun nextSeasonNumber(
+        leagueId: LeagueId,
+        seasonYear: Int,
+    ): Int {
+        val highestExisting =
+            ctx.dsl.select(DSL.max(SEASONS.SEASON_NUMBER))
+                .from(SEASONS)
+                .where(SEASONS.LEAGUE_ID.eq(leagueId.value))
+                .and(SEASONS.SEASON_YEAR.eq(seasonYear))
+                .fetchOne(0, Int::class.java)
+        return (highestExisting ?: 0) + 1
     }
 
     context(ctx: TransactionContext)
@@ -183,12 +201,15 @@ private class JooqSeasonRepository : SeasonRepository {
         return conditions.reduceOrNull(Condition::and) ?: DSL.noCondition()
     }
 
-    private fun insertAssignments(request: CreateSeasonRequest): Map<Field<*>, Any?> =
+    private fun insertAssignments(
+        request: CreateSeasonRequest,
+        seasonNumber: Int,
+    ): Map<Field<*>, Any?> =
         buildMap {
             put(SEASONS.LEAGUE_ID, request.leagueId.value)
             put(SEASONS.NAME, request.name)
             put(SEASONS.SEASON_YEAR, request.seasonYear)
-            request.seasonNumber?.let { put(SEASONS.SEASON_NUMBER, it) }
+            put(SEASONS.SEASON_NUMBER, seasonNumber)
             request.maxTeams?.let { put(SEASONS.MAX_TEAMS, it) }
             // `rules` wins when supplied — see CreateSeasonRequest KDoc.
             (request.rules?.tieFloor ?: request.tieFloor)?.let { put(SEASONS.TIE_FLOOR, it) }

@@ -55,7 +55,7 @@ class FakeSeasonRepository(
                 leagueId = request.leagueId,
                 name = request.name,
                 seasonYear = request.seasonYear,
-                seasonNumber = request.seasonNumber ?: 1,
+                seasonNumber = request.seasonNumber ?: nextSeasonNumber(request.leagueId, request.seasonYear),
                 status = "draft",
                 tieFloor = tieFloor,
                 sideBetAmount = sideBetAmount,
@@ -67,6 +67,16 @@ class FakeSeasonRepository(
         request.rules?.let { rulesStore[season.id] = it }
         return season
     }
+
+    // Mirrors JooqSeasonRepository.nextSeasonNumber: auto-increment within a league + year.
+    private fun nextSeasonNumber(
+        leagueId: LeagueId,
+        seasonYear: Int,
+    ): Int =
+        store.values
+            .filter { it.leagueId == leagueId && it.seasonYear == seasonYear }
+            .maxOfOrNull { it.seasonNumber }
+            ?.plus(1) ?: 1
 
     context(ctx: TransactionContext)
     override fun update(
