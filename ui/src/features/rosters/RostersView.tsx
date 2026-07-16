@@ -60,7 +60,7 @@ function RostersView({ teams, onGolferClick }: Props) {
                   key={team.teamId}
                   className="border border-gray-600 px-1 py-1.5 text-center min-w-[100px]"
                 >
-                  <div>{i + 1}</div>
+                  <div>{team.teamNumber ?? i + 1}</div>
                   <div className="text-xs uppercase">{team.teamName}</div>
                 </th>
               ))}

@@ -255,6 +255,7 @@ class TeamRoutesSpec : FunSpec({
             listOf(
                 RosterViewTeam(
                     teamId = eagles.id,
+                    teamNumber = 1,
                     teamName = "Eagles",
                     picks =
                         listOf(
@@ -268,6 +269,7 @@ class TeamRoutesSpec : FunSpec({
                 ),
                 RosterViewTeam(
                     teamId = hawks.id,
+                    teamNumber = 2,
                     teamName = "Hawks",
                     picks = emptyList(),
                 ),

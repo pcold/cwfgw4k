@@ -273,6 +273,7 @@ class EspnServiceSpec : FunSpec({
                     listOf(
                         RosterViewTeam(
                             teamId = teamId,
+                            teamNumber = 1,
                             teamName = "Alice's Team",
                             picks =
                                 listOf(
@@ -333,6 +334,7 @@ class EspnServiceSpec : FunSpec({
                     listOf(
                         RosterViewTeam(
                             teamId = teamId,
+                            teamNumber = 1,
                             teamName = "Poczik",
                             picks =
                                 listOf(

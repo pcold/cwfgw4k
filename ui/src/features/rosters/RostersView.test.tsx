@@ -10,6 +10,7 @@ function pick(round: number, name: string, pct = 100, id = `g-${round}-${name}`)
 
 const aces: RosterTeam = {
   teamId: 't-1',
+  teamNumber: 5,
   teamName: 'Aces',
   picks: [
     pick(1, 'Scottie Scheffler'),
@@ -20,6 +21,7 @@ const aces: RosterTeam = {
 };
 const birdies: RosterTeam = {
   teamId: 't-2',
+  teamNumber: 8,
   teamName: 'Birdies',
   picks: [
     pick(1, 'Jon Rahm'),
@@ -41,6 +43,20 @@ describe('RostersView', () => {
     expect(headerCells[0]).toHaveTextContent('RD');
     expect(headerCells[1]).toHaveTextContent('Aces');
     expect(headerCells[2]).toHaveTextContent('Birdies');
+  });
+
+  it("labels each team column with the team's own number, not its position", () => {
+    render(<RostersView teams={[aces, birdies]} />);
+    const headerCells = screen.getAllByRole('columnheader');
+    expect(headerCells[1]).toHaveTextContent('5');
+    expect(headerCells[2]).toHaveTextContent('8');
+  });
+
+  it('falls back to column position when a team has no number', () => {
+    const unnumbered: RosterTeam = { ...birdies, teamNumber: null };
+    render(<RostersView teams={[aces, unnumbered]} />);
+    const headerCells = screen.getAllByRole('columnheader');
+    expect(headerCells[2]).toHaveTextContent('2');
   });
 
   it('renders a row for each of the 8 draft rounds', () => {
@@ -90,6 +106,7 @@ describe('RostersView', () => {
   it('omits the shared players callout when there are none', () => {
     const unique: RosterTeam = {
       teamId: 't-9',
+      teamNumber: 1,
       teamName: 'Solo',
       picks: [pick(1, 'Tiger Woods')],
     };
