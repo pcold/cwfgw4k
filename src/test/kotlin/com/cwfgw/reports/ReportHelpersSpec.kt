@@ -210,6 +210,41 @@ class ReportHelpersSpec : FunSpec({
         result.single { it.teamId == entries[3].teamId }.payout shouldBe BigDecimal("-6")
     }
 
+    test("recomputeSideBetPayouts rounds an uneven split to cents and stays zero-sum instead of throwing") {
+        // 8 teams, $5 ante, a 3-way tie for the lead: pool = 5 losers * $5 = $25,
+        // split 3 ways = 8.333... The unrounded divide used to throw ArithmeticException here.
+        val entries =
+            (1..8).map { i -> sideBetEntry("0$i", if (i <= 3) BigDecimal("250") else BigDecimal(i.toLong())) }
+
+        val result = recomputeSideBetPayouts(entries, numTeams = 8, sideBetPerTeam = BigDecimal("5"))
+
+        val winners = result.filter { it.payout.signum() > 0 }
+        val losers = result.filter { it.payout.signum() < 0 }
+        winners.size shouldBe 3
+        losers.forEach { it.payout.compareTo(BigDecimal("-5")) shouldBe 0 }
+        // Cents, remainder absorbed: two shares of 8.33 and one of 8.34, summing to the 25 pool.
+        winners.map { it.payout.setScale(2) }.sorted() shouldContainExactly
+            listOf(BigDecimal("8.33"), BigDecimal("8.33"), BigDecimal("8.34"))
+        winners.sumOf { it.payout }.compareTo(BigDecimal("25")) shouldBe 0
+        result.sumOf { it.payout }.compareTo(BigDecimal.ZERO) shouldBe 0
+    }
+
+    test("recomputeSideBetPayouts never throws and always nets to zero across every team") {
+        checkAll(Arb.int(2..12), Arb.int(1..12), Arb.int(1..25)) { totalTeams, requestedWinners, perTeamDollars ->
+            val winnerCount = minOf(requestedWinners, totalTeams)
+            val entries =
+                (1..totalTeams).map { i ->
+                    val cumulative = if (i <= winnerCount) BigDecimal("500") else BigDecimal(i.toLong())
+                    sideBetEntry(i.toString().padStart(2, '0'), cumulative)
+                }
+
+            val result =
+                recomputeSideBetPayouts(entries, numTeams = totalTeams, sideBetPerTeam = BigDecimal(perTeamDollars))
+
+            result.sumOf { it.payout }.compareTo(BigDecimal.ZERO) shouldBe 0
+        }
+    }
+
     // ----- filterThroughTournament -----
 
     test("filterThroughTournament returns the input unchanged when the cutoff is null") {
