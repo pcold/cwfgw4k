@@ -3,6 +3,7 @@ package com.cwfgw.reports
 import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.Tournament
 import java.math.BigDecimal
+import java.math.RoundingMode
 
 // Pure helpers shared between weekly-report assembly and live overlay.
 // Lives in its own file so unit tests can hammer it without spinning up a
@@ -56,6 +57,9 @@ fun buildStandingsOrder(teams: List<ReportTeamColumn>): List<StandingsEntry> =
             StandingsEntry(rank = index + 1, teamName = team.teamName, totalCash = team.totalCash)
         }
 
+/** Cents — a side-bet payout is a terminal cash settle-up, not an intermediate split. */
+private const val SIDE_BET_PAYOUT_SCALE = 2
+
 /**
  * Pick side-bet payouts from current cumulative earnings per team. All-
  * zero (start of season) returns empty. Otherwise the team(s) at the
@@ -63,6 +67,12 @@ fun buildStandingsOrder(teams: List<ReportTeamColumn>): List<StandingsEntry> =
  * winners share the pool. Tie detection uses `compareTo` because
  * `BigDecimal.equals` is scale-sensitive (10 != 10.00) and the same
  * cumulative arrives at different scales depending on the source path.
+ *
+ * The split stays zero-sum: the winners' shares always sum back to the
+ * pool the losers paid in (see [splitPoolAmongWinners]). Dividing the pool
+ * by the winner count without a rounding mode — the previous behaviour —
+ * threw `ArithmeticException` on a non-terminating quotient such as a
+ * 3-way tie for a $25 pool (25 / 3), surfacing as a 500 on the live report.
  */
 fun pickSideBetPayouts(
     cumulativeByTeam: Map<TeamId, BigDecimal>,
@@ -74,12 +84,36 @@ fun pickSideBetPayouts(
     }
     val highest = cumulativeByTeam.values.max()
     val winners = cumulativeByTeam.filterValues { it.compareTo(highest) == 0 }.keys
-    val winnerCount = winners.size
-    val winnerCollects =
-        sideBetPerTeam.multiply(BigDecimal(numTeams - winnerCount)).divide(BigDecimal(winnerCount))
+    val pool = sideBetPerTeam.multiply(BigDecimal(numTeams - winners.size))
+    val winnerShares = splitPoolAmongWinners(pool, winners)
     return cumulativeByTeam.mapValues { (teamId, _) ->
-        if (teamId in winners) winnerCollects else sideBetPerTeam.negate()
+        winnerShares[teamId] ?: sideBetPerTeam.negate()
     }
+}
+
+/**
+ * Distribute [pool] across [winners] so the shares sum back to [pool]
+ * exactly, keeping the side-bet column zero-sum. An even split hands each
+ * winner the exact quotient at its natural scale; an uneven one rounds each
+ * share to cents and gives the leftover to the last winner (ordered by id
+ * for determinism) — the same remainder-absorption
+ * [com.cwfgw.scoring.PayoutTable.splitOwnership] uses.
+ */
+private fun splitPoolAmongWinners(
+    pool: BigDecimal,
+    winners: Set<TeamId>,
+): Map<TeamId, BigDecimal> {
+    val winnerCount = BigDecimal(winners.size)
+    if (pool.remainder(winnerCount).signum() == 0) {
+        val evenShare = pool.divide(winnerCount)
+        return winners.associateWith { evenShare }
+    }
+    val ordered = winners.sortedBy { it.value }
+    val roundedShares =
+        ordered.dropLast(1).map { it to pool.divide(winnerCount, SIDE_BET_PAYOUT_SCALE, RoundingMode.HALF_UP) }
+    val distributed = roundedShares.fold(BigDecimal.ZERO) { total, (_, share) -> total.add(share) }
+    val lastWinnerShare = pool.subtract(distributed)
+    return (roundedShares + (ordered.last() to lastWinnerShare)).toMap()
 }
 
 /** [pickSideBetPayouts] over a list of [ReportSideBetTeamEntry]; updates each entry's `payout`. */
