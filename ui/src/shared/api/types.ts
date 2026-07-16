@@ -128,6 +128,7 @@ export interface RosterPick {
 
 export interface RosterTeam {
   teamId: string;
+  teamNumber: number | null;
   teamName: string;
   picks: RosterPick[];
 }

@@ -36,6 +36,7 @@ const season: Season = {
 const teams: RosterTeam[] = [
   {
     teamId: 't-1',
+    teamNumber: 1,
     teamName: 'Aces',
     picks: [
       { round: 1, golferName: 'Scottie Scheffler', ownershipPct: 100, golferId: 'g-1' },

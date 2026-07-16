@@ -79,6 +79,7 @@ data class AddToRosterRequest(
 @Serializable
 data class RosterViewTeam(
     val teamId: TeamId,
+    val teamNumber: Int?,
     val teamName: String,
     val picks: List<RosterViewPick>,
 )

@@ -209,4 +209,33 @@ class TeamRepositorySpec : FunSpec({
             view.first { it.teamId == bob.id }.picks.single().golferName shouldBe "Scottie Scheffler"
         }
     }
+
+    test("getRosterView orders teams by team_number asc nulls last and carries the number") {
+        tx.update {
+            // Created out of team_number order; the view must still come back numbered order.
+            val hawks = repository.create(seasonId, CreateTeamRequest("Bob", "Hawks", teamNumber = 2))
+            val eagles = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles", teamNumber = 1))
+            val bears = repository.create(seasonId, CreateTeamRequest("Dave", "Bears"))
+            val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
+            val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
+            val phil = golferRepo.create(CreateGolferRequest(firstName = "Phil", lastName = "Mickelson"))
+            repository.addToRoster(
+                hawks.id,
+                AddToRosterRequest(golferId = rory.id, draftRound = 1, acquiredVia = "draft"),
+            )
+            repository.addToRoster(
+                eagles.id,
+                AddToRosterRequest(golferId = scottie.id, draftRound = 1, acquiredVia = "draft"),
+            )
+            repository.addToRoster(
+                bears.id,
+                AddToRosterRequest(golferId = phil.id, draftRound = 1, acquiredVia = "draft"),
+            )
+
+            val view = repository.getRosterView(seasonId)
+
+            view.map { it.teamId } shouldContainExactly listOf(eagles.id, hawks.id, bears.id)
+            view.map { it.teamNumber } shouldContainExactly listOf(1, 2, null)
+        }
+    }
 })

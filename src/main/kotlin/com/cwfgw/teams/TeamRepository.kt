@@ -67,6 +67,7 @@ private val DEFAULT_OWNERSHIP_PCT: BigDecimal = BigDecimal("100.00")
 
 private data class RosterViewRow(
     val teamId: TeamId,
+    val teamNumber: Int?,
     val teamName: String,
     val round: Int,
     val firstName: String,
@@ -187,10 +188,12 @@ private class JooqTeamRepository : TeamRepository {
     context(ctx: TransactionContext)
     override fun getRosterView(seasonId: SeasonId): List<RosterViewTeam> {
         val rows = fetchRosterViewRows(seasonId)
-        return rows.groupBy { it.teamId to it.teamName }.map { (key, picks) ->
+        return rows.groupBy { Triple(it.teamId, it.teamNumber, it.teamName) }.map { (team, picks) ->
+            val (teamId, teamNumber, teamName) = team
             RosterViewTeam(
-                teamId = key.first,
-                teamName = key.second,
+                teamId = teamId,
+                teamNumber = teamNumber,
+                teamName = teamName,
                 picks = picks.map(::toRosterViewPick),
             )
         }
@@ -200,23 +203,28 @@ private class JooqTeamRepository : TeamRepository {
     private fun fetchRosterViewRows(seasonId: SeasonId): List<RosterViewRow> =
         ctx.dsl.select(
             TEAMS.ID,
+            TEAMS.TEAM_NUMBER,
             TEAMS.TEAM_NAME,
             TEAM_ROSTERS.DRAFT_ROUND,
             GOLFERS.FIRST_NAME,
             GOLFERS.LAST_NAME,
             TEAM_ROSTERS.OWNERSHIP_PCT,
             GOLFERS.ID,
-            TEAMS.CREATED_AT,
         )
             .from(TEAM_ROSTERS)
             .join(TEAMS).on(TEAM_ROSTERS.TEAM_ID.eq(TEAMS.ID))
             .join(GOLFERS).on(TEAM_ROSTERS.GOLFER_ID.eq(GOLFERS.ID))
             .where(TEAMS.SEASON_ID.eq(seasonId.value))
             .and(TEAM_ROSTERS.DROPPED_AT.isNull)
-            .orderBy(TEAMS.CREATED_AT.asc(), TEAM_ROSTERS.DRAFT_ROUND.asc().nullsLast())
+            .orderBy(
+                TEAMS.TEAM_NUMBER.asc().nullsLast(),
+                TEAMS.TEAM_NAME.asc(),
+                TEAM_ROSTERS.DRAFT_ROUND.asc().nullsLast(),
+            )
             .fetch { record ->
                 RosterViewRow(
                     teamId = TeamId(checkNotNull(record[TEAMS.ID])),
+                    teamNumber = record[TEAMS.TEAM_NUMBER],
                     teamName = checkNotNull(record[TEAMS.TEAM_NAME]),
                     round = record[TEAM_ROSTERS.DRAFT_ROUND] ?: 0,
                     firstName = checkNotNull(record[GOLFERS.FIRST_NAME]),
