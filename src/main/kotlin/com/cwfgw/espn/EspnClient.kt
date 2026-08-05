@@ -48,8 +48,22 @@ interface EspnClient {
     suspend fun fetchCalendar(): List<EspnCalendarEntry>
 }
 
+/**
+ * ESPN's scoreboard endpoint, served from the `site.web.api` host rather than
+ * `site.api`.
+ *
+ * Both hosts serve byte-identical payloads for this path, but as of 2026-08-04
+ * `site.api.espn.com` sits behind an Akamai rule that denies JVM TLS clients at
+ * the edge — every request from JSSE gets a 403 `AkamaiGHost` page regardless of
+ * User-Agent, headers, or HTTP version, while curl from the same host succeeds.
+ * The block is host-wide (all sports), not specific to golf or to our traffic.
+ *
+ * Warning: this is a client-fingerprint workaround, not a supported contract. If
+ * `site.web.api` picks up the same rule, changing the URL again won't help — the
+ * fix then is to change the TLS fingerprint itself (e.g. a Conscrypt provider).
+ */
 const val ESPN_DEFAULT_BASE_URL: String =
-    "https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard"
+    "https://site.web.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard"
 
 fun EspnClient(
     httpClient: HttpClient,
