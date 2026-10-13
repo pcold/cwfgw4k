@@ -1,5 +1,5 @@
 # Fires when ESPN integration is generating sustained warnings/errors.
-# Single ESPN flakes happen — the live overlay's fetchPreviewsOrLog
+# Single ESPN flakes happen — the live overlay's fetchPreviewOrLog
 # already swallows them and returns the un-overlaid base report. We
 # only care when the rate sustains, since that means our scoreboard
 # stops reflecting in-progress tournaments.
