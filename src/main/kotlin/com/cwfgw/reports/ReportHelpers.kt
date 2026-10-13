@@ -57,14 +57,19 @@ internal data class CompetitorSlot<T>(
 }
 
 /**
- * Rows sharing a pair key become one slot where the first of them stood, adjacent or not. A null key never
- * groups: it marks a golfer playing alone, which is every row outside a team event.
+ * Rows sharing a pair key become one slot where the first of them stood, adjacent or not. A null or empty
+ * key never groups: it marks a golfer playing alone, which is every row outside a team event.
  */
 internal fun <T> List<T>.inCompetitorSlots(pairKey: (T) -> String?): List<CompetitorSlot<T>> =
     withIndex()
-        .groupBy({ (seat, row) -> pairKey(row)?.let(SlotKey::Shared) ?: SlotKey.Alone(seat) }, { it.value })
+        .groupBy({ (seat, row) -> slotKey(pairKey(row), seat) }, { it.value })
         .values
         .mapNotNull { members -> members.firstOrNull()?.let { lead -> CompetitorSlot(lead, members.drop(1)) } }
+
+private fun slotKey(
+    pairKey: String?,
+    seat: Int,
+): SlotKey = pairKey?.takeIf(String::isNotEmpty)?.let(SlotKey::Shared) ?: SlotKey.Alone(seat)
 
 private sealed interface SlotKey {
     data class Shared(val pairKey: String) : SlotKey

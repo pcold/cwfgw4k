@@ -128,6 +128,13 @@ class ReportHelpersSpec : FunSpec({
             listOf(emptyList(), emptyList())
     }
 
+    test("inCompetitorSlots keeps rows with an empty pair key apart") {
+        val unkeyed = listOf(FieldRow("Smith", pairKey = ""), FieldRow("Jones", pairKey = ""))
+
+        unkeyed.inCompetitorSlots(FieldRow::pairKey).map { slot -> slot.members.map { it.name } } shouldContainExactly
+            listOf(listOf("Smith"), listOf("Jones"))
+    }
+
     test("inCompetitorSlots of no rows is no slots") {
         emptyList<FieldRow>().inCompetitorSlots(FieldRow::pairKey).shouldBeEmpty()
     }
