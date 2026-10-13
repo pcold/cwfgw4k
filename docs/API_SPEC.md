@@ -210,6 +210,15 @@ the ESPN call entirely — the persisted numbers are immutable so a fresh
 pull can't change them. ESPN failures are absorbed (logged at WARN) and
 the response falls back to the base report.
 
+A report GET without `live=true` is served from the Postgres response
+cache, keyed on the full request URI, for 300 seconds
+(`CACHE_DEFAULT_TTL_SECONDS`). A `live=true` request never reads or
+writes that cache: the report is rebuilt on every request, and its ESPN
+data comes from an in-process cache of ESPN's scoreboard that holds each
+date for 60 seconds (`ESPN_SCOREBOARD_CACHE_TTL_SECONDS`), which is the
+most a live report can trail ESPN. A failed ESPN fetch is not cached, so
+the next `live=true` request asks ESPN again.
+
 Both report endpoints return the same `WeeklyReport` shape; its `scope`
 field says which one a body is. Clients must branch on `scope`, never on
 the `tournament` block: the season-aggregate report sends

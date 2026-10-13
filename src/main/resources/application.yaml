@@ -37,10 +37,9 @@ cache:
 
 espn:
   # In-process Caffeine cache for ESPN scoreboard responses keyed by date.
-  # Default 5 minutes — keeps live leaderboards relatively live while
-  # absorbing fan-out bursts (multiple report cache keys all needing today's
-  # ESPN data dedupe to one ESPN call).
-  scoreboardCacheTtlSeconds: ${ESPN_SCOREBOARD_CACHE_TTL_SECONDS:-300}
+  # A live=true report reads through no other cache, so this TTL is how far
+  # live data can trail ESPN.
+  scoreboardCacheTtlSeconds: ${ESPN_SCOREBOARD_CACHE_TTL_SECONDS:-60}
   scoreboardCacheMaxSize: ${ESPN_SCOREBOARD_CACHE_MAX_SIZE:-256}
 
 debug:

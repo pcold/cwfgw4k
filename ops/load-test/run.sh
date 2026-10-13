@@ -35,7 +35,7 @@
 #   /api/v1/seasons/<sid>/standings              cached
 #   /api/v1/seasons/<sid>/scoring/side-bets      cached
 #   /api/v1/seasons/<sid>/rankings               cached
-#   /api/v1/seasons/<sid>/rankings?live=true     cached, separate key
+#   /api/v1/seasons/<sid>/rankings?live=true     uncached, ESPN
 #   /api/v1/seasons/<sid>/report                 cached, multi-service
 #   /api/v1/seasons/<sid>/scoring/<tid>          cached, per-tournament (if tid)
 #   /api/v1/seasons/<sid>/report/<tid>           cached (if tid)
@@ -105,7 +105,7 @@ run_endpoint "Side-bet standings (cached)" \
 run_endpoint "Rankings (cached)" \
   "/api/v1/seasons/${SEASON_ID}/rankings"
 
-run_endpoint "Rankings live=true (cached, separate key, hits ESPN on miss)" \
+run_endpoint "Rankings live=true (uncached, ESPN)" \
   "/api/v1/seasons/${SEASON_ID}/rankings?live=true"
 
 run_endpoint "Season report (cached, multi-service aggregate)" \
@@ -128,4 +128,4 @@ echo "Done. Cross-reference with Cloud Logging during the run window:"
 echo "  resource.type=\"cloud_run_revision\" AND \\"
 echo "  resource.labels.service_name=\"cwfgw4k\" AND \\"
 echo "  textPayload:\"cwfgw4k.cache\""
-echo "to see hit / miss / put rates. Aim for hit rate > 0.7 on warm endpoints."
+echo "to see hit / miss / put rates. Aim for hit rate > 0.7 on warm cached endpoints; live=true logs none."

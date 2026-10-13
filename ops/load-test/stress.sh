@@ -3,11 +3,12 @@
 # Fan-out load test that reproduces the May 3 prod wedge access pattern.
 # Unlike run.sh (which walks endpoints sequentially against a single
 # tournament_id), this fires every non-completed tournament's
-# `report/<tid>?live=true` URL in parallel — distinct Postgres cache
-# keys, distinct Caffeine ESPN cache keys, distinct fetches all in flight
-# at once. Cheap uncached endpoints (`/api/v1/tournaments`,
-# `/api/v1/leagues`) run in parallel too so we can tell whether they
-# starve while the heavy paths are inflight, which was the wedge symptom.
+# `report/<tid>?live=true` URL in parallel — no response cache in
+# front of them, and every one inside the live-overlay lookahead
+# fetching from ESPN, all in flight at once. Cheap uncached endpoints
+# (`/api/v1/tournaments`, `/api/v1/leagues`) run in parallel too so we
+# can tell whether they starve while the heavy paths are inflight, which
+# was the wedge symptom.
 #
 # Usage:
 #   ops/load-test/stress.sh BASE_URL SEASON_ID [-c N] [-d D] [-t S]
@@ -26,14 +27,14 @@
 # The URL set is:
 #   /api/v1/leagues                                    cheap, uncached
 #   /api/v1/tournaments?season_id=<sid>                cheap, uncached
-#   /api/v1/seasons/<sid>/rankings?live=true           cached, ESPN
-#   /api/v1/seasons/<sid>/report?live=true             cached, ESPN per non-completed
+#   /api/v1/seasons/<sid>/rankings?live=true           uncached, ESPN
+#   /api/v1/seasons/<sid>/report?live=true             uncached, ESPN per non-completed
 #   /api/v1/seasons/<sid>/report/<tid>?live=true × N   one per non-completed tournament
 #
 # What to watch for in Cloud Logging during the run:
 #   - `cwfgw4k.db.pool waiting=N` with N > 0 sustained → pool exhaustion
 #   - 504s on `/api/v1/leagues` or `/api/v1/tournaments` → wedge reproduced
-#   - `cwfgw4k.cache event=coalesced` rate vs `event=miss` rate → single-flight effectiveness
+#   - `cwfgw4k.espn event=hit` rate vs `event=miss` rate → ESPN cache effectiveness
 
 set -euo pipefail
 
