@@ -217,7 +217,7 @@ private fun firstX509(tmf: TrustManagerFactory): X509TrustManager? =
  * Boot-time guard: refuse to start with a blank session secret. Extracted so
  * tests can exercise the predicate without spinning up the whole app.
  */
-internal fun requireValidAuthSecret(auth: com.cwfgw.config.AuthConfig) {
+internal fun requireValidAuthSecret(auth: AuthConfig) {
     require(auth.sessionSecret.isNotBlank()) {
         "AUTH_SESSION_SECRET must be set (generate with: openssl rand -hex 32)"
     }
