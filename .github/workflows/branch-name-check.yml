@@ -26,7 +26,7 @@ jobs:
           branch="$GITHUB_HEAD_REF"
           if ! [[ "$branch" =~ $pattern ]]; then
             echo "::error::Branch '$branch' does not match <user>/cwf-<num>-<slug>."
-            echo "::error::Use the issue's gitBranchName from Linear, e.g. <user>/cwf-42-short-slug."
+            echo "::error::Use the issue's gitBranchName from Linear."
             exit 1
           fi
           echo "Branch name OK: $branch"
