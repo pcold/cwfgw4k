@@ -336,6 +336,79 @@ private fun liveMasters(leaderEspnId: String): EspnTournament =
         isTeamEvent = false,
     )
 
+/**
+ * A completed Zurich in which [pairs] two-man teams share first place. BROWN and WOMBLE each roster one
+ * partner of the first pair in round 1.
+ */
+private fun zurichWithPairsSharingFirst(pairs: Int): Fixture {
+    val partners = (0 until pairs * 2).map { index -> golferFixture("a0$index", "Partner", "Partner$index") }
+    val (brownPick, womblePick) = partners
+    return Fixture(
+        initialTournaments = listOf(tournamentFixture(MASTERS_ID, "Zurich Classic", "2026-04-23", isTeamEvent = true)),
+        initialTeams = listOf(TEAM_A, TEAM_B),
+        initialGolfers = partners,
+        initialRosters =
+            listOf(
+                rosterEntry(TEAM_A.id, brownPick.id, draftRound = 1),
+                rosterEntry(TEAM_B.id, womblePick.id, draftRound = 1),
+            ),
+        initialResults =
+            partners.mapIndexed { index, partner ->
+                resultFixture(MASTERS_ID, partner.id, position = 1).copy(pairKey = "team:${index / 2}")
+            },
+    )
+}
+
+private fun espnRow(
+    espnId: String,
+    name: String,
+    position: Int,
+    pairKey: String? = null,
+): EspnCompetitor =
+    EspnCompetitor(
+        espnId = espnId,
+        name = name,
+        order = position,
+        scoreStr = "-12",
+        scoreToPar = -12,
+        totalStrokes = 203,
+        roundScores = listOf(68, 68, 67),
+        position = position,
+        status = EspnStatus.Active,
+        isTeamPartner = pairKey != null,
+        pairKey = pairKey,
+    )
+
+/** An in-progress Masters whose whole ESPN field is [field]; each of [picks] is a team's round-1 golfer. */
+private fun liveFieldFixture(
+    field: List<EspnCompetitor>,
+    picks: List<Pair<Team, Golfer>>,
+): Fixture {
+    val inProgress =
+        tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+            .copy(status = TournamentStatus.InProgress, pgaTournamentId = "espn-masters")
+    val event =
+        EspnTournament(
+            espnId = "espn-masters",
+            name = "The Masters",
+            completed = false,
+            competitors = field,
+            isTeamEvent = field.any { it.isTeamPartner },
+        )
+    return Fixture(
+        initialTournaments = listOf(inProgress),
+        initialTeams = listOf(TEAM_A, TEAM_B),
+        initialGolfers = picks.map { (_, golfer) -> golfer },
+        initialRosters = picks.map { (team, golfer) -> rosterEntry(team.id, golfer.id, draftRound = 1) },
+        espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(event)),
+    )
+}
+
+private suspend fun Fixture.roundOneCells(live: Boolean = false): List<ReportCell> =
+    service.getReport(SEASON_ID, MASTERS_ID, live = live).orFail().teams.map { team ->
+        team.cells.single { it.round == 1 }
+    }
+
 private suspend fun Fixture.mastersReport(): WeeklyReport =
     service.getReport(SEASON_ID, MASTERS_ID).orFail()
 
@@ -509,6 +582,20 @@ class WeeklyReportServiceSpec : FunSpec({
         teamA.cells.first { it.round == 1 }.positionStr shouldBe "T1"
         teamB.cells.first { it.round == 1 }.positionStr shouldBe "T1"
         teamA.cells.first { it.round == 1 }.finish shouldBe ReportCellFinish(position = 1, tied = true)
+    }
+
+    test("getReport leaves a team event's pair untied when it has its position to itself") {
+        val cells = zurichWithPairsSharingFirst(pairs = 1).roundOneCells()
+
+        cells.map { it.finish } shouldContainExactly List(2) { ReportCellFinish(position = 1, tied = false) }
+        cells.map { it.positionStr } shouldContainExactly listOf("1", "1")
+    }
+
+    test("getReport marks a team event's pair tied when a second pair shares its position") {
+        val cells = zurichWithPairsSharingFirst(pairs = 2).roundOneCells()
+
+        cells.map { it.finish } shouldContainExactly List(2) { ReportCellFinish(position = 1, tied = true) }
+        cells.map { it.positionStr } shouldContainExactly listOf("T1", "T1")
     }
 
     test("getReport sideBetDetail emits one row per configured side-bet round (default 5,6,7,8)") {
@@ -1144,6 +1231,51 @@ class WeeklyReportServiceSpec : FunSpec({
         a.cells.first { it.round == 1 }.finish shouldBe ReportCellFinish(position = 1, tied = false)
         // Zero-sum: A weekly = 18*2-18 = +18; B weekly = 0*2-18 = -18
         a.weeklyTotal.compareTo(BigDecimal(18)) shouldBe 0
+    }
+
+    test("getReport with live=true marks a rostered golfer tied with an undrafted one on ESPN's board") {
+        val scottie = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
+        val sharedSecond =
+            listOf(
+                espnRow("espn-p1", "Scottie Scheffler", position = 2),
+                espnRow("espn-p2", "Nobody's Pick", position = 2),
+            )
+        val fixture = liveFieldFixture(field = sharedSecond, picks = listOf(TEAM_A to scottie))
+
+        val brownCell = fixture.roundOneCells(live = true).single { it.golferId == scottie.id }
+
+        brownCell.finish shouldBe ReportCellFinish(position = 2, tied = true)
+        brownCell.positionStr shouldBe "T2"
+    }
+
+    test("getReport with live=true leaves a golfer two teams share untied when he leads alone") {
+        val scottie = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
+        val fixture =
+            liveFieldFixture(
+                field = listOf(espnRow("espn-p1", "Scottie Scheffler", position = 1)),
+                picks = listOf(TEAM_A to scottie, TEAM_B to scottie),
+            )
+
+        val cells = fixture.roundOneCells(live = true)
+
+        cells.map { it.finish } shouldContainExactly List(2) { ReportCellFinish(position = 1, tied = false) }
+        cells.map { it.positionStr } shouldContainExactly listOf("1", "1")
+    }
+
+    test("getReport with live=true leaves a team event's rostered partners untied when their pair leads alone") {
+        val novak = golferFixture("201", "Andrew", "Novak")
+        val griffin = golferFixture("202", "Ben", "Griffin")
+        val leadingPair =
+            listOf(
+                espnRow("team:t1:0", "Novak", position = 1, pairKey = "team:t1"),
+                espnRow("team:t1:1", "Griffin", position = 1, pairKey = "team:t1"),
+            )
+        val fixture = liveFieldFixture(field = leadingPair, picks = listOf(TEAM_A to novak, TEAM_B to griffin))
+
+        val cells = fixture.roundOneCells(live = true)
+
+        cells.map { it.finish } shouldContainExactly List(2) { ReportCellFinish(position = 1, tied = false) }
+        cells.map { it.positionStr } shouldContainExactly listOf("1", "1")
     }
 
     test("getReport with live=true populates the liveLeaderboard from ESPN's full competitor list") {

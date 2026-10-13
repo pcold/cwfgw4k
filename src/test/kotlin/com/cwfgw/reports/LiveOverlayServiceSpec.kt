@@ -66,12 +66,13 @@ private fun previewGolfer(
     position: Int,
     payout: BigDecimal,
     scoreToPar: Int? = -10,
+    numTied: Int = 1,
 ): PreviewGolferScore =
     PreviewGolferScore(
         golferName = "Test Golfer",
         golferId = golferId,
         position = position,
-        numTied = 1,
+        numTied = numTied,
         scoreToPar = scoreToPar,
         basePayout = payout,
         ownershipPct = BigDecimal(100),
@@ -247,7 +248,7 @@ class LiveOverlayServiceSpec : FunSpec({
         overlaid.teams.single().cells.single().scoreToPar shouldBe -10
     }
 
-    test("mergeLiveData marks both cells tied, in finish and label alike, when two live payouts share a position") {
+    test("mergeLiveData marks both cells tied, in finish and label alike, when two rostered golfers share a position") {
         val base =
             emptyReport(
                 listOf(
@@ -259,8 +260,8 @@ class LiveOverlayServiceSpec : FunSpec({
             )
         val sharedSecond =
             listOf(
-                previewGolfer(SCOTTIE_ID, position = 2, payout = BigDecimal(11)),
-                previewGolfer(RORY_ID, position = 2, payout = BigDecimal(11)),
+                previewGolfer(SCOTTIE_ID, position = 2, payout = BigDecimal(11), numTied = 2),
+                previewGolfer(RORY_ID, position = 2, payout = BigDecimal(11), numTied = 2),
             )
         val live = preview(teams = listOf(previewTeam(teamId = TEAM_A_ID, golfers = sharedSecond)))
 
@@ -268,6 +269,56 @@ class LiveOverlayServiceSpec : FunSpec({
 
         cells.map { it.finish } shouldContainExactly List(2) { ReportCellFinish(position = 2, tied = true) }
         cells.map { it.positionStr } shouldContainExactly listOf("T2", "T2")
+    }
+
+    test("mergeLiveData leaves a golfer split across two teams untied when he stands alone at his position") {
+        val base =
+            emptyReport(
+                listOf(
+                    teamColumn(TEAM_A_ID, cells = listOf(cell(round = 1, golferId = SCOTTIE_ID))),
+                    teamColumn(TEAM_B_ID, cells = listOf(cell(round = 1, golferId = SCOTTIE_ID))),
+                ),
+            )
+        val aloneInFirst = listOf(previewGolfer(SCOTTIE_ID, position = 1, payout = BigDecimal(9), numTied = 1))
+        val live =
+            preview(
+                teams =
+                    listOf(
+                        previewTeam(teamId = TEAM_A_ID, golfers = aloneInFirst),
+                        previewTeam(teamId = TEAM_B_ID, golfers = aloneInFirst),
+                    ),
+            )
+
+        val cells = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false).teams.flatMap { it.cells }
+
+        cells.map { it.finish } shouldContainExactly List(2) { ReportCellFinish(position = 1, tied = false) }
+        cells.map { it.positionStr } shouldContainExactly listOf("1", "1")
+    }
+
+    test("mergeLiveData marks a rostered golfer tied when the field ties him with an undrafted one") {
+        val base = emptyReport(listOf(teamColumn(TEAM_A_ID, cells = listOf(cell(round = 1, golferId = SCOTTIE_ID)))))
+        val tiedWithUndrafted = previewGolfer(SCOTTIE_ID, position = 2, payout = BigDecimal(11), numTied = 2)
+        val live = preview(teams = listOf(previewTeam(teamId = TEAM_A_ID, golfers = listOf(tiedWithUndrafted))))
+
+        val cell = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false).teams.single().cells.single()
+
+        cell.finish shouldBe ReportCellFinish(position = 2, tied = true)
+        cell.positionStr shouldBe "T2"
+    }
+
+    test("mergeLiveData marks a team event's partner tied when a second pair shares the position") {
+        val base = emptyReport(listOf(teamColumn(TEAM_A_ID, cells = listOf(cell(round = 1, golferId = SCOTTIE_ID)))))
+        val oneOfFourPartnerRows = previewGolfer(SCOTTIE_ID, position = 2, payout = BigDecimal("5.5"), numTied = 4)
+        val live =
+            preview(
+                teams = listOf(previewTeam(teamId = TEAM_A_ID, golfers = listOf(oneOfFourPartnerRows))),
+                isTeamEvent = true,
+            )
+
+        val cell = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false).teams.single().cells.single()
+
+        cell.finish shouldBe ReportCellFinish(position = 2, tied = true)
+        cell.positionStr shouldBe "T2"
     }
 
     test("mergeLiveData bumps team.topTenMoney + topTenCount for live wins (non-additive mode)") {

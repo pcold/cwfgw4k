@@ -83,6 +83,18 @@ class ReportHelpersSpec : FunSpec({
         ReportCellFinish(position = 3, tied = false).label() shouldBe "3"
     }
 
+    // ----- finishAt -----
+
+    test("finishAt reads tied once a second golfer shares the position") {
+        finishAt(position = 4, numTied = 1, isTeamEvent = false) shouldBe ReportCellFinish(position = 4, tied = false)
+        finishAt(position = 4, numTied = 2, isTeamEvent = false) shouldBe ReportCellFinish(position = 4, tied = true)
+    }
+
+    test("finishAt reads a team event's two partner rows as one finisher, tied only once a second pair joins") {
+        finishAt(position = 4, numTied = 2, isTeamEvent = true) shouldBe ReportCellFinish(position = 4, tied = false)
+        finishAt(position = 4, numTied = 4, isTeamEvent = true) shouldBe ReportCellFinish(position = 4, tied = true)
+    }
+
     // ----- tournament ordering -----
 
     test("tournamentOrdering sorts primarily by start date") {

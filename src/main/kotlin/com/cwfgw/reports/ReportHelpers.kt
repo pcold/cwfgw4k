@@ -1,5 +1,6 @@
 package com.cwfgw.reports
 
+import com.cwfgw.scoring.PayoutTable
 import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.Tournament
 import java.math.BigDecimal
@@ -32,6 +33,13 @@ fun isOnOrBefore(
     a: Tournament,
     b: Tournament,
 ): Boolean = tournamentOrdering.compare(a, b) <= 0
+
+/** [numTied] is every result row at [position] across the whole field, the count the payout was split on. */
+internal fun finishAt(
+    position: Int,
+    numTied: Int,
+    isTeamEvent: Boolean,
+): ReportCellFinish = ReportCellFinish(position = position, tied = PayoutTable.tiedUnits(numTied, isTeamEvent) > 1)
 
 /** The only place a finish becomes [ReportCell.positionStr], so the label cannot disagree with the typed fact. */
 internal fun ReportCellFinish.label(): String = if (tied) "T$position" else position.toString()

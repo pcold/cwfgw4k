@@ -599,7 +599,7 @@ private data class ReportContext(
     val cumulativeTopTenEarnings: Map<TeamId, BigDecimal>,
     val sideBetPerRound: List<SideBetRoundSnapshot>,
     val sideBetResults: Map<TeamId, BigDecimal>,
-    val numTiedByPosition: Map<Int, Int>,
+    val finishByPosition: Map<Int, ReportCellFinish>,
 )
 
 private fun deriveReportContext(inputs: WeeklyReportInputs): ReportContext {
@@ -622,7 +622,9 @@ private fun deriveReportContext(inputs: WeeklyReportInputs): ReportContext {
         cumulativeTopTenEarnings = throughScores.groupBy { it.teamId }.mapValues { (_, scores) -> scores.sumPoints() },
         sideBetPerRound = sideBetPerRound,
         sideBetResults = aggregateSideBets(sideBetPerRound),
-        numTiedByPosition = inputs.results.mapNotNull { it.position }.groupingBy { it }.eachCount(),
+        finishByPosition =
+            inputs.results.mapNotNull { it.position }.groupingBy { it }.eachCount()
+                .mapValues { (position, numTied) -> finishAt(position, numTied, inputs.tournament.isTeamEvent) },
     )
 }
 
@@ -643,7 +645,7 @@ private fun buildTeamColumnFromContext(
         cumulativeTopTenCounts = ctx.cumulativeTopTenCounts,
         cumulativeTopTenEarnings = ctx.cumulativeTopTenEarnings,
         sideBetResults = ctx.sideBetResults,
-        numTiedByPosition = ctx.numTiedByPosition,
+        finishByPosition = ctx.finishByPosition,
         numTeams = inputs.teams.size,
     )
 
@@ -881,7 +883,7 @@ internal fun buildReportTeamColumn(
     cumulativeTopTenCounts: Map<TeamId, Int>,
     cumulativeTopTenEarnings: Map<TeamId, BigDecimal>,
     sideBetResults: Map<TeamId, BigDecimal>,
-    numTiedByPosition: Map<Int, Int>,
+    finishByPosition: Map<Int, ReportCellFinish>,
     numTeams: Int,
 ): ReportTeamColumn {
     val roster =
@@ -895,7 +897,7 @@ internal fun buildReportTeamColumn(
             resultsByGolfer = resultsByGolfer,
             scoresByTeamGolfer = scoresByTeamGolfer,
             cumulativeByTeamGolfer = cumulativeByTeamGolfer,
-            numTiedByPosition = numTiedByPosition,
+            finishByPosition = finishByPosition,
             teamId = team.id,
         )
 
@@ -932,7 +934,7 @@ private fun buildWeeklyCells(
     resultsByGolfer: Map<GolferId, TournamentResult>,
     scoresByTeamGolfer: Map<Pair<TeamId, GolferId>, FantasyScore>,
     cumulativeByTeamGolfer: Map<Pair<TeamId, GolferId>, Pair<BigDecimal, Int>>,
-    numTiedByPosition: Map<Int, Int>,
+    finishByPosition: Map<Int, ReportCellFinish>,
     teamId: TeamId,
 ): List<ReportCell> =
     (1..ROUNDS_PER_REPORT).map { round ->
@@ -948,7 +950,7 @@ private fun buildWeeklyCells(
                 resultsByGolfer = resultsByGolfer,
                 scoresByTeamGolfer = scoresByTeamGolfer,
                 cumulativeByTeamGolfer = cumulativeByTeamGolfer,
-                numTiedByPosition = numTiedByPosition,
+                finishByPosition = finishByPosition,
             )
         }
     }
@@ -962,12 +964,12 @@ private fun cellForEntry(
     resultsByGolfer: Map<GolferId, TournamentResult>,
     scoresByTeamGolfer: Map<Pair<TeamId, GolferId>, FantasyScore>,
     cumulativeByTeamGolfer: Map<Pair<TeamId, GolferId>, Pair<BigDecimal, Int>>,
-    numTiedByPosition: Map<Int, Int>,
+    finishByPosition: Map<Int, ReportCellFinish>,
 ): ReportCell {
     val golferName = golferMap[entry.golferId]?.lastName?.uppercase() ?: "?"
     val result = resultsByGolfer[entry.golferId]
     val score = scoresByTeamGolfer[teamId to entry.golferId]
-    val finish = result?.position?.let { ReportCellFinish(position = it, tied = (numTiedByPosition[it] ?: 1) > 1) }
+    val finish = result?.position?.let { finishByPosition[it] }
     val (cumulativeEarnings, cumulativeTopTens) =
         cumulativeByTeamGolfer[teamId to entry.golferId] ?: (BigDecimal.ZERO to 0)
     return ReportCell(

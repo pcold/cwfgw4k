@@ -407,7 +407,11 @@ private fun livePayoutMap(liveData: EspnLivePreview): Map<Pair<TeamId, GolferId>
     liveData.teams.flatMap { team ->
         team.golferScores.map { score ->
             (team.teamId to score.golferId) to
-                LiveCellInputs(payout = score.payout, position = score.position, scoreToPar = score.scoreToPar)
+                LiveCellInputs(
+                    payout = score.payout,
+                    finish = finishAt(score.position, score.numTied, liveData.isTeamEvent),
+                    scoreToPar = score.scoreToPar,
+                )
         }
     }.toMap()
 
@@ -440,10 +444,10 @@ private data class TeamPhase1(
     val originalSideBets: BigDecimal,
 )
 
-/** What the live preview tells us about one (team, golfer) pairing — payout + ESPN position + score. */
+/** What the live preview tells us about one (team, golfer) pairing — payout + ESPN finish + score. */
 private data class LiveCellInputs(
     val payout: BigDecimal,
-    val position: Int,
+    val finish: ReportCellFinish,
     val scoreToPar: Int?,
 )
 
@@ -452,21 +456,18 @@ private fun overlayTeamCells(
     livePayout: Map<Pair<TeamId, GolferId>, LiveCellInputs>,
     additive: Boolean,
 ): TeamPhase1 {
-    val livePositionTallies = livePayout.values.groupingBy { it.position }.eachCount()
     val updatedCells =
         team.cells.map { cell ->
             val live = cell.golferId?.let { livePayout[team.teamId to it] }
             if (live == null) {
                 if (additive) cell else cell.copy(earnings = BigDecimal.ZERO, topTens = 0)
             } else {
-                val finish =
-                    ReportCellFinish(position = live.position, tied = (livePositionTallies[live.position] ?: 1) > 1)
                 val newEarnings = if (additive) cell.earnings.add(live.payout) else live.payout
                 val newTopTens = if (additive) cell.topTens + 1 else 1
                 cell.copy(
                     earnings = newEarnings,
-                    positionStr = finish.label(),
-                    finish = finish,
+                    positionStr = live.finish.label(),
+                    finish = live.finish,
                     scoreToPar = live.scoreToPar,
                     topTens = newTopTens,
                     seasonEarnings = cell.seasonEarnings.add(live.payout),
