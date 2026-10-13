@@ -33,26 +33,28 @@ awk '
     }
 ' "${workflow}" > "${work}/step.sh"
 
-# Both run from ${work}, an empty directory: the workflow's job checks nothing
-# out, and the hook must not need a file either.
+# Both run from an empty directory outside the repository: the workflow's job
+# checks nothing out, and the hook must not need a file either.
+elsewhere="${work}/elsewhere"
+mkdir "${elsewhere}"
 
 # pre_push <ref line>... — the lines git writes to the hook's stdin for one push.
 pre_push() {
-    (cd "${work}" && printf '%s\n' "$@" | "${hook}" origin git@github.com:pcold/cwfgw4k.git)
+    (cd "${elsewhere}" && printf '%s\n' "$@" | "${hook}" origin git@github.com:pcold/cwfgw4k.git)
 }
 
-# Git ends every line it writes; a check of the hook piped in by hand often does not.
+# Git ends every line it writes; a line piped to the hook by hand need not end.
 unterminated_push() {
-    (cd "${work}" && printf '%s' "$1" | "${hook}" origin git@github.com:pcold/cwfgw4k.git)
+    (cd "${elsewhere}" && printf '%s' "$1" | "${hook}" origin git@github.com:pcold/cwfgw4k.git)
 }
 
 nothing_to_push() {
-    (cd "${work}" && "${hook}" origin git@github.com:pcold/cwfgw4k.git < /dev/null)
+    (cd "${elsewhere}" && "${hook}" origin git@github.com:pcold/cwfgw4k.git < /dev/null)
 }
 
 # The form Actions gives a Linux step that names no shell.
 workflow_step() {
-    (cd "${work}" && GITHUB_HEAD_REF="$1" bash -e "${work}/step.sh")
+    (cd "${elsewhere}" && GITHUB_HEAD_REF="$1" bash -e "${work}/step.sh")
 }
 
 pattern_line() {
