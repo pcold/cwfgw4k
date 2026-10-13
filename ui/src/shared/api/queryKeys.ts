@@ -81,9 +81,9 @@ export const queryKeys = {
   },
 
   /**
-   * An empty tournament id holds the whole season's report. A single tournament's is cached here by
-   * the weekly pages and again under `tournamentReport` by the scoreboard, so a write that stales
-   * one invalidates both.
+   * The weekly pages cache a tournament's report here and the scoreboard caches it again under
+   * `tournamentReport`, so a write that stales one invalidates both. An empty tournament id holds
+   * the whole season's report.
    */
   report: {
     root: ['report'] as const,
