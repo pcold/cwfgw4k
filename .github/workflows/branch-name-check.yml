@@ -1,0 +1,32 @@
+name: Branch name check
+
+# Linear's GitHub integration links a PR to its issue by the head branch name.
+# Advisory, not a required status: a fork's contributor has no Linear issue to
+# name a branch after, and scripts/setup-branch-protection.sh lists what blocks.
+
+on:
+  # Not `push`: GITHUB_HEAD_REF is empty outside a pull request, and
+  # .githooks/pre-push already covers a branch that has no PR yet.
+  pull_request:
+
+permissions: {}
+
+jobs:
+  branch-name:
+    name: branch name
+    # Dependabot names its own branches and cannot follow the convention; its
+    # PRs are linked to Linear by title in dependabot-linear.yml instead.
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate the head branch is <user>/cwf-<num>-<slug>
+        # The pattern is duplicated in .githooks/pre-push; change the two together.
+        run: |
+          pattern='^[a-z0-9-]+/cwf-[0-9]+-[a-z0-9-]+$'
+          branch="$GITHUB_HEAD_REF"
+          if ! [[ "$branch" =~ $pattern ]]; then
+            echo "::error::Branch '$branch' does not match <user>/cwf-<num>-<slug>."
+            echo "::error::Use the issue's gitBranchName from Linear, e.g. <user>/cwf-42-short-slug."
+            exit 1
+          fi
+          echo "Branch name OK: $branch"

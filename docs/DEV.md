@@ -100,7 +100,7 @@ Personal overrides go in `.claude/settings.local.json`, which is gitignored. A c
 
 ## Code-review graph (for Claude Code sessions)
 
-The repo is wired for [code-review-graph](https://pypi.org/project/code-review-graph/), a local knowledge graph of the code that Claude Code queries for callers, callees, tests and the impact of a change. It is optional: every hook checks for the tool and does nothing when it is missing.
+The repo is wired for [code-review-graph](https://pypi.org/project/code-review-graph/), a local knowledge graph of the code that Claude Code queries for callers, callees, tests and the impact of a change. It is optional: each of its hooks checks for the tool and does nothing when it is missing.
 
 ```sh
 pipx install code-review-graph         # once per machine; the hooks call this binary
@@ -111,3 +111,4 @@ git config core.hooksPath .githooks    # once per clone
 - `.mcp.json` starts the graph's MCP server for a Claude Code session through `uvx`, so [uv](https://docs.astral.sh/uv/) needs to be installed too. `.claude/settings.json` allows the server's read-only tools.
 - The same settings file keeps the graph current: it runs an incremental update after each edit and prints the graph's status at session start. `.githooks/pre-commit` updates it before a commit.
 - The graph lives in `.code-review-graph/`, which is gitignored. Delete the directory and rebuild if it ever looks wrong.
+- `core.hooksPath` switches on every hook in `.githooks`, and `pre-push` is not one of the graph's: it refuses to push a branch that is not named `<user>/cwf-<num>-<slug>`, the name Linear gives an issue. `.github/workflows/branch-name-check.yml` checks the same pattern on a pull request.
