@@ -96,7 +96,8 @@ expect 0 "the hook and the workflow carry the same pattern line" same_pattern
 expect 0 "the workflow's script was found in the YAML" test -s "${work}/step.sh"
 
 either 0 "${linear_name}"
-either 0 "a-b/cwf-1-x"
+# 0 is the number of no issue, so quoting this name in a PR body links nothing.
+either 0 "a-b/cwf-0-x"
 either 1 "scratch"
 either 1 "pcold/CWF-65-x"
 either 1 "Pcold/cwf-65-x"
