@@ -23,7 +23,7 @@ suspend fun seedAdminIfEmpty(
 
     val username = config.adminUsername
     val password = config.adminPassword
-    if (username.isNullOrBlank() || password.isNullOrBlank()) {
+    if (username.isNullOrBlank() || password == null || password.isBlank()) {
         log.warn {
             "Users table is empty but auth.adminUsername / auth.adminPassword are not configured; " +
                 "skipping admin seed. Set AUTH_ADMIN_USERNAME and AUTH_ADMIN_PASSWORD to bootstrap an admin."
@@ -31,7 +31,7 @@ suspend fun seedAdminIfEmpty(
         return
     }
 
-    val hash = authService.hashPassword(password)
+    val hash = authService.hashPassword(password.cleartext)
     tx.update {
         userRepository.create(NewUser(username = username, passwordHash = hash, role = UserRole.Admin))
     }

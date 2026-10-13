@@ -1,6 +1,7 @@
 package com.cwfgw.users
 
 import com.cwfgw.config.AuthConfig
+import com.cwfgw.config.ConfigSecret
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
 import io.kotest.core.spec.style.FunSpec
@@ -14,10 +15,10 @@ private fun authConfig(
     password: String? = "hunter2",
 ): AuthConfig =
     AuthConfig(
-        sessionSecret = "test-only",
+        sessionSecret = ConfigSecret("test-only"),
         sessionMaxAgeSeconds = 3600,
         adminUsername = username,
-        adminPassword = password,
+        adminPassword = password?.let(::ConfigSecret),
         cookieSecure = true,
     )
 

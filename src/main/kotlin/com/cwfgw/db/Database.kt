@@ -20,7 +20,7 @@ class Database(val dataSource: DataSource, val dsl: DSLContext) {
                     HikariConfig().apply {
                         jdbcUrl = cfg.jdbcUrl
                         username = cfg.user
-                        password = cfg.password
+                        password = cfg.password.cleartext
                         maximumPoolSize = cfg.maxPoolSize
                         schema = cfg.schema
                         // Postgres JDBC defaults both timeouts to 0 = wait forever. With
