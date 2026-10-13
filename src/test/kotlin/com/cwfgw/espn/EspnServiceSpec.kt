@@ -14,6 +14,7 @@ import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.orFail
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournamentLinks.TournamentPlayerOverride
@@ -27,7 +28,6 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
-import io.kotest.matchers.types.shouldBeInstanceOf
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -144,10 +144,7 @@ class EspnServiceSpec : FunSpec({
     test("importByDate returns an empty batch when ESPN has no events") {
         val fixture = Fixture()
 
-        val batch =
-            fixture.service.importByDate(START_DATE)
-                .shouldBeInstanceOf<Result.Ok<EspnImportBatch>>()
-                .value
+        val batch = fixture.service.importByDate(START_DATE).orFail()
 
         batch.imported.shouldHaveSize(0)
         batch.unlinked.shouldHaveSize(0)
@@ -168,10 +165,7 @@ class EspnServiceSpec : FunSpec({
                 // No tournament with pga_tournament_id matching the event
             )
 
-        val batch =
-            fixture.service.importByDate(START_DATE)
-                .shouldBeInstanceOf<Result.Ok<EspnImportBatch>>()
-                .value
+        val batch = fixture.service.importByDate(START_DATE).orFail()
 
         batch.imported.shouldHaveSize(0)
         batch.unlinked shouldContainExactly listOf(UnlinkedEvent(event.espnId, event.name))
@@ -191,10 +185,7 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val batch =
-            fixture.service.importByDate(START_DATE)
-                .shouldBeInstanceOf<Result.Ok<EspnImportBatch>>()
-                .value
+        val batch = fixture.service.importByDate(START_DATE).orFail()
         val import = batch.imported.single()
 
         import.tournamentId shouldBe TOURNAMENT_ID
@@ -215,10 +206,7 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val batch =
-            fixture.service.importByDate(START_DATE)
-                .shouldBeInstanceOf<Result.Ok<EspnImportBatch>>()
-                .value
+        val batch = fixture.service.importByDate(START_DATE).orFail()
 
         batch.imported.single().created shouldBe 1
         val created = with(noopTransactionContext) { fixture.golferRepo.findByPgaPlayerId("unknown-espn") }
@@ -248,10 +236,7 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val batch =
-            fixture.service.importByDate(START_DATE)
-                .shouldBeInstanceOf<Result.Ok<EspnImportBatch>>()
-                .value
+        val batch = fixture.service.importByDate(START_DATE).orFail()
         val import = batch.imported.single()
 
         import.matched shouldBe 2
@@ -305,10 +290,7 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val batch =
-            fixture.service.importByDate(START_DATE)
-                .shouldBeInstanceOf<Result.Ok<EspnImportBatch>>()
-                .value
+        val batch = fixture.service.importByDate(START_DATE).orFail()
         val import = batch.imported.single()
 
         // Matched 1 (Smith → rosteredSmith); Jones auto-created → also matched.
@@ -365,12 +347,7 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val import =
-            fixture.service.importByDate(START_DATE)
-                .shouldBeInstanceOf<Result.Ok<EspnImportBatch>>()
-                .value
-                .imported
-                .single()
+        val import = fixture.service.importByDate(START_DATE).orFail().imported.single()
 
         import.collisions shouldHaveSize 0
         import.created shouldBe 1
@@ -469,10 +446,7 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val import =
-            fixture.service.importForTournament(TOURNAMENT_ID)
-                .shouldBeInstanceOf<Result.Ok<EspnImport>>()
-                .value
+        val import = fixture.service.importForTournament(TOURNAMENT_ID).orFail()
 
         import.matched shouldBe 1
         fixture.fakeClient.fetchCalls shouldBe listOf(START_DATE)
@@ -493,12 +467,7 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val import =
-            fixture.service.importByDate(START_DATE)
-                .shouldBeInstanceOf<Result.Ok<EspnImportBatch>>()
-                .value
-                .imported
-                .single()
+        val import = fixture.service.importByDate(START_DATE).orFail().imported.single()
 
         import.matched shouldBe 1
         import.created shouldBe 0
@@ -527,12 +496,7 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val import =
-            fixture.service.importByDate(START_DATE)
-                .shouldBeInstanceOf<Result.Ok<EspnImportBatch>>()
-                .value
-                .imported
-                .single()
+        val import = fixture.service.importByDate(START_DATE).orFail().imported.single()
 
         import.collisions shouldHaveSize 1
         import.collisions.single().shouldContain("Rory McIlroy")
@@ -555,12 +519,7 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val import =
-            fixture.service.importByDate(START_DATE)
-                .shouldBeInstanceOf<Result.Ok<EspnImportBatch>>()
-                .value
-                .imported
-                .single()
+        val import = fixture.service.importByDate(START_DATE).orFail().imported.single()
 
         // The two existing Smiths plus a new auto-created one (last name "Smith", empty first name).
         import.created shouldBe 1
@@ -614,10 +573,7 @@ class EspnServiceSpec : FunSpec({
                 initialOverrides = listOf(TournamentPlayerOverride(TOURNAMENT_ID, "team:t1:1", matt.id)),
             )
 
-        val import =
-            fixture.service.importForTournament(TOURNAMENT_ID)
-                .shouldBeInstanceOf<Result.Ok<EspnImport>>()
-                .value
+        val import = fixture.service.importForTournament(TOURNAMENT_ID).orFail()
 
         // No new golfer auto-created — the override mapped the partner row to Matt directly.
         import.created shouldBe 0

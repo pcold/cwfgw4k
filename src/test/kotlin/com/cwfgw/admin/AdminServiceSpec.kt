@@ -17,6 +17,7 @@ import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.orFail
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
@@ -129,10 +130,7 @@ class AdminServiceSpec : FunSpec({
                     ),
             )
 
-        val result =
-            fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END)
-                .shouldBeInstanceOf<Result.Ok<SeasonSchedulePreviewResult>>()
-                .value
+        val result = fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END).orFail()
 
         result.entries shouldHaveSize 2
         result.skipped.shouldBeEmpty()
@@ -145,8 +143,7 @@ class AdminServiceSpec : FunSpec({
 
         val preview =
             fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END)
-                .shouldBeInstanceOf<Result.Ok<SeasonSchedulePreviewResult>>()
-                .value
+                .orFail()
                 .entries
                 .single()
 
@@ -156,8 +153,7 @@ class AdminServiceSpec : FunSpec({
 
         val tournament =
             fixture.service.confirmSeasonSchedule(SEASON_ID, listOf(preview.toConfirmedEntry()))
-                .shouldBeInstanceOf<Result.Ok<SeasonImportResult>>()
-                .value
+                .orFail()
                 .created
                 .single()
 
@@ -180,11 +176,7 @@ class AdminServiceSpec : FunSpec({
                     ),
             )
 
-        val preview =
-            fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END)
-                .shouldBeInstanceOf<Result.Ok<SeasonSchedulePreviewResult>>()
-                .value
-                .entries
+        val preview = fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END).orFail().entries
 
         preview.map { it.name to it.week } shouldBe
             listOf(
@@ -196,8 +188,7 @@ class AdminServiceSpec : FunSpec({
 
         val created =
             fixture.service.confirmSeasonSchedule(SEASON_ID, preview.map { it.toConfirmedEntry() })
-                .shouldBeInstanceOf<Result.Ok<SeasonImportResult>>()
-                .value
+                .orFail()
                 .created
 
         created.map { it.name to it.week } shouldBe
@@ -225,19 +216,11 @@ class AdminServiceSpec : FunSpec({
                     ),
             )
 
-        val preview =
-            fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END)
-                .shouldBeInstanceOf<Result.Ok<SeasonSchedulePreviewResult>>()
-                .value
-                .entries
+        val preview = fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END).orFail().entries
 
         val kept = preview.filterNot { it.name == "The Masters" }.map { it.toConfirmedEntry() }
 
-        val created =
-            fixture.service.confirmSeasonSchedule(SEASON_ID, kept)
-                .shouldBeInstanceOf<Result.Ok<SeasonImportResult>>()
-                .value
-                .created
+        val created = fixture.service.confirmSeasonSchedule(SEASON_ID, kept).orFail().created
 
         created.map { it.name to it.week } shouldBe
             listOf(
@@ -259,10 +242,7 @@ class AdminServiceSpec : FunSpec({
                     ),
             )
 
-        val result =
-            fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END)
-                .shouldBeInstanceOf<Result.Ok<SeasonSchedulePreviewResult>>()
-                .value
+        val result = fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END).orFail()
 
         result.entries.map { it.name } shouldBe listOf("InRange")
         result.skipped.shouldBeEmpty()
@@ -335,10 +315,7 @@ class AdminServiceSpec : FunSpec({
                 endDate = LocalDate.parse("2026-01-18"),
             )
 
-        val result =
-            fixture.service.confirmSeasonSchedule(SEASON_ID, listOf(entry))
-                .shouldBeInstanceOf<Result.Ok<SeasonImportResult>>()
-                .value
+        val result = fixture.service.confirmSeasonSchedule(SEASON_ID, listOf(entry)).orFail()
 
         result.created.shouldBeEmpty()
         result.skipped.single().espnEventId shouldBe "e-1"
@@ -349,10 +326,7 @@ class AdminServiceSpec : FunSpec({
         val fixture =
             Fixture(calendar = listOf(calendarEntry("e-bad", "BadDate", "not-a-date")))
 
-        val result =
-            fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END)
-                .shouldBeInstanceOf<Result.Ok<SeasonSchedulePreviewResult>>()
-                .value
+        val result = fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END).orFail()
 
         result.entries.shouldBeEmpty()
         result.skipped.single().espnEventId shouldBe "e-bad"
@@ -362,10 +336,7 @@ class AdminServiceSpec : FunSpec({
     test("an empty ESPN calendar returns an empty preview, not an error") {
         val fixture = Fixture(calendar = emptyList())
 
-        val result =
-            fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END)
-                .shouldBeInstanceOf<Result.Ok<SeasonSchedulePreviewResult>>()
-                .value
+        val result = fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END).orFail()
 
         result.entries.shouldBeEmpty()
         result.skipped.shouldBeEmpty()
@@ -374,10 +345,7 @@ class AdminServiceSpec : FunSpec({
     test("confirmSeasonSchedule on an empty entry list succeeds with no writes") {
         val fixture = Fixture()
 
-        val result =
-            fixture.service.confirmSeasonSchedule(SEASON_ID, emptyList())
-                .shouldBeInstanceOf<Result.Ok<SeasonImportResult>>()
-                .value
+        val result = fixture.service.confirmSeasonSchedule(SEASON_ID, emptyList()).orFail()
 
         result.created.shouldBeEmpty()
         result.skipped.shouldBeEmpty()
@@ -395,10 +363,7 @@ class AdminServiceSpec : FunSpec({
             1	BROWN	2	Rory McIlroy	50
             """.trimIndent()
 
-        val result =
-            fixture.service.previewRoster(tsv)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
+        val result = fixture.service.previewRoster(tsv).orFail()
 
         result.totalPicks shouldBe 2
         result.matchedCount shouldBe 2
@@ -424,10 +389,7 @@ class AdminServiceSpec : FunSpec({
             1	BROWN	1	scottie SCHEFFLER	75
             """.trimIndent()
 
-        val result =
-            fixture.service.previewRoster(tsv)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
+        val result = fixture.service.previewRoster(tsv).orFail()
 
         result.matchedCount shouldBe 1
         result.teams.single().picks.single().match shouldBe
@@ -443,10 +405,7 @@ class AdminServiceSpec : FunSpec({
             1	BROWN	1	Phantom Player	50
             """.trimIndent()
 
-        val result =
-            fixture.service.previewRoster(tsv)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
+        val result = fixture.service.previewRoster(tsv).orFail()
 
         result.matchedCount shouldBe 0
         result.unmatchedCount shouldBe 1
@@ -464,10 +423,7 @@ class AdminServiceSpec : FunSpec({
             1	BROWN	1	Justin Thomas	50
             """.trimIndent()
 
-        val result =
-            fixture.service.previewRoster(tsv)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
+        val result = fixture.service.previewRoster(tsv).orFail()
 
         result.ambiguousCount shouldBe 1
         result.matchedCount shouldBe 0
@@ -490,10 +446,7 @@ class AdminServiceSpec : FunSpec({
             2	WOMBLE	2	Scottie Scheffler	25
             """.trimIndent()
 
-        val result =
-            fixture.service.previewRoster(tsv)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
+        val result = fixture.service.previewRoster(tsv).orFail()
 
         result.totalPicks shouldBe 4
         result.matchedCount shouldBe 2
@@ -546,10 +499,7 @@ class AdminServiceSpec : FunSpec({
             1	BROWN	1	Scottie Scheffler	75
             """.trimIndent()
 
-        val result =
-            fixture.service.previewRoster(tsv)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
+        val result = fixture.service.previewRoster(tsv).orFail()
 
         result.matchedCount shouldBe 1
         result.teams.single().picks.single().match shouldBe
@@ -566,11 +516,7 @@ class AdminServiceSpec : FunSpec({
             1	BROWN	2	scottie SCHEFFLER	60
             """.trimIndent()
 
-        val pick =
-            fixture.service.previewRoster(tsv)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
-                .teams.single().picks.single()
+        val pick = fixture.service.previewRoster(tsv).orFail().teams.single().picks.single()
 
         pick.playerName shouldBe "Scottie Scheffler"
         pick.round shouldBe 2
@@ -587,10 +533,7 @@ class AdminServiceSpec : FunSpec({
             1	BROWN	1	Scheffler	75
             """.trimIndent()
 
-        val result =
-            fixture.service.previewRoster(tsv)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
+        val result = fixture.service.previewRoster(tsv).orFail()
 
         result.unmatchedCount shouldBe 1
         result.teams.single().picks.single().match shouldBe PickMatch.NoMatch
@@ -599,10 +542,7 @@ class AdminServiceSpec : FunSpec({
     test("previewRoster on a header-only TSV returns an empty preview with zero counts") {
         val fixture = Fixture(seedGolfers = listOf(golfer("201", "Scottie", "Scheffler")))
 
-        val result =
-            fixture.service.previewRoster(ROSTER_HEADER)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
+        val result = fixture.service.previewRoster(ROSTER_HEADER).orFail()
 
         result.teams.shouldBeEmpty()
         result.totalPicks shouldBe 0
@@ -704,8 +644,7 @@ class AdminServiceSpec : FunSpec({
 
         val result =
             fixture.service.confirmRoster(ConfirmRosterRequest(seasonId = SEASON_ID, teams = emptyList()))
-                .shouldBeInstanceOf<Result.Ok<RosterUploadResult>>()
-                .value
+                .orFail()
 
         result.teamsCreated shouldBe 0
         result.golfersCreated shouldBe 0

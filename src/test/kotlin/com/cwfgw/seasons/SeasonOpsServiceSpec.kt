@@ -11,6 +11,7 @@ import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamId
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.orFail
 import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
@@ -186,10 +187,7 @@ class SeasonOpsServiceSpec : FunSpec({
         val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.Completed)
         val fixture = Fixture(initialTournaments = listOf(sony, masters))
 
-        val finalized =
-            fixture.service.finalizeSeason(SEASON_ID)
-                .shouldBeInstanceOf<Result.Ok<Season>>()
-                .value
+        val finalized = fixture.service.finalizeSeason(SEASON_ID).orFail()
         finalized.status shouldBe "completed"
     }
 
@@ -212,10 +210,7 @@ class SeasonOpsServiceSpec : FunSpec({
                 initialScores = listOf(fantasyScore("c01", SONY_ID), fantasyScore("c01", MASTERS_ID)),
             )
 
-        val result =
-            fixture.service.cleanSeasonResults(SEASON_ID)
-                .shouldBeInstanceOf<Result.Ok<CleanSeasonResult>>()
-                .value
+        val result = fixture.service.cleanSeasonResults(SEASON_ID).orFail()
         result.scoresDeleted shouldBe 2
         result.resultsDeleted shouldBe 1
         result.tournamentsReset shouldBe 2

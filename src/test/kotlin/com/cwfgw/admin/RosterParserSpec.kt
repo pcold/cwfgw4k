@@ -1,6 +1,7 @@
 package com.cwfgw.admin
 
 import com.cwfgw.result.Result
+import com.cwfgw.testing.orFail
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -11,8 +12,7 @@ private val HEADER = RosterParser.EXPECTED_HEADER.joinToString("\t")
 
 private fun rosterText(vararg rows: String): String = (listOf(HEADER) + rows.toList()).joinToString("\n")
 
-private fun ok(text: String): List<ParsedTeam> =
-    RosterParser.parse(text).shouldBeInstanceOf<Result.Ok<List<ParsedTeam>>>().value
+private fun ok(text: String): List<ParsedTeam> = RosterParser.parse(text).orFail()
 
 private fun rowErrors(text: String): List<RosterParseError.RowError> =
     RosterParser.parse(text)
@@ -233,10 +233,7 @@ class RosterParserSpec : FunSpec({
                 "2,WOMBLE,1,Cameron Young",
             ).joinToString("\n")
 
-        val teams =
-            RosterParser.parse(csvText)
-                .shouldBeInstanceOf<Result.Ok<List<ParsedTeam>>>()
-                .value
+        val teams = RosterParser.parse(csvText).orFail()
 
         teams shouldHaveSize 2
         teams[0].teamName shouldBe "BROWN"

@@ -17,6 +17,7 @@ import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.orFail
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.FakeTournamentRepository
@@ -29,7 +30,6 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -191,10 +191,7 @@ class EspnLivePreviewSpec : FunSpec({
     test("previewByDate returns an empty list when ESPN reports no tournaments for the date") {
         val fixture = PreviewFixture(tournamentsByDate = mapOf(START_DATE to emptyList()))
 
-        val result =
-            fixture.service.previewByDate(SEASON_ID, START_DATE)
-                .shouldBeInstanceOf<Result.Ok<List<EspnLivePreview>>>()
-                .value
+        val result = fixture.service.previewByDate(SEASON_ID, START_DATE).orFail()
         result.shouldBeEmpty()
     }
 
@@ -222,11 +219,7 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val preview =
-            fixture.service.previewByDate(SEASON_ID, START_DATE)
-                .shouldBeInstanceOf<Result.Ok<List<EspnLivePreview>>>()
-                .value
-                .single()
+        val preview = fixture.service.previewByDate(SEASON_ID, START_DATE).orFail().single()
 
         preview.espnId shouldBe "401580999"
         preview.totalCompetitors shouldBe 2
@@ -252,11 +245,7 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val preview =
-            fixture.service.previewByDate(SEASON_ID, START_DATE)
-                .shouldBeInstanceOf<Result.Ok<List<EspnLivePreview>>>()
-                .value
-                .single()
+        val preview = fixture.service.previewByDate(SEASON_ID, START_DATE).orFail().single()
 
         preview.payoutMultiplier.compareTo(BigDecimal(2)) shouldBe 0
         // $18 first place × 2.0 multiplier = $36
@@ -274,11 +263,7 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val preview =
-            fixture.service.previewByDate(SEASON_ID, START_DATE)
-                .shouldBeInstanceOf<Result.Ok<List<EspnLivePreview>>>()
-                .value
-                .single()
+        val preview = fixture.service.previewByDate(SEASON_ID, START_DATE).orFail().single()
 
         preview.payoutMultiplier.compareTo(BigDecimal.ONE) shouldBe 0
     }
@@ -299,12 +284,7 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val leaderboard =
-            fixture.service.previewByDate(SEASON_ID, START_DATE)
-                .shouldBeInstanceOf<Result.Ok<List<EspnLivePreview>>>()
-                .value
-                .single()
-                .leaderboard
+        val leaderboard = fixture.service.previewByDate(SEASON_ID, START_DATE).orFail().single().leaderboard
 
         leaderboard.map { it.name } shouldContainExactly
             listOf("First Place", "Second Place", "Third Place")
@@ -329,12 +309,7 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val leaderboard =
-            fixture.service.previewByDate(SEASON_ID, START_DATE)
-                .shouldBeInstanceOf<Result.Ok<List<EspnLivePreview>>>()
-                .value
-                .single()
-                .leaderboard
+        val leaderboard = fixture.service.previewByDate(SEASON_ID, START_DATE).orFail().single().leaderboard
 
         leaderboard shouldHaveSize 1
         leaderboard.single().rostered shouldBe true

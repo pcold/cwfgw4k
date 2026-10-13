@@ -20,6 +20,7 @@ import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.orFail
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
@@ -216,10 +217,7 @@ class TournamentOpsServiceSpec : FunSpec({
                     ),
             )
 
-        val finalized =
-            fixture.service.finalizeTournament(MASTERS_ID)
-                .shouldBeInstanceOf<Result.Ok<Tournament>>()
-                .value
+        val finalized = fixture.service.finalizeTournament(MASTERS_ID).orFail()
         finalized.status shouldBe TournamentStatus.Completed
     }
 
@@ -284,10 +282,7 @@ class TournamentOpsServiceSpec : FunSpec({
                 initialScores = listOf(score),
             )
 
-        val reset =
-            fixture.service.resetTournament(MASTERS_ID)
-                .shouldBeInstanceOf<Result.Ok<Tournament>>()
-                .value
+        val reset = fixture.service.resetTournament(MASTERS_ID).orFail()
 
         reset.status shouldBe TournamentStatus.Upcoming
         with(noopTransactionContext) {

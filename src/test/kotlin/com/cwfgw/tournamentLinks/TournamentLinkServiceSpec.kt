@@ -6,6 +6,7 @@ import com.cwfgw.golfers.GolferId
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.testing.FakeTransactor
+import com.cwfgw.testing.orFail
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -79,10 +80,10 @@ class TournamentLinkServiceSpec : FunSpec({
 
         val result =
             svc.upsert(t.id, UpsertTournamentPlayerOverrideRequest(espnCompetitorId = "abc-123", golferId = g.id))
+                .orFail()
 
-        result.shouldBeInstanceOf<Result.Ok<TournamentPlayerOverride>>()
-        result.value.tournamentId shouldBe t.id
-        result.value.golferId shouldBe g.id
+        result.tournamentId shouldBe t.id
+        result.golferId shouldBe g.id
     }
 
     test("upsert returns TournamentNotFound when the tournament doesn't exist") {
@@ -132,20 +133,18 @@ class TournamentLinkServiceSpec : FunSpec({
                     listOf(TournamentPlayerOverride(t.id, "abc-123", g.id)),
             )
 
-        val result = svc.delete(t.id, "abc-123")
+        val result = svc.delete(t.id, "abc-123").orFail()
 
-        result.shouldBeInstanceOf<Result.Ok<Boolean>>()
-        result.value shouldBe true
+        result shouldBe true
     }
 
     test("delete returns Ok(false) when no matching override exists — idempotent") {
         val t = tournament()
         val svc = service(tournaments = listOf(t))
 
-        val result = svc.delete(t.id, "never-stored")
+        val result = svc.delete(t.id, "never-stored").orFail()
 
-        result.shouldBeInstanceOf<Result.Ok<Boolean>>()
-        result.value shouldBe false
+        result shouldBe false
     }
 
     test("delete is blocked once the tournament is finalized") {

@@ -13,6 +13,7 @@ import com.cwfgw.teams.RosterEntryId
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.testing.FakeTransactor
+import com.cwfgw.testing.orFail
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -186,10 +187,7 @@ class ScoringServiceSpec : FunSpec({
                     ),
             )
 
-        val weekly =
-            fixture.service.calculateScores(SEASON_ID, TOURNAMENT_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyScoreResult>>()
-                .value
+        val weekly = fixture.service.calculateScores(SEASON_ID, TOURNAMENT_ID).orFail()
         weekly.numTeams shouldBe 2
         weekly.totalPot shouldBe BigDecimal(18)
         val byTeam = weekly.teams.associateBy { it.teamId }
@@ -229,10 +227,7 @@ class ScoringServiceSpec : FunSpec({
                     ),
             )
 
-        val weekly =
-            fixture.service.calculateScores(SEASON_ID, TOURNAMENT_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyScoreResult>>()
-                .value
+        val weekly = fixture.service.calculateScores(SEASON_ID, TOURNAMENT_ID).orFail()
         weekly.multiplier shouldBe BigDecimal(2)
         weekly.totalPot shouldBe BigDecimal(36)
     }
@@ -268,10 +263,7 @@ class ScoringServiceSpec : FunSpec({
                 fakes = FakeData(pointTotals = pointTotals),
             )
 
-        val standings =
-            fixture.service.getSideBetStandings(SEASON_ID)
-                .shouldBeInstanceOf<Result.Ok<SideBetStandings>>()
-                .value
+        val standings = fixture.service.getSideBetStandings(SEASON_ID).orFail()
         // Default sideBetRounds is [5, 6, 7, 8] — only round 5 has picks here.
         val round5 = standings.rounds.first { it.round == 5 }
         round5.active shouldBe true
@@ -289,10 +281,7 @@ class ScoringServiceSpec : FunSpec({
         val rosters = listOf(mkRoster(team.id, golferId(1), draftRound = 5))
         val fixture = Fixture(world = World(teams = listOf(team), rosters = rosters))
 
-        val standings =
-            fixture.service.getSideBetStandings(SEASON_ID)
-                .shouldBeInstanceOf<Result.Ok<SideBetStandings>>()
-                .value
+        val standings = fixture.service.getSideBetStandings(SEASON_ID).orFail()
         val round5 = standings.rounds.first { it.round == 5 }
         round5.active shouldBe false
         round5.winner shouldBe null
@@ -313,8 +302,7 @@ class ScoringServiceSpec : FunSpec({
                 fakes = FakeData(teamTotals = teamTotals),
             )
 
-        val result =
-            fixture.service.refreshStandings(SEASON_ID).shouldBeInstanceOf<Result.Ok<List<SeasonStanding>>>().value
+        val result = fixture.service.refreshStandings(SEASON_ID).orFail()
         result.shouldHaveSize(2)
         fixture.scoring.standingUpserts.shouldHaveSize(2)
         val upsertedByTeam = fixture.scoring.standingUpserts.associateBy { it.teamId }

@@ -6,6 +6,7 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamId
 import com.cwfgw.testing.FakeTransactor
+import com.cwfgw.testing.orFail
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -67,7 +68,7 @@ class DraftServiceSpec : FunSpec({
     test("start transitions a pending draft to in_progress") {
         val result = service(drafts = listOf(draft(status = "pending"))).start(SEASON_ID)
 
-        result.shouldBeInstanceOf<Result.Ok<Draft>>().value.status shouldBe "in_progress"
+        result.orFail().status shouldBe "in_progress"
     }
 
     test("initializePicks fails with NoTeams when the season has none") {
@@ -102,7 +103,7 @@ class DraftServiceSpec : FunSpec({
             service(drafts = listOf(d), picks = listOf(pick))
                 .makePick(SEASON_ID, MakePickRequest(teamId = teamA, golferId = golfer))
 
-        result.shouldBeInstanceOf<Result.Ok<DraftPick>>().value.golferId shouldBe golfer
+        result.orFail().golferId shouldBe golfer
     }
 
     test("makePick returns AllPicksMade when every slot has a golfer") {
