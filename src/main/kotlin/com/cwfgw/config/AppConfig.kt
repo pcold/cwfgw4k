@@ -15,6 +15,7 @@ data class AppConfig(
     companion object {
         fun load(overrides: Map<String, Any> = emptyMap()): AppConfig =
             ConfigLoaderBuilder.default()
+                .addDecoder(ConfigSecretDecoder())
                 .apply { if (overrides.isNotEmpty()) addMapSource(overrides) }
                 .addResourceSource("/application.yaml")
                 .build()
@@ -27,16 +28,16 @@ data class HttpConfig(val host: String, val port: Int)
 data class DbConfig(
     val jdbcUrl: String,
     val user: String,
-    val password: String,
+    val password: ConfigSecret,
     val schema: String,
     val maxPoolSize: Int,
 )
 
 data class AuthConfig(
-    val sessionSecret: String,
+    val sessionSecret: ConfigSecret,
     val sessionMaxAgeSeconds: Long,
     val adminUsername: String?,
-    val adminPassword: String?,
+    val adminPassword: ConfigSecret?,
     val cookieSecure: Boolean,
 )
 

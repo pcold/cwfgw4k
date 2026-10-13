@@ -210,7 +210,7 @@ internal fun buildServices(
         sweepIntervalSeconds = config.cache.sweepIntervalSeconds,
         authSetup =
             AuthSetup(
-                sessionSecret = config.auth.sessionSecret.toByteArray(),
+                sessionSecret = config.auth.sessionSecret.cleartext.toByteArray(),
                 sessionMaxAgeSeconds = config.auth.sessionMaxAgeSeconds,
                 cookieSecure = config.auth.cookieSecure,
             ),

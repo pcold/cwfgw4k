@@ -2,6 +2,7 @@ package com.cwfgw
 
 import com.cwfgw.config.AppConfig
 import com.cwfgw.config.AuthConfig
+import com.cwfgw.config.ConfigSecret
 import com.cwfgw.db.Database
 import com.cwfgw.health.DatabaseHealthProbe
 import com.cwfgw.testing.postgresHarness
@@ -33,7 +34,7 @@ class AppBootSpec : FunSpec({
 
         config.db.jdbcUrl shouldBe postgres.dataSource.jdbcUrl
         config.db.user shouldBe postgres.dataSource.username
-        config.db.password shouldBe postgres.dataSource.password
+        config.db.password.cleartext shouldBe postgres.dataSource.password
         config.db.schema shouldBe SCHEMA
         config.http.host shouldBe "0.0.0.0"
     }
@@ -71,7 +72,7 @@ class AppBootSpec : FunSpec({
     test("requireValidAuthSecret refuses to boot when AUTH_SESSION_SECRET is blank") {
         val blankSecret =
             AuthConfig(
-                sessionSecret = "",
+                sessionSecret = ConfigSecret(""),
                 sessionMaxAgeSeconds = 3600,
                 adminUsername = null,
                 adminPassword = null,
@@ -84,7 +85,7 @@ class AppBootSpec : FunSpec({
     test("requireValidAuthSecret accepts a non-blank session secret") {
         val withSecret =
             AuthConfig(
-                sessionSecret = "any-non-blank-string",
+                sessionSecret = ConfigSecret("any-non-blank-string"),
                 sessionMaxAgeSeconds = 3600,
                 adminUsername = null,
                 adminPassword = null,
