@@ -236,8 +236,11 @@ comment above a function whose path the same commit rewrote.
 Then grep the **whole repo** — not the diff — for comments naming each one:
 
 ```sh
-git grep -nE '(//|\*|--|#).*\b<name>\b' -- '*.kt' '*.kts' '*.ts' '*.tsx' '*.sql' '*.md'
+git grep -nwF '<name>' -- '*.kt' '*.kts' '*.ts' '*.tsx' '*.sql' '*.md' | grep -E '(//|\*|--|#)'
 ```
+
+Two stages on purpose: `\b` in a `git grep -E` pattern matches nothing under
+Apple's git, and an empty result reads as clean.
 
 The grep reaches past the diff because `docs/API_SPEC.md` documents every
 endpoint and its wire shape and `README.md` states the league's rules, and a
