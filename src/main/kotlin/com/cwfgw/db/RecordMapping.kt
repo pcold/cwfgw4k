@@ -28,6 +28,6 @@ internal class ColumnDomainViolation(
     val stored: Any,
 ) : IllegalStateException("${field.columnLabel} held a value outside its domain")
 
-/** Qualified where jOOQ knows the owning table, which a field read off an aliased projection may not. */
+/** The bare-name branch exists only because jOOQ declares `getTable()` nullable; a generated field has one. */
 private val TableField<*, *>.columnLabel: String
     get() = table?.let { owner -> "${owner.name}.$name" } ?: name

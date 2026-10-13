@@ -228,7 +228,7 @@ private class JooqSeasonRepository : SeasonRepository {
             leagueId = LeagueId(record.leagueId),
             name = record.name,
             seasonYear = record.seasonYear,
-            seasonNumber = record.required(SEASONS.SEASON_NUMBER),
+            seasonNumber = record.seasonNumber,
             status = record.required(SEASONS.STATUS),
             tieFloor = record.required(SEASONS.TIE_FLOOR),
             sideBetAmount = record.required(SEASONS.SIDE_BET_AMOUNT),
