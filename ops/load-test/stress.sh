@@ -21,8 +21,8 @@
 #   -c N   concurrency PER URL (default 10). Total in-flight = N × <num urls>.
 #   -d D   duration (default 120s). Bumping past 5 min ages the JVM /
 #          Caffeine cache more representatively if you can spare the cost.
-#   -t S   per-request timeout in seconds (default 90 — matches prod's
-#          --timeout=90).
+#   -t S   per-request timeout in seconds (default 90, to match prod's
+#          --timeout in .github/workflows/deploy.yml).
 #
 # The URL set is:
 #   /api/v1/leagues                                    cheap, uncached

@@ -33,10 +33,9 @@ interface Transactor {
 }
 
 /**
- * Build a [Transactor] over [dsl]. [maxPoolSize] must be the size of the
- * Hikari pool backing [dsl]: blocking JDBC is confined to a [Dispatchers.IO]
- * view capped at exactly that many concurrent coroutines, so a coroutine
- * that wins a dispatcher slot is always able to check out a connection.
+ * [maxPoolSize] must be the size of the Hikari pool backing [dsl]: it caps the
+ * [Dispatchers.IO] view every block runs on, so the blocks in flight never
+ * outnumber the pool's connections.
  */
 fun Transactor(dsl: DSLContext, maxPoolSize: Int): Transactor = JooqTransactor(dsl, maxPoolSize)
 
@@ -50,16 +49,9 @@ private class JooqTransactor(
 ) : Transactor {
     private val rootContext: TransactionContext = TransactionContext(rootDsl)
 
-    // CWF-24 / CWF-30: blocking jOOQ is confined to exactly one place — a
-    // `Dispatchers.IO` view capped at the connection-pool size. `read` and
-    // `update` run the blocking `transactionResult`: a transaction parks one
-    // thread on the JDBC socket for its duration and frees it on return.
-    // There is no Reactor-to-coroutine bridge to wedge, so the worst case
-    // under concurrency degrades to a predictable throughput throttle —
-    // coroutines queue on the dispatcher — never a deadlock. Sizing the cap
-    // to the pool keeps the dispatcher the single backpressure point: a
-    // coroutine holding a slot can always acquire a connection, so no thread
-    // parks inside Hikari's `getConnection()`.
+    // Shared by `get`, `read` and `update` so the pool-size cap holds across all three:
+    // a block waits here for a slot, never on another block in Hikari's `getConnection()`.
+    // Not jOOQ's `transactionCoroutine`: its Reactor bridge can deadlock (CWF-24).
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(maxPoolSize)
 
     override suspend fun <A> get(block: context(TransactionContext) () -> A): A =

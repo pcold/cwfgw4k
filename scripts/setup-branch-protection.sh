@@ -17,7 +17,7 @@ BRANCH="${BRANCH:-main}"
 
 echo "Applying branch protection to $REPO@$BRANCH ..."
 
-# - required check "gradle check": the canonical ./gradlew check gate.
+# - required check "gradle check": the canonical gate, as check.yml runs it.
 # - strict=false: don't force branches to be up-to-date with main before merge
 #   (squash workflow keeps history linear enough; avoids serialized re-runs).
 #   The push-to-main run of the gate covers the merged tree instead.

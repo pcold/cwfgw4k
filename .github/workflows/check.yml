@@ -1,9 +1,9 @@
 name: Check
 
-# The canonical pre-merge gate: ./gradlew check (backend tests, ktlint, detekt,
-# kover, UI build + tests) per docs/DEV.md -> Verification. Runs on every PR
-# that changes a file other than a `.md`, and on main after any merge whose
-# exact tree no run has passed.
+# The canonical pre-merge gate: ./gradlew check --rerun-tasks (backend tests,
+# ktlint, detekt, kover, UI build + tests) per docs/DEV.md -> Verification. Runs
+# on every PR that changes a file other than a `.md`, and on main after any merge
+# whose exact tree no run has passed.
 #
 # ubuntu-latest ships Docker, which the Testcontainers Postgres specs and the
 # generateJooq step need; the macOS docker.raw.sock workaround in
@@ -89,7 +89,7 @@ jobs:
             printf 'Prose-only diff; skipping the gate:\n%s\n' "$changed" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      # Before `./gradlew check` rather than after it, so a red gate cannot stop
+      # Before the gate step rather than after it, so a red gate cannot stop
       # the run from also reporting that the assertion certifying a green one is
       # itself broken. It costs about a second and needs nothing but bash.
       - name: Does the bare-task assertion still catch a bad log?
@@ -121,7 +121,7 @@ jobs:
         if: steps.need.outputs.needed != 'false'
         uses: gradle/actions/setup-gradle@v6
 
-      - name: ./gradlew check
+      - name: ./gradlew check --rerun-tasks
         if: steps.need.outputs.needed != 'false'
         run: |
           set -o pipefail

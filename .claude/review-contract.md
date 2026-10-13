@@ -17,10 +17,10 @@ live in the CLAUDE.md files; where this contract and a CLAUDE.md disagree, the
 CLAUDE.md wins and this file is the thing that gets fixed.
 
 Above both sits the **toolchain**. ktlint, detekt and tsc are what
-`./gradlew check` actually enforces, so where a prose rule and the toolchain
-conflict, the toolchain wins and the prose is what gets fixed — a review can't
-demand a change the gate rejects. Which invocation of it counts as having run
-is fixed by root [`.claude/CLAUDE.md`](CLAUDE.md) → Verification.
+`./gradlew check --rerun-tasks` actually enforces, so where a prose rule and
+the toolchain conflict, the toolchain wins and the prose is what gets fixed — a
+review can't demand a change the gate rejects. Which invocation of it counts as
+having run is fixed by root [`.claude/CLAUDE.md`](CLAUDE.md) → Verification.
 
 ## Source rules
 
@@ -143,8 +143,8 @@ Guards on every finding:
   because it looks cosmetic.
 - If a finding needs more context than the diff shows, **read the surrounding
   file before classifying** — don't fire a defect on a guess.
-- **A fix that fails `./gradlew check` is not a finding.** The toolchain
-  (ktlint, detekt, tsc) is the merge gate, so a suggestion it rejects
+- **A fix that fails `./gradlew check --rerun-tasks` is not a finding.** The
+  toolchain (ktlint, detekt, tsc) is the merge gate, so a suggestion it rejects
   is unmergeable no matter what a prose rule says. Where a rule below and the
   toolchain genuinely disagree, the toolchain wins — report the conflict as
   its own note naming both sides, so a human can fix the rule. Do not file it
