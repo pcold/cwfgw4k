@@ -54,16 +54,9 @@ data class CacheConfig(
 )
 
 /**
- * In-process Caffeine cache fronting the ESPN HTTP client. Sits inside a
- * single JVM (so each Cloud Run instance has its own) and dedupes concurrent
- * scoreboard / calendar fetches to ESPN within the TTL window. Layered
- * below the Postgres response cache: when the response cache misses and the
- * handler reaches into ESPN, this layer serves from in-process if any other
- * request fetched the same date / calendar in the last TTL.
- *
- * Default 300s — short enough for live leaderboards to stay relatively
- * fresh, long enough to absorb fan-out bursts (e.g. N parallel report
- * rebuilds across different cache keys all hitting the same ESPN date).
+ * One cache per JVM, so each Cloud Run instance holds its own. A `live=true` report bypasses the
+ * Postgres response cache, which makes this TTL the whole of how far live data can trail ESPN:
+ * 60s by default, shared by the scoreboard and calendar caches.
  */
 data class EspnConfig(
     val scoreboardCacheTtlSeconds: Long,
