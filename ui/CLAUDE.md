@@ -234,17 +234,17 @@ What stays in the UI:
 - **MUST** route every API call through the typed `api` client in
   `src/shared/api/client.ts`. No direct `fetch` calls in components.
 - **MUST** use a stable, hierarchical query key structured by entity, built
-  by that entity's factory in `src/shared/api/queryKeys.ts`:
+  by that entity's entry in `queryKeys` (`src/shared/api/queryKeys.ts`):
 
   ```ts
   useQuery({
-    queryKey: rankingsKeys.detail(seasonId, live, throughTournamentId),
+    queryKey: queryKeys.rankings.detail(seasonId, live, throughTournamentId),
     queryFn: () => api.rankings(seasonId, live, throughTournamentId),
   });
   ```
 
   Hierarchy lets a write invalidate everything below it:
-  `queryClient.invalidateQueries({ queryKey: rankingsKeys.bySeason(seasonId) })`.
+  `queryClient.invalidateQueries({ queryKey: queryKeys.rankings.bySeason(seasonId) })`.
 - **MUST** invalidate (or `setQueryData`) the affected query keys after
   a mutation. Don't rely on refetch-on-window-focus to mask staleness —
   that fixes one user, not the next page navigation.
@@ -256,10 +256,10 @@ What stays in the UI:
 - **MUST NOT** spell a query-key root as a literal outside
   `src/shared/api/queryKeys.ts`, which sits beside the fetchers in
   `client.ts`. A reader and every invalidation that targets it take the key
-  from the same factory, and a new key spreads the wider key it narrows. A
-  literal that drifts still type-checks and the write still succeeds; only
-  the open page stays stale. `queryKeys.test.ts` pins each root's value and
-  gets a chain for every factory added.
+  from the same `queryKeys` entry, and a new key spreads the wider key it
+  narrows. A literal that drifts still type-checks and the write still
+  succeeds; only the open page stays stale. `queryKeys.test.ts` pins each
+  root's value and gets a chain for every entity added.
 
 ---
 
@@ -335,7 +335,7 @@ What stays in the UI:
       auth/         AuthContext, LoginModal, useAuth
       ...
     shared/
-      api/          client, types — cross-feature HTTP
+      api/          client, queryKeys, types — cross-feature HTTP
       components/   genuinely cross-feature primitives (QueryState)
       util/         pure cross-feature helpers (money, tournament)
       test/         renderWithProviders + test-only fixtures
