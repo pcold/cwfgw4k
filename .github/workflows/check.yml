@@ -1,0 +1,158 @@
+name: Check
+
+# The canonical pre-merge gate: ./gradlew check (backend tests, ktlint, detekt,
+# kover, UI build + tests) per docs/DEV.md -> Verification. Runs on every PR
+# that changes a file other than a `.md`, and on main after any merge whose
+# exact tree no run has passed.
+#
+# ubuntu-latest ships Docker, which the Testcontainers Postgres specs and the
+# generateJooq step need; the macOS docker.raw.sock workaround in
+# build.gradle.kts is mac-only and stays dormant here. Node is self-contained
+# (node-gradle downloads its own runtime).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Branch protection matches this exact string. Renaming the job silently
+    # removes the gate rather than failing loudly.
+    name: gradle check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # To find an earlier run's proof of this tree; see the `need` step.
+      actions: read
+    # Bounds a hung run (e.g. a Testcontainers Postgres that never comes up) so
+    # the job fails fast instead of idling toward the 6h default.
+    timeout-minutes: 30
+    steps:
+      # Full history so the prose-only test can diff against the PR base. Costs
+      # seconds; the work it gates costs minutes.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # `gradle check` is meant to be a REQUIRED status check on main, with
+      # admin enforcement (scripts/setup-branch-protection.sh). So the gate must
+      # always run and always report — a `paths-ignore` on the trigger would
+      # stop the workflow firing, the context would never appear, and the PR
+      # would sit permanently pending with no way to override. The work is
+      # skipped instead of the job.
+      #
+      # Deny by default on both triggers: whatever a test cannot establish runs
+      # the gate, so a failure in the test costs a wasted run, never an
+      # unverified merge. Every later step reads the answer as `!= 'false'` for
+      # the same reason: a job whose steps all skip still reports success, so an
+      # empty answer has to mean "run it".
+      #
+      # A pull request skips only when EVERY changed file is a `.md`. Nothing the
+      # gate covers reads one — no test opens a doc, ktlint and detekt see only
+      # `*.kt`, the UI tests only `ui/**` — so a prose-only diff cannot change
+      # the result. A `.kt`, a `.yml`, a migration or a lockfile alongside them
+      # runs the gate.
+      #
+      # A push to main skips only when a run that passed already tested these
+      # exact bytes, which this job's last steps record. That holds whenever
+      # main did not move between the PR's last run and its merge, synced or not.
+      # Anything that landed in between changes the tree and runs the gate: two
+      # PRs that each passed can still break main together, in behavior or at
+      # compile. A prose-only PR ran nothing and so proved nothing, and its merge
+      # runs the gate too.
+      - name: Does this run need the gate?
+        id: need
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            if .github/scripts/tree-already-proven.sh "$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_STEP_SUMMARY"; then
+              echo "needed=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "needed=true" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+          changed=$(git diff --name-only "${{ github.event.pull_request.base.sha }}...HEAD")
+          if [ -z "$changed" ] || printf '%s\n' "$changed" | grep -qvE '\.md$'; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            printf 'Prose-only diff; skipping the gate:\n%s\n' "$changed" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Before `./gradlew check` rather than after it, so a red gate cannot stop
+      # the run from also reporting that the assertion certifying a green one is
+      # itself broken. It costs about a second and needs nothing but bash.
+      - name: Does the bare-task assertion still catch a bad log?
+        if: steps.need.outputs.needed != 'false'
+        run: .github/scripts/assert-gate-tasks-ran-bare.test.sh
+
+      # A tree whose lookup fails these cases fails its own gate, so it is never
+      # proven, so every lookup that finds a proof is one this step passed.
+      - name: Does the proof lookup still refuse an unproven tree?
+        if: steps.need.outputs.needed != 'false'
+        run: .github/scripts/tree-already-proven.test.sh
+
+      # 21 and not the runner's default: gradle/gradle-daemon-jvm.properties
+      # pins the daemon to it, and nothing here provisions a toolchain.
+      - name: Set up JDK 21
+        if: steps.need.outputs.needed != 'false'
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        if: steps.need.outputs.needed != 'false'
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: ./gradlew check
+        if: steps.need.outputs.needed != 'false'
+        run: |
+          set -o pipefail
+          ./gradlew check --rerun-tasks --stacktrace 2>&1 | tee gradle-check.log
+
+      # --rerun-tasks is load-bearing, which is not obvious. setup-gradle
+      # restores ~/.gradle/caches/build-cache-1 from the Actions cache, and
+      # org.gradle.caching is on, so without it a run can report BUILD
+      # SUCCESSFUL over `:test FROM-CACHE` having verified nothing.
+      #
+      # The flag alone is something a later edit can drop, so the run asserts the
+      # outcome instead of trusting a reader. A script rather than an inline
+      # block, because an assertion nobody can run outside Actions is an
+      # assertion nobody checks: assert-gate-tasks-ran-bare.test.sh runs it
+      # against fixtures, here and on a laptop.
+      - name: Did :test and :detekt run, bare?
+        if: steps.need.outputs.needed != 'false'
+        run: .github/scripts/assert-gate-tasks-ran-bare.sh settings.gradle.kts gradle-check.log
+
+      # The proof the `need` step looks for. Last, and gated like every step above
+      # on their success, so only a run that passed records one. The tree checked
+      # out and not the PR head's: a PR's gate tests its merge with main as main
+      # then stood, which is the head's tree only when the head already held it.
+      - name: Which tree did this run pass?
+        id: passed
+        if: steps.need.outputs.needed != 'false'
+        run: |
+          git rev-parse HEAD > gate-passed.txt
+          echo "tree=$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_OUTPUT"
+
+      # A failed upload costs a later push one run of the gate, never this run its
+      # verdict.
+      - uses: actions/upload-artifact@v7.0.2
+        if: steps.need.outputs.needed != 'false'
+        continue-on-error: true
+        with:
+          # tree-already-proven.sh looks this name up; the two change together.
+          name: gate-passed-${{ steps.passed.outputs.tree }}
+          path: gate-passed.txt
+          retention-days: 14
