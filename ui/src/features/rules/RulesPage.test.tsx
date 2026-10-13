@@ -141,7 +141,8 @@ describe('RulesPage', () => {
 
     await screen.findByText(/The Masters/);
     const scheduleHeading = screen.getByRole('heading', { name: /Season Schedule/i });
-    const section = scheduleHeading.parentElement!;
+    const section = scheduleHeading.parentElement;
+    if (!section) throw new Error('the Season Schedule heading has no section around it');
     const items = within(section).getAllByRole('listitem');
     expect(items).toHaveLength(3);
 
@@ -166,7 +167,8 @@ describe('RulesPage', () => {
     await screen.findByText('Early Event');
     const scheduleSection = screen.getByRole('heading', {
       name: /Season Schedule/i,
-    }).parentElement!;
+    }).parentElement;
+    if (!scheduleSection) throw new Error('the Season Schedule heading has no section around it');
     const items = within(scheduleSection).getAllByRole('listitem');
     expect(within(items[0]).getByText('Early Event')).toBeInTheDocument();
     expect(within(items[1]).getByText('Late Event')).toBeInTheDocument();

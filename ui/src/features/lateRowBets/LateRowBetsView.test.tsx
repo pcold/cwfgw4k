@@ -117,7 +117,8 @@ describe('LateRowBetsView', () => {
   it('renders the totals section sorted by sideBets descending', () => {
     render(<LateRowBetsView report={report()} />);
     const totalsHeading = screen.getByRole('heading', { name: /Total Late Row Bets/i });
-    const totalsSection = totalsHeading.parentElement!;
+    const totalsSection = totalsHeading.parentElement;
+    if (!totalsSection) throw new Error('the totals heading has no section around it');
     const rows = within(totalsSection).getAllByRole('row').slice(1);
     const teamCells = rows.map((r) => within(r).getAllByRole('cell')[0].textContent);
     expect(teamCells).toEqual(['Aces', 'Eagles', 'Birdies']);

@@ -222,7 +222,8 @@ describe('UploadRostersSection', () => {
     });
 
     expect(await screen.findByText('Rosters Created')).toBeInTheDocument();
-    const resultRegion = screen.getByText('Rosters Created').parentElement!;
+    const resultRegion = screen.getByText('Rosters Created').parentElement;
+    if (!resultRegion) throw new Error('the Rosters Created heading has no region around it');
     expect(within(resultRegion).getByText(/BROWN/)).toBeInTheDocument();
   });
 

@@ -6,6 +6,7 @@ import {
   teamColor,
   CHART_COLORS,
 } from './rankingsChartModel';
+import type { ChartDimensions, ChartLayout } from './rankingsChartModel';
 
 function buildRankings(overrides: Partial<Rankings> = {}): Rankings {
   return {
@@ -36,6 +37,12 @@ function buildRankings(overrides: Partial<Rankings> = {}): Rankings {
   };
 }
 
+function chartLayout(rankings: Rankings, dimensions?: ChartDimensions): ChartLayout {
+  const layout = buildChartLayout(rankings, dimensions);
+  if (!layout) throw new Error('buildChartLayout returned null for rankings that have weeks and teams');
+  return layout;
+}
+
 describe('teamColor', () => {
   it('cycles through the palette', () => {
     expect(teamColor(0)).toBe(CHART_COLORS[0]);
@@ -54,14 +61,14 @@ describe('buildChartLayout', () => {
   });
 
   it('builds one line per team with a point per series value', () => {
-    const layout = buildChartLayout(buildRankings())!;
+    const layout = chartLayout(buildRankings());
     expect(layout.lines).toHaveLength(2);
     expect(layout.lines[0].teamName).toBe('Aces');
     expect(layout.lines[0].points).toHaveLength(3);
   });
 
   it('spaces x positions evenly across the plot width', () => {
-    const layout = buildChartLayout(buildRankings())!;
+    const layout = chartLayout(buildRankings());
     const [p0, p1, p2] = layout.lines[0].points;
     const step1 = p1.x - p0.x;
     const step2 = p2.x - p1.x;
@@ -71,7 +78,7 @@ describe('buildChartLayout', () => {
   });
 
   it('places the highest series value near the top of the plot', () => {
-    const layout = buildChartLayout(buildRankings())!;
+    const layout = chartLayout(buildRankings());
     const highest = layout.lines[0].points[2]; // 150 -- max value
     const lowest = layout.lines[1].points[2]; // -35 -- min value
     expect(highest.y).toBeLessThan(lowest.y);
@@ -80,7 +87,7 @@ describe('buildChartLayout', () => {
   });
 
   it('attaches week labels and tournament names to each point', () => {
-    const layout = buildChartLayout(buildRankings())!;
+    const layout = chartLayout(buildRankings());
     const [p0, p1, p2] = layout.lines[0].points;
     expect(p0.weekLabel).toBe('9');
     expect(p0.tournamentName).toBe('Sample Open');
@@ -89,26 +96,26 @@ describe('buildChartLayout', () => {
   });
 
   it('derives x-axis ticks with "Wk N" labels', () => {
-    const layout = buildChartLayout(buildRankings())!;
+    const layout = chartLayout(buildRankings());
     expect(layout.xTicks.map((t) => t.label)).toEqual(['Wk 9', 'Wk 10', 'Wk 11']);
   });
 
   it('generates at least one y-axis tick', () => {
-    const layout = buildChartLayout(buildRankings())!;
+    const layout = chartLayout(buildRankings());
     expect(layout.yTicks.length).toBeGreaterThan(0);
   });
 
   it('assigns distinct colors to consecutive teams', () => {
-    const layout = buildChartLayout(buildRankings())!;
+    const layout = chartLayout(buildRankings());
     expect(layout.lines[0].color).not.toBe(layout.lines[1].color);
   });
 
   it('respects custom dimensions', () => {
-    const layout = buildChartLayout(buildRankings(), {
+    const layout = chartLayout(buildRankings(), {
       ...DEFAULT_DIMENSIONS,
       width: 200,
       height: 100,
-    })!;
+    });
     expect(layout.width).toBe(200);
     expect(layout.height).toBe(100);
   });

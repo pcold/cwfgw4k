@@ -90,7 +90,8 @@ describe('RostersView', () => {
 
   it('surfaces shared players across teams', () => {
     render(<RostersView teams={[aces, birdies]} sideBetRounds={[]} />);
-    const callout = screen.getByText(/Shared Players:/i).parentElement!;
+    const callout = screen.getByText(/Shared Players:/i).parentElement;
+    if (!callout) throw new Error('the Shared Players label has no callout around it');
     expect(within(callout).getByText('Rory McIlroy')).toBeInTheDocument();
     expect(within(callout).getByText(/Aces/)).toBeInTheDocument();
     expect(within(callout).getByText(/Birdies/)).toBeInTheDocument();
