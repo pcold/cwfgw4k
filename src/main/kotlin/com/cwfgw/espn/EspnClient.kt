@@ -245,7 +245,7 @@ private fun noResponse(
 /**
  * Kept in the client layer so callers can distinguish upstream failures from our own bugs without
  * catching `Throwable`. A transport failure has to arrive as this type too: it is the only one the cache
- * evicts on and the only one a caller falls back on.
+ * logs and evicts synchronously, and the only one a caller falls back on.
  */
 class EspnUpstreamException(
     val failure: EspnUpstreamFailure,

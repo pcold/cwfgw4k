@@ -3,9 +3,12 @@ package com.cwfgw.espn
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.ktor.client.plugins.HttpRequestTimeoutException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.awaitCancellation
 import java.time.LocalDate
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.time.Duration.Companion.milliseconds
 
 private val DATE: LocalDate = LocalDate.parse("2026-04-09")
 
@@ -39,6 +42,17 @@ class EspnClientOutageSpec : FunSpec({
             recovered.map { it.espnId } shouldBe listOf("espn-masters")
             requests.get() shouldBe 2
         }
+    }
+
+    // The one case on a real timer: it shows `HttpTimeout` gives up with that exception and not a cancellation.
+    // The request never answers, so a slow machine can only make this later, never change its outcome.
+    test("fetchScoreboard reports no response when Ktor's request timeout gives up on ESPN") {
+        val client = espnClientOver(requestTimeout = 50.milliseconds) { awaitCancellation() }
+
+        val thrown = shouldThrow<EspnUpstreamException> { client.fetchScoreboard(DATE) }
+
+        thrown.failure shouldBe EspnUpstreamFailure.NoResponse
+        thrown.cause?.let { it::class } shouldBe HttpRequestTimeoutException::class
     }
 
     test("fetchScoreboard lets a cancellation raised inside the request through as a cancellation") {

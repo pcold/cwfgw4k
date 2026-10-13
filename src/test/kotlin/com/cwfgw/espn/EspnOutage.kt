@@ -11,8 +11,8 @@ import io.ktor.client.engine.mock.MockRequestHandler
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.HttpRequestTimeoutException
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.request.HttpRequestData
 import io.ktor.http.HttpStatusCode
-import kotlinx.coroutines.awaitCancellation
 import java.math.BigDecimal
 import java.net.ConnectException
 import java.nio.channels.UnresolvedAddressException
@@ -21,14 +21,13 @@ import java.time.LocalDate
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.reflect.KClass
+import kotlin.time.Duration
 
 private val OUTAGE_ESPN_CONFIG = EspnConfig(scoreboardCacheTtlSeconds = 60, scoreboardCacheMaxSize = 8)
 private const val OUTAGE_BASE_URL = "https://espn.test/scoreboard"
 
-// Long enough that a recovered request answers inside it on a loaded machine; every timed-out one costs it in full.
-private const val OUTAGE_REQUEST_TIMEOUT_MS = 250L
-
 // Linked to an ESPN event: `listCompetitorsForLinking` answers an unlinked tournament before it asks ESPN.
+// In play, never Completed: a live report does not ask ESPN about a completed tournament.
 internal val OUTAGE_TOURNAMENT: Tournament =
     Tournament(
         id = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b01")),
@@ -46,20 +45,28 @@ internal val OUTAGE_TOURNAMENT: Tournament =
         createdAt = Instant.EPOCH,
     )
 
-/** The production client, cache over HTTP, with only the engine replaced by [handler]. */
-internal fun espnClientOver(handler: MockRequestHandler): EspnClient =
+/**
+ * The production client, cache over HTTP, with only the engine replaced by [handler]. No timer runs unless
+ * [requestTimeout] is given: under one, a stall on a loaded machine turns an answered request into a timeout.
+ */
+internal fun espnClientOver(
+    requestTimeout: Duration? = null,
+    handler: MockRequestHandler,
+): EspnClient =
     EspnClient(
         httpClient =
             HttpClient(MockEngine(handler)) {
-                install(HttpTimeout) { requestTimeoutMillis = OUTAGE_REQUEST_TIMEOUT_MS }
+                if (requestTimeout != null) {
+                    install(HttpTimeout) { requestTimeoutMillis = requestTimeout.inWholeMilliseconds }
+                }
             },
         config = OUTAGE_ESPN_CONFIG,
         baseUrl = OUTAGE_BASE_URL,
     )
 
 /**
- * [TimesOut] is raised by Ktor's own `HttpTimeout`; the other two throw what the CIO engine was observed
- * to raise for that failure, which a mock engine cannot produce by itself.
+ * Each throws what a real client was observed to raise for that failure, which a mock engine cannot produce
+ * by itself. [TimesOut] throws it too, so that no case here waits on a timer.
  */
 internal enum class EspnOutage(val description: String, val raises: KClass<out Exception>) {
     TimesOut("times out", HttpRequestTimeoutException::class),
@@ -75,14 +82,14 @@ internal enum class EspnOutage(val description: String, val raises: KClass<out E
         requests: AtomicInteger = AtomicInteger(),
         recovered: String? = null,
     ): EspnClient =
-        espnClientOver {
-            if (requests.incrementAndGet() == 1 || recovered == null) fail()
+        espnClientOver { request ->
+            if (requests.incrementAndGet() == 1 || recovered == null) fail(request)
             respond(content = recovered, status = HttpStatusCode.OK)
         }
 
-    private suspend fun fail(): Nothing =
+    private fun fail(request: HttpRequestData): Nothing =
         when (this) {
-            TimesOut -> awaitCancellation()
+            TimesOut -> throw HttpRequestTimeoutException(request)
             CannotBeReached -> throw ConnectException("Connection refused")
             DoesNotResolve -> throw UnresolvedAddressException()
         }
