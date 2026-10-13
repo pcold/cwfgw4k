@@ -19,6 +19,7 @@ private const val SESSION_SECRET = "session-secret-cleartext"
 private const val ADMIN_PASSWORD = "admin-password-cleartext"
 private const val NESTED_CLEARTEXT = "nested-cleartext"
 private const val NUMERIC_PASSWORD = 90_210_555L
+private const val NON_DEFAULT_MAX_AGE_SECONDS = 1_800L
 
 private val SECRET_CLEARTEXTS = listOf(DB_PASSWORD, SESSION_SECRET, ADMIN_PASSWORD)
 
@@ -87,6 +88,18 @@ class ConfigSecretSpec : FunSpec({
 
     test("the session signing key is the secret's cleartext rather than its mask") {
         CONFIG.auth.toAuthSetup().sessionSecret shouldBe SESSION_SECRET.toByteArray()
+    }
+
+    test("the cookie's Secure flag and the session max age reach the auth setup as configured") {
+        listOf(true, false).forEach { secure ->
+            val setup =
+                CONFIG.auth
+                    .copy(cookieSecure = secure, sessionMaxAgeSeconds = NON_DEFAULT_MAX_AGE_SECONDS)
+                    .toAuthSetup()
+
+            setup.cookieSecure shouldBe secure
+            setup.sessionMaxAgeSeconds shouldBe NON_DEFAULT_MAX_AGE_SECONDS
+        }
     }
 
     test("the loader decodes every secret field from a string") {
