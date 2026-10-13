@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import ScoreboardPage from './ScoreboardPage';
 import type { League, Season, Tournament, WeeklyReport } from '@/shared/api/types';
 
 const leaguesMock = vi.fn();
 const seasonsMock = vi.fn();
+const seasonReportMock = vi.fn();
 const tournamentsMock = vi.fn();
 const tournamentReportMock = vi.fn();
 const authMeMock = vi.fn();
@@ -18,7 +21,7 @@ vi.mock('@/shared/api/client', () => ({
   api: {
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
-    seasonReport: vi.fn(),
+    seasonReport: (id: string, live: boolean) => seasonReportMock(id, live),
     rankings: vi.fn(),
     rosters: vi.fn(),
     tournaments: (id: string) => tournamentsMock(id),
@@ -104,10 +107,21 @@ function buildReport(name: string, tournamentId: string): WeeklyReport {
   };
 }
 
+// Copies the key and fetcher WeeklyReportPage and LateRowBetsPage use on "All Tournaments". A key
+// that drifts from theirs leaves the finalize test passing against a query no page holds.
+function OpenSeasonReport() {
+  useQuery({
+    queryKey: ['report', 'sn-1', '', false],
+    queryFn: () => api.seasonReport('sn-1', false),
+  });
+  return null;
+}
+
 describe('ScoreboardPage', () => {
   beforeEach(() => {
     leaguesMock.mockReset();
     seasonsMock.mockReset();
+    seasonReportMock.mockReset();
     tournamentsMock.mockReset();
     tournamentReportMock.mockReset();
     authMeMock.mockReset();
@@ -264,6 +278,55 @@ describe('ScoreboardPage', () => {
     await waitFor(() => {
       expect(finalizeMock).toHaveBeenCalledWith('tn-active');
     });
+  });
+
+  it('refetches an open season report after an admin finalizes a tournament', async () => {
+    authMeMock.mockResolvedValue({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    tournamentReportMock.mockResolvedValue({
+      ...buildReport('Current Open', 'tn-active'),
+      tournament: {
+        id: 'tn-active',
+        name: 'Current Open',
+        startDate: '2026-03-01',
+        endDate: '2026-03-04',
+        status: 'in_progress',
+        payoutMultiplier: 1,
+        week: '10',
+      },
+    });
+    seasonReportMock.mockResolvedValue({
+      ...buildReport('All Tournaments', 'tn-active'),
+      scope: 'season',
+    });
+    finalizeMock.mockResolvedValue({ message: 'ok' });
+
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <ScoreboardPage />
+        <OpenSeasonReport />
+      </>,
+      { withAuthProvider: true },
+    );
+
+    const button = await screen.findByRole('button', { name: /Finalize Results/i });
+    await waitFor(() => {
+      expect(seasonReportMock).toHaveBeenCalledTimes(1);
+    });
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(seasonReportMock).toHaveBeenCalledTimes(2);
+    });
+    expect(seasonReportMock).toHaveBeenLastCalledWith('sn-1', false);
   });
 
   it('hides the Finalize Results button for unauthenticated users', async () => {

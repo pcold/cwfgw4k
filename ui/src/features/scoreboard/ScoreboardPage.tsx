@@ -53,7 +53,7 @@ function ScoreboardPage() {
       void queryClient.invalidateQueries({ queryKey: ['tournaments', seasonId] });
       void queryClient.invalidateQueries({ queryKey: ['tournamentReport', seasonId] });
       void queryClient.invalidateQueries({ queryKey: ['rankings', seasonId] });
-      void queryClient.invalidateQueries({ queryKey: ['seasonReport', seasonId] });
+      void queryClient.invalidateQueries({ queryKey: ['report', seasonId] });
     },
   });
   const finalizeErr = mutationError(finalizeMutation.error);
