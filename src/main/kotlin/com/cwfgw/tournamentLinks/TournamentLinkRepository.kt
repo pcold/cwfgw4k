@@ -2,9 +2,9 @@ package com.cwfgw.tournamentLinks
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.jooq.tables.records.TournamentPlayerOverridesRecord
 import com.cwfgw.jooq.tables.references.TOURNAMENT_PLAYER_OVERRIDES
 import com.cwfgw.tournaments.TournamentId
-import org.jooq.Record
 
 interface TournamentLinkRepository {
     context(ctx: TransactionContext)
@@ -38,7 +38,7 @@ private class JooqTournamentLinkRepository : TournamentLinkRepository {
             .from(TOURNAMENT_PLAYER_OVERRIDES)
             .where(TOURNAMENT_PLAYER_OVERRIDES.TOURNAMENT_ID.eq(tournamentId.value))
             .orderBy(TOURNAMENT_PLAYER_OVERRIDES.ESPN_COMPETITOR_ID)
-            .fetch(::toOverride)
+            .fetch { row -> toOverride(row.into(TOURNAMENT_PLAYER_OVERRIDES)) }
 
     context(ctx: TransactionContext)
     override fun upsert(
@@ -62,7 +62,7 @@ private class JooqTournamentLinkRepository : TournamentLinkRepository {
                     TOURNAMENT_PLAYER_OVERRIDES.ESPN_COMPETITOR_ID,
                     TOURNAMENT_PLAYER_OVERRIDES.GOLFER_ID,
                 )
-                .fetchOne() ?: error("INSERT … RETURNING produced no row for tournament_player_overrides")
+                .fetchSingle()
         return toOverride(inserted)
     }
 
@@ -76,23 +76,10 @@ private class JooqTournamentLinkRepository : TournamentLinkRepository {
             .and(TOURNAMENT_PLAYER_OVERRIDES.ESPN_COMPETITOR_ID.eq(espnCompetitorId))
             .execute() > 0
 
-    private fun toOverride(record: Record): TournamentPlayerOverride =
+    private fun toOverride(record: TournamentPlayerOverridesRecord): TournamentPlayerOverride =
         TournamentPlayerOverride(
-            tournamentId =
-                TournamentId(
-                    checkNotNull(record[TOURNAMENT_PLAYER_OVERRIDES.TOURNAMENT_ID]) {
-                        "tournament_player_overrides.tournament_id is NOT NULL but returned null"
-                    },
-                ),
-            espnCompetitorId =
-                checkNotNull(record[TOURNAMENT_PLAYER_OVERRIDES.ESPN_COMPETITOR_ID]) {
-                    "tournament_player_overrides.espn_competitor_id is NOT NULL but returned null"
-                },
-            golferId =
-                GolferId(
-                    checkNotNull(record[TOURNAMENT_PLAYER_OVERRIDES.GOLFER_ID]) {
-                        "tournament_player_overrides.golfer_id is NOT NULL but returned null"
-                    },
-                ),
+            tournamentId = TournamentId(record.tournamentId),
+            espnCompetitorId = record.espnCompetitorId,
+            golferId = GolferId(record.golferId),
         )
 }

@@ -1,6 +1,7 @@
 package com.cwfgw.drafts
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.required
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.jooq.tables.records.DraftPicksRecord
@@ -74,7 +75,7 @@ private class JooqDraftRepository : DraftRepository {
                 .set(DRAFTS.SEASON_ID, seasonId.value)
                 .set(DRAFTS.DRAFT_TYPE, request.draftType ?: DEFAULT_DRAFT_TYPE)
                 .returning()
-                .fetchOne() ?: error("INSERT RETURNING produced no row for drafts")
+                .fetchSingle()
         return toDraft(inserted)
     }
 
@@ -119,7 +120,7 @@ private class JooqDraftRepository : DraftRepository {
                     .set(DRAFT_PICKS.ROUND_NUM, slot.roundNum)
                     .set(DRAFT_PICKS.PICK_NUM, slot.pickNum)
                     .returning()
-                    .fetchOne() ?: error("INSERT RETURNING produced no row for draft_picks")
+                    .fetchSingle()
             toPick(inserted)
         }
 
@@ -152,35 +153,32 @@ private class JooqDraftRepository : DraftRepository {
             .orderBy(GOLFERS.WORLD_RANKING.asc().nullsLast(), GOLFERS.LAST_NAME.asc())
             .fetch { record ->
                 Golfer(
-                    id = GolferId(checkNotNull(record.id)),
+                    id = GolferId(record.required(GOLFERS.ID)),
                     pgaPlayerId = record.pgaPlayerId,
                     firstName = record.firstName,
                     lastName = record.lastName,
                     country = record.country,
                     worldRanking = record.worldRanking,
-                    active = checkNotNull(record.active),
-                    updatedAt = checkNotNull(record.updatedAt).toInstant(),
+                    active = record.required(GOLFERS.ACTIVE),
+                    updatedAt = record.required(GOLFERS.UPDATED_AT).toInstant(),
                 )
             }
     }
 
     private fun toDraft(record: DraftsRecord): Draft =
         Draft(
-            id = DraftId(checkNotNull(record.id) { "drafts.id is NOT NULL but returned null" }),
+            id = DraftId(record.required(DRAFTS.ID)),
             seasonId = SeasonId(record.seasonId),
-            status = checkNotNull(record.status) { "drafts.status is NOT NULL but returned null" },
-            draftType = checkNotNull(record.draftType) { "drafts.draft_type is NOT NULL but returned null" },
+            status = record.required(DRAFTS.STATUS),
+            draftType = record.required(DRAFTS.DRAFT_TYPE),
             startedAt = record.startedAt?.toInstant(),
             completedAt = record.completedAt?.toInstant(),
-            createdAt =
-                checkNotNull(record.createdAt) {
-                    "drafts.created_at is NOT NULL but returned null"
-                }.toInstant(),
+            createdAt = record.required(DRAFTS.CREATED_AT).toInstant(),
         )
 
     private fun toPick(record: DraftPicksRecord): DraftPick =
         DraftPick(
-            id = DraftPickId(checkNotNull(record.id) { "draft_picks.id is NOT NULL but returned null" }),
+            id = DraftPickId(record.required(DRAFT_PICKS.ID)),
             draftId = DraftId(record.draftId),
             teamId = TeamId(record.teamId),
             golferId = record.golferId?.let(::GolferId),

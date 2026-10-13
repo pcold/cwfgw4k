@@ -1,6 +1,7 @@
 package com.cwfgw.users
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.required
 import com.cwfgw.jooq.tables.records.UsersRecord
 import com.cwfgw.jooq.tables.references.USERS
 
@@ -64,7 +65,7 @@ private class JooqUserRepository : UserRepository {
                 .set(USERS.PASSWORD_HASH, request.passwordHash)
                 .set(USERS.ROLE, request.role.value)
                 .returning()
-                .fetchOne() ?: error("INSERT RETURNING produced no row for users")
+                .fetchSingle()
         return toUser(inserted)
     }
 
@@ -74,15 +75,9 @@ private class JooqUserRepository : UserRepository {
 
     private fun toUser(record: UsersRecord): User =
         User(
-            id = UserId(checkNotNull(record.id) { "users.id is NOT NULL but returned null" }),
+            id = UserId(record.required(USERS.ID)),
             username = record.username,
-            role =
-                UserRole.fromValue(
-                    checkNotNull(record.role) { "users.role is NOT NULL but returned null" },
-                ),
-            createdAt =
-                checkNotNull(record.createdAt) {
-                    "users.created_at is NOT NULL but returned null"
-                }.toInstant(),
+            role = UserRole.fromValue(record.required(USERS.ROLE)),
+            createdAt = record.required(USERS.CREATED_AT).toInstant(),
         )
 }
