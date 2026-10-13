@@ -282,10 +282,12 @@ the reviewer who will read it cold.
 ## Git & PR Workflow
 
 These rules apply to every change that lands via PR. A branch takes the name
-Linear gives its issue (`gitBranchName`, shaped `<user>/cwf-<num>-<slug>`).
-`main` is protected against direct push, force-push, and deletion, and
-requires the `gradle check` status; `scripts/setup-branch-protection.sh` is
-the record of that configuration.
+Linear gives its issue (`gitBranchName`). The branch-name CI check
+(`.github/workflows/branch-name-check.yml`) and local `.githooks/pre-push`
+hook enforce the `<user>/cwf-<num>-<slug>` naming convention; `main` is
+protected against direct push, force-push, and deletion, and requires the
+`gradle check` status alone. `scripts/setup-branch-protection.sh` is the
+record of that configuration.
 
 ### Iteration
 

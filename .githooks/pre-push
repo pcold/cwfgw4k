@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Linear's GitHub integration links a PR to its issue by the branch name, so the name is checked
+# before the branch leaves the machine. The pattern is duplicated in
+# .github/workflows/branch-name-check.yml; change the two together.
+
+set -euo pipefail
+
+pattern='^[a-z0-9-]+/cwf-[0-9]+-[a-z0-9-]+$'
+
+# `read` fails on a last line with no newline, having already filled the fields.
+while read -r _local_ref local_sha remote_ref _remote_sha || [ -n "$remote_ref" ]; do
+  # Git reports a deletion as an all-zero local sha, 40 or 64 digits by hash format.
+  [[ "$local_sha" =~ ^0+$ ]] && continue
+
+  case "$remote_ref" in
+    refs/heads/main) continue ;;
+    refs/heads/*) ;;
+    *) continue ;;
+  esac
+
+  branch="${remote_ref#refs/heads/}"
+  if ! [[ "$branch" =~ $pattern ]]; then
+    cat >&2 <<EOF
+pre-push: branch '$branch' does not match <user>/cwf-<num>-<slug>.
+
+  Use the issue's gitBranchName from Linear. To rename the current branch:
+    git branch -m <user>/cwf-<num>-<slug>
+
+  Bypass intentionally with --no-verify (the PR's branch name check still fails).
+EOF
+    exit 1
+  fi
+done
