@@ -124,6 +124,15 @@ function OpenLivePlayerRankings() {
   return null;
 }
 
+// As OpenLiveWeeklyReport: the key and fetcher of ScoreboardPage.
+function OpenLiveScoreboardReport() {
+  useQuery({
+    queryKey: queryKeys.tournamentReport.detail('sn-1', 'tn-1', true),
+    queryFn: () => api.tournamentReport('sn-1', 'tn-1', true),
+  });
+  return null;
+}
+
 function renderPanel(openQuery: ReactElement | null = null): void {
   renderWithProviders(
     <>
@@ -190,6 +199,7 @@ describe('PlayerLinksPanel', () => {
     ['an open live weekly report', <OpenLiveWeeklyReport />, tournamentReportMock],
     ['open live rankings', <OpenLiveRankings />, rankingsMock],
     ['open live player rankings', <OpenLivePlayerRankings />, playerRankingsMock],
+    ['an open live scoreboard report', <OpenLiveScoreboardReport />, tournamentReportMock],
   ])('refetches %s after a link is saved', async (_page, openQuery, readMock) => {
     competitorsMock.mockResolvedValue(buildListing());
     upsertMock.mockResolvedValue({

@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useQuery, type QueryKey } from '@tanstack/react-query';
+import type { QueryKey } from '@tanstack/react-query';
 import CleanSeasonSection from './CleanSeasonSection';
 import { queryKeys } from '@/shared/api/queryKeys';
+import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 
 const leaguesMock = vi.fn();
@@ -18,11 +19,6 @@ vi.mock('@/shared/api/client', () => ({
   },
   ApiError: class ApiError extends Error {},
 }));
-
-function OpenQuery({ queryKey, fetcher }: { queryKey: QueryKey; fetcher: () => Promise<unknown> }) {
-  useQuery({ queryKey, queryFn: fetcher });
-  return null;
-}
 
 // Each key is the one its page holds: ScoreboardPage, WeeklyReportPage (and LateRowBetsPage),
 // RankingsPage, PlayerRankingsPage, GolferHistoryModal.

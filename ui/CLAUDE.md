@@ -248,6 +248,13 @@ What stays in the UI:
 - **MUST** invalidate (or `setQueryData`) the affected query keys after
   a mutation. Don't rely on refetch-on-window-focus to mask staleness —
   that fixes one user, not the next page navigation.
+- **SHOULD** invalidate the report queries through the two fan-outs in
+  `queryKeys.ts` rather than list them in a handler:
+  `invalidateAfterScoreChange` after a write that stores, deletes or
+  finalizes scores, and `invalidateAfterScoreOwnerChange` after one that
+  moves which team a score counts for, such as a roster or a player link.
+  A new report entity joins the list there once, and every such write
+  reaches it.
 - **MUST** centralize loading / error rendering in a shared component
   (today: `<QueryState>`). Don't reimplement the three-state ternary in
   every page.

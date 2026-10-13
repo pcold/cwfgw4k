@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import { queryKeys } from '@/shared/api/queryKeys';
+import { invalidateAfterScoreChange, queryKeys } from '@/shared/api/queryKeys';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
@@ -52,11 +52,7 @@ function ScoreboardPage() {
     mutationFn: (id: string) => api.finalizeTournament(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.bySeason(seasonId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentReport.bySeason(seasonId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.rankings.bySeason(seasonId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.report.bySeason(seasonId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.playerRankings.bySeason(seasonId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.golferHistory.bySeason(seasonId) });
+      invalidateAfterScoreChange(queryClient, { type: 'season', seasonId });
     },
   });
   const finalizeErr = mutationError(finalizeMutation.error);

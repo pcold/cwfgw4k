@@ -1,6 +1,11 @@
 import { expect, it } from 'vitest';
 import { QueryClient, type QueryKey } from '@tanstack/react-query';
-import { queryKeys } from './queryKeys';
+import {
+  invalidateAfterScoreChange,
+  invalidateAfterScoreOwnerChange,
+  queryKeys,
+  type ReportScope,
+} from './queryKeys';
 
 // Widest key first, one entry per key the entity builds. The Record makes an entity added without a
 // chain a compile error, since nothing below would check it.
@@ -108,3 +113,67 @@ it('gives every entity a root of its own, so no invalidation can reach another e
 
   expect(new Set(roots).size).toBe(roots.length);
 });
+
+// Each fan-out's membership, spelled apart from the list it pins: a key dropped there fails here by
+// entity name, as well as in the refetch test of every handler that calls it.
+const STALE_AFTER: [
+  string,
+  (queryClient: QueryClient, scope: ReportScope) => void,
+  readonly (keyof typeof queryKeys)[],
+][] = [
+  [
+    'a score change',
+    invalidateAfterScoreChange,
+    ['tournamentReport', 'report', 'rankings', 'playerRankings', 'golferHistory'],
+  ],
+  [
+    'a score-owner change',
+    invalidateAfterScoreOwnerChange,
+    ['tournamentReport', 'report', 'rankings', 'playerRankings'],
+  ],
+];
+
+function staleKeysByEntity(
+  invalidate: (queryClient: QueryClient) => void,
+): Record<string, readonly QueryKey[]> {
+  const queryClient = new QueryClient();
+  Object.values(KEY_CHAINS)
+    .flat()
+    .forEach((key) => queryClient.setQueryData(key, 'cached'));
+
+  invalidate(queryClient);
+
+  const staleKeys = Object.entries(KEY_CHAINS).map(([entity, chain]): [string, QueryKey[]] => [
+    entity,
+    chain.filter((key) => queryClient.getQueryState(key)?.isInvalidated === true),
+  ]);
+  return Object.fromEntries(staleKeys.filter(([, stale]) => stale.length > 0));
+}
+
+it.each(STALE_AFTER)(
+  'invalidates every key of the reads %s stales, and of no other entity',
+  (_write, invalidate, entities) => {
+    const staleKeys = staleKeysByEntity((queryClient) =>
+      invalidate(queryClient, { type: 'everySeason' }),
+    );
+
+    expect(staleKeys).toEqual(
+      Object.fromEntries(entities.map((entity) => [entity, KEY_CHAINS[entity]])),
+    );
+  },
+);
+
+// Stale below its root and not at it, a chain was invalidated by season, which is what leaves
+// every other season's queries alone.
+it.each(STALE_AFTER)(
+  'invalidates the same reads below their roots when %s names its season',
+  (_write, invalidate, entities) => {
+    const staleKeys = staleKeysByEntity((queryClient) =>
+      invalidate(queryClient, { type: 'season', seasonId: 'sn-1' }),
+    );
+
+    expect(staleKeys).toEqual(
+      Object.fromEntries(entities.map((entity) => [entity, KEY_CHAINS[entity].slice(1)])),
+    );
+  },
+);

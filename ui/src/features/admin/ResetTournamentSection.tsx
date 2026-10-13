@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import { queryKeys } from '@/shared/api/queryKeys';
+import { invalidateAfterScoreChange, queryKeys } from '@/shared/api/queryKeys';
 import type { League, Season, Tournament } from '@/shared/api/types';
 import { mutationError } from '@/shared/util/mutationError';
 
@@ -32,11 +32,7 @@ function ResetTournamentSection() {
     onSuccess: () => {
       setTournamentId('');
       void queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.root });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentReport.root });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.report.root });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.rankings.root });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.playerRankings.root });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.golferHistory.root });
+      invalidateAfterScoreChange(queryClient, { type: 'everySeason' });
     },
   });
 

@@ -1,4 +1,4 @@
-import type { QueryKey } from '@tanstack/react-query';
+import type { QueryClient, QueryKey } from '@tanstack/react-query';
 
 /**
  * A root spelled at a call site can drift from the reader it must reach, and nothing fails but a
@@ -124,3 +124,60 @@ export const queryKeys = {
     ): QueryKey => [...queryKeys.playerRankings.bySeason(seasonId), throughTournamentId, live],
   },
 };
+
+/**
+ * `everySeason` is a variant and not an omitted id, so a handler reaches every season only by
+ * naming it, never by leaving an argument out.
+ */
+export type ReportScope = { type: 'season'; seasonId: string | null } | { type: 'everySeason' };
+
+interface SeasonScopedKeys {
+  readonly root: QueryKey;
+  readonly bySeason: (seasonId: string | null) => QueryKey;
+}
+
+// Each is built from scores through teams, rosters and player links, so a write to any of those
+// stales all four.
+const TEAM_REPORTS: readonly SeasonScopedKeys[] = [
+  queryKeys.tournamentReport,
+  queryKeys.report,
+  queryKeys.rankings,
+  queryKeys.playerRankings,
+];
+
+function scopedKey(keys: SeasonScopedKeys, scope: ReportScope): QueryKey {
+  switch (scope.type) {
+    case 'season':
+      return keys.bySeason(scope.seasonId);
+    case 'everySeason':
+      return keys.root;
+    default:
+      return scope satisfies never;
+  }
+}
+
+function invalidateEach(
+  queryClient: QueryClient,
+  stale: readonly SeasonScopedKeys[],
+  scope: ReportScope,
+): void {
+  stale.forEach((keys) => {
+    void queryClient.invalidateQueries({ queryKey: scopedKey(keys, scope) });
+  });
+}
+
+/**
+ * For a write that stores, deletes or finalizes scores. `golferHistory` goes stale after these
+ * alone: it reads a golfer's results and no team, roster or link row.
+ */
+export function invalidateAfterScoreChange(queryClient: QueryClient, scope: ReportScope): void {
+  invalidateEach(queryClient, [...TEAM_REPORTS, queryKeys.golferHistory], scope);
+}
+
+/**
+ * For a write that stores no score and moves which team one counts for: a roster, a player link.
+ * @see invalidateAfterScoreChange for the read this leaves fresh.
+ */
+export function invalidateAfterScoreOwnerChange(queryClient: QueryClient, scope: ReportScope): void {
+  invalidateEach(queryClient, TEAM_REPORTS, scope);
+}

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
+import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import ScoreboardPage from './ScoreboardPage';
 import type { League, Season, Tournament, WeeklyReport } from '@/shared/api/types';
@@ -19,6 +20,8 @@ const competitorsMock = vi.fn();
 const golfersMock = vi.fn();
 const playerRankingsMock = vi.fn();
 const golferHistoryMock = vi.fn();
+const otherTournamentReportMock = vi.fn();
+const rankingsMock = vi.fn();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -155,6 +158,8 @@ describe('ScoreboardPage', () => {
     golfersMock.mockReset();
     playerRankingsMock.mockReset();
     golferHistoryMock.mockReset();
+    otherTournamentReportMock.mockReset();
+    rankingsMock.mockReset();
     authMeMock.mockResolvedValue(null);
     competitorsMock.mockResolvedValue({
       tournamentId: 'tn-active',
@@ -359,6 +364,24 @@ describe('ScoreboardPage', () => {
   it.each([
     ['open player rankings', <OpenPlayerRankings />, playerRankingsMock],
     ['an open golfer history', <OpenGolferHistory />, golferHistoryMock],
+    // Another tournament's, because the body resolves readMock to {} and the page cannot render
+    // that as its own report.
+    [
+      'the scoreboard report of another tournament',
+      <OpenQuery
+        queryKey={queryKeys.tournamentReport.detail('sn-1', 'tn-completed', false)}
+        fetcher={otherTournamentReportMock}
+      />,
+      otherTournamentReportMock,
+    ],
+    [
+      'open rankings',
+      <OpenQuery
+        queryKey={queryKeys.rankings.detail('sn-1', false, 'tn-active')}
+        fetcher={rankingsMock}
+      />,
+      rankingsMock,
+    ],
   ])('refetches %s after an admin finalizes a tournament', async (_page, openQuery, readMock) => {
     authMeMock.mockResolvedValue({
       id: 'u-1',

@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useQuery, type QueryKey } from '@tanstack/react-query';
+import type { QueryKey } from '@tanstack/react-query';
 import UploadRostersSection, { buildConfirmTeams } from './UploadRostersSection';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type { RosterPreview } from '@/shared/api/types';
+import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 
 const leaguesMock = vi.fn();
@@ -21,11 +22,6 @@ vi.mock('@/shared/api/client', () => ({
   },
   ApiError: class ApiError extends Error {},
 }));
-
-function OpenQuery({ queryKey, fetcher }: { queryKey: QueryKey; fetcher: () => Promise<unknown> }) {
-  useQuery({ queryKey, queryFn: fetcher });
-  return null;
-}
 
 // Each key is the one its reader holds: PlayerLinksPanel for the first two, then ScoreboardPage,
 // WeeklyReportPage (and LateRowBetsPage), RankingsPage, PlayerRankingsPage.
