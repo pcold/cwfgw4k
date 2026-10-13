@@ -9,8 +9,8 @@ Collisions a footprint map misses and brief wording that has misfired. Phase 1 o
   never against `origin/main`: behind main, the branch shows main's new files as its own.
 - Backlog does not mean free. Check `gh pr list --json headRefName` and the remote branches for
   `cwf-<num>`; a peer session may claim a ticket without moving it, so treat a freshly filed cluster as taken.
-- Adding a service or a route edits `Main.kt` and `AppServices.kt`, and the test fixture
-  `testing/ApiTest.kt` rebuilds the same wiring by hand. One such ticket per wave.
+- Adding a service edits `Main.kt` and `AppServices.kt`, adding a route edits `App.kt`, and the test
+  fixture `testing/ApiTest.kt` rebuilds the same wiring by hand. One such ticket per wave.
 - Wire types live in each domain's `XModels.kt`, and `ui/src/shared/api/types.ts` mirrors them all by
   hand in one file. A ticket that changes a response shape takes both, and `client.ts` when it adds a call.
 - `docs/API_SPEC.md` documents every endpoint in one file, so a ticket that adds or changes a route
