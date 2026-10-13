@@ -181,6 +181,27 @@ enum class ReportScope {
 }
 
 /**
+ * [lost] is a sum of losses, so zero or negative, and [net] is [won] plus it. The constructor is private so
+ * that [over] is the only way the server builds one; a decode bypasses it and keeps the three the JSON carried.
+ */
+@Serializable
+@ConsistentCopyVisibility
+data class WonLostTotals private constructor(
+    val won: BigDecimal,
+    val lost: BigDecimal,
+    val net: BigDecimal,
+) {
+    companion object {
+        /** A zero amount counts on neither side. */
+        fun over(amounts: List<BigDecimal>): WonLostTotals {
+            val won = amounts.filter { it.signum() > 0 }.fold(BigDecimal.ZERO, BigDecimal::add)
+            val lost = amounts.filter { it.signum() < 0 }.fold(BigDecimal.ZERO, BigDecimal::add)
+            return WonLostTotals(won = won, lost = lost, net = won.add(lost))
+        }
+    }
+}
+
+/**
  * [liveLeaderboard] is not live-only despite the name: a tournament report carries the persisted
  * leaderboard there, and a live overlay may replace it with ESPN's.
  *
@@ -188,6 +209,10 @@ enum class ReportScope {
  *
  * [sideBetRules] is null for a season that stakes nothing on side bets, and [sideBetDetail] is then empty.
  * It has no default for the reason [scope] has none.
+ *
+ * [cashTotals] and [sideBetTotals] are body properties so that `copy(teams = ...)` recomputes them: as
+ * constructor parameters a live overlay would carry the base report's. They reach the wire only because
+ * `appJson` encodes defaults.
  */
 @Serializable
 data class WeeklyReport(
@@ -200,7 +225,10 @@ data class WeeklyReport(
     val standingsOrder: List<StandingsEntry>,
     val live: Boolean? = null,
     val liveLeaderboard: List<LiveLeaderboardEntry> = emptyList(),
-)
+) {
+    val cashTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::totalCash))
+    val sideBetTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::sideBets))
+}
 
 /**
  * One team's entry in the rankings response, including the per-tournament

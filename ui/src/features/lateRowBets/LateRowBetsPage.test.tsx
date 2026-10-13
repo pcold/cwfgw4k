@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { makeWonLostTotals } from '@/shared/test/fixtures';
 import LateRowBetsPage from './LateRowBetsPage';
 import type { League, Season, Tournament, WeeklyReport } from '@/shared/api/types';
 
@@ -100,6 +101,8 @@ function buildReport(): WeeklyReport {
     standingsOrder: [],
     live: false,
     liveLeaderboard: [],
+    cashTotals: makeWonLostTotals(),
+    sideBetTotals: makeWonLostTotals(),
   };
 }
 

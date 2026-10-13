@@ -55,8 +55,10 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import java.math.BigDecimal
@@ -316,6 +318,13 @@ private fun asUpsertRequest(r: TournamentResult): CreateTournamentResultRequest 
 // Reads the raw body: a typed decode shares the encoder's @SerialName, so it cannot pin the wire spelling.
 private fun wireScope(body: String): JsonElement? = appJson.parseToJsonElement(body).jsonObject["scope"]
 
+// Raw for the reason [wireScope] is, and read as numbers: a sum's scale is no part of the wire contract.
+private fun wireTotals(
+    body: String,
+    field: String,
+): Map<String, Double> =
+    appJson.parseToJsonElement(body).jsonObject.getValue(field).jsonObject.mapValues { it.value.jsonPrimitive.double }
+
 class ReportRoutesSpec : FunSpec({
 
     // ----- GET /api/v1/seasons/{id}/report/{tournamentId} -----
@@ -419,6 +428,32 @@ class ReportRoutesSpec : FunSpec({
         apiTest(reportFixture(seedSeason = false)) { client ->
             val response = client.get("/api/v1/seasons/${SEASON_ID.value}/report")
             response.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    // ----- report totals: both scopes carry them -----
+
+    listOf(
+        "GET /api/v1/seasons/{id}/report/{tid}" to "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}",
+        "GET /api/v1/seasons/{id}/report" to "/api/v1/seasons/${SEASON_ID.value}/report",
+    ).forEach { (route, url) ->
+        test("$route puts the cash and side-bet totals on the wire") {
+            val brownOutEarnsWomble =
+                reportFixture(
+                    initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                    initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                    initialGolfers =
+                        listOf(golferRow(SCOTTIE_ID, "Scottie", "Scheffler"), golferRow(RORY_ID, "Rory", "McIlroy")),
+                    initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, 5), rosterRow(TEAM_B, RORY_ID, 5)),
+                    initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
+                )
+            apiTest(brownOutEarnsWomble) { client ->
+                val body = client.get(url).bodyAsText()
+
+                // WOMBLE pays BROWN the 18 its pick earned and the default 15 side bet on round 5.
+                wireTotals(body, "cash_totals") shouldBe mapOf("won" to 33.0, "lost" to -33.0, "net" to 0.0)
+                wireTotals(body, "side_bet_totals") shouldBe mapOf("won" to 15.0, "lost" to -15.0, "net" to 0.0)
+            }
         }
     }
 

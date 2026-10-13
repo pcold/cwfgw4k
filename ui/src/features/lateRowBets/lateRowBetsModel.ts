@@ -19,12 +19,6 @@ export interface LateRowBetTeamTotal {
   sideBets: number;
 }
 
-export interface LateRowBetsSummary {
-  totalWon: number;
-  totalLost: number;
-  net: number;
-}
-
 function toEntry(raw: ReportSideBetTeamEntry): LateRowBetEntry {
   return {
     teamId: raw.teamId,
@@ -52,14 +46,4 @@ export function lateRowBetTeamTotals(report: WeeklyReport): LateRowBetTeamTotal[
       sideBets: team.sideBets,
     }))
     .sort((a, b) => b.sideBets - a.sideBets);
-}
-
-export function summarizeLateRowBets(report: WeeklyReport): LateRowBetsSummary {
-  const totalWon = report.teams
-    .filter((t) => t.sideBets > 0)
-    .reduce((sum, t) => sum + t.sideBets, 0);
-  const totalLost = report.teams
-    .filter((t) => t.sideBets < 0)
-    .reduce((sum, t) => sum + t.sideBets, 0);
-  return { totalWon, totalLost, net: totalWon + totalLost };
 }

@@ -279,6 +279,38 @@ private fun sideBetFixture(
     )
 }
 
+private data class DraftPick(val team: Team, val round: Int, val golfer: Golfer)
+
+/**
+ * A completed Masters staking 20 on each of rounds 1 to 3, where every team holds a pick in every round.
+ * BROWN breaks even in cash and in side bets, WOMBLE wins both and ALVAREZ loses both.
+ */
+private fun breakEvenWinnerAndLoser(): Fixture {
+    val earnedByPick =
+        mapOf(
+            (TEAM_A to 1) to BigDecimal(6),
+            (TEAM_B to 2) to BigDecimal(8),
+            (TEAM_B to 3) to BigDecimal(4),
+        )
+    val picks =
+        listOf(TEAM_A, TEAM_B, TEAM_C).flatMapIndexed { index, team ->
+            (1..3).map { round -> DraftPick(team, round, golferFixture("f$index$round", "Pick", "Pick$index$round")) }
+        }
+    return Fixture(
+        rules = sideBetRules(amount = BigDecimal(20), rounds = listOf(1, 2, 3)),
+        initialTournaments = listOf(tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")),
+        initialTeams = listOf(TEAM_A, TEAM_B, TEAM_C),
+        initialGolfers = picks.map { it.golfer },
+        initialRosters = picks.map { rosterEntry(it.team.id, it.golfer.id, draftRound = it.round) },
+        initialScores =
+            picks.mapNotNull { pick ->
+                earnedByPick[pick.team to pick.round]?.let { earned ->
+                    scoreFixture(pick.team.id, MASTERS_ID, pick.golfer.id, points = earned, position = 1)
+                }
+            },
+    )
+}
+
 /** An in-progress Masters on ESPN whose only competitor leads it. */
 private fun liveMasters(leaderEspnId: String): EspnTournament =
     EspnTournament(
@@ -596,6 +628,36 @@ class WeeklyReportServiceSpec : FunSpec({
             report.sideBetDetail.shouldBeEmpty()
             report.teams.forAll { it.sideBets.compareTo(BigDecimal.ZERO) shouldBe 0 }
         }
+    }
+
+    test("getReport totals what its teams won and lost, in cash and in side bets") {
+        val report = breakEvenWinnerAndLoser().mastersReport()
+
+        report.teams.associate { it.teamName to it.totalCash.toInt() } shouldBe
+            mapOf("BROWN" to 0, "WOMBLE" to 78, "ALVAREZ" to -78)
+        report.cashTotals.won.compareTo(BigDecimal(78)) shouldBe 0
+        report.cashTotals.lost.compareTo(BigDecimal(-78)) shouldBe 0
+        report.cashTotals.net.compareTo(BigDecimal.ZERO) shouldBe 0
+        report.teams.associate { it.teamName to it.sideBets.toInt() } shouldBe
+            mapOf("BROWN" to 0, "WOMBLE" to 60, "ALVAREZ" to -60)
+        report.sideBetTotals.won.compareTo(BigDecimal(60)) shouldBe 0
+        report.sideBetTotals.lost.compareTo(BigDecimal(-60)) shouldBe 0
+        report.sideBetTotals.net.compareTo(BigDecimal.ZERO) shouldBe 0
+    }
+
+    test("getSeasonReport totals what its teams won and lost, in cash and in side bets") {
+        val report = breakEvenWinnerAndLoser().service.getSeasonReport(SEASON_ID).orFail()
+
+        report.teams.associate { it.teamName to it.totalCash.toInt() } shouldBe
+            mapOf("BROWN" to 0, "WOMBLE" to 78, "ALVAREZ" to -78)
+        report.cashTotals.won.compareTo(BigDecimal(78)) shouldBe 0
+        report.cashTotals.lost.compareTo(BigDecimal(-78)) shouldBe 0
+        report.cashTotals.net.compareTo(BigDecimal.ZERO) shouldBe 0
+        report.teams.associate { it.teamName to it.sideBets.toInt() } shouldBe
+            mapOf("BROWN" to 0, "WOMBLE" to 60, "ALVAREZ" to -60)
+        report.sideBetTotals.won.compareTo(BigDecimal(60)) shouldBe 0
+        report.sideBetTotals.lost.compareTo(BigDecimal(-60)) shouldBe 0
+        report.sideBetTotals.net.compareTo(BigDecimal.ZERO) shouldBe 0
     }
 
     test("getReport with live=true keeps the season's side-bet rules and settles outcomes on the live projection") {

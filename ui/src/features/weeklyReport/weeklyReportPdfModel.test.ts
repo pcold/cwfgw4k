@@ -6,6 +6,7 @@ import type {
   Season,
   WeeklyReport,
 } from '@/shared/api/types';
+import { makeWonLostTotals } from '@/shared/test/fixtures';
 import {
   cellContent,
   formatDateRange,
@@ -52,6 +53,8 @@ function buildReport(overrides: {
     standingsOrder: [],
     live: false,
     liveLeaderboard: [],
+    cashTotals: makeWonLostTotals(),
+    sideBetTotals: makeWonLostTotals(),
   };
 }
 

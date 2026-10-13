@@ -14,7 +14,6 @@ import {
   sideBetAmountByRound,
   sideBetRowLabel,
   sideBetWinnersByRound,
-  summarizeWeeklyReport,
   teamCellsByRound,
 } from './weeklyReportModel';
 import { cellContent, formatDateRange, pdfFilename } from './weeklyReportPdfModel';
@@ -214,8 +213,8 @@ function drawFooter(
     );
     doc.text(`UNDRAFTED TOP TENS: ${parts.join(', ')}`, marginLeft, y);
   }
-  const { totalWon, totalLost } = summarizeWeeklyReport(report);
-  const summary = `+${formatMoney(totalWon)}    ${formatMoney(totalLost)}`;
+  const { won, lost } = report.cashTotals;
+  const summary = `+${formatMoney(won)}    ${formatMoney(lost)}`;
   doc.text(summary, pageWidth - marginRight, y, { align: 'right' });
 }
 
