@@ -128,15 +128,6 @@ class ScoringRepositorySpec : FunSpec({
         scores.map { it.golferId } shouldBe listOf(golfer1, golfer2)
     }
 
-    test("golferPointTotal sums points across tournaments for a team+golfer") {
-        upsert(teamA, tournamentA, golfer1, breakdown(1))
-        upsert(teamA, tournamentB, golfer1, breakdown(4, payout = BigDecimal(7)))
-        // Different team's points should be excluded
-        upsert(teamB, tournamentA, golfer1, breakdown(1, payout = BigDecimal(99)))
-
-        tx.read { repository.golferPointTotal(seasonId, teamA, golfer1) }.compareTo(BigDecimal(25)) shouldBe 0
-    }
-
     test("teamSeasonTotals sums points and counts distinct tournaments") {
         upsert(teamA, tournamentA, golfer1, breakdown(1))
         upsert(teamA, tournamentA, golfer2, breakdown(2, payout = BigDecimal(12)))

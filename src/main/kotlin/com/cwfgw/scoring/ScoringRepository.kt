@@ -42,13 +42,6 @@ interface ScoringRepository {
     fun upsertScore(record: UpsertScore): FantasyScore
 
     context(ctx: TransactionContext)
-    fun golferPointTotal(
-        seasonId: SeasonId,
-        teamId: TeamId,
-        golferId: GolferId,
-    ): BigDecimal
-
-    context(ctx: TransactionContext)
     fun teamSeasonTotals(
         seasonId: SeasonId,
         teamId: TeamId,
@@ -150,19 +143,6 @@ private class JooqScoringRepository : ScoringRepository {
                 .fetchSingle()
         return toFantasyScore(upserted)
     }
-
-    context(ctx: TransactionContext)
-    override fun golferPointTotal(
-        seasonId: SeasonId,
-        teamId: TeamId,
-        golferId: GolferId,
-    ): BigDecimal =
-        ctx.dsl.select(DSL.coalesce(DSL.sum(FANTASY_SCORES.POINTS), BigDecimal.ZERO))
-            .from(FANTASY_SCORES)
-            .where(FANTASY_SCORES.SEASON_ID.eq(seasonId.value))
-            .and(FANTASY_SCORES.TEAM_ID.eq(teamId.value))
-            .and(FANTASY_SCORES.GOLFER_ID.eq(golferId.value))
-            .fetchOne(0, BigDecimal::class.java) ?: BigDecimal.ZERO
 
     context(ctx: TransactionContext)
     override fun teamSeasonTotals(

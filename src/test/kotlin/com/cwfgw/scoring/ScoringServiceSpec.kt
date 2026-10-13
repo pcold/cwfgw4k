@@ -87,14 +87,13 @@ private fun mkRoster(
     teamId: TeamId,
     golferId: GolferId,
     ownership: BigDecimal = BigDecimal(100),
-    draftRound: Int? = null,
 ): RosterEntry =
     RosterEntry(
         id = RosterEntryId(UUID.randomUUID()),
         teamId = teamId,
         golferId = golferId,
         acquiredVia = "draft",
-        draftRound = draftRound,
+        draftRound = null,
         ownershipPct = ownership,
         acquiredAt = Instant.EPOCH,
         droppedAt = null,
@@ -130,7 +129,6 @@ private data class World(
 )
 
 private data class FakeData(
-    val pointTotals: Map<Triple<SeasonId, TeamId, GolferId>, BigDecimal> = emptyMap(),
     val teamTotals: Map<Pair<SeasonId, TeamId>, TeamSeasonTotals> = emptyMap(),
 )
 
@@ -138,7 +136,7 @@ private class Fixture(
     world: World = World(),
     fakes: FakeData = FakeData(),
 ) {
-    val scoring = FakeScoringRepository(pointTotals = fakes.pointTotals, teamTotals = fakes.teamTotals)
+    val scoring = FakeScoringRepository(teamTotals = fakes.teamTotals)
     val service: ScoringService
 
     init {
@@ -230,62 +228,6 @@ class ScoringServiceSpec : FunSpec({
         val weekly = fixture.service.calculateScores(SEASON_ID, TOURNAMENT_ID).orFail()
         weekly.multiplier shouldBe BigDecimal(2)
         weekly.totalPot shouldBe BigDecimal(36)
-    }
-
-    test("getSideBetStandings returns NoTeams when the season has none") {
-        val fixture = Fixture()
-
-        fixture.service.getSideBetStandings(SEASON_ID) shouldBe Result.Err(ScoringError.NoTeams)
-    }
-
-    test("getSideBetStandings returns SeasonNotFound when the season does not exist") {
-        val fixture = Fixture(world = World(season = null, teams = listOf(mkTeam(teamId(1), "Alice"))))
-
-        fixture.service.getSideBetStandings(SEASON_ID) shouldBe Result.Err(ScoringError.SeasonNotFound)
-    }
-
-    test("getSideBetStandings picks the highest-cumulative team as the winner of an active round") {
-        val team1 = mkTeam(teamId(1), "Alice")
-        val team2 = mkTeam(teamId(2), "Bob")
-        val rosters =
-            listOf(
-                mkRoster(team1.id, golferId(1), draftRound = 5),
-                mkRoster(team2.id, golferId(2), draftRound = 5),
-            )
-        val pointTotals =
-            mapOf(
-                Triple(SEASON_ID, team1.id, golferId(1)) to BigDecimal(30),
-                Triple(SEASON_ID, team2.id, golferId(2)) to BigDecimal(10),
-            )
-        val fixture =
-            Fixture(
-                world = World(teams = listOf(team1, team2), rosters = rosters),
-                fakes = FakeData(pointTotals = pointTotals),
-            )
-
-        val standings = fixture.service.getSideBetStandings(SEASON_ID).orFail()
-        // Default sideBetRounds is [5, 6, 7, 8] — only round 5 has picks here.
-        val round5 = standings.rounds.first { it.round == 5 }
-        round5.active shouldBe true
-        round5.winner?.teamId shouldBe team1.id
-        round5.winner?.cumulativeEarnings shouldBe BigDecimal(30)
-        // Winner collects sideBetAmount × (numTeams - 1) = 15 × 1 = 15
-        val totalsByTeam = standings.teamTotals.associateBy { it.teamId }
-        totalsByTeam.getValue(team1.id).net shouldBe BigDecimal(15)
-        totalsByTeam.getValue(team1.id).wins shouldBe 1
-        totalsByTeam.getValue(team2.id).net shouldBe BigDecimal(-15)
-    }
-
-    test("getSideBetStandings marks a round inactive when no team's pick has earned anything") {
-        val team = mkTeam(teamId(1), "Alice")
-        val rosters = listOf(mkRoster(team.id, golferId(1), draftRound = 5))
-        val fixture = Fixture(world = World(teams = listOf(team), rosters = rosters))
-
-        val standings = fixture.service.getSideBetStandings(SEASON_ID).orFail()
-        val round5 = standings.rounds.first { it.round == 5 }
-        round5.active shouldBe false
-        round5.winner shouldBe null
-        standings.teamTotals.first { it.teamId == team.id }.net shouldBe BigDecimal.ZERO
     }
 
     test("refreshStandings upserts a standing per team in the season") {

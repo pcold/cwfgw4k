@@ -251,30 +251,6 @@ class ScoringRoutesSpec : FunSpec({
         }
     }
 
-    test("GET /scoring/side-bets returns 409 when the season has no teams") {
-        apiTest(withWorld()) { client ->
-            client.get("/api/v1/seasons/${SEASON_ID.value}/scoring/side-bets")
-                .status shouldBe HttpStatusCode.Conflict
-        }
-    }
-
-    test("GET /scoring/side-bets returns 404 when the season does not exist") {
-        apiTest(withWorld(RouteWorld(season = null))) { client ->
-            client.get("/api/v1/seasons/${SEASON_ID.value}/scoring/side-bets")
-                .status shouldBe HttpStatusCode.NotFound
-        }
-    }
-
-    test("GET /scoring/side-bets returns 200 when the season has teams") {
-        apiTest(withWorld(RouteWorld(teams = listOf(mkTeam(TEAM_A, "Alice"))))) { client ->
-            val response = client.get("/api/v1/seasons/${SEASON_ID.value}/scoring/side-bets")
-
-            response.status shouldBe HttpStatusCode.OK
-            // Default rules: 4 side-bet rounds; all inactive when no point totals exist.
-            response.body<SideBetStandings>().rounds.size shouldBe 4
-        }
-    }
-
     test("GET /standings returns 200 with persisted standings") {
         apiTest(withWorld()) { client ->
             val response = client.get("/api/v1/seasons/${SEASON_ID.value}/standings")

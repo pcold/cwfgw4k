@@ -25,7 +25,6 @@ fun Route.scoringRoutes(
     route("/seasons/{seasonId}") {
         get("/standings") { getStandings(service, cache) }
         route("/scoring") {
-            get("/side-bets") { getSideBetStandings(service, cache) }
             get("/{tournamentId}") { getScores(service, cache) }
             authenticate(SESSION_AUTH_NAME) {
                 post("/refresh-standings") { refreshStandings(service) }
@@ -45,7 +44,6 @@ private fun ScoringError.toDomainError(): DomainError =
     when (this) {
         ScoringError.SeasonNotFound -> DomainError.NotFound("season not found")
         ScoringError.TournamentNotFound -> DomainError.NotFound("tournament not found")
-        ScoringError.NoTeams -> DomainError.Conflict("season has no teams")
     }
 
 private fun <T> Result<T, ScoringError>.orThrow(): T =
@@ -79,12 +77,4 @@ private suspend fun RoutingContext.calculateScores(service: ScoringService) {
 private suspend fun RoutingContext.refreshStandings(service: ScoringService) {
     requireAdmin()
     call.respond(service.refreshStandings(seasonId()).orThrow())
-}
-
-private suspend fun RoutingContext.getSideBetStandings(
-    service: ScoringService,
-    cache: RequestCache,
-) {
-    val sid = seasonId()
-    cachedRespond(cache) { service.getSideBetStandings(sid).orThrow() }
 }
