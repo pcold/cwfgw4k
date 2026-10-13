@@ -22,6 +22,5 @@ export function earliestUnfinalized(tournaments: Tournament[]): string | null {
  * "All" rollup), and the most useful one is the most recent.
  */
 export function defaultScoreboardTournament(tournaments: Tournament[]): string | null {
-  if (tournaments.length === 0) return null;
-  return earliestUnfinalized(tournaments) ?? tournaments[tournaments.length - 1].id;
+  return earliestUnfinalized(tournaments) ?? tournaments.at(-1)?.id ?? null;
 }

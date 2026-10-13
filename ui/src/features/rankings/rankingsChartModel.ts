@@ -66,7 +66,9 @@ export interface ChartLayout {
 }
 
 export function teamColor(index: number): string {
-  return CHART_COLORS[index % CHART_COLORS.length];
+  // The modulo misses the palette only for a negative or fractional index, which no caller passes.
+  // The compiler cannot see that, so the first colour stands in rather than an undefined stroke.
+  return CHART_COLORS[index % CHART_COLORS.length] ?? CHART_COLORS[0];
 }
 
 function seriesValues(teams: TeamRanking[]): number[] {

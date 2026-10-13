@@ -147,25 +147,31 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
 // collapse into a single cell with "A/B" player names and "teamA/teamB" teams in matching order. Undrafted partners
 // keep the literal "undrafted" placeholder so the joined team string stays aligned with the player string.
 export function collapsePairs(entries: LeaderboardEntry[]): LeaderboardEntry[] {
-  const result: LeaderboardEntry[] = [];
-  const pairIndex = new Map<string, number>();
+  const slots: CompetitorSlot[] = [];
+  const slotByPairKey = new Map<string, CompetitorSlot>();
   for (const entry of entries) {
     const key = entry.pairKey;
-    const existingIndex = key === null ? undefined : pairIndex.get(key);
-    if (existingIndex !== undefined) {
-      const existing = result[existingIndex];
-      result[existingIndex] = {
-        ...existing,
-        name: `${existing.name} / ${entry.name}`,
-        teamName: `${existing.teamName ?? 'undrafted'} / ${entry.teamName ?? 'undrafted'}`,
-        rostered: existing.rostered || entry.rostered,
-      };
+    const slot = key ? slotByPairKey.get(key) : undefined;
+    if (slot) {
+      slot.push(entry);
     } else {
-      if (key) pairIndex.set(key, result.length);
-      result.push(entry);
+      const opened: CompetitorSlot = [entry];
+      if (key) slotByPairKey.set(key, opened);
+      slots.push(opened);
     }
   }
-  return result;
+  return slots.map(([first, ...partners]) => partners.reduce(joinPartner, first));
+}
+
+type CompetitorSlot = [LeaderboardEntry, ...LeaderboardEntry[]];
+
+function joinPartner(joined: LeaderboardEntry, partner: LeaderboardEntry): LeaderboardEntry {
+  return {
+    ...joined,
+    name: `${joined.name} / ${partner.name}`,
+    teamName: `${joined.teamName ?? 'undrafted'} / ${partner.teamName ?? 'undrafted'}`,
+    rostered: joined.rostered || partner.rostered,
+  };
 }
 
 export function deriveScoreboard(report: WeeklyReport): Scoreboard {

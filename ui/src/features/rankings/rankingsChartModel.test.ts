@@ -49,6 +49,11 @@ describe('teamColor', () => {
     expect(teamColor(CHART_COLORS.length)).toBe(CHART_COLORS[0]);
     expect(teamColor(CHART_COLORS.length + 2)).toBe(CHART_COLORS[2]);
   });
+
+  it('falls back to the first colour for an index the modulo cannot place in the palette', () => {
+    expect(teamColor(-1)).toBe(CHART_COLORS[0]);
+    expect(teamColor(0.5)).toBe(CHART_COLORS[0]);
+  });
 });
 
 describe('buildChartLayout', () => {
