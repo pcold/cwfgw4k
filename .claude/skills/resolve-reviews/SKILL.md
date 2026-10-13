@@ -127,9 +127,11 @@ force a not-found.
 If step 1 showed `mergeable: CONFLICTING` (or CI reports a merge conflict), the
 base advanced past the branch and you must reconcile them. **Merge the base in;
 never rebase** — rebasing rewrites history and forces a `--force` push, which is
-banned on PR branches here. A merge commit on the branch is fine; the
-squash-merge consolidates it away at the end. Keep this its own commit, separate
-from the review fixes — one logical change each.
+banned on PR branches here. [`parallel-tickets`](../parallel-tickets/SKILL.md)
+Phase 5 rebases at the same step, because there the branch has not been pushed
+and no reviewer is reading the history a rebase would rewrite. A merge commit on
+the branch is fine; the squash-merge consolidates it away at the end. Keep this
+its own commit, separate from the review fixes — one logical change each.
 
 ```sh
 git fetch origin
