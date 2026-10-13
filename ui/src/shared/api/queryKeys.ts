@@ -6,25 +6,30 @@ import type { QueryKey } from '@tanstack/react-query';
  * cannot drift from the keys beneath it.
  */
 export const queryKeys = {
+  /** @see queryKeys */
   auth: {
     root: ['auth'] as const,
     me: (): QueryKey => [...queryKeys.auth.root, 'me'],
   },
 
+  /** @see queryKeys */
   leagues: {
     root: ['leagues'] as const,
   },
 
+  /** @see queryKeys */
   seasons: {
     root: ['seasons'] as const,
     byLeague: (leagueId: string | null): QueryKey => [...queryKeys.seasons.root, leagueId],
   },
 
+  /** @see queryKeys */
   tournaments: {
     root: ['tournaments'] as const,
     bySeason: (seasonId: string | null): QueryKey => [...queryKeys.tournaments.root, seasonId],
   },
 
+  /** @see queryKeys */
   tournamentCompetitors: {
     root: ['tournamentCompetitors'] as const,
     byTournament: (tournamentId: string): QueryKey => [
@@ -33,21 +38,25 @@ export const queryKeys = {
     ],
   },
 
+  /** @see queryKeys */
   rosters: {
     root: ['rosters'] as const,
     bySeason: (seasonId: string | null): QueryKey => [...queryKeys.rosters.root, seasonId],
   },
 
+  /** @see queryKeys */
   seasonRules: {
     root: ['seasonRules'] as const,
     bySeason: (seasonId: string | null): QueryKey => [...queryKeys.seasonRules.root, seasonId],
   },
 
+  /** @see queryKeys */
   golfers: {
     root: ['golfers'] as const,
     list: (): QueryKey => [...queryKeys.golfers.root, 'all'],
   },
 
+  /** @see queryKeys */
   golferHistory: {
     root: ['golferHistory'] as const,
     bySeason: (seasonId: string | null): QueryKey => [...queryKeys.golferHistory.root, seasonId],
@@ -57,6 +66,7 @@ export const queryKeys = {
     ],
   },
 
+  /** @see queryKeys.report for the single-tournament report both hold. */
   tournamentReport: {
     root: ['tournamentReport'] as const,
     bySeason: (seasonId: string | null): QueryKey => [
@@ -70,6 +80,11 @@ export const queryKeys = {
     ],
   },
 
+  /**
+   * An empty tournament id holds the whole season's report. A single tournament's is cached here by
+   * the weekly pages and again under `tournamentReport` by the scoreboard, so a write that stales
+   * one invalidates both.
+   */
   report: {
     root: ['report'] as const,
     bySeason: (seasonId: string | null): QueryKey => [...queryKeys.report.root, seasonId],

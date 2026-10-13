@@ -2,8 +2,8 @@ import { expect, it } from 'vitest';
 import { QueryClient, type QueryKey } from '@tanstack/react-query';
 import { queryKeys } from './queryKeys';
 
-// Widest key first. The Record makes an entity added without a chain a compile error, since nothing
-// below would check it.
+// Widest key first, one entry per key the entity builds. The Record makes an entity added without a
+// chain a compile error, since nothing below would check it.
 const KEY_CHAINS: Record<keyof typeof queryKeys, readonly QueryKey[]> = {
   auth: [queryKeys.auth.root, queryKeys.auth.me()],
   leagues: [queryKeys.leagues.root],
@@ -39,7 +39,7 @@ const KEY_CHAINS: Record<keyof typeof queryKeys, readonly QueryKey[]> = {
   playerRankings: [
     queryKeys.playerRankings.root,
     queryKeys.playerRankings.bySeason('sn-1'),
-    queryKeys.playerRankings.detail('sn-1', 'tn-1', true),
+    queryKeys.playerRankings.detail('sn-1', null, true),
   ],
 };
 
@@ -66,7 +66,7 @@ it('pins the value of every key, root first', () => {
     playerRankings: [
       ['player-rankings'],
       ['player-rankings', 'sn-1'],
-      ['player-rankings', 'sn-1', 'tn-1', true],
+      ['player-rankings', 'sn-1', null, true],
     ],
   });
 });
@@ -89,6 +89,19 @@ it.each(Object.entries(KEY_CHAINS))(
     expect(reachedFrom).toEqual(chain.map((_key, index) => chain.slice(index)));
   },
 );
+
+// Without this a key added to an existing entity, built from a literal of its own, is checked by
+// nothing above.
+it('holds a chain entry for every key an entity builds', () => {
+  const keysBuilt = Object.fromEntries(
+    Object.entries(queryKeys).map(([entity, keys]) => [entity, Object.keys(keys).length]),
+  );
+  const keysChained = Object.fromEntries(
+    Object.entries(KEY_CHAINS).map(([entity, chain]) => [entity, chain.length]),
+  );
+
+  expect(keysChained).toEqual(keysBuilt);
+});
 
 it('gives every entity a root of its own, so no invalidation can reach another entity', () => {
   const roots = Object.values(KEY_CHAINS).map((chain) => chain[0][0]);
