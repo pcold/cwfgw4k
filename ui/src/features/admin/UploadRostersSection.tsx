@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
+import { queryKeys } from '@/shared/api/queryKeys';
 import type {
   GolferAssignment,
   League,
@@ -68,13 +69,13 @@ function splitName(fullName: string): { firstName: string; lastName: string } {
 function UploadRostersSection() {
   const queryClient = useQueryClient();
 
-  const leaguesQuery = useQuery<League[]>({ queryKey: ['leagues'], queryFn: api.leagues });
+  const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
   const [userLeagueId, setUserLeagueId] = useState<string>('');
   // User's pick wins; otherwise default to the first loaded league.
   const leagueId = userLeagueId || (leaguesQuery.data?.[0]?.id ?? '');
 
   const seasonsQuery = useQuery<Season[]>({
-    queryKey: ['seasons', leagueId],
+    queryKey: queryKeys.seasons.byLeague(leagueId),
     queryFn: leagueId === '' ? skipToken : () => api.seasons(leagueId),
   });
 
@@ -106,7 +107,13 @@ function UploadRostersSection() {
     onSuccess: (data: RosterConfirmResult) => {
       setResult(data);
       setPreview(null);
-      void queryClient.invalidateQueries({ queryKey: ['rosters'] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rosters.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.golfers.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentCompetitors.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentReport.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.report.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rankings.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.playerRankings.root });
     },
   });
 

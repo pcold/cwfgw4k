@@ -1,5 +1,6 @@
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api, ApiError } from '@/shared/api/client';
+import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { DEFAULT_RULES, ordinal } from './rulesModel';
 
@@ -7,12 +8,12 @@ function RulesPage() {
   const { leaguesLoading, leaguesError, seasonId } = useLeagueSeason();
 
   const rulesQuery = useQuery({
-    queryKey: ['seasonRules', seasonId],
+    queryKey: queryKeys.seasonRules.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.seasonRules(seasonId),
   });
 
   const tournamentsQuery = useQuery({
-    queryKey: ['tournaments', seasonId],
+    queryKey: queryKeys.tournaments.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
 

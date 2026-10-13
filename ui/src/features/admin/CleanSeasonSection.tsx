@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
+import { queryKeys } from '@/shared/api/queryKeys';
 import type { League, Season } from '@/shared/api/types';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
@@ -8,12 +9,12 @@ import { seasonLabel } from '@/shared/util/season';
 function CleanSeasonSection() {
   const queryClient = useQueryClient();
 
-  const leaguesQuery = useQuery<League[]>({ queryKey: ['leagues'], queryFn: api.leagues });
+  const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
   // No UI to pick a league — just default to the first one when leagues load.
   const leagueId = leaguesQuery.data?.[0]?.id ?? '';
 
   const seasonsQuery = useQuery<Season[]>({
-    queryKey: ['seasons', leagueId],
+    queryKey: queryKeys.seasons.byLeague(leagueId),
     queryFn: leagueId === '' ? skipToken : () => api.seasons(leagueId),
   });
 
@@ -23,8 +24,13 @@ function CleanSeasonSection() {
     mutationFn: (id: string) => api.cleanSeasonResults(id),
     onSuccess: () => {
       setSeasonId('');
-      void queryClient.invalidateQueries({ queryKey: ['tournaments'] });
-      void queryClient.invalidateQueries({ queryKey: ['seasons'] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentReport.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.report.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rankings.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.playerRankings.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.golferHistory.root });
     },
   });
 

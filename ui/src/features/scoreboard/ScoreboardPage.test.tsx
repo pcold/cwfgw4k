@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
+import { queryKeys } from '@/shared/api/queryKeys';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import ScoreboardPage from './ScoreboardPage';
 import type { League, Season, Tournament, WeeklyReport } from '@/shared/api/types';
@@ -117,7 +118,7 @@ function buildReport(name: string, tournamentId: string): WeeklyReport {
 // that drifts from theirs leaves the finalize test passing against a query no page holds.
 function OpenSeasonReport() {
   useQuery({
-    queryKey: ['report', 'sn-1', '', false],
+    queryKey: queryKeys.report.detail('sn-1', '', false),
     queryFn: () => api.seasonReport('sn-1', false),
   });
   return null;
@@ -127,7 +128,7 @@ function OpenSeasonReport() {
 // GolferHistoryModal.
 function OpenPlayerRankings() {
   useQuery({
-    queryKey: ['player-rankings', 'sn-1', null, false],
+    queryKey: queryKeys.playerRankings.detail('sn-1', null, false),
     queryFn: () => api.playerRankings('sn-1', false, undefined),
   });
   return null;
@@ -135,7 +136,7 @@ function OpenPlayerRankings() {
 
 function OpenGolferHistory() {
   useQuery({
-    queryKey: ['golferHistory', 'sn-1', 'g-1'],
+    queryKey: queryKeys.golferHistory.detail('sn-1', 'g-1'),
     queryFn: () => api.golferHistory('sn-1', 'g-1'),
   });
   return null;
