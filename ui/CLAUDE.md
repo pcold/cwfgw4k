@@ -233,17 +233,18 @@ What stays in the UI:
 
 - **MUST** route every API call through the typed `api` client in
   `src/shared/api/client.ts`. No direct `fetch` calls in components.
-- **MUST** use a stable, hierarchical query key structured by entity:
+- **MUST** use a stable, hierarchical query key structured by entity, built
+  by that entity's factory in `src/shared/api/queryKeys.ts`:
 
   ```ts
   useQuery({
-    queryKey: ['rankings', seasonId, live, throughTournamentId],
+    queryKey: rankingsKeys.detail(seasonId, live, throughTournamentId),
     queryFn: () => api.rankings(seasonId, live, throughTournamentId),
   });
   ```
 
   Hierarchy lets a write invalidate everything below it:
-  `queryClient.invalidateQueries({ queryKey: ['rankings', seasonId] })`.
+  `queryClient.invalidateQueries({ queryKey: rankingsKeys.bySeason(seasonId) })`.
 - **MUST** invalidate (or `setQueryData`) the affected query keys after
   a mutation. Don't rely on refetch-on-window-focus to mask staleness —
   that fixes one user, not the next page navigation.
@@ -252,8 +253,13 @@ What stays in the UI:
   every page.
 - **MUST NOT** call `useQuery` conditionally. Use the `enabled` option
   to gate the fetch instead.
-- **SHOULD** colocate query keys and fetcher functions per entity so
-  invalidation and prefetching can reuse the same constants.
+- **MUST NOT** spell a query-key root as a literal outside
+  `src/shared/api/queryKeys.ts`, which sits beside the fetchers in
+  `client.ts`. A reader and every invalidation that targets it take the key
+  from the same factory, and a new key spreads the wider key it narrows. A
+  literal that drifts still type-checks and the write still succeeds; only
+  the open page stays stale. `queryKeys.test.ts` pins each root's value and
+  gets a chain for every factory added.
 
 ---
 
