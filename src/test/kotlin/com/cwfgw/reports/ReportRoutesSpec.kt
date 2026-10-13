@@ -261,7 +261,7 @@ private fun asUpsertRequest(r: TournamentResult): CreateTournamentResultRequest 
         pairKey = r.pairKey,
     )
 
-// Reads the raw body: decoding into [WeeklyReport] would hide a field the server never wrote.
+// Reads the raw body: a typed decode shares the encoder's @SerialName, so it cannot pin the wire spelling.
 private fun wireScope(body: String): JsonElement? = appJson.parseToJsonElement(body).jsonObject["scope"]
 
 class ReportRoutesSpec : FunSpec({
