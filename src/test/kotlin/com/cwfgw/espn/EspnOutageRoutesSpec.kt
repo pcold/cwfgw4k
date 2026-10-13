@@ -27,7 +27,7 @@ private val COMPETITORS_URL = "/api/v1/admin/tournaments/${OUTAGE_TOURNAMENT.id.
 private const val CALENDAR_URL = "/api/v1/espn/calendar"
 
 /** [logged] is what the WARN line has to carry for a reader to tell this failure from the others. */
-private class FailingUpstream(
+private data class FailingUpstream(
     val description: String,
     val error: String,
     val logged: String,

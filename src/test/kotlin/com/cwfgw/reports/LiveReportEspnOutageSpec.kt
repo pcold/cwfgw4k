@@ -25,7 +25,7 @@ private val LEAGUE_ID = LeagueId(UUID.fromString("00000000-0000-0000-0000-000000
 private val SEASON_ID = OUTAGE_TOURNAMENT.seasonId
 private val MASTERS_ID = OUTAGE_TOURNAMENT.id
 
-private class LiveCapablePath(
+private data class LiveCapablePath(
     val label: String,
     val path: String = label,
     val fallback: (base: String) -> String = { it },
