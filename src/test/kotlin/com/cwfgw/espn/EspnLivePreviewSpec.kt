@@ -306,6 +306,8 @@ class EspnLivePreviewSpec : FunSpec({
 
         val preview = fixture.previewFor(unlinked).orFail()
 
+        // Pins a known defect, not the intended result (CWF-112): the multiplier is looked up by
+        // event.espnId, which the lone-event fallback matched without, so the tournament's 2 is lost.
         preview.payoutMultiplier.compareTo(BigDecimal.ONE) shouldBe 0
     }
 
