@@ -154,9 +154,8 @@ enum class ReportScope {
 }
 
 /**
- * The full weekly or season report payload. `live` and `liveLeaderboard`
- * are set only for live overlays; non-live reports leave them at their
- * defaults so the wire shape stays compact.
+ * [liveLeaderboard] is not live-only despite the name: a tournament report carries the persisted
+ * leaderboard there, and a live overlay may replace it with ESPN's.
  *
  * [scope] has no default, so every construction site must say which report it built.
  */
