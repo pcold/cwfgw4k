@@ -26,7 +26,6 @@ import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -161,6 +160,7 @@ private class PreviewFixture(
     val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
     val teamRepo = FakeTeamRepository(initialTeams = initialTeams, initialRoster = initialRosters)
     val golferRepo = FakeGolferRepository(initial = initialGolfers)
+    val client = FakeEspnClient(tournamentsByDate = tournamentsByDate, upstreamError = upstreamError)
     val service: EspnService
 
     init {
@@ -175,7 +175,7 @@ private class PreviewFixture(
         val linkRepo = FakeTournamentLinkRepository()
         service =
             EspnService(
-                client = FakeEspnClient(tournamentsByDate = tournamentsByDate, upstreamError = upstreamError),
+                client = client,
                 seasonRepository = seasonRepo,
                 golferRepository = golferRepo,
                 teamRepository = teamRepo,
@@ -187,19 +187,53 @@ private class PreviewFixture(
 }
 
 // The context matches only the tournaments handed to it; it never reads them back out of the repository.
-private suspend fun PreviewFixture.previewOn(date: LocalDate): Result<List<EspnLivePreview>, EspnError> =
-    service.previewByDate(service.loadLivePreviewContext(SEASON_ID, initialTournaments), date)
+private suspend fun PreviewFixture.previewFor(candidate: Tournament): Result<EspnLivePreview, LivePreviewError> =
+    service.previewForTournament(service.loadLivePreviewContext(SEASON_ID, initialTournaments), candidate)
 
 class EspnLivePreviewSpec : FunSpec({
 
-    test("previewByDate returns an empty list when ESPN reports no tournaments for the date") {
+    test("previewForTournament answers NoMatchingEvent when ESPN reports no tournaments for the date") {
         val fixture = PreviewFixture(tournamentsByDate = mapOf(START_DATE to emptyList()))
 
-        val result = fixture.previewOn(START_DATE).orFail()
-        result.shouldBeEmpty()
+        fixture.previewFor(tournament()) shouldBe Result.Err(LivePreviewError.NoMatchingEvent)
     }
 
-    test("previewByDate projects per-team earnings + zero-sum weekly +/- across rostered golfers") {
+    test("previewForTournament picks the event carrying the tournament's pga_tournament_id among several") {
+        val sony = espnTournament(espnId = "espn-sony", name = "Sony Open")
+        val masters = espnTournament(espnId = "espn-masters")
+        val fixture = PreviewFixture(tournamentsByDate = mapOf(START_DATE to listOf(sony, masters)))
+
+        val preview = fixture.previewFor(tournament(pgaTournamentId = "espn-masters")).orFail()
+
+        preview.espnId shouldBe "espn-masters"
+    }
+
+    test("previewForTournament falls back to the only event when its id is not the tournament's") {
+        val onlyEvent = espnTournament(espnId = "espn-different")
+        val fixture = PreviewFixture(tournamentsByDate = mapOf(START_DATE to listOf(onlyEvent)))
+
+        val preview = fixture.previewFor(tournament(pgaTournamentId = "espn-masters")).orFail()
+
+        preview.espnId shouldBe "espn-different"
+    }
+
+    test("previewForTournament answers NoMatchingEvent when no id matches and several events exist") {
+        val events = listOf(espnTournament(espnId = "espn-a"), espnTournament(espnId = "espn-b"))
+        val fixture = PreviewFixture(tournamentsByDate = mapOf(START_DATE to events))
+
+        fixture.previewFor(tournament(pgaTournamentId = "espn-masters")) shouldBe
+            Result.Err(LivePreviewError.NoMatchingEvent)
+    }
+
+    test("previewForTournament asks ESPN once, for the tournament's start date") {
+        val fixture = PreviewFixture(tournamentsByDate = mapOf(START_DATE to listOf(espnTournament())))
+
+        fixture.previewFor(tournament()).orFail()
+
+        fixture.client.fetchCalls shouldContainExactly listOf(START_DATE)
+    }
+
+    test("previewForTournament projects per-team earnings + zero-sum weekly +/- across rostered golfers") {
         val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
         val rory = golfer(RORY_ID, "Rory", "McIlroy", pgaPlayerId = "p2")
         val event =
@@ -223,7 +257,7 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val preview = fixture.previewOn(START_DATE).orFail().single()
+        val preview = fixture.previewFor(tournament()).orFail()
 
         preview.espnId shouldBe "401580999"
         preview.totalCompetitors shouldBe 2
@@ -237,42 +271,47 @@ class EspnLivePreviewSpec : FunSpec({
         a.weeklyTotal.add(b.weeklyTotal).compareTo(BigDecimal.ZERO) shouldBe 0
     }
 
-    test("previewByDate honors the matched DB tournament's payout multiplier") {
+    test("previewForTournament honors the matched DB tournament's payout multiplier") {
         val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
         val event = espnTournament(competitors = listOf(espnCompetitor("p1", "Scottie Scheffler", 1, -10)))
+        val doubled = tournament(payoutMultiplier = BigDecimal(2))
         val fixture =
             PreviewFixture(
-                initialTournaments = listOf(tournament(payoutMultiplier = BigDecimal(2))),
+                initialTournaments = listOf(doubled),
                 initialTeams = listOf(team(TEAM_A_ID, "BROWN")),
                 initialGolfers = listOf(scottie),
                 initialRosters = listOf(rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1)),
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val preview = fixture.previewOn(START_DATE).orFail().single()
+        val preview = fixture.previewFor(doubled).orFail()
 
         preview.payoutMultiplier.compareTo(BigDecimal(2)) shouldBe 0
         // $18 first place × 2.0 multiplier = $36
         preview.teams.single().topTenEarnings.compareTo(BigDecimal(36)) shouldBe 0
     }
 
-    test("previewByDate falls through to multiplier=1 when no DB tournament is linked to the ESPN event") {
+    test("previewForTournament falls through to multiplier=1 when no DB tournament is linked to the ESPN event") {
         val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
         val event = espnTournament(competitors = listOf(espnCompetitor("p1", "Scottie Scheffler", 1, -10)))
+        val unlinked = tournament(pgaTournamentId = null, payoutMultiplier = BigDecimal(2))
         val fixture =
             PreviewFixture(
+                initialTournaments = listOf(unlinked),
                 initialTeams = listOf(team(TEAM_A_ID, "BROWN")),
                 initialGolfers = listOf(scottie),
                 initialRosters = listOf(rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1)),
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val preview = fixture.previewOn(START_DATE).orFail().single()
+        val preview = fixture.previewFor(unlinked).orFail()
 
+        // Pins a known defect, not the intended result (CWF-112): the multiplier is looked up by
+        // event.espnId, which the lone-event fallback matched without, so the tournament's 2 is lost.
         preview.payoutMultiplier.compareTo(BigDecimal.ONE) shouldBe 0
     }
 
-    test("previewByDate returns the full leaderboard sorted by position") {
+    test("previewForTournament returns the full leaderboard sorted by position") {
         val event =
             espnTournament(
                 competitors =
@@ -288,21 +327,21 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val leaderboard = fixture.previewOn(START_DATE).orFail().single().leaderboard
+        val leaderboard = fixture.previewFor(tournament()).orFail().leaderboard
 
         leaderboard.map { it.name } shouldContainExactly
             listOf("First Place", "Second Place", "Third Place")
         leaderboard.forEach { it.rostered shouldBe false }
     }
 
-    test("previewByDate returns UpstreamUnavailable when ESPN is down") {
+    test("previewForTournament returns UpstreamUnavailable when ESPN is down") {
         val fixture = PreviewFixture(upstreamError = EspnUpstreamException(503, "Service Unavailable"))
+        val espnDown = EspnError.UpstreamUnavailable(EspnUpstreamFailure.BadStatus(503))
 
-        fixture.previewOn(START_DATE) shouldBe
-            Result.Err(EspnError.UpstreamUnavailable(EspnUpstreamFailure.BadStatus(503)))
+        fixture.previewFor(tournament()) shouldBe Result.Err(LivePreviewError.EspnUnavailable(espnDown))
     }
 
-    test("previewByDate marks rostered competitors with team name on the leaderboard") {
+    test("previewForTournament marks rostered competitors with team name on the leaderboard") {
         val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
         val event = espnTournament(competitors = listOf(espnCompetitor("p1", "Scottie Scheffler", 1, -10)))
         val fixture =
@@ -313,7 +352,7 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val leaderboard = fixture.previewOn(START_DATE).orFail().single().leaderboard
+        val leaderboard = fixture.previewFor(tournament()).orFail().leaderboard
 
         leaderboard shouldHaveSize 1
         leaderboard.single().rostered shouldBe true
