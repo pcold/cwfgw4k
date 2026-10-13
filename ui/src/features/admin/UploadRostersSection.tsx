@@ -108,6 +108,12 @@ function UploadRostersSection() {
       setResult(data);
       setPreview(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.rosters.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.golfers.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentCompetitors.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentReport.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.report.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rankings.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.playerRankings.root });
     },
   });
 

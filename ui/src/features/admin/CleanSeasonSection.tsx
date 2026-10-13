@@ -26,6 +26,11 @@ function CleanSeasonSection() {
       setSeasonId('');
       void queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.root });
       void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentReport.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.report.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rankings.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.playerRankings.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.golferHistory.root });
     },
   });
 

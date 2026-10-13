@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useQuery, type QueryKey } from '@tanstack/react-query';
 import UploadRostersSection, { buildConfirmTeams } from './UploadRostersSection';
+import { queryKeys } from '@/shared/api/queryKeys';
 import type { RosterPreview } from '@/shared/api/types';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 
@@ -19,6 +21,22 @@ vi.mock('@/shared/api/client', () => ({
   },
   ApiError: class ApiError extends Error {},
 }));
+
+function OpenQuery({ queryKey, fetcher }: { queryKey: QueryKey; fetcher: () => Promise<unknown> }) {
+  useQuery({ queryKey, queryFn: fetcher });
+  return null;
+}
+
+// Each key is the one its reader holds: PlayerLinksPanel for the first two, then ScoreboardPage,
+// WeeklyReportPage (and LateRowBetsPage), RankingsPage, PlayerRankingsPage.
+const OPEN_WHEN_AN_UPLOAD_LANDS: [string, QueryKey][] = [
+  ['golfers', queryKeys.golfers.list()],
+  ['tournamentCompetitors', queryKeys.tournamentCompetitors.byTournament('tn-1')],
+  ['tournamentReport', queryKeys.tournamentReport.detail('sn-1', 'tn-1', false)],
+  ['report', queryKeys.report.detail('sn-1', 'tn-1', false)],
+  ['rankings', queryKeys.rankings.detail('sn-1', false, 'tn-1')],
+  ['playerRankings', queryKeys.playerRankings.detail('sn-1', 'tn-1', false)],
+];
 
 async function uploadRosterFile(user: ReturnType<typeof userEvent.setup>, contents: string) {
   const file = new File([contents], 'roster.tsv', { type: 'text/tab-separated-values' });
@@ -211,6 +229,37 @@ describe('UploadRostersSection', () => {
     const resultRegion = screen.getByText('Rosters Created').parentElement!;
     expect(within(resultRegion).getByText(/BROWN/)).toBeInTheDocument();
   });
+
+  it.each(OPEN_WHEN_AN_UPLOAD_LANDS)(
+    'refetches an open %s query after the rosters are confirmed',
+    async (_root, queryKey) => {
+      const fetcher = vi.fn().mockResolvedValue({});
+      previewRosterMock.mockResolvedValue(samplePreview());
+      confirmRosterMock.mockResolvedValue({ teamsCreated: 1, golfersCreated: 1, teams: [] });
+
+      const user = userEvent.setup();
+      renderWithProviders(
+        <>
+          <UploadRostersSection />
+          <OpenQuery queryKey={queryKey} fetcher={fetcher} />
+        </>,
+        { withLeagueSeasonProvider: false },
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('2026 Spring')).toBeInTheDocument();
+      });
+      await uploadRosterFile(user, 'TEAM 1 BROWN\n1 SCHEFFLER');
+      await user.click(screen.getByRole('button', { name: /Match Players with ESPN/i }));
+      const confirm = await screen.findByRole('button', { name: /Confirm & Create Teams/i });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      await user.click(confirm);
+
+      await waitFor(() => {
+        expect(fetcher).toHaveBeenCalledTimes(2);
+      });
+    },
+  );
 
   it('auto-selects the first season so Match Players is enabled without manual pick', async () => {
     const user = userEvent.setup();

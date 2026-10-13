@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useQuery, type QueryKey } from '@tanstack/react-query';
 import CleanSeasonSection from './CleanSeasonSection';
+import { queryKeys } from '@/shared/api/queryKeys';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 
 const leaguesMock = vi.fn();
@@ -16,6 +18,21 @@ vi.mock('@/shared/api/client', () => ({
   },
   ApiError: class ApiError extends Error {},
 }));
+
+function OpenQuery({ queryKey, fetcher }: { queryKey: QueryKey; fetcher: () => Promise<unknown> }) {
+  useQuery({ queryKey, queryFn: fetcher });
+  return null;
+}
+
+// Each key is the one its page holds: ScoreboardPage, WeeklyReportPage (and LateRowBetsPage),
+// RankingsPage, PlayerRankingsPage, GolferHistoryModal.
+const OPEN_WHEN_A_CLEAN_LANDS: [string, QueryKey][] = [
+  ['tournamentReport', queryKeys.tournamentReport.detail('sn-1', 'tn-1', false)],
+  ['report', queryKeys.report.detail('sn-1', 'tn-1', false)],
+  ['rankings', queryKeys.rankings.detail('sn-1', false, 'tn-1')],
+  ['playerRankings', queryKeys.playerRankings.detail('sn-1', 'tn-1', false)],
+  ['golferHistory', queryKeys.golferHistory.detail('sn-1', 'g-1')],
+];
 
 describe('CleanSeasonSection', () => {
   beforeEach(() => {
@@ -69,6 +86,41 @@ describe('CleanSeasonSection', () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it.each(OPEN_WHEN_A_CLEAN_LANDS)(
+    'refetches an open %s query after a clean',
+    async (_root, queryKey) => {
+      const fetcher = vi.fn().mockResolvedValue({});
+      cleanMock.mockResolvedValue({
+        scoresDeleted: 12,
+        resultsDeleted: 3,
+        standingsDeleted: 5,
+        tournamentsReset: 2,
+      });
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+      const user = userEvent.setup();
+      renderWithProviders(
+        <>
+          <CleanSeasonSection />
+          <OpenQuery queryKey={queryKey} fetcher={fetcher} />
+        </>,
+        { withLeagueSeasonProvider: false },
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('option', { name: /^2026 Spring$/ })).toBeInTheDocument();
+      });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+
+      await user.selectOptions(screen.getByLabelText(/Season to clean/i), 'sn-1');
+      await user.click(screen.getByRole('button', { name: /Clean Results/i }));
+
+      await waitFor(() => {
+        expect(fetcher).toHaveBeenCalledTimes(2);
+      });
+    },
+  );
 
   it('does nothing when the user cancels the confirm dialog', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false);
