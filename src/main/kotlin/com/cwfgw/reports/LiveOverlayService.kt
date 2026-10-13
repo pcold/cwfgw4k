@@ -51,7 +51,7 @@ class LiveOverlayService(private val espnService: EspnService) {
      * entries are folded into the undrafted bucket by display name with
      * a payout computed from [PayoutTable.tieSplitPayout] so the live
      * and persisted paths share a single payout shape. Per-tournament
-     * preview failures fall through silently — the operator sees the
+     * preview failures are logged and skipped — the operator sees the
      * locked-in numbers rather than an error banner.
      */
     internal suspend fun overlayPlayerRankings(
