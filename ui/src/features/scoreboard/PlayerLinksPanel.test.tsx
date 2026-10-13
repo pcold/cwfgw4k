@@ -189,14 +189,14 @@ describe('PlayerLinksPanel', () => {
     ['an open live weekly report', <OpenLiveWeeklyReport />, tournamentReportMock],
     ['open live rankings', <OpenLiveRankings />, rankingsMock],
     ['open live player rankings', <OpenLivePlayerRankings />, playerRankingsMock],
-  ])('refetches %s after a link is saved', async (_page, openQuery, fetchMock) => {
+  ])('refetches %s after a link is saved', async (_page, openQuery, readMock) => {
     competitorsMock.mockResolvedValue(buildListing());
     upsertMock.mockResolvedValue({
       tournamentId: 'tn-1',
       espnCompetitorId: 'comp-nobody',
       golferId: otherGolfer.id,
     });
-    fetchMock.mockResolvedValue({});
+    readMock.mockResolvedValue({});
     const user = userEvent.setup();
     renderPanel(openQuery);
 
@@ -204,7 +204,7 @@ describe('PlayerLinksPanel', () => {
       selector: '#golfer-select-comp-nobody',
     });
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(readMock).toHaveBeenCalledTimes(1);
     });
     await user.selectOptions(nobodySelect, otherGolfer.id);
     const nobodyRow = nobodySelect.closest('li');
@@ -212,7 +212,7 @@ describe('PlayerLinksPanel', () => {
     await user.click(within(nobodyRow as HTMLElement).getByRole('button', { name: /Save link/i }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(readMock).toHaveBeenCalledTimes(2);
     });
   });
 

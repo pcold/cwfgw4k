@@ -123,7 +123,8 @@ function OpenSeasonReport() {
   return null;
 }
 
-// The same copies for PlayerRankingsPage on "All Tournaments" and for GolferHistoryModal.
+// As OpenSeasonReport: the key and fetcher of PlayerRankingsPage on "All Tournaments", and of
+// GolferHistoryModal.
 function OpenPlayerRankings() {
   useQuery({
     queryKey: ['player-rankings', 'sn-1', null, false],
@@ -357,7 +358,7 @@ describe('ScoreboardPage', () => {
   it.each([
     ['open player rankings', <OpenPlayerRankings />, playerRankingsMock],
     ['an open golfer history', <OpenGolferHistory />, golferHistoryMock],
-  ])('refetches %s after an admin finalizes a tournament', async (_page, openQuery, fetchMock) => {
+  ])('refetches %s after an admin finalizes a tournament', async (_page, openQuery, readMock) => {
     authMeMock.mockResolvedValue({
       id: 'u-1',
       username: 'admin',
@@ -379,7 +380,7 @@ describe('ScoreboardPage', () => {
         week: '10',
       },
     });
-    fetchMock.mockResolvedValue({});
+    readMock.mockResolvedValue({});
     finalizeMock.mockResolvedValue({ message: 'ok' });
 
     const user = userEvent.setup();
@@ -393,12 +394,12 @@ describe('ScoreboardPage', () => {
 
     const button = await screen.findByRole('button', { name: /Finalize Results/i });
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(readMock).toHaveBeenCalledTimes(1);
     });
     await user.click(button);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(readMock).toHaveBeenCalledTimes(2);
     });
   });
 
