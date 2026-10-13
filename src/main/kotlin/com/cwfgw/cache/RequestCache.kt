@@ -60,9 +60,9 @@ class RequestCache(
     private val inFlight = ConcurrentHashMap<String, CompletableDeferred<String>>()
 
     /**
-     * Cache-aside fetch keyed by [revision] and [key] — joined here, the one
-     * place holding [repository], so no caller can skip the revision.
-     * Single-flight per key:
+     * Cache-aside fetch keyed by [revision] and [key] — joined here, the only
+     * function that hands [repository] a key, so no caller can skip the
+     * revision. Single-flight per key:
      *  1. `tx.get` checks the Postgres cache. Auto-commit single-statement
      *     read; connection held only for the SELECT itself.
      *  2. On miss, try to claim the in-flight slot for [key] via an atomic
