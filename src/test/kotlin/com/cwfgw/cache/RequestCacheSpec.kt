@@ -17,6 +17,8 @@ import java.util.concurrent.atomic.AtomicInteger
 
 private const val TEST_KEY = "/api/v1/scoring/abc/def"
 private const val TEST_ROUTE = "/api/v1/scoring/:id/:id"
+private const val TEST_REVISION = "cwfgw4k-00041-old"
+private const val NEXT_REVISION = "cwfgw4k-00042-new"
 
 // Brief pause to let all concurrent callers register on the in-flight map
 // before the gated fetch resolves.
@@ -39,7 +41,8 @@ private class StepClock(start: Instant = Instant.parse("2026-05-03T00:00:00Z")) 
 class RequestCacheSpec : FunSpec({
 
     test("cachedJsonGet returns the cached value on hit and only invokes fetch once") {
-        val cache = RequestCache(FakeCacheRepository(), FakeTransactor(), defaultTtl = Duration.ofMinutes(5))
+        val cache =
+            RequestCache(FakeCacheRepository(), FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
         val calls = AtomicInteger(0)
         val fetch: suspend () -> String = {
             calls.incrementAndGet()
@@ -53,7 +56,8 @@ class RequestCacheSpec : FunSpec({
     }
 
     test("a fetch failure does not store an entry — the next call retries") {
-        val cache = RequestCache(FakeCacheRepository(), FakeTransactor(), defaultTtl = Duration.ofMinutes(5))
+        val cache =
+            RequestCache(FakeCacheRepository(), FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
         val calls = AtomicInteger(0)
         val fetch: suspend () -> String = {
             if (calls.incrementAndGet() == 1) error("upstream broke") else "[\"recovered\"]"
@@ -70,7 +74,8 @@ class RequestCacheSpec : FunSpec({
     test("entries beyond TTL are not returned and the fetch runs again") {
         val clock = StepClock()
         val repo = FakeCacheRepository(clock = clock)
-        val cache = RequestCache(repo, FakeTransactor(), defaultTtl = Duration.ofSeconds(60), clock = clock)
+        val cache =
+            RequestCache(repo, FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofSeconds(60), clock = clock)
         val calls = AtomicInteger(0)
         val fetch: suspend () -> String = {
             calls.incrementAndGet()
@@ -85,7 +90,8 @@ class RequestCacheSpec : FunSpec({
     }
 
     test("concurrent misses for the same key coalesce to a single fetch (single-flight)") {
-        val cache = RequestCache(FakeCacheRepository(), FakeTransactor(), defaultTtl = Duration.ofMinutes(5))
+        val cache =
+            RequestCache(FakeCacheRepository(), FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
         val gate = CompletableDeferred<String>()
         val fetchStarted = AtomicInteger(0)
         val fetch: suspend () -> String = {
@@ -109,10 +115,23 @@ class RequestCacheSpec : FunSpec({
         fetchStarted.get() shouldBe 1
     }
 
+    test("a body one revision stored is refetched by the next revision and still a hit for the first") {
+        val sharedRows = FakeCacheRepository()
+        val ttl = Duration.ofMinutes(5)
+        val writer = RequestCache(sharedRows, FakeTransactor(), TEST_REVISION, defaultTtl = ttl)
+        val nextRevision = RequestCache(sharedRows, FakeTransactor(), NEXT_REVISION, defaultTtl = ttl)
+        val sameRevision = RequestCache(sharedRows, FakeTransactor(), TEST_REVISION, defaultTtl = ttl)
+
+        writer.cachedJsonGet(TEST_KEY, TEST_ROUTE) { "[\"old shape\"]" } shouldBe "[\"old shape\"]"
+        nextRevision.cachedJsonGet(TEST_KEY, TEST_ROUTE) { "[\"new shape\"]" } shouldBe "[\"new shape\"]"
+        sameRevision.cachedJsonGet(TEST_KEY, TEST_ROUTE) { "[\"refetched\"]" } shouldBe "[\"old shape\"]"
+    }
+
     test("deleteExpired purges only the entries past their expiry") {
         val clock = StepClock()
         val repo = FakeCacheRepository(clock = clock)
-        val cache = RequestCache(repo, FakeTransactor(), defaultTtl = Duration.ofSeconds(60), clock = clock)
+        val cache =
+            RequestCache(repo, FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofSeconds(60), clock = clock)
 
         cache.cachedJsonGet("/api/v1/keep", "/api/v1/keep", ttl = Duration.ofSeconds(120)) { "ok" }
         cache.cachedJsonGet("/api/v1/drop", "/api/v1/drop", ttl = Duration.ofSeconds(30)) { "ok" }

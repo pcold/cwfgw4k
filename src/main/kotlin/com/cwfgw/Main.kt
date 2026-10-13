@@ -77,6 +77,7 @@ internal fun buildServices(
         RequestCache(
             repository = CacheRepository(),
             tx = transactor,
+            revision = config.cache.revision,
             defaultTtl = Duration.ofSeconds(config.cache.defaultTtlSeconds),
         )
     val teamRepository = TeamRepository()
