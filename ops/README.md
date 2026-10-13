@@ -30,7 +30,7 @@ ingestion cost — the charts read from:
 ## One-time setup
 
 Run these three commands against the project that hosts the service
-(`cwfgw4k`, based on `cloudbuild.yaml`). Adjust `--project` if you're
+(`cwfgw4k`, the `GCP_PROJECT_ID` repository variable). Adjust `--project` if you're
 targeting a different environment.
 
 ### 1. Create the `unhandled_errors` log-based metric

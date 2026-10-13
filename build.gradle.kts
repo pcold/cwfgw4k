@@ -70,8 +70,8 @@ dependencies {
 }
 
 // Mac Docker Desktop 29+ needs DOCKER_API_VERSION=1.44 against the docker.raw.sock workaround;
-// CI (Cloud Build, Linux) runs an older daemon (API 1.41) and rejects 1.44 as too new. Apply
-// the pin only when the macOS raw socket is present so both environments work without per-step
+// Linux CI needs none of it, and a daemon older than that rejects 1.44 as too new. Apply the
+// pin only when the macOS raw socket is present so both environments work without per-step
 // overrides.
 val macDockerRawSock: java.io.File =
     file("${System.getProperty("user.home")}/Library/Containers/com.docker.docker/Data/docker.raw.sock")
@@ -91,10 +91,10 @@ fun JavaExec.applyMacDockerWorkaround() {
 
 tasks.withType<Test>().configureEach {
     // Two test JVMs in parallel. Each spec's PostgresHarness spawns its own
-    // Testcontainers Postgres so there's no shared-state risk; the cap is set
-    // for the Cloud Build E2_MEDIUM worker (2 vCPUs / 4 GB), which can hold
-    // two JVMs + two Postgres containers without thrashing. Override locally
-    // with -PtestForks=N if you have headroom.
+    // Testcontainers Postgres so there's no shared-state risk; the cap was
+    // sized for a 2 vCPU / 4 GB CI worker, which can hold two JVMs + two
+    // Postgres containers without thrashing. Override with -PtestForks=N
+    // where there is headroom.
     maxParallelForks = (project.findProperty("testForks") as String?)?.toIntOrNull() ?: 2
     if (macDockerRawSock.exists()) {
         environment("DOCKER_HOST", "unix://${macDockerRawSock.absolutePath}")
@@ -235,8 +235,8 @@ tasks.named("test") {
 }
 
 // --- Frontend (ui/) ---
-// node-gradle downloads its own Node so Cloud Build's gradle:9-jdk21 image can run npm
-// tasks without a separate toolchain step. uiInstall/uiTest/uiBuild mirror the Scala project.
+// node-gradle downloads its own Node so CI and a fresh checkout can run npm tasks without
+// a separate toolchain step. uiInstall/uiTest/uiBuild mirror the Scala project.
 node {
     download.set(true)
     version.set("24.15.0")

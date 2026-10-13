@@ -3,8 +3,8 @@
 #
 #   ./deploy/setup-github-deploy.sh PROJECT_ID [REPO_SLUG]
 #
-# Run once, after deploy/setup.sh has created the project's infrastructure and
-# the service has been deployed at least once. Idempotent.
+# Run once, after deploy/setup.sh has created the project's infrastructure.
+# Idempotent.
 #
 # The shape: GitHub mints an OIDC token for a workflow run; Workload Identity
 # Federation exchanges it for a short-lived credential on a service account that
