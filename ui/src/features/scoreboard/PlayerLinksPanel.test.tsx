@@ -4,6 +4,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
+import { playerRankingsKeys, rankingsKeys, reportKeys } from '@/shared/api/queryKeys';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import PlayerLinksPanel from './PlayerLinksPanel';
 import type {
@@ -101,7 +102,7 @@ function buildListing(overrides: Partial<TournamentCompetitorListing> = {}): Tou
 // test passing against a query no page holds.
 function OpenLiveWeeklyReport() {
   useQuery({
-    queryKey: ['report', 'sn-1', 'tn-1', true],
+    queryKey: reportKeys.detail('sn-1', 'tn-1', true),
     queryFn: () => api.tournamentReport('sn-1', 'tn-1', true),
   });
   return null;
@@ -109,7 +110,7 @@ function OpenLiveWeeklyReport() {
 
 function OpenLiveRankings() {
   useQuery({
-    queryKey: ['rankings', 'sn-1', true, 'tn-1'],
+    queryKey: rankingsKeys.detail('sn-1', true, 'tn-1'),
     queryFn: () => api.rankings('sn-1', true, 'tn-1'),
   });
   return null;
@@ -117,7 +118,7 @@ function OpenLiveRankings() {
 
 function OpenLivePlayerRankings() {
   useQuery({
-    queryKey: ['player-rankings', 'sn-1', 'tn-1', true],
+    queryKey: playerRankingsKeys.detail('sn-1', 'tn-1', true),
     queryFn: () => api.playerRankings('sn-1', true, 'tn-1'),
   });
   return null;

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
+import { reportKeys, tournamentKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
@@ -23,7 +24,7 @@ function WeeklyReportPage() {
   const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
-    queryKey: ['tournaments', seasonId],
+    queryKey: tournamentKeys.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
 
@@ -34,7 +35,7 @@ function WeeklyReportPage() {
   const liveOverlay = useLiveOverlay(tournaments, effectiveId || null);
 
   const reportQuery = useQuery({
-    queryKey: ['report', seasonId, effectiveId, liveOverlay.effectiveLive],
+    queryKey: reportKeys.detail(seasonId, effectiveId, liveOverlay.effectiveLive),
     queryFn:
       seasonId === null
         ? skipToken
