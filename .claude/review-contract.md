@@ -241,8 +241,8 @@ These are the most-often-missed patterns. Grep / scan for each.
 - Mixed value/type imports without `import type` (verbatimModuleSyntax is on).
 - Missing return type on exported functions.
 - `==` / `!=` instead of `===` / `!==`.
-- `// eslint-disable` or `// @ts-ignore` / `// @ts-expect-error` without an
-  explanatory comment.
+- `// @ts-ignore` / `// @ts-expect-error`, or any other suppression comment,
+  without an explanatory comment.
 - Generic `pages/`, `components/`, or `hooks/` top-level buckets; catch-all
   `utils.ts` / `helpers.ts`.
 - Direct `fetch` in components instead of routing through

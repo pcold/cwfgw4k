@@ -7,40 +7,28 @@ import kotlinx.coroutines.withContext
 import org.jooq.DSLContext
 
 /**
- * Bridges the root [DSLContext] into a [TransactionContext] that repositories
- * can consume via context parameters. Three entry points, picked by the
- * shape of the work:
- *
- * - [get] runs the block on the auto-commit pool DSL — no `BEGIN` /
- *   `COMMIT` / `SET TRANSACTION` round-trips. The right tool for
- *   single-statement reads (every `findById`, `findAll`, `getRoster` etc.
- *   that doesn't need to coordinate with a sibling read). Three round-trips
- *   cheaper per call than [read]; on a hot path that runs millions of
- *   single-row lookups the difference is large.
- * - [read] opens `REPEATABLE READ READ ONLY` — every statement in the block
- *   sees the same snapshot, and the database rejects accidental writes.
- *   Reach for it when a block makes more than one read and they need to
- *   agree (e.g. team list + per-team rosters built into one report).
- * - [update] opens a default-isolation read/write transaction. The block is
- *   committed atomically on normal return and rolled back if it throws.
- *
- * The `block` is **not** `suspend` — deliberately. Every entry point runs
- * blocking jOOQ work and holds a pooled connection for its duration;
- * suspending while a connection is checked out is the failure mode this
- * contract forbids by construction. Compose suspending work *around*
- * `get`/`read`/`update`, never inside the block.
- *
- * Each entry point is wrapped with a slow-tx watchdog: if a single tx takes
- * longer than [SLOW_TX_THRESHOLD_MS], a structured WARN log line is
- * emitted (`cwfgw4k.db.slow_tx kind=… duration_ms=…`). Cloud Logging picks
- * it up at severity WARN via the stderr appender so the next 90s wedge has
- * a fingerprint we can grep without a debugger.
+ * `block` is not `suspend` on purpose: it parks a thread on a pooled
+ * connection, so suspending work goes around [get] / [read] / [update],
+ * never inside one.
  */
 interface Transactor {
+    /**
+     * Auto-commit per statement: it skips [read]'s `BEGIN` / `SET TRANSACTION`
+     * / `COMMIT` and has none of its snapshot, so two statements in one block
+     * can disagree and two writes are not atomic.
+     */
     suspend fun <A> get(block: context(TransactionContext) () -> A): A
 
+    /**
+     * `REPEATABLE READ READ ONLY`: every statement sees one snapshot, and the
+     * database rejects a write.
+     */
     suspend fun <A> read(block: context(TransactionContext) () -> A): A
 
+    /**
+     * Read/write at the default isolation: committed when the block returns,
+     * rolled back when it throws.
+     */
     suspend fun <A> update(block: context(TransactionContext) () -> A): A
 }
 
@@ -103,6 +91,10 @@ private class JooqTransactor(
             }
         }
 
+    /**
+     * `ops/alerts/cwfgw4k-5xx-rate.yaml` and `ops/load-test/soak.sh` send a
+     * reader to search the logs for `cwfgw4k.db.slow_tx`; rename it there too.
+     */
     private suspend inline fun <A> timed(
         kind: String,
         crossinline block: suspend () -> A,

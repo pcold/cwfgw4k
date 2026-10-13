@@ -57,12 +57,12 @@ Vite serves the UI at `http://localhost:5173` with hot module reload, proxying `
 ## Verification
 
 ```sh
-./gradlew check
+./gradlew check --rerun-tasks
 ```
 
-Runs the full gate: backend tests + ktlint + detekt + Kover coverage verify + UI unit tests. This is the canonical command — `./gradlew test` skips lint, so don't trust it alone.
+Runs the full gate: backend tests + ktlint + detekt + Kover coverage verify + UI unit tests. This is the canonical command — `./gradlew test` skips coverage and the UI tests, so don't trust it alone. `--rerun-tasks` is part of it: the build cache is on, and a cached or up-to-date `:test` verifies nothing. [`.claude/CLAUDE.md`](../.claude/CLAUDE.md) → Verification says how to read the result.
 
-GitHub Actions runs the same gate on every pull request and on `main` after a merge (`.github/workflows/check.yml`, job `gradle check`). It adds `--rerun-tasks`, because the build cache is on and a cached `:test` verifies nothing, and then asserts from the log that `:test` and `:detekt` really ran. A pull request that changes only `.md` files reports the check without running it.
+GitHub Actions runs the same gate on every pull request and on `main` after a merge (`.github/workflows/check.yml`, job `gradle check`), and then asserts from the log that `:test` and `:detekt` really ran. A pull request that changes only `.md` files reports the check without running it.
 
 `scripts/setup-branch-protection.sh` records the protection `main` is meant to carry and applies it.
 
@@ -72,7 +72,7 @@ GitHub Actions runs the same gate on every pull request and on `main` after a me
 |------|-------------|
 | `./gradlew run` | Run the backend locally, serving the bundled UI. |
 | `./gradlew seed` | Reset Postgres and populate the 2026 Spring + Summer seasons end-to-end. |
-| `./gradlew check` | Full verification gate (tests + lint + coverage + UI tests). |
+| `./gradlew check --rerun-tasks` | Full verification gate (tests + lint + coverage + UI tests). |
 | `./gradlew uiBuild` | Build the production UI bundle into `ui/dist/`. |
 | `./gradlew uiTest` | Run UI unit tests with coverage. |
 | `./gradlew buildFatJar` | Build the deployable fatJar (`build/libs/cwfgw4k-all.jar`). |

@@ -160,54 +160,27 @@ jobs:
             "--set-cloudsql-instances=${sql_connection}"
             "--set-secrets=${secrets}"
             "--set-env-vars=${env_vars}"
-            # Memory: 1Gi container with -Xmx512m in the Dockerfile leaves ~half
-            # the box for non-heap JVM (metaspace, JIT code cache, Netty direct
-            # buffers, JDBC buffers, thread stacks). Steady-state prod p99 memory
-            # util sits at ~18%, so we're comfortably under. Bump container +
-            # heap together if real load shows OOM-kill events in Cloud Run logs.
+            # Twice the Dockerfile's -Xmx512m; the other half is the JVM's
+            # non-heap memory. Change the two together.
             "--memory=1Gi"
-            # CPU: 2 vCPU. CWF-24 fixed the dispatcher-starvation wedge at 1
-            # vCPU, so 1 here would be functionally correct. Keeping 2 as a
-            # defensive margin: the same total Dispatchers.Default thread budget
-            # (max(2, #CPUs) = 2 in either case) but twice the wall-clock CPU, so
-            # each request completes faster and the concurrent-overlap window
-            # where the bug *would* fire (if CWF-24 ever regressed) shrinks. Cost
-            # is within the Cloud Run free tier at our traffic level.
+            # 2 is margin, not a requirement: 1 has been correct since CWF-24
+            # fixed the dispatcher starvation that wedged a single vCPU.
             "--cpu=2"
-            # Concurrency: Cloud Run defaults to 80 reqs per instance; with our
-            # JVM sizing and a per-instance pool of 10 connections, 20 in-flight
-            # requests per instance is the sustainable target — pool slots are
-            # released between cache hit / miss / put phases so 2x
-            # oversubscription is fine. Cap there and let max-instances absorb
-            # spikes.
+            # Above DB_POOL on purpose: a request holds a connection for one
+            # Transactor block at a time, not for its whole life. Cloud Run's
+            # default is 80.
             "--concurrency=20"
-            # min-instances=0: scale to zero when idle. We briefly ran with =1
-            # after a wedge incident where the first request after an idle
-            # period blocked 90s while Hikari refilled stale Cloud SQL
-            # connections (and occasionally hit Broken Pipe during the TLS
-            # handshake via the in-process socket factory). The fix landed in
-            # 9d9043b (Postgres connectTimeout/socketTimeout + reverted Hikari
-            # recycling) and was validated by ops/load-test/soak.sh -m 0:
-            # 30 min idle → first canary 7s (legitimate JVM cold start), all
-            # subsequent canaries < 500ms, no 5xx anywhere. Saves ~$45/mo
-            # vs. always-warm; cost is the ~7s first-user-of-the-morning hit.
+            # Scale to zero: the first request after idle pays a ~7s JVM cold
+            # start, where =1 costs ~$45/mo. The JDBC timeouts in 9d9043b bound
+            # the idle wedge =1 was for; ops/load-test/soak.sh -m 0 checks for it.
             "--min-instances=0"
-            # 10 instances × 20 concurrency = 200 in-flight slots — comfortable
-            # headroom well beyond the ~50-user target so Cloud Run can scale
-            # smoothly through spike traffic. Cloud SQL connection ceiling on
-            # db-custom-1-3840 is 200; 10 × DB_POOL=15 = 150 leaves 50 free for
-            # psql, Flyway during deploy, and Cloud SQL internal use. If the SQL
-            # tier ever shrinks, drop max-instances or DB_POOL to keep total
-            # connections ≤ tier max - 10.
+            # Each instance holds DB_POOL=15 connections, and db-custom-1-3840
+            # allows 100 unless max_connections is raised, so 10 here overruns
+            # it from the seventh instance: CWF-102.
             "--max-instances=10"
-            # Request timeout: 90s. Cloud Run's default is 300s; we lower it
-            # because no legitimate endpoint has any business taking longer than
-            # ~5s end-to-end (cold cache miss with one ESPN call ~1.7s, full
-            # report build ~2s). A 300s ceiling means a wedged request sits on
-            # an instance burning a concurrency slot and (if it's mid-tx) a DB
-            # pool slot for five minutes; 90s is the smallest cap that won't
-            # clip cold-start + cache rebuild scenarios while letting the system
-            # recover three times faster from any future hang.
+            # Below Cloud Run's 300s default so a wedged request frees its
+            # concurrency slot sooner. Not lower: a cold start plus a cache
+            # rebuild has to fit.
             "--timeout=90"
           )
           gcloud run deploy "${SERVICE}" "${deploy_args[@]}"

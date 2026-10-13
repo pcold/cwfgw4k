@@ -12,7 +12,8 @@ specific guidance lives next to the code:
   language rules, concurrency, Ktor/jOOQ/kotlinx.serialization/Kotest, Gradle
   tooling.
 - **Frontend (React/TypeScript):** see [`ui/CLAUDE.md`](../ui/CLAUDE.md) —
-  TypeScript rules, React rules, TanStack Query, Tailwind, Vitest.
+  where logic lives, TypeScript rules, React rules, TanStack Query, Tailwind,
+  Vitest.
 
 Where existing code predates a rule and conflicts with it, treat the code as
 wrong, not the rule — the code gets reworked.
