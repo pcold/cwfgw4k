@@ -228,7 +228,7 @@ What stays in the UI:
 ## Data Fetching (TanStack Query)
 
 - **MUST** route every API call through the typed `api` client in
-  `src/api/client.ts`. No direct `fetch` calls in components.
+  `src/shared/api/client.ts`. No direct `fetch` calls in components.
 - **MUST** use a stable, hierarchical query key structured by entity:
 
   ```ts
@@ -294,8 +294,9 @@ What stays in the UI:
 - **MUST NOT** query by `data-testid` unless there is genuinely no
   accessible selector available. Test IDs couple tests to DOM structure
   instead of the user-visible contract.
-- **MUST** mock at the API client boundary (`vi.mock('@/api/client', …)`).
-  Don't mock `fetch` — that couples tests to the transport.
+- **MUST** mock at the API client boundary
+  (`vi.mock('@/shared/api/client', …)`). Don't mock `fetch` — that couples
+  tests to the transport.
 - **MUST** wrap component tests in the shared `renderWithProviders`
   helper so Query, Router, and contexts are set up consistently. The
   auth context is opt-in (`{ withAuthProvider: true }`) because it mounts
