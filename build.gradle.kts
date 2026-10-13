@@ -144,8 +144,7 @@ val codegenSourceDir: File = layout.projectDirectory.dir("src/jooqCodegen/kotlin
 
 // JavaExec's `args` are an @Input and its working directory is not, so an absolute path in an
 // argument keys the cache entry to the checkout that produced it and a second worktree at the same
-// commit misses on the directory name alone. generateJooq passes project-relative paths from a
-// working directory pinned here instead.
+// commit misses on the directory name alone.
 val projectRoot: File = layout.projectDirectory.asFile
 
 sourceSets {
@@ -228,11 +227,9 @@ ktlint {
     }
 }
 
-// The filter above already drops every generated jOOQ file, so wiring these tasks to the generator
-// bought no linted line and cost a Postgres container on any diff — a `.kts`-only one included.
-// Dropping the edge alone is not enough: the directory stays among the tasks' declared input roots,
-// which is what Gradle's implicit-dependency validation reads, and it fails the build outright once
-// the generator is in the same graph. Subtracting the directory is what removes the demand.
+// The filter above already drops every generated file, so these tasks need no generateJooq edge.
+// The directory must still leave their sources: as a declared input root it fails Gradle's
+// implicit-dependency validation once the generator is in the same graph.
 listOf("runKtlintCheckOverMainSourceSet", "runKtlintFormatOverMainSourceSet").forEach { taskName ->
     tasks.named<org.jlleitschuh.gradle.ktlint.tasks.BaseKtLintCheckTask>(taskName) {
         setSource(sourceSets.main.get().kotlin.srcDirs - jooqGenDir.get().asFile)
