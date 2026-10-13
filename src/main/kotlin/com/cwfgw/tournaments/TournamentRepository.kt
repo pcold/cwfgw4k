@@ -1,6 +1,8 @@
 package com.cwfgw.tournaments
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.decoded
+import com.cwfgw.db.required
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.jooq.tables.records.TournamentResultsRecord
 import com.cwfgw.jooq.tables.records.TournamentsRecord
@@ -102,7 +104,7 @@ private class JooqTournamentRepository : TournamentRepository {
             ctx.dsl.insertInto(TOURNAMENTS)
                 .set(insertAssignments(request))
                 .returning()
-                .fetchOne() ?: error("INSERT RETURNING produced no row for tournaments")
+                .fetchSingle()
         return toTournament(inserted)
     }
 
@@ -188,7 +190,7 @@ private class JooqTournamentRepository : TournamentRepository {
                 .doUpdate()
                 .set(resultUpdateAssignments(request))
                 .returning()
-                .fetchOne() ?: error("UPSERT RETURNING produced no row for tournament_results")
+                .fetchSingle()
         return toResult(upserted)
     }
 
@@ -252,7 +254,7 @@ private class JooqTournamentRepository : TournamentRepository {
 
     private fun toTournament(record: TournamentsRecord): Tournament =
         Tournament(
-            id = TournamentId(checkNotNull(record.id) { "tournaments.id is NOT NULL but returned null" }),
+            id = TournamentId(record.required(TOURNAMENTS.ID)),
             pgaTournamentId = record.pgaTournamentId,
             name = record.name,
             seasonId = SeasonId(record.seasonId),
@@ -260,31 +262,21 @@ private class JooqTournamentRepository : TournamentRepository {
             endDate = record.endDate,
             courseName = record.courseName,
             status =
-                run {
-                    val raw = checkNotNull(record.status) { "tournaments.status is NOT NULL but returned null" }
-                    requireNotNull(TournamentStatus.fromValueOrNull(raw)) {
-                        "tournaments.status held unrecognized value '$raw' — schema and code disagree"
-                    }
-                },
+                decoded(
+                    field = TOURNAMENTS.STATUS,
+                    stored = record.required(TOURNAMENTS.STATUS),
+                    decode = TournamentStatus::fromValueOrNull,
+                ),
             purseAmount = record.purseAmount,
-            payoutMultiplier =
-                checkNotNull(record.payoutMultiplier) {
-                    "tournaments.payout_multiplier is NOT NULL but returned null"
-                },
+            payoutMultiplier = record.required(TOURNAMENTS.PAYOUT_MULTIPLIER),
             week = record.week,
-            isTeamEvent =
-                checkNotNull(record.isTeamEvent) {
-                    "tournaments.is_team_event is NOT NULL but returned null"
-                },
-            createdAt =
-                checkNotNull(record.createdAt) {
-                    "tournaments.created_at is NOT NULL but returned null"
-                }.toInstant(),
+            isTeamEvent = record.required(TOURNAMENTS.IS_TEAM_EVENT),
+            createdAt = record.required(TOURNAMENTS.CREATED_AT).toInstant(),
         )
 
     private fun toResult(record: TournamentResultsRecord): TournamentResult =
         TournamentResult(
-            id = TournamentResultId(checkNotNull(record.id) { "tournament_results.id is NOT NULL but returned null" }),
+            id = TournamentResultId(record.required(TOURNAMENT_RESULTS.ID)),
             tournamentId = TournamentId(record.tournamentId),
             golferId = GolferId(record.golferId),
             position = record.position,
@@ -295,10 +287,7 @@ private class JooqTournamentRepository : TournamentRepository {
             round2 = record.round2,
             round3 = record.round3,
             round4 = record.round4,
-            madeCut =
-                checkNotNull(record.madeCut) {
-                    "tournament_results.made_cut is NOT NULL but returned null"
-                },
+            madeCut = record.required(TOURNAMENT_RESULTS.MADE_CUT),
             pairKey = record.pairKey,
         )
 }

@@ -1,6 +1,7 @@
 package com.cwfgw.scoring
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.required
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.jooq.tables.records.FantasyScoresRecord
 import com.cwfgw.jooq.tables.records.SeasonStandingsRecord
@@ -146,7 +147,7 @@ private class JooqScoringRepository : ScoringRepository {
                 .doUpdate()
                 .set(scoreUpdateAssignments(record.breakdown))
                 .returning()
-                .fetchOne() ?: error("UPSERT RETURNING produced no row for fantasy_scores")
+                .fetchSingle()
         return toFantasyScore(upserted)
     }
 
@@ -227,7 +228,7 @@ private class JooqScoringRepository : ScoringRepository {
                 .doUpdate()
                 .set(updateValues)
                 .returning()
-                .fetchOne() ?: error("UPSERT RETURNING produced no row for season_standings")
+                .fetchSingle()
         return toSeasonStanding(upserted)
     }
 
@@ -260,46 +261,28 @@ private class JooqScoringRepository : ScoringRepository {
 
     private fun toFantasyScore(record: FantasyScoresRecord): FantasyScore =
         FantasyScore(
-            id = FantasyScoreId(checkNotNull(record.id) { "fantasy_scores.id is NOT NULL but returned null" }),
+            id = FantasyScoreId(record.required(FANTASY_SCORES.ID)),
             seasonId = SeasonId(record.seasonId),
             teamId = TeamId(record.teamId),
             tournamentId = TournamentId(record.tournamentId),
             golferId = GolferId(record.golferId),
-            points = checkNotNull(record.points) { "fantasy_scores.points is NOT NULL but returned null" },
-            position = checkNotNull(record.position) { "fantasy_scores.position is NOT NULL but returned null" },
-            numTied = checkNotNull(record.numTied) { "fantasy_scores.num_tied is NOT NULL but returned null" },
-            basePayout =
-                checkNotNull(record.basePayout) {
-                    "fantasy_scores.base_payout is NOT NULL but returned null"
-                },
-            ownershipPct =
-                checkNotNull(record.ownershipPct) {
-                    "fantasy_scores.ownership_pct is NOT NULL but returned null"
-                },
-            payout = checkNotNull(record.payout) { "fantasy_scores.payout is NOT NULL but returned null" },
-            multiplier = checkNotNull(record.multiplier) { "fantasy_scores.multiplier is NOT NULL but returned null" },
-            calculatedAt =
-                checkNotNull(record.calculatedAt) {
-                    "fantasy_scores.calculated_at is NOT NULL but returned null"
-                }.toInstant(),
+            points = record.required(FANTASY_SCORES.POINTS),
+            position = record.required(FANTASY_SCORES.POSITION),
+            numTied = record.required(FANTASY_SCORES.NUM_TIED),
+            basePayout = record.required(FANTASY_SCORES.BASE_PAYOUT),
+            ownershipPct = record.required(FANTASY_SCORES.OWNERSHIP_PCT),
+            payout = record.required(FANTASY_SCORES.PAYOUT),
+            multiplier = record.required(FANTASY_SCORES.MULTIPLIER),
+            calculatedAt = record.required(FANTASY_SCORES.CALCULATED_AT).toInstant(),
         )
 
     private fun toSeasonStanding(record: SeasonStandingsRecord): SeasonStanding =
         SeasonStanding(
-            id = SeasonStandingId(checkNotNull(record.id) { "season_standings.id is NOT NULL but returned null" }),
+            id = SeasonStandingId(record.required(SEASON_STANDINGS.ID)),
             seasonId = SeasonId(record.seasonId),
             teamId = TeamId(record.teamId),
-            totalPoints =
-                checkNotNull(record.totalPoints) {
-                    "season_standings.total_points is NOT NULL but returned null"
-                },
-            tournamentsPlayed =
-                checkNotNull(record.tournamentsPlayed) {
-                    "season_standings.tournaments_played is NOT NULL but returned null"
-                },
-            lastUpdated =
-                checkNotNull(record.lastUpdated) {
-                    "season_standings.last_updated is NOT NULL but returned null"
-                }.toInstant(),
+            totalPoints = record.required(SEASON_STANDINGS.TOTAL_POINTS),
+            tournamentsPlayed = record.required(SEASON_STANDINGS.TOURNAMENTS_PLAYED),
+            lastUpdated = record.required(SEASON_STANDINGS.LAST_UPDATED).toInstant(),
         )
 }

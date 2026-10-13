@@ -1,6 +1,7 @@
 package com.cwfgw.golfers
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.required
 import com.cwfgw.jooq.tables.records.GolfersRecord
 import com.cwfgw.jooq.tables.references.GOLFERS
 import org.jooq.Condition
@@ -70,7 +71,7 @@ private class JooqGolferRepository : GolferRepository {
                 .set(GOLFERS.COUNTRY, request.country)
                 .set(GOLFERS.WORLD_RANKING, request.worldRanking)
                 .returning()
-                .fetchOne() ?: error("INSERT RETURNING produced no row for golfers")
+                .fetchSingle()
         return toGolfer(inserted)
     }
 
@@ -122,16 +123,13 @@ private class JooqGolferRepository : GolferRepository {
 
     private fun toGolfer(record: GolfersRecord): Golfer =
         Golfer(
-            id = GolferId(checkNotNull(record.id) { "golfers.id is NOT NULL but returned null" }),
+            id = GolferId(record.required(GOLFERS.ID)),
             pgaPlayerId = record.pgaPlayerId,
             firstName = record.firstName,
             lastName = record.lastName,
             country = record.country,
             worldRanking = record.worldRanking,
-            active = checkNotNull(record.active) { "golfers.active is NOT NULL but returned null" },
-            updatedAt =
-                checkNotNull(record.updatedAt) {
-                    "golfers.updated_at is NOT NULL but returned null"
-                }.toInstant(),
+            active = record.required(GOLFERS.ACTIVE),
+            updatedAt = record.required(GOLFERS.UPDATED_AT).toInstant(),
         )
 }

@@ -1,6 +1,7 @@
 package com.cwfgw.teams
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.required
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.jooq.tables.records.TeamRostersRecord
 import com.cwfgw.jooq.tables.records.TeamsRecord
@@ -103,7 +104,7 @@ private class JooqTeamRepository : TeamRepository {
                 .set(TEAMS.TEAM_NAME, request.teamName)
                 .set(TEAMS.TEAM_NUMBER, request.teamNumber)
                 .returning()
-                .fetchOne() ?: error("INSERT RETURNING produced no row for teams")
+                .fetchSingle()
         return toTeam(inserted)
     }
 
@@ -165,7 +166,7 @@ private class JooqTeamRepository : TeamRepository {
                 .set(TEAM_ROSTERS.DRAFT_ROUND, request.draftRound)
                 .set(TEAM_ROSTERS.OWNERSHIP_PCT, request.ownershipPct ?: DEFAULT_OWNERSHIP_PCT)
                 .returning()
-                .fetchOne() ?: error("INSERT RETURNING produced no row for team_rosters")
+                .fetchSingle()
         return toRosterEntry(inserted)
     }
 
@@ -250,43 +251,25 @@ private class JooqTeamRepository : TeamRepository {
 
     private fun toTeam(record: TeamsRecord): Team =
         Team(
-            id = TeamId(checkNotNull(record.id) { "teams.id is NOT NULL but returned null" }),
+            id = TeamId(record.required(TEAMS.ID)),
             seasonId = SeasonId(record.seasonId),
             ownerName = record.ownerName,
             teamName = record.teamName,
             teamNumber = record.teamNumber,
-            createdAt =
-                checkNotNull(record.createdAt) {
-                    "teams.created_at is NOT NULL but returned null"
-                }.toInstant(),
-            updatedAt =
-                checkNotNull(record.updatedAt) {
-                    "teams.updated_at is NOT NULL but returned null"
-                }.toInstant(),
+            createdAt = record.required(TEAMS.CREATED_AT).toInstant(),
+            updatedAt = record.required(TEAMS.UPDATED_AT).toInstant(),
         )
 
     private fun toRosterEntry(record: TeamRostersRecord): RosterEntry =
         RosterEntry(
-            id = RosterEntryId(checkNotNull(record.id) { "team_rosters.id is NOT NULL but returned null" }),
+            id = RosterEntryId(record.required(TEAM_ROSTERS.ID)),
             teamId = TeamId(record.teamId),
             golferId = GolferId(record.golferId),
-            acquiredVia =
-                checkNotNull(record.acquiredVia) {
-                    "team_rosters.acquired_via is NOT NULL but returned null"
-                },
+            acquiredVia = record.required(TEAM_ROSTERS.ACQUIRED_VIA),
             draftRound = record.draftRound,
-            ownershipPct =
-                checkNotNull(record.ownershipPct) {
-                    "team_rosters.ownership_pct is NOT NULL but returned null"
-                },
-            acquiredAt =
-                checkNotNull(record.acquiredAt) {
-                    "team_rosters.acquired_at is NOT NULL but returned null"
-                }.toInstant(),
+            ownershipPct = record.required(TEAM_ROSTERS.OWNERSHIP_PCT),
+            acquiredAt = record.required(TEAM_ROSTERS.ACQUIRED_AT).toInstant(),
             droppedAt = record.droppedAt?.toInstant(),
-            isActive =
-                checkNotNull(record.isActive) {
-                    "team_rosters.is_active is NOT NULL but returned null"
-                },
+            isActive = record.required(TEAM_ROSTERS.IS_ACTIVE),
         )
 }

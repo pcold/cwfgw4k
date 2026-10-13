@@ -1,6 +1,7 @@
 package com.cwfgw.seasons
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.required
 import com.cwfgw.jooq.tables.records.SeasonsRecord
 import com.cwfgw.jooq.tables.references.SEASONS
 import com.cwfgw.jooq.tables.references.SEASON_RULE_PAYOUTS
@@ -78,7 +79,7 @@ private class JooqSeasonRepository : SeasonRepository {
             ctx.dsl.insertInto(SEASONS)
                 .set(values)
                 .returning()
-                .fetchOne() ?: error("INSERT RETURNING produced no row for seasons")
+                .fetchSingle()
         val season = toSeason(inserted)
         request.rules?.let { writeRules(season.id, it) }
         return season
@@ -173,15 +174,9 @@ private class JooqSeasonRepository : SeasonRepository {
 
         return SeasonRules(
             payouts = payouts.ifEmpty { SeasonRules.DEFAULT_PAYOUTS },
-            tieFloor =
-                checkNotNull(season.tieFloor) {
-                    "seasons.tie_floor is NOT NULL but returned null"
-                },
+            tieFloor = season.required(SEASONS.TIE_FLOOR),
             sideBetRounds = sideBetRounds.ifEmpty { SeasonRules.DEFAULT_SIDE_BET_ROUNDS },
-            sideBetAmount =
-                checkNotNull(season.sideBetAmount) {
-                    "seasons.side_bet_amount is NOT NULL but returned null"
-                },
+            sideBetAmount = season.required(SEASONS.SIDE_BET_AMOUNT),
         )
     }
 
@@ -229,34 +224,16 @@ private class JooqSeasonRepository : SeasonRepository {
 
     private fun toSeason(record: SeasonsRecord): Season =
         Season(
-            id = SeasonId(checkNotNull(record.id) { "seasons.id is NOT NULL but returned null" }),
+            id = SeasonId(record.required(SEASONS.ID)),
             leagueId = LeagueId(record.leagueId),
             name = record.name,
             seasonYear = record.seasonYear,
-            seasonNumber =
-                checkNotNull(record.seasonNumber) {
-                    "seasons.season_number is NOT NULL but returned null"
-                },
-            status = checkNotNull(record.status) { "seasons.status is NOT NULL but returned null" },
-            tieFloor =
-                checkNotNull(record.tieFloor) {
-                    "seasons.tie_floor is NOT NULL but returned null"
-                },
-            sideBetAmount =
-                checkNotNull(record.sideBetAmount) {
-                    "seasons.side_bet_amount is NOT NULL but returned null"
-                },
-            maxTeams =
-                checkNotNull(record.maxTeams) {
-                    "seasons.max_teams is NOT NULL but returned null"
-                },
-            createdAt =
-                checkNotNull(record.createdAt) {
-                    "seasons.created_at is NOT NULL but returned null"
-                }.toInstant(),
-            updatedAt =
-                checkNotNull(record.updatedAt) {
-                    "seasons.updated_at is NOT NULL but returned null"
-                }.toInstant(),
+            seasonNumber = record.seasonNumber,
+            status = record.required(SEASONS.STATUS),
+            tieFloor = record.required(SEASONS.TIE_FLOOR),
+            sideBetAmount = record.required(SEASONS.SIDE_BET_AMOUNT),
+            maxTeams = record.required(SEASONS.MAX_TEAMS),
+            createdAt = record.required(SEASONS.CREATED_AT).toInstant(),
+            updatedAt = record.required(SEASONS.UPDATED_AT).toInstant(),
         )
 }

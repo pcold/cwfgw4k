@@ -1,8 +1,9 @@
 package com.cwfgw.leagues
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.required
+import com.cwfgw.jooq.tables.records.LeaguesRecord
 import com.cwfgw.jooq.tables.references.LEAGUES
-import org.jooq.Record
 
 interface LeagueRepository {
     context(ctx: TransactionContext)
@@ -23,14 +24,14 @@ private class JooqLeagueRepository : LeagueRepository {
         ctx.dsl.select(LEAGUES.ID, LEAGUES.NAME, LEAGUES.CREATED_AT)
             .from(LEAGUES)
             .orderBy(LEAGUES.NAME)
-            .fetch(::toLeague)
+            .fetch { row -> toLeague(row.into(LEAGUES)) }
 
     context(ctx: TransactionContext)
     override fun findById(id: LeagueId): League? =
         ctx.dsl.select(LEAGUES.ID, LEAGUES.NAME, LEAGUES.CREATED_AT)
             .from(LEAGUES)
             .where(LEAGUES.ID.eq(id.value))
-            .fetchOne(::toLeague)
+            .fetchOne { row -> toLeague(row.into(LEAGUES)) }
 
     context(ctx: TransactionContext)
     override fun create(request: CreateLeagueRequest): League {
@@ -38,17 +39,14 @@ private class JooqLeagueRepository : LeagueRepository {
             ctx.dsl.insertInto(LEAGUES)
                 .set(LEAGUES.NAME, request.name)
                 .returning(LEAGUES.ID, LEAGUES.NAME, LEAGUES.CREATED_AT)
-                .fetchOne() ?: error("INSERT RETURNING produced no row for leagues")
+                .fetchSingle()
         return toLeague(inserted)
     }
 
-    private fun toLeague(record: Record): League =
+    private fun toLeague(record: LeaguesRecord): League =
         League(
-            id = LeagueId(checkNotNull(record[LEAGUES.ID]) { "leagues.id is NOT NULL but returned null" }),
-            name = checkNotNull(record[LEAGUES.NAME]) { "leagues.name is NOT NULL but returned null" },
-            createdAt =
-                checkNotNull(record[LEAGUES.CREATED_AT]) {
-                    "leagues.created_at is NOT NULL but returned null"
-                }.toInstant(),
+            id = LeagueId(record.required(LEAGUES.ID)),
+            name = record.name,
+            createdAt = record.required(LEAGUES.CREATED_AT).toInstant(),
         )
 }
