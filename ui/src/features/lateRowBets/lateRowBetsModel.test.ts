@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { ReportSideBetTeamEntry, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
-import {
-  lateRowBetRounds,
-  lateRowBetTeamTotals,
-  summarizeLateRowBets,
-} from './lateRowBetsModel';
+import { makeWonLostTotals } from '@/shared/test/fixtures';
+import { lateRowBetRounds, lateRowBetTeamTotals } from './lateRowBetsModel';
 
 function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
   return {
@@ -56,6 +53,8 @@ function baseReport(): WeeklyReport {
     standingsOrder: [],
     live: false,
     liveLeaderboard: [],
+    cashTotals: makeWonLostTotals(),
+    sideBetTotals: makeWonLostTotals(),
   };
 }
 
@@ -119,28 +118,5 @@ describe('lateRowBetTeamTotals', () => {
       'Eagles',
       'Aces',
     ]);
-  });
-});
-
-describe('summarizeLateRowBets', () => {
-  it('returns zeros when there are no teams', () => {
-    expect(summarizeLateRowBets(baseReport())).toEqual({ totalWon: 0, totalLost: 0, net: 0 });
-  });
-
-  it('splits wins and losses on sideBets (zero-sum by design)', () => {
-    const report: WeeklyReport = {
-      ...baseReport(),
-      teams: [
-        team({ teamId: 't-1', sideBets: 60 }),
-        team({ teamId: 't-2', sideBets: 45 }),
-        team({ teamId: 't-3', sideBets: -45 }),
-        team({ teamId: 't-4', sideBets: -60 }),
-      ],
-    };
-    expect(summarizeLateRowBets(report)).toEqual({
-      totalWon: 105,
-      totalLost: -105,
-      net: 0,
-    });
   });
 });

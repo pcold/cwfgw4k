@@ -10,6 +10,7 @@ import type {
   StandingsEntry,
   WeeklyReport,
 } from '@/shared/api/types';
+import { makeWonLostTotals } from '@/shared/test/fixtures';
 import type jsPDF from 'jspdf';
 import { buildWeeklyReportPdf } from './weeklyReportPdf';
 
@@ -121,6 +122,8 @@ function buildFixture(overrides: {
     standingsOrder: standings,
     live: false,
     liveLeaderboard: [],
+    cashTotals: makeWonLostTotals(),
+    sideBetTotals: makeWonLostTotals(),
   };
 }
 
@@ -159,6 +162,15 @@ describe('buildWeeklyReportPdf', () => {
     const subtotalTopTenMoney = ['($7.50)', '($0.00)', '($0.00)'];
     expect(drawn.filter((text) => /^\(\$/.test(text))).toEqual(subtotalTopTenMoney);
     expect(drawn).toContain('SIDE BETS');
+  });
+
+  it("prints the report's cash totals in the footer, which are not a sum over its teams", () => {
+    const disagreeing: WeeklyReport = {
+      ...buildFixture(),
+      cashTotals: { won: 9, lost: -2, net: 7 },
+      sideBetTotals: { won: 55, lost: -66, net: -11 },
+    };
+    expect(drawnText(buildWeeklyReportPdf(disagreeing))).toContain('+$9.00    -$2.00');
   });
 
   it('builds a PDF when there are no undrafted top-tens', () => {

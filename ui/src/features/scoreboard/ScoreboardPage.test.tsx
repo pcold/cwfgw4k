@@ -6,6 +6,7 @@ import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { makeWonLostTotals } from '@/shared/test/fixtures';
 import ScoreboardPage from './ScoreboardPage';
 import type { League, Season, Tournament, WeeklyReport } from '@/shared/api/types';
 
@@ -114,6 +115,8 @@ function buildReport(name: string, tournamentId: string): WeeklyReport {
     standingsOrder: [],
     live: false,
     liveLeaderboard: [],
+    cashTotals: makeWonLostTotals(),
+    sideBetTotals: makeWonLostTotals(),
   };
 }
 

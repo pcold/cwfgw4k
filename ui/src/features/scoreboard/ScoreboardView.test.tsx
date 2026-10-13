@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import ScoreboardView from './ScoreboardView';
 import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
+import { makeWonLostTotals } from '@/shared/test/fixtures';
 
 function row(overrides: Partial<ReportCell> = {}): ReportCell {
   return {
@@ -59,6 +60,8 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     standingsOrder: [],
     live: false,
     liveLeaderboard: [],
+    cashTotals: makeWonLostTotals(),
+    sideBetTotals: makeWonLostTotals(),
     ...overrides,
   };
 }

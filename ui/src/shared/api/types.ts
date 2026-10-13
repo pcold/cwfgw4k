@@ -98,6 +98,13 @@ export interface LiveLeaderboardEntry {
  */
 export type ReportScope = 'season' | 'tournament';
 
+/** `lost` is a sum of losses, so zero or negative, and `net` is `won` plus it. */
+export interface WonLostTotals {
+  won: number;
+  lost: number;
+  net: number;
+}
+
 export interface WeeklyReport {
   scope: ReportScope;
   tournament: ReportTournamentInfo;
@@ -109,6 +116,10 @@ export interface WeeklyReport {
   standingsOrder: StandingsEntry[];
   live: boolean | null;
   liveLeaderboard: LiveLeaderboardEntry[];
+  /** Over every team's `totalCash`. Display it; never re-sum `teams`. */
+  cashTotals: WonLostTotals;
+  /** Over every team's `sideBets`. @see WeeklyReport.cashTotals */
+  sideBetTotals: WonLostTotals;
 }
 
 export interface TeamRanking {

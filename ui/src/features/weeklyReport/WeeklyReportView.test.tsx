@@ -11,6 +11,7 @@ import type {
   WeeklyReport,
 } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
+import { makeWonLostTotals } from '@/shared/test/fixtures';
 
 function row(round: number, overrides: Partial<ReportCell> = {}): ReportCell {
   return {
@@ -66,6 +67,8 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     standingsOrder: [],
     live: false,
     liveLeaderboard: [],
+    cashTotals: makeWonLostTotals(),
+    sideBetTotals: makeWonLostTotals(),
     ...overrides,
   };
 }
@@ -235,17 +238,19 @@ describe('WeeklyReportView', () => {
     expect(within(round3).getByText('—')).toBeInTheDocument();
   });
 
-  it('computes and displays the won/lost/net summary', () => {
-    const tworeport = report({
+  it("displays the report's cash totals, which are not a sum over its teams", () => {
+    const disagreeing = report({
       teams: [
         team({ teamId: 't-1', totalCash: 120 }),
         team({ teamId: 't-2', teamName: 'Birdies', totalCash: -80 }),
       ],
+      cashTotals: { won: 9, lost: -2, net: 7 },
+      sideBetTotals: { won: 55, lost: -66, net: -11 },
     });
-    render(<WeeklyReportView report={tworeport} />);
-    expect(screen.getByText('Won').nextSibling).toHaveTextContent('$120');
-    expect(screen.getByText('Lost').nextSibling).toHaveTextContent('-$80');
-    expect(screen.getByText('Net').nextSibling).toHaveTextContent('$40');
+    render(<WeeklyReportView report={disagreeing} />);
+    expect(screen.getByText('Won').nextSibling).toHaveTextContent('$9.00');
+    expect(screen.getByText('Lost').nextSibling).toHaveTextContent('-$2.00');
+    expect(screen.getByText('Net').nextSibling).toHaveTextContent('$7.00');
   });
 
   it('makes round-cell golfer names clickable when onGolferClick is provided', async () => {

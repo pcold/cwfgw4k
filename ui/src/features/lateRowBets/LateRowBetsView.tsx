@@ -1,11 +1,6 @@
 import type { ReportSideBetRules, WeeklyReport } from '@/shared/api/types';
 import { formatMoney } from '@/shared/util/money';
-import {
-  lateRowBetRounds,
-  lateRowBetTeamTotals,
-  summarizeLateRowBets,
-  type LateRowBetEntry,
-} from './lateRowBetsModel';
+import { lateRowBetRounds, lateRowBetTeamTotals, type LateRowBetEntry } from './lateRowBetsModel';
 
 function payoutClass(payout: number): string {
   if (payout > 0) return 'text-green-400';
@@ -89,7 +84,7 @@ interface Props {
 function LateRowBetsView({ report }: Props) {
   const rounds = lateRowBetRounds(report);
   const totals = lateRowBetTeamTotals(report);
-  const summary = summarizeLateRowBets(report);
+  const { sideBetTotals } = report;
 
   if (rounds.length === 0) {
     return <p className="text-gray-500 text-sm">This season has no late row bets.</p>;
@@ -140,19 +135,19 @@ function LateRowBetsView({ report }: Props) {
           <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
             <span className="text-gray-500">Won</span>
             <span className="font-semibold text-green-400 tabular-nums">
-              {formatMoney(summary.totalWon)}
+              {formatMoney(sideBetTotals.won)}
             </span>
           </div>
           <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
             <span className="text-gray-500">Lost</span>
             <span className="font-semibold text-red-400 tabular-nums">
-              {formatMoney(summary.totalLost)}
+              {formatMoney(sideBetTotals.lost)}
             </span>
           </div>
           <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
             <span className="text-gray-500">Net</span>
-            <span className={`font-semibold tabular-nums ${signClass(summary.net)}`}>
-              {formatMoney(summary.net)}
+            <span className={`font-semibold tabular-nums ${signClass(sideBetTotals.net)}`}>
+              {formatMoney(sideBetTotals.net)}
             </span>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import type { Season, Tournament, League, User } from '@/shared/api/types';
+import type { Season, Tournament, League, User, WonLostTotals } from '@/shared/api/types';
 
 // Centralized factories for the most-mocked API shapes. Tests that don't
 // care about a specific field get sensible defaults; everything else is
@@ -57,4 +57,8 @@ export function makeUser(overrides: Partial<User> = {}): User {
     createdAt: '2026-01-01T00:00:00Z',
     ...overrides,
   };
+}
+
+export function makeWonLostTotals(overrides: Partial<WonLostTotals> = {}): WonLostTotals {
+  return { won: 0, lost: 0, net: 0, ...overrides };
 }
