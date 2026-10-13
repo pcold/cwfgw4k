@@ -102,6 +102,12 @@ jobs:
         if: steps.need.outputs.needed != 'false'
         run: .github/scripts/tree-already-proven.test.sh
 
+      # The hook never runs in Actions, and branch-name-check.yml only ever sees
+      # the one branch a pull request has. This drives both over the same names.
+      - name: Do the hook and the workflow still agree on a branch name?
+        if: steps.need.outputs.needed != 'false'
+        run: .github/scripts/branch-name-check.test.sh
+
       # 21 and not the runner's default: gradle/gradle-daemon-jvm.properties
       # pins the daemon to it, and nothing here provisions a toolchain.
       - name: Set up JDK 21
