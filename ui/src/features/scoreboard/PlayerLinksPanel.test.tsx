@@ -1,6 +1,9 @@
+import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import PlayerLinksPanel from './PlayerLinksPanel';
 import type {
@@ -14,6 +17,9 @@ const upsertMock = vi.fn();
 const deleteMock = vi.fn();
 const createGolferMock = vi.fn();
 const onCloseMock = vi.fn();
+const tournamentReportMock = vi.fn();
+const rankingsMock = vi.fn();
+const playerRankingsMock = vi.fn();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -28,6 +34,12 @@ vi.mock('@/shared/api/client', () => ({
     deleteTournamentPlayerOverride: (tournamentId: string, espnCompetitorId: string) =>
       deleteMock(tournamentId, espnCompetitorId),
     createGolfer: (input: { firstName: string; lastName: string }) => createGolferMock(input),
+    tournamentReport: (seasonId: string, tournamentId: string, live: boolean) =>
+      tournamentReportMock(seasonId, tournamentId, live),
+    rankings: (seasonId: string, live: boolean, throughTournamentId?: string) =>
+      rankingsMock(seasonId, live, throughTournamentId),
+    playerRankings: (seasonId: string, live: boolean, throughTournamentId?: string) =>
+      playerRankingsMock(seasonId, live, throughTournamentId),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -84,9 +96,39 @@ function buildListing(overrides: Partial<TournamentCompetitorListing> = {}): Tou
   };
 }
 
-function renderPanel(): void {
+// Each copies the key and fetcher its page uses with the live overlay on: WeeklyReportPage (and
+// LateRowBetsPage), RankingsPage, PlayerRankingsPage. A key that drifts from the page's leaves its
+// test passing against a query no page holds.
+function OpenLiveWeeklyReport() {
+  useQuery({
+    queryKey: ['report', 'sn-1', 'tn-1', true],
+    queryFn: () => api.tournamentReport('sn-1', 'tn-1', true),
+  });
+  return null;
+}
+
+function OpenLiveRankings() {
+  useQuery({
+    queryKey: ['rankings', 'sn-1', true, 'tn-1'],
+    queryFn: () => api.rankings('sn-1', true, 'tn-1'),
+  });
+  return null;
+}
+
+function OpenLivePlayerRankings() {
+  useQuery({
+    queryKey: ['player-rankings', 'sn-1', 'tn-1', true],
+    queryFn: () => api.playerRankings('sn-1', true, 'tn-1'),
+  });
+  return null;
+}
+
+function renderPanel(openQuery: ReactElement | null = null): void {
   renderWithProviders(
-    <PlayerLinksPanel tournamentId="tn-1" seasonId="sn-1" onClose={onCloseMock} />,
+    <>
+      <PlayerLinksPanel tournamentId="tn-1" seasonId="sn-1" onClose={onCloseMock} />
+      {openQuery}
+    </>,
     { withAuthProvider: false, withLeagueSeasonProvider: false },
   );
 }
@@ -99,6 +141,9 @@ describe('PlayerLinksPanel', () => {
     deleteMock.mockReset();
     createGolferMock.mockReset();
     onCloseMock.mockReset();
+    tournamentReportMock.mockReset();
+    rankingsMock.mockReset();
+    playerRankingsMock.mockReset();
     golfersMock.mockResolvedValue([mattGolfer, alexGolfer, otherGolfer]);
   });
 
@@ -137,6 +182,37 @@ describe('PlayerLinksPanel', () => {
         espnCompetitorId: 'comp-nobody',
         golferId: otherGolfer.id,
       });
+    });
+  });
+
+  it.each([
+    ['an open live weekly report', <OpenLiveWeeklyReport />, tournamentReportMock],
+    ['open live rankings', <OpenLiveRankings />, rankingsMock],
+    ['open live player rankings', <OpenLivePlayerRankings />, playerRankingsMock],
+  ])('refetches %s after a link is saved', async (_page, openQuery, readMock) => {
+    competitorsMock.mockResolvedValue(buildListing());
+    upsertMock.mockResolvedValue({
+      tournamentId: 'tn-1',
+      espnCompetitorId: 'comp-nobody',
+      golferId: otherGolfer.id,
+    });
+    readMock.mockResolvedValue({});
+    const user = userEvent.setup();
+    renderPanel(openQuery);
+
+    const nobodySelect = await screen.findByLabelText(/Link to golfer/i, {
+      selector: '#golfer-select-comp-nobody',
+    });
+    await waitFor(() => {
+      expect(readMock).toHaveBeenCalledTimes(1);
+    });
+    await user.selectOptions(nobodySelect, otherGolfer.id);
+    const nobodyRow = nobodySelect.closest('li');
+    if (!nobodyRow) throw new Error('competitor row not found');
+    await user.click(within(nobodyRow as HTMLElement).getByRole('button', { name: /Save link/i }));
+
+    await waitFor(() => {
+      expect(readMock).toHaveBeenCalledTimes(2);
     });
   });
 

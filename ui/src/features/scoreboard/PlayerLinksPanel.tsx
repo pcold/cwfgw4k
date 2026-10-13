@@ -135,9 +135,14 @@ function CompetitorRow({
   );
   const [creating, setCreating] = useState(false);
 
+  // The live overlay resolves ESPN competitors through these links on the server, so every read
+  // that can carry the overlay is affected, not only the scoreboard's own report.
   function invalidateAffected() {
     void queryClient.invalidateQueries({ queryKey: competitorsKey(tournamentId) });
     void queryClient.invalidateQueries({ queryKey: ['tournamentReport', seasonId] });
+    void queryClient.invalidateQueries({ queryKey: ['report', seasonId] });
+    void queryClient.invalidateQueries({ queryKey: ['rankings', seasonId] });
+    void queryClient.invalidateQueries({ queryKey: ['player-rankings', seasonId] });
   }
 
   const saveMutation = useMutation({
