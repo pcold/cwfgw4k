@@ -7,7 +7,8 @@ set -euo pipefail
 
 pattern='^[a-z0-9-]+/cwf-[0-9]+-[a-z0-9-]+$'
 
-while read -r _local_ref local_sha remote_ref _remote_sha; do
+# `read` fails on a last line with no newline, having already filled the fields.
+while read -r _local_ref local_sha remote_ref _remote_sha || [ -n "$remote_ref" ]; do
   # Git reports a deletion as an all-zero local sha, 40 or 64 digits by hash format.
   [[ "$local_sha" =~ ^0+$ ]] && continue
 

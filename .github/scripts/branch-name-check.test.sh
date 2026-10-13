@@ -41,6 +41,11 @@ pre_push() {
     (cd "${work}" && printf '%s\n' "$@" | "${hook}" origin git@github.com:pcold/cwfgw4k.git)
 }
 
+# Git ends every line it writes; a check of the hook piped in by hand often does not.
+unterminated_push() {
+    (cd "${work}" && printf '%s' "$1" | "${hook}" origin git@github.com:pcold/cwfgw4k.git)
+}
+
 nothing_to_push() {
     (cd "${work}" && "${hook}" origin git@github.com:pcold/cwfgw4k.git < /dev/null)
 }
@@ -119,6 +124,8 @@ expect 1 "hook:     a well-named local branch pushed to a misnamed remote one" \
 expect 1 "hook:     a misnamed branch after a well-named one" \
     pre_push "refs/heads/${linear_name} ${tip} refs/heads/${linear_name} ${absent}" \
              "refs/heads/scratch ${tip} refs/heads/scratch ${absent}"
+expect 1 "hook:     a misnamed branch on a line with no newline" \
+    unterminated_push "refs/heads/scratch ${tip} refs/heads/scratch ${absent}"
 expect 0 "hook:     a tag, a deletion and main in one push" \
     pre_push "refs/tags/v1 ${tip} refs/tags/v1 ${absent}" \
              "(delete) ${absent} refs/heads/scratch ${tip}" \
