@@ -30,6 +30,7 @@ import com.cwfgw.testing.orFail
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
+import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -44,6 +45,7 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.runBlocking
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -202,7 +204,7 @@ private class Fixture(
 
     init {
         if (seedSeason) {
-            kotlinx.coroutines.runBlocking {
+            runBlocking {
                 with(noopTransactionContext) {
 
                     seasonRepo.create(
@@ -217,7 +219,7 @@ private class Fixture(
             }
         }
         initialResults.forEach { result ->
-            kotlinx.coroutines.runBlocking {
+            runBlocking {
                 with(noopTransactionContext) {
                     tournamentRepo.upsertResult(result.tournamentId, asUpsertRequest(result))
                 }
@@ -305,8 +307,8 @@ private fun liveMasters(leaderEspnId: String): EspnTournament =
 private suspend fun Fixture.mastersReport(): WeeklyReport =
     service.getReport(SEASON_ID, MASTERS_ID).orFail()
 
-private fun asUpsertRequest(r: TournamentResult): com.cwfgw.tournaments.CreateTournamentResultRequest =
-    com.cwfgw.tournaments.CreateTournamentResultRequest(
+private fun asUpsertRequest(r: TournamentResult): CreateTournamentResultRequest =
+    CreateTournamentResultRequest(
         golferId = r.golferId,
         position = r.position,
         scoreToPar = r.scoreToPar,
