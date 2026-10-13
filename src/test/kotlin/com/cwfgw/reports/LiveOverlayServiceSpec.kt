@@ -5,10 +5,8 @@ import com.cwfgw.espn.PreviewGolferScore
 import com.cwfgw.espn.PreviewLeaderboardEntry
 import com.cwfgw.espn.PreviewTeamScore
 import com.cwfgw.golfers.GolferId
-import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRules
 import com.cwfgw.teams.TeamId
-import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
@@ -16,11 +14,8 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import java.math.BigDecimal
-import java.time.Instant
-import java.time.LocalDate
 import java.util.UUID
 
-private val SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000aaa"))
 private val TOURNAMENT_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b01"))
 private val TEAM_A_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c01"))
 private val TEAM_B_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c02"))
@@ -33,26 +28,6 @@ private val DEFAULT_RULES =
         tieFloor = SeasonRules.DEFAULT_TIE_FLOOR,
         sideBetRounds = SeasonRules.DEFAULT_SIDE_BET_ROUNDS,
         sideBetAmount = SeasonRules.DEFAULT_SIDE_BET_AMOUNT,
-    )
-
-private fun tournament(
-    pgaTournamentId: String? = "espn-masters",
-    name: String = "The Masters",
-): Tournament =
-    Tournament(
-        id = TOURNAMENT_ID,
-        pgaTournamentId = pgaTournamentId,
-        name = name,
-        seasonId = SEASON_ID,
-        startDate = LocalDate.parse("2026-04-09"),
-        endDate = LocalDate.parse("2026-04-12"),
-        courseName = null,
-        status = TournamentStatus.InProgress,
-        purseAmount = null,
-        payoutMultiplier = BigDecimal.ONE,
-        week = null,
-        isTeamEvent = false,
-        createdAt = Instant.EPOCH,
     )
 
 private fun preview(
@@ -234,29 +209,6 @@ private fun roryWinsLive(): EspnLivePreview =
     )
 
 class LiveOverlayServiceSpec : FunSpec({
-
-    // ----- matchPreview -----
-
-    test("matchPreview resolves by exact pga_tournament_id when one matches") {
-        val masters = preview(espnId = "espn-masters")
-        val sony = preview(espnId = "espn-sony")
-        matchPreview(listOf(sony, masters), tournament(pgaTournamentId = "espn-masters")) shouldBe masters
-    }
-
-    test("matchPreview falls through to the only preview when no id match and exactly one is present") {
-        val onlyEvent = preview(espnId = "espn-different")
-        matchPreview(listOf(onlyEvent), tournament(pgaTournamentId = "espn-masters")) shouldBe onlyEvent
-    }
-
-    test("matchPreview returns null when no id match and multiple previews exist") {
-        val a = preview(espnId = "espn-a")
-        val b = preview(espnId = "espn-b")
-        matchPreview(listOf(a, b), tournament(pgaTournamentId = "espn-masters")) shouldBe null
-    }
-
-    test("matchPreview returns null on an empty preview list") {
-        matchPreview(emptyList(), tournament()) shouldBe null
-    }
 
     // ----- mergeLiveData -----
 

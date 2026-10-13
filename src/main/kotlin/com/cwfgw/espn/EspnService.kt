@@ -120,7 +120,7 @@ class EspnService(
      * Loads season-scoped state plus per-candidate override maps in one
      * `tx.read` so a multi-event overlay only pays for the gather once
      * instead of once per fold iteration (CWF-18). Pair with
-     * [previewByDate], which consumes the returned context to
+     * [previewForTournament], which consumes the returned context to
      * skip the DB on subsequent per-event preview builds — they reuse
      * the snapshot and only need to fetch from ESPN.
      */
@@ -145,17 +145,17 @@ class EspnService(
         }
 
     /**
-     * Build previews for [date] using a pre-loaded [LivePreviewContext].
-     * No DB access — the context already carries everything the per-event
-     * build needs. Errors propagate from the ESPN fetch; an empty
-     * scoreboard returns `Ok(emptyList())`.
+     * Must stay DB-free and at one scoreboard request, keyed by start date as the client's cache is: the
+     * overlay calls this once per candidate inside its fold, with [ctx] already loaded.
      */
-    internal suspend fun previewByDate(
+    internal suspend fun previewForTournament(
         ctx: LivePreviewContext,
-        date: LocalDate,
-    ): Result<List<EspnLivePreview>, EspnError> {
-        val events = fetchOrFail(date).getOrElse { return Result.Err(it) }
-        return Result.Ok(events.map { event -> buildLivePreviewForEvent(event, ctx) })
+        tournament: Tournament,
+    ): Result<EspnLivePreview, LivePreviewError> {
+        val events =
+            fetchOrFail(tournament.startDate).getOrElse { return Result.Err(LivePreviewError.EspnUnavailable(it)) }
+        val event = matchEvent(events, tournament) ?: return Result.Err(LivePreviewError.NoMatchingEvent)
+        return Result.Ok(buildLivePreviewForEvent(event, ctx))
     }
 
     suspend fun importByDate(date: LocalDate): Result<EspnImportBatch, EspnError> {
@@ -243,7 +243,7 @@ class EspnService(
         )
     }
 
-    private suspend fun fetchOrFail(date: LocalDate): Result<List<EspnTournament>, EspnError> =
+    private suspend fun fetchOrFail(date: LocalDate): Result<List<EspnTournament>, EspnError.UpstreamUnavailable> =
         try {
             Result.Ok(client.fetchScoreboard(date))
         } catch (e: EspnUpstreamException) {
@@ -449,6 +449,27 @@ private fun matchesFullName(
 ): Boolean =
     "${golfer.firstName} ${golfer.lastName}".equals(fullName, ignoreCase = true) ||
         golfer.lastName.equals(fullName, ignoreCase = true)
+
+/**
+ * Kept apart from [EspnError] so the overlay's `when` is exhaustive over what a preview can actually
+ * answer: [NoMatchingEvent] is routine and skipped silently, [EspnUnavailable] is logged.
+ */
+internal sealed interface LivePreviewError {
+    /** @see LivePreviewError */
+    data object NoMatchingEvent : LivePreviewError
+
+    /** @see LivePreviewError */
+    data class EspnUnavailable(val cause: EspnError.UpstreamUnavailable) : LivePreviewError
+}
+
+/**
+ * The lone-event fallback covers a tournament whose `pga_tournament_id` is unset or stale. It must stay
+ * "exactly one": with several events on the date, taking any of them overlays the wrong tournament.
+ */
+private fun matchEvent(
+    events: List<EspnTournament>,
+    tournament: Tournament,
+): EspnTournament? = events.firstOrNull { it.espnId == tournament.pgaTournamentId } ?: events.singleOrNull()
 
 internal fun buildLivePreviewForEvent(
     event: EspnTournament,
