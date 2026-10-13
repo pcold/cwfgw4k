@@ -99,8 +99,10 @@ class ConfigSecretSpec : FunSpec({
                     .copy(cookieSecure = secure, sessionMaxAgeSeconds = NON_DEFAULT_MAX_AGE_SECONDS)
                     .toAuthSetup()
 
-            setup.cookieSecure shouldBe secure
-            setup.sessionMaxAgeSeconds shouldBe NON_DEFAULT_MAX_AGE_SECONDS
+            withClue("cookieSecure = $secure") {
+                setup.cookieSecure shouldBe secure
+                setup.sessionMaxAgeSeconds shouldBe NON_DEFAULT_MAX_AGE_SECONDS
+            }
         }
     }
 
