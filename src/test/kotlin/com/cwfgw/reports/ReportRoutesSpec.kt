@@ -487,10 +487,14 @@ class ReportRoutesSpec : FunSpec({
 
         test("GET /api/v1/seasons/{id}/$label?live=true reaches the service on every request") {
             val reportTx = ReadCountingTransactor()
-            val masters = tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
-            apiTest(reportFixture(initialTournaments = listOf(masters), reportTx = reportTx)) { client ->
+            val espn = FakeEspnClient()
+            val masters =
+                tournamentRow(MASTERS_ID, "The Masters", "2026-04-09").copy(status = TournamentStatus.InProgress)
+            val configure = reportFixture(initialTournaments = listOf(masters), espn = espn, reportTx = reportTx)
+            apiTest(configure) { client ->
                 repeat(2) { client.get("$url?live=true").status shouldBe HttpStatusCode.OK }
                 reportTx.reads shouldBe 2
+                espn.fetchCalls shouldContainExactly listOf(masters.startDate, masters.startDate)
             }
         }
 
