@@ -49,9 +49,9 @@ private class JooqTransactor(
 ) : Transactor {
     private val rootContext: TransactionContext = TransactionContext(rootDsl)
 
-    // One view shared by `get`, `read` and `update`, so its pool-size cap holds across all three:
-    // callers queue here for a slot rather than inside Hikari's `getConnection()`.
-    // Not jOOQ's `transactionCoroutine`: its Reactor bridge can deadlock under concurrency (CWF-30).
+    // Shared by `get`, `read` and `update` so the pool-size cap holds across all three:
+    // a block waits here for a slot, never on another block in Hikari's `getConnection()`.
+    // Not jOOQ's `transactionCoroutine`: its Reactor bridge can deadlock (CWF-24).
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(maxPoolSize)
 
     override suspend fun <A> get(block: context(TransactionContext) () -> A): A =
