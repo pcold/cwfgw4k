@@ -101,7 +101,7 @@ data class EspnAthlete(
  * in-progress data onto reports + rankings; no route returns it.
  *
  * `payoutMultiplier` and `isTeamEvent` come from the matched DB
- * tournament (see [com.cwfgw.reports.matchDbTournament]) so the per-team
+ * tournament (see [buildLivePreviewForEvent]) so the per-team
  * dollar figures honor any overrides operators set up-front; a missing
  * match defaults to multiplier 1.0 and not a team event.
  */
