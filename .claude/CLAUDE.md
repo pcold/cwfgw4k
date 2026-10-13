@@ -402,7 +402,9 @@ When an AI assistant generates code against this guide:
 - AI **MUST** run [`cwf-review`](skills/cwf-review/SKILL.md) before the
   **first push**, not merely before opening the PR. Review findings that arrive
   after a push are fix commits by necessity; the same findings before it fold
-  into the commit that caused them. The skill produces:
+  into the commit that caused them. The gate scales to the change — see
+  **Scale the gate to the change** in [`review-contract.md`](review-contract.md)
+  for the tiers and what selects them. The skill produces:
   1. A recap of the diff (working tree + commits ahead of the PR base).
   2. A test coverage review — what's well covered, gaps worth filling
      (with rationale), and gaps deliberately skipped.
