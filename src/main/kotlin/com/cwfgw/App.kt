@@ -65,10 +65,8 @@ fun Application.module(
 }
 
 /**
- * Launch the periodic cache sweep on the application's coroutine scope so it
- * inherits the lifecycle of the embedded server. The loop logs each
- * iteration via [RequestCache.deleteExpired]; failures don't tear the
- * application down — we log and try again next interval.
+ * Catches where the two loops below do not: a sweep ended by one database blip would leave expired
+ * rows piling up until the process restarts.
  */
 private fun Application.launchCacheSweep(
     requestCache: RequestCache,
