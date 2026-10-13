@@ -92,15 +92,8 @@ private fun Application.launchCacheSweep(
 private val cacheSweepLog = KotlinLogging.logger("com.cwfgw.cache.Sweep")
 
 /**
- * Periodically log a structured snapshot of the HikariCP pool counters so
- * Cloud Logging captures connection pressure during incidents. The
- * `waiting` field is the load-bearing one — a sustained non-zero value
- * means requests are queueing for a connection, which is the canonical
- * symptom of pool exhaustion the May 3 incident lacked visibility into.
- *
- * Format: `cwfgw4k.db.pool active=N idle=M waiting=W total=T`. Metrics
- * derive from this via REGEXP_EXTRACT in the same shape as
- * `cwfgw4k.cache` and `cwfgw4k.request` log lines.
+ * `ops/` filters logs on the `cwfgw4k.db.pool …` line format, so it is a contract. A sustained
+ * non-zero `waiting` means requests are queueing for a connection.
  */
 private fun Application.launchPoolMetricsLog(metrics: PoolMetrics) {
     val intervalMs = POOL_METRICS_INTERVAL_SECONDS * 1000L
@@ -121,27 +114,14 @@ private val poolMetricsLog = KotlinLogging.logger("com.cwfgw.db.PoolMetrics")
 private const val POOL_METRICS_INTERVAL_SECONDS: Long = 30
 
 /**
- * Periodically write a JVM thread + coroutine dump to stderr when
- * debug endpoints are enabled. Runs on the application coroutine
- * scope, so it keeps emitting even when the Ktor request pipeline is
- * wedged — that's the whole point of pushing instead of pulling. The
- * on-demand `/debug/threads` route is for warm-instance inspection;
- * this loop is for wedge forensics. See CWF-21.
- *
- * Each line starts with `cwfgw4k.debug.probe` so the dump is
- * greppable. The body is multi-line plain text (thread states + the
- * `DebugProbes` coroutine report).
+ * Pushed from the application scope, not pulled through `/debug/threads`, so the dump keeps coming
+ * when the request pipeline itself is wedged. `cwfgw4k.debug.probe` opens each one for grep.
  */
 private fun Application.launchDebugProbeLog() {
     val intervalMs = DEBUG_PROBE_INTERVAL_SECONDS * 1000L
     launch {
         while (isActive) {
-            @Suppress("TooGenericExceptionCaught")
-            try {
-                debugProbeLog.info { "cwfgw4k.debug.probe\n" + buildDebugDump() }
-            } catch (t: Throwable) {
-                debugProbeLog.warn(t) { "Debug probe dump failed; retrying after interval" }
-            }
+            debugProbeLog.info { "cwfgw4k.debug.probe\n" + buildDebugDump() }
             delay(intervalMs)
         }
     }
