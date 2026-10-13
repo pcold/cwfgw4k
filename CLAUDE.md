@@ -46,10 +46,11 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 
 ### Where this is actually wired in
 
-The `cwf-review` skill (`.claude/skills/`) calls these tools at specific steps
-in its procedure, and the CI review in `.github/workflows/claude-review.yml`
-builds the graph and uses the same ones. The generic `debug-issue` /
-`explore-codebase` / `refactor-safely` skills are standalone entry points for
-those specific tasks when invoked directly; they are not part of the review gate.
+The `cwf-review` and `parallel-tickets` skills (`.claude/skills/`) call these
+tools at specific steps in their procedures, and the CI review in
+`.github/workflows/claude-review.yml` builds the graph and uses the same ones.
+The generic `debug-issue` / `explore-codebase` / `refactor-safely` skills are
+standalone entry points for those specific tasks when invoked directly; they
+are not part of the review or ticket-coordination gates.
 
 The code style guide lives in [`.claude/CLAUDE.md`](.claude/CLAUDE.md).

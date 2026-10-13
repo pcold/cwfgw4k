@@ -1,9 +1,9 @@
 # Backend Code Style Guide (Kotlin)
 
-This guide covers the Kotlin/Ktor backend under `src/`. The
+This guide covers the Kotlin/Ktor/jOOQ backend under `src/`. The
 language-agnostic rules (Guiding Principles, Hygiene Rules, Naming, Change
-Scope, Working with AI Assistants) live in the root `.claude/CLAUDE.md` and
-apply unchanged here.
+Scope, Working with AI Assistants) live in the root [`.claude/CLAUDE.md`](../.claude/CLAUDE.md)
+and apply unchanged here.
 
 This document uses **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and
 **MAY** in the RFC 2119 sense. Deviations from **MUST** rules are defects.
@@ -67,8 +67,8 @@ Policy, in order of preference:
    "not found," "wrong status," "already completed," and "not your turn" must
    each produce a different HTTP status). The error type lives in the domain
    package and stays free of HTTP imports; routes map it to `DomainError`
-   via a tiny `.orThrow()` extension. `DraftService` / `DraftRoutes` are the
-   reference shape.
+   via a tiny `.orThrow()` extension. The `DraftService` / `DraftRoutes`
+   pair is the reference shape.
 3. **Exceptions** for truly exceptional conditions: programmer errors
    (`IllegalArgumentException`, `IllegalStateException`), infrastructure
    failures, and at HTTP/framework boundaries — specifically `DomainError`
@@ -89,6 +89,21 @@ Rules:
   `String` or `Throwable` as the error type is forbidden — the error must
   be an exhaustive sealed hierarchy so mapping at the boundary stays
   `when`-exhaustive.
+- **MUST** put discriminating information in the error **type**, not in a
+  message string. A failure that a caller, an alert, or an on-call engineer
+  needs to tell apart from its neighbour gets a distinct sealed variant —
+  never a sentence that interpolates the values that made it distinct.
+  Message prose is unbounded, which makes it both the channel user data
+  leaks through and the one thing downstream cannot aggregate on.
+
+  Deleting the interpolation is not how a leaky message gets fixed: that
+  loses the information. The information moves into a type, or it is shown
+  not to have been load-bearing.
+- **MUST** keep a `Validation(message)` variant to a malformed input field,
+  where the sentence tells the user what to fix and nothing branches on it. A
+  business-rule refusal is not a malformed field: it gets its own variant, as
+  the rule above requires. Existing catch-alls are split when a change touches
+  them, not swept.
 - **MUST NOT** use `kotlin.Result<T>` as a return type. It's `Throwable`
   bound, requires opt-in, and doesn't carry typed error variants — wrong
   tool for domain errors. Use `com.cwfgw.result.Result<T, E>`.
@@ -112,7 +127,10 @@ Rules:
 - **MUST NOT** define nested data classes inside other classes unless there's
   a compelling scoping reason. Most "nested" types belong at file level.
 - **MUST NOT** expose public constructors when construction has invariants.
-  Use a private primary constructor + factory on the companion object.
+  Use a private primary constructor + factory on the companion object, plus
+  `@ConsistentCopyVisibility` on a `data class` — Kotlin generates `copy()`
+  public whatever the constructor's visibility, and it rebuilds what the
+  factory refuses.
 - **SHOULD** keep all variants of a sealed hierarchy in the same file as the
   parent type.
 
@@ -196,7 +214,14 @@ Use deliberately. Each scope function has a specific purpose:
   returning a different value.
 - **`.apply { }`** — configure a mutable builder. Rare in this codebase;
   `copy()` is usually better.
-- **`.with(x) { }`** — avoid. `x.run { }` reads better.
+- **`.with(x) { }`** — avoid when calling the receiver's own members, where
+  `x.run { }` reads better. **Carve-out:** `with(ctx) { ... }` used purely to
+  bring a `context(...)` receiver *into scope* — not to access its members — is
+  the accepted idiom for calling a context-parameter function, e.g. seeding a
+  Fake whose methods are `context(ctx: TransactionContext)` from a spec
+  via `with(noopTransactionContext) { repo.insert(...) }`. There `with` reads
+  as "with this context in scope, run the block"; the rule targets member
+  access, not context provision.
 
 Rules:
 
@@ -226,6 +251,20 @@ Rules:
 - **MUST NOT** use `as` (unsafe cast) in production code. Use `as?` (safe
   cast) with explicit null handling, or restructure to avoid the cast.
 
+### Domain IDs
+
+- **MUST** model every domain ID as a `@JvmInline value class` wrapping
+  `UUID`: `@JvmInline value class TeamId(val value: UUID)`. Same idea as
+  the UI's branded types — prevents passing the wrong ID type at compile
+  time.
+- **MUST NOT** thread raw `UUID` across service / repository / route
+  boundaries. The boundary is where `UUID` becomes `TeamId` (and vice
+  versa), and only at the boundary.
+- **MUST** provide `String.toTeamId(): TeamId?` extension functions
+  for parsing path parameters and query parameters. The extension must not
+  throw — return `null` on parse failure and let the route boundary turn
+  that into `DomainError.Validation`.
+
 ### Miscellaneous
 
 - **MUST NOT** use `runBlocking` outside of `main` entrypoints and tests. It
@@ -247,12 +286,14 @@ Rules:
 - **MUST** respect structured concurrency. Child coroutines launched in a
   known `CoroutineScope`.
 - **MUST** use the correct dispatcher:
-  - `Dispatchers.IO` for blocking I/O (JDBC, file I/O, blocking SDK calls)
+  - `Dispatchers.IO` for blocking I/O (file I/O, blocking SDK calls). JDBC
+    is handled separately — see [jOOQ](#jooq).
   - `Dispatchers.Default` for CPU-bound work
   - No `Dispatchers.Main` in this codebase
 - **MUST** wrap blocking Java APIs in `withContext(Dispatchers.IO)` when
-  calling from coroutines — the one exception is blocking JDBC reached
-  through the `Transactor`, which confines it centrally (see jOOQ below).
+  calling from coroutines. JDBC is the exception: it runs inside the
+  `Transactor`'s bounded `Dispatchers.IO` view, never under a bare
+  `Dispatchers.IO`.
 - **MUST NOT** swallow `CancellationException`. Let it propagate.
 - **SHOULD** check `isActive` or `yield()` in long-running loops.
 
@@ -276,7 +317,8 @@ Rules:
 
 #### HTTP boundary: errors and parameter parsing
 
-- **MUST** throw `DomainError.NotFound` / `Validation` / `Conflict`
+- **MUST** throw `DomainError.NotFound` / `Validation` / `Conflict` /
+  `BadGateway` / `Unauthorized` / `Forbidden`
   (`com.cwfgw.http.DomainError`) from routes — never hand-write
   `call.respond(HttpStatusCode.X)` for error cases. `installErrorHandling()`
   is the canonical sink that maps each variant to its status plus a JSON
@@ -295,10 +337,12 @@ Rules:
   "no filter" — that's the bug the helper exists to prevent.
 - **SHOULD** give each route file a private `RoutingContext.xxxId(): XId`
   helper that parses a path parameter or throws `DomainError.Validation`:
+
   ```kotlin
   private fun RoutingContext.teamId(): TeamId =
       call.parameters["teamId"]?.toTeamId() ?: throw DomainError.Validation("invalid team id")
   ```
+
   Error messages: `"invalid <thing> id"` for Validation; `"<thing> ${id.value}
   not found"` for NotFound — include the id for debuggability.
 - **MUST** keep the top-level `Route.xxxRoutes()` function as a thin
@@ -327,22 +371,51 @@ Rules:
   returns domain types, not jOOQ records.
 - **MUST NOT** expose jOOQ-generated types outside the repository package.
   Map to domain types explicitly at the repository boundary.
-- **MUST NOT** wrap repository jOOQ calls in `withContext`. Repository
-  methods are plain blocking (non-`suspend`) functions. Confining blocking
-  JDBC off the request path is the `Transactor`'s single responsibility —
-  it runs every `get` / `read` / `update` block on one `Dispatchers.IO`
-  view sized to the connection pool. A per-method `withContext` is
-  redundant nesting and would let the call escape that pool-sized
-  dispatcher.
+- **MUST NOT** wrap blocking JDBC calls in `withContext(Dispatchers.IO)` (or
+  any other dispatcher) inside repository or service code. JDBC runs inside
+  the `Transactor`'s bounded `Dispatchers.IO.limitedParallelism(maxPoolSize)`
+  view, set up once at construction; a second `withContext(Dispatchers.IO)`
+  on top would land the work on an *unbounded* slot, defeating the
+  connection-pool sizing. See the KDoc on `com.cwfgw.db.Transactor`.
+- **MUST NOT** declare repository methods `suspend`. The `Transactor` block
+  is non-suspending by contract; a `suspend` repo method either can't be
+  called from inside the block, or — if called — would suspend while holding
+  a pooled JDBC connection (the failure mode the bounded dispatcher exists
+  to prevent).
 - **MUST NOT** capture a `DSLContext` in a repository constructor or pass one
   through as a method argument. Repositories declare every method with
   `context(ctx: TransactionContext)` and read the DSL via `ctx.dsl`. The
   no-arg factory shape is `fun XRepository(): XRepository = JooqXRepository()`.
 - **MUST** capture a `com.cwfgw.db.Transactor` in services that touch
-  repositories. Wrap reads in `tx.read { repository.x(...) }` and writes in
-  `tx.update { repository.x(...) }`. `Transactor.read` opens a
-  `REPEATABLE READ READ ONLY` transaction so callers get a consistent
-  snapshot; `Transactor.update` is the read-write counterpart.
+  repositories. Pick the entry point by the work's shape:
+  - `tx.get { repository.x(...) }` — single-statement read, no `BEGIN`/`COMMIT`
+    round-trip. The right tool for the bulk of `findById` / `findAll` calls
+    that don't coordinate with sibling reads.
+  - `tx.read { repository.x(...); repository.y(...) }` — multiple reads that
+    need to agree on a `REPEATABLE READ READ ONLY` snapshot.
+  - `tx.update { ... }` — every write path (default-isolation read/write,
+    atomic on normal return, rolled back on throw).
+- **MUST NOT** suspend inside a `tx.get` / `tx.read` / `tx.update` block. The
+  block is not `suspend` and the closure parks one thread on a pooled JDBC
+  connection — suspending mid-block would park the dispatcher slot
+  indefinitely. Compose `suspend` work *around* the entry point, never
+  inside it.
+- **MUST** push list filters into the repository query as a conditional
+  `WHERE`, never fetch-then-`filter` over the returned list in a service or
+  route. An in-memory filter can't be index-backed, scans rows the caller
+  then discards, and isn't testable at the query layer. Carry the predicates
+  in a small typed filter object threaded route → service → repository; a
+  new filter dimension extends that type and adds one condition in the
+  repository, not a `.filter { }` at a call site. Generalize into a shared
+  filter/criteria abstraction only when a second domain needs the same shape —
+  not on the first filter.
+- **MUST** enforce a data-integrity invariant in the schema — an FK or CHECK —
+  and keep the app guard on top of it, returning a typed error rather than
+  catching the database exception. A guard protects one code path; the
+  constraint protects every one.
+- **MUST NOT** edit a landed migration, comments included. Flyway validates
+  checksums on migrate, so every database holding that version refuses to
+  boot, and `PostgresHarness` builds a fresh one each run, so no test sees it.
 
 #### Cross-repo flows (transactional consistency)
 
@@ -405,16 +478,54 @@ reference shape: take the relevant repositories as constructor parameters
 alongside any services used for non-transactional work, and run the whole
 gather + write sequence inside one `tx.update`.
 
+#### Combining data across repositories (reads)
+
+The read-side dual of cross-repo flows. A read that combines related rows —
+a parent with its children, an entity with its 1:1 satellites — splits
+along one line: **assembly belongs in the database; the business decision
+belongs in the application layer.**
+
+- **MUST** assemble related rows in a single query — a join returning a
+  bundled domain type — rather than a list read followed by a per-row point
+  read. The latter is the N+1 anti-pattern: `1 + kN` round trips for N rows
+  with k satellites each fetched separately. The repository owns the join
+  and returns the assembled bundle; the jOOQ stays in the repository.
+  `TeamRepository.getRosterView` is the reference shape — one join over
+  `team_rosters`, `teams` and `golfers` returning `List<RosterViewTeam>`,
+  instead of `findBySeason` then a per-team `getRoster` and a per-pick
+  golfer lookup.
+- **MUST NOT** push a *business decision* into SQL merely because it could
+  be expressed there. A rule that classifies or annotates rows — "what does
+  this finish pay once the tie is split" — stays in the application layer as
+  a pure, deterministic function over the assembled data, so it is unit /
+  property-testable and explicit. `PayoutTable.tieSplitPayout` is the
+  reference shape: pure payout math the service maps over the rows it has
+  read. Encoding it in a `WHERE` would also discard the rows an *annotating*
+  read must keep (e.g. the finishes outside the payout zone, which pay
+  zero).
+- This refines the "push list filters into the `WHERE`" rule above: a
+  **filter that narrows a result set** is set work → push it to SQL; a
+  **decision that classifies or annotates each row** is business logic →
+  keep it in the app. The join avoids N+1; the pure function keeps a
+  testable rule out of SQL (and a genuine narrowing filter still belongs in
+  the `WHERE`, never a fetch-then-`filter`).
+
+The seam: the repository answers "here is the data for this scope" in one
+round trip; the service / domain answers "given this input, what does it
+mean."
+
 ### kotlinx.serialization
 
-- **MUST** annotate domain data classes with `@Serializable` at the point of
-  declaration.
+- **MUST** annotate a type with `@Serializable` at its declaration when it is
+  read or written as JSON — a JSONB column, the HTTP wire — and not
+  otherwise: a plain domain data class fails `call.respond` rather than
+  reaching a client.
 - **MUST** use `@SerialName` when the Kotlin property name and JSON field
   name diverge. Never rely on accidental matching.
 - **MUST** configure `JsonClassDiscriminator` deliberately for sealed
   hierarchies exposed over the wire. Document the discriminator in a comment.
 - **SHOULD** put custom `KSerializer` implementations in a dedicated package
-  (e.g., `com.app.serialization`).
+  (e.g., `com.cwfgw.serialization`).
 - **MUST NOT** use `JsonObject` / `JsonElement` in production code paths.
   Define a proper schema.
 
@@ -431,14 +542,37 @@ gather + write sequence inside one `tx.update`.
 - **SHOULD** name tests as full sentences describing scenario and expected
   outcome: `"returns empty list when no players are active"`. Backticks are
   acceptable.
+- **MUST** use the shared `postgresHarness()` for repository specs and fake
+  repos for service / route specs. The production repository impl is the
+  private `JooqXRepository` class inside `XRepository.kt`; tests never new
+  it up directly.
+- **MUST** keep fixture / seed helpers in the shared `testing/` package, never
+  as per-spec helpers. "Seed a league", "seed a user", "authenticate" and the
+  like belong to one canonical home (the login helpers `authenticatedApiTest` /
+  `regularUserApiTest` in `testing/ApiTest.kt`) so every spec seeds the same
+  shape with the same defaults. A spec that needs a variation passes arguments
+  to the shared helper; it does not fork its own near-duplicate. Service-level
+  unit tests that seed a bare `FakeUserRepository` (no `ApiFixture`) are a
+  distinct substrate and may carry their own small seed helper — but anything
+  seeding through `ApiFixture` uses the shared one.
+- **MUST** make every fixture helper a top-level **extension** on the fixture
+  (`fun ApiFixture.seedX(...)`), never a **member** on the fixture class.
+  Kotlin resolves a member over an extension of the same name silently —
+  members shadow extensions — so a member seed helper can mask a per-spec
+  extension with no compile error, seeding different state than the spec
+  expects. Keeping *all* seed helpers extensions removes the asymmetry: two
+  extensions of the same name can only collide via an explicit, visible import,
+  not a silent member win.
 
 ---
 
 ## Code Organization
 
 - **MUST** organize by feature/domain, not by technical layer.
-  `com.app.players`, `com.app.scoring`, `com.app.drafts` — each containing
-  its own types, routes, services, and repositories.
+  `com.cwfgw.golfers`, `com.cwfgw.scoring`, `com.cwfgw.drafts` — each
+  containing its own types, routes, services, and repositories.
+- **MUST NOT** create subpackages within a domain (`teams/routes/`,
+  `teams/services/`, `teams/repos/`). The layout is flat by domain.
 - **SHOULD** keep one top-level declaration per file for non-trivial types.
   Small related types (sealed hierarchy + variants) may share a file.
 - **SHOULD** use `internal` visibility liberally within a module.
@@ -477,6 +611,23 @@ gather + write sequence inside one `tx.update`.
 
 - **MUST** explicitly declare return types on all public functions. Type
   inference is fine for local `val`s; it is not fine for public API.
+
+  **Exception — `Unit`.** A `Unit`-returning function with a **block body**
+  must *not* write `: Unit`; ktlint's `standard:no-unit-return` fails the
+  build on it. Annotate only where the language would otherwise say something
+  different:
+
+  ```kotlin
+  // RIGHT — abstract declaration, no body: state the contract
+  fun put(key: String, value: String, expiresAt: Instant): Unit
+
+  // RIGHT — expression body over a Nothing-returning call: without `: Unit`
+  // the inferred return type is Nothing, not Unit
+  override fun put(key: String, ...): Unit = error("read-only cache")
+
+  // WRONG — block body already returns Unit; ktlint rejects the annotation
+  override fun put(key: String, ...): Unit { ... }
+  ```
 - **MUST** reference types and functions by their short name with an
   `import` at the top of the file. No fully-qualified names inline:
 
@@ -508,13 +659,24 @@ gather + write sequence inside one `tx.update`.
 - **MUST** use version catalogs (`libs.versions.toml`) for dependency
   management. No hardcoded versions in build files.
 - **MUST** configure ktlint and detekt to fail the build on violations, not
-  just warn in the IDE.
-- **MUST** use `./gradlew check` (not `./gradlew test`) as the verification
-  gate before committing. `check` aggregates tests, ktlint, detekt, and
-  coverage; `test` alone skips lint. The `test` task is wired to depend on
-  `ktlintCheck` and `detekt` so running tests also runs lint, but `check`
-  remains the canonical full verification command.
+  just warn in the IDE. The `test` task is wired to depend on `ktlintCheck`
+  and `detekt`, so running backend tests also runs backend lint — but the
+  canonical repo-wide gate is `./gradlew check --rerun-tasks`, not
+  `./gradlew test`. See root [`.claude/CLAUDE.md`](../.claude/CLAUDE.md) →
+  Verification.
 - **SHOULD** enable explicit API mode for library modules.
+- **MAY** narrow a backend run to one spec, or to one test inside it, with
+  Kotest's own filters:
+
+  ```sh
+  ./gradlew test --rerun-tasks \
+    -Dkotest.filter.specs='*PayoutTableSpec*' \
+    -Dkotest.filter.tests='*two-way tie*'
+  ```
+
+  `build.gradle.kts` forwards these two properties explicitly; a new module
+  with its own `Test` task has to carry the forward too.
+- **MUST NOT** read a filtered run as a gate.
 
 ---
 
