@@ -1,6 +1,7 @@
 import type {
   ReportCell,
   ReportSideBetRound,
+  ReportSideBetRules,
   ReportTeamColumn,
   WeeklyReport,
 } from '@/shared/api/types';
@@ -38,11 +39,20 @@ export function sideBetWinnersByRound(
   for (const entry of sideBetDetail) {
     const winners = new Set<string>();
     for (const team of entry.teams) {
-      if (team.payout > 0) winners.add(team.teamId);
+      if (team.outcome === 'won') winners.add(team.teamId);
     }
     result.set(entry.round, winners);
   }
   return result;
+}
+
+export function sideBetAmountByRound(rules: ReportSideBetRules | null): Map<number, number> {
+  if (!rules) return new Map();
+  return new Map(rules.rounds.map((round) => [round, rules.amountPerTeam]));
+}
+
+export function sideBetRowLabel(rules: ReportSideBetRules | null): string {
+  return rules ? `ROWS ${rules.rounds.join('-')}` : 'SIDE BETS';
 }
 
 export interface WeeklySummary {

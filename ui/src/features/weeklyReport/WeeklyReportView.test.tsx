@@ -2,7 +2,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import WeeklyReportView from './WeeklyReportView';
-import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
+import type {
+  ReportCell,
+  ReportSideBetRules,
+  ReportSideBetTeamEntry,
+  ReportTeamColumn,
+  SideBetOutcome,
+  WeeklyReport,
+} from '@/shared/api/types';
 
 function row(round: number, overrides: Partial<ReportCell> = {}): ReportCell {
   return {
@@ -53,12 +60,31 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     },
     teams: [team()],
     undraftedTopTens: [],
+    sideBetRules: null,
     sideBetDetail: [],
     standingsOrder: [],
     live: false,
     liveLeaderboard: [],
     ...overrides,
   };
+}
+
+const TWENTY_ON_ROUNDS_TWO_AND_THREE: ReportSideBetRules = { amountPerTeam: 20, rounds: [2, 3] };
+
+function sideBetEntry(
+  teamId: string,
+  payout: number,
+  outcome: SideBetOutcome | null,
+): ReportSideBetTeamEntry {
+  return { teamId, teamName: teamId, golferName: 'Golfer', cumulativeEarnings: 0, payout, outcome };
+}
+
+function roundRow(round: number): HTMLElement {
+  const found = screen
+    .getAllByRole('row')
+    .find((r) => within(r).queryAllByRole('cell')[0]?.textContent?.startsWith(`${round}`));
+  if (!found) throw new Error(`no row for round ${round}`);
+  return found;
 }
 
 describe('WeeklyReportView', () => {
@@ -91,16 +117,50 @@ describe('WeeklyReportView', () => {
     expect(screen.getByText('Golfer 8')).toBeInTheDocument();
   });
 
-  it('renders the summary rows (TOP TENS / WEEKLY / PREVIOUS / SUBTOTAL / ROWS 5-6-7-8 / TOTAL CASH)', () => {
-    render(<WeeklyReportView report={report()} />);
+  it('renders the summary rows (TOP TENS / WEEKLY / PREVIOUS / SUBTOTAL / side bets / TOTAL CASH)', () => {
+    render(<WeeklyReportView report={report({ sideBetRules: TWENTY_ON_ROUNDS_TWO_AND_THREE })} />);
     expect(screen.getByText('TOP TENS')).toBeInTheDocument();
     expect(screen.getByText('**WEEKLY')).toBeInTheDocument();
     expect(screen.getByText('PREVIOUS')).toBeInTheDocument();
     expect(screen.getByText('SUBTOTAL')).toBeInTheDocument();
-    expect(screen.getByText('ROWS 5-6-7-8')).toBeInTheDocument();
+    expect(screen.getByText('ROWS 2-3')).toBeInTheDocument();
     // TOTAL CASH cell content is split by <br> so assert via row contents
     const table = screen.getByRole('table');
     expect(table).toHaveTextContent('TOTALCASH');
+  });
+
+  it("shows the season's own side-bet amount beside its rounds and beside no other", () => {
+    render(<WeeklyReportView report={report({ sideBetRules: TWENTY_ON_ROUNDS_TWO_AND_THREE })} />);
+    expect(screen.getAllByText('($20.00)')).toHaveLength(2);
+    expect(within(roundRow(2)).getByText('($20.00)')).toBeInTheDocument();
+    expect(within(roundRow(3)).getByText('($20.00)')).toBeInTheDocument();
+    expect(within(roundRow(5)).queryByText(/\(\$/)).not.toBeInTheDocument();
+  });
+
+  it('shows no amount beside any round and a totals row naming none for a season without side bets', () => {
+    render(<WeeklyReportView report={report({ sideBetRules: null, sideBetDetail: [] })} />);
+    expect(screen.queryByText(/^\(\$/)).not.toBeInTheDocument();
+    expect(screen.getByText('SIDE BETS')).toBeInTheDocument();
+    expect(screen.queryByText(/^ROWS/)).not.toBeInTheDocument();
+  });
+
+  it('highlights the cell of every team the server marked a winner, a round they all tie included', () => {
+    const tiedRoundTwo = report({
+      teams: [team({ teamId: 't-1' }), team({ teamId: 't-2', teamName: 'Birdies' })],
+      sideBetRules: TWENTY_ON_ROUNDS_TWO_AND_THREE,
+      sideBetDetail: [
+        { round: 2, teams: [sideBetEntry('t-1', 0, 'won'), sideBetEntry('t-2', 0, 'won')] },
+        { round: 3, teams: [sideBetEntry('t-1', 20, 'won'), sideBetEntry('t-2', -20, 'lost')] },
+      ],
+    });
+    render(<WeeklyReportView report={tiedRoundTwo} />);
+
+    const [, acesTwo, birdiesTwo] = within(roundRow(2)).getAllByRole('cell');
+    expect(acesTwo).toHaveClass('bg-red-800');
+    expect(birdiesTwo).toHaveClass('bg-red-800');
+    const [, acesThree, birdiesThree] = within(roundRow(3)).getAllByRole('cell');
+    expect(acesThree).toHaveClass('bg-red-800');
+    expect(birdiesThree).not.toHaveClass('bg-red-800');
   });
 
   it('flips the header row label when rendering the season total', () => {

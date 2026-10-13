@@ -22,6 +22,7 @@ vi.mock('@/shared/api/client', () => ({
       },
       teams: [],
       undraftedTopTens: [],
+      sideBetRules: null,
       sideBetDetail: [],
       standingsOrder: [],
       live: false,

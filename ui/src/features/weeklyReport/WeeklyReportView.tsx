@@ -6,6 +6,8 @@ import {
   isSeasonReport,
   roundCellBg,
   roundTextColor,
+  sideBetAmountByRound,
+  sideBetRowLabel,
   sideBetWinnersByRound,
   signTextClass,
   summarizeWeeklyReport,
@@ -135,6 +137,7 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
   const seasonMode = isSeasonReport(report);
   const showSeasonFooter = !seasonMode;
   const winnersByRound = sideBetWinnersByRound(sideBetDetail);
+  const sideBetAmounts = sideBetAmountByRound(report.sideBetRules);
   const summary = summarizeWeeklyReport(report);
   const teamsByRound = teams.map((t) => ({ team: t, cells: teamCellsByRound(t) }));
 
@@ -186,10 +189,14 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
           <tbody>
             {ROUNDS.map((round) => {
               const winners = winnersByRound.get(round) ?? new Set<string>();
+              const sideBetAmount = sideBetAmounts.get(round);
               return (
                 <tr key={round} className="bg-gray-800 hover:bg-gray-800/80">
                   <td className="border border-gray-700 px-1 py-1 text-center font-bold text-gray-400 sticky left-0 z-10 bg-gray-800">
-                    {round}
+                    <div>{round}</div>
+                    {sideBetAmount === undefined ? null : (
+                      <div className="text-xs font-normal">({formatMoney(sideBetAmount)})</div>
+                    )}
                   </td>
                   {teamsByRound.map(({ team, cells }) => (
                     <RoundCell
@@ -258,7 +265,7 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
 
             <SummaryRow
               teams={teams}
-              label="ROWS 5-6-7-8"
+              label={sideBetRowLabel(report.sideBetRules)}
               rowClass={subRow}
               borderClass={subBorder}
               labelBgClass="bg-gray-800"
