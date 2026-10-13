@@ -317,7 +317,8 @@ Rules:
 
 #### HTTP boundary: errors and parameter parsing
 
-- **MUST** throw `DomainError.NotFound` / `Validation` / `Conflict`
+- **MUST** throw `DomainError.NotFound` / `Validation` / `Conflict` /
+  `BadGateway` / `Unauthorized` / `Forbidden`
   (`com.cwfgw.http.DomainError`) from routes — never hand-write
   `call.respond(HttpStatusCode.X)` for error cases. `installErrorHandling()`
   is the canonical sink that maps each variant to its status plus a JSON
