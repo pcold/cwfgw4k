@@ -157,7 +157,7 @@ class ApiFixture {
     var userRepository: UserRepository = FakeUserRepository()
     var authService: AuthService = AuthService(userRepository, transactor, cost = TEST_BCRYPT_COST)
     var requestCache: RequestCache =
-        RequestCache(FakeCacheRepository(), transactor, defaultTtl = Duration.ofMinutes(5))
+        RequestCache(FakeCacheRepository(), transactor, TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
     var authSetup: AuthSetup =
         AuthSetup(
             sessionSecret = TEST_SESSION_SECRET.toByteArray(),
@@ -167,6 +167,7 @@ class ApiFixture {
 }
 
 private const val TEST_BCRYPT_COST = 4
+private const val TEST_REVISION = "api-test"
 private const val TEST_SESSION_MAX_AGE = 3_600L
 private const val TEST_SESSION_SECRET = "test-only-session-secret-not-used-in-prod"
 

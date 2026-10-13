@@ -47,11 +47,14 @@ data class AuthConfig(
  * default expiry for newly-stored entries; routes can pass an explicit TTL
  * override per call. [sweepIntervalSeconds] controls how often the
  * background coroutine deletes expired rows; setting it to TTL keeps the
- * table at most ~one TTL window of stale rows.
+ * table at most ~one TTL window of stale rows. [revision] names the running
+ * build and joins every cache key. Only Cloud Run supplies one per deploy;
+ * elsewhere every build shares the default and can read another's entries.
  */
 data class CacheConfig(
     val defaultTtlSeconds: Long,
     val sweepIntervalSeconds: PositiveSeconds,
+    val revision: String,
 )
 
 /**

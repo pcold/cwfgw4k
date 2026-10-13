@@ -10,8 +10,8 @@ import java.time.ZoneOffset
 
 /**
  * Persistent key/value cache backed by an UNLOGGED Postgres table. The
- * intended use is HTTP GET response caching keyed by full request URI
- * (`call.request.uri`) and valued by the JSON-serialized response body.
+ * intended use is HTTP GET response caching keyed by the serving revision
+ * and the full request URI, and valued by the JSON-serialized response body.
  *
  * Pure-TTL semantics: [get] only returns rows whose `expires_at > now()`,
  * so consumers always see fresh-or-nothing. [deleteExpired] is a periodic
@@ -24,8 +24,8 @@ import java.time.ZoneOffset
  * This is fine for our consumers; flag it if a future caller relies on
  * exact-byte equivalence (e.g. ETag-based caching).
  *
- * The interface stays free of HTTP concerns; the routing layer's wrapper
- * builds keys from the request URI.
+ * The interface stays free of HTTP concerns. [RequestCache] builds every key
+ * and must stay the only caller: a key built anywhere else carries no revision.
  */
 interface CacheRepository {
     /** Returns the JSON value if present and not expired, else null. */

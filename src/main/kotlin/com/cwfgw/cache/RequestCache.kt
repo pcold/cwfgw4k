@@ -19,8 +19,8 @@ private val log = KotlinLogging.logger {}
 
 /**
  * Read-through cache for HTTP GET responses. Routes opt in by wrapping the
- * handler body in [cachedRespond], which builds a key from the request URI
- * (path + query string), looks up the cached JSON body, and on miss
+ * handler body in [cachedRespond], which hands over the request URI (path +
+ * query string) as the key, looks up the cached JSON body, and on miss
  * delegates to the handler — serializing and storing the result before
  * sending it.
  *
@@ -30,6 +30,10 @@ private val log = KotlinLogging.logger {}
  * (see App.kt), not on every read. Mutations (POST / PUT / DELETE) do not
  * invalidate cache entries — the [defaultTtl] window is the maximum
  * staleness consumers can see.
+ *
+ * A deploy does invalidate: [revision] prefixes every stored key, so a body
+ * one revision encoded is never served by another. Not a table clear at
+ * boot — the instances of an overlapping rollout would empty each other.
  *
  * Auth-gated GETs that return user-specific data must NOT use this wrapper:
  * the cache key carries no user identity, so two sessions hitting the same
@@ -44,6 +48,7 @@ private val log = KotlinLogging.logger {}
 class RequestCache(
     private val repository: CacheRepository,
     private val tx: Transactor,
+    private val revision: String,
     private val defaultTtl: Duration,
     private val clock: Clock = Clock.systemUTC(),
 ) {
@@ -55,7 +60,9 @@ class RequestCache(
     private val inFlight = ConcurrentHashMap<String, CompletableDeferred<String>>()
 
     /**
-     * Cache-aside fetch keyed by [key]. Single-flight per key:
+     * Cache-aside fetch keyed by [revision] and [key] — joined here, the only
+     * function that hands [repository] a key, so no caller can skip the
+     * revision. Single-flight per key:
      *  1. `tx.get` checks the Postgres cache. Auto-commit single-statement
      *     read; connection held only for the SELECT itself.
      *  2. On miss, try to claim the in-flight slot for [key] via an atomic
@@ -83,14 +90,15 @@ class RequestCache(
         ttl: Duration = defaultTtl,
         fetch: suspend () -> String,
     ): String {
-        val hit = tx.get { repository.get(key) }
+        val storedKey = versioned(key)
+        val hit = tx.get { repository.get(storedKey) }
         if (hit != null) {
             log.info { "cwfgw4k.cache event=hit route=$routeTemplate" }
             return hit
         }
 
         val ours = CompletableDeferred<String>()
-        val existing = inFlight.putIfAbsent(key, ours)
+        val existing = inFlight.putIfAbsent(storedKey, ours)
         if (existing != null) {
             log.info { "cwfgw4k.cache event=coalesced route=$routeTemplate" }
             return existing.await()
@@ -116,7 +124,7 @@ class RequestCache(
                 "cwfgw4k.cache event=fetch-exit route=$routeTemplate " +
                     "duration_ms=${System.currentTimeMillis() - fetchStarted}"
             }
-            tx.update { repository.put(key, fresh, clock.instant().plus(ttl)) }
+            tx.update { repository.put(storedKey, fresh, clock.instant().plus(ttl)) }
             log.info { "cwfgw4k.cache event=put route=$routeTemplate ttl_seconds=${ttl.seconds}" }
             ours.complete(fresh)
             return fresh
@@ -132,9 +140,13 @@ class RequestCache(
             // Atomic remove only if our deferred is still the registered one,
             // so a same-key request that arrives after we complete but before
             // we clean up doesn't get a stale stub.
-            inFlight.remove(key, ours)
+            inFlight.remove(storedKey, ours)
         }
     }
+
+    // A space, because a request URI cannot hold one: the last space in a stored
+    // key always ends the revision, whatever characters the revision has.
+    private fun versioned(key: String): String = "$revision $key"
 
     /** Background-sweep entry point. Logs how many rows were deleted for dashboard tracking. */
     suspend fun deleteExpired(): Int {
@@ -145,9 +157,9 @@ class RequestCache(
 }
 
 /**
- * Route-handler helper: caches the JSON response body keyed by the call's
- * full request URI (path + query), using [cache] and the optional [ttl]
- * override. The handler body produces a serializable [T]; the cache stores
+ * Route-handler helper: caches the JSON response body keyed by [cache]'s
+ * revision and the call's full request URI (path + query), with the optional
+ * [ttl] override. The handler body produces a serializable [T]; the cache stores
  * its JSON bytes. On a hit no serializer runs.
  *
  * Uses [appJson] so the cached bytes match what Ktor's
