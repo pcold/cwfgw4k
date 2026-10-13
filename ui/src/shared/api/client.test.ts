@@ -4,6 +4,11 @@ import { ApiError, api, camelizeKeys, snakeifyKeys } from './client';
 
 type FetchMock = Mock<typeof fetch>;
 
+function apiError(caught: unknown): ApiError {
+  if (!(caught instanceof ApiError)) throw new Error(`Expected an ApiError, but caught ${String(caught)}.`);
+  return caught;
+}
+
 function requestInit(call: Parameters<typeof fetch>): RequestInit {
   const init = call[1];
   if (!init) throw new Error('fetch was called with a URL and no RequestInit.');
@@ -164,7 +169,7 @@ describe('api client', () => {
     });
     const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/seasons');
-    const body = JSON.parse(String(requestInit(call).body)) as Record<string, unknown>;
+    const body: unknown = JSON.parse(String(requestInit(call).body));
     expect(body).toEqual({
       league_id: 'lg-1',
       name: 'Spring',
@@ -191,8 +196,8 @@ describe('api client', () => {
       (e: unknown) => e,
     );
     expect(err).toBeInstanceOf(ApiError);
-    expect((err as ApiError).message).toBe('Bad request');
-    expect((err as ApiError).status).toBe(400);
+    expect(apiError(err).message).toBe('Bad request');
+    expect(apiError(err).status).toBe(400);
   });
 
   it('login() posts credentials and returns the User from the body', async () => {
@@ -255,7 +260,7 @@ describe('api client', () => {
       (e: unknown) => e,
     );
     expect(err).toBeInstanceOf(ApiError);
-    expect((err as ApiError).status).toBe(500);
+    expect(apiError(err).status).toBe(500);
   });
 
   it('logout() POSTs and tolerates an empty 204 response', async () => {
@@ -323,8 +328,8 @@ describe('api client', () => {
       (e: unknown) => e,
     );
     expect(err).toBeInstanceOf(ApiError);
-    expect((err as ApiError).status).toBe(409);
-    expect((err as ApiError).message).toBe('cannot edit completed');
+    expect(apiError(err).status).toBe(409);
+    expect(apiError(err).message).toBe('cannot edit completed');
   });
 
   it('previewSeasonSchedule() POSTs the date range with the season in the path', async () => {
@@ -384,7 +389,7 @@ describe('api client', () => {
       () => null,
       (e: unknown) => e,
     );
-    expect((err as ApiError).message).toBe('header invalid');
+    expect(apiError(err).message).toBe('header invalid');
   });
 
   it('confirmRoster() POSTs a snake_case envelope including the discriminated assignment', async () => {
@@ -475,8 +480,8 @@ describe('api client', () => {
       () => null,
       (e: unknown) => e,
     );
-    expect((err as ApiError).status).toBe(409);
-    expect((err as ApiError).message).toBe('season has tournaments');
+    expect(apiError(err).status).toBe(409);
+    expect(apiError(err).message).toBe('season has tournaments');
   });
 
   it('deleteSeason() falls back to the status line when the error body is not JSON', async () => {
@@ -485,7 +490,7 @@ describe('api client', () => {
       () => null,
       (e: unknown) => e,
     );
-    expect((err as ApiError).message).toBe('500 Boom');
+    expect(apiError(err).message).toBe('500 Boom');
   });
 
   it('golfers() requests inactive too and adds the search filter when present', async () => {
@@ -538,7 +543,7 @@ describe('api client', () => {
     const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/admin/tournaments/tn-1/player-overrides');
     expect(requestInit(call).method).toBe('POST');
-    const body = JSON.parse(String(requestInit(call).body)) as Record<string, unknown>;
+    const body: unknown = JSON.parse(String(requestInit(call).body));
     expect(body).toEqual({ espn_competitor_id: 'abc', golfer_id: 'g-1' });
     expect(result).toEqual({
       tournamentId: 'tn-1',
@@ -572,7 +577,7 @@ describe('api client', () => {
     const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/golfers');
     expect(requestInit(call).method).toBe('POST');
-    const body = JSON.parse(String(requestInit(call).body)) as Record<string, unknown>;
+    const body: unknown = JSON.parse(String(requestInit(call).body));
     expect(body).toEqual({ first_name: 'Alex', last_name: 'Fitzpatrick' });
     expect(result.firstName).toBe('Alex');
     expect(result.pgaPlayerId).toBeNull();
