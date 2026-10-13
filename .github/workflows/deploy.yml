@@ -166,21 +166,21 @@ jobs:
             # 2 is margin, not a requirement: 1 has been correct since CWF-24
             # fixed the dispatcher starvation that wedged a single vCPU.
             "--cpu=2"
-            # Above DB_POOL on purpose: a request holds a connection only
-            # inside a Transactor block, not for its whole life. Cloud Run's
+            # Above DB_POOL on purpose: a request holds a connection for one
+            # Transactor block at a time, not for its whole life. Cloud Run's
             # default is 80.
             "--concurrency=20"
             # Scale to zero: the first request after idle pays a ~7s JVM cold
-            # start, where =1 costs ~$45/mo. The idle wedge that once justified
-            # =1 was fixed in 9d9043b; ops/load-test/soak.sh -m 0 checks for it.
+            # start, where =1 costs ~$45/mo. The JDBC timeouts in 9d9043b bound
+            # the idle wedge =1 was for; ops/load-test/soak.sh -m 0 checks for it.
             "--min-instances=0"
             # 10 × DB_POOL=15 is 150 of the 200 connections db-custom-1-3840
-            # allows; the rest is for psql, Flyway and Cloud SQL itself. If the
-            # tier shrinks, lower this or DB_POOL to stay 10 under its ceiling.
+            # allows; the rest is for psql and Cloud SQL itself. If the tier
+            # shrinks, lower this or DB_POOL to stay 10 under its ceiling.
             "--max-instances=10"
             # Below Cloud Run's 300s default so a wedged request frees its
-            # concurrency slot, and mid-transaction its pool slot, sooner. Not
-            # lower: a cold start plus a cache rebuild has to fit.
+            # concurrency slot sooner. Not lower: a cold start plus a cache
+            # rebuild has to fit.
             "--timeout=90"
           )
           gcloud run deploy "${SERVICE}" "${deploy_args[@]}"

@@ -13,9 +13,9 @@ import org.jooq.DSLContext
  */
 interface Transactor {
     /**
-     * Auto-commit: none of [read]'s `BEGIN` / `SET TRANSACTION` / `COMMIT`
-     * round-trips, and none of its snapshot — two statements in one block
-     * can disagree.
+     * Auto-commit per statement: it skips [read]'s `BEGIN` / `SET TRANSACTION`
+     * / `COMMIT` and has none of its snapshot, so two statements in one block
+     * can disagree and two writes are not atomic.
      */
     suspend fun <A> get(block: context(TransactionContext) () -> A): A
 
@@ -92,8 +92,8 @@ private class JooqTransactor(
         }
 
     /**
-     * `cwfgw4k.db.slow_tx` is the string `ops/alerts/cwfgw4k-5xx-rate.yaml`
-     * sends on-call to search the logs for; rename it there too.
+     * `ops/alerts/cwfgw4k-5xx-rate.yaml` and `ops/load-test/soak.sh` send a
+     * reader to search the logs for `cwfgw4k.db.slow_tx`; rename it there too.
      */
     private suspend inline fun <A> timed(
         kind: String,
