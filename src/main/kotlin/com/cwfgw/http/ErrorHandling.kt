@@ -24,9 +24,9 @@ import org.slf4j.LoggerFactory
 data class ErrorBody(val error: String)
 
 /**
- * Typed errors that surface as specific HTTP responses at the route boundary.
- * Throw one of these from a service or route to get the right status code
- * without each handler carrying its own try/catch.
+ * Thrown at the route boundary only, where [installErrorHandling] maps each
+ * variant to its status. A service returns `T?` or a `Result` over its own
+ * sealed error and the route bridges it: `src/CLAUDE.md` → Error Handling.
  */
 sealed class DomainError(message: String, cause: Throwable? = null) : RuntimeException(message, cause) {
     class NotFound(message: String, cause: Throwable? = null) : DomainError(message, cause)
