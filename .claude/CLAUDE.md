@@ -316,6 +316,30 @@ the record of that configuration.
 - **MUST NOT** merge a PR as an agent — no `gh pr merge`, with or without
   `--admin`. Stop at ready; a human merges.
 
+### Agent permissions
+
+`.claude/settings.json` carries the permission rules for this repo and is
+checked in so they are reviewed like code. Its `deny` list mechanizes the
+Iteration and Pushing rules above — force-push, `--amend`, and hard reset —
+because prose in this file only binds an agent that happens to have read it,
+and parallel subagents often have not.
+
+- **MUST NOT** add a bare-verb wildcard (`Bash(git *)`, `Bash(cd *)`) to
+  either settings file. A wildcard on a verb supersedes every narrower rule
+  beneath it, and the git one silently re-permits exactly what `deny`
+  forbids. Grant the specific subcommands instead.
+- **SHOULD** keep one-shot approvals out of the checked-in file. An entry
+  pinned to a single file and line range can never match again; enough of
+  them make the list unreadable, which is how a bare wildcard goes
+  unnoticed.
+- **MUST** write a path rule that reaches outside the clone (the worktree
+  root, the scratch directory) from `~/`, never from `//Users/<name>`. The
+  file is public and shared.
+
+The `deny` list matches the command string, so a flag in an unusual position
+can slip past it. It is a speed bump for the common shape; branch protection
+remains the guarantee.
+
 ---
 
 ## Verification
