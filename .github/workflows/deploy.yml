@@ -31,6 +31,10 @@ permissions:
 # One deploy at a time, and one that has started always finishes. A newer run
 # queued behind it replaces an older one still queued, so only the latest
 # commit waits.
+#
+# This orders deploys; it is not what holds one for approval. The `production`
+# environment does that, per run, so a run that takes another's place in the
+# queue still waits for its own approval.
 concurrency:
   group: deploy-production
   cancel-in-progress: false
@@ -149,7 +153,10 @@ jobs:
             "--project=${PROJECT_ID}"
             "--region=${REGION}"
             "--image=${IMAGE}"
-            "--add-cloudsql-instances=${sql_connection}"
+            # set, not add: like the secrets and env vars below it, each deploy
+            # states the whole list, so an instance dropped from here is
+            # dropped from the service.
+            "--set-cloudsql-instances=${sql_connection}"
             "--set-secrets=${secrets}"
             "--set-env-vars=${env_vars}"
             # Memory: 1Gi container with -Xmx512m in the Dockerfile leaves ~half
