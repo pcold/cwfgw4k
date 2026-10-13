@@ -1,0 +1,57 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__code-review-graph__get_minimal_context_tool",
+      "mcp__code-review-graph__detect_changes_tool",
+      "mcp__code-review-graph__get_review_context_tool",
+      "mcp__code-review-graph__query_graph_tool",
+      "mcp__code-review-graph__get_impact_radius_tool",
+      "mcp__code-review-graph__get_affected_flows_tool",
+      "mcp__code-review-graph__semantic_search_nodes_tool",
+      "mcp__code-review-graph__traverse_graph_tool",
+      "mcp__code-review-graph__get_architecture_overview_tool",
+      "mcp__code-review-graph__list_communities_tool",
+      "mcp__code-review-graph__get_community_tool",
+      "mcp__code-review-graph__list_graph_stats_tool",
+      "mcp__code-review-graph__list_flows_tool",
+      "mcp__code-review-graph__get_flow_tool",
+      "mcp__code-review-graph__find_large_functions_tool",
+      "mcp__code-review-graph__get_hub_nodes_tool",
+      "mcp__code-review-graph__get_bridge_nodes_tool",
+      "mcp__code-review-graph__get_knowledge_gaps_tool",
+      "mcp__code-review-graph__get_surprising_connections_tool",
+      "mcp__code-review-graph__get_suggested_questions_tool",
+      "mcp__code-review-graph__cross_repo_search_tool",
+      "mcp__code-review-graph__list_repos_tool",
+      "mcp__code-review-graph__get_wiki_page_tool",
+      "mcp__code-review-graph__get_docs_section_tool",
+      "mcp__code-review-graph__refactor_tool"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat >/dev/null || true; command -v code-review-graph >/dev/null 2>&1 || exit 0; git rev-parse --git-dir >/dev/null 2>&1 && code-review-graph update --skip-flows --repo \"$(git rev-parse --show-toplevel 2>/dev/null)\" || true",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat >/dev/null || true; command -v code-review-graph >/dev/null 2>&1 || exit 0; git rev-parse --git-dir >/dev/null 2>&1 && code-review-graph status --repo \"$(git rev-parse --show-toplevel 2>/dev/null)\" || echo 'Not a git repo, skipping'",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

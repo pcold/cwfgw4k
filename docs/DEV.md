@@ -86,3 +86,17 @@ GitHub Actions runs the same gate on every pull request and on `main` after a me
 - **By hand.** `gh workflow run deploy.yml` deploys the tip of `main`. Add `-f sha=<commit>` for an earlier commit; it must be on `main`.
 - **Rolling back.** The quickest way is to route traffic to the previous revision: `gcloud run services update-traffic cwfgw4k --region us-west1 --to-revisions <revision>=100`. Traffic then stays pinned there, so run the same command with `--to-latest` once a fixed revision is out.
 - **One-time setup.** `deploy/setup-github-deploy.sh` creates the service account and the Workload Identity Federation the workflow authenticates with, and prints the repository variables to set.
+
+## Code-review graph (for Claude Code sessions)
+
+The repo is wired for [code-review-graph](https://pypi.org/project/code-review-graph/), a local knowledge graph of the code that Claude Code queries for callers, callees, tests and the impact of a change. It is optional: every hook checks for the tool and does nothing when it is missing.
+
+```sh
+pipx install code-review-graph         # once per machine; the hooks call this binary
+code-review-graph build                # once per clone; about two seconds
+git config core.hooksPath .githooks    # once per clone
+```
+
+- `.mcp.json` starts the graph's MCP server for a Claude Code session through `uvx`, so [uv](https://docs.astral.sh/uv/) needs to be installed too. `.claude/settings.json` allows the server's read-only tools.
+- The same settings file keeps the graph current: it runs an incremental update after each edit and prints the graph's status at session start. `.githooks/pre-commit` updates it before a commit.
+- The graph lives in `.code-review-graph/`, which is gitignored. Delete the directory and rebuild if it ever looks wrong.

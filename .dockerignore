@@ -3,6 +3,7 @@
 .idea
 .vscode
 .kotlin
+.code-review-graph
 build/*
 !build/libs
 build/libs/*
