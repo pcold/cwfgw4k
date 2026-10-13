@@ -28,10 +28,14 @@ RUNTIME_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 # which rejects a grant that names it with "does not exist" or a permission
 # error rather than with anything that reads as a race. So every grant below
 # that names the new account goes through this.
+#
+# Exits the script, not just the function, when the grant never lands: every
+# grant here is required, and a deployer missing one fails later and less
+# legibly, in the middle of a deploy.
 grant_once_visible() {
   local grant="$1"; shift
   local output
-  for _ in $(seq 1 12); do
+  for _ in {1..12}; do
     if output="$("$@" 2>&1)"; then
       return 0
     fi
