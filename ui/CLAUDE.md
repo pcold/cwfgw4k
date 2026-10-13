@@ -16,6 +16,52 @@ Deviations from **SHOULD** rules require justification.
 
 ---
 
+## Where Logic Lives
+
+The UI is a display layer. The server decides every business rule: what a
+finish pays, how a tie splits it, who wins a side bet, where a team stands,
+what a roster upload proposes. The UI formats what the API returns, lays it
+out, and moves between it.
+
+This isn't a matter of taste. It's about which tests can reach the rule. A
+rule computed in the browser is checked only by Vitest, against fixtures
+written to match it. And a rule the server also enforces is two copies that
+drift. The drift shows up as a button that returns a 409, or a total that
+disagrees with the page beside it.
+
+- **MUST** take a derived business fact from the API rather than compute it
+  from the rows the API returned. The weekly report's `scope` is the shape to
+  copy: `WeeklyReportService.kt` decides each report's scope on the server, and
+  `isSeasonReport` in `weeklyReportModel.ts` only reads it.
+- **MUST NOT** copy a rule the server already enforces, such as a state
+  machine's legal moves or the guard a write checks. The copy is a defect even
+  while it agrees with the server.
+- **MUST** send typed facts over the wire and write the sentence in the UI.
+  Send `scope: 'season'`, not `"Season totals"`. The wording is display. The
+  fact under it isn't.
+- **MUST** plan a fix that lands in a UI derivation as a move of that
+  derivation to the server first. A patch to the browser's copy leaves the fix
+  where only Vitest can hold it.
+- **MUST NOT** answer a test gap in client-side logic with a browser driver.
+  The real gap is that the logic sits in the browser.
+
+What stays in the UI:
+
+- **Presentation.** Labels, tones, headings, and the sentence a typed fact is
+  written into. Order for convenience, like alphabetical, is the UI's. Order
+  that claims something, like the standings, is the server's.
+- **View state and navigation.** The selected league and season, the live
+  overlay toggle, which golfer's history is open.
+- **Reading input.** Parsing a typed field, like the side-bet rounds an admin
+  enters, or checking a field's shape before submit so the user doesn't wait
+  on a round trip. That check is a courtesy: the server still refuses whatever
+  it must.
+- **Sequencing calls the user drives**, such as a roster upload's preview and
+  confirm, provided each step's decision comes from the server. A write whose
+  meaning depends on two requests both landing belongs in one server write.
+
+---
+
 ## TypeScript Rules
 
 - **MUST NOT** use `any`. Use `unknown` and narrow with a type guard, or
