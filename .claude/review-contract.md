@@ -167,6 +167,8 @@ These are the most-often-missed patterns. Grep / scan for each.
 - `var` in production code (not test fixtures, not tight loops with
   justification).
 - `var` properties on data classes (always wrong).
+- A private-constructor `data class` without `@ConsistentCopyVisibility`
+  (src/CLAUDE.md → Data Classes and Sealed Hierarchies).
 - `return` from inside a non-inline lambda (non-local return).
 - Missing KDoc on new public types/functions that cross module boundaries.
 - Embedded type names in identifiers (e.g. `employeeList: List<Employee>`,
@@ -179,6 +181,8 @@ These are the most-often-missed patterns. Grep / scan for each.
 - `lateinit` outside framework-imposed initialization.
 - `@Throws`, `arrow.*` imports, `kotlin.Result<T>` as a return type, `String`
   or `Throwable` as the error type in `Result<T, E>`.
+- Failures told apart by message text instead of error type, or a business
+  rule refused as `Validation(message)` (src/CLAUDE.md → Error Handling).
 - `JsonObject` / `JsonElement` in production code paths.
 - Positional booleans at call sites.
 - Space before colon in declarations.
@@ -191,6 +195,18 @@ These are the most-often-missed patterns. Grep / scan for each.
 - Services calling other services inside a `tx.read` / `tx.update` for flows
   that need read-then-write atomicity or one read snapshot (see "Cross-repo
   flows" in src/CLAUDE.md).
+- `withContext(Dispatchers.IO)`, or any other dispatcher, around a JDBC call
+  in repository or service code (src/CLAUDE.md → jOOQ).
+- A `.filter { }` in a service or route over a list a repository returned,
+  instead of a `WHERE` in the query (src/CLAUDE.md → jOOQ).
+- A list read followed by a per-row point read (N+1) instead of one join
+  (src/CLAUDE.md → Combining data across repositories (reads)).
+- A business decision — a rule classifying or annotating rows — encoded in SQL
+  (src/CLAUDE.md → Combining data across repositories (reads)).
+- A data-integrity invariant held by an app guard alone, with no FK or CHECK
+  under it (src/CLAUDE.md → jOOQ).
+- An edit to a landed migration, comments included: any `db/migration/` file
+  the diff modifies rather than adds (src/CLAUDE.md → jOOQ).
 - Domain ID types passed as raw UUID across service/repo/route boundaries
   (every domain ID is a `@JvmInline value class`).
 - Routes hand-writing `call.respond(HttpStatusCode.X)` for error cases instead
@@ -204,6 +220,8 @@ These are the most-often-missed patterns. Grep / scan for each.
   attached (root logger is INFO; DEBUG goes nowhere).
 - Subpackages within a domain (routes/, services/, repos/) — the package layout
   is flat by domain.
+- A per-spec seed helper over `ApiFixture`, or a fixture helper written as a
+  member instead of a top-level extension (src/CLAUDE.md → Kotest).
 
 **Frontend (TypeScript / React):**
 
@@ -229,6 +247,8 @@ These are the most-often-missed patterns. Grep / scan for each.
   `utils.ts` / `helpers.ts`.
 - Direct `fetch` in components instead of routing through
   `@/shared/api/client`.
+- A business fact derived in the UI from API rows, or a copy of a rule the
+  server enforces (ui/CLAUDE.md → Where Logic Lives).
 
 **Cross-cutting (root CLAUDE.md):**
 
