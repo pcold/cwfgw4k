@@ -77,7 +77,14 @@ export interface LiveLeaderboardEntry {
   totalStrokes?: number | null;
 }
 
+/**
+ * Set by the server on every report. Never infer it from `tournament`: its
+ * `status` is null on a season report, and no status value means "season".
+ */
+export type ReportScope = 'season' | 'tournament';
+
 export interface WeeklyReport {
+  scope: ReportScope;
   tournament: ReportTournamentInfo;
   teams: ReportTeamColumn[];
   undraftedTopTens: UndraftedGolfer[];

@@ -155,7 +155,7 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
               ? 'Season totals'
               : `${tournament.startDate ?? ''}${tournament.endDate ? ` – ${tournament.endDate}` : ''}`}
             {tournament.payoutMultiplier > 1 ? ` · ${tournament.payoutMultiplier}x payouts` : ''}
-            {tournament.status && tournament.status !== 'season' ? ` · ${tournament.status}` : ''}
+            {tournament.status ? ` · ${tournament.status}` : ''}
           </p>
         </div>
         {report.live ? (

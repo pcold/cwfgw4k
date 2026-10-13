@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
+import type {
+  ReportCell,
+  ReportScope,
+  ReportTeamColumn,
+  WeeklyReport,
+} from '@/shared/api/types';
 import {
   isSeasonReport,
   roundCellBg,
@@ -10,8 +15,9 @@ import {
   teamCellsByRound,
 } from './weeklyReportModel';
 
-function tournamentReport(status: string): WeeklyReport {
+function reportScoped(scope: ReportScope, status: string | null = null): WeeklyReport {
   return {
+    scope,
     tournament: {
       id: null,
       name: null,
@@ -60,12 +66,12 @@ describe('sideBetWinnersByRound', () => {
 
 describe('summarizeWeeklyReport', () => {
   it('returns zeros when there are no teams', () => {
-    const summary = summarizeWeeklyReport(tournamentReport('completed'));
+    const summary = summarizeWeeklyReport(reportScoped('tournament', 'completed'));
     expect(summary).toEqual({ totalWon: 0, totalLost: 0, net: 0 });
   });
 
   it('sums positive totalCash as won and negative as lost (zero-sum by design)', () => {
-    const report = tournamentReport('completed');
+    const report = reportScoped('tournament', 'completed');
     report.teams = [
       {
         teamId: 't-1',
@@ -105,12 +111,15 @@ describe('summarizeWeeklyReport', () => {
 });
 
 describe('isSeasonReport', () => {
-  it('returns true when tournament status is "season"', () => {
-    expect(isSeasonReport(tournamentReport('season'))).toBe(true);
+  it('returns true for a season-scoped report', () => {
+    expect(isSeasonReport(reportScoped('season'))).toBe(true);
   });
-  it('returns false for ordinary tournament statuses', () => {
-    expect(isSeasonReport(tournamentReport('completed'))).toBe(false);
-    expect(isSeasonReport(tournamentReport('in_progress'))).toBe(false);
+  it('returns false for a tournament-scoped report whatever its status', () => {
+    expect(isSeasonReport(reportScoped('tournament', 'completed'))).toBe(false);
+    expect(isSeasonReport(reportScoped('tournament', 'in_progress'))).toBe(false);
+  });
+  it('does not read a null tournament status as a season report', () => {
+    expect(isSeasonReport(reportScoped('tournament', null))).toBe(false);
   });
 });
 

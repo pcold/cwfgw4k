@@ -70,6 +70,7 @@ const activeTournament: Tournament = {
 
 function buildReport(name: string, tournamentId: string): WeeklyReport {
   return {
+    scope: 'tournament',
     tournament: {
       id: tournamentId,
       name,

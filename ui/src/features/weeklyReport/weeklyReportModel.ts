@@ -62,5 +62,5 @@ export function summarizeWeeklyReport(report: WeeklyReport): WeeklySummary {
 }
 
 export function isSeasonReport(report: WeeklyReport): boolean {
-  return report.tournament.status === 'season';
+  return report.scope === 'season';
 }

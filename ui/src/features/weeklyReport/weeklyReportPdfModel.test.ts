@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type {
   ReportCell,
+  ReportScope,
   ReportSideBetRound,
   ReportTeamColumn,
   Season,
@@ -29,19 +30,21 @@ const season: Season = {
 };
 
 function buildReport(overrides: {
-  status?: string;
+  scope?: ReportScope;
   week?: string | null;
   name?: string | null;
   sideBetDetail?: ReportSideBetRound[];
   teams?: ReportTeamColumn[];
 } = {}): WeeklyReport {
+  const scope = overrides.scope ?? 'tournament';
   return {
+    scope,
     tournament: {
       id: 'tn-1',
       name: overrides.name ?? 'Sample Open',
       startDate: '2026-04-16',
       endDate: '2026-04-19',
-      status: overrides.status ?? 'completed',
+      status: scope === 'season' ? null : 'completed',
       payoutMultiplier: 1,
       week: 'week' in overrides ? overrides.week ?? null : '1',
     },
@@ -192,7 +195,7 @@ describe('pdfFilename', () => {
   });
 
   it('uses "Season" as the suffix for an all-tournaments report', () => {
-    const report = buildReport({ status: 'season', week: null });
+    const report = buildReport({ scope: 'season', week: null });
     expect(pdfFilename(report, season)).toBe('2026SummerSeason.pdf');
   });
 
@@ -207,7 +210,7 @@ describe('pdfFilename', () => {
   });
 
   it('omits the year and season name when no season is known', () => {
-    const seasonReport = buildReport({ week: null, status: 'season' });
+    const seasonReport = buildReport({ week: null, scope: 'season' });
     expect(pdfFilename(seasonReport, null)).toBe('Season.pdf');
 
     const tournamentReport = buildReport({ week: '4' });

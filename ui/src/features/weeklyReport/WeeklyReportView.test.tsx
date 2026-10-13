@@ -41,6 +41,7 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
 
 function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
   return {
+    scope: 'tournament',
     tournament: {
       id: 't-1',
       name: 'The Players Championship',
@@ -104,12 +105,13 @@ describe('WeeklyReportView', () => {
 
   it('flips the header row label when rendering the season total', () => {
     const seasonReport = report({
+      scope: 'season',
       tournament: {
         id: null,
         name: 'All Tournaments',
         startDate: null,
         endDate: null,
-        status: 'season',
+        status: null,
         payoutMultiplier: 1,
         week: null,
       },
