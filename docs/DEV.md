@@ -62,6 +62,10 @@ Vite serves the UI at `http://localhost:5173` with hot module reload, proxying `
 
 Runs the full gate: backend tests + ktlint + detekt + Kover coverage verify + UI unit tests. This is the canonical command — `./gradlew test` skips lint, so don't trust it alone.
 
+GitHub Actions runs the same gate on every pull request and on `main` after a merge (`.github/workflows/check.yml`, job `gradle check`). It adds `--rerun-tasks`, because the build cache is on and a cached `:test` verifies nothing, and then asserts from the log that `:test` and `:detekt` really ran. A pull request that changes only `.md` files reports the check without running it.
+
+`scripts/setup-branch-protection.sh` records the protection `main` is meant to carry and applies it.
+
 ## Useful tasks
 
 | Task | Description |

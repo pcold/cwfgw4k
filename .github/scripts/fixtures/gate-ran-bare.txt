@@ -1,0 +1,19 @@
+> Task :checkKotlinGradlePluginConfigurationErrors
+> Task :alpha:compileKotlin
+> Task :alpha:classes UP-TO-DATE
+> Task :alpha:detekt
+> Task :alpha:compileTestKotlin
+> Task :alpha:testClasses
+> Task :alpha:test
+> Task :beta:compileKotlin
+> Task :beta:detekt
+> Task :beta:compileTestKotlin
+> Task :beta:test
+> Task :compileKotlin
+> Task :detekt
+> Task :processResources NO-SOURCE
+> Task :test
+> Task :check
+
+BUILD SUCCESSFUL in 6m 41s
+147 actionable tasks: 147 executed
