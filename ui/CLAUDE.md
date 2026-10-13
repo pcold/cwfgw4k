@@ -255,11 +255,12 @@ What stays in the UI:
   to gate the fetch instead.
 - **MUST NOT** spell a query-key root as a literal outside
   `src/shared/api/queryKeys.ts`, which sits beside the fetchers in
-  `client.ts`. A reader and every invalidation that targets it take the key
-  from the same `queryKeys` entry, and a new key spreads the wider key it
-  narrows. A literal that drifts still type-checks and the write still
-  succeeds; only the open page stays stale. `queryKeys.test.ts` pins each
-  root's value and gets a chain for every entity added.
+  `client.ts`, and the pin in `queryKeys.test.ts`. A reader and every
+  invalidation that targets it take the key from the same `queryKeys` entry,
+  and a new key spreads the wider key it narrows. A literal that drifts still
+  type-checks and the write still succeeds; only the open page stays stale.
+  The pin holds each key's value, so a new key gets an entry in its entity's
+  chain there.
 
 ---
 
