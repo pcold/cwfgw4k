@@ -15,7 +15,7 @@ ACCOUNT_EMAIL=$(jq -r '.oauthAccount.emailAddress // empty' ~/.claude.json 2>/de
 
 # Denominator is where auto-compact actually fires, not the model's raw window:
 # CLAUDE_CODE_AUTO_COMPACT_WINDOW caps it, so on a 1M model at a 200k setting the
-# raw window would read 8% full at the moment compaction is about to trigger.
+# raw window would read under 20% full when compaction is about to trigger.
 CONTEXT=$(echo "$input" | jq -r --arg cap "${CLAUDE_CODE_AUTO_COMPACT_WINDOW:-}" '
   .context_window
   | select(. != null and (.context_window_size // 0) > 0)

@@ -89,7 +89,7 @@ GitHub Actions runs the same gate on every pull request and on `main` after a me
 
 ## Claude Code settings
 
-`.claude/settings.json` is checked in, so a Claude Code session in a fresh clone behaves like one in any other. It applies once the folder is trusted. It sets:
+`.claude/settings.json` is checked in, so a Claude Code session in a fresh clone behaves like one in any other. The deny list applies at once; the rest applies once the folder is trusted. It sets:
 
 - **Permissions.** An allow list of the specific git, gh, npm and Gradle subcommands the workflow uses, so they run without a prompt, and a deny list for force-push, `--amend`, `reset --hard` and `clean -fd`. The path rules cover the worktree root `~/code/cwfgw4k-wt` that the `parallel-tickets` skill uses, sibling repos under `~/code` for reading, and the session scratch directory.
 - **Auto-compact at 200k tokens**, through `CLAUDE_CODE_AUTO_COMPACT_WINDOW`.
