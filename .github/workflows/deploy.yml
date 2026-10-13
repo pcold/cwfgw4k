@@ -1,0 +1,227 @@
+name: Deploy
+
+# Ships main to Cloud Run. Runs when the Check workflow has passed for a push to
+# main, and by hand for a commit main already holds.
+#
+# A workflow of its own rather than a job in check.yml: check.yml cancels its
+# in-progress run when a newer push arrives, and a deploy must never be cut off
+# half way.
+#
+# Authentication is Workload Identity Federation: GitHub mints an OIDC token for
+# the run and GCP exchanges it for a short-lived credential on the
+# github-deployer service account. No key exists to leak.
+# deploy/setup-github-deploy.sh creates the GCP side and prints the repository
+# variables read below.
+
+on:
+  workflow_run:
+    workflows: [Check]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Commit on main to deploy. Empty deploys the tip of main.
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+# One deploy at a time, and one that has started always finishes. A newer run
+# queued behind it replaces an older one still queued, so only the latest
+# commit waits.
+#
+# This orders deploys; it is not what holds one for approval. The `production`
+# environment does that, per run, so a run that takes another's place in the
+# queue still waits for its own approval.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy to Cloud Run
+    # `branches: [main]` matches the head branch NAME of the run that completed,
+    # and a fork's pull request can come from a branch called main. Only a push
+    # event is this repository's own main.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    # Where a required reviewer holds a deploy for approval; see
+    # deploy/setup-github-deploy.sh. With no reviewer set the deploy runs
+    # straight through.
+    environment: production
+    permissions:
+      contents: read
+      # To mint the OIDC token the federation exchanges.
+      id-token: write
+    timeout-minutes: 30
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      REGION: us-west1
+      SERVICE: cwfgw4k
+      IMAGE_REPO: cwfgw4k
+      SQL_INSTANCE: cwfgw4k-prod
+      DB_NAME: cwfgw4k
+      DB_USER: cwfgw4k
+      DB_SCHEMA: cwfgw4k
+    steps:
+      # Full history so the next step can ask whether main holds this commit.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || inputs.sha || github.sha }}
+          fetch-depth: 0
+
+      # A hand-run deploy can name any commit. Only one main already holds has
+      # been through the gate.
+      - name: Does main hold this commit?
+        id: target
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::$(git rev-parse HEAD) is not on main, so it is not deployed"
+            exit 1
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # 21 and not the runner's default: gradle/gradle-daemon-jvm.properties
+      # pins the daemon to it, and nothing here provisions a toolchain.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      # No `check`: this tree passing it is what started the run. The fat jar
+      # bundles the React UI.
+      - name: ./gradlew buildFatJar
+        run: ./gradlew buildFatJar --stacktrace
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+
+      # The hosted image ships the CLI. Left to its default the action downloads
+      # the latest SDK on every run; this only points the image's gcloud at
+      # `auth`'s credential.
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          skip_install: true
+
+      # Tagged with the commit so a revision names the code it runs and an
+      # earlier image can be redeployed by tag. `latest` stays for convenience.
+      - name: Build and push the image
+        id: image
+        env:
+          SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          image="${REGION}-docker.pkg.dev/${PROJECT_ID}/${IMAGE_REPO}/cwfgw4k"
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          docker build -t "${image}:${SHA}" -t "${image}:latest" .
+          docker push --all-tags "${image}"
+          echo "ref=${image}:${SHA}" >> "$GITHUB_OUTPUT"
+
+      # No --allow-unauthenticated: the service is already public and that IAM
+      # binding outlives revisions. Passing it would need roles/run.admin for
+      # the deployer instead of roles/run.developer.
+      - name: gcloud run deploy
+        env:
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: |
+          sql_connection="${PROJECT_ID}:${REGION}:${SQL_INSTANCE}"
+          # DB_JDBC_URL uses the Cloud SQL socket factory; the
+          # postgres-socket-factory dependency in build.gradle.kts is what makes
+          # that URL resolve.
+          jdbc_url="jdbc:postgresql:///${DB_NAME}?cloudSqlInstance=${sql_connection}"
+          jdbc_url="${jdbc_url}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
+          env_vars="DB_JDBC_URL=${jdbc_url},DB_USER=${DB_USER},DB_SCHEMA=${DB_SCHEMA},DB_POOL=15"
+          env_vars="${env_vars},AUTH_ADMIN_USERNAME=admin"
+          # AUTH_SESSION_SECRET is required at boot — the app refuses to start
+          # with a blank value — so it ships from a managed secret.
+          secrets="DB_PASSWORD=cwfgw4k-db-password:latest"
+          secrets="${secrets},AUTH_SESSION_SECRET=cwfgw4k-session-secret:latest"
+          secrets="${secrets},AUTH_ADMIN_PASSWORD=cwfgw4k-admin-password:latest"
+
+          deploy_args=(
+            "--project=${PROJECT_ID}"
+            "--region=${REGION}"
+            "--image=${IMAGE}"
+            # set, not add: like the secrets and env vars below it, each deploy
+            # states the whole list, so an instance dropped from here is
+            # dropped from the service.
+            "--set-cloudsql-instances=${sql_connection}"
+            "--set-secrets=${secrets}"
+            "--set-env-vars=${env_vars}"
+            # Memory: 1Gi container with -Xmx512m in the Dockerfile leaves ~half
+            # the box for non-heap JVM (metaspace, JIT code cache, Netty direct
+            # buffers, JDBC buffers, thread stacks). Steady-state prod p99 memory
+            # util sits at ~18%, so we're comfortably under. Bump container +
+            # heap together if real load shows OOM-kill events in Cloud Run logs.
+            "--memory=1Gi"
+            # CPU: 2 vCPU. CWF-24 fixed the dispatcher-starvation wedge at 1
+            # vCPU, so 1 here would be functionally correct. Keeping 2 as a
+            # defensive margin: the same total Dispatchers.Default thread budget
+            # (max(2, #CPUs) = 2 in either case) but twice the wall-clock CPU, so
+            # each request completes faster and the concurrent-overlap window
+            # where the bug *would* fire (if CWF-24 ever regressed) shrinks. Cost
+            # is within the Cloud Run free tier at our traffic level.
+            "--cpu=2"
+            # Concurrency: Cloud Run defaults to 80 reqs per instance; with our
+            # JVM sizing and a per-instance pool of 10 connections, 20 in-flight
+            # requests per instance is the sustainable target — pool slots are
+            # released between cache hit / miss / put phases so 2x
+            # oversubscription is fine. Cap there and let max-instances absorb
+            # spikes.
+            "--concurrency=20"
+            # min-instances=0: scale to zero when idle. We briefly ran with =1
+            # after a wedge incident where the first request after an idle
+            # period blocked 90s while Hikari refilled stale Cloud SQL
+            # connections (and occasionally hit Broken Pipe during the TLS
+            # handshake via the in-process socket factory). The fix landed in
+            # 9d9043b (Postgres connectTimeout/socketTimeout + reverted Hikari
+            # recycling) and was validated by ops/load-test/soak.sh -m 0:
+            # 30 min idle → first canary 7s (legitimate JVM cold start), all
+            # subsequent canaries < 500ms, no 5xx anywhere. Saves ~$45/mo
+            # vs. always-warm; cost is the ~7s first-user-of-the-morning hit.
+            "--min-instances=0"
+            # 10 instances × 20 concurrency = 200 in-flight slots — comfortable
+            # headroom well beyond the ~50-user target so Cloud Run can scale
+            # smoothly through spike traffic. Cloud SQL connection ceiling on
+            # db-custom-1-3840 is 200; 10 × DB_POOL=15 = 150 leaves 50 free for
+            # psql, Flyway during deploy, and Cloud SQL internal use. If the SQL
+            # tier ever shrinks, drop max-instances or DB_POOL to keep total
+            # connections ≤ tier max - 10.
+            "--max-instances=10"
+            # Request timeout: 90s. Cloud Run's default is 300s; we lower it
+            # because no legitimate endpoint has any business taking longer than
+            # ~5s end-to-end (cold cache miss with one ESPN call ~1.7s, full
+            # report build ~2s). A 300s ceiling means a wedged request sits on
+            # an instance burning a concurrency slot and (if it's mid-tx) a DB
+            # pool slot for five minutes; 90s is the smallest cap that won't
+            # clip cold-start + cache rebuild scenarios while letting the system
+            # recover three times faster from any future hang.
+            "--timeout=90"
+          )
+          gcloud run deploy "${SERVICE}" "${deploy_args[@]}"
+
+      # `gcloud run deploy` returns once the revision accepts connections, which
+      # says nothing about the database behind it. /health does.
+      - name: Is the new revision healthy?
+        env:
+          SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          url="$(gcloud run services describe "${SERVICE}" \
+            --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.url)')"
+          revision="$(gcloud run services describe "${SERVICE}" \
+            --project="${PROJECT_ID}" --region="${REGION}" --format='value(status.latestReadyRevisionName)')"
+          curl --fail --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors \
+            --max-time 60 "${url}/api/v1/health"
+          printf '\nDeployed %s as revision `%s` at %s\n' \
+            "${SHA}" "${revision}" "${url}" >> "$GITHUB_STEP_SUMMARY"

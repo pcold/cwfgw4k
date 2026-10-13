@@ -77,3 +77,12 @@ GitHub Actions runs the same gate on every pull request and on `main` after a me
 | `./gradlew uiTest` | Run UI unit tests with coverage. |
 | `./gradlew buildFatJar` | Build the deployable fatJar (`build/libs/cwfgw4k-all.jar`). |
 | `./gradlew generateJooq` | Regenerate jOOQ classes against a throwaway Postgres migrated by Flyway. |
+
+## Deploying
+
+`.github/workflows/deploy.yml` ships `main` to Cloud Run. It starts when the `Check` workflow passes for a push to `main`. It builds the fat jar and the image, tags the image with the commit SHA, runs `gcloud run deploy`, and then calls `/api/v1/health` on the new revision.
+
+- **Approval.** The job runs in the `production` environment. While that environment has a required reviewer, each deploy waits in the Actions tab until it is approved or rejected.
+- **By hand.** `gh workflow run deploy.yml` deploys the tip of `main`. Add `-f sha=<commit>` for an earlier commit; it must be on `main`.
+- **Rolling back.** The quickest way is to route traffic to the previous revision: `gcloud run services update-traffic cwfgw4k --region us-west1 --to-revisions <revision>=100`. Traffic then stays pinned there, so run the same command with `--to-latest` once a fixed revision is out.
+- **One-time setup.** `deploy/setup-github-deploy.sh` creates the service account and the Workload Identity Federation the workflow authenticates with, and prints the repository variables to set.
