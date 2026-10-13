@@ -116,13 +116,9 @@ class EspnService(
         }
 
     /**
-     * Single-snapshot gather sized for a [LiveOverlayService] fold.
-     * Loads season-scoped state plus per-candidate override maps in one
-     * `tx.read` so a multi-event overlay only pays for the gather once
-     * instead of once per fold iteration (CWF-18). Pair with
-     * [previewForTournament], which consumes the returned context to
-     * skip the DB on subsequent per-event preview builds — they reuse
-     * the snapshot and only need to fetch from ESPN.
+     * Called once per overlay and reused across its fold, so the gather is not paid per candidate.
+     * [candidates] must hold every tournament later handed to [previewForTournament]: one left out
+     * previews at multiplier 1 and without its link overrides.
      */
     internal suspend fun loadLivePreviewContext(
         seasonId: SeasonId,
