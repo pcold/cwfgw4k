@@ -168,7 +168,7 @@ class ErrorHandlingSpec : FunSpec({
         }
     }
 
-    test("a payload over the size limit is not answered 415, though it shares a base type with both that are") {
+    test("a payload over the size limit is not answered 415, though it shares a base type with the failures that are") {
         errorHandlingTestApp { client ->
             val response = client.get("/throw/payload-too-large")
 

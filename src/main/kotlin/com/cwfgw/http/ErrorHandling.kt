@@ -91,7 +91,7 @@ internal fun Application.installErrorHandling() {
 }
 
 /**
- * Fixed messages, because the exception's own names the target class and the parser's complaint.
+ * Fixed messages: the exception's names the target class, and its cause the parser's complaint.
  * [UnsupportedMediaTypeException] is mapped as a leaf: `PayloadTooLargeException` shares its base. A typed
  * receive's mismatch never arrives here — Ktor 3.2's engine answers it a bare 415, which the status handler fills.
  */
