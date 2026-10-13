@@ -1,6 +1,7 @@
 package com.cwfgw.config
 
 import com.sksamuel.hoplite.ConfigException
+import com.sksamuel.hoplite.ConfigFailure
 import com.sksamuel.hoplite.ConfigResult
 import com.sksamuel.hoplite.DecoderContext
 import com.sksamuel.hoplite.DoubleNode
@@ -8,11 +9,15 @@ import com.sksamuel.hoplite.LongNode
 import com.sksamuel.hoplite.Node
 import com.sksamuel.hoplite.Pos
 import com.sksamuel.hoplite.decoder.DotPath
+import com.sksamuel.hoplite.fp.Validated
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.longs.shouldBeGreaterThan
+import io.kotest.matchers.longs.shouldBeLessThan
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.reflect.typeOf
 
 private const val SWEEP_INTERVAL_KEY = "cache.sweepIntervalSeconds"
@@ -40,8 +45,8 @@ class PositiveSecondsSpec : FunSpec({
     test("the largest value is the last whose count in milliseconds does not wrap negative") {
         val beyond = PositiveSeconds.MAX.value + 1
 
-        (PositiveSeconds.MAX.value * MILLIS_PER_SECOND > 0) shouldBe true
-        (beyond * MILLIS_PER_SECOND < 0) shouldBe true
+        PositiveSeconds.MAX.value * MILLIS_PER_SECOND shouldBeGreaterThan 0L
+        beyond * MILLIS_PER_SECOND shouldBeLessThan 0L
     }
 
     listOf("0", "-1", Long.MAX_VALUE.toString(), "5m").forEach { raw ->
@@ -65,10 +70,13 @@ class PositiveSecondsSpec : FunSpec({
 
     test("the decoder holds a numeric node to the same bounds as a string") {
         decode(LongNode(1L, Pos.NoPos, DotPath.root)).getUnsafe().value shouldBe 1L
-        decode(LongNode(0L, Pos.NoPos, DotPath.root)).isInvalid() shouldBe true
+        listOf(0L, Long.MAX_VALUE).forEach { seconds ->
+            decode(LongNode(seconds, Pos.NoPos, DotPath.root)).shouldBeInstanceOf<Validated.Invalid<ConfigFailure>>()
+        }
     }
 
     test("the decoder refuses a fractional number rather than truncating it") {
-        decode(DoubleNode(FRACTIONAL_SECONDS, Pos.NoPos, DotPath.root)).isInvalid() shouldBe true
+        decode(DoubleNode(FRACTIONAL_SECONDS, Pos.NoPos, DotPath.root))
+            .shouldBeInstanceOf<Validated.Invalid<ConfigFailure>>()
     }
 })

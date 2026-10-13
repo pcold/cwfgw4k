@@ -11,11 +11,9 @@ import com.sksamuel.hoplite.fp.invalid
 import com.sksamuel.hoplite.fp.valid
 import kotlin.reflect.KType
 
-private const val MILLIS_PER_SECOND = 1_000L
-
 /**
  * For a wait between repeats: `delay` returns at once for zero or less, so a loop holding one would spin.
- * Capped where the count in milliseconds still fits a `Long`, because past that it wraps negative.
+ * Capped where the count in milliseconds still fits a `Long`; past that it overflows.
  */
 @JvmInline
 value class PositiveSeconds private constructor(val value: Long) {
@@ -25,6 +23,8 @@ value class PositiveSeconds private constructor(val value: Long) {
         fun of(seconds: Long): PositiveSeconds? = if (seconds in 1..MAX.value) PositiveSeconds(seconds) else null
     }
 }
+
+private const val MILLIS_PER_SECOND = 1_000L
 
 /** Hoplite's inline-class fallback cannot call the private constructor, so without this no config loads at all. */
 internal class PositiveSecondsDecoder : NullHandlingDecoder<PositiveSeconds> {
