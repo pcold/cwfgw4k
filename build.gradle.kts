@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import java.util.Properties
 
 plugins {
@@ -96,6 +97,19 @@ tasks.withType<Test>().configureEach {
     // Postgres containers without thrashing. Override with -PtestForks=N
     // where there is headroom.
     maxParallelForks = (project.findProperty("testForks") as String?)?.toIntOrNull() ?: 2
+    testLogging {
+        // Gradle's default (SHORT) prints the exception class and source line but not
+        // getMessage(). An intermittent failure that reaches only the gate log is then
+        // undiagnosable.
+        exceptionFormat = TestExceptionFormat.FULL
+    }
+
+    // Kotest reads its spec/test filters from system properties on the worker JVM, and Gradle
+    // forwards none of the daemon's -D by default: an unforwarded filter runs the whole suite and
+    // reports the result as the filtered one.
+    listOf("kotest.filter.specs", "kotest.filter.tests").forEach { filter ->
+        System.getProperty(filter)?.let { systemProperty(filter, it) }
+    }
     if (macDockerRawSock.exists()) {
         environment("DOCKER_HOST", "unix://${macDockerRawSock.absolutePath}")
         environment("DOCKER_API_VERSION", "1.44")
@@ -125,6 +139,14 @@ tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>().con
 }
 
 val jooqGenDir = layout.buildDirectory.dir("generated/jooq")
+val migrationsDir: File = layout.projectDirectory.dir("src/main/resources/db/migration").asFile
+val codegenSourceDir: File = layout.projectDirectory.dir("src/jooqCodegen/kotlin").asFile
+
+// JavaExec's `args` are an @Input and its working directory is not, so an absolute path in an
+// argument keys the cache entry to the checkout that produced it and a second worktree at the same
+// commit misses on the directory name alone. generateJooq passes project-relative paths from a
+// working directory pinned here instead.
+val projectRoot: File = layout.projectDirectory.asFile
 
 sourceSets {
     create("jooqCodegen")
@@ -148,14 +170,21 @@ val generateJooq by tasks.registering(JavaExec::class) {
     description = "Generate jOOQ classes against a throwaway Postgres migrated by Flyway."
     classpath = sourceSets["jooqCodegen"].runtimeClasspath
     mainClass.set("com.cwfgw.jooqcodegen.JooqCodegenKt")
+    workingDir(projectRoot)
     args(
-        layout.projectDirectory.dir("src/main/resources/db/migration").asFile.absolutePath,
-        jooqGenDir.get().asFile.absolutePath,
+        migrationsDir.relativeTo(projectRoot).path,
+        jooqGenDir.get().asFile.relativeTo(projectRoot).path,
         "com.cwfgw.jooq",
     )
     applyMacDockerWorkaround()
-    inputs.dir("src/main/resources/db/migration")
-    outputs.dir(jooqGenDir)
+    inputs.dir(migrationsDir).withPropertyName("migrations").withPathSensitivity(PathSensitivity.RELATIVE)
+    // The generator program is an input too: a ForcedType or binding change alters the output
+    // without touching a migration, and this task would otherwise report itself up to date.
+    inputs.dir(codegenSourceDir).withPropertyName("generator").withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dir(jooqGenDir).withPropertyName("generatedClasses")
+    // JavaExec is @DisableCachingByDefault, so without this the entry is never stored and every
+    // fresh worktree starts its own container for a migration chain that has not moved.
+    outputs.cacheIf { true }
 }
 
 sourceSets.main {
@@ -163,13 +192,6 @@ sourceSets.main {
 }
 
 tasks.named("compileKotlin") {
-    dependsOn(generateJooq)
-}
-
-tasks.named("runKtlintCheckOverMainSourceSet") {
-    dependsOn(generateJooq)
-}
-tasks.named("runKtlintFormatOverMainSourceSet") {
     dependsOn(generateJooq)
 }
 
@@ -203,6 +225,17 @@ ktlint {
     ignoreFailures.set(false)
     filter {
         exclude { it.file.path.contains("/build/") }
+    }
+}
+
+// The filter above already drops every generated jOOQ file, so wiring these tasks to the generator
+// bought no linted line and cost a Postgres container on any diff — a `.kts`-only one included.
+// Dropping the edge alone is not enough: the directory stays among the tasks' declared input roots,
+// which is what Gradle's implicit-dependency validation reads, and it fails the build outright once
+// the generator is in the same graph. Subtracting the directory is what removes the demand.
+listOf("runKtlintCheckOverMainSourceSet", "runKtlintFormatOverMainSourceSet").forEach { taskName ->
+    tasks.named<org.jlleitschuh.gradle.ktlint.tasks.BaseKtLintCheckTask>(taskName) {
+        setSource(sourceSets.main.get().kotlin.srcDirs - jooqGenDir.get().asFile)
     }
 }
 
@@ -258,8 +291,11 @@ tasks.register<com.github.gradle.node.npm.task.NpmTask>("uiTest") {
     dependsOn("uiInstall")
     args.set(listOf("run", "test:coverage"))
     inputs.dir("ui/src")
+    inputs.file("ui/index.html")
     inputs.file("ui/package.json")
     inputs.file("ui/vite.config.ts")
+    // Vitest transforms the sources under the compiler options these set.
+    inputs.files("ui/tsconfig.json", "ui/tsconfig.app.json", "ui/tsconfig.node.json")
     outputs.dir("ui/coverage")
     outputs.dir("ui/test-report")
 }
@@ -270,8 +306,12 @@ tasks.register<com.github.gradle.node.npm.task.NpmTask>("uiBuild") {
     dependsOn("uiInstall")
     args.set(listOf("run", "build"))
     inputs.dir("ui/src")
+    inputs.file("ui/index.html")
     inputs.file("ui/package.json")
+    inputs.file("ui/postcss.config.js")
     inputs.file("ui/vite.config.ts")
+    // `npm run build` is `tsc -b && vite build`, so the tsconfigs are what it compiles from.
+    inputs.files("ui/tsconfig.json", "ui/tsconfig.app.json", "ui/tsconfig.node.json")
     outputs.dir("ui/dist")
 }
 
