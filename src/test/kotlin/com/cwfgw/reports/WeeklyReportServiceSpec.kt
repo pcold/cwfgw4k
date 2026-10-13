@@ -508,6 +508,7 @@ class WeeklyReportServiceSpec : FunSpec({
         val teamB = report.teams.single { it.teamId == TEAM_B.id }
         teamA.cells.first { it.round == 1 }.positionStr shouldBe "T1"
         teamB.cells.first { it.round == 1 }.positionStr shouldBe "T1"
+        teamA.cells.first { it.round == 1 }.finish shouldBe ReportCellFinish(position = 1, tied = true)
     }
 
     test("getReport sideBetDetail emits one row per configured side-bet round (default 5,6,7,8)") {
@@ -854,6 +855,7 @@ class WeeklyReportServiceSpec : FunSpec({
         b.weeklyTotal.compareTo(BigDecimal(-36)) shouldBe 0
         a.topTenCount shouldBe 2
         a.cells.first { it.round == 1 }.positionStr shouldBe "2x"
+        a.cells.first { it.round == 1 }.finish shouldBe null
     }
 
     test("getSeasonReport's undraftedTopTens aggregates a golfer's payouts across tournaments") {
@@ -1139,6 +1141,7 @@ class WeeklyReportServiceSpec : FunSpec({
         val a = report.teams.single { it.teamId == TEAM_A.id }
         a.cells.first { it.round == 1 }.earnings.compareTo(BigDecimal(18)) shouldBe 0
         a.cells.first { it.round == 1 }.positionStr shouldBe "1"
+        a.cells.first { it.round == 1 }.finish shouldBe ReportCellFinish(position = 1, tied = false)
         // Zero-sum: A weekly = 18*2-18 = +18; B weekly = 0*2-18 = -18
         a.weeklyTotal.compareTo(BigDecimal(18)) shouldBe 0
     }

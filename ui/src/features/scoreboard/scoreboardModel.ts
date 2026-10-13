@@ -38,33 +38,14 @@ export interface Scoreboard {
   net: number;
 }
 
-function parsePosition(positionStr: string | null): number | null {
-  if (!positionStr) return null;
-  const parsed = Number.parseInt(positionStr.replace('T', ''), 10);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-// Backend reports position like "T1" when the golfer is tied, "1" when solo. The T prefix is the
-// only signal we get, so preserve it here — the view renders it conditionally.
-function isTiedPosition(positionStr: string | null): boolean {
-  return positionStr !== null && positionStr.startsWith('T');
-}
-
-function parseScoreToPar(raw: string | null): number | null {
-  if (raw === null) return null;
-  if (raw === 'E') return 0;
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 function golferScoresFor(team: ReportTeamColumn): ScoreboardGolfer[] {
   return team.cells
     .filter((cell: ReportCell) => cell.earnings > 0 && cell.golferName !== null)
     .map((cell) => ({
       golferId: cell.golferId,
       golferName: cell.golferName ?? '',
-      position: parsePosition(cell.positionStr),
-      tied: isTiedPosition(cell.positionStr),
+      position: cell.finish?.position ?? null,
+      tied: cell.finish?.tied ?? false,
       payout: cell.earnings,
       ownershipPct: cell.ownershipPct,
     }));
@@ -89,12 +70,12 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
       .map((entry) => ({
         name: entry.name,
         position: entry.position,
-        scoreToPar: parseScoreToPar(entry.scoreToPar),
+        scoreToPar: entry.scoreToPar,
         rostered: entry.rostered,
         teamName: entry.teamName,
         pairKey: entry.pairKey,
-        roundScores: entry.roundScores ?? [],
-        totalStrokes: entry.totalStrokes ?? null,
+        roundScores: entry.roundScores,
+        totalStrokes: entry.totalStrokes,
       }));
     return collapsePairs(sorted);
   }
@@ -102,7 +83,7 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
   const undrafted: LeaderboardEntry[] = report.undraftedTopTens.map((entry) => ({
     name: entry.name,
     position: entry.position,
-    scoreToPar: parseScoreToPar(entry.scoreToPar),
+    scoreToPar: entry.scoreToPar,
     rostered: false,
     teamName: null,
     pairKey: entry.pairKey,
@@ -113,11 +94,11 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
   const rostered: LeaderboardEntry[] = [];
   for (const team of report.teams) {
     for (const cell of team.cells) {
-      if (cell.positionStr && cell.golferName) {
+      if (cell.finish && cell.golferName) {
         rostered.push({
           name: cell.golferName,
-          position: parsePosition(cell.positionStr),
-          scoreToPar: parseScoreToPar(cell.scoreToPar),
+          position: cell.finish.position,
+          scoreToPar: cell.scoreToPar,
           rostered: true,
           teamName: team.teamName,
           pairKey: cell.pairKey,

@@ -64,6 +64,7 @@ function row(overrides: Partial<ReportCell> = {}): ReportCell {
     golferName: 'Scheffler',
     golferId: 'g-1',
     positionStr: null,
+    finish: null,
     scoreToPar: null,
     earnings: 0,
     topTens: 0,

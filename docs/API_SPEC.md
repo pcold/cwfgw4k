@@ -433,8 +433,9 @@ data class ReportCell(
     val round: Int,                 // 1..8
     val golferName: String?,        // last name UPPER-cased; null when the slot is empty
     val golferId: GolferId?,
-    val positionStr: String?,       // "1", "T3", "10x" (season-aggregate)
-    val scoreToPar: String?,        // "E", "+5", "-3"
+    val positionStr: String?,       // the grid's label: "1", "T3", or a top-ten count "10x" (season-aggregate)
+    val finish: ReportCellFinish?,  // { position: Int, tied: Boolean }; null where positionStr is not a finish
+    val scoreToPar: Int?,           // strokes relative to par; 0 is even
     val earnings: BigDecimal,
     val topTens: Int,
     val ownershipPct: BigDecimal,

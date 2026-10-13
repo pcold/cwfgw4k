@@ -575,7 +575,7 @@ internal fun buildPersistedLeaderboard(
             LiveLeaderboardEntry(
                 name = name,
                 position = result.position ?: 0,
-                scoreToPar = result.scoreToPar?.let(::formatScoreToPar),
+                scoreToPar = result.scoreToPar,
                 rostered = teamName != null,
                 teamName = teamName,
                 pairKey = result.pairKey,
@@ -750,6 +750,7 @@ private fun buildSeasonCells(
             golferName = golferName,
             golferId = entry.golferId,
             positionStr = positionStr,
+            finish = null,
             scoreToPar = null,
             earnings = earnings,
             topTens = topTens,
@@ -966,17 +967,18 @@ private fun cellForEntry(
     val golferName = golferMap[entry.golferId]?.lastName?.uppercase() ?: "?"
     val result = resultsByGolfer[entry.golferId]
     val score = scoresByTeamGolfer[teamId to entry.golferId]
-    val position = result?.position
+    val finish = result?.position?.let { ReportCellFinish(position = it, tied = (numTiedByPosition[it] ?: 1) > 1) }
     val (cumulativeEarnings, cumulativeTopTens) =
         cumulativeByTeamGolfer[teamId to entry.golferId] ?: (BigDecimal.ZERO to 0)
     return ReportCell(
         round = round,
         golferName = golferName,
         golferId = entry.golferId,
-        positionStr = position?.let { positionString(it, numTiedByPosition[it] ?: 1) },
-        scoreToPar = result?.scoreToPar?.let(::formatScoreToPar),
+        positionStr = finish?.label(),
+        finish = finish,
+        scoreToPar = result?.scoreToPar,
         earnings = score?.points ?: BigDecimal.ZERO,
-        topTens = if (position != null && position <= TOP_TEN_CUTOFF) 1 else 0,
+        topTens = if (finish != null && finish.position <= TOP_TEN_CUTOFF) 1 else 0,
         ownershipPct = entry.ownershipPct,
         seasonEarnings = cumulativeEarnings,
         seasonTopTens = cumulativeTopTens,
@@ -990,6 +992,7 @@ private fun emptyCell(round: Int): ReportCell =
         golferName = null,
         golferId = null,
         positionStr = null,
+        finish = null,
         scoreToPar = null,
         earnings = BigDecimal.ZERO,
         topTens = 0,
@@ -997,12 +1000,6 @@ private fun emptyCell(round: Int): ReportCell =
         seasonEarnings = BigDecimal.ZERO,
         seasonTopTens = 0,
     )
-
-/** Render a leaderboard position with a `T` prefix when more than one golfer shares the position. */
-private fun positionString(
-    position: Int,
-    numTied: Int,
-): String = if (numTied > 1) "T$position" else position.toString()
 
 @Suppress("LongParameterList")
 internal fun buildUndraftedForTournament(
@@ -1035,7 +1032,7 @@ internal fun buildUndraftedForTournament(
                 name = name,
                 position = result.position,
                 payout = payout,
-                scoreToPar = result.scoreToPar?.let(::formatScoreToPar),
+                scoreToPar = result.scoreToPar,
                 pairKey = result.pairKey,
             )
         }

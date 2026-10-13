@@ -107,6 +107,7 @@ private fun cell(
         golferName = "GOLFER",
         golferId = golferId,
         positionStr = null,
+        finish = null,
         scoreToPar = null,
         earnings = earnings,
         topTens = 0,
@@ -242,7 +243,31 @@ class LiveOverlayServiceSpec : FunSpec({
         overlaid.live shouldBe true
         overlaid.teams.single().cells.single().earnings.compareTo(BigDecimal(18)) shouldBe 0
         overlaid.teams.single().cells.single().positionStr shouldBe "1"
-        overlaid.teams.single().cells.single().scoreToPar shouldBe "-10"
+        overlaid.teams.single().cells.single().finish shouldBe ReportCellFinish(position = 1, tied = false)
+        overlaid.teams.single().cells.single().scoreToPar shouldBe -10
+    }
+
+    test("mergeLiveData marks both cells tied, in finish and label alike, when two live payouts share a position") {
+        val base =
+            emptyReport(
+                listOf(
+                    teamColumn(
+                        TEAM_A_ID,
+                        cells = listOf(cell(round = 1, golferId = SCOTTIE_ID), cell(round = 2, golferId = RORY_ID)),
+                    ),
+                ),
+            )
+        val sharedSecond =
+            listOf(
+                previewGolfer(SCOTTIE_ID, position = 2, payout = BigDecimal(11)),
+                previewGolfer(RORY_ID, position = 2, payout = BigDecimal(11)),
+            )
+        val live = preview(teams = listOf(previewTeam(teamId = TEAM_A_ID, golfers = sharedSecond)))
+
+        val cells = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false).teams.single().cells
+
+        cells.map { it.finish } shouldContainExactly List(2) { ReportCellFinish(position = 2, tied = true) }
+        cells.map { it.positionStr } shouldContainExactly listOf("T2", "T2")
     }
 
     test("mergeLiveData bumps team.topTenMoney + topTenCount for live wins (non-additive mode)") {
@@ -494,7 +519,7 @@ class LiveOverlayServiceSpec : FunSpec({
 
     // ----- buildLiveLeaderboard / buildUndraftedFromLeaderboard -----
 
-    test("buildLiveLeaderboard sorts by position and formats scoreToPar") {
+    test("buildLiveLeaderboard sorts by position and passes scoreToPar through as a number") {
         val live =
             preview(
                 leaderboard =
@@ -507,7 +532,7 @@ class LiveOverlayServiceSpec : FunSpec({
 
         val rendered = buildLiveLeaderboard(live)
         rendered.map { it.name } shouldContainExactly listOf("Leader", "Second", "Third")
-        rendered.map { it.scoreToPar } shouldContainExactly listOf("-10", "E", "-5")
+        rendered.map { it.scoreToPar } shouldContainExactly listOf(-10, 0, -5)
     }
 
     test("buildUndraftedFromLeaderboard returns only top-10 non-rostered competitors with their payouts") {

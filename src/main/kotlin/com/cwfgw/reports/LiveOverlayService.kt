@@ -31,7 +31,7 @@ private val log = KotlinLogging.logger {}
  *     the selected tournament.
  *
  *  2. **The selected tournament itself, if in-progress** — replaces
- *     per-cell `earnings`/`positionStr`/`scoreToPar` with live ESPN
+ *     per-cell `earnings`/`positionStr`/`finish`/`scoreToPar` with live ESPN
  *     projections, recomputes weekly +/- and total cash, and surfaces
  *     the full live leaderboard for the scoreboard view.
  *
@@ -459,14 +459,15 @@ private fun overlayTeamCells(
             if (live == null) {
                 if (additive) cell else cell.copy(earnings = BigDecimal.ZERO, topTens = 0)
             } else {
-                val numTied = livePositionTallies[live.position] ?: 1
-                val positionStr = if (numTied > 1) "T${live.position}" else live.position.toString()
+                val finish =
+                    ReportCellFinish(position = live.position, tied = (livePositionTallies[live.position] ?: 1) > 1)
                 val newEarnings = if (additive) cell.earnings.add(live.payout) else live.payout
                 val newTopTens = if (additive) cell.topTens + 1 else 1
                 cell.copy(
                     earnings = newEarnings,
-                    positionStr = positionStr,
-                    scoreToPar = live.scoreToPar?.let(::formatScoreToPar),
+                    positionStr = finish.label(),
+                    finish = finish,
+                    scoreToPar = live.scoreToPar,
                     topTens = newTopTens,
                     seasonEarnings = cell.seasonEarnings.add(live.payout),
                     seasonTopTens = cell.seasonTopTens + 1,
@@ -499,7 +500,7 @@ internal fun buildLiveLeaderboard(liveData: EspnLivePreview): List<LiveLeaderboa
             LiveLeaderboardEntry(
                 name = entry.name,
                 position = entry.position,
-                scoreToPar = entry.scoreToPar?.let(::formatScoreToPar),
+                scoreToPar = entry.scoreToPar,
                 rostered = entry.rostered,
                 teamName = entry.teamName,
                 pairKey = entry.pairKey,
@@ -530,7 +531,7 @@ internal fun buildUndraftedFromLeaderboard(
                 name = entry.name,
                 position = entry.position,
                 payout = payout,
-                scoreToPar = entry.scoreToPar?.let(::formatScoreToPar),
+                scoreToPar = entry.scoreToPar,
             )
         }
 }

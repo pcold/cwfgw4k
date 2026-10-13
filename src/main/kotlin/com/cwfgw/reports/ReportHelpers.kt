@@ -33,18 +33,8 @@ fun isOnOrBefore(
     b: Tournament,
 ): Boolean = tournamentOrdering.compare(a, b) <= 0
 
-/**
- * Format a score-to-par integer for display: `"E"` for even, `"+5"` for
- * over par, `"-3"` for under. Centralized so every column on the report
- * formats the same way (the UI relies on string equality to highlight
- * leaders).
- */
-fun formatScoreToPar(scoreToPar: Int): String =
-    when {
-        scoreToPar == 0 -> "E"
-        scoreToPar > 0 -> "+$scoreToPar"
-        else -> scoreToPar.toString()
-    }
+/** The only place a finish becomes [ReportCell.positionStr], so the label cannot disagree with the typed fact. */
+internal fun ReportCellFinish.label(): String = if (tied) "T$position" else position.toString()
 
 /**
  * Standings panel rows, sorted by `totalCash` descending and assigned a

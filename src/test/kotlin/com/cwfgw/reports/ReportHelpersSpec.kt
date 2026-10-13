@@ -76,20 +76,11 @@ private fun sideBetEntry(
 
 class ReportHelpersSpec : FunSpec({
 
-    // ----- formatScoreToPar -----
+    // ----- ReportCellFinish.label -----
 
-    test("formatScoreToPar renders even par as 'E', over par with a leading +, under par as a signed integer") {
-        formatScoreToPar(0) shouldBe "E"
-        formatScoreToPar(5) shouldBe "+5"
-        formatScoreToPar(-3) shouldBe "-3"
-    }
-
-    test("formatScoreToPar always parses back to the same integer (round-trip property)") {
-        checkAll(Arb.int(-30..30)) { score ->
-            val rendered = formatScoreToPar(score)
-            val recovered = if (rendered == "E") 0 else rendered.replace("+", "").toInt()
-            recovered shouldBe score
-        }
+    test("label prefixes a tied finish with T and prints a solo one bare") {
+        ReportCellFinish(position = 3, tied = true).label() shouldBe "T3"
+        ReportCellFinish(position = 3, tied = false).label() shouldBe "3"
     }
 
     // ----- tournament ordering -----

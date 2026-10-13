@@ -11,7 +11,8 @@ function row(overrides: Partial<ReportCell> = {}): ReportCell {
     golferName: 'Scottie Scheffler',
     golferId: 'g-1',
     positionStr: 'T1',
-    scoreToPar: '-12',
+    finish: { position: 1, tied: true },
+    scoreToPar: -12,
     earnings: 100,
     topTens: 1,
     ownershipPct: 100,
@@ -113,10 +114,10 @@ describe('deriveScoreboard', () => {
     expect(golfers).toEqual(['Alpha', 'Gamma']);
   });
 
-  it('parses position strings like "T5" to numbers and marks them tied', () => {
+  it('carries a tied finish through as its position and tie flag', () => {
     const scoreboard = deriveScoreboard(
       report({
-        teams: [teamColumn({ cells: [row({ positionStr: 'T5' })] })],
+        teams: [teamColumn({ cells: [row({ positionStr: 'T5', finish: { position: 5, tied: true } })] })],
       }),
     );
     const golfer = nth(nth(scoreboard.teams, 0).golferScores, 0);
@@ -124,10 +125,10 @@ describe('deriveScoreboard', () => {
     expect(golfer.tied).toBe(true);
   });
 
-  it('marks a solo position (no T prefix) as not tied', () => {
+  it('carries a solo finish through as not tied', () => {
     const scoreboard = deriveScoreboard(
       report({
-        teams: [teamColumn({ cells: [row({ positionStr: '1' })] })],
+        teams: [teamColumn({ cells: [row({ positionStr: '1', finish: { position: 1, tied: false } })] })],
       }),
     );
     const golfer = nth(nth(scoreboard.teams, 0).golferScores, 0);
@@ -157,8 +158,8 @@ describe('deriveScoreboard', () => {
           teamColumn({
             teamName: 'Aces',
             cells: [
-              row({ golferName: 'Scheffler', positionStr: 'T1', scoreToPar: '-12' }),
-              row({ golferName: 'Rahm', positionStr: 'T5', scoreToPar: '-6' }),
+              row({ golferName: 'Scheffler', positionStr: 'T1', finish: { position: 1, tied: true }, scoreToPar: -12 }),
+              row({ golferName: 'Rahm', positionStr: 'T5', finish: { position: 5, tied: true }, scoreToPar: -6 }),
             ],
           }),
           teamColumn({
@@ -166,12 +167,12 @@ describe('deriveScoreboard', () => {
             teamName: 'Birdies',
             cells: [
               // same Rahm, rostered by both teams — dedup should keep one
-              row({ golferName: 'Rahm', positionStr: 'T5', scoreToPar: '-6' }),
+              row({ golferName: 'Rahm', positionStr: 'T5', finish: { position: 5, tied: true }, scoreToPar: -6 }),
             ],
           }),
         ],
         undraftedTopTens: [
-          { name: 'Unknown1', position: 3, payout: 0, scoreToPar: '-10', pairKey: null },
+          { name: 'Unknown1', position: 3, payout: 0, scoreToPar: -10, pairKey: null },
         ],
       }),
     );
@@ -192,16 +193,16 @@ describe('deriveScoreboard', () => {
           teamColumn({
             teamName: 'Aces',
             // Rostered row uses last-name spelling and would normally feed the leaderboard
-            cells: [row({ golferName: 'SCHEFFLER', positionStr: 'T1', scoreToPar: '-12' })],
+            cells: [row({ golferName: 'SCHEFFLER', positionStr: 'T1', finish: { position: 1, tied: true }, scoreToPar: -12 })],
           }),
         ],
         undraftedTopTens: [
-          { name: 'Old Undrafted', position: 9, payout: 0, scoreToPar: '-2', pairKey: null },
+          { name: 'Old Undrafted', position: 9, payout: 0, scoreToPar: -2, pairKey: null },
         ],
         liveLeaderboard: [
-          { name: 'Scottie Scheffler', position: 1, scoreToPar: '-12', rostered: true, teamName: 'Aces', pairKey: null },
-          { name: 'Rory McIlroy', position: 2, scoreToPar: '-10', rostered: false, teamName: null, pairKey: null },
-          { name: 'Phil Mickelson', position: 5, scoreToPar: '-7', rostered: false, teamName: null, pairKey: null },
+          { name: 'Scottie Scheffler', position: 1, scoreToPar: -12, rostered: true, teamName: 'Aces', pairKey: null, roundScores: [], totalStrokes: null },
+          { name: 'Rory McIlroy', position: 2, scoreToPar: -10, rostered: false, teamName: null, pairKey: null, roundScores: [], totalStrokes: null },
+          { name: 'Phil Mickelson', position: 5, scoreToPar: -7, rostered: false, teamName: null, pairKey: null, roundScores: [], totalStrokes: null },
         ],
       }),
     );
@@ -224,7 +225,7 @@ describe('deriveScoreboard', () => {
           {
             name: 'Scottie Scheffler',
             position: 1,
-            scoreToPar: '-12',
+            scoreToPar: -12,
             rostered: true,
             teamName: 'Aces',
             pairKey: null,
@@ -239,30 +240,17 @@ describe('deriveScoreboard', () => {
     expect(nth(scoreboard.leaderboard, 0).totalStrokes).toBe(269);
   });
 
-  it('coerces missing round scores and total strokes from older live entries to defaults', () => {
-    const scoreboard = deriveScoreboard(
-      report({
-        liveLeaderboard: [
-          { name: 'Rory McIlroy', position: 1, scoreToPar: '-10', rostered: false, teamName: null, pairKey: null },
-        ],
-      }),
-    );
-    const entry = nth(scoreboard.leaderboard, 0);
-    expect(entry.roundScores).toEqual([]);
-    expect(entry.totalStrokes).toBeNull();
-  });
-
   it('marks rostered vs undrafted leaderboard entries', () => {
     const scoreboard = deriveScoreboard(
       report({
         teams: [
           teamColumn({
             teamName: 'Aces',
-            cells: [row({ golferName: 'Tiger', positionStr: 'T10' })],
+            cells: [row({ golferName: 'Tiger', positionStr: 'T10', finish: { position: 10, tied: true } })],
           }),
         ],
         undraftedTopTens: [
-          { name: 'Phil', position: 4, payout: 0, scoreToPar: 'E', pairKey: null },
+          { name: 'Phil', position: 4, payout: 0, scoreToPar: 0, pairKey: null },
         ],
       }),
     );
@@ -279,9 +267,9 @@ describe('deriveScoreboard', () => {
     const scoreboard = deriveScoreboard(
       report({
         liveLeaderboard: [
-          { name: 'McIlroy', position: 1, scoreToPar: '-28', rostered: false, teamName: null, pairKey: 'team:99' },
-          { name: 'Lowry', position: 1, scoreToPar: '-28', rostered: true, teamName: 'PAYRAY', pairKey: 'team:99' },
-          { name: 'Scheffler', position: 3, scoreToPar: '-25', rostered: false, teamName: null, pairKey: null },
+          { name: 'McIlroy', position: 1, scoreToPar: -28, rostered: false, teamName: null, pairKey: 'team:99', roundScores: [], totalStrokes: null },
+          { name: 'Lowry', position: 1, scoreToPar: -28, rostered: true, teamName: 'PAYRAY', pairKey: 'team:99', roundScores: [], totalStrokes: null },
+          { name: 'Scheffler', position: 3, scoreToPar: -25, rostered: false, teamName: null, pairKey: null, roundScores: [], totalStrokes: null },
         ],
       }),
     );
