@@ -3,7 +3,8 @@
 The single, authoritative contract for reviewing a cwfgw4k change. **Both**
 reviewers consume this file:
 
-- **`cwf-review`** (local, pre-push gate) — runs it as its style audit.
+- **`cwf-review`** (local, pre-push gate) — runs it as its style audit, and
+  re-runs it inside `resolve-reviews` before pushing review fixes.
 - **`claude-review.yml`** (CI, on every PR push) — applies it to the PR diff.
 
 Running the *same* contract in both places is the point: CI must not be able to
