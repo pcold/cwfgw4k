@@ -26,9 +26,11 @@ import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.orFail
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
+import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -43,6 +45,7 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.runBlocking
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -201,7 +204,7 @@ private class Fixture(
 
     init {
         if (seedSeason) {
-            kotlinx.coroutines.runBlocking {
+            runBlocking {
                 with(noopTransactionContext) {
 
                     seasonRepo.create(
@@ -216,7 +219,7 @@ private class Fixture(
             }
         }
         initialResults.forEach { result ->
-            kotlinx.coroutines.runBlocking {
+            runBlocking {
                 with(noopTransactionContext) {
                     tournamentRepo.upsertResult(result.tournamentId, asUpsertRequest(result))
                 }
@@ -302,10 +305,10 @@ private fun liveMasters(leaderEspnId: String): EspnTournament =
     )
 
 private suspend fun Fixture.mastersReport(): WeeklyReport =
-    service.getReport(SEASON_ID, MASTERS_ID).shouldBeInstanceOf<Result.Ok<WeeklyReport>>().value
+    service.getReport(SEASON_ID, MASTERS_ID).orFail()
 
-private fun asUpsertRequest(r: TournamentResult): com.cwfgw.tournaments.CreateTournamentResultRequest =
-    com.cwfgw.tournaments.CreateTournamentResultRequest(
+private fun asUpsertRequest(r: TournamentResult): CreateTournamentResultRequest =
+    CreateTournamentResultRequest(
         golferId = r.golferId,
         position = r.position,
         scoreToPar = r.scoreToPar,
@@ -342,10 +345,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 initialTeams = listOf(TEAM_A, TEAM_B),
             )
 
-        val report =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail()
 
         report.tournament.name shouldBe "The Masters"
         report.teams shouldHaveSize 2
@@ -387,10 +387,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 initialScores = listOf(winnerScore),
             )
 
-        val report =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail()
         val a = report.teams.single { it.teamId == TEAM_A.id }
         val b = report.teams.single { it.teamId == TEAM_B.id }
 
@@ -423,11 +420,7 @@ class WeeklyReportServiceSpec : FunSpec({
                     listOf(scoreFixture(TEAM_A.id, MASTERS_ID, winner.id, BigDecimal(18), position = 1)),
             )
 
-        val standings =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
-                .standingsOrder
+        val standings = fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail().standingsOrder
 
         standings.map { it.rank } shouldContainExactly listOf(1, 2)
         standings.first().teamName shouldBe TEAM_A.teamName
@@ -450,11 +443,7 @@ class WeeklyReportServiceSpec : FunSpec({
                     ),
             )
 
-        val undraftedList =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
-                .undraftedTopTens
+        val undraftedList = fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail().undraftedTopTens
 
         undraftedList shouldHaveSize 1
         undraftedList.single().name shouldBe "R. McIlroy"
@@ -482,10 +471,7 @@ class WeeklyReportServiceSpec : FunSpec({
                     ),
             )
 
-        val report =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail()
         val teamA = report.teams.single { it.teamId == TEAM_A.id }
         val teamB = report.teams.single { it.teamId == TEAM_B.id }
         teamA.cells.first { it.round == 1 }.positionStr shouldBe "T1"
@@ -500,10 +486,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 initialTeams = listOf(TEAM_A, TEAM_B),
             )
 
-        val report =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail()
 
         report.sideBetDetail.map { it.round } shouldContainExactly listOf(5, 6, 7, 8)
         report.sideBetDetail.forAll { round ->
@@ -538,10 +521,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 earnedByTeam = listOf(TEAM_A to BigDecimal(4), TEAM_B to BigDecimal(12)),
             )
 
-        val report =
-            fixture.service.getSeasonReport(SEASON_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getSeasonReport(SEASON_ID).orFail()
 
         report.sideBetRules shouldBe ReportSideBetRules(amountPerTeam = BigDecimal(20), rounds = listOf(2, 3))
         report.sideBetDetail.map { it.round } shouldContainExactly listOf(2, 3)
@@ -638,10 +618,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(liveMasters(leaderEspnId = "espn-p1"))),
             )
 
-        val report =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true).orFail()
 
         report.live shouldBe true
         report.sideBetRules shouldBe ReportSideBetRules(amountPerTeam = BigDecimal(20), rounds = listOf(1))
@@ -678,10 +655,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 initialScores = scores,
             )
 
-        val report =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail()
 
         val r5 = report.sideBetDetail.single { it.round == 5 }
         r5.teams.single { it.teamId == TEAM_A.id }.cumulativeEarnings.compareTo(BigDecimal(10)) shouldBe 0
@@ -714,10 +688,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 initialScores = listOf(priorWinnerScore),
             )
 
-        val report =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail()
         val a = report.teams.single { it.teamId == TEAM_A.id }
         val b = report.teams.single { it.teamId == TEAM_B.id }
 
@@ -741,9 +712,7 @@ class WeeklyReportServiceSpec : FunSpec({
             )
 
         val cell =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+            fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail()
                 .teams.single().cells.first { it.round == 1 }
         cell.golferName shouldBe "SCHEFFLER"
     }
@@ -752,10 +721,7 @@ class WeeklyReportServiceSpec : FunSpec({
         val masters = tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
         val fixture = Fixture(initialTournaments = listOf(masters))
 
-        val report =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail()
 
         report.teams.shouldBeEmpty()
         report.standingsOrder.shouldBeEmpty()
@@ -774,10 +740,7 @@ class WeeklyReportServiceSpec : FunSpec({
     test("getSeasonReport with no completed tournaments produces empty cells and zero totals") {
         val fixture = Fixture(initialTeams = listOf(TEAM_A, TEAM_B))
 
-        val report =
-            fixture.service.getSeasonReport(SEASON_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getSeasonReport(SEASON_ID).orFail()
 
         report.tournament.id shouldBe null
         report.tournament.name shouldBe "All Tournaments"
@@ -818,10 +781,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 initialScores = scores,
             )
 
-        val report =
-            fixture.service.getSeasonReport(SEASON_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getSeasonReport(SEASON_ID).orFail()
         val a = report.teams.single { it.teamId == TEAM_A.id }
         val b = report.teams.single { it.teamId == TEAM_B.id }
 
@@ -850,11 +810,7 @@ class WeeklyReportServiceSpec : FunSpec({
                     ),
             )
 
-        val undraftedList =
-            fixture.service.getSeasonReport(SEASON_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
-                .undraftedTopTens
+        val undraftedList = fixture.service.getSeasonReport(SEASON_ID).orFail().undraftedTopTens
 
         undraftedList shouldHaveSize 1
         undraftedList.single().name shouldBe "R. McIlroy"
@@ -895,10 +851,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 initialScores = scores,
             )
 
-        val rankings =
-            fixture.service.getRankings(SEASON_ID)
-                .shouldBeInstanceOf<Result.Ok<Rankings>>()
-                .value
+        val rankings = fixture.service.getRankings(SEASON_ID).orFail()
 
         rankings.weeks shouldContainExactly listOf("2", "15")
         rankings.tournamentNames shouldContainExactly listOf("Sony Open", "The Masters")
@@ -929,10 +882,7 @@ class WeeklyReportServiceSpec : FunSpec({
                     ),
             )
 
-        val rankings =
-            fixture.service.getRankings(SEASON_ID, throughTournamentId = SONY_ID)
-                .shouldBeInstanceOf<Result.Ok<Rankings>>()
-                .value
+        val rankings = fixture.service.getRankings(SEASON_ID, throughTournamentId = SONY_ID).orFail()
 
         rankings.tournamentNames shouldContainExactly listOf("Sony Open")
         rankings.teams.single { it.teamId == TEAM_A.id }.subtotal.compareTo(BigDecimal(18)) shouldBe 0
@@ -963,10 +913,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 initialResults = listOf(resultFixture(SONY_ID, golfer.id, position = 25, scoreToPar = 5)),
             )
 
-        val history =
-            fixture.service.getGolferHistory(SEASON_ID, golfer.id)
-                .shouldBeInstanceOf<Result.Ok<GolferHistory>>()
-                .value
+        val history = fixture.service.getGolferHistory(SEASON_ID, golfer.id).orFail()
 
         history.golferName shouldBe "Scottie Scheffler"
         history.results.shouldBeEmpty()
@@ -989,10 +936,7 @@ class WeeklyReportServiceSpec : FunSpec({
                     ),
             )
 
-        val history =
-            fixture.service.getGolferHistory(SEASON_ID, golfer.id)
-                .shouldBeInstanceOf<Result.Ok<GolferHistory>>()
-                .value
+        val history = fixture.service.getGolferHistory(SEASON_ID, golfer.id).orFail()
 
         history.topTens shouldBe 2
         history.results.map { it.tournament } shouldContainExactly listOf("Sony Open", "The Masters")
@@ -1019,10 +963,7 @@ class WeeklyReportServiceSpec : FunSpec({
                         partners.map { resultFixture(MASTERS_ID, it.id, position = 10) },
             )
 
-        val history =
-            fixture.service.getGolferHistory(SEASON_ID, golfer.id)
-                .shouldBeInstanceOf<Result.Ok<GolferHistory>>()
-                .value
+        val history = fixture.service.getGolferHistory(SEASON_ID, golfer.id).orFail()
 
         history.results.single().earnings.compareTo(BigDecimal.ONE) shouldBe 0
     }
@@ -1039,10 +980,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 initialTeams = listOf(TEAM_A, TEAM_B),
             )
 
-        val report =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true).orFail()
         // ESPN gave nothing back → overlay degraded silently, base report returned with live flag still null.
         report.live shouldBe null
     }
@@ -1069,10 +1007,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 initialResults = listOf(winnerResult),
             )
 
-        val report =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail()
 
         val leader = report.liveLeaderboard.single { it.position == 1 }
         leader.name shouldBe "Scottie Scheffler"
@@ -1136,10 +1071,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(espnEvent)),
             )
 
-        val report =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true).orFail()
 
         report.live shouldBe true
         val a = report.teams.single { it.teamId == TEAM_A.id }
@@ -1196,10 +1128,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(espnEvent)),
             )
 
-        val report =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true).orFail()
 
         report.liveLeaderboard.map { it.name } shouldContainExactly listOf("Leader", "Runner-up")
         report.liveLeaderboard.forEach { it.rostered shouldBe false }
@@ -1243,10 +1172,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(espnEvent)),
             )
 
-        val report =
-            fixture.service.getSeasonReport(SEASON_ID, live = true)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getSeasonReport(SEASON_ID, live = true).orFail()
         report.live shouldBe true
         report.scope shouldBe ReportScope.Season
         val a = report.teams.single { it.teamId == TEAM_A.id }
@@ -1290,10 +1216,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(espnEvent)),
             )
 
-        val rankings =
-            fixture.service.getRankings(SEASON_ID, live = true)
-                .shouldBeInstanceOf<Result.Ok<Rankings>>()
-                .value
+        val rankings = fixture.service.getRankings(SEASON_ID, live = true).orFail()
         rankings.live shouldBe true
         rankings.tournamentNames shouldContainExactly listOf("The Masters *")
         rankings.weeks shouldContainExactly listOf("15")
@@ -1325,10 +1248,7 @@ class WeeklyReportServiceSpec : FunSpec({
                     ),
             )
 
-        val report =
-            fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true)
-                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
-                .value
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true).orFail()
         report.live shouldBe null
     }
 
@@ -1362,10 +1282,7 @@ class WeeklyReportServiceSpec : FunSpec({
                     ),
             )
 
-        val rankings =
-            fixture.service.getPlayerRankings(SEASON_ID)
-                .shouldBeInstanceOf<Result.Ok<PlayerRankings>>()
-                .value
+        val rankings = fixture.service.getPlayerRankings(SEASON_ID).orFail()
 
         rankings.players shouldHaveSize 1
         val row = rankings.players.single()
@@ -1397,10 +1314,7 @@ class WeeklyReportServiceSpec : FunSpec({
                     ),
             )
 
-        val rankings =
-            fixture.service.getPlayerRankings(SEASON_ID)
-                .shouldBeInstanceOf<Result.Ok<PlayerRankings>>()
-                .value
+        val rankings = fixture.service.getPlayerRankings(SEASON_ID).orFail()
 
         val row = rankings.players.single { it.golferId == winner.id }
         // Two teams rostered the golfer who top-10'd once → 2 (team, finish) pairs,
@@ -1429,10 +1343,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 initialScores = emptyList(),
             )
 
-        val rankings =
-            fixture.service.getPlayerRankings(SEASON_ID)
-                .shouldBeInstanceOf<Result.Ok<PlayerRankings>>()
-                .value
+        val rankings = fixture.service.getPlayerRankings(SEASON_ID).orFail()
 
         val row = rankings.players.single()
         row.golferId shouldBe null
@@ -1459,10 +1370,7 @@ class WeeklyReportServiceSpec : FunSpec({
                     ),
             )
 
-        val throughSony =
-            fixture.service.getPlayerRankings(SEASON_ID, throughTournamentId = SONY_ID)
-                .shouldBeInstanceOf<Result.Ok<PlayerRankings>>()
-                .value
+        val throughSony = fixture.service.getPlayerRankings(SEASON_ID, throughTournamentId = SONY_ID).orFail()
 
         val row = throughSony.players.single()
         row.topTens shouldBe 1
@@ -1506,10 +1414,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(espnEvent)),
             )
 
-        val rankings =
-            fixture.service.getPlayerRankings(SEASON_ID, live = true)
-                .shouldBeInstanceOf<Result.Ok<PlayerRankings>>()
-                .value
+        val rankings = fixture.service.getPlayerRankings(SEASON_ID, live = true).orFail()
 
         rankings.live shouldBe true
         val row = rankings.players.single { it.golferId == winner.id }
@@ -1540,10 +1445,7 @@ class WeeklyReportServiceSpec : FunSpec({
                     ),
             )
 
-        val rankings =
-            fixture.service.getPlayerRankings(SEASON_ID)
-                .shouldBeInstanceOf<Result.Ok<PlayerRankings>>()
-                .value
+        val rankings = fixture.service.getPlayerRankings(SEASON_ID).orFail()
 
         rankings.players.map { it.name } shouldContainExactly listOf("Scottie Scheffler", "Rory McIlroy")
     }
