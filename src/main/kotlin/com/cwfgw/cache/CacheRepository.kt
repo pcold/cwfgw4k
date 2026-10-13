@@ -38,7 +38,7 @@ interface CacheRepository {
         key: String,
         value: String,
         expiresAt: Instant,
-    )
+    ): Unit
 
     /** Delete every row whose [Instant] expiry has already passed. Returns the row count for logging. */
     context(ctx: TransactionContext)
