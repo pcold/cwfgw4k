@@ -26,12 +26,13 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
 
 function baseReport(): WeeklyReport {
   return {
+    scope: 'season',
     tournament: {
       id: null,
       name: null,
       startDate: null,
       endDate: null,
-      status: 'season',
+      status: null,
       payoutMultiplier: 1,
       week: null,
     },

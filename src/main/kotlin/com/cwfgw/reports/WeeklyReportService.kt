@@ -132,9 +132,9 @@ class WeeklyReportService(
 
     /**
      * Season-aggregate report: same wire shape as [getReport] but every
-     * column rolls up across every completed tournament. The "tournament"
-     * info block carries the synthetic id-less placeholder so the UI
-     * knows it's looking at a season view and not a specific event.
+     * column rolls up across every completed tournament. [ReportScope.Season]
+     * tells the UI which of the two it has; the "tournament" info block is
+     * an id-less placeholder.
      */
     suspend fun getSeasonReport(
         seasonId: SeasonId,
@@ -538,6 +538,7 @@ internal fun assembleWeeklyReport(inputs: WeeklyReportInputs): WeeklyReport {
         )
 
     return WeeklyReport(
+        scope = ReportScope.Tournament,
         tournament = buildTournamentInfo(inputs.tournament),
         teams = teamColumns,
         undraftedTopTens = undraftedTopTens,
@@ -657,10 +658,8 @@ internal fun buildTournamentInfo(tournament: Tournament): ReportTournamentInfo =
     )
 
 /**
- * Synthetic tournament info block for the season-aggregate report — no
- * specific tournament, multiplier baseline 1, status `null` so the UI
- * can detect "this is a season view, not a tournament view." Name is a
- * static label rather than localized; the UI overrides anyway.
+ * The season-aggregate report has no tournament: a static name, baseline multiplier, the rest null.
+ * [ReportScope.Season] marks the season view — a null here must not be read as that signal.
  */
 private fun seasonTournamentInfo(): ReportTournamentInfo =
     ReportTournamentInfo(
@@ -724,6 +723,7 @@ internal fun assembleSeasonReport(inputs: SeasonReportInputs): WeeklyReport {
     val sideBetDetail = buildSideBetDetail(sideBetPerRound, inputs.teams, inputs.allRosters, golferMap)
 
     return WeeklyReport(
+        scope = ReportScope.Season,
         tournament = seasonTournamentInfo(),
         teams = teamColumns,
         undraftedTopTens = undraftedAgg,

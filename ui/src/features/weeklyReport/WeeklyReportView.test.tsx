@@ -41,6 +41,7 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
 
 function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
   return {
+    scope: 'tournament',
     tournament: {
       id: 't-1',
       name: 'The Players Championship',
@@ -104,12 +105,13 @@ describe('WeeklyReportView', () => {
 
   it('flips the header row label when rendering the season total', () => {
     const seasonReport = report({
+      scope: 'season',
       tournament: {
         id: null,
         name: 'All Tournaments',
         startDate: null,
         endDate: null,
-        status: 'season',
+        status: null,
         payoutMultiplier: 1,
         week: null,
       },
@@ -118,6 +120,17 @@ describe('WeeklyReportView', () => {
     expect(screen.getByText('**SEASON')).toBeInTheDocument();
     expect(screen.queryByText('**WEEKLY')).not.toBeInTheDocument();
     expect(screen.getByText(/Season totals/i)).toBeInTheDocument();
+  });
+
+  it('shows the season-to-date line under each cell only on a tournament report', () => {
+    const teams = [team({ cells: [row(1, { seasonEarnings: 30, seasonTopTens: 2 })] })];
+
+    const { unmount } = render(<WeeklyReportView report={report({ teams })} />);
+    expect(screen.getByText(/\(2\)/)).toBeInTheDocument();
+    unmount();
+
+    render(<WeeklyReportView report={report({ scope: 'season', teams })} />);
+    expect(screen.queryByText(/\(2\)/)).not.toBeInTheDocument();
   });
 
   it('shows the LIVE badge when the report is live', () => {

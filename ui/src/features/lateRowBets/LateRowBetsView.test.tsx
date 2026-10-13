@@ -23,6 +23,7 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
 
 function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
   return {
+    scope: 'tournament',
     tournament: {
       id: 't-1',
       name: 'Sample Open',

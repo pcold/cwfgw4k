@@ -56,12 +56,13 @@ const tournament: Tournament = {
 
 function buildReport(): WeeklyReport {
   return {
+    scope: 'season',
     tournament: {
       id: null,
       name: null,
       startDate: null,
       endDate: null,
-      status: 'season',
+      status: null,
       payoutMultiplier: 1,
       week: null,
     },

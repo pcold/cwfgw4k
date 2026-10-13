@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type {
   ReportCell,
+  ReportScope,
   ReportSideBetRound,
   ReportTeamColumn,
   StandingsEntry,
@@ -55,7 +56,7 @@ function buildTeam(teamId: string, teamName: string, earningsRound?: number): Re
 }
 
 function buildFixture(overrides: {
-  status?: string;
+  scope?: ReportScope;
   week?: string | null;
   payoutMultiplier?: number;
   undraftedLen?: number;
@@ -78,13 +79,15 @@ function buildFixture(overrides: {
       { teamId: 't3', golferName: 'GolferC', cumulativeEarnings: 0, payout: r === 5 ? -15 : 30 },
     ],
   }));
+  const scope = overrides.scope ?? 'tournament';
   return {
+    scope,
     tournament: {
       id: 'tn-1',
       name: 'Masters',
       startDate: '2026-04-16',
       endDate: '2026-04-19',
-      status: overrides.status ?? 'completed',
+      status: scope === 'season' ? null : 'completed',
       payoutMultiplier: overrides.payoutMultiplier ?? 1,
       week: overrides.week === undefined ? '1' : overrides.week,
     },
@@ -112,7 +115,7 @@ describe('buildWeeklyReportPdf', () => {
 
   it('builds a PDF for a season-mode report with no week label and an elevated payout multiplier', () => {
     const doc = buildWeeklyReportPdf(
-      buildFixture({ status: 'season', week: null, payoutMultiplier: 2 }),
+      buildFixture({ scope: 'season', week: null, payoutMultiplier: 2 }),
     );
     const blob: Blob = doc.output('blob');
     expect(blob.size).toBeGreaterThan(100);

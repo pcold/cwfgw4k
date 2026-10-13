@@ -193,8 +193,8 @@ Routes nested under `/api/v1/seasons/{seasonId}/`.
 
 | Method | Path                                                    | Auth | Description                                                               |
 |--------|---------------------------------------------------------|------|---------------------------------------------------------------------------|
-| GET    | `/api/v1/seasons/{id}/report?live=`                     | No   | Season-aggregate `WeeklyReport`. `?live=true` overlays in-progress ESPN data (see below) |
-| GET    | `/api/v1/seasons/{id}/report/{tournamentId}?live=`      | No   | Single-tournament `WeeklyReport`. `?live=true` overlays in-progress ESPN data (see below) |
+| GET    | `/api/v1/seasons/{id}/report?live=`                     | No   | Season-aggregate `WeeklyReport` (`scope: "season"`). `?live=true` overlays in-progress ESPN data (see below) |
+| GET    | `/api/v1/seasons/{id}/report/{tournamentId}?live=`      | No   | Single-tournament `WeeklyReport` (`scope: "tournament"`). `?live=true` overlays in-progress ESPN data (see below) |
 | GET    | `/api/v1/seasons/{id}/rankings?live=&through=`          | No   | Cumulative team rankings + per-tournament series. `?live=true` overlays in-progress ESPN data; `?through=` is an optional cutoff tournament id (404 if missing) |
 | GET    | `/api/v1/seasons/{id}/golfer/{golferId}/history`        | No   | Top-10 finishes for one golfer over the season                            |
 
@@ -207,6 +207,13 @@ totals. Selected tournaments whose status is already `completed` skip
 the ESPN call entirely — the persisted numbers are immutable so a fresh
 pull can't change them. ESPN failures are absorbed (logged at WARN) and
 the response falls back to the base report.
+
+Both report endpoints return the same `WeeklyReport` shape; its `scope`
+field says which one a body is. Clients must branch on `scope`, never on
+the `tournament` block: the season-aggregate report sends
+`tournament.status` as `null`, and `status` only ever carries
+`upcoming` / `in_progress` / `completed`. The live overlay leaves `scope`
+unchanged.
 
 ### ESPN
 
@@ -332,8 +339,11 @@ data class CreateSeasonRequest(
 ### Reports
 
 ```kotlin
+enum class ReportScope { Season, Tournament }        // wire: "season" | "tournament"
+
 data class WeeklyReport(
-    val tournament: ReportTournamentInfo,
+    val scope: ReportScope,                          // which endpoint built it; always present
+    val tournament: ReportTournamentInfo,            // season scope: id/dates/status/week are null
     val teams: List<ReportTeamColumn>,
     val undraftedTopTens: List<UndraftedGolfer>,
     val sideBetDetail: List<ReportSideBetRound>,

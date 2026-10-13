@@ -164,6 +164,7 @@ private fun teamColumn(
 
 private fun emptyReport(teams: List<ReportTeamColumn> = emptyList()): WeeklyReport =
     WeeklyReport(
+        scope = ReportScope.Tournament,
         tournament =
             ReportTournamentInfo(
                 id = TOURNAMENT_ID,

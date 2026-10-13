@@ -10,6 +10,7 @@ vi.mock('@/shared/api/client', () => ({
     leagues: vi.fn().mockResolvedValue([]),
     seasons: vi.fn().mockResolvedValue([]),
     seasonReport: vi.fn().mockResolvedValue({
+      scope: 'season',
       tournament: {
         id: null,
         name: null,
