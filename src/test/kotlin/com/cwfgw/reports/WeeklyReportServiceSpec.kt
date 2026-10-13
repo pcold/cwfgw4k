@@ -1044,6 +1044,7 @@ class WeeklyReportServiceSpec : FunSpec({
                 .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
                 .value
         report.live shouldBe true
+        report.scope shouldBe ReportScope.Season
         val a = report.teams.single { it.teamId == TEAM_A.id }
         a.cells.first { it.round == 1 }.earnings.compareTo(BigDecimal(18)) shouldBe 0
     }

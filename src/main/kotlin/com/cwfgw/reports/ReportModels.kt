@@ -7,6 +7,7 @@ import com.cwfgw.serialization.BigDecimalSerializer
 import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentStatus
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import java.math.BigDecimal
@@ -138,12 +139,30 @@ data class ReportTournamentInfo(
 )
 
 /**
+ * An `enum class` for the reason [TournamentStatus] gives: pure tags. Wire-only, so `@SerialName`
+ * carries the value where that type needs a `value` property the repository can also read.
+ */
+@Serializable
+enum class ReportScope {
+    /** The "All Tournaments" roll-up, whose [WeeklyReport.tournament] block names no tournament. */
+    @SerialName("season")
+    Season,
+
+    /** @see ReportScope */
+    @SerialName("tournament")
+    Tournament,
+}
+
+/**
  * The full weekly or season report payload. `live` and `liveLeaderboard`
  * are set only for live overlays; non-live reports leave them at their
  * defaults so the wire shape stays compact.
+ *
+ * [scope] has no default, so every construction site must say which report it built.
  */
 @Serializable
 data class WeeklyReport(
+    val scope: ReportScope,
     val tournament: ReportTournamentInfo,
     val teams: List<ReportTeamColumn>,
     val undraftedTopTens: List<UndraftedGolfer>,

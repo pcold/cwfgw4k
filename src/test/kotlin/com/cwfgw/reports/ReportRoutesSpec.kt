@@ -5,6 +5,7 @@ import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferService
+import com.cwfgw.http.appJson
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.scoring.FakeScoringRepository
 import com.cwfgw.scoring.FantasyScore
@@ -40,7 +41,11 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -256,6 +261,9 @@ private fun asUpsertRequest(r: TournamentResult): CreateTournamentResultRequest 
         pairKey = r.pairKey,
     )
 
+// Reads the raw body: decoding into [WeeklyReport] would hide a field the server never wrote.
+private fun wireScope(body: String): JsonElement? = appJson.parseToJsonElement(body).jsonObject["scope"]
+
 class ReportRoutesSpec : FunSpec({
 
     // ----- GET /api/v1/seasons/{id}/report/{tournamentId} -----
@@ -267,6 +275,14 @@ class ReportRoutesSpec : FunSpec({
             response.status shouldBe HttpStatusCode.OK
             val body: WeeklyReport = response.body()
             body.tournament.name shouldBe "The Masters"
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/report/{tid} puts scope \"tournament\" on the wire") {
+        val masters = tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
+        apiTest(reportFixture(initialTournaments = listOf(masters))) { client ->
+            val response = client.get("/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}")
+            wireScope(response.bodyAsText()) shouldBe JsonPrimitive("tournament")
         }
     }
 
@@ -308,6 +324,13 @@ class ReportRoutesSpec : FunSpec({
             val body: WeeklyReport = response.body()
             body.tournament.name shouldBe "All Tournaments"
             body.tournament.id shouldBe null
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/report puts scope \"season\" on the wire") {
+        apiTest(reportFixture(initialTeams = listOf(teamRow(TEAM_A, "BROWN")))) { client ->
+            val response = client.get("/api/v1/seasons/${SEASON_ID.value}/report")
+            wireScope(response.bodyAsText()) shouldBe JsonPrimitive("season")
         }
     }
 
