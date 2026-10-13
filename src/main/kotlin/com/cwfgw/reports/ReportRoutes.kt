@@ -44,8 +44,7 @@ private suspend fun RoutingContext.getSeasonReport(
     cache: RequestCache,
 ) {
     val sid = seasonId()
-    val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
-    respondReport(cache, live = live) { service.getSeasonReport(sid, live = live).orThrow() }
+    respondReport(cache) { live -> service.getSeasonReport(sid, live = live).orThrow() }
 }
 
 private suspend fun RoutingContext.getReport(
@@ -54,8 +53,7 @@ private suspend fun RoutingContext.getReport(
 ) {
     val sid = seasonId()
     val tid = tournamentId()
-    val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
-    respondReport(cache, live = live) { service.getReport(sid, tid, live = live).orThrow() }
+    respondReport(cache) { live -> service.getReport(sid, tid, live = live).orThrow() }
 }
 
 private suspend fun RoutingContext.getRankings(
@@ -63,9 +61,8 @@ private suspend fun RoutingContext.getRankings(
     cache: RequestCache,
 ) {
     val sid = seasonId()
-    val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
     val through = optionalQueryParam("through", String::toTournamentId)
-    respondReport(cache, live = live) {
+    respondReport(cache) { live ->
         service.getRankings(sid, throughTournamentId = through, live = live).orThrow()
     }
 }
@@ -75,9 +72,8 @@ private suspend fun RoutingContext.getPlayerRankings(
     cache: RequestCache,
 ) {
     val sid = seasonId()
-    val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
     val through = optionalQueryParam("through", String::toTournamentId)
-    respondReport(cache, live = live) {
+    respondReport(cache) { live ->
         service.getPlayerRankings(sid, throughTournamentId = through, live = live).orThrow()
     }
 }
@@ -95,10 +91,10 @@ private suspend fun RoutingContext.getGolferHistory(
 // fallback built while ESPN was failing would be replayed after ESPN recovered.
 private suspend inline fun <reified T : Any> RoutingContext.respondReport(
     cache: RequestCache,
-    live: Boolean,
-    crossinline build: suspend () -> T,
+    crossinline build: suspend (live: Boolean) -> T,
 ) {
-    if (live) call.respond(build()) else cachedRespond(cache) { build() }
+    val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
+    if (live) call.respond(build(live)) else cachedRespond(cache) { build(live) }
 }
 
 private fun ReportError.toDomainError(): DomainError =
