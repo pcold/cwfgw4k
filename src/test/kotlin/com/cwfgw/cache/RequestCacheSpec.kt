@@ -11,6 +11,7 @@ import kotlinx.coroutines.coroutineScope
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -32,7 +33,7 @@ private class StepClock(start: Instant = Instant.parse("2026-05-03T00:00:00Z")) 
 
     override fun getZone() = ZoneOffset.UTC
 
-    override fun withZone(zone: java.time.ZoneId) = error("not used in tests")
+    override fun withZone(zone: ZoneId) = error("not used in tests")
 }
 
 class RequestCacheSpec : FunSpec({
