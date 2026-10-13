@@ -512,7 +512,7 @@ while true; do
     : "${verdict:=-}"
 
     if [ "$verdict" != "$was_verdict" ] && [ "$verdict" != "-" ]; then
-      echo "PR #$n — Verdict: $verdict — read the review body and triage"
+      echo "PR #$n — Verdict: $verdict — read the review body; fix every valid DEFECT on the branch, carried or not"
       woke=verdict
     elif [ "$now" != "$was_stamp" ] && [ "$woke" != "stamp" ]; then
       echo "PR #$n — feedback moved with no verdict on it — open the thread"
@@ -628,11 +628,18 @@ Adjudicate each finding against the code and the guides rather than against the
 reviewer's confidence — check the claim, don't weigh the tone.
 
 - **Accept** → fix as new commits, re-verify, push. Never amend. The push
-  re-triggers review, so expect another round and keep watching for it.
-- **Decline** → post the reasoning *and the evidence* as a PR comment, then
-  carry on. A finding contradicted by three occurrences on `main` is not a
-  defect, and leaving it unanswered makes a deliberate call look like an
-  oversight.
+  re-triggers review, so expect another round and keep watching for it. A
+  finding on code the diff only carried — moved, rewrapped, re-indented — is
+  accepted like any other. The brief has the agent report a break its change
+  merely exposed; once the review files it, the fix is yours, on this branch.
+- **Decline** → only a finding that is wrong. Post the reasoning *and the
+  evidence* as a PR comment, then carry on. A finding that cites no written
+  rule and is contradicted by three occurrences on `main` is not a defect, and
+  leaving it unanswered makes a deliberate call look like an oversight. Against
+  a written rule, "pre-existing" and "outside the ticket's scope" are not
+  grounds: a byte-for-byte move drew a BLOCK for four rule breaks it carried,
+  and parking them in a follow-up ticket left the PR blocked until the user
+  asked why.
 
 **A declined finding is settled by the merge, not by the comment.** Posting the
 reasoning does not close the thread — the user may read it and disagree, and
