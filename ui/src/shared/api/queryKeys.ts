@@ -126,9 +126,8 @@ export const queryKeys = {
 };
 
 /**
- * `everySeason` is a variant and not an omitted id, so a handler that holds a season cannot reach
- * every season by leaving an argument out. It is for one that holds none, as a reset holds only a
- * tournament's id.
+ * `everySeason` is a variant and not an omitted id, so a handler reaches every season only by
+ * naming it, never by leaving an argument out.
  */
 export type ReportScope = { type: 'season'; seasonId: string | null } | { type: 'everySeason' };
 
