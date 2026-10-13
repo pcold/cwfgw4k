@@ -8,7 +8,7 @@ import com.cwfgw.tournaments.TournamentId
  * [com.cwfgw.http.DomainError] at the boundary.
  */
 sealed interface EspnError {
-    /** @see EspnUpstreamFailure */
+    /** @see EspnError */
     data class UpstreamUnavailable(val failure: EspnUpstreamFailure) : EspnError
 
     /** The caller asked to import a tournament that does not exist in our DB. */

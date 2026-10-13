@@ -1,6 +1,7 @@
-package com.cwfgw.espn
+package com.cwfgw.testing
 
 import com.cwfgw.config.EspnConfig
+import com.cwfgw.espn.EspnClient
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId

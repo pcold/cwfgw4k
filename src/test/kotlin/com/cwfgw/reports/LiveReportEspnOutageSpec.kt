@@ -1,12 +1,12 @@
 package com.cwfgw.reports
 
 import com.cwfgw.espn.EspnClient
-import com.cwfgw.espn.EspnOutage
-import com.cwfgw.espn.OUTAGE_TOURNAMENT
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.testing.ApiFixture
+import com.cwfgw.testing.EspnOutage
+import com.cwfgw.testing.OUTAGE_TOURNAMENT
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.testing.testEspnService

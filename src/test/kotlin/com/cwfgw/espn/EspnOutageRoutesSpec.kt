@@ -4,9 +4,12 @@ import ch.qos.logback.classic.Level
 import com.cwfgw.http.ErrorBody
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.CapturedLogs
+import com.cwfgw.testing.EspnOutage
+import com.cwfgw.testing.OUTAGE_TOURNAMENT
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.captureLogs
+import com.cwfgw.testing.espnClientOver
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournaments.FakeTournamentRepository
 import io.kotest.core.spec.style.FunSpec

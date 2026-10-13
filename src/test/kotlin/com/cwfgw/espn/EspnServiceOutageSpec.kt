@@ -1,6 +1,8 @@
 package com.cwfgw.espn
 
 import com.cwfgw.result.Result
+import com.cwfgw.testing.EspnOutage
+import com.cwfgw.testing.OUTAGE_TOURNAMENT
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournaments.FakeTournamentRepository
 import io.kotest.assertions.throwables.shouldThrow
