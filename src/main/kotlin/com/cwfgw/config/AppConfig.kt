@@ -16,6 +16,7 @@ data class AppConfig(
         fun load(overrides: Map<String, Any> = emptyMap()): AppConfig =
             ConfigLoaderBuilder.default()
                 .addDecoder(ConfigSecretDecoder())
+                .addDecoder(PositiveSecondsDecoder())
                 .apply { if (overrides.isNotEmpty()) addMapSource(overrides) }
                 .addResourceSource("/application.yaml")
                 .build()
@@ -50,7 +51,7 @@ data class AuthConfig(
  */
 data class CacheConfig(
     val defaultTtlSeconds: Long,
-    val sweepIntervalSeconds: Long,
+    val sweepIntervalSeconds: PositiveSeconds,
 )
 
 /**
