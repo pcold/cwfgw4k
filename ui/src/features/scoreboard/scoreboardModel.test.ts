@@ -325,6 +325,14 @@ describe('collapsePairs', () => {
     expect(out[0].teamName).toBe('undrafted / WOMBLE');
   });
 
+  it('fills in "undrafted" in second place when the later partner has no team', () => {
+    const input = [
+      entry({ name: 'A', pairKey: 'p1', teamName: 'WOMBLE' }),
+      entry({ name: 'B', pairKey: 'p1', teamName: null }),
+    ];
+    expect(collapsePairs(input).map((row) => row.teamName)).toEqual(['WOMBLE / undrafted']);
+  });
+
   it('marks the collapsed row as rostered if either partner is rostered', () => {
     const input = [
       entry({ name: 'A', pairKey: 'p1', rostered: false }),
