@@ -2,9 +2,19 @@ package com.cwfgw.reports
 
 import ch.qos.logback.classic.Level
 import com.cwfgw.espn.EspnClient
+import com.cwfgw.golfers.GolferId
+import com.cwfgw.http.appJson
 import com.cwfgw.leagues.LeagueId
+import com.cwfgw.scoring.FakeScoringRepository
+import com.cwfgw.scoring.FantasyScore
+import com.cwfgw.scoring.FantasyScoreId
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.FakeSeasonRepository
+import com.cwfgw.teams.FakeTeamRepository
+import com.cwfgw.teams.RosterEntry
+import com.cwfgw.teams.RosterEntryId
+import com.cwfgw.teams.Team
+import com.cwfgw.teams.TeamId
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.CapturedLogs
 import com.cwfgw.testing.EspnOutage
@@ -23,6 +33,11 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import kotlinx.serialization.json.double
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.math.BigDecimal
+import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -50,6 +65,7 @@ private const val MASTERS_SCOREBOARD =
 
 private const val LIVE_MASTERS_ROUTE = "GET /api/v1/seasons/{id}/report/{tid}?live=true"
 private val LIVE_MASTERS_URL = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
+private val MASTERS_URL = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}"
 
 private fun CapturedLogs.previewFailuresAtWarn(): List<String> =
     events()
@@ -86,6 +102,55 @@ private fun mastersInPlay(espn: EspnClient): ApiFixture.() -> Unit =
             )
     }
 
+private val BROWN_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c01"))
+private val WOMBLE_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c02"))
+private val SCOTTIE_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d01"))
+private val SEEDED_AT: Instant = Instant.parse("2026-01-01T00:00:00Z")
+
+private fun team(
+    id: TeamId,
+    name: String,
+): Team =
+    Team(
+        id = id,
+        seasonId = SEASON_ID,
+        ownerName = "Owner $name",
+        teamName = name,
+        teamNumber = null,
+        createdAt = SEEDED_AT,
+        updatedAt = SEEDED_AT,
+    )
+
+private val BROWN_DRAFTED_SCOTTIE_FIRST =
+    RosterEntry(
+        id = RosterEntryId(UUID.fromString("00000000-0000-0000-0000-000000000e01")),
+        teamId = BROWN_ID,
+        golferId = SCOTTIE_ID,
+        acquiredVia = "draft",
+        draftRound = 1,
+        ownershipPct = BigDecimal(100),
+        acquiredAt = SEEDED_AT,
+        droppedAt = null,
+        isActive = true,
+    )
+
+private val SCOTTIE_EARNED_EIGHTEEN_AT_THE_MASTERS =
+    FantasyScore(
+        id = FantasyScoreId(UUID.fromString("00000000-0000-0000-0000-000000000f01")),
+        seasonId = SEASON_ID,
+        teamId = BROWN_ID,
+        tournamentId = MASTERS_ID,
+        golferId = SCOTTIE_ID,
+        points = BigDecimal(18),
+        position = 1,
+        numTied = 1,
+        basePayout = BigDecimal(18),
+        ownershipPct = BigDecimal(100),
+        payout = BigDecimal(18),
+        multiplier = BigDecimal.ONE,
+        calculatedAt = SEEDED_AT,
+    )
+
 class LiveReportEspnOutageSpec : FunSpec({
 
     EspnOutage.entries.forEach { outage ->
@@ -121,6 +186,29 @@ class LiveReportEspnOutageSpec : FunSpec({
 
                 logs.previewFailuresAtWarn().single() shouldBe
                     "live overlay $MASTERS_ID: ESPN preview failed: UpstreamUnavailable(failure=NoResponse)"
+            }
+        }
+    }
+
+    EspnOutage.entries.forEach { outage ->
+        test("$LIVE_MASTERS_ROUTE carries the base report's totals when ESPN ${outage.description}") {
+            val brownAloneHasEarned: ApiFixture.() -> Unit = {
+                teamRepository =
+                    FakeTeamRepository(
+                        initialTeams = listOf(team(BROWN_ID, "BROWN"), team(WOMBLE_ID, "WOMBLE")),
+                        initialRoster = listOf(BROWN_DRAFTED_SCOTTIE_FIRST),
+                    )
+                scoringRepository =
+                    FakeScoringRepository(initialScores = listOf(SCOTTIE_EARNED_EIGHTEEN_AT_THE_MASTERS))
+                mastersInPlay(outage.client())()
+            }
+            apiTest(brownAloneHasEarned) { client ->
+                val base = appJson.parseToJsonElement(client.get(MASTERS_URL).bodyAsText()).jsonObject
+                val fallback = appJson.parseToJsonElement(client.get(LIVE_MASTERS_URL).bodyAsText()).jsonObject
+
+                base.getValue("cash_totals").jsonObject.getValue("won").jsonPrimitive.double shouldBe 18.0
+                fallback.getValue("cash_totals") shouldBe base.getValue("cash_totals")
+                fallback.getValue("side_bet_totals") shouldBe base.getValue("side_bet_totals")
             }
         }
     }

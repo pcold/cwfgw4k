@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
+import { makeWonLostTotals } from '@/shared/test/fixtures';
 import { collapsePairs, deriveScoreboard, formatScoreToPar } from './scoreboardModel';
 import type { LeaderboardEntry } from './scoreboardModel';
 
@@ -58,6 +59,8 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     standingsOrder: [],
     live: false,
     liveLeaderboard: [],
+    cashTotals: makeWonLostTotals(),
+    sideBetTotals: makeWonLostTotals(),
     ...overrides,
   };
 }

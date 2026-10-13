@@ -27,6 +27,8 @@ vi.mock('@/shared/api/client', () => ({
       standingsOrder: [],
       live: false,
       liveLeaderboard: [],
+      cashTotals: { won: 0, lost: 0, net: 0 },
+      sideBetTotals: { won: 0, lost: 0, net: 0 },
     }),
     rankings: vi.fn().mockResolvedValue({
       teams: [],

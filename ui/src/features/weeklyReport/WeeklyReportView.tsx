@@ -10,7 +10,6 @@ import {
   sideBetRowLabel,
   sideBetWinnersByRound,
   signTextClass,
-  summarizeWeeklyReport,
   teamCellsByRound,
 } from './weeklyReportModel';
 
@@ -133,12 +132,11 @@ interface Props {
 }
 
 function WeeklyReportView({ report, onGolferClick }: Props) {
-  const { tournament, teams, undraftedTopTens, sideBetDetail } = report;
+  const { tournament, teams, undraftedTopTens, sideBetDetail, cashTotals } = report;
   const seasonMode = isSeasonReport(report);
   const showSeasonFooter = !seasonMode;
   const winnersByRound = sideBetWinnersByRound(sideBetDetail);
   const sideBetAmounts = sideBetAmountByRound(report.sideBetRules);
-  const summary = summarizeWeeklyReport(report);
   const teamsByRound = teams.map((t) => ({ team: t, cells: teamCellsByRound(t) }));
 
   const highlightRow = 'bg-gray-700 font-bold';
@@ -311,9 +309,9 @@ function WeeklyReportView({ report, onGolferClick }: Props) {
 
       {teams.length > 0 ? (
         <div className="flex flex-wrap gap-3 text-sm">
-          <StatCard label="Won" value={summary.totalWon} color="text-green-400" />
-          <StatCard label="Lost" value={summary.totalLost} color="text-red-400" />
-          <StatCard label="Net" value={summary.net} color={signTextClass(summary.net)} />
+          <StatCard label="Won" value={cashTotals.won} color="text-green-400" />
+          <StatCard label="Lost" value={cashTotals.lost} color="text-red-400" />
+          <StatCard label="Net" value={cashTotals.net} color={signTextClass(cashTotals.net)} />
         </div>
       ) : null}
     </section>

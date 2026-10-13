@@ -7,6 +7,7 @@ import type {
   SideBetOutcome,
   WeeklyReport,
 } from '@/shared/api/types';
+import { makeWonLostTotals } from '@/shared/test/fixtures';
 import {
   isSeasonReport,
   roundCellBg,
@@ -15,7 +16,6 @@ import {
   sideBetRowLabel,
   sideBetWinnersByRound,
   signTextClass,
-  summarizeWeeklyReport,
   teamCellsByRound,
 } from './weeklyReportModel';
 
@@ -38,6 +38,8 @@ function reportScoped(scope: ReportScope, status: string | null = null): WeeklyR
     standingsOrder: [],
     live: false,
     liveLeaderboard: [],
+    cashTotals: makeWonLostTotals(),
+    sideBetTotals: makeWonLostTotals(),
   };
 }
 
@@ -107,52 +109,6 @@ describe('sideBetRowLabel', () => {
 
   it('falls back to a label that names no rounds when the season has none', () => {
     expect(sideBetRowLabel(null)).toBe('SIDE BETS');
-  });
-});
-
-describe('summarizeWeeklyReport', () => {
-  it('returns zeros when there are no teams', () => {
-    const summary = summarizeWeeklyReport(reportScoped('tournament', 'completed'));
-    expect(summary).toEqual({ totalWon: 0, totalLost: 0, net: 0 });
-  });
-
-  it('sums positive totalCash as won and negative as lost (zero-sum by design)', () => {
-    const report = reportScoped('tournament', 'completed');
-    report.teams = [
-      {
-        teamId: 't-1',
-        teamName: 'Aces',
-        ownerName: 'A',
-        cells: [],
-        topTenEarnings: 0,
-        weeklyTotal: 0,
-        previous: 0,
-        subtotal: 0,
-        topTenCount: 0,
-        topTenMoney: 0,
-        sideBets: 0,
-        totalCash: 120,
-      },
-      {
-        teamId: 't-2',
-        teamName: 'Birdies',
-        ownerName: 'B',
-        cells: [],
-        topTenEarnings: 0,
-        weeklyTotal: 0,
-        previous: 0,
-        subtotal: 0,
-        topTenCount: 0,
-        topTenMoney: 0,
-        sideBets: 0,
-        totalCash: -80,
-      },
-    ];
-    expect(summarizeWeeklyReport(report)).toEqual({
-      totalWon: 120,
-      totalLost: -80,
-      net: 40,
-    });
   });
 });
 

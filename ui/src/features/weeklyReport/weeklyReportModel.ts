@@ -56,22 +56,6 @@ export function sideBetRowLabel(rules: ReportSideBetRules | null): string {
   return `${rules.rounds.length === 1 ? 'ROW' : 'ROWS'} ${rules.rounds.join('-')}`;
 }
 
-export interface WeeklySummary {
-  totalWon: number;
-  totalLost: number;
-  net: number;
-}
-
-export function summarizeWeeklyReport(report: WeeklyReport): WeeklySummary {
-  const totalWon = report.teams
-    .filter((t) => t.totalCash > 0)
-    .reduce((s, t) => s + t.totalCash, 0);
-  const totalLost = report.teams
-    .filter((t) => t.totalCash < 0)
-    .reduce((s, t) => s + t.totalCash, 0);
-  return { totalWon, totalLost, net: totalWon + totalLost };
-}
-
 export function isSeasonReport(report: WeeklyReport): boolean {
   return report.scope === 'season';
 }

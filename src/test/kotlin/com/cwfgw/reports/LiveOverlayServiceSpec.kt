@@ -458,6 +458,40 @@ class LiveOverlayServiceSpec : FunSpec({
         roundEight.map { it.payout } shouldContainExactly listOf(BigDecimal(-20), BigDecimal(20))
     }
 
+    // ----- totals after an overlay -----
+
+    test("mergeLiveData totals the overlaid teams where the base report's totals were all zero") {
+        val base = brownLeadingRoundEight()
+        val twentyPerTeam = DEFAULT_RULES.copy(sideBetAmount = BigDecimal(20))
+
+        val overlaid = mergeLiveData(base, listOf(roryWinsLive()), twentyPerTeam, additive = false)
+
+        base.cashTotals.won.signum() shouldBe 0
+        base.sideBetTotals.won.signum() shouldBe 0
+        overlaid.teams.map { it.totalCash.toInt() } shouldContainExactly listOf(-38, 38)
+        overlaid.cashTotals.won.compareTo(BigDecimal(38)) shouldBe 0
+        overlaid.cashTotals.lost.compareTo(BigDecimal(-38)) shouldBe 0
+        overlaid.teams.map { it.sideBets.toInt() } shouldContainExactly listOf(-20, 20)
+        overlaid.sideBetTotals.won.compareTo(BigDecimal(20)) shouldBe 0
+        overlaid.sideBetTotals.lost.compareTo(BigDecimal(-20)) shouldBe 0
+    }
+
+    test("overlayPriorLivePreview totals the overlaid teams where the base report's totals were all zero") {
+        val base = brownLeadingRoundEight()
+        val twentyPerTeam = DEFAULT_RULES.copy(sideBetAmount = BigDecimal(20))
+
+        val overlaid = overlayPriorLivePreview(base, roryWinsLive(), twentyPerTeam)
+
+        base.cashTotals.won.signum() shouldBe 0
+        base.sideBetTotals.won.signum() shouldBe 0
+        overlaid.teams.map { it.totalCash.toInt() } shouldContainExactly listOf(-38, 38)
+        overlaid.cashTotals.won.compareTo(BigDecimal(38)) shouldBe 0
+        overlaid.cashTotals.lost.compareTo(BigDecimal(-38)) shouldBe 0
+        overlaid.teams.map { it.sideBets.toInt() } shouldContainExactly listOf(-20, 20)
+        overlaid.sideBetTotals.won.compareTo(BigDecimal(20)) shouldBe 0
+        overlaid.sideBetTotals.lost.compareTo(BigDecimal(-20)) shouldBe 0
+    }
+
     // ----- buildLiveLeaderboard / buildUndraftedFromLeaderboard -----
 
     test("buildLiveLeaderboard sorts by position and formats scoreToPar") {

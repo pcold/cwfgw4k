@@ -7,6 +7,7 @@ import type {
   SideBetOutcome,
   WeeklyReport,
 } from '@/shared/api/types';
+import { makeWonLostTotals } from '@/shared/test/fixtures';
 
 function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
   return {
@@ -77,6 +78,8 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     standingsOrder: [],
     live: false,
     liveLeaderboard: [],
+    cashTotals: makeWonLostTotals(),
+    sideBetTotals: makeWonLostTotals(),
     ...overrides,
   };
 }
@@ -124,11 +127,15 @@ describe('LateRowBetsView', () => {
     expect(teamCells).toEqual(['Aces', 'Eagles', 'Birdies']);
   });
 
-  it('computes the won/lost/net summary from sideBets', () => {
-    render(<LateRowBetsView report={report()} />);
-    expect(screen.getByText('Won').nextSibling).toHaveTextContent('$80');
-    expect(screen.getByText('Lost').nextSibling).toHaveTextContent('-$80');
-    expect(screen.getByText('Net').nextSibling).toHaveTextContent('$0');
+  it("displays the report's side-bet totals, which are not a sum over its teams", () => {
+    const disagreeing = report({
+      cashTotals: { won: 55, lost: -66, net: -11 },
+      sideBetTotals: { won: 9, lost: -2, net: 7 },
+    });
+    render(<LateRowBetsView report={disagreeing} />);
+    expect(screen.getByText('Won').nextSibling).toHaveTextContent('$9.00');
+    expect(screen.getByText('Lost').nextSibling).toHaveTextContent('-$2.00');
+    expect(screen.getByText('Net').nextSibling).toHaveTextContent('$7.00');
   });
 
   it('says a season that stakes nothing on side bets has none, and shows no rules or totals', () => {
