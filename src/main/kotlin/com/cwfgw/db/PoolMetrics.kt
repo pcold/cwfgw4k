@@ -18,7 +18,7 @@ private const val SLOW_ACQUIRE_THRESHOLD_MS: Long = 500
  * type and so test setups using a different `DataSource` see `null`
  * and skip the polling loop entirely.
  *
- * Captured by [Application.launchPoolMetricsLog] in `Main.kt`; not
+ * Captured by [Application.launchPoolMetricsLog] in `App.kt`; not
  * meant to be wired into business code — pool exhaustion belongs to
  * operations, not to product logic.
  */
@@ -50,7 +50,7 @@ data class PoolSnapshot(
 /**
  * Returns a [PoolMetrics] when the [DataSource] is HikariCP-backed; null
  * otherwise. Tests using non-Hikari datasources get `null` and the
- * Main.kt launcher silently skips the polling loop for them.
+ * App.kt launcher silently skips the polling loop for them.
  */
 fun DataSource.poolMetricsOrNull(): PoolMetrics? = (this as? HikariDataSource)?.let(::PoolMetrics)
 

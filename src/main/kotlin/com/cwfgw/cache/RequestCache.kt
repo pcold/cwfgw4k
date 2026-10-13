@@ -27,7 +27,7 @@ private val log = KotlinLogging.logger {}
  * Pure-TTL semantics: the underlying [CacheRepository.get] only returns
  * non-expired rows. [deleteExpired] is the periodic sweep that keeps the
  * table small; it's invoked from a background coroutine launched at boot
- * (see Main.kt), not on every read. Mutations (POST / PUT / DELETE) do not
+ * (see App.kt), not on every read. Mutations (POST / PUT / DELETE) do not
  * invalidate cache entries — the [defaultTtl] window is the maximum
  * staleness consumers can see.
  *
