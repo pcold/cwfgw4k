@@ -2,7 +2,10 @@ package com.cwfgw.users
 
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
+import com.cwfgw.testing.TEST_ADMIN_PASSWORD
+import com.cwfgw.testing.TEST_ADMIN_USERNAME
 import com.cwfgw.testing.apiTest
+import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.noopTransactionContext
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -66,17 +69,12 @@ private fun ApplicationTestBuilder.cookieClient(): HttpClient =
 // Not Ktor's default of 7 days, so a cookie that ignores AuthSetup cannot match it.
 private const val CONFIGURED_MAX_AGE_SECONDS = 5_400L
 
-private fun withSeededAdminAndCookie(secure: Boolean = false): ApiFixture.() -> Unit =
-    {
-        withSeededAdmin().invoke(this)
-        authSetup = authSetup.copy(sessionMaxAgeSeconds = CONFIGURED_MAX_AGE_SECONDS, cookieSecure = secure)
-    }
-
+// authenticatedApiTest seeds the admin but keeps its own login response, so the cookie is read off a second login.
 private suspend fun HttpClient.sessionCookieFromLogin(): Cookie {
     val response =
         post("/api/v1/auth/login") {
             contentType(ContentType.Application.Json)
-            setBody(LoginRequest(username = "admin", password = "hunter2"))
+            setBody(LoginRequest(username = TEST_ADMIN_USERNAME, password = TEST_ADMIN_PASSWORD))
         }
     response.status shouldBe HttpStatusCode.OK
     return response.setCookie().singleOrNull { it.name == "cwfgw_session" }.shouldNotBeNull()
@@ -102,37 +100,39 @@ class AuthRoutesSpec : FunSpec({
     }
 
     test("POST /auth/login scopes the session cookie to Path=/") {
-        apiTest(withSeededAdminAndCookie()) { client ->
+        authenticatedApiTest { client ->
             client.sessionCookieFromLogin().path shouldBe "/"
         }
     }
 
     test("POST /auth/login marks the session cookie HttpOnly") {
-        apiTest(withSeededAdminAndCookie()) { client ->
+        authenticatedApiTest { client ->
             client.sessionCookieFromLogin().httpOnly shouldBe true
         }
     }
 
     test("POST /auth/login sets the session cookie SameSite=Lax") {
-        apiTest(withSeededAdminAndCookie()) { client ->
+        authenticatedApiTest { client ->
             client.sessionCookieFromLogin().extensions["SameSite"] shouldBe "Lax"
         }
     }
 
     test("POST /auth/login gives the session cookie the configured Max-Age") {
-        apiTest(withSeededAdminAndCookie()) { client ->
+        authenticatedApiTest({
+            authSetup = authSetup.copy(sessionMaxAgeSeconds = CONFIGURED_MAX_AGE_SECONDS)
+        }) { client ->
             client.sessionCookieFromLogin().maxAge shouldBe CONFIGURED_MAX_AGE_SECONDS.toInt()
         }
     }
 
     test("POST /auth/login marks the session cookie Secure when cookieSecure is on") {
-        apiTest(withSeededAdminAndCookie(secure = true)) { client ->
+        authenticatedApiTest({ authSetup = authSetup.copy(cookieSecure = true) }) { client ->
             client.sessionCookieFromLogin().secure shouldBe true
         }
     }
 
     test("POST /auth/login leaves Secure off the session cookie when cookieSecure is off") {
-        apiTest(withSeededAdminAndCookie(secure = false)) { client ->
+        authenticatedApiTest({ authSetup = authSetup.copy(cookieSecure = false) }) { client ->
             client.sessionCookieFromLogin().secure shouldBe false
         }
     }
