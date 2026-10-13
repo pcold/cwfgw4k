@@ -104,10 +104,10 @@ private class ClientMistake(
 )
 
 /**
- * Each request carries [CLIENT_MARKER] wherever its client can put text: in the body, and in the content type
- * of a request that has both.
+ * What the handler can read back: the parser's exception quotes a rejected body, and a content type arrives on
+ * the request and in the exception that refuses it.
  */
-private val clientMistakes =
+private val markedMistakes =
     listOf(
         ClientMistake("a truncated JSON body", HttpStatusCode.BadRequest) { client ->
             client.postJson("/receive/plain", """{"name":"$CLIENT_MARKER""")
@@ -124,14 +124,28 @@ private val clientMistakes =
         ClientMistake("a content type no converter matches", HttpStatusCode.UnsupportedMediaType) { client ->
             client.post("/receive/plain") {
                 contentType(ContentType("text", CLIENT_MARKER))
-                setBody("""{"name":"$CLIENT_MARKER"}""")
+                setBody("""{"name":"ada"}""")
             }
         },
+        ClientMistake("a multipart receive of another content type", HttpStatusCode.UnsupportedMediaType) { client ->
+            client.post("/receive/multipart") {
+                contentType(ContentType("text", CLIENT_MARKER))
+                setBody("x")
+            }
+        },
+    )
+
+/**
+ * Nothing here for a marker to ride on: there is no content type, and a body no converter took cannot be
+ * received a second time.
+ */
+private val unmarkedMistakes =
+    listOf(
         ClientMistake("an absent Content-Type header", HttpStatusCode.UnsupportedMediaType) { client ->
-            client.post("/receive/plain") { setBody(UnlabeledBody("""{"name":"$CLIENT_MARKER"}""")) }
+            client.post("/receive/plain") { setBody(UnlabeledBody("""{"name":"ada"}""")) }
         },
         ClientMistake("a multipart receive with no Content-Type", HttpStatusCode.UnsupportedMediaType) { client ->
-            client.post("/receive/multipart") { setBody(UnlabeledBody(CLIENT_MARKER)) }
+            client.post("/receive/multipart") { setBody(UnlabeledBody("x")) }
         },
     )
 
@@ -305,7 +319,7 @@ class ErrorHandlingSpec : FunSpec({
         }
     }
 
-    clientMistakes.forEach { mistake ->
+    (markedMistakes + unmarkedMistakes).forEach { mistake ->
         test("${mistake.description} logs nothing at WARN or above") {
             captureLogs { logs ->
                 errorHandlingTestApp { client -> mistake.send(client).status shouldBe mistake.answer }
@@ -315,7 +329,9 @@ class ErrorHandlingSpec : FunSpec({
                 logs.atWarnOrAbove().shouldBeEmpty()
             }
         }
+    }
 
+    markedMistakes.forEach { mistake ->
         test("${mistake.description} is echoed into neither the response nor a log line at any level") {
             captureLogs { logs ->
                 errorHandlingTestApp { client ->
