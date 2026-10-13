@@ -21,7 +21,6 @@ SQL_INSTANCE="cwfgw4k-prod"
 DB_NAME="cwfgw4k"
 DB_USER="cwfgw4k"
 REPO="cwfgw4k"
-REPORTS_BUCKET="${PROJECT_ID}-cwfgw4k-test-reports"
 
 echo "==> Setting project to ${PROJECT_ID}"
 gcloud config set project "${PROJECT_ID}"
@@ -30,7 +29,6 @@ echo "==> Enabling required APIs"
 gcloud services enable \
   run.googleapis.com \
   sqladmin.googleapis.com \
-  cloudbuild.googleapis.com \
   artifactregistry.googleapis.com \
   secretmanager.googleapis.com \
   storage.googleapis.com
@@ -103,18 +101,6 @@ else
   ADMIN_PASSWORD_PRINTED=""
 fi
 
-echo "==> Creating public reports bucket ${REPORTS_BUCKET}"
-if ! gcloud storage buckets describe "gs://${REPORTS_BUCKET}" &>/dev/null; then
-  gcloud storage buckets create "gs://${REPORTS_BUCKET}" \
-    --location="${REGION}" \
-    --uniform-bucket-level-access
-  gcloud storage buckets add-iam-policy-binding "gs://${REPORTS_BUCKET}" \
-    --member=allUsers \
-    --role=roles/storage.objectViewer
-else
-  echo "    (already exists)"
-fi
-
 echo "==> Granting Cloud Run access to the secrets"
 PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
 RUNTIME_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
@@ -125,17 +111,6 @@ for secret in cwfgw4k-db-password cwfgw4k-session-secret cwfgw4k-admin-password;
     --quiet
 done
 
-echo "==> Granting Cloud Build permission to deploy to Cloud Run"
-gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
-  --role="roles/run.admin" \
-  --quiet
-gcloud iam service-accounts add-iam-policy-binding \
-  "${RUNTIME_SA}" \
-  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
-  --role="roles/iam.serviceAccountUser" \
-  --quiet
-
 echo ""
 echo "=== Setup complete ==="
 echo ""
@@ -145,11 +120,13 @@ if [[ -n "${ADMIN_PASSWORD_PRINTED}" ]]; then
   echo "  password: ${ADMIN_PASSWORD_PRINTED}"
   echo ""
 fi
-echo "Update cloudbuild.yaml's _REPORTS_BUCKET to: ${REPORTS_BUCKET}"
-echo ""
 echo "Next steps:"
-echo "  1. (optional) Connect a Cloud Build trigger to the GitHub repo so pushes deploy."
-echo "  2. Run a one-shot deploy:"
-echo "     gcloud builds submit --config=cloudbuild.yaml --substitutions=_REPORTS_BUCKET=${REPORTS_BUCKET}"
-echo "  3. Find the running service URL:"
+echo "  1. Let GitHub Actions deploy. Run this, then set the repository variables the script prints:"
+echo "     ./deploy/setup-github-deploy.sh ${PROJECT_ID}"
+echo "  2. Run the first deploy:"
+echo "     gh workflow run deploy.yml"
+echo "  3. Open the new service to the public (the Deploy workflow does not set this):"
+echo "     gcloud run services add-iam-policy-binding cwfgw4k --region=${REGION} \\"
+echo "       --member=allUsers --role=roles/run.invoker"
+echo "  4. Find the running service URL:"
 echo "     gcloud run services describe cwfgw4k --region=${REGION} --format='value(status.url)'"
