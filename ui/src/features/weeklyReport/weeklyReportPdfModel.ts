@@ -36,15 +36,6 @@ export function cellContent(cell: ReportCell | undefined, showSeasonFooter: bool
   return `${name}\n${earningsLine}\n${cumLine}`;
 }
 
-export function sideBetPerTeamByRound(report: WeeklyReport): Map<number, number> {
-  const amounts = new Map<number, number>();
-  for (const round of report.sideBetDetail) {
-    const losses = round.teams.filter((t) => t.payout < 0).map((t) => Math.abs(t.payout));
-    if (losses.length > 0) amounts.set(round.round, Math.max(...losses));
-  }
-  return amounts;
-}
-
 export function pdfFilename(report: WeeklyReport, season: Season | null): string {
   const year = season?.seasonYear ? String(season.seasonYear) : '';
   const seasonName = (season?.name ?? '').replace(/[^A-Za-z0-9]/g, '');

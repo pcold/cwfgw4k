@@ -39,7 +39,7 @@ function LateRowBetsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-bold">Round 5-8 Late Row Bets</h2>
+        <h2 className="text-xl font-bold">Late Row Bets</h2>
         <div className="flex items-center gap-3">
           <label
             htmlFor="late-row-bets-through"

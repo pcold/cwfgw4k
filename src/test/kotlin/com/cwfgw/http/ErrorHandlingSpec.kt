@@ -1,15 +1,23 @@
 package com.cwfgw.http
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.classic.spi.ThrowableProxyUtil
+import com.cwfgw.testing.CapturedLogs
 import com.cwfgw.testing.apiTest
+import com.cwfgw.testing.captureLogs
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -32,6 +40,7 @@ import io.ktor.server.routing.post as routingPost
 private const val MALFORMED_BODY = "malformed or invalid request body"
 private const val UNSUPPORTED_CONTENT_TYPE = "unsupported or missing content type"
 private const val LOGIN_PATH = "/api/v1/auth/login"
+private const val CLIENT_MARKER = "zq7-client-marker"
 
 @Serializable
 private data class NameHolder(val name: String)
@@ -87,6 +96,74 @@ private suspend fun HttpClient.postJson(
     contentType(ContentType.Application.Json)
     setBody(body)
 }
+
+private class ClientMistake(
+    val description: String,
+    val answer: HttpStatusCode,
+    val send: suspend (HttpClient) -> HttpResponse,
+)
+
+/**
+ * What the handler can read back: the parser's exception quotes a rejected body, and a content type arrives on
+ * the request and in the exception that refuses it.
+ */
+private val markedMistakes =
+    listOf(
+        ClientMistake("a truncated JSON body", HttpStatusCode.BadRequest) { client ->
+            client.postJson("/receive/plain", """{"name":"$CLIENT_MARKER""")
+        },
+        ClientMistake("a mistyped field", HttpStatusCode.BadRequest) { client ->
+            client.postJson("/receive/plain", """{"name":{"$CLIENT_MARKER":1}}""")
+        },
+        ClientMistake("an empty JSON body", HttpStatusCode.BadRequest) { client ->
+            client.post("/receive/plain") {
+                contentType(ContentType.Application.Json.withParameter("profile", CLIENT_MARKER))
+                setBody("")
+            }
+        },
+        ClientMistake("a content type no converter matches", HttpStatusCode.UnsupportedMediaType) { client ->
+            client.post("/receive/plain") {
+                contentType(ContentType("text", CLIENT_MARKER))
+                setBody("""{"name":"ada"}""")
+            }
+        },
+        ClientMistake("a multipart receive of another content type", HttpStatusCode.UnsupportedMediaType) { client ->
+            client.post("/receive/multipart") {
+                contentType(ContentType("text", CLIENT_MARKER))
+                setBody("x")
+            }
+        },
+    )
+
+/**
+ * Nothing here for a marker to ride on: there is no content type, and a body no converter took cannot be
+ * received a second time.
+ */
+private val unmarkedMistakes =
+    listOf(
+        ClientMistake("an absent Content-Type header", HttpStatusCode.UnsupportedMediaType) { client ->
+            client.post("/receive/plain") { setBody(UnlabeledBody("""{"name":"ada"}""")) }
+        },
+        ClientMistake("a multipart receive with no Content-Type", HttpStatusCode.UnsupportedMediaType) { client ->
+            client.post("/receive/multipart") { setBody(UnlabeledBody("x")) }
+        },
+    )
+
+/**
+ * WARN counts with ERROR: `logback.xml` sends both to stderr, which Cloud Logging reads as severity ERROR.
+ * Unfiltered by logger, so each line names its own and one from an unrelated thread says so in the failure.
+ */
+private fun CapturedLogs.atWarnOrAbove(): List<String> =
+    events()
+        .filter { it.level.isGreaterOrEqual(Level.WARN) }
+        .map { "${it.level} ${it.loggerName} - ${it.formattedMessage}" }
+
+/** With the stack trace: a cause attached to a line prints its message, and each nested cause's, beneath it. */
+private fun CapturedLogs.rendered(): List<String> =
+    events().map { it.formattedMessage + ThrowableProxyUtil.asString(it.throwableProxy) }
+
+private fun CapturedLogs.unhandledErrorsOn(request: String): List<ILoggingEvent> =
+    events().filter { it.formattedMessage == "Unhandled error on $request" }
 
 class ErrorHandlingSpec : FunSpec({
 
@@ -239,6 +316,83 @@ class ErrorHandlingSpec : FunSpec({
 
             response.status shouldBe HttpStatusCode.UnsupportedMediaType
             response.body<ErrorBody>().error shouldBe UNSUPPORTED_CONTENT_TYPE
+        }
+    }
+
+    (markedMistakes + unmarkedMistakes).forEach { mistake ->
+        test("${mistake.description} logs nothing at WARN or above") {
+            captureLogs { logs ->
+                errorHandlingTestApp { client -> mistake.send(client).status shouldBe mistake.answer }
+
+                // Read after the application has shut down, not on the response: nothing says a handler
+                // logs before it responds.
+                logs.atWarnOrAbove().shouldBeEmpty()
+            }
+        }
+    }
+
+    markedMistakes.forEach { mistake ->
+        test("${mistake.description} is echoed into neither the response nor a log line at any level") {
+            captureLogs { logs ->
+                errorHandlingTestApp { client ->
+                    val response = mistake.send(client)
+
+                    response.status shouldBe mistake.answer
+                    response.bodyAsText() shouldNotContain CLIENT_MARKER
+                }
+
+                logs.rendered().filter { CLIENT_MARKER in it }.shouldBeEmpty()
+            }
+        }
+    }
+
+    test("DomainError.NotFound, Validation and Conflict log nothing at WARN or above") {
+        captureLogs { logs ->
+            errorHandlingTestApp { client ->
+                val paths = listOf("/throw/not-found", "/throw/validation", "/throw/conflict")
+
+                paths.map { client.get(it).status } shouldBe
+                    listOf(HttpStatusCode.NotFound, HttpStatusCode.BadRequest, HttpStatusCode.Conflict)
+            }
+
+            logs.atWarnOrAbove().shouldBeEmpty()
+        }
+    }
+
+    test("an unmapped exception logs one line at ERROR that names the request and carries the exception") {
+        captureLogs { logs ->
+            errorHandlingTestApp { client ->
+                client.get("/throw/unmapped").status shouldBe HttpStatusCode.InternalServerError
+            }
+
+            val unhandled = logs.unhandledErrorsOn("GET /throw/unmapped")
+            unhandled.map { it.level } shouldBe listOf(Level.ERROR)
+            unhandled.map { it.throwableProxy?.message } shouldBe listOf("boom")
+        }
+    }
+
+    test("a receive into a type with no serializer logs one line at ERROR, because a server fault has to be seen") {
+        captureLogs { logs ->
+            errorHandlingTestApp { client ->
+                val response = client.postJson("/receive/no-serializer", """{"name":"ada"}""")
+
+                response.status shouldBe HttpStatusCode.InternalServerError
+            }
+
+            logs.unhandledErrorsOn("POST /receive/no-serializer").map { it.level } shouldBe listOf(Level.ERROR)
+        }
+    }
+
+    test("POST /api/v1/auth/login with a truncated JSON body logs nothing at WARN or above and nothing of the body") {
+        captureLogs { logs ->
+            apiTest { client ->
+                val response = client.postJson(LOGIN_PATH, """{"username":"$CLIENT_MARKER""")
+
+                response.status shouldBe HttpStatusCode.BadRequest
+            }
+
+            logs.atWarnOrAbove().shouldBeEmpty()
+            logs.rendered().filter { CLIENT_MARKER in it }.shouldBeEmpty()
         }
     }
 })

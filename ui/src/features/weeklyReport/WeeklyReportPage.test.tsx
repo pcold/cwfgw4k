@@ -95,10 +95,40 @@ function buildReport(name: string, tournamentId: string | null = null): WeeklyRe
       },
     ],
     undraftedTopTens: [],
-    sideBetDetail: [],
+    sideBetRules: { amountPerTeam: 20, rounds: [2, 3] },
+    sideBetDetail: [2, 3].map((round) => ({
+      round,
+      teams: [
+        {
+          teamId: 'team-1',
+          teamName: 'Aces',
+          golferName: `Golfer ${round}`,
+          cumulativeEarnings: 0,
+          payout: 0,
+          outcome: null,
+        },
+      ],
+    })),
     standingsOrder: [],
     live: false,
     liveLeaderboard: [],
+  };
+}
+
+// The body a report cached before the server sent rules, team names and outcomes still serves.
+function buildReportWithoutSideBetFacts(name: string): unknown {
+  const { sideBetRules: _rules, sideBetDetail, ...rest } = buildReport(name);
+  return {
+    ...rest,
+    sideBetDetail: sideBetDetail.map(({ round, teams }) => ({
+      round,
+      teams: teams.map(({ teamId, golferName, cumulativeEarnings, payout }) => ({
+        teamId,
+        golferName,
+        cumulativeEarnings,
+        payout,
+      })),
+    })),
   };
 }
 
@@ -182,6 +212,31 @@ describe('WeeklyReportPage', () => {
 
     renderWithProviders(<WeeklyReportPage />);
     expect(await screen.findByText(/Failed to load report/i)).toBeInTheDocument();
+  });
+
+  it("shows the season's own side-bet amount and rounds, not the defaults", async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([]);
+    seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
+
+    renderWithProviders(<WeeklyReportPage />);
+
+    expect(await screen.findByText('ROWS 2-3')).toBeInTheDocument();
+    expect(screen.getAllByText('($20.00)')).toHaveLength(2);
+  });
+
+  it('renders the grid of a report cached before the rules were sent, naming no rounds or amount', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([]);
+    seasonReportMock.mockResolvedValue(buildReportWithoutSideBetFacts('All Tournaments'));
+
+    renderWithProviders(<WeeklyReportPage />);
+
+    expect(await screen.findByText('SIDE BETS')).toBeInTheDocument();
+    expect(screen.getByText('Golfer 8')).toBeInTheDocument();
+    expect(screen.queryByText(/^\(\$/)).not.toBeInTheDocument();
   });
 
   it('enables the Download PDF button once the report loads', async () => {

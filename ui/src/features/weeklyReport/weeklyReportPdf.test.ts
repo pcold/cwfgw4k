@@ -3,10 +3,14 @@ import type {
   ReportCell,
   ReportScope,
   ReportSideBetRound,
+  ReportSideBetRules,
+  ReportSideBetTeamEntry,
   ReportTeamColumn,
+  SideBetOutcome,
   StandingsEntry,
   WeeklyReport,
 } from '@/shared/api/types';
+import type jsPDF from 'jspdf';
 import { buildWeeklyReportPdf } from './weeklyReportPdf';
 
 function row(overrides: Partial<ReportCell> = {}): ReportCell {
@@ -50,9 +54,20 @@ function buildTeam(teamId: string, teamName: string, earningsRound?: number): Re
     subtotal: earningsRound ? 50 : -40,
     topTenCount: earningsRound ? 1 : 0,
     topTenMoney: earningsRound ? 7.5 : 0,
-    sideBets: earningsRound ? 45 : -15,
+    sideBets: earningsRound ? 40 : -20,
     totalCash: earningsRound ? 95 : -55,
   };
+}
+
+const SIDE_BET_RULES: ReportSideBetRules = { amountPerTeam: 20, rounds: [2, 3] };
+
+function sideBetEntry(
+  teamId: string,
+  teamName: string,
+  payout: number,
+  outcome: SideBetOutcome,
+): ReportSideBetTeamEntry {
+  return { teamId, teamName, golferName: `Golfer-${teamName}`, cumulativeEarnings: 0, payout, outcome };
 }
 
 function buildFixture(overrides: {
@@ -60,6 +75,7 @@ function buildFixture(overrides: {
   week?: string | null;
   payoutMultiplier?: number;
   undraftedLen?: number;
+  sideBetRules?: ReportSideBetRules | null;
 } = {}): WeeklyReport {
   const teams: ReportTeamColumn[] = [
     buildTeam('t1', 'Aces', 5),
@@ -71,12 +87,13 @@ function buildFixture(overrides: {
     teamName: t.teamName,
     totalCash: t.totalCash,
   }));
-  const sideBetDetail: ReportSideBetRound[] = [5, 6, 7, 8].map((r) => ({
+  const sideBetRules = overrides.sideBetRules === undefined ? SIDE_BET_RULES : overrides.sideBetRules;
+  const sideBetDetail: ReportSideBetRound[] = (sideBetRules?.rounds ?? []).map((r) => ({
     round: r,
     teams: [
-      { teamId: 't1', golferName: 'GolferA', cumulativeEarnings: 7.5, payout: r === 5 ? 30 : -15 },
-      { teamId: 't2', golferName: 'GolferB', cumulativeEarnings: 0, payout: -15 },
-      { teamId: 't3', golferName: 'GolferC', cumulativeEarnings: 0, payout: r === 5 ? -15 : 30 },
+      sideBetEntry('t1', 'Aces', r === 2 ? 40 : -20, r === 2 ? 'won' : 'lost'),
+      sideBetEntry('t2', 'Birdies', -20, 'lost'),
+      sideBetEntry('t3', 'Eagles', r === 2 ? -20 : 40, r === 2 ? 'lost' : 'won'),
     ],
   }));
   const scope = overrides.scope ?? 'tournament';
@@ -99,11 +116,21 @@ function buildFixture(overrides: {
       scoreToPar: null,
       pairKey: null,
     })),
+    sideBetRules,
     sideBetDetail,
     standingsOrder: standings,
     live: false,
     liveLeaderboard: [],
   };
+}
+
+// Each string the document draws, read back from the uncompressed stream's `(text) Tj` operators.
+function drawnText(doc: jsPDF): string[] {
+  return doc
+    .output()
+    .split('\n')
+    .flatMap((line) => /^\((.*)\) Tj$/.exec(line)?.slice(1) ?? [])
+    .map((text) => text.replace(/\\([()\\])/g, '$1'));
 }
 
 describe('buildWeeklyReportPdf', () => {
@@ -119,6 +146,19 @@ describe('buildWeeklyReportPdf', () => {
     );
     const blob: Blob = doc.output('blob');
     expect(blob.size).toBeGreaterThan(100);
+  });
+
+  it("prints the season's own side-bet amount beside its rounds and names them in the totals row", () => {
+    const drawn = drawnText(buildWeeklyReportPdf(buildFixture()));
+    expect(drawn.filter((text) => text === '($20.00)')).toHaveLength(SIDE_BET_RULES.rounds.length);
+    expect(drawn).toContain('ROWS 2-3');
+  });
+
+  it('prints no amount beside any round and a totals row naming none for a season without side bets', () => {
+    const drawn = drawnText(buildWeeklyReportPdf(buildFixture({ sideBetRules: null })));
+    const subtotalTopTenMoney = ['($7.50)', '($0.00)', '($0.00)'];
+    expect(drawn.filter((text) => /^\(\$/.test(text))).toEqual(subtotalTopTenMoney);
+    expect(drawn).toContain('SIDE BETS');
   });
 
   it('builds a PDF when there are no undrafted top-tens', () => {

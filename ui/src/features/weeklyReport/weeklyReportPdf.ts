@@ -11,16 +11,13 @@ import { formatMoney } from '@/shared/util/money';
 import {
   ROUNDS,
   isSeasonReport,
+  sideBetAmountByRound,
+  sideBetRowLabel,
   sideBetWinnersByRound,
   summarizeWeeklyReport,
   teamCellsByRound,
 } from './weeklyReportModel';
-import {
-  cellContent,
-  formatDateRange,
-  pdfFilename,
-  sideBetPerTeamByRound,
-} from './weeklyReportPdfModel';
+import { cellContent, formatDateRange, pdfFilename } from './weeklyReportPdfModel';
 
 type RGB = [number, number, number];
 
@@ -110,8 +107,8 @@ function subtotalCell(team: ReportTeamColumn): CellDef {
   };
 }
 
-function roundLabelCell(round: number, sideBetAmount: number): CellDef {
-  const isSideBetRound = sideBetAmount > 0;
+function roundLabelCell(round: number, sideBetAmount: number | undefined): CellDef {
+  const isSideBetRound = sideBetAmount !== undefined;
   const text = isSideBetRound ? `${round}\n(${formatMoney(sideBetAmount)})` : `${round}`;
   return {
     content: text,
@@ -232,7 +229,7 @@ export function buildWeeklyReportPdf(report: WeeklyReport): jsPDF {
   const seasonMode = isSeasonReport(report);
   const showSeasonFooter = !seasonMode;
   const winnersByRound = sideBetWinnersByRound(report.sideBetDetail);
-  const pots = sideBetPerTeamByRound(report);
+  const sideBetAmounts = sideBetAmountByRound(report.sideBetRules);
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
   const marginLeft = 18;
@@ -259,8 +256,7 @@ export function buildWeeklyReportPdf(report: WeeklyReport): jsPDF {
   const body: RowInput[] = [];
   for (const round of ROUNDS) {
     const winners = winnersByRound.get(round) ?? new Set<string>();
-    const pot = pots.get(round) ?? 0;
-    const cells: CellDef[] = [roundLabelCell(round, pot)];
+    const cells: CellDef[] = [roundLabelCell(round, sideBetAmounts.get(round))];
     for (const { team, rows } of teamsByRound) {
       cells.push(roundCell(rows.get(round), winners.has(team.teamId), showSeasonFooter));
     }
@@ -299,7 +295,7 @@ export function buildWeeklyReportPdf(report: WeeklyReport): jsPDF {
   ]);
 
   body.push([
-    summaryLabelCell('ROWS 5-6-7-8', COLOR_WHITE, false),
+    summaryLabelCell(sideBetRowLabel(report.sideBetRules), COLOR_WHITE, false),
     ...teams.map((t) =>
       summaryValueCell(formatMoney(t.sideBets), COLOR_WHITE, signColor(t.sideBets), false),
     ),

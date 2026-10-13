@@ -2,6 +2,7 @@ import type { RosterPick, RosterTeam } from '@/shared/api/types';
 
 interface Props {
   teams: RosterTeam[];
+  sideBetRounds: readonly number[];
   onGolferClick?: (golferId: string) => void;
 }
 
@@ -31,7 +32,7 @@ function computeSharedPlayers(teams: RosterTeam[]): SharedPlayer[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function RostersView({ teams, onGolferClick }: Props) {
+function RostersView({ teams, sideBetRounds, onGolferClick }: Props) {
   if (teams.length === 0) {
     return (
       <p className="text-gray-400 text-center py-12">
@@ -68,10 +69,10 @@ function RostersView({ teams, onGolferClick }: Props) {
           </thead>
           <tbody>
             {ROUNDS.map((round) => {
-              const rowBg = round >= 5 ? 'bg-gray-800/70' : 'bg-gray-800';
+              const rowBg = sideBetRounds.includes(round) ? 'bg-gray-800/70' : 'bg-gray-800';
               return (
               <tr key={round} className={rowBg}>
-                <td className={`border border-gray-700 px-1 py-1.5 text-center font-bold text-gray-400 sticky left-0 z-10 ${round >= 5 ? 'bg-gray-800' : 'bg-gray-800'}`}>
+                <td className="border border-gray-700 px-1 py-1.5 text-center font-bold text-gray-400 sticky left-0 z-10 bg-gray-800">
                   {round}
                 </td>
                 {teams.map((team) => {

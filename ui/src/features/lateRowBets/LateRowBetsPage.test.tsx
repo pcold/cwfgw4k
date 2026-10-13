@@ -78,22 +78,45 @@ function buildReport(): WeeklyReport {
         subtotal: 0,
         topTenCount: 0,
         topTenMoney: 0,
-        sideBets: 45,
+        sideBets: 0,
         totalCash: 100,
       },
     ],
     undraftedTopTens: [],
-    sideBetDetail: [
-      {
-        round: 5,
-        teams: [
-          { teamId: 't-1', golferName: 'Scottie', cumulativeEarnings: 500, payout: 45 },
-        ],
-      },
-    ],
+    sideBetRules: { amountPerTeam: 20, rounds: [2, 3] },
+    sideBetDetail: [2, 3].map((round) => ({
+      round,
+      teams: [
+        {
+          teamId: 't-1',
+          teamName: 'Aces',
+          golferName: 'Scottie',
+          cumulativeEarnings: 500,
+          payout: 0,
+          outcome: 'won',
+        },
+      ],
+    })),
     standingsOrder: [],
     live: false,
     liveLeaderboard: [],
+  };
+}
+
+// The body a report cached before the server sent rules, team names and outcomes still serves.
+function buildReportWithoutSideBetFacts(): unknown {
+  const { sideBetRules: _rules, sideBetDetail, ...rest } = buildReport();
+  return {
+    ...rest,
+    sideBetDetail: sideBetDetail.map(({ round, teams }) => ({
+      round,
+      teams: teams.map(({ teamId, golferName, cumulativeEarnings, payout }) => ({
+        teamId,
+        golferName,
+        cumulativeEarnings,
+        payout,
+      })),
+    })),
   };
 }
 
@@ -114,12 +137,38 @@ describe('LateRowBetsPage', () => {
 
     renderWithProviders(<LateRowBetsPage />);
 
-    expect(
-      await screen.findByRole('heading', { name: /Round 5-8 Late Row Bets/i }),
-    ).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: 'Round 5' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Late Row Bets' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Round 2' })).toBeInTheDocument();
     expect(seasonReportMock).toHaveBeenCalledWith('sn-1', true);
     expect(tournamentReportMock).not.toHaveBeenCalled();
+  });
+
+  it("shows the season's own side-bet amount and rounds, not the defaults", async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([]);
+    seasonReportMock.mockResolvedValue(buildReport());
+
+    renderWithProviders(<LateRowBetsPage />);
+
+    expect(
+      await screen.findByText(/^\$20\.00 per team in each of draft rounds 2 and 3\./),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Round 3' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Round 5' })).not.toBeInTheDocument();
+  });
+
+  it('renders the rounds of a report cached before the rules were sent, without a rules sentence', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([]);
+    seasonReportMock.mockResolvedValue(buildReportWithoutSideBetFacts());
+
+    renderWithProviders(<LateRowBetsPage />);
+
+    expect(await screen.findByRole('heading', { name: 'Round 2' })).toBeInTheDocument();
+    expect(screen.getAllByText('Scottie')).toHaveLength(2);
+    expect(screen.queryByText(/per team in/)).not.toBeInTheDocument();
   });
 
   it('switches to the per-tournament report when a tournament is selected', async () => {
@@ -132,7 +181,7 @@ describe('LateRowBetsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<LateRowBetsPage />);
 
-    await screen.findByRole('heading', { name: 'Round 5' });
+    await screen.findByRole('heading', { name: 'Round 2' });
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-1');
 

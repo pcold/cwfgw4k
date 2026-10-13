@@ -177,8 +177,60 @@ private fun emptyReport(teams: List<ReportTeamColumn> = emptyList()): WeeklyRepo
             ),
         teams = teams,
         undraftedTopTens = emptyList(),
+        sideBetRules = null,
         sideBetDetail = emptyList(),
         standingsOrder = emptyList(),
+    )
+
+private val TWENTY_ON_ROUND_EIGHT = ReportSideBetRules(amountPerTeam = BigDecimal(20), rounds = listOf(8))
+
+private fun sideBetEntry(
+    teamId: TeamId,
+    teamName: String,
+    cumulative: BigDecimal,
+    outcome: SideBetOutcome?,
+): ReportSideBetTeamEntry =
+    ReportSideBetTeamEntry(
+        teamId = teamId,
+        teamName = teamName,
+        golferName = "GOLFER",
+        cumulativeEarnings = cumulative,
+        payout = BigDecimal.ZERO,
+        outcome = outcome,
+    )
+
+/** BROWN leads round 8 on Scottie's 10 before the live week; WOMBLE's Rory has earned nothing. */
+private fun brownLeadingRoundEight(): WeeklyReport =
+    emptyReport(
+        listOf(
+            teamColumn(TEAM_A_ID, cells = listOf(cell(round = 8, golferId = SCOTTIE_ID))),
+            teamColumn(TEAM_B_ID, cells = listOf(cell(round = 8, golferId = RORY_ID))),
+        ),
+    ).copy(
+        sideBetRules = TWENTY_ON_ROUND_EIGHT,
+        sideBetDetail =
+            listOf(
+                ReportSideBetRound(
+                    round = 8,
+                    teams =
+                        listOf(
+                            sideBetEntry(TEAM_A_ID, "BROWN", BigDecimal(10), SideBetOutcome.Won),
+                            sideBetEntry(TEAM_B_ID, "WOMBLE", BigDecimal.ZERO, SideBetOutcome.Lost),
+                        ),
+                ),
+            ),
+    )
+
+private fun roryWinsLive(): EspnLivePreview =
+    preview(
+        teams =
+            listOf(
+                previewTeam(teamId = TEAM_A_ID),
+                previewTeam(
+                    teamId = TEAM_B_ID,
+                    golfers = listOf(previewGolfer(RORY_ID, position = 1, payout = BigDecimal(18))),
+                ),
+            ),
     )
 
 class LiveOverlayServiceSpec : FunSpec({
@@ -326,15 +378,19 @@ class LiveOverlayServiceSpec : FunSpec({
                                 listOf(
                                     ReportSideBetTeamEntry(
                                         teamId = TEAM_A_ID,
+                                        teamName = "BROWN",
                                         golferName = "RODGERS",
                                         cumulativeEarnings = BigDecimal(10),
                                         payout = BigDecimal.ZERO,
+                                        outcome = null,
                                     ),
                                     ReportSideBetTeamEntry(
                                         teamId = TEAM_B_ID,
+                                        teamName = "WOMBLE",
                                         golferName = "COODY",
                                         cumulativeEarnings = BigDecimal.ZERO,
                                         payout = BigDecimal.ZERO,
+                                        outcome = null,
                                     ),
                                 ),
                         ),
@@ -359,6 +415,18 @@ class LiveOverlayServiceSpec : FunSpec({
         a.cumulativeEarnings.compareTo(BigDecimal(10)) shouldBe 0
         b.cumulativeEarnings.compareTo(BigDecimal(10)) shouldBe 0
         a.payout.compareTo(b.payout) shouldBe 0
+    }
+
+    test("mergeLiveData re-settles each side-bet outcome on the live cumulative and keeps the season's rules") {
+        val twentyPerTeam = DEFAULT_RULES.copy(sideBetAmount = BigDecimal(20))
+
+        val overlaid = mergeLiveData(brownLeadingRoundEight(), listOf(roryWinsLive()), twentyPerTeam, additive = false)
+
+        overlaid.sideBetRules shouldBe TWENTY_ON_ROUND_EIGHT
+        val roundEight = overlaid.sideBetDetail.single().teams
+        roundEight.map { it.teamName to it.outcome } shouldContainExactly
+            listOf("BROWN" to SideBetOutcome.Lost, "WOMBLE" to SideBetOutcome.Won)
+        roundEight.map { it.payout } shouldContainExactly listOf(BigDecimal(-20), BigDecimal(20))
     }
 
     test("mergeLiveData computes weekly +/- as zero-sum across teams") {
@@ -424,6 +492,18 @@ class LiveOverlayServiceSpec : FunSpec({
         // Previous bumped by zero-sum +18; subtotal = previous + (existing) weekly 0
         a.previous.compareTo(BigDecimal(18)) shouldBe 0
         overlaid.live shouldBe true
+    }
+
+    test("overlayPriorLivePreview re-settles each side-bet outcome and keeps the season's rules") {
+        val twentyPerTeam = DEFAULT_RULES.copy(sideBetAmount = BigDecimal(20))
+
+        val overlaid = overlayPriorLivePreview(brownLeadingRoundEight(), roryWinsLive(), twentyPerTeam)
+
+        overlaid.sideBetRules shouldBe TWENTY_ON_ROUND_EIGHT
+        val roundEight = overlaid.sideBetDetail.single().teams
+        roundEight.map { it.teamName to it.outcome } shouldContainExactly
+            listOf("BROWN" to SideBetOutcome.Lost, "WOMBLE" to SideBetOutcome.Won)
+        roundEight.map { it.payout } shouldContainExactly listOf(BigDecimal(-20), BigDecimal(20))
     }
 
     // ----- buildLiveLeaderboard / buildUndraftedFromLeaderboard -----

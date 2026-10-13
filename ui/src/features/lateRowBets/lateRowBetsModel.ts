@@ -1,9 +1,4 @@
-import type {
-  ReportSideBetRound,
-  ReportSideBetTeamEntry,
-  ReportTeamColumn,
-  WeeklyReport,
-} from '@/shared/api/types';
+import type { ReportSideBetRound, ReportSideBetTeamEntry, WeeklyReport } from '@/shared/api/types';
 
 export interface LateRowBetEntry {
   teamId: string;
@@ -30,19 +25,10 @@ export interface LateRowBetsSummary {
   net: number;
 }
 
-function teamNamesById(teams: ReportTeamColumn[]): Map<string, string> {
-  const byId = new Map<string, string>();
-  for (const team of teams) byId.set(team.teamId, team.teamName);
-  return byId;
-}
-
-function toEntry(
-  raw: ReportSideBetTeamEntry,
-  names: Map<string, string>,
-): LateRowBetEntry {
+function toEntry(raw: ReportSideBetTeamEntry): LateRowBetEntry {
   return {
     teamId: raw.teamId,
-    teamName: names.get(raw.teamId) ?? '?',
+    teamName: raw.teamName,
     golferName: raw.golferName,
     cumulativeEarnings: raw.cumulativeEarnings,
     payout: raw.payout,
@@ -50,11 +36,10 @@ function toEntry(
 }
 
 export function lateRowBetRounds(report: WeeklyReport): LateRowBetRound[] {
-  const names = teamNamesById(report.teams);
   return report.sideBetDetail.map((rd: ReportSideBetRound) => ({
     round: rd.round,
     entries: rd.teams
-      .map((entry) => toEntry(entry, names))
+      .map(toEntry)
       .sort((a, b) => b.cumulativeEarnings - a.cumulativeEarnings),
   }));
 }

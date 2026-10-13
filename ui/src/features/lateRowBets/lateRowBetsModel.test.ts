@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
+import type { ReportSideBetTeamEntry, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 import {
   lateRowBetRounds,
   lateRowBetTeamTotals,
@@ -24,6 +24,18 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
   };
 }
 
+function entry(overrides: Partial<ReportSideBetTeamEntry> = {}): ReportSideBetTeamEntry {
+  return {
+    teamId: 't-1',
+    teamName: 'Aces',
+    golferName: 'Golfer',
+    cumulativeEarnings: 0,
+    payout: 0,
+    outcome: null,
+    ...overrides,
+  };
+}
+
 function baseReport(): WeeklyReport {
   return {
     scope: 'season',
@@ -38,6 +50,7 @@ function baseReport(): WeeklyReport {
     },
     teams: [],
     undraftedTopTens: [],
+    sideBetRules: null,
     sideBetDetail: [],
     standingsOrder: [],
     live: false,
@@ -50,21 +63,17 @@ describe('lateRowBetRounds', () => {
     expect(lateRowBetRounds(baseReport())).toEqual([]);
   });
 
-  it('resolves team names and sorts entries by cumulative earnings descending', () => {
+  it('sorts entries by cumulative earnings descending', () => {
     const report: WeeklyReport = {
       ...baseReport(),
-      teams: [
-        team({ teamId: 't-1', teamName: 'Aces' }),
-        team({ teamId: 't-2', teamName: 'Birdies' }),
-        team({ teamId: 't-3', teamName: 'Eagles' }),
-      ],
+      sideBetRules: { amountPerTeam: 20, rounds: [2] },
       sideBetDetail: [
         {
-          round: 5,
+          round: 2,
           teams: [
-            { teamId: 't-2', golferName: 'B', cumulativeEarnings: 50, payout: -15 },
-            { teamId: 't-1', golferName: 'A', cumulativeEarnings: 200, payout: 30 },
-            { teamId: 't-3', golferName: 'C', cumulativeEarnings: 100, payout: -15 },
+            entry({ teamId: 't-2', teamName: 'Birdies', cumulativeEarnings: 50, payout: -20 }),
+            entry({ teamId: 't-1', teamName: 'Aces', cumulativeEarnings: 200, payout: 40 }),
+            entry({ teamId: 't-3', teamName: 'Eagles', cumulativeEarnings: 100, payout: -20 }),
           ],
         },
       ],
@@ -72,30 +81,24 @@ describe('lateRowBetRounds', () => {
 
     const rounds = lateRowBetRounds(report);
     expect(rounds).toHaveLength(1);
-    expect(rounds[0].round).toBe(5);
+    expect(rounds[0].round).toBe(2);
     expect(rounds[0].entries.map((e) => e.teamName)).toEqual(['Aces', 'Eagles', 'Birdies']);
     expect(rounds[0].entries[0]).toMatchObject({
       teamId: 't-1',
-      golferName: 'A',
+      golferName: 'Golfer',
       cumulativeEarnings: 200,
-      payout: 30,
+      payout: 40,
     });
   });
 
-  it('falls back to "?" when a side-bet team id is not in the teams list', () => {
+  it("takes each entry's team name from the entry, whatever the teams list calls that team", () => {
     const report: WeeklyReport = {
       ...baseReport(),
-      teams: [team({ teamId: 't-1', teamName: 'Aces' })],
-      sideBetDetail: [
-        {
-          round: 6,
-          teams: [
-            { teamId: 't-ghost', golferName: 'X', cumulativeEarnings: 0, payout: 0 },
-          ],
-        },
-      ],
+      teams: [team({ teamId: 't-1', teamName: 'Renamed Since' })],
+      sideBetRules: { amountPerTeam: 20, rounds: [3] },
+      sideBetDetail: [{ round: 3, teams: [entry({ teamId: 't-1', teamName: 'Aces' })] }],
     };
-    expect(lateRowBetRounds(report)[0].entries[0].teamName).toBe('?');
+    expect(lateRowBetRounds(report)[0].entries[0].teamName).toBe('Aces');
   });
 });
 

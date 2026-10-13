@@ -542,6 +542,7 @@ internal fun assembleWeeklyReport(inputs: WeeklyReportInputs): WeeklyReport {
         tournament = buildTournamentInfo(inputs.tournament),
         teams = teamColumns,
         undraftedTopTens = undraftedTopTens,
+        sideBetRules = inputs.rules.toReportSideBetRules(),
         sideBetDetail = sideBetDetail,
         standingsOrder = buildStandingsOrder(teamColumns),
         liveLeaderboard = leaderboard,
@@ -727,6 +728,7 @@ internal fun assembleSeasonReport(inputs: SeasonReportInputs): WeeklyReport {
         tournament = seasonTournamentInfo(),
         teams = teamColumns,
         undraftedTopTens = undraftedAgg,
+        sideBetRules = inputs.rules.toReportSideBetRules(),
         sideBetDetail = sideBetDetail,
         standingsOrder = buildStandingsOrder(teamColumns),
     )
@@ -1050,6 +1052,18 @@ internal data class SideBetRoundSnapshot(
     val payouts: Map<TeamId, BigDecimal>,
 )
 
+/**
+ * Empty for a season that stakes nothing. A zero amount counts as that: it is the only "off" the rules
+ * admin can save, because [SeasonRules.sideBetRounds] stored empty reads back as the defaults.
+ */
+internal fun SeasonRules.stakedSideBetRounds(): List<Int> =
+    if (sideBetAmount.signum() == 0) emptyList() else sideBetRounds
+
+internal fun SeasonRules.toReportSideBetRules(): ReportSideBetRules? =
+    stakedSideBetRounds().takeIf { it.isNotEmpty() }?.let { rounds ->
+        ReportSideBetRules(amountPerTeam = sideBetAmount, rounds = rounds)
+    }
+
 internal fun buildSideBetPerRound(
     rules: SeasonRules,
     allRosters: List<RosterEntry>,
@@ -1057,7 +1071,7 @@ internal fun buildSideBetPerRound(
     numTeams: Int,
     sideBetPerTeam: BigDecimal,
 ): List<SideBetRoundSnapshot> =
-    rules.sideBetRounds.map { round ->
+    rules.stakedSideBetRounds().map { round ->
         val roundPicks = allRosters.filter { it.draftRound == round }
         val teamTotals =
             roundPicks.associate { entry ->
@@ -1084,15 +1098,18 @@ internal fun buildSideBetDetail(
     golferMap: Map<GolferId, Golfer>,
 ): List<ReportSideBetRound> =
     perRound.map { snapshot ->
+        val outcomes = settleSideBetOutcomes(snapshot.teamCumulativeEarnings)
         val teamEntries =
             teams.map { team ->
                 val entry = allRosters.firstOrNull { it.teamId == team.id && it.draftRound == snapshot.round }
                 val golferName = entry?.let { golferMap[it.golferId]?.lastName?.uppercase() } ?: "—"
                 ReportSideBetTeamEntry(
                     teamId = team.id,
+                    teamName = team.teamName,
                     golferName = golferName,
                     cumulativeEarnings = snapshot.teamCumulativeEarnings[team.id] ?: BigDecimal.ZERO,
                     payout = snapshot.payouts[team.id] ?: BigDecimal.ZERO,
+                    outcome = outcomes[team.id],
                 )
             }
         ReportSideBetRound(round = snapshot.round, teams = teamEntries)

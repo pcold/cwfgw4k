@@ -100,6 +100,7 @@ function buildReport(name: string, tournamentId: string): WeeklyReport {
       },
     ],
     undraftedTopTens: [],
+    sideBetRules: null,
     sideBetDetail: [],
     standingsOrder: [],
     live: false,
