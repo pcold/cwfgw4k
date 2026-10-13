@@ -267,8 +267,10 @@ parallelism saved.
 
 The `-g` isolation below does not lift that. It separates Gradle state, and the
 crash was resource exhaustion instead: `maxParallelForks = 2` with a
-Testcontainers Postgres per spec puts several containers per build into one
-Docker VM. Concurrency here needs more machine, not more isolation.
+Testcontainers Postgres per spec put several containers per build into one
+Docker VM. The harness has since moved to one container per test JVM, and
+concurrent builds have not been re-measured on it: until they are, concurrency
+here needs more machine, not more isolation.
 
 The rule leaks, and it leaks in the expensive direction: an agent that runs
 `check` anyway spends a forced execution and a full-context turn on a result
