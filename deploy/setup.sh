@@ -121,7 +121,7 @@ if [[ -n "${ADMIN_PASSWORD_PRINTED}" ]]; then
   echo ""
 fi
 echo "Next steps:"
-echo "  1. Let GitHub Actions deploy, and set the repository variables it prints:"
+echo "  1. Let GitHub Actions deploy. Run this, then set the repository variables the script prints:"
 echo "     ./deploy/setup-github-deploy.sh ${PROJECT_ID}"
 echo "  2. Run the first deploy:"
 echo "     gh workflow run deploy.yml"
