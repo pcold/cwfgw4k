@@ -23,24 +23,16 @@ import com.cwfgw.teams.teamRoutes
 import com.cwfgw.tournamentLinks.tournamentLinkRoutes
 import com.cwfgw.tournaments.tournamentOpsRoutes
 import com.cwfgw.tournaments.tournamentRoutes
-import com.cwfgw.users.SESSION_AUTH_NAME
-import com.cwfgw.users.UserPrincipal
-import com.cwfgw.users.UserSession
 import com.cwfgw.users.authRoutes
-import com.cwfgw.users.toUserId
+import com.cwfgw.users.installSessionAuth
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
-import io.ktor.server.auth.Authentication
-import io.ktor.server.auth.session
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.Routing
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
-import io.ktor.server.sessions.SessionTransportTransformerMessageAuthentication
-import io.ktor.server.sessions.Sessions
-import io.ktor.server.sessions.cookie
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -58,34 +50,7 @@ fun Application.module(
     install(ContentNegotiation) {
         json(appJson)
     }
-    install(Sessions) {
-        cookie<UserSession>("cwfgw_session") {
-            cookie.path = "/"
-            cookie.httpOnly = true
-            // `Secure` so the cookie only travels over HTTPS — prevents
-            // accidental leakage if any path on the domain ever hits HTTP.
-            // Configurable via AUTH_COOKIE_SECURE so local dev against
-            // http://localhost:8080 still works.
-            cookie.secure = services.authSetup.cookieSecure
-            // `SameSite=Lax` blocks cross-site form POSTs from carrying the
-            // cookie; same-site navigation (top-level GETs) still attaches
-            // it so login redirects keep working. Lax over Strict because
-            // the post-login bounce is a same-origin GET that needs the
-            // session to be present.
-            cookie.extensions["SameSite"] = "Lax"
-            cookie.maxAgeInSeconds = services.authSetup.sessionMaxAgeSeconds
-            transform(SessionTransportTransformerMessageAuthentication(services.authSetup.sessionSecret))
-        }
-    }
-    install(Authentication) {
-        session<UserSession>(SESSION_AUTH_NAME) {
-            validate { session ->
-                session.userId.toUserId()?.let { id ->
-                    services.authService.findById(id)?.let(::UserPrincipal)
-                }
-            }
-        }
-    }
+    installSessionAuth(services.authSetup, services.authService)
     installRequestLogging()
     installErrorHandling()
     launchCacheSweep(services.requestCache, services.sweepIntervalSeconds)
