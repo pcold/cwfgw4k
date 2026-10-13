@@ -16,6 +16,8 @@ const authMeMock = vi.fn();
 const finalizeMock = vi.fn();
 const competitorsMock = vi.fn();
 const golfersMock = vi.fn();
+const playerRankingsMock = vi.fn();
+const golferHistoryMock = vi.fn();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -31,6 +33,9 @@ vi.mock('@/shared/api/client', () => ({
     finalizeTournament: (id: string) => finalizeMock(id),
     tournamentCompetitors: (id: string) => competitorsMock(id),
     golfers: () => golfersMock(),
+    playerRankings: (seasonId: string, live: boolean, throughTournamentId?: string) =>
+      playerRankingsMock(seasonId, live, throughTournamentId),
+    golferHistory: (seasonId: string, golferId: string) => golferHistoryMock(seasonId, golferId),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -118,6 +123,23 @@ function OpenSeasonReport() {
   return null;
 }
 
+// The same copies for PlayerRankingsPage on "All Tournaments" and for GolferHistoryModal.
+function OpenPlayerRankings() {
+  useQuery({
+    queryKey: ['player-rankings', 'sn-1', null, false],
+    queryFn: () => api.playerRankings('sn-1', false, undefined),
+  });
+  return null;
+}
+
+function OpenGolferHistory() {
+  useQuery({
+    queryKey: ['golferHistory', 'sn-1', 'g-1'],
+    queryFn: () => api.golferHistory('sn-1', 'g-1'),
+  });
+  return null;
+}
+
 describe('ScoreboardPage', () => {
   beforeEach(() => {
     leaguesMock.mockReset();
@@ -129,6 +151,8 @@ describe('ScoreboardPage', () => {
     finalizeMock.mockReset();
     competitorsMock.mockReset();
     golfersMock.mockReset();
+    playerRankingsMock.mockReset();
+    golferHistoryMock.mockReset();
     authMeMock.mockResolvedValue(null);
     competitorsMock.mockResolvedValue({
       tournamentId: 'tn-active',
@@ -328,6 +352,54 @@ describe('ScoreboardPage', () => {
       expect(seasonReportMock).toHaveBeenCalledTimes(2);
     });
     expect(seasonReportMock).toHaveBeenLastCalledWith('sn-1', false);
+  });
+
+  it.each([
+    ['open player rankings', <OpenPlayerRankings />, playerRankingsMock],
+    ['an open golfer history', <OpenGolferHistory />, golferHistoryMock],
+  ])('refetches %s after an admin finalizes a tournament', async (_page, openQuery, fetchMock) => {
+    authMeMock.mockResolvedValue({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    tournamentReportMock.mockResolvedValue({
+      ...buildReport('Current Open', 'tn-active'),
+      tournament: {
+        id: 'tn-active',
+        name: 'Current Open',
+        startDate: '2026-03-01',
+        endDate: '2026-03-04',
+        status: 'in_progress',
+        payoutMultiplier: 1,
+        week: '10',
+      },
+    });
+    fetchMock.mockResolvedValue({});
+    finalizeMock.mockResolvedValue({ message: 'ok' });
+
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <ScoreboardPage />
+        {openQuery}
+      </>,
+      { withAuthProvider: true },
+    );
+
+    const button = await screen.findByRole('button', { name: /Finalize Results/i });
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('hides the Finalize Results button for unauthenticated users', async () => {
