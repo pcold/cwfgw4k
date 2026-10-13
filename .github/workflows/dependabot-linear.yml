@@ -1,0 +1,74 @@
+name: Dependabot Linear ticket
+
+# Dependabot owns its branch names, so its PRs are linked to Linear by title
+# instead: this creates an issue and prepends its key, which is what Linear's
+# GitHub integration links on.
+
+on:
+  # `opened` only. `reopened` would mint a second issue for the same bump and
+  # stack its key onto a title that already carries one ("CWF-456: CWF-123: …").
+  pull_request:
+    types: [opened]
+
+# Dependabot-triggered runs get a read-only token; this is what lets the job
+# retitle the PR and comment on it.
+permissions:
+  pull-requests: write
+
+jobs:
+  create-linear-ticket:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    # Two external API calls; bound a network hang instead of drifting to the
+    # 6h default.
+    timeout-minutes: 5
+    steps:
+      - name: Create Linear issue and link the PR
+        env:
+          # Must be a *Dependabot* secret (Settings -> Secrets and variables ->
+          # Dependabot). These runs cannot read Actions secrets.
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          TEAM_ID: "bf447cf8-c02e-4f0a-9364-c7cab730c42c"
+          DEPENDENCIES_LABEL_ID: "15cff7e3-dbad-44a7-bd24-cbd85b3cb29f"
+        run: |
+          set -euo pipefail
+
+          if [ -z "${LINEAR_API_KEY:-}" ]; then
+            echo "::error::LINEAR_API_KEY is unset. Add it under Settings -> Secrets and variables -> Dependabot."
+            exit 1
+          fi
+
+          # jq --arg encodes the untrusted PR title as a proper JSON string.
+          # $PR_URL is system-generated (GitHub) and is safe to shell-expand directly.
+          payload=$(jq -n \
+            --arg teamId "$TEAM_ID" \
+            --arg title "$PR_TITLE" \
+            --arg desc "Auto-created for a Dependabot pull request: $PR_URL" \
+            --arg label "$DEPENDENCIES_LABEL_ID" \
+            '{
+               query: "mutation IssueCreate($teamId: String!, $title: String!, $desc: String, $labels: [String!]) { issueCreate(input: { teamId: $teamId, title: $title, description: $desc, labelIds: $labels }) { success issue { identifier url } } }",
+               variables: { teamId: $teamId, title: $title, desc: $desc, labels: [$label] }
+             }')
+
+          response=$(curl -sS -X POST https://api.linear.app/graphql \
+            -H "Authorization: $LINEAR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$payload")
+
+          if [ "$(jq -r '.data.issueCreate.success // false' <<<"$response")" != "true" ]; then
+            echo "::error::Linear issueCreate failed: $response"
+            exit 1
+          fi
+
+          identifier=$(jq -r '.data.issueCreate.issue.identifier' <<<"$response")
+          url=$(jq -r '.data.issueCreate.issue.url' <<<"$response")
+          echo "Created $identifier ($url)"
+
+          # Prepend the identifier so Linear's GitHub integration links PR <-> issue.
+          gh pr edit "$PR_NUMBER" --title "$identifier: $PR_TITLE"
+          gh pr comment "$PR_NUMBER" --body "Linked Linear issue: $url"
