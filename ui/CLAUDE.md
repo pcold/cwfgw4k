@@ -95,24 +95,25 @@ What stays in the UI:
   ```ts
   // RIGHT — narrowing follows the discriminator automatically
   type PickMatch =
-    | { kind: 'matched'; golferId: GolferId }
-    | { kind: 'ambiguous'; candidates: readonly GolferId[] }
-    | { kind: 'noMatch' };
+    | { type: 'matched'; golferId: string; golferName: string }
+    | { type: 'ambiguous'; candidates: GolferCandidate[] }
+    | { type: 'no_match' };
 
-  // WRONG — every consumer has to remember which fields go with which kind
+  // WRONG — every consumer has to remember which fields go with which type
   interface PickMatch {
-    kind: 'matched' | 'ambiguous' | 'noMatch';
-    golferId?: GolferId;
-    candidates?: GolferId[];
+    type: 'matched' | 'ambiguous' | 'no_match';
+    golferId?: string;
+    golferName?: string;
+    candidates?: GolferCandidate[];
   }
   ```
 
-- **MUST** exhaustively switch on discriminated unions. Use an
-  `assertNever(x: never): never` helper in the default case so adding a
-  new variant becomes a compile error instead of a runtime hole.
+- **MUST** exhaustively switch on discriminated unions. Put
+  `value satisfies never` in the default case so adding a new variant
+  becomes a compile error instead of a runtime hole.
 - **SHOULD** use branded types for domain IDs to prevent crossing them up
-  at the type level — same idea as the Kotlin `@JvmInline value class`
-  rule:
+  at the type level — same idea as the backend's `@JvmInline value class`
+  IDs:
 
   ```ts
   type GolferId = string & { readonly __brand: 'GolferId' };
@@ -126,9 +127,10 @@ What stays in the UI:
 - **MUST** mark inputs as `readonly` where they aren't mutated. Arrays
   and tuples crossing function boundaries should be `readonly T[]` so
   callers can't mutate behind your back.
-- **MUST NOT** disable lint rules locally with `// eslint-disable` or TS
-  errors with `// @ts-ignore` / `// @ts-expect-error` without a one-line
-  comment explaining why and a link or ticket if it's a known limitation.
+- **MUST NOT** suppress a check locally — a TS error with `// @ts-ignore`
+  / `// @ts-expect-error`, or any other suppression comment — without a
+  one-line comment explaining why and a link or ticket if it's a known
+  limitation.
 - **SHOULD** prefer `unknown` over `any` at API boundaries (e.g.,
   `JSON.parse` results) and narrow before use.
 
@@ -141,9 +143,9 @@ What stays in the UI:
   inline: `function MyThing(props: MyThingProps) { ... }`. `React.FC`
   forces an implicit `children` prop and has historical baggage.
 - **MUST** follow the rules of hooks: only call at the top level, only
-  from components or other hooks. Keep the
-  `react-hooks/rules-of-hooks` and `react-hooks/exhaustive-deps` lints
-  on; never silence them locally without an explanatory comment.
+  from components or other hooks. List every reactive value a hook's
+  callback reads in its dependency array; never leave one out without
+  an explanatory comment.
 - **MUST NOT** use `useEffect` to derive state. If a value can be
   computed from props or other state, compute it inline (or with
   `useMemo` if profiling shows it matters). The most common React bug
@@ -214,7 +216,9 @@ What stays in the UI:
   ```ts
   const ctx = useContext(LeagueSeasonContext);
   if (!ctx) {
-    throw new Error('useLeagueSeason must be used inside LeagueSeasonProvider');
+    throw new Error(
+      'useLeagueSeason must be used inside a LeagueSeasonProvider',
+    );
   }
   return ctx;
   ```
@@ -233,13 +237,13 @@ What stays in the UI:
 
   ```ts
   useQuery({
-    queryKey: ['weeklyReport', seasonId, tournamentId, { live }],
-    queryFn: () => api.weeklyReport(seasonId, tournamentId, { live }),
+    queryKey: ['rankings', seasonId, live, throughTournamentId],
+    queryFn: () => api.rankings(seasonId, live, throughTournamentId),
   });
   ```
 
   Hierarchy lets a write invalidate everything below it:
-  `queryClient.invalidateQueries({ queryKey: ['weeklyReport', seasonId] })`.
+  `queryClient.invalidateQueries({ queryKey: ['rankings', seasonId] })`.
 - **MUST** invalidate (or `setQueryData`) the affected query keys after
   a mutation. Don't rely on refetch-on-window-focus to mask staleness —
   that fixes one user, not the next page navigation.
@@ -320,7 +324,7 @@ What stays in the UI:
   ui/src/
     features/
       scoreboard/   ScoreboardPage + View + scoreboardModel + tests
-      rankings/     PlayerRankingsPage + View + RankingsChart + rankingsModel
+      rankings/     RankingsPage + View + RankingsChart + rankingsChartModel
       admin/        AdminPage + all admin sections + tests
       auth/         AuthContext, LoginModal, useAuth
       ...
