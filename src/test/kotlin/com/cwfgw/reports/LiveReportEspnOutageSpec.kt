@@ -151,18 +151,6 @@ private val SCOTTIE_EARNED_EIGHTEEN_AT_THE_MASTERS =
         calculatedAt = SEEDED_AT,
     )
 
-/** [mastersInPlay] in a league of BROWN and WOMBLE, where only BROWN's pick has earned at the Masters so far. */
-private fun mastersInPlayWithEarnings(espn: EspnClient): ApiFixture.() -> Unit =
-    {
-        teamRepository =
-            FakeTeamRepository(
-                initialTeams = listOf(team(BROWN_ID, "BROWN"), team(WOMBLE_ID, "WOMBLE")),
-                initialRoster = listOf(BROWN_DRAFTED_SCOTTIE_FIRST),
-            )
-        scoringRepository = FakeScoringRepository(initialScores = listOf(SCOTTIE_EARNED_EIGHTEEN_AT_THE_MASTERS))
-        mastersInPlay(espn)()
-    }
-
 class LiveReportEspnOutageSpec : FunSpec({
 
     EspnOutage.entries.forEach { outage ->
@@ -204,7 +192,17 @@ class LiveReportEspnOutageSpec : FunSpec({
 
     EspnOutage.entries.forEach { outage ->
         test("$LIVE_MASTERS_ROUTE carries the base report's totals when ESPN ${outage.description}") {
-            apiTest(mastersInPlayWithEarnings(outage.client())) { client ->
+            val brownAloneHasEarned: ApiFixture.() -> Unit = {
+                teamRepository =
+                    FakeTeamRepository(
+                        initialTeams = listOf(team(BROWN_ID, "BROWN"), team(WOMBLE_ID, "WOMBLE")),
+                        initialRoster = listOf(BROWN_DRAFTED_SCOTTIE_FIRST),
+                    )
+                scoringRepository =
+                    FakeScoringRepository(initialScores = listOf(SCOTTIE_EARNED_EIGHTEEN_AT_THE_MASTERS))
+                mastersInPlay(outage.client())()
+            }
+            apiTest(brownAloneHasEarned) { client ->
                 val base = appJson.parseToJsonElement(client.get(MASTERS_URL).bodyAsText()).jsonObject
                 val fallback = appJson.parseToJsonElement(client.get(LIVE_MASTERS_URL).bodyAsText()).jsonObject
 

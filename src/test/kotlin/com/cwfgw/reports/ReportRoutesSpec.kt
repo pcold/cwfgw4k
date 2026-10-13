@@ -325,16 +325,6 @@ private fun wireTotals(
 ): Map<String, Double> =
     appJson.parseToJsonElement(body).jsonObject.getValue(field).jsonObject.mapValues { it.value.jsonPrimitive.double }
 
-/** A completed Masters where BROWN's round-5 pick earned 18 and WOMBLE's earned nothing, at the default 15 a round. */
-private fun brownOutEarnsWomble(): ApiFixture.() -> Unit =
-    reportFixture(
-        initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
-        initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
-        initialGolfers = listOf(golferRow(SCOTTIE_ID, "Scottie", "Scheffler"), golferRow(RORY_ID, "Rory", "McIlroy")),
-        initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, 5), rosterRow(TEAM_B, RORY_ID, 5)),
-        initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
-    )
-
 class ReportRoutesSpec : FunSpec({
 
     // ----- GET /api/v1/seasons/{id}/report/{tournamentId} -----
@@ -354,15 +344,6 @@ class ReportRoutesSpec : FunSpec({
         apiTest(reportFixture(initialTournaments = listOf(masters))) { client ->
             val response = client.get("/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}")
             wireScope(response.bodyAsText()) shouldBe JsonPrimitive("tournament")
-        }
-    }
-
-    test("GET /api/v1/seasons/{id}/report/{tid} puts the cash and side-bet totals on the wire") {
-        apiTest(brownOutEarnsWomble()) { client ->
-            val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}").bodyAsText()
-
-            wireTotals(body, "cash_totals") shouldBe mapOf("won" to 33.0, "lost" to -33.0, "net" to 0.0)
-            wireTotals(body, "side_bet_totals") shouldBe mapOf("won" to 15.0, "lost" to -15.0, "net" to 0.0)
         }
     }
 
@@ -415,7 +396,16 @@ class ReportRoutesSpec : FunSpec({
     }
 
     test("GET /api/v1/seasons/{id}/report puts the side-bet rules, team names and outcomes on the wire") {
-        apiTest(brownOutEarnsWomble()) { client ->
+        val seeded =
+            reportFixture(
+                initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers =
+                    listOf(golferRow(SCOTTIE_ID, "Scottie", "Scheffler"), golferRow(RORY_ID, "Rory", "McIlroy")),
+                initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, 5), rosterRow(TEAM_B, RORY_ID, 5)),
+                initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
+            )
+        apiTest(seeded) { client ->
             val response = client.get("/api/v1/seasons/${SEASON_ID.value}/report")
             val report = appJson.parseToJsonElement(response.bodyAsText()).jsonObject
 
@@ -434,19 +424,36 @@ class ReportRoutesSpec : FunSpec({
         }
     }
 
-    test("GET /api/v1/seasons/{id}/report puts the cash and side-bet totals on the wire") {
-        apiTest(brownOutEarnsWomble()) { client ->
-            val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report").bodyAsText()
-
-            wireTotals(body, "cash_totals") shouldBe mapOf("won" to 33.0, "lost" to -33.0, "net" to 0.0)
-            wireTotals(body, "side_bet_totals") shouldBe mapOf("won" to 15.0, "lost" to -15.0, "net" to 0.0)
-        }
-    }
-
     test("GET /api/v1/seasons/{id}/report returns 404 when the season doesn't exist") {
         apiTest(reportFixture(seedSeason = false)) { client ->
             val response = client.get("/api/v1/seasons/${SEASON_ID.value}/report")
             response.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    // ----- report totals: both scopes carry them -----
+
+    listOf(
+        "GET /api/v1/seasons/{id}/report/{tid}" to "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}",
+        "GET /api/v1/seasons/{id}/report" to "/api/v1/seasons/${SEASON_ID.value}/report",
+    ).forEach { (route, url) ->
+        test("$route puts the cash and side-bet totals on the wire") {
+            val brownOutEarnsWomble =
+                reportFixture(
+                    initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                    initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                    initialGolfers =
+                        listOf(golferRow(SCOTTIE_ID, "Scottie", "Scheffler"), golferRow(RORY_ID, "Rory", "McIlroy")),
+                    initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, 5), rosterRow(TEAM_B, RORY_ID, 5)),
+                    initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
+                )
+            apiTest(brownOutEarnsWomble) { client ->
+                val body = client.get(url).bodyAsText()
+
+                // WOMBLE pays BROWN the 18 its pick earned and the default 15 side bet on round 5.
+                wireTotals(body, "cash_totals") shouldBe mapOf("won" to 33.0, "lost" to -33.0, "net" to 0.0)
+                wireTotals(body, "side_bet_totals") shouldBe mapOf("won" to 15.0, "lost" to -15.0, "net" to 0.0)
+            }
         }
     }
 

@@ -1,8 +1,18 @@
 package com.cwfgw.reports
 
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.ints.shouldBeGreaterThanOrEqual
+import io.kotest.matchers.ints.shouldBeLessThanOrEqual
 import io.kotest.matchers.shouldBe
+import io.kotest.property.Arb
+import io.kotest.property.arbitrary.int
+import io.kotest.property.arbitrary.list
+import io.kotest.property.arbitrary.map
+import io.kotest.property.checkAll
 import java.math.BigDecimal
+
+private fun arbDollarsAndCents(): Arb<BigDecimal> =
+    Arb.int(-50_000..50_000).map { cents -> BigDecimal(cents).movePointLeft(2) }
 
 class WonLostTotalsSpec : FunSpec({
 
@@ -30,5 +40,15 @@ class WonLostTotalsSpec : FunSpec({
         totals.won shouldBe BigDecimal.ZERO
         totals.lost shouldBe BigDecimal.ZERO
         totals.net shouldBe BigDecimal.ZERO
+    }
+
+    test("over nets to the plain sum of its amounts, with won never negative and lost never positive") {
+        checkAll(Arb.list(arbDollarsAndCents(), 0..13)) { amounts ->
+            val totals = WonLostTotals.over(amounts)
+
+            totals.net.compareTo(amounts.fold(BigDecimal.ZERO, BigDecimal::add)) shouldBe 0
+            totals.won.signum() shouldBeGreaterThanOrEqual 0
+            totals.lost.signum() shouldBeLessThanOrEqual 0
+        }
     }
 })
