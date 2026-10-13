@@ -2,17 +2,63 @@
 
 This guide covers the React + TypeScript frontend under `ui/`. The
 language-agnostic rules (Guiding Principles, Hygiene Rules, Naming, Change
-Scope, Working with AI Assistants) live in the root `.claude/CLAUDE.md` and
-apply unchanged here.
+Scope, Working with AI Assistants) live in the root [`.claude/CLAUDE.md`](../.claude/CLAUDE.md)
+and apply unchanged here.
 
 Stack: Vite + React 19 + TypeScript with strict mode. TanStack Query for
-server state. Tailwind for styling. Vitest + Testing Library for tests. The
-same guiding principles apply — type-system-first, explicit over implicit,
+server state. Tailwind v4 for styling. Vitest + Testing Library for tests.
+The same guiding principles apply — type-system-first, explicit over implicit,
 immutable by default, readable before clever.
 
 This document uses **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and
 **MAY** in the RFC 2119 sense. Deviations from **MUST** rules are defects.
 Deviations from **SHOULD** rules require justification.
+
+---
+
+## Where Logic Lives
+
+The UI is a display layer. The server decides every business rule: what a
+finish pays, how a tie splits it, who wins a side bet, where a team stands,
+what a roster upload proposes. The UI formats what the API returns, lays it
+out, and moves between it.
+
+This isn't a matter of taste. It's about which tests can reach the rule. A
+rule computed in the browser is checked only by Vitest, against fixtures
+written to match it. And a rule the server also enforces is two copies that
+drift. The drift shows up as a button that returns a 409, or a total that
+disagrees with the page beside it.
+
+- **MUST** take a derived business fact from the API rather than compute it
+  from the rows the API returned. The weekly report's `scope` is the shape to
+  copy: `WeeklyReportService.kt` decides each report's scope on the server, and
+  `isSeasonReport` in `weeklyReportModel.ts` only reads it.
+- **MUST NOT** copy a rule the server already enforces, such as a state
+  machine's legal moves or the guard a write checks. The copy is a defect even
+  while it agrees with the server.
+- **MUST** send typed facts over the wire and write the sentence in the UI.
+  Send `scope: 'season'`, not `"Season totals"`. The wording is display. The
+  fact under it isn't.
+- **MUST** plan a fix that lands in a UI derivation as a move of that
+  derivation to the server first. A patch to the browser's copy leaves the fix
+  where only Vitest can hold it.
+- **MUST NOT** answer a test gap in client-side logic with a browser driver.
+  The real gap is that the logic sits in the browser.
+
+What stays in the UI:
+
+- **Presentation.** Labels, tones, headings, and the sentence a typed fact is
+  written into. Order for convenience, like alphabetical, is the UI's. Order
+  that claims something, like the standings, is the server's.
+- **View state and navigation.** The selected league and season, the live
+  overlay toggle, which golfer's history is open.
+- **Reading input.** Parsing a typed field, like the side-bet rounds an admin
+  enters, or checking a field's shape before submit so the user doesn't wait
+  on a round trip. That check is a courtesy: the server still refuses whatever
+  it must.
+- **Sequencing calls the user drives**, such as a roster upload's preview and
+  confirm, provided each step's decision comes from the server. A write whose
+  meaning depends on two requests both landing belongs in one server write.
 
 ---
 
@@ -182,7 +228,7 @@ Deviations from **SHOULD** rules require justification.
 ## Data Fetching (TanStack Query)
 
 - **MUST** route every API call through the typed `api` client in
-  `src/api/client.ts`. No direct `fetch` calls in components.
+  `src/shared/api/client.ts`. No direct `fetch` calls in components.
 - **MUST** use a stable, hierarchical query key structured by entity:
 
   ```ts
@@ -248,10 +294,14 @@ Deviations from **SHOULD** rules require justification.
 - **MUST NOT** query by `data-testid` unless there is genuinely no
   accessible selector available. Test IDs couple tests to DOM structure
   instead of the user-visible contract.
-- **MUST** mock at the API client boundary (`vi.mock('@/api/client', …)`).
-  Don't mock `fetch` — that couples tests to the transport.
+- **MUST** mock at the API client boundary
+  (`vi.mock('@/shared/api/client', …)`). Don't mock `fetch` — that couples
+  tests to the transport.
 - **MUST** wrap component tests in the shared `renderWithProviders`
-  helper so Query, Router, and contexts are set up consistently.
+  helper so Query, Router, and contexts are set up consistently. The
+  auth context is opt-in (`{ withAuthProvider: true }`) because it mounts
+  the real `AuthProvider`, whose `auth/me` bootstrap the test then has to
+  mock; a test that stubs `useAuth` outright leaves it off.
 - **MUST NOT** test internal state (`useState` values) or call hooks in
   isolation with `renderHook` unless the hook is genuinely a public
   API. Test what renders.
@@ -307,10 +357,10 @@ Deviations from **SHOULD** rules require justification.
 
 ## Build and Verification
 
-- **MUST** keep `cd ui && npm run typecheck` clean before committing
-  any UI change.
-- **MUST** keep `cd ui && npm test` green. The combined gate
-  `./gradlew check` runs both backend and UI tests.
+- **MUST** keep `cd ui && npm run typecheck` clean before opening a PR
+  for any UI change.
+- **MUST** keep `cd ui && npm test` green. See root
+  [`.claude/CLAUDE.md`](../.claude/CLAUDE.md) → Verification.
 - **MUST NOT** lower the `vitest` coverage thresholds in
   `vite.config.ts` to make a build pass. Add tests instead.
 
