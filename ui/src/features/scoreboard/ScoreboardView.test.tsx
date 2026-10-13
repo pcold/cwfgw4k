@@ -53,6 +53,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     },
     teams: [team({ teamId: 't-1', teamName: 'Aces', weeklyTotal: 25 })],
     undraftedTopTens: [],
+    sideBetRules: null,
     sideBetDetail: [],
     standingsOrder: [],
     live: false,

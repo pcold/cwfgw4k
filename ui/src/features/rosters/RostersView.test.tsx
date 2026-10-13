@@ -32,12 +32,12 @@ const birdies: RosterTeam = {
 
 describe('RostersView', () => {
   it('shows an empty state when there are no teams', () => {
-    render(<RostersView teams={[]} />);
+    render(<RostersView teams={[]} sideBetRounds={[]} />);
     expect(screen.getByText(/No rosters uploaded yet/i)).toBeInTheDocument();
   });
 
   it('renders team columns in the order provided', () => {
-    render(<RostersView teams={[aces, birdies]} />);
+    render(<RostersView teams={[aces, birdies]} sideBetRounds={[]} />);
     const headerCells = screen.getAllByRole('columnheader');
     // first header is "RD", then one per team
     expect(headerCells[0]).toHaveTextContent('RD');
@@ -46,7 +46,7 @@ describe('RostersView', () => {
   });
 
   it("labels each team column with the team's own number, not its position", () => {
-    render(<RostersView teams={[aces, birdies]} />);
+    render(<RostersView teams={[aces, birdies]} sideBetRounds={[]} />);
     const headerCells = screen.getAllByRole('columnheader');
     expect(headerCells[1]).toHaveTextContent('5');
     expect(headerCells[2]).toHaveTextContent('8');
@@ -54,20 +54,27 @@ describe('RostersView', () => {
 
   it('falls back to column position when a team has no number', () => {
     const unnumbered: RosterTeam = { ...birdies, teamNumber: null };
-    render(<RostersView teams={[aces, unnumbered]} />);
+    render(<RostersView teams={[aces, unnumbered]} sideBetRounds={[]} />);
     const headerCells = screen.getAllByRole('columnheader');
     expect(headerCells[2]).toHaveTextContent('2');
   });
 
   it('renders a row for each of the 8 draft rounds', () => {
-    render(<RostersView teams={[aces, birdies]} />);
+    render(<RostersView teams={[aces, birdies]} sideBetRounds={[]} />);
     const rows = screen.getAllByRole('row');
     // 1 header + 8 round rows
     expect(rows).toHaveLength(9);
   });
 
+  it("sets apart the rows of the season's side-bet rounds and of no other round", () => {
+    render(<RostersView teams={[aces]} sideBetRounds={[2, 3]} />);
+    const roundRows = screen.getAllByRole('row').slice(1);
+    const setApart = roundRows.map((row) => row.classList.contains('bg-gray-800/70'));
+    expect(setApart).toEqual([false, true, true, false, false, false, false, false]);
+  });
+
   it('renders an em dash for missing picks', () => {
-    render(<RostersView teams={[aces]} />);
+    render(<RostersView teams={[aces]} sideBetRounds={[]} />);
     const rows = screen.getAllByRole('row').slice(1);
     // Aces has picks in rounds 1,2,3,5 — so rounds 4,6,7,8 should show the em dash
     const round4 = rows[3];
@@ -75,14 +82,14 @@ describe('RostersView', () => {
   });
 
   it('shows ownership percentage only when less than 100%', () => {
-    render(<RostersView teams={[aces]} />);
+    render(<RostersView teams={[aces]} sideBetRounds={[]} />);
     // Rory (60%) should render the pct, Scheffler (100%) should not
     expect(screen.getByText('60%')).toBeInTheDocument();
     expect(screen.queryByText('100%')).not.toBeInTheDocument();
   });
 
   it('surfaces shared players across teams', () => {
-    render(<RostersView teams={[aces, birdies]} />);
+    render(<RostersView teams={[aces, birdies]} sideBetRounds={[]} />);
     const callout = screen.getByText(/Shared Players:/i).parentElement!;
     expect(within(callout).getByText('Rory McIlroy')).toBeInTheDocument();
     expect(within(callout).getByText(/Aces/)).toBeInTheDocument();
@@ -92,13 +99,13 @@ describe('RostersView', () => {
   it('makes pick names clickable when onGolferClick is provided', async () => {
     const onGolferClick = vi.fn();
     const user = userEvent.setup();
-    render(<RostersView teams={[aces]} onGolferClick={onGolferClick} />);
+    render(<RostersView teams={[aces]} sideBetRounds={[]} onGolferClick={onGolferClick} />);
     await user.click(screen.getByRole('button', { name: 'Scottie Scheffler' }));
     expect(onGolferClick).toHaveBeenCalledWith('g-1-Scottie Scheffler');
   });
 
   it('renders pick names as plain text when no onGolferClick is provided', () => {
-    render(<RostersView teams={[aces]} />);
+    render(<RostersView teams={[aces]} sideBetRounds={[]} />);
     expect(screen.queryByRole('button', { name: 'Scottie Scheffler' })).not.toBeInTheDocument();
     expect(screen.getByText('Scottie Scheffler')).toBeInTheDocument();
   });
@@ -110,7 +117,7 @@ describe('RostersView', () => {
       teamName: 'Solo',
       picks: [pick(1, 'Tiger Woods')],
     };
-    render(<RostersView teams={[unique]} />);
+    render(<RostersView teams={[unique]} sideBetRounds={[]} />);
     expect(screen.queryByText(/Shared Players:/i)).not.toBeInTheDocument();
   });
 });

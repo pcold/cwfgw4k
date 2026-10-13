@@ -61,12 +61,21 @@ fun buildStandingsOrder(teams: List<ReportTeamColumn>): List<StandingsEntry> =
 private const val SIDE_BET_PAYOUT_SCALE = 2
 
 /**
- * Pick side-bet payouts from current cumulative earnings per team. All-
- * zero (start of season) returns empty. Otherwise the team(s) at the
- * highest cumulative split the pot — losers each pay `sideBetPerTeam`,
- * winners share the pool. Tie detection uses `compareTo` because
- * `BigDecimal.equals` is scale-sensitive (10 != 10.00) and the same
+ * Empty while no team has earned in the round, which leaves every entry there without an outcome. Tie
+ * detection uses `compareTo` because `BigDecimal.equals` is scale-sensitive (10 != 10.00) and the same
  * cumulative arrives at different scales depending on the source path.
+ */
+fun settleSideBetOutcomes(cumulativeByTeam: Map<TeamId, BigDecimal>): Map<TeamId, SideBetOutcome> {
+    if (cumulativeByTeam.values.all { it.signum() == 0 }) return emptyMap()
+    val highest = cumulativeByTeam.values.max()
+    return cumulativeByTeam.mapValues { (_, cumulative) ->
+        if (cumulative.compareTo(highest) == 0) SideBetOutcome.Won else SideBetOutcome.Lost
+    }
+}
+
+/**
+ * Payouts for the outcomes [settleSideBetOutcomes] decides — losers each pay `sideBetPerTeam`, winners
+ * share the pool — so the two can never name different winners.
  *
  * The split stays zero-sum: the winners' shares always sum back to the
  * pool the losers paid in (see [splitPoolAmongWinners]). Dividing the pool
@@ -79,11 +88,9 @@ fun pickSideBetPayouts(
     numTeams: Int,
     sideBetPerTeam: BigDecimal,
 ): Map<TeamId, BigDecimal> {
-    if (cumulativeByTeam.isEmpty() || cumulativeByTeam.values.all { it.signum() == 0 }) {
-        return emptyMap()
-    }
-    val highest = cumulativeByTeam.values.max()
-    val winners = cumulativeByTeam.filterValues { it.compareTo(highest) == 0 }.keys
+    val outcomes = settleSideBetOutcomes(cumulativeByTeam)
+    if (outcomes.isEmpty()) return emptyMap()
+    val winners = outcomes.filterValues { it == SideBetOutcome.Won }.keys
     val pool = sideBetPerTeam.multiply(BigDecimal(numTeams - winners.size))
     val winnerShares = splitPoolAmongWinners(pool, winners)
     return cumulativeByTeam.mapValues { (teamId, _) ->
@@ -116,15 +123,16 @@ private fun splitPoolAmongWinners(
     return (roundedShares + (ordered.last() to lastWinnerShare)).toMap()
 }
 
-/** [pickSideBetPayouts] over a list of [ReportSideBetTeamEntry]; updates each entry's `payout`. */
+/** Re-settles every entry from its `cumulativeEarnings`, replacing whatever `payout` and `outcome` it carried in. */
 fun recomputeSideBetPayouts(
     entries: List<ReportSideBetTeamEntry>,
     numTeams: Int,
     sideBetPerTeam: BigDecimal,
 ): List<ReportSideBetTeamEntry> {
-    val payouts =
-        pickSideBetPayouts(entries.associate { it.teamId to it.cumulativeEarnings }, numTeams, sideBetPerTeam)
-    return entries.map { it.copy(payout = payouts[it.teamId] ?: BigDecimal.ZERO) }
+    val cumulativeByTeam = entries.associate { it.teamId to it.cumulativeEarnings }
+    val payouts = pickSideBetPayouts(cumulativeByTeam, numTeams, sideBetPerTeam)
+    val outcomes = settleSideBetOutcomes(cumulativeByTeam)
+    return entries.map { it.copy(payout = payouts[it.teamId] ?: BigDecimal.ZERO, outcome = outcomes[it.teamId]) }
 }
 
 /**

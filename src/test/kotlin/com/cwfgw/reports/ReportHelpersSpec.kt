@@ -67,9 +67,11 @@ private fun sideBetEntry(
 ): ReportSideBetTeamEntry =
     ReportSideBetTeamEntry(
         teamId = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000$teamHex")),
+        teamName = "Team $teamHex",
         golferName = "Golfer $teamHex",
         cumulativeEarnings = cumulative,
         payout = BigDecimal.ZERO,
+        outcome = null,
     )
 
 class ReportHelpersSpec : FunSpec({
@@ -243,6 +245,39 @@ class ReportHelpersSpec : FunSpec({
 
             result.sumOf { it.payout }.compareTo(BigDecimal.ZERO) shouldBe 0
         }
+    }
+
+    test("recomputeSideBetPayouts marks every team at the highest cumulative a winner and every other a loser") {
+        val entries =
+            listOf(
+                sideBetEntry("01", BigDecimal("250")),
+                sideBetEntry("02", BigDecimal("250.00")),
+                sideBetEntry("03", BigDecimal("75")),
+            )
+
+        recomputeSideBetPayouts(entries, numTeams = 3, sideBetPerTeam = BigDecimal("6"))
+            .map { it.outcome } shouldContainExactly
+            listOf(SideBetOutcome.Won, SideBetOutcome.Won, SideBetOutcome.Lost)
+    }
+
+    test("recomputeSideBetPayouts marks every team a winner of a round they all tie, at a zero payout") {
+        val entries = listOf(sideBetEntry("01", BigDecimal("40")), sideBetEntry("02", BigDecimal("40")))
+
+        val result = recomputeSideBetPayouts(entries, numTeams = 2, sideBetPerTeam = BigDecimal("6"))
+
+        result.map { it.outcome } shouldContainExactly listOf(SideBetOutcome.Won, SideBetOutcome.Won)
+        result.forEach { it.payout.compareTo(BigDecimal.ZERO) shouldBe 0 }
+    }
+
+    test("recomputeSideBetPayouts leaves no outcome on a round nobody has earned in, whatever the entries carried") {
+        val entries =
+            listOf(
+                sideBetEntry("01", BigDecimal.ZERO).copy(outcome = SideBetOutcome.Won),
+                sideBetEntry("02", BigDecimal.ZERO).copy(outcome = SideBetOutcome.Lost),
+            )
+
+        recomputeSideBetPayouts(entries, numTeams = 2, sideBetPerTeam = BigDecimal("6"))
+            .map { it.outcome } shouldContainExactly listOf(null, null)
     }
 
     // ----- filterThroughTournament -----

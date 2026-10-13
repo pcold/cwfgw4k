@@ -17,6 +17,7 @@ import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.seasons.SeasonRules
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.RosterEntryId
@@ -53,6 +54,7 @@ private val MASTERS_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-0
 private val SONY_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b02"))
 private val TEAM_A = teamFixture("c01", "BROWN")
 private val TEAM_B = teamFixture("c02", "WOMBLE")
+private val TEAM_C = teamFixture("c03", "ALVAREZ")
 
 private fun teamFixture(
     idHex: String,
@@ -187,6 +189,7 @@ private class Fixture(
     initialResults: List<TournamentResult> = emptyList(),
     initialScores: List<FantasyScore> = emptyList(),
     espnByDate: Map<LocalDate, List<EspnTournament>> = emptyMap(),
+    rules: SeasonRules? = null,
 ) {
     val seasonRepo: FakeSeasonRepository = FakeSeasonRepository(idFactory = { SEASON_ID })
     val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
@@ -202,7 +205,12 @@ private class Fixture(
                 with(noopTransactionContext) {
 
                     seasonRepo.create(
-                        CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
+                        CreateSeasonRequest(
+                            leagueId = LEAGUE_ID,
+                            name = "2026 Season",
+                            seasonYear = 2026,
+                            rules = rules,
+                        ),
                     )
                 }
             }
@@ -238,6 +246,63 @@ private class Fixture(
             )
     }
 }
+
+private fun sideBetRules(
+    amount: BigDecimal,
+    rounds: List<Int>,
+): SeasonRules = SeasonRules.defaults().copy(sideBetRounds = rounds, sideBetAmount = amount)
+
+/** A completed Masters in which each team's pick in [round] has earned the amount paired with it. */
+private fun sideBetFixture(
+    rules: SeasonRules,
+    round: Int,
+    earnedByTeam: List<Pair<Team, BigDecimal>>,
+): Fixture {
+    val pickByTeam =
+        earnedByTeam.mapIndexed { index, earned ->
+            earned.first.id to golferFixture("e0$index", "Pick", "Pick$index")
+        }.toMap()
+    val scores =
+        earnedByTeam.filter { (_, earned) -> earned.signum() > 0 }.map { (team, earned) ->
+            scoreFixture(team.id, MASTERS_ID, pickByTeam.getValue(team.id).id, points = earned, position = 1)
+        }
+    return Fixture(
+        rules = rules,
+        initialTournaments = listOf(tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")),
+        initialTeams = earnedByTeam.map { it.first },
+        initialGolfers = pickByTeam.values.toList(),
+        initialRosters = pickByTeam.map { (teamId, golfer) -> rosterEntry(teamId, golfer.id, draftRound = round) },
+        initialScores = scores,
+    )
+}
+
+/** An in-progress Masters on ESPN whose only competitor leads it. */
+private fun liveMasters(leaderEspnId: String): EspnTournament =
+    EspnTournament(
+        espnId = "espn-masters",
+        name = "The Masters",
+        completed = false,
+        competitors =
+            listOf(
+                EspnCompetitor(
+                    espnId = leaderEspnId,
+                    name = "Scottie Scheffler",
+                    order = 1,
+                    scoreStr = "-12",
+                    scoreToPar = -12,
+                    totalStrokes = 270,
+                    roundScores = listOf(68, 68, 67),
+                    position = 1,
+                    status = EspnStatus.Active,
+                    isTeamPartner = false,
+                    pairKey = null,
+                ),
+            ),
+        isTeamEvent = false,
+    )
+
+private suspend fun Fixture.mastersReport(): WeeklyReport =
+    service.getReport(SEASON_ID, MASTERS_ID).shouldBeInstanceOf<Result.Ok<WeeklyReport>>().value
 
 private fun asUpsertRequest(r: TournamentResult): com.cwfgw.tournaments.CreateTournamentResultRequest =
     com.cwfgw.tournaments.CreateTournamentResultRequest(
@@ -445,6 +510,145 @@ class WeeklyReportServiceSpec : FunSpec({
             round.teams shouldHaveSize 2
             round.teams.forAll { entry -> entry.payout.compareTo(BigDecimal.ZERO) shouldBe 0 }
         }
+    }
+
+    test("getReport carries the season's own side-bet amount and rounds in place of the defaults") {
+        val fixture =
+            sideBetFixture(
+                rules = sideBetRules(amount = BigDecimal(20), rounds = listOf(2, 3)),
+                round = 2,
+                earnedByTeam = listOf(TEAM_A to BigDecimal(12), TEAM_B to BigDecimal(4)),
+            )
+
+        val report = fixture.mastersReport()
+
+        report.sideBetRules shouldBe ReportSideBetRules(amountPerTeam = BigDecimal(20), rounds = listOf(2, 3))
+        report.sideBetDetail.map { it.round } shouldContainExactly listOf(2, 3)
+        val secondRound = report.sideBetDetail.first().teams
+        secondRound.map { it.teamName } shouldContainExactly listOf("BROWN", "WOMBLE")
+        secondRound.map { it.payout } shouldContainExactly listOf(BigDecimal(20), BigDecimal(-20))
+        secondRound.map { it.outcome } shouldContainExactly listOf(SideBetOutcome.Won, SideBetOutcome.Lost)
+    }
+
+    test("getSeasonReport carries the season's own side-bet amount and rounds in place of the defaults") {
+        val fixture =
+            sideBetFixture(
+                rules = sideBetRules(amount = BigDecimal(20), rounds = listOf(2, 3)),
+                round = 3,
+                earnedByTeam = listOf(TEAM_A to BigDecimal(4), TEAM_B to BigDecimal(12)),
+            )
+
+        val report =
+            fixture.service.getSeasonReport(SEASON_ID)
+                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
+                .value
+
+        report.sideBetRules shouldBe ReportSideBetRules(amountPerTeam = BigDecimal(20), rounds = listOf(2, 3))
+        report.sideBetDetail.map { it.round } shouldContainExactly listOf(2, 3)
+        val thirdRound = report.sideBetDetail.last().teams
+        thirdRound.map { it.teamName } shouldContainExactly listOf("BROWN", "WOMBLE")
+        thirdRound.map { it.payout } shouldContainExactly listOf(BigDecimal(-20), BigDecimal(20))
+        thirdRound.map { it.outcome } shouldContainExactly listOf(SideBetOutcome.Lost, SideBetOutcome.Won)
+    }
+
+    test("a tied side-bet round marks every tied team a winner and no other") {
+        val fixture =
+            sideBetFixture(
+                rules = sideBetRules(amount = BigDecimal(20), rounds = listOf(2)),
+                round = 2,
+                earnedByTeam = listOf(TEAM_A to BigDecimal(10), TEAM_B to BigDecimal(4), TEAM_C to BigDecimal(10)),
+            )
+
+        val tiedRound = fixture.mastersReport().sideBetDetail.single().teams
+
+        tiedRound.associate { it.teamName to it.outcome } shouldBe
+            mapOf("BROWN" to SideBetOutcome.Won, "WOMBLE" to SideBetOutcome.Lost, "ALVAREZ" to SideBetOutcome.Won)
+        tiedRound.associate { it.teamName to it.payout } shouldBe
+            mapOf("BROWN" to BigDecimal(10), "WOMBLE" to BigDecimal(-20), "ALVAREZ" to BigDecimal(10))
+    }
+
+    test("a side-bet round every team ties is won by all of them even though nobody is paid") {
+        val fixture =
+            sideBetFixture(
+                rules = sideBetRules(amount = BigDecimal(20), rounds = listOf(2)),
+                round = 2,
+                earnedByTeam = listOf(TEAM_A to BigDecimal(10), TEAM_B to BigDecimal(10)),
+            )
+
+        val tiedRound = fixture.mastersReport().sideBetDetail.single().teams
+
+        tiedRound.map { it.outcome } shouldContainExactly listOf(SideBetOutcome.Won, SideBetOutcome.Won)
+        tiedRound.forAll { it.payout.compareTo(BigDecimal.ZERO) shouldBe 0 }
+    }
+
+    test("a side-bet round nobody has earned in yet settles no outcome for any team") {
+        val fixture =
+            sideBetFixture(
+                rules = sideBetRules(amount = BigDecimal(20), rounds = listOf(2)),
+                round = 2,
+                earnedByTeam = listOf(TEAM_A to BigDecimal.ZERO, TEAM_B to BigDecimal.ZERO),
+            )
+
+        val openRound = fixture.mastersReport().sideBetDetail.single().teams
+
+        openRound.map { it.outcome } shouldContainExactly listOf(null, null)
+    }
+
+    test("a season that stakes nothing on side bets reports no rules and no side-bet rounds") {
+        val stakingNothing =
+            listOf(
+                sideBetRules(amount = BigDecimal.ZERO, rounds = listOf(2, 3)),
+                sideBetRules(amount = BigDecimal("0.00"), rounds = listOf(2, 3)),
+                sideBetRules(amount = BigDecimal(20), rounds = emptyList()),
+            )
+
+        stakingNothing.forAll { rules ->
+            val fixture =
+                sideBetFixture(
+                    rules = rules,
+                    round = 2,
+                    earnedByTeam = listOf(TEAM_A to BigDecimal(12), TEAM_B to BigDecimal(4)),
+                )
+
+            val report = fixture.mastersReport()
+
+            report.sideBetRules shouldBe null
+            report.sideBetDetail.shouldBeEmpty()
+            report.teams.forAll { it.sideBets.compareTo(BigDecimal.ZERO) shouldBe 0 }
+        }
+    }
+
+    test("getReport with live=true keeps the season's side-bet rules and settles outcomes on the live projection") {
+        val leader = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
+        val trailer = golferFixture("202", "Rando", "Player")
+        val mastersInProgress =
+            tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+                .copy(status = TournamentStatus.InProgress, pgaTournamentId = "espn-masters")
+        val fixture =
+            Fixture(
+                rules = sideBetRules(amount = BigDecimal(20), rounds = listOf(1)),
+                initialTournaments = listOf(mastersInProgress),
+                initialTeams = listOf(TEAM_A, TEAM_B),
+                initialGolfers = listOf(leader, trailer),
+                initialRosters =
+                    listOf(
+                        rosterEntry(TEAM_A.id, leader.id, draftRound = 1),
+                        rosterEntry(TEAM_B.id, trailer.id, draftRound = 1),
+                    ),
+                espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(liveMasters(leaderEspnId = "espn-p1"))),
+            )
+
+        val report =
+            fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true)
+                .shouldBeInstanceOf<Result.Ok<WeeklyReport>>()
+                .value
+
+        report.live shouldBe true
+        report.sideBetRules shouldBe ReportSideBetRules(amountPerTeam = BigDecimal(20), rounds = listOf(1))
+        val firstRound = report.sideBetDetail.single().teams
+        firstRound.map { it.teamName to it.outcome } shouldContainExactly
+            listOf("BROWN" to SideBetOutcome.Won, "WOMBLE" to SideBetOutcome.Lost)
+        firstRound.map { it.payout } shouldContainExactly listOf(BigDecimal(20), BigDecimal(-20))
     }
 
     test("sideBetDetail does not double-apply ownership for partial-share picks") {

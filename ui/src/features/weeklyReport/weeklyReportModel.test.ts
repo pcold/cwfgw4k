@@ -2,13 +2,17 @@ import { describe, expect, it } from 'vitest';
 import type {
   ReportCell,
   ReportScope,
+  ReportSideBetTeamEntry,
   ReportTeamColumn,
+  SideBetOutcome,
   WeeklyReport,
 } from '@/shared/api/types';
 import {
   isSeasonReport,
   roundCellBg,
   roundTextColor,
+  sideBetAmountByRound,
+  sideBetRowLabel,
   sideBetWinnersByRound,
   signTextClass,
   summarizeWeeklyReport,
@@ -29,6 +33,7 @@ function reportScoped(scope: ReportScope, status: string | null = null): WeeklyR
     },
     teams: [],
     undraftedTopTens: [],
+    sideBetRules: null,
     sideBetDetail: [],
     standingsOrder: [],
     live: false,
@@ -36,31 +41,72 @@ function reportScoped(scope: ReportScope, status: string | null = null): WeeklyR
   };
 }
 
+function sideBetEntry(
+  teamId: string,
+  payout: number,
+  outcome: SideBetOutcome | null,
+): ReportSideBetTeamEntry {
+  return { teamId, teamName: teamId, golferName: 'Golfer', cumulativeEarnings: 0, payout, outcome };
+}
+
 describe('sideBetWinnersByRound', () => {
   it('returns an empty map when there is no side bet detail', () => {
     expect(sideBetWinnersByRound([]).size).toBe(0);
   });
 
-  it('includes only teams with a positive payout for the round', () => {
+  it('includes only the teams the server marked as winners of the round', () => {
     const map = sideBetWinnersByRound([
       {
-        round: 5,
-        teams: [
-          { teamId: 't-1', golferName: 'A', cumulativeEarnings: 100, payout: 45 },
-          { teamId: 't-2', golferName: 'B', cumulativeEarnings: 50, payout: -15 },
-          { teamId: 't-3', golferName: 'C', cumulativeEarnings: 0, payout: 0 },
-        ],
+        round: 2,
+        teams: [sideBetEntry('t-1', 40, 'won'), sideBetEntry('t-2', -20, 'lost')],
       },
-      {
-        round: 6,
-        teams: [
-          { teamId: 't-2', golferName: 'D', cumulativeEarnings: 200, payout: 60 },
-        ],
-      },
+      { round: 3, teams: [sideBetEntry('t-2', 20, 'won')] },
     ]);
-    expect(map.get(5)).toEqual(new Set(['t-1']));
-    expect(map.get(6)).toEqual(new Set(['t-2']));
-    expect(map.has(7)).toBe(false);
+    expect(map.get(2)).toEqual(new Set(['t-1']));
+    expect(map.get(3)).toEqual(new Set(['t-2']));
+    expect(map.has(4)).toBe(false);
+  });
+
+  it('counts every team as a winner of a round they all tie, where nobody is paid', () => {
+    const map = sideBetWinnersByRound([
+      { round: 2, teams: [sideBetEntry('t-1', 0, 'won'), sideBetEntry('t-2', 0, 'won')] },
+    ]);
+    expect(map.get(2)).toEqual(new Set(['t-1', 't-2']));
+  });
+
+  it('names no winner of a round the server has not settled, whatever the payouts say', () => {
+    const map = sideBetWinnersByRound([
+      { round: 2, teams: [sideBetEntry('t-1', 40, null), sideBetEntry('t-2', -20, null)] },
+    ]);
+    expect(map.get(2)).toEqual(new Set());
+  });
+});
+
+describe('sideBetAmountByRound', () => {
+  it("maps each of the season's side-bet rounds to the season's amount", () => {
+    const amounts = sideBetAmountByRound({ amountPerTeam: 20, rounds: [2, 3] });
+    expect([...amounts]).toEqual([
+      [2, 20],
+      [3, 20],
+    ]);
+  });
+
+  it('is empty for a season that stakes nothing on side bets', () => {
+    expect(sideBetAmountByRound(null).size).toBe(0);
+  });
+});
+
+describe('sideBetRowLabel', () => {
+  it("names the season's side-bet rounds", () => {
+    expect(sideBetRowLabel({ amountPerTeam: 20, rounds: [2, 3] })).toBe('ROWS 2-3');
+  });
+
+  it('names a single side-bet round in the singular', () => {
+    expect(sideBetRowLabel({ amountPerTeam: 20, rounds: [7] })).toBe('ROW 7');
+  });
+
+  it('falls back to a label that names no rounds when the season has none', () => {
+    expect(sideBetRowLabel(null)).toBe('SIDE BETS');
   });
 });
 

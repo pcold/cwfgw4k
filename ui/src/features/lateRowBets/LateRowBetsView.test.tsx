@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import LateRowBetsView from './LateRowBetsView';
-import type { ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
+import type {
+  ReportSideBetTeamEntry,
+  ReportTeamColumn,
+  SideBetOutcome,
+  WeeklyReport,
+} from '@/shared/api/types';
 
 function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
   return {
@@ -21,6 +26,17 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
   };
 }
 
+function entry(
+  teamId: string,
+  teamName: string,
+  golferName: string,
+  cumulativeEarnings: number,
+  payout: number,
+  outcome: SideBetOutcome | null,
+): ReportSideBetTeamEntry {
+  return { teamId, teamName, golferName, cumulativeEarnings, payout, outcome };
+}
+
 function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
   return {
     scope: 'tournament',
@@ -34,26 +50,27 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
       week: '9',
     },
     teams: [
-      team({ teamId: 't-1', teamName: 'Aces', sideBets: 60 }),
-      team({ teamId: 't-2', teamName: 'Birdies', sideBets: -45 }),
-      team({ teamId: 't-3', teamName: 'Eagles', sideBets: -15 }),
+      team({ teamId: 't-1', teamName: 'Aces', sideBets: 80 }),
+      team({ teamId: 't-2', teamName: 'Birdies', sideBets: -60 }),
+      team({ teamId: 't-3', teamName: 'Eagles', sideBets: -20 }),
     ],
     undraftedTopTens: [],
+    sideBetRules: { amountPerTeam: 20, rounds: [2, 3] },
     sideBetDetail: [
       {
-        round: 5,
+        round: 2,
         teams: [
-          { teamId: 't-1', golferName: 'Scottie', cumulativeEarnings: 500, payout: 30 },
-          { teamId: 't-2', golferName: 'Rory', cumulativeEarnings: 250, payout: -15 },
-          { teamId: 't-3', golferName: 'Jon', cumulativeEarnings: 100, payout: -15 },
+          entry('t-1', 'Aces', 'Scottie', 500, 40, 'won'),
+          entry('t-2', 'Birdies', 'Rory', 250, -20, 'lost'),
+          entry('t-3', 'Eagles', 'Jon', 100, -20, 'lost'),
         ],
       },
       {
-        round: 6,
+        round: 3,
         teams: [
-          { teamId: 't-1', golferName: 'Xander', cumulativeEarnings: 300, payout: 30 },
-          { teamId: 't-2', golferName: 'Collin', cumulativeEarnings: 200, payout: -15 },
-          { teamId: 't-3', golferName: 'Viktor', cumulativeEarnings: 100, payout: -15 },
+          entry('t-1', 'Aces', 'Xander', 300, 40, 'won'),
+          entry('t-2', 'Birdies', 'Collin', 200, -20, 'lost'),
+          entry('t-3', 'Eagles', 'Viktor', 100, -20, 'lost'),
         ],
       },
     ],
@@ -65,24 +82,34 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
 }
 
 describe('LateRowBetsView', () => {
-  it('renders the explainer copy', () => {
+  it("states the season's own amount and rounds in the rules sentence", () => {
     render(<LateRowBetsView report={report()} />);
     expect(
-      screen.getByText(/\$15 per team per round\. Highest cumulative earner/i),
+      screen.getByText(
+        "$20.00 per team in each of draft rounds 2 and 3. Every team behind a round's highest " +
+          'cumulative earner pays $20.00; teams tied for the highest split what was paid.',
+      ),
     ).toBeInTheDocument();
+  });
+
+  it('names a single side-bet round in the singular', () => {
+    render(
+      <LateRowBetsView report={report({ sideBetRules: { amountPerTeam: 12.5, rounds: [7] } })} />,
+    );
+    expect(screen.getByText(/^\$12\.50 per team in draft round 7\./)).toBeInTheDocument();
   });
 
   it('renders a section per side-bet round', () => {
     render(<LateRowBetsView report={report()} />);
-    expect(screen.getByRole('heading', { name: 'Round 5' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Round 6' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Round 2' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Round 3' })).toBeInTheDocument();
   });
 
-  it('resolves team names and sorts entries by cumulative earnings descending', () => {
-    render(<LateRowBetsView report={report()} />);
-    const round5Heading = screen.getByRole('heading', { name: 'Round 5' });
-    const round5Section = round5Heading.parentElement!;
-    const rows = within(round5Section).getAllByRole('row').slice(1);
+  it("shows each entry's team name from the entry itself, sorted by cumulative earnings", () => {
+    render(<LateRowBetsView report={report({ teams: [] })} />);
+    const round2Section = screen.getByRole('heading', { name: 'Round 2' }).parentElement;
+    if (!round2Section) throw new Error('the Round 2 heading has no section around it');
+    const rows = within(round2Section).getAllByRole('row').slice(1);
     const teamCells = rows.map((r) => within(r).getAllByRole('cell')[0].textContent);
     expect(teamCells).toEqual(['Aces', 'Birdies', 'Eagles']);
   });
@@ -98,14 +125,16 @@ describe('LateRowBetsView', () => {
 
   it('computes the won/lost/net summary from sideBets', () => {
     render(<LateRowBetsView report={report()} />);
-    expect(screen.getByText('Won').nextSibling).toHaveTextContent('$60');
-    expect(screen.getByText('Lost').nextSibling).toHaveTextContent('-$60');
+    expect(screen.getByText('Won').nextSibling).toHaveTextContent('$80');
+    expect(screen.getByText('Lost').nextSibling).toHaveTextContent('-$80');
     expect(screen.getByText('Net').nextSibling).toHaveTextContent('$0');
   });
 
-  it('shows an empty-state message when there are no side bet rounds', () => {
-    const empty = report({ sideBetDetail: [] });
-    render(<LateRowBetsView report={empty} />);
-    expect(screen.getByText(/No late row bets yet/i)).toBeInTheDocument();
+  it('says a season that stakes nothing on side bets has none, and shows no rules or totals', () => {
+    const noSideBets = report({ sideBetRules: null, sideBetDetail: [] });
+    render(<LateRowBetsView report={noSideBets} />);
+    expect(screen.getByText('This season has no late row bets.')).toBeInTheDocument();
+    expect(screen.queryByText(/per team in/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Total Late Row Bets/i })).not.toBeInTheDocument();
   });
 });

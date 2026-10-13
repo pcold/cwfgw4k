@@ -45,16 +45,31 @@ export interface UndraftedGolfer {
   pairKey: string | null;
 }
 
+export type SideBetOutcome = 'won' | 'lost';
+
+/**
+ * `outcome` is the server's decision and null until the round has settled
+ * something for the team. Never read it off `payout`: every team wins a round
+ * they all tie, at a payout of zero.
+ */
 export interface ReportSideBetTeamEntry {
   teamId: string;
+  teamName: string;
   golferName: string;
   cumulativeEarnings: number;
   payout: number;
+  outcome: SideBetOutcome | null;
 }
 
 export interface ReportSideBetRound {
   round: number;
   teams: ReportSideBetTeamEntry[];
+}
+
+/** `rounds` are the draft rounds `WeeklyReport.sideBetDetail` stacks, in the same order. */
+export interface ReportSideBetRules {
+  amountPerTeam: number;
+  rounds: number[];
 }
 
 export interface StandingsEntry {
@@ -88,6 +103,8 @@ export interface WeeklyReport {
   tournament: ReportTournamentInfo;
   teams: ReportTeamColumn[];
   undraftedTopTens: UndraftedGolfer[];
+  /** Null for a season that stakes nothing on side bets; `sideBetDetail` is then empty. */
+  sideBetRules: ReportSideBetRules | null;
   sideBetDetail: ReportSideBetRound[];
   standingsOrder: StandingsEntry[];
   live: boolean | null;

@@ -1,4 +1,4 @@
-import type { WeeklyReport } from '@/shared/api/types';
+import type { ReportSideBetRules, WeeklyReport } from '@/shared/api/types';
 import { formatMoney } from '@/shared/util/money';
 import {
   lateRowBetRounds,
@@ -62,6 +62,26 @@ function RoundTable({ round, entries }: RoundTableProps) {
   );
 }
 
+const ROUND_LIST = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
+
+interface RulesNoteProps {
+  rules: ReportSideBetRules;
+}
+
+// Worded to stay true of a tied round, where several teams collect and split
+// what the teams behind them paid.
+function RulesNote({ rules }: RulesNoteProps) {
+  const amount = formatMoney(rules.amountPerTeam);
+  const rounds = ROUND_LIST.format(rules.rounds.map(String));
+  const where = rules.rounds.length === 1 ? `draft round ${rounds}` : `each of draft rounds ${rounds}`;
+  return (
+    <p className="text-gray-400 text-sm">
+      {amount} per team in {where}. Every team behind a round&apos;s highest cumulative earner
+      pays {amount}; teams tied for the highest split what was paid.
+    </p>
+  );
+}
+
 interface Props {
   report: WeeklyReport;
 }
@@ -71,22 +91,19 @@ function LateRowBetsView({ report }: Props) {
   const totals = lateRowBetTeamTotals(report);
   const summary = summarizeLateRowBets(report);
 
+  if (rounds.length === 0) {
+    return <p className="text-gray-500 text-sm">This season has no late row bets.</p>;
+  }
+
   return (
     <section className="space-y-4">
-      <p className="text-gray-400 text-sm">
-        $15 per team per round. Highest cumulative earner in each draft round (5-8) wins $15
-        from every other team.
-      </p>
+      {report.sideBetRules ? <RulesNote rules={report.sideBetRules} /> : null}
 
-      {rounds.length === 0 ? (
-        <p className="text-gray-500 text-sm">No late row bets yet.</p>
-      ) : (
-        <div className="space-y-6">
-          {rounds.map((rd) => (
-            <RoundTable key={rd.round} round={rd.round} entries={rd.entries} />
-          ))}
-        </div>
-      )}
+      <div className="space-y-6">
+        {rounds.map((rd) => (
+          <RoundTable key={rd.round} round={rd.round} entries={rd.entries} />
+        ))}
+      </div>
 
       {totals.length > 0 ? (
         <div className="bg-gray-800 rounded-lg p-4">

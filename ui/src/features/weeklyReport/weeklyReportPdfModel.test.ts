@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type {
   ReportCell,
   ReportScope,
-  ReportSideBetRound,
   ReportTeamColumn,
   Season,
   WeeklyReport,
@@ -12,7 +11,6 @@ import {
   formatDateRange,
   formatIsoDate,
   pdfFilename,
-  sideBetPerTeamByRound,
 } from './weeklyReportPdfModel';
 
 const season: Season = {
@@ -33,7 +31,6 @@ function buildReport(overrides: {
   scope?: ReportScope;
   week?: string | null;
   name?: string | null;
-  sideBetDetail?: ReportSideBetRound[];
   teams?: ReportTeamColumn[];
 } = {}): WeeklyReport {
   const scope = overrides.scope ?? 'tournament';
@@ -50,7 +47,8 @@ function buildReport(overrides: {
     },
     teams: overrides.teams ?? [],
     undraftedTopTens: [],
-    sideBetDetail: overrides.sideBetDetail ?? [],
+    sideBetRules: null,
+    sideBetDetail: [],
     standingsOrder: [],
     live: false,
     liveLeaderboard: [],
@@ -142,49 +140,6 @@ describe('cellContent', () => {
 
   it('renders the season-footer as "$0" when no season top-tens yet', () => {
     expect(cellContent(row({ golferName: 'Scheffler' }), true)).toBe('SCHEFFLER\n-\n$0');
-  });
-});
-
-describe('sideBetPerTeamByRound', () => {
-  it('returns the per-team side-bet amount as the largest loss in the round', () => {
-    const report = buildReport({
-      sideBetDetail: [
-        {
-          round: 5,
-          teams: [
-            { teamId: 't-1', golferName: 'A', cumulativeEarnings: 0, payout: 180 },
-            { teamId: 't-2', golferName: 'B', cumulativeEarnings: 0, payout: -15 },
-            { teamId: 't-3', golferName: 'C', cumulativeEarnings: 0, payout: -15 },
-          ],
-        },
-      ],
-    });
-    expect(sideBetPerTeamByRound(report).get(5)).toBe(15);
-  });
-
-  it('omits rounds with no losers (nobody paid)', () => {
-    const report = buildReport({
-      sideBetDetail: [{ round: 6, teams: [] }],
-    });
-    expect(sideBetPerTeamByRound(report).has(6)).toBe(false);
-  });
-
-  it('handles multiple rounds independently', () => {
-    const report = buildReport({
-      sideBetDetail: [
-        {
-          round: 5,
-          teams: [{ teamId: 't-1', golferName: 'A', cumulativeEarnings: 0, payout: -10 }],
-        },
-        {
-          round: 6,
-          teams: [{ teamId: 't-1', golferName: 'A', cumulativeEarnings: 0, payout: -25 }],
-        },
-      ],
-    });
-    const amounts = sideBetPerTeamByRound(report);
-    expect(amounts.get(5)).toBe(10);
-    expect(amounts.get(6)).toBe(25);
   });
 });
 
