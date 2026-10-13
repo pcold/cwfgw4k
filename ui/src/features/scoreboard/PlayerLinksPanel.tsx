@@ -1,14 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import {
-  golferKeys,
-  playerRankingsKeys,
-  rankingsKeys,
-  reportKeys,
-  tournamentCompetitorKeys,
-  tournamentReportKeys,
-} from '@/shared/api/queryKeys';
+import { queryKeys } from '@/shared/api/queryKeys';
 import { QueryState } from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
 import type {
@@ -25,11 +18,11 @@ interface PlayerLinksPanelProps {
 
 function PlayerLinksPanel({ tournamentId, seasonId, onClose }: PlayerLinksPanelProps) {
   const competitorsQuery = useQuery({
-    queryKey: tournamentCompetitorKeys.byTournament(tournamentId),
+    queryKey: queryKeys.tournamentCompetitors.byTournament(tournamentId),
     queryFn: () => api.tournamentCompetitors(tournamentId),
   });
   const golfersQuery = useQuery({
-    queryKey: golferKeys.list(),
+    queryKey: queryKeys.golfers.list(),
     queryFn: () => api.golfers(),
     staleTime: 5 * 60 * 1000,
   });
@@ -143,11 +136,11 @@ function CompetitorRow({
   // The live overlay resolves ESPN competitors through these links on the server, so every read
   // that can carry the overlay is affected, not only the scoreboard's own report.
   function invalidateAffected() {
-    void queryClient.invalidateQueries({ queryKey: tournamentCompetitorKeys.byTournament(tournamentId) });
-    void queryClient.invalidateQueries({ queryKey: tournamentReportKeys.bySeason(seasonId) });
-    void queryClient.invalidateQueries({ queryKey: reportKeys.bySeason(seasonId) });
-    void queryClient.invalidateQueries({ queryKey: rankingsKeys.bySeason(seasonId) });
-    void queryClient.invalidateQueries({ queryKey: playerRankingsKeys.bySeason(seasonId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentCompetitors.byTournament(tournamentId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentReport.bySeason(seasonId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.report.bySeason(seasonId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.rankings.bySeason(seasonId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.playerRankings.bySeason(seasonId) });
   }
 
   const saveMutation = useMutation({
@@ -179,7 +172,7 @@ function CompetitorRow({
       return created;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: golferKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.golfers.list() });
       invalidateAffected();
       setCreating(false);
     },

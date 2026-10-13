@@ -1,14 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import {
-  golferHistoryKeys,
-  playerRankingsKeys,
-  rankingsKeys,
-  reportKeys,
-  tournamentKeys,
-  tournamentReportKeys,
-} from '@/shared/api/queryKeys';
+import { queryKeys } from '@/shared/api/queryKeys';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
@@ -30,7 +23,7 @@ function ScoreboardPage() {
   const [linksPanelOpen, setLinksPanelOpen] = useState(false);
 
   const tournamentsQuery = useQuery({
-    queryKey: tournamentKeys.bySeason(seasonId),
+    queryKey: queryKeys.tournaments.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
 
@@ -48,7 +41,7 @@ function ScoreboardPage() {
   const liveOverlay = useLiveOverlay(tournaments, tournamentId);
 
   const reportQuery = useQuery({
-    queryKey: tournamentReportKeys.detail(seasonId, tournamentId, liveOverlay.effectiveLive),
+    queryKey: queryKeys.tournamentReport.detail(seasonId, tournamentId, liveOverlay.effectiveLive),
     queryFn:
       seasonId === null || tournamentId === null
         ? skipToken
@@ -58,12 +51,12 @@ function ScoreboardPage() {
   const finalizeMutation = useMutation({
     mutationFn: (id: string) => api.finalizeTournament(id),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: tournamentKeys.bySeason(seasonId) });
-      void queryClient.invalidateQueries({ queryKey: tournamentReportKeys.bySeason(seasonId) });
-      void queryClient.invalidateQueries({ queryKey: rankingsKeys.bySeason(seasonId) });
-      void queryClient.invalidateQueries({ queryKey: reportKeys.bySeason(seasonId) });
-      void queryClient.invalidateQueries({ queryKey: playerRankingsKeys.bySeason(seasonId) });
-      void queryClient.invalidateQueries({ queryKey: golferHistoryKeys.bySeason(seasonId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.bySeason(seasonId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentReport.bySeason(seasonId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rankings.bySeason(seasonId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.report.bySeason(seasonId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.playerRankings.bySeason(seasonId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.golferHistory.bySeason(seasonId) });
     },
   });
   const finalizeErr = mutationError(finalizeMutation.error);

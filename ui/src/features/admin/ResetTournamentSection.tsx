@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import { leagueKeys, seasonKeys, tournamentKeys } from '@/shared/api/queryKeys';
+import { queryKeys } from '@/shared/api/queryKeys';
 import type { League, Season, Tournament } from '@/shared/api/types';
 import { mutationError } from '@/shared/util/mutationError';
 
 function ResetTournamentSection() {
   const queryClient = useQueryClient();
 
-  const leaguesQuery = useQuery<League[]>({ queryKey: leagueKeys.root, queryFn: api.leagues });
+  const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
   // No UI to pick a league — just default to the first one.
   const leagueId = leaguesQuery.data?.[0]?.id ?? '';
 
   const seasonsQuery = useQuery<Season[]>({
-    queryKey: seasonKeys.byLeague(leagueId),
+    queryKey: queryKeys.seasons.byLeague(leagueId),
     queryFn: leagueId === '' ? skipToken : () => api.seasons(leagueId),
   });
   const [userSeasonId, setUserSeasonId] = useState<string>('');
@@ -21,7 +21,7 @@ function ResetTournamentSection() {
   const seasonId = userSeasonId || (seasonsQuery.data?.[0]?.id ?? '');
 
   const tournamentsQuery = useQuery<Tournament[]>({
-    queryKey: tournamentKeys.bySeason(seasonId),
+    queryKey: queryKeys.tournaments.bySeason(seasonId),
     queryFn: seasonId === '' ? skipToken : () => api.tournaments(seasonId),
   });
 
@@ -31,7 +31,7 @@ function ResetTournamentSection() {
     mutationFn: (id: string) => api.resetTournament(id),
     onSuccess: () => {
       setTournamentId('');
-      void queryClient.invalidateQueries({ queryKey: tournamentKeys.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.root });
     },
   });
 

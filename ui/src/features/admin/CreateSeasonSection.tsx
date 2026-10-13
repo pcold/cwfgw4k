@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import { leagueKeys, seasonKeys } from '@/shared/api/queryKeys';
+import { queryKeys } from '@/shared/api/queryKeys';
 import type { League, Season } from '@/shared/api/types';
 import { mutationError } from '@/shared/util/mutationError';
 import {
@@ -15,7 +15,7 @@ import {
 function CreateSeasonSection() {
   const queryClient = useQueryClient();
 
-  const leaguesQuery = useQuery<League[]>({ queryKey: leagueKeys.root, queryFn: api.leagues });
+  const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
 
   const [userLeagueId, setUserLeagueId] = useState<string>('');
   // User's pick wins; otherwise default to the first loaded league.
@@ -38,7 +38,7 @@ function CreateSeasonSection() {
       }),
     onSuccess: (season: Season) => {
       setSuccess(`Season "${season.name}" created`);
-      void queryClient.invalidateQueries({ queryKey: seasonKeys.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.root });
     },
   });
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import { rankingsKeys, tournamentKeys } from '@/shared/api/queryKeys';
+import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
@@ -18,7 +18,7 @@ function RankingsPage() {
   const [throughOverride, setThroughOverride] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
-    queryKey: tournamentKeys.bySeason(seasonId),
+    queryKey: queryKeys.tournaments.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
 
@@ -30,7 +30,7 @@ function RankingsPage() {
   const liveOverlay = useLiveOverlay(tournaments ?? [], throughTournamentId);
 
   const rankingsQuery = useQuery({
-    queryKey: rankingsKeys.detail(seasonId, liveOverlay.effectiveLive, throughTournamentId),
+    queryKey: queryKeys.rankings.detail(seasonId, liveOverlay.effectiveLive, throughTournamentId),
     queryFn:
       seasonId === null || throughTournamentId === null
         ? skipToken

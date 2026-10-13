@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError, api } from '@/shared/api/client';
-import { authKeys } from '@/shared/api/queryKeys';
+import { queryKeys } from '@/shared/api/queryKeys';
 import type { User, UserRole } from '@/shared/api/types';
 
 interface AuthValue {
@@ -24,7 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // null = explicitly unauthenticated (the client swallows 401 from /me into null).
   // undefined = still loading.
   const authQuery = useQuery<User | null>({
-    queryKey: authKeys.me(),
+    queryKey: queryKeys.auth.me(),
     queryFn: api.authMe,
     staleTime: Infinity,
   });
@@ -33,14 +33,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: ({ username, password }: { username: string; password: string }) =>
       api.login(username, password),
     onSuccess: (user) => {
-      queryClient.setQueryData<User | null>(authKeys.me(), user);
+      queryClient.setQueryData<User | null>(queryKeys.auth.me(), user);
     },
   });
 
   const logoutMutation = useMutation({
     mutationFn: () => api.logout(),
     onSuccess: () => {
-      queryClient.setQueryData<User | null>(authKeys.me(), null);
+      queryClient.setQueryData<User | null>(queryKeys.auth.me(), null);
     },
   });
 

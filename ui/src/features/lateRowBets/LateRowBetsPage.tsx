@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import { reportKeys, tournamentKeys } from '@/shared/api/queryKeys';
+import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import { earliestUnfinalized, tournamentLabel } from '@/shared/util/tournament';
@@ -15,7 +15,7 @@ function LateRowBetsPage() {
   const [userTournamentId, setUserTournamentId] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
-    queryKey: tournamentKeys.bySeason(seasonId),
+    queryKey: queryKeys.tournaments.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
 
@@ -25,7 +25,7 @@ function LateRowBetsPage() {
   const effectiveId = userTournamentId ?? earliestUnfinalized(tournaments) ?? ALL_TOURNAMENTS;
 
   const reportQuery = useQuery({
-    queryKey: reportKeys.detail(seasonId, effectiveId, live),
+    queryKey: queryKeys.report.detail(seasonId, effectiveId, live),
     queryFn:
       seasonId === null
         ? skipToken

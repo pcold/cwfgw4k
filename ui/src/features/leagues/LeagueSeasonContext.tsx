@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import { leagueKeys, seasonKeys } from '@/shared/api/queryKeys';
+import { queryKeys } from '@/shared/api/queryKeys';
 import type { League, Season } from '@/shared/api/types';
 
 interface LeagueSeasonValue {
@@ -23,14 +23,14 @@ interface LeagueSeasonValue {
 const LeagueSeasonContext = createContext<LeagueSeasonValue | null>(null);
 
 export function LeagueSeasonProvider({ children }: { children: ReactNode }) {
-  const leaguesQuery = useQuery({ queryKey: leagueKeys.root, queryFn: api.leagues });
+  const leaguesQuery = useQuery({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
   const [userLeagueId, setUserLeagueId] = useState<string | null>(null);
   // Derive the active league from the user's pick + loaded leagues so we don't
   // have to sync state-to-state in a useEffect on first load.
   const leagueId = userLeagueId ?? leaguesQuery.data?.[0]?.id ?? null;
 
   const seasonsQuery = useQuery({
-    queryKey: seasonKeys.byLeague(leagueId),
+    queryKey: queryKeys.seasons.byLeague(leagueId),
     queryFn: leagueId === null ? skipToken : () => api.seasons(leagueId),
   });
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import { leagueKeys } from '@/shared/api/queryKeys';
+import { queryKeys } from '@/shared/api/queryKeys';
 import type { League } from '@/shared/api/types';
 import { mutationError } from '@/shared/util/mutationError';
 
@@ -15,7 +15,7 @@ function CreateLeagueSection() {
     onSuccess: (league: League) => {
       setSuccess(`Created "${league.name}"`);
       setName('');
-      void queryClient.invalidateQueries({ queryKey: leagueKeys.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.leagues.root });
     },
   });
 

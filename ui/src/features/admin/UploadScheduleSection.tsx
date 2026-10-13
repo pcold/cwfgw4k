@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import { leagueKeys, seasonKeys, tournamentKeys } from '@/shared/api/queryKeys';
+import { queryKeys } from '@/shared/api/queryKeys';
 import type {
   ConfirmedTournamentEntry,
   League,
@@ -21,12 +21,12 @@ function toConfirmedEntry(entry: PreviewedTournament): ConfirmedTournamentEntry 
 function UploadScheduleSection() {
   const queryClient = useQueryClient();
 
-  const leaguesQuery = useQuery<League[]>({ queryKey: leagueKeys.root, queryFn: api.leagues });
+  const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
   const [userLeagueId, setUserLeagueId] = useState<string>('');
   const leagueId = userLeagueId || (leaguesQuery.data?.[0]?.id ?? '');
 
   const seasonsQuery = useQuery<Season[]>({
-    queryKey: seasonKeys.byLeague(leagueId),
+    queryKey: queryKeys.seasons.byLeague(leagueId),
     queryFn: leagueId === '' ? skipToken : () => api.seasons(leagueId),
   });
 
@@ -66,7 +66,7 @@ function UploadScheduleSection() {
       setCreatedTournaments(result.created);
       setSkippedSummary(result.skipped);
       setPreviewResult(null);
-      void queryClient.invalidateQueries({ queryKey: tournamentKeys.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.root });
     },
   });
 

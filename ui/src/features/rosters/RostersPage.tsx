@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import { rosterKeys, seasonRulesKeys } from '@/shared/api/queryKeys';
+import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
@@ -13,12 +13,12 @@ function RostersPage() {
   const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
 
   const rostersQuery = useQuery({
-    queryKey: rosterKeys.bySeason(seasonId),
+    queryKey: queryKeys.rosters.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.rosters(seasonId),
   });
 
   const rulesQuery = useQuery({
-    queryKey: seasonRulesKeys.bySeason(seasonId),
+    queryKey: queryKeys.seasonRules.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.seasonRules(seasonId),
   });
   // Only shades rows, so the grid neither waits on the rules nor fails with them.

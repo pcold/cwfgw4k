@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import { playerRankingsKeys, tournamentKeys } from '@/shared/api/queryKeys';
+import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
@@ -20,7 +20,7 @@ function PlayerRankingsPage() {
   const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
-    queryKey: tournamentKeys.bySeason(seasonId),
+    queryKey: queryKeys.tournaments.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
 
@@ -33,7 +33,7 @@ function PlayerRankingsPage() {
   const liveOverlay = useLiveOverlay(tournaments, throughTournamentId || null);
 
   const playerRankingsQuery = useQuery({
-    queryKey: playerRankingsKeys.detail(
+    queryKey: queryKeys.playerRankings.detail(
       seasonId,
       throughTournamentId || null,
       liveOverlay.effectiveLive,
