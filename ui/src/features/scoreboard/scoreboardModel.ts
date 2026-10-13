@@ -146,7 +146,7 @@ function leaderboardFor(report: WeeklyReport): LeaderboardEntry[] {
 // For team events (e.g. Zurich Classic) two golfers share one competitor slot, so entries with the same pairKey
 // collapse into a single cell with "A/B" player names and "teamA/teamB" teams in matching order. Undrafted partners
 // keep the literal "undrafted" placeholder so the joined team string stays aligned with the player string.
-export function collapsePairs(entries: LeaderboardEntry[]): LeaderboardEntry[] {
+export function collapsePairs(entries: readonly LeaderboardEntry[]): LeaderboardEntry[] {
   const slots: CompetitorSlot[] = [];
   const slotByPairKey = new Map<string, CompetitorSlot>();
   for (const entry of entries) {
