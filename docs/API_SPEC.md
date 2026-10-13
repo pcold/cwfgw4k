@@ -243,8 +243,8 @@ A report's totals are the server's too. `cash_totals` runs over every
 team's `total_cash` and `side_bet_totals` over every team's `side_bets`;
 each carries `won` (the sum of the positive amounts), `lost` (the sum of
 the negative ones, so zero or negative) and `net` (`won` plus `lost`). A
-client displays them and never sums `teams`. A live overlay's totals are
-those of its overlaid teams.
+client displays them and never sums `total_cash` or `side_bets` itself. A
+live overlay's totals are those of its overlaid teams.
 
 ### ESPN
 
@@ -387,7 +387,7 @@ data class WeeklyReport(
     val sideBetTotals: WonLostTotals                 // over teams[].sideBets, likewise
 }
 
-data class WonLostTotals(                            // built only by WonLostTotals.over(amounts)
+data class WonLostTotals(                            // the server builds it only by WonLostTotals.over(amounts)
     val won: BigDecimal,                             // sum of the positive amounts
     val lost: BigDecimal,                            // sum of the negative amounts: zero or negative
     val net: BigDecimal,                             // won + lost

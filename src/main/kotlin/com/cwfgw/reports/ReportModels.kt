@@ -182,7 +182,7 @@ enum class ReportScope {
 
 /**
  * [lost] is a sum of losses, so zero or negative, and [net] is [won] plus it. The constructor is private so
- * that the three cannot disagree.
+ * that [over] is the only way the server builds one; a decode bypasses it and keeps the three the JSON carried.
  */
 @Serializable
 @ConsistentCopyVisibility

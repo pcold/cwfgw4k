@@ -116,7 +116,7 @@ export interface WeeklyReport {
   standingsOrder: StandingsEntry[];
   live: boolean | null;
   liveLeaderboard: LiveLeaderboardEntry[];
-  /** Over every team's `totalCash`. Display it; never re-sum `teams`. */
+  /** Over every team's `totalCash`. Display it; never re-sum `totalCash`. */
   cashTotals: WonLostTotals;
   /** Over every team's `sideBets`. @see WeeklyReport.cashTotals */
   sideBetTotals: WonLostTotals;
