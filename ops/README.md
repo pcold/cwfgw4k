@@ -269,11 +269,11 @@ Requires the caller to have these IAM roles on the cwfgw4k project:
 ### Reproducing a wedge with `stress.sh`
 
 `run.sh` walks endpoints sequentially against a single tournament_id, so
-single-flight collapses concurrent misses onto one fetch and the access
-pattern that wedged prod on May 3 (multi-tournament parallel fan-out
-where every `report/<tid>?live=true` is a distinct cache key) never
-shows up. `ops/load-test/stress.sh` is the alternate driver — it auto-
-discovers every non-completed tournament in the season and fires one
+the access pattern that wedged prod on May 3 (multi-tournament parallel
+fan-out, every non-completed tournament's `report/<tid>?live=true`
+rebuilding at once) never shows up. `ops/load-test/stress.sh` is the
+alternate driver — it auto-discovers every non-completed tournament in
+the season and fires one
 parallel `hey` process per URL plus the cheap uncached endpoints
 (`/leagues`, `/tournaments`) so we can see whether they starve while
 the heavy paths are inflight.
