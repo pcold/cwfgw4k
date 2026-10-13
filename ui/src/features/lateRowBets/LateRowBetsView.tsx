@@ -64,9 +64,13 @@ function RoundTable({ round, entries }: RoundTableProps) {
 
 const ROUND_LIST = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
 
+interface RulesNoteProps {
+  rules: ReportSideBetRules;
+}
+
 // Worded to stay true of a tied round, where several teams collect and split
 // what the teams behind them paid.
-function RulesNote({ rules }: { rules: ReportSideBetRules }) {
+function RulesNote({ rules }: RulesNoteProps) {
   const amount = formatMoney(rules.amountPerTeam);
   const rounds = ROUND_LIST.format(rules.rounds.map(String));
   const where = rules.rounds.length === 1 ? `draft round ${rounds}` : `each of draft rounds ${rounds}`;

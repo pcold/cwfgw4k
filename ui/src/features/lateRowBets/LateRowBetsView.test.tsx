@@ -107,8 +107,8 @@ describe('LateRowBetsView', () => {
 
   it("shows each entry's team name from the entry itself, sorted by cumulative earnings", () => {
     render(<LateRowBetsView report={report({ teams: [] })} />);
-    const round2Heading = screen.getByRole('heading', { name: 'Round 2' });
-    const round2Section = round2Heading.parentElement!;
+    const round2Section = screen.getByRole('heading', { name: 'Round 2' }).parentElement;
+    if (!round2Section) throw new Error('the Round 2 heading has no section around it');
     const rows = within(round2Section).getAllByRole('row').slice(1);
     const teamCells = rows.map((r) => within(r).getAllByRole('cell')[0].textContent);
     expect(teamCells).toEqual(['Aces', 'Birdies', 'Eagles']);

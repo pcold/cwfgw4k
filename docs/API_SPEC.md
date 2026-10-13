@@ -218,8 +218,8 @@ unchanged.
 Side bets are settled by the server and described on the report, so a
 client never infers them. `side_bet_rules` carries the season's
 `amount_per_team` and the draft `rounds` the bet runs on; it is `null`,
-and `side_bet_detail` is empty, for a season that stakes nothing — no
-side-bet rounds, or an amount of zero. Each `side_bet_detail` entry
+and `side_bet_detail` is empty, for a season that stakes nothing, which
+is one whose `side_bet_amount` is zero. Each `side_bet_detail` entry
 carries its `team_name` and an `outcome` of `"won"` or `"lost"`, or
 `null` where the round has settled nothing for that team, as when nobody
 has earned in it yet. Every team at the round's highest cumulative has

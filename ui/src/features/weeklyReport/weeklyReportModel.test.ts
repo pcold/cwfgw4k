@@ -101,6 +101,10 @@ describe('sideBetRowLabel', () => {
     expect(sideBetRowLabel({ amountPerTeam: 20, rounds: [2, 3] })).toBe('ROWS 2-3');
   });
 
+  it('names a single side-bet round in the singular', () => {
+    expect(sideBetRowLabel({ amountPerTeam: 20, rounds: [7] })).toBe('ROW 7');
+  });
+
   it('falls back to a label that names no rounds when the season has none', () => {
     expect(sideBetRowLabel(null)).toBe('SIDE BETS');
   });

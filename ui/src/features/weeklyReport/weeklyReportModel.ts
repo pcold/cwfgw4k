@@ -52,7 +52,8 @@ export function sideBetAmountByRound(rules: ReportSideBetRules | null): Map<numb
 }
 
 export function sideBetRowLabel(rules: ReportSideBetRules | null): string {
-  return rules ? `ROWS ${rules.rounds.join('-')}` : 'SIDE BETS';
+  if (!rules) return 'SIDE BETS';
+  return `${rules.rounds.length === 1 ? 'ROW' : 'ROWS'} ${rules.rounds.join('-')}`;
 }
 
 export interface WeeklySummary {
