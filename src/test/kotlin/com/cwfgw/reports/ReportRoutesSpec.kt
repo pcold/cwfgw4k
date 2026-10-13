@@ -703,10 +703,11 @@ class ReportRoutesSpec : FunSpec({
             val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}").bodyAsText()
             val rows = wireLeaderboard(body)
 
-            rows.map { it["players"]?.jsonArray?.toList() } shouldContainExactly
+            // Partners share a position, and the repository breaks that tie by a result id no fixture here pins.
+            rows.map { it["players"]?.jsonArray?.toSet() } shouldContainExactly
                 listOf(
-                    listOf(wirePlayer("Scottie Scheffler", "BROWN"), wirePlayer("Rory McIlroy")),
-                    listOf(wirePlayer("Xander Schauffele")),
+                    setOf(wirePlayer("Scottie Scheffler", "BROWN"), wirePlayer("Rory McIlroy")),
+                    setOf(wirePlayer("Xander Schauffele")),
                 )
             rows.map { it["rostered"] } shouldContainExactly listOf(JsonPrimitive(true), JsonPrimitive(false))
         }
