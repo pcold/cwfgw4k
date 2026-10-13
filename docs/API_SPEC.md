@@ -207,8 +207,9 @@ side-bet payouts; for the season-aggregate report and rankings it folds
 each in-progress tournament's projected zero-sum into the running
 totals. Selected tournaments whose status is already `completed` skip
 the ESPN call entirely — the persisted numbers are immutable so a fresh
-pull can't change them. ESPN failures are absorbed (logged at WARN) and
-the response falls back to the base report.
+pull can't change them. An ESPN failure — a non-200, a timeout, a
+connection that fails — is absorbed (logged at WARN) and the response
+falls back to the base report.
 
 A report GET without `live=true` is served from the Postgres response
 cache, keyed on the full request URI, for 300 seconds

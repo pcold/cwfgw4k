@@ -2,6 +2,7 @@ package com.cwfgw.admin
 
 import com.cwfgw.espn.EspnCalendarEntry
 import com.cwfgw.espn.EspnUpstreamException
+import com.cwfgw.espn.EspnUpstreamFailure
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
@@ -269,7 +270,7 @@ class AdminServiceSpec : FunSpec({
             Fixture(upstreamError = EspnUpstreamException(status = 503, message = "Service Unavailable"))
 
         fixture.service.previewSeasonSchedule(SEASON_ID, SEASON_START, SEASON_END) shouldBe
-            Result.Err(AdminError.UpstreamUnavailable(503))
+            Result.Err(AdminError.UpstreamUnavailable(EspnUpstreamFailure.BadStatus(503)))
     }
 
     test("confirmSeasonSchedule returns SeasonNotFound when the season id doesn't exist (and writes nothing)") {

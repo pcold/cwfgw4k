@@ -58,7 +58,7 @@ private suspend fun RoutingContext.confirmRoster(service: AdminService) {
 private fun AdminError.toDomainError(): DomainError =
     when (this) {
         is AdminError.SeasonNotFound -> DomainError.NotFound("season ${seasonId.value} not found")
-        is AdminError.UpstreamUnavailable -> DomainError.BadGateway("ESPN returned $status")
+        is AdminError.UpstreamUnavailable -> DomainError.BadGateway(failure.summary)
         is AdminError.InvalidRoster -> DomainError.Validation(parseError.flattenMessage())
         is AdminError.GolferIdsNotFound ->
             DomainError.Validation("golfer ids not found: ${ids.joinToString(", ") { it.value.toString() }}")

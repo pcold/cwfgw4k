@@ -619,7 +619,7 @@ class EspnClientSpec : FunSpec({
             shouldThrow<EspnUpstreamException> {
                 client.fetchScoreboard(LocalDate.parse("2026-04-15"))
             }
-        thrown.status shouldBe HttpStatusCode.InternalServerError.value
+        thrown.failure shouldBe EspnUpstreamFailure.BadStatus(HttpStatusCode.InternalServerError.value)
     }
 
     // ----- parseCalendar -----
@@ -702,6 +702,6 @@ class EspnClientSpec : FunSpec({
         val client = EspnClient(HttpClient(mockEngine), TEST_ESPN_CONFIG, baseUrl = "https://mock.test/scoreboard")
 
         val thrown = shouldThrow<EspnUpstreamException> { client.fetchCalendar() }
-        thrown.status shouldBe HttpStatusCode.BadGateway.value
+        thrown.failure shouldBe EspnUpstreamFailure.BadStatus(HttpStatusCode.BadGateway.value)
     }
 })

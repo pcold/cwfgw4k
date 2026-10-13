@@ -1,5 +1,6 @@
 package com.cwfgw.admin
 
+import com.cwfgw.espn.EspnUpstreamFailure
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
 
@@ -12,8 +13,8 @@ sealed interface AdminError {
     /** The given season id doesn't exist in the DB. */
     data class SeasonNotFound(val seasonId: SeasonId) : AdminError
 
-    /** ESPN returned a non-2xx response when we tried to fetch the calendar. */
-    data class UpstreamUnavailable(val status: Int) : AdminError
+    /** ESPN returned a non-2xx response, or none, when we tried to fetch the calendar. */
+    data class UpstreamUnavailable(val failure: EspnUpstreamFailure) : AdminError
 
     /**
      * The roster TSV failed to parse. Carries the structured parser error

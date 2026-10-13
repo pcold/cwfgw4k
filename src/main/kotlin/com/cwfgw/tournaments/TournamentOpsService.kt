@@ -136,7 +136,7 @@ class TournamentOpsService(
 
 private fun EspnError.toOpsError(): TournamentOpsError =
     when (this) {
-        is EspnError.UpstreamUnavailable -> TournamentOpsError.UpstreamUnavailable(status)
+        is EspnError.UpstreamUnavailable -> TournamentOpsError.UpstreamUnavailable(failure)
         is EspnError.EventNotInScoreboard -> TournamentOpsError.EventNotInScoreboard(espnEventId)
         is EspnError.TournamentNotFound -> TournamentOpsError.TournamentNotFound(tournamentId)
         is EspnError.TournamentNotLinked ->

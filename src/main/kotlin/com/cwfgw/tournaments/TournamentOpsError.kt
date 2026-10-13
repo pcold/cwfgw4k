@@ -1,5 +1,7 @@
 package com.cwfgw.tournaments
 
+import com.cwfgw.espn.EspnUpstreamFailure
+
 /**
  * Typed failure modes for tournament-scope finalize/reset orchestration.
  * Variants stay free of HTTP concerns — routes map them to
@@ -23,7 +25,7 @@ sealed interface TournamentOpsError {
     data class OutOfOrder(val action: Action, val blocking: List<Tournament>) : TournamentOpsError
 
     /** ESPN was unreachable (or returned non-2xx) during the import step of finalize. */
-    data class UpstreamUnavailable(val status: Int) : TournamentOpsError
+    data class UpstreamUnavailable(val failure: EspnUpstreamFailure) : TournamentOpsError
 
     /** ESPN's scoreboard for the tournament's date didn't include the linked event. */
     data class EventNotInScoreboard(val espnEventId: String) : TournamentOpsError

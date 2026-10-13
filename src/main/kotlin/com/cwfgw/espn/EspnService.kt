@@ -247,8 +247,8 @@ class EspnService(
         try {
             Result.Ok(client.fetchScoreboard(date))
         } catch (e: EspnUpstreamException) {
-            log.warn(e) { "ESPN scoreboard fetch failed for $date with status ${e.status}" }
-            Result.Err(EspnError.UpstreamUnavailable(e.status))
+            log.warn(e) { "ESPN scoreboard fetch failed for $date: ${e.message}" }
+            Result.Err(EspnError.UpstreamUnavailable(e.failure))
         }
 
     /**

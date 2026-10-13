@@ -299,7 +299,7 @@ class EspnLivePreviewSpec : FunSpec({
         val fixture = PreviewFixture(upstreamError = EspnUpstreamException(503, "Service Unavailable"))
 
         fixture.previewOn(START_DATE) shouldBe
-            Result.Err(EspnError.UpstreamUnavailable(503))
+            Result.Err(EspnError.UpstreamUnavailable(EspnUpstreamFailure.BadStatus(503)))
     }
 
     test("previewByDate marks rostered competitors with team name on the leaderboard") {
