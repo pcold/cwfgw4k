@@ -239,6 +239,13 @@ them at a zero `payout`: read `outcome`, never the sign of `payout`. The
 live overlay re-settles `payout` and `outcome` on the projected
 cumulative and leaves `side_bet_rules` unchanged.
 
+A report's totals are the server's too. `cash_totals` runs over every
+team's `total_cash` and `side_bet_totals` over every team's `side_bets`;
+each carries `won` (the sum of the positive amounts), `lost` (the sum of
+the negative ones, so zero or negative) and `net` (`won` plus `lost`). A
+client displays them and never sums `teams`. A live overlay's totals are
+those of its overlaid teams.
+
 ### ESPN
 
 | Method | Path                                                     | Auth | Description                                                                            |
@@ -375,6 +382,15 @@ data class WeeklyReport(
     val standingsOrder: List<StandingsEntry>,
     val live: Boolean? = null,                       // populated only by live overlay
     val liveLeaderboard: List<LiveLeaderboardEntry> = emptyList(),
+) {
+    val cashTotals: WonLostTotals                    // over teams[].totalCash; derived, so a copy recomputes it
+    val sideBetTotals: WonLostTotals                 // over teams[].sideBets, likewise
+}
+
+data class WonLostTotals(                            // built only by WonLostTotals.over(amounts)
+    val won: BigDecimal,                             // sum of the positive amounts
+    val lost: BigDecimal,                            // sum of the negative amounts: zero or negative
+    val net: BigDecimal,                             // won + lost
 )
 
 data class ReportSideBetRules(
