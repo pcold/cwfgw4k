@@ -7,13 +7,13 @@ import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
-import com.cwfgw.result.Result
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.CreateTeamRequest
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.teams.TeamService
+import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
@@ -26,7 +26,6 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -134,7 +133,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
                 )
             }
 
-        val body = result.shouldBeInstanceOf<Result.Ok<RosterUploadResult>>().value
+        val body = result.orFail()
         body.teamsCreated shouldBe 1
         body.golfersCreated shouldBe 0
         val team = body.teams.single()
@@ -174,7 +173,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
                 )
             }
 
-        val body = result.shouldBeInstanceOf<Result.Ok<RosterUploadResult>>().value
+        val body = result.orFail()
         body.golfersCreated shouldBe 1
         val created =
             runBlocking { tx.read { golferRepo.findAll(activeOnly = false, search = null) } }

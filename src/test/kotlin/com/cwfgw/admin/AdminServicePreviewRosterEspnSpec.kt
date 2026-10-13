@@ -20,6 +20,7 @@ import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.orFail
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
@@ -122,10 +123,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
             1	BROWN	1	Scottie Scheffler	100
             """.trimIndent()
 
-        val result =
-            f.service.previewRoster(tsv)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
+        val result = f.service.previewRoster(tsv).orFail()
 
         result.matchedCount shouldBe 1
         val match = result.teams.single().picks.single().match.shouldBeInstanceOf<PickMatch.Matched>()
@@ -188,10 +186,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
             1	BROWN	1	Jose Ballester	50
             """.trimIndent()
 
-        val result =
-            f.service.previewRoster(tsv)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
+        val result = f.service.previewRoster(tsv).orFail()
 
         result.matchedCount shouldBe 1
         val match = result.teams.single().picks.single().match.shouldBeInstanceOf<PickMatch.Matched>()
@@ -226,10 +221,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
             1	WOMBLE	3	Rasmus Hojgaard	50
             """.trimIndent()
 
-        val result =
-            f.service.previewRoster(tsv)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
+        val result = f.service.previewRoster(tsv).orFail()
 
         result.matchedCount shouldBe 3
         result.unmatchedCount shouldBe 0
@@ -264,10 +256,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
             1	BROWN	1	Phantom Partner	50
             """.trimIndent()
 
-        val result =
-            f.service.previewRoster(tsv)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
+        val result = f.service.previewRoster(tsv).orFail()
 
         // The synthetic team:5:1 id must NEVER land in golfers.pga_player_id, so the pick stays unmatched.
         result.unmatchedCount shouldBe 1
@@ -291,10 +280,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
             1	BLAU	5	Byeong Hun An	100
             """.trimIndent()
 
-        val result =
-            f.service.previewRoster(tsv)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
+        val result = f.service.previewRoster(tsv).orFail()
 
         result.matchedCount shouldBe 1
         val match = result.teams.single().picks.single().match.shouldBeInstanceOf<PickMatch.Matched>()
@@ -363,10 +349,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
             1	BROWN	1	Scottie Scheffler	100
             """.trimIndent()
 
-        val result =
-            f.service.previewRoster(tsv)
-                .shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
-                .value
+        val result = f.service.previewRoster(tsv).orFail()
 
         result.unmatchedCount shouldBe 1
         result.matchedCount shouldBe 0

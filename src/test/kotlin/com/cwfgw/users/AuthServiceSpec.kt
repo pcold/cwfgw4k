@@ -3,11 +3,11 @@ package com.cwfgw.users
 import com.cwfgw.result.Result
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.orFail
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldStartWith
-import io.kotest.matchers.types.shouldBeInstanceOf
 
 // Lower BCrypt cost so the test suite stays snappy. 4 is the minimum the at.favre lib accepts.
 private const val FAST_COST = 4
@@ -32,7 +32,7 @@ class AuthServiceSpec : FunSpec({
                 repo.create(NewUser(username = "alice", passwordHash = hash, role = UserRole.Admin))
             }
 
-        val result = service.login("alice", "hunter2").shouldBeInstanceOf<Result.Ok<User>>().value
+        val result = service.login("alice", "hunter2").orFail()
 
         result.id shouldBe seeded.id
         result.role shouldBe UserRole.Admin
