@@ -11,6 +11,7 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.toSeasonId
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.toTournamentId
+import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.get
@@ -44,7 +45,7 @@ private suspend fun RoutingContext.getSeasonReport(
 ) {
     val sid = seasonId()
     val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
-    cachedRespond(cache) { service.getSeasonReport(sid, live = live).orThrow() }
+    respondReport(cache, live = live) { service.getSeasonReport(sid, live = live).orThrow() }
 }
 
 private suspend fun RoutingContext.getReport(
@@ -54,7 +55,7 @@ private suspend fun RoutingContext.getReport(
     val sid = seasonId()
     val tid = tournamentId()
     val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
-    cachedRespond(cache) { service.getReport(sid, tid, live = live).orThrow() }
+    respondReport(cache, live = live) { service.getReport(sid, tid, live = live).orThrow() }
 }
 
 private suspend fun RoutingContext.getRankings(
@@ -64,7 +65,9 @@ private suspend fun RoutingContext.getRankings(
     val sid = seasonId()
     val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
     val through = optionalQueryParam("through", String::toTournamentId)
-    cachedRespond(cache) { service.getRankings(sid, throughTournamentId = through, live = live).orThrow() }
+    respondReport(cache, live = live) {
+        service.getRankings(sid, throughTournamentId = through, live = live).orThrow()
+    }
 }
 
 private suspend fun RoutingContext.getPlayerRankings(
@@ -74,7 +77,9 @@ private suspend fun RoutingContext.getPlayerRankings(
     val sid = seasonId()
     val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
     val through = optionalQueryParam("through", String::toTournamentId)
-    cachedRespond(cache) { service.getPlayerRankings(sid, throughTournamentId = through, live = live).orThrow() }
+    respondReport(cache, live = live) {
+        service.getPlayerRankings(sid, throughTournamentId = through, live = live).orThrow()
+    }
 }
 
 private suspend fun RoutingContext.getGolferHistory(
@@ -84,6 +89,16 @@ private suspend fun RoutingContext.getGolferHistory(
     val sid = seasonId()
     val gid = golferId()
     cachedRespond(cache) { service.getGolferHistory(sid, gid).orThrow() }
+}
+
+// A live body must never sit in the response cache: its TTL would stack on the ESPN cache's, and a
+// fallback built while ESPN was failing would be replayed after ESPN recovered.
+private suspend inline fun <reified T : Any> RoutingContext.respondReport(
+    cache: RequestCache,
+    live: Boolean,
+    crossinline build: suspend () -> T,
+) {
+    if (live) call.respond(build()) else cachedRespond(cache) { build() }
 }
 
 private fun ReportError.toDomainError(): DomainError =

@@ -79,8 +79,8 @@ fun EspnClient(
 /**
  * Wraps an [EspnClient] with an in-process Caffeine [AsyncCache] over
  * both [fetchScoreboard] and [fetchCalendar]. One cache per JVM (Cloud
- * Run instance) — fan-out from parallel report-rebuilds across different
- * Postgres cache keys still need the same handful of ESPN dates, and this
+ * Run instance) — parallel live report rebuilds, which bypass the Postgres
+ * response cache, still need the same handful of ESPN dates, and this
  * layer dedupes them.
  *
  * Single-flight: when N coroutines call `fetchScoreboard(date)` for the

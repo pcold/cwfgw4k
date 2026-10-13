@@ -35,7 +35,7 @@
 #   /api/v1/seasons/<sid>/standings              cached
 #   /api/v1/seasons/<sid>/scoring/side-bets      cached
 #   /api/v1/seasons/<sid>/rankings               cached
-#   /api/v1/seasons/<sid>/rankings?live=true     cached, separate key
+#   /api/v1/seasons/<sid>/rankings?live=true     uncached, ESPN
 #   /api/v1/seasons/<sid>/report                 cached, multi-service
 #   /api/v1/seasons/<sid>/scoring/<tid>          cached, per-tournament (if tid)
 #   /api/v1/seasons/<sid>/report/<tid>           cached (if tid)

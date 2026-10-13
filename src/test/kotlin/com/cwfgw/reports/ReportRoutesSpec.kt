@@ -1,5 +1,12 @@
 package com.cwfgw.reports
 
+import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.Transactor
+import com.cwfgw.espn.CachingEspnClient
+import com.cwfgw.espn.EspnCalendarEntry
+import com.cwfgw.espn.EspnClient
+import com.cwfgw.espn.EspnTournament
+import com.cwfgw.espn.EspnUpstreamException
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
@@ -53,9 +60,11 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import java.math.BigDecimal
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 
 private val LEAGUE_ID = LeagueId(UUID.fromString("00000000-0000-0000-0000-000000000111"))
 private val SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000aaa"))
@@ -65,6 +74,14 @@ private val TEAM_A = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c0
 private val TEAM_B = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c02"))
 private val SCOTTIE_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d01"))
 private val RORY_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d02"))
+
+private val LIVE_CAPABLE_PATHS =
+    listOf(
+        "report" to "report",
+        "report/{tid}" to "report/${MASTERS_ID.value}",
+        "rankings" to "rankings",
+        "player-rankings" to "player-rankings",
+    )
 
 private fun teamRow(
     id: TeamId,
@@ -193,6 +210,8 @@ private fun reportFixture(
     initialRosters: List<RosterEntry> = emptyList(),
     initialResults: List<TournamentResult> = emptyList(),
     initialScores: List<FantasyScore> = emptyList(),
+    espn: EspnClient = FakeEspnClient(),
+    reportTx: Transactor = FakeTransactor(),
 ): ApiFixture.() -> Unit =
     {
         val seasonRepo = FakeSeasonRepository(idFactory = { SEASON_ID })
@@ -232,7 +251,7 @@ private fun reportFixture(
         val linkRepo = FakeTournamentLinkRepository()
         val previewEspnService =
             testEspnService(
-                client = FakeEspnClient(),
+                client = espn,
                 seasonRepository = seasonRepo,
                 golferRepository = golferRepo,
                 teamRepository = teamRepo,
@@ -249,9 +268,35 @@ private fun reportFixture(
                 golferRepository = golferRepo,
                 scoringRepository = scoringRepo,
                 liveOverlayService = liveOverlayService,
-                tx = FakeTransactor(),
+                tx = reportTx,
             )
     }
+
+// A read is a service call only while every report method opens exactly one, on a transactor nothing else shares.
+private class ReadCountingTransactor(
+    private val delegate: Transactor = FakeTransactor(),
+) : Transactor by delegate {
+    private val counted = AtomicInteger()
+    val reads: Int get() = counted.get()
+
+    override suspend fun <A> read(block: context(TransactionContext) () -> A): A {
+        counted.incrementAndGet()
+        return delegate.read(block)
+    }
+}
+
+private class FailsFirstFetchEspnClient(
+    private val recovered: List<EspnTournament>,
+) : EspnClient {
+    private val fetches = AtomicInteger()
+
+    override suspend fun fetchScoreboard(date: LocalDate): List<EspnTournament> {
+        if (fetches.getAndIncrement() == 0) throw EspnUpstreamException(503, "Service Unavailable")
+        return recovered
+    }
+
+    override suspend fun fetchCalendar(): List<EspnCalendarEntry> = emptyList()
+}
 
 private fun asUpsertRequest(r: TournamentResult): CreateTournamentResultRequest =
     CreateTournamentResultRequest(
@@ -432,6 +477,56 @@ class ReportRoutesSpec : FunSpec({
         apiTest(reportFixture()) { client ->
             val response = client.get("/api/v1/seasons/${SEASON_ID.value}/rankings?through=${MASTERS_ID.value}")
             response.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    // ----- response caching: live requests bypass it, the rest are served from it -----
+
+    LIVE_CAPABLE_PATHS.forEach { (label, path) ->
+        val url = "/api/v1/seasons/${SEASON_ID.value}/$path"
+
+        test("GET /api/v1/seasons/{id}/$label?live=true reaches the service on every request") {
+            val reportTx = ReadCountingTransactor()
+            val masters = tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
+            apiTest(reportFixture(initialTournaments = listOf(masters), reportTx = reportTx)) { client ->
+                repeat(2) { client.get("$url?live=true").status shouldBe HttpStatusCode.OK }
+                reportTx.reads shouldBe 2
+            }
+        }
+
+        test("GET /api/v1/seasons/{id}/$label answers a repeat request from the response cache") {
+            val reportTx = ReadCountingTransactor()
+            val masters = tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
+            apiTest(reportFixture(initialTournaments = listOf(masters), reportTx = reportTx)) { client ->
+                repeat(2) { client.get(url).status shouldBe HttpStatusCode.OK }
+                reportTx.reads shouldBe 1
+            }
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/report/{tid}?live=true asks ESPN again after a failed fetch") {
+        val masters =
+            tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
+                .copy(status = TournamentStatus.InProgress, pgaTournamentId = "espn-masters")
+        val liveMasters =
+            EspnTournament(
+                espnId = "espn-masters",
+                name = "The Masters",
+                completed = false,
+                competitors = emptyList(),
+                isTeamEvent = false,
+            )
+        // Behind the production ESPN cache, so the spec covers both layers a failure could be kept in.
+        val espn =
+            CachingEspnClient(
+                delegate = FailsFirstFetchEspnClient(recovered = listOf(liveMasters)),
+                scoreboardTtl = Duration.ofSeconds(60),
+                scoreboardMaxSize = 8,
+            )
+        apiTest(reportFixture(initialTournaments = listOf(masters), espn = espn)) { client ->
+            val url = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
+            client.get(url).body<WeeklyReport>().live shouldBe null
+            client.get(url).body<WeeklyReport>().live shouldBe true
         }
     }
 

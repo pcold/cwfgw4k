@@ -292,7 +292,7 @@ ops/load-test/spin-staging.sh --teardown <SUFFIX>
 What to watch in Cloud Logging during the run:
 - `cwfgw4k.db.pool waiting=N` sustained > 0 — pool exhaustion in progress
 - 504s on `/api/v1/leagues` or `/api/v1/tournaments` — wedge reproduced
-- `cwfgw4k.cache event=coalesced` count vs `event=miss` — single-flight effectiveness
+- `cwfgw4k.espn event=hit` count vs `event=miss` — ESPN cache effectiveness
 
 ### Reproducing the idle-then-hit wedge with `soak.sh`
 
