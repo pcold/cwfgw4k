@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 private const val SCHEMA = "cwfgw4k"
 private const val IMAGE = "postgres:18-alpine"
-private const val TEMPLATE_DATABASE = "migrated_template"
+internal const val TEMPLATE_DATABASE = "migrated_template"
 
 /**
  * Tables excluded from automatic reset between tests. Add tables here that hold

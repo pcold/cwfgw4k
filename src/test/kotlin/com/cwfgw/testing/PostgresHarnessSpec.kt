@@ -41,6 +41,10 @@ class PostgresHarnessSpec : FunSpec({
 
         postgres.databaseNames() shouldNotContain finished
     }
+
+    test("the migrated template refuses connections") {
+        postgres.acceptsConnections(TEMPLATE_DATABASE) shouldBe false
+    }
 })
 
 /** Private, so the JUnit runner never discovers it as a spec of its own. */
@@ -50,8 +54,8 @@ private class SecondSpec : FunSpec() {
 
 /**
  * Fires the spec's `afterSpec` listeners by hand, not through a nested `TestEngineLauncher`: a
- * nested engine applies `kotest.filter.tests` to the inner spec, so running one test here by
- * filter would skip the spec it launches.
+ * nested engine reads the same `kotest.filter.*` properties, so a run filtered down to one test
+ * here would filter the inner spec as well.
  */
 private suspend fun <T> withSecondSpec(assertions: suspend (PostgresHarness) -> T): T {
     val spec = SecondSpec()
@@ -71,6 +75,9 @@ private fun PostgresHarness.databaseNames(): List<String> =
 private fun PostgresHarness.clusterIdentifier(): Long = scalar("SELECT system_identifier FROM pg_control_system()")
 
 private fun PostgresHarness.hasTable(name: String): Boolean = scalar("SELECT to_regclass(?) IS NOT NULL", name)
+
+private fun PostgresHarness.acceptsConnections(database: String): Boolean =
+    scalar("SELECT datallowconn FROM pg_database WHERE datname = ?", database)
 
 private inline fun <reified T : Any> PostgresHarness.scalar(
     sql: String,

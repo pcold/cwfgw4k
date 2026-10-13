@@ -91,8 +91,9 @@ fun JavaExec.applyMacDockerWorkaround() {
 }
 
 tasks.withType<Test>().configureEach {
-    // Each test JVM starts one Testcontainers Postgres for all its specs, so forks share no state.
-    // Two suits a 2 vCPU / 4 GB CI worker (two JVMs + two containers); override with -PtestForks=N.
+    // Each test JVM starts at most one Testcontainers Postgres, shared by its specs, so forks share
+    // no state. The cap of two was sized for a 2 vCPU / 4 GB CI worker (two JVMs + two containers);
+    // override with -PtestForks=N where there is headroom.
     maxParallelForks = (project.findProperty("testForks") as String?)?.toIntOrNull() ?: 2
     testLogging {
         // Gradle's default (SHORT) prints the exception class and source line but not
