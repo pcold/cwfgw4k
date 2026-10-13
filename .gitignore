@@ -26,3 +26,6 @@ scheduled_tasks.lock
 
 # Added by code-review-graph
 .code-review-graph/
+
+# The pull request body, drafted next to the work and passed to `gh pr create --body-file`.
+PR_BODY.md
