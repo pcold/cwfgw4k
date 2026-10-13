@@ -215,6 +215,19 @@ the `tournament` block: the season-aggregate report sends
 `upcoming` / `in_progress` / `completed`. The live overlay leaves `scope`
 unchanged.
 
+Side bets are settled by the server and described on the report, so a
+client never infers them. `side_bet_rules` carries the season's
+`amount_per_team` and the draft `rounds` the bet runs on; it is `null`,
+and `side_bet_detail` is empty, for a season that stakes nothing — no
+side-bet rounds, or an amount of zero. Each `side_bet_detail` entry
+carries its `team_name` and an `outcome` of `"won"` or `"lost"`, or
+`null` where the round has settled nothing for that team, as when nobody
+has earned in it yet. Every team at the round's highest cumulative has
+won, so a tie has several winners and a round every team ties has all of
+them at a zero `payout`: read `outcome`, never the sign of `payout`. The
+live overlay re-settles `payout` and `outcome` on the projected
+cumulative and leaves `side_bet_rules` unchanged.
+
 ### ESPN
 
 | Method | Path                                                     | Auth | Description                                                                            |
@@ -346,10 +359,32 @@ data class WeeklyReport(
     val tournament: ReportTournamentInfo,            // season scope: id/dates/status/week are null
     val teams: List<ReportTeamColumn>,
     val undraftedTopTens: List<UndraftedGolfer>,
-    val sideBetDetail: List<ReportSideBetRound>,
+    val sideBetRules: ReportSideBetRules?,           // null: the season stakes nothing on side bets
+    val sideBetDetail: List<ReportSideBetRound>,     // one per round in sideBetRules.rounds, same order
     val standingsOrder: List<StandingsEntry>,
     val live: Boolean? = null,                       // populated only by live overlay
     val liveLeaderboard: List<LiveLeaderboardEntry> = emptyList(),
+)
+
+data class ReportSideBetRules(
+    val amountPerTeam: BigDecimal,
+    val rounds: List<Int>,
+)
+
+data class ReportSideBetRound(
+    val round: Int,
+    val teams: List<ReportSideBetTeamEntry>,
+)
+
+enum class SideBetOutcome { Won, Lost }              // wire: "won" | "lost"
+
+data class ReportSideBetTeamEntry(
+    val teamId: TeamId,
+    val teamName: String,
+    val golferName: String,                          // last name UPPER-cased; "—" when the team has no pick
+    val cumulativeEarnings: BigDecimal,
+    val payout: BigDecimal,
+    val outcome: SideBetOutcome?,                    // null: nothing settled for this team in the round
 )
 
 data class ReportTeamColumn(

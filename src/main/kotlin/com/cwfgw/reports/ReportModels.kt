@@ -98,13 +98,33 @@ data class LiveLeaderboardEntry(
     val totalStrokes: Int? = null,
 )
 
-/** One team's row inside a side-bet round detail (cumulative earnings + that round's payout). */
+/**
+ * Pure tags on the wire, so an `enum class` as [ReportScope] is. An entry the round has settled nothing
+ * for carries null rather than a third variant here.
+ */
+@Serializable
+enum class SideBetOutcome {
+    /** At the round's highest cumulative, alone or tied: a round every team ties is won by all, at a zero payout. */
+    @SerialName("won")
+    Won,
+
+    /** @see SideBetOutcome */
+    @SerialName("lost")
+    Lost,
+}
+
+/**
+ * [outcome] is null where the round has settled nothing for this team, as when nobody has earned in it
+ * yet. It is the server's decision, which [payout]'s sign cannot stand in for.
+ */
 @Serializable
 data class ReportSideBetTeamEntry(
     val teamId: TeamId,
+    val teamName: String,
     val golferName: String,
     val cumulativeEarnings: BigDecimal,
     val payout: BigDecimal,
+    val outcome: SideBetOutcome?,
 )
 
 /** All teams' side-bet entries for one draft round; the report stacks one of these per round. */
@@ -112,6 +132,13 @@ data class ReportSideBetTeamEntry(
 data class ReportSideBetRound(
     val round: Int,
     val teams: List<ReportSideBetTeamEntry>,
+)
+
+/** [rounds] lists the draft rounds in the order [WeeklyReport.sideBetDetail] stacks them. */
+@Serializable
+data class ReportSideBetRules(
+    val amountPerTeam: BigDecimal,
+    val rounds: List<Int>,
 )
 
 /** One row of the standings panel beside the report grid (rank ordered by totalCash desc). */
@@ -158,6 +185,9 @@ enum class ReportScope {
  * leaderboard there, and a live overlay may replace it with ESPN's.
  *
  * [scope] has no default, so every construction site must say which report it built.
+ *
+ * [sideBetRules] is null for a season that stakes nothing on side bets, and [sideBetDetail] is then empty.
+ * It has no default for the reason [scope] has none.
  */
 @Serializable
 data class WeeklyReport(
@@ -165,6 +195,7 @@ data class WeeklyReport(
     val tournament: ReportTournamentInfo,
     val teams: List<ReportTeamColumn>,
     val undraftedTopTens: List<UndraftedGolfer>,
+    val sideBetRules: ReportSideBetRules?,
     val sideBetDetail: List<ReportSideBetRound>,
     val standingsOrder: List<StandingsEntry>,
     val live: Boolean? = null,

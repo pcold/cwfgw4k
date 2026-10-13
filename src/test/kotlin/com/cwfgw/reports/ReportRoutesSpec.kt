@@ -44,8 +44,14 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -58,6 +64,7 @@ private val MASTERS_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-0
 private val TEAM_A = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c01"))
 private val TEAM_B = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c02"))
 private val SCOTTIE_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d01"))
+private val RORY_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d02"))
 
 private fun teamRow(
     id: TeamId,
@@ -331,6 +338,35 @@ class ReportRoutesSpec : FunSpec({
         apiTest(reportFixture(initialTeams = listOf(teamRow(TEAM_A, "BROWN")))) { client ->
             val response = client.get("/api/v1/seasons/${SEASON_ID.value}/report")
             wireScope(response.bodyAsText()) shouldBe JsonPrimitive("season")
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/report puts the side-bet rules, team names and outcomes on the wire") {
+        val seeded =
+            reportFixture(
+                initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers =
+                    listOf(golferRow(SCOTTIE_ID, "Scottie", "Scheffler"), golferRow(RORY_ID, "Rory", "McIlroy")),
+                initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, 5), rosterRow(TEAM_B, RORY_ID, 5)),
+                initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
+            )
+        apiTest(seeded) { client ->
+            val response = client.get("/api/v1/seasons/${SEASON_ID.value}/report")
+            val report = appJson.parseToJsonElement(response.bodyAsText()).jsonObject
+
+            report["side_bet_rules"] shouldBe
+                buildJsonObject {
+                    put("amount_per_team", 15)
+                    putJsonArray("rounds") { listOf(5, 6, 7, 8).forEach { add(it) } }
+                }
+            val teamsByRound =
+                report.getValue("side_bet_detail").jsonArray.map { round ->
+                    round.jsonObject.getValue("teams").jsonArray.map { it.jsonObject }
+                }
+            teamsByRound[0].map { it["team_name"] to it["outcome"] } shouldContainExactly
+                listOf(JsonPrimitive("BROWN") to JsonPrimitive("won"), JsonPrimitive("WOMBLE") to JsonPrimitive("lost"))
+            teamsByRound[1].map { it["outcome"] } shouldContainExactly listOf(JsonNull, JsonNull)
         }
     }
 
