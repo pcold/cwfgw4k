@@ -24,6 +24,24 @@ SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
 RUNTIME_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 
+# A freshly created service account is not immediately visible to the IAM API,
+# which rejects a grant that names it with "does not exist" or a permission
+# error rather than with anything that reads as a race. So every grant below
+# that names the new account goes through this.
+grant_once_visible() {
+  local grant="$1"; shift
+  local output
+  for _ in $(seq 1 12); do
+    if output="$("$@" 2>&1)"; then
+      return 0
+    fi
+    sleep 5
+  done
+  echo "ERROR: could not grant ${grant} after ~60s. The last attempt said:" >&2
+  echo "${output}" >&2
+  exit 1
+}
+
 echo "==> Enabling the federation APIs"
 gcloud services enable iamcredentials.googleapis.com sts.googleapis.com --project "${PROJECT_ID}"
 
@@ -43,37 +61,26 @@ echo "==> Granting it what a deploy needs, and nothing else"
 # No Secret Manager or Cloud SQL role either. A deploy only names the secrets
 # and the instance; reading the one and connecting to the other is done by the
 # revision, as the runtime service account, which deploy/setup.sh grants.
-#
-# Retried because a freshly created service account is not immediately visible
-# to the IAM API, which rejects the binding with "does not exist" rather than
-# with anything that reads as a race.
-granted=false
-for _ in $(seq 1 12); do
-  if gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-      --member="serviceAccount:${SA_EMAIL}" \
-      --role="roles/run.developer" --condition=None --quiet > /dev/null 2>&1; then
-    granted=true; break
-  fi
-  sleep 5
-done
-if [[ "${granted}" != true ]]; then
-  echo "ERROR: could not grant ${SA_EMAIL} roles/run.developer after ~60s." >&2
-  exit 1
-fi
+grant_once_visible "${SA_EMAIL} roles/run.developer" \
+  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/run.developer" --condition=None --quiet
 
 # On the image repository, never on the project: it can push this service's
 # image and cannot touch any other repository.
-gcloud artifacts repositories add-iam-policy-binding "${IMAGE_REPO}" \
-  --project "${PROJECT_ID}" --location="${REGION}" \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/artifactregistry.writer" --quiet > /dev/null
+grant_once_visible "${SA_EMAIL} roles/artifactregistry.writer on ${IMAGE_REPO}" \
+  gcloud artifacts repositories add-iam-policy-binding "${IMAGE_REPO}" \
+    --project "${PROJECT_ID}" --location="${REGION}" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/artifactregistry.writer" --quiet
 
 # A revision runs as the runtime service account, and deploying one means
 # acting as it.
-gcloud iam service-accounts add-iam-policy-binding "${RUNTIME_SA}" \
-  --project "${PROJECT_ID}" \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/iam.serviceAccountUser" --quiet > /dev/null
+grant_once_visible "${SA_EMAIL} roles/iam.serviceAccountUser on ${RUNTIME_SA}" \
+  gcloud iam service-accounts add-iam-policy-binding "${RUNTIME_SA}" \
+    --project "${PROJECT_ID}" \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/iam.serviceAccountUser" --quiet
 
 echo "==> Creating the workload identity pool and GitHub provider"
 if ! gcloud iam workload-identity-pools describe "${POOL}" \
@@ -105,11 +112,12 @@ POOL_RESOURCE="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools
 PROVIDER_RESOURCE="${POOL_RESOURCE}/providers/${PROVIDER}"
 
 echo "==> Letting ${REPO_SLUG}'s workflows impersonate ${SA_NAME}"
-gcloud iam service-accounts add-iam-policy-binding "${SA_EMAIL}" \
-  --project "${PROJECT_ID}" \
-  --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/${POOL_RESOURCE}/attribute.repository/${REPO_SLUG}" \
-  --quiet > /dev/null
+grant_once_visible "${REPO_SLUG} roles/iam.workloadIdentityUser on ${SA_EMAIL}" \
+  gcloud iam service-accounts add-iam-policy-binding "${SA_EMAIL}" \
+    --project "${PROJECT_ID}" \
+    --role="roles/iam.workloadIdentityUser" \
+    --member="principalSet://iam.googleapis.com/${POOL_RESOURCE}/attribute.repository/${REPO_SLUG}" \
+    --quiet
 
 cat <<SUMMARY
 
