@@ -119,11 +119,11 @@ private fun BadRequestException.isRejectedBody(): Boolean =
 
 /**
  * The JSON converter returns null for an empty body, so Ktor reports one as a content-type mismatch: a bare 415
- * on a request labelled JSON is that body, and not its label, at fault.
+ * on a request labeled JSON is that body, and not its label, at fault.
  */
 private suspend fun ApplicationCall.respondToBareUnsupportedMediaType() {
-    val labelledJson = request.contentType().match(ContentType.Application.Json)
-    if (labelledJson) respondMalformedBody() else respondUnsupportedMediaType()
+    val labeledJson = request.contentType().match(ContentType.Application.Json)
+    if (labeledJson) respondMalformedBody() else respondUnsupportedMediaType()
 }
 
 private suspend fun ApplicationCall.respondMalformedBody() {
