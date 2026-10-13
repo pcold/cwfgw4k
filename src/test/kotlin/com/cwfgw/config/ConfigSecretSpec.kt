@@ -1,12 +1,18 @@
 package com.cwfgw.config
 
+import com.cwfgw.toAuthSetup
 import com.sksamuel.hoplite.ConfigException
+import com.sksamuel.hoplite.DecoderContext
+import com.sksamuel.hoplite.LongNode
+import com.sksamuel.hoplite.Pos
+import com.sksamuel.hoplite.decoder.DotPath
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
+import kotlin.reflect.typeOf
 
 private const val DB_PASSWORD = "db-password-cleartext"
 private const val SESSION_SECRET = "session-secret-cleartext"
@@ -79,6 +85,10 @@ class ConfigSecretSpec : FunSpec({
         ConfigSecret(SESSION_SECRET).cleartext shouldBe SESSION_SECRET
     }
 
+    test("the session signing key is the secret's cleartext rather than its mask") {
+        CONFIG.auth.toAuthSetup().sessionSecret shouldBe SESSION_SECRET.toByteArray()
+    }
+
     test("the loader decodes every secret field from a string") {
         val config = AppConfig.load(everySecretOverride())
 
@@ -94,10 +104,12 @@ class ConfigSecretSpec : FunSpec({
         config.auth.adminPassword?.cleartext shouldBe ""
     }
 
-    test("the loader decodes a numeric secret to its digits") {
-        val config = AppConfig.load(mapOf("db.password" to NUMERIC_PASSWORD))
+    test("the decoder takes a numeric node as its digits rather than refusing it with the value printed") {
+        val node = LongNode(NUMERIC_PASSWORD, Pos.NoPos, DotPath.root)
 
-        config.db.password.cleartext shouldBe NUMERIC_PASSWORD.toString()
+        val decoded = ConfigSecretDecoder().decode(node, typeOf<ConfigSecret>(), DecoderContext.zero)
+
+        decoded.getUnsafe().cleartext shouldBe NUMERIC_PASSWORD.toString()
     }
 
     test("a nested node under a secret key fails boot without printing its contents") {

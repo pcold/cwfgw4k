@@ -7,6 +7,7 @@ import com.cwfgw.admin.adminRoutes
 import com.cwfgw.cache.CacheRepository
 import com.cwfgw.cache.RequestCache
 import com.cwfgw.config.AppConfig
+import com.cwfgw.config.AuthConfig
 import com.cwfgw.db.Database
 import com.cwfgw.db.PoolMetrics
 import com.cwfgw.db.Transactor
@@ -208,12 +209,7 @@ internal fun buildServices(
         transactor = transactor,
         requestCache = requestCache,
         sweepIntervalSeconds = config.cache.sweepIntervalSeconds,
-        authSetup =
-            AuthSetup(
-                sessionSecret = config.auth.sessionSecret.cleartext.toByteArray(),
-                sessionMaxAgeSeconds = config.auth.sessionMaxAgeSeconds,
-                cookieSecure = config.auth.cookieSecure,
-            ),
+        authSetup = config.auth.toAuthSetup(),
         debugEnabled = config.debug.enabled,
     )
 }
@@ -271,6 +267,14 @@ internal fun requireValidAuthSecret(auth: com.cwfgw.config.AuthConfig) {
         "AUTH_SESSION_SECRET must be set (generate with: openssl rand -hex 32)"
     }
 }
+
+// The session secret's one unwrap. Its masked toString() compiles here too, and would sign every cookie with the mask.
+internal fun AuthConfig.toAuthSetup(): AuthSetup =
+    AuthSetup(
+        sessionSecret = sessionSecret.cleartext.toByteArray(),
+        sessionMaxAgeSeconds = sessionMaxAgeSeconds,
+        cookieSecure = cookieSecure,
+    )
 
 fun Application.module(
     services: AppServices,
