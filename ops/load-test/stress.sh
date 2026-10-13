@@ -4,10 +4,11 @@
 # Unlike run.sh (which walks endpoints sequentially against a single
 # tournament_id), this fires every non-completed tournament's
 # `report/<tid>?live=true` URL in parallel — no response cache in
-# front of them, distinct Caffeine ESPN cache keys, distinct fetches all
-# in flight at once. Cheap uncached endpoints (`/api/v1/tournaments`,
-# `/api/v1/leagues`) run in parallel too so we can tell whether they
-# starve while the heavy paths are inflight, which was the wedge symptom.
+# front of them, and every one inside the live-overlay lookahead
+# fetching from ESPN, all in flight at once. Cheap uncached endpoints
+# (`/api/v1/tournaments`, `/api/v1/leagues`) run in parallel too so we
+# can tell whether they starve while the heavy paths are inflight, which
+# was the wedge symptom.
 #
 # Usage:
 #   ops/load-test/stress.sh BASE_URL SEASON_ID [-c N] [-d D] [-t S]
