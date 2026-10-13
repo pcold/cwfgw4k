@@ -9,6 +9,7 @@ import com.sksamuel.hoplite.decoder.DotPath
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
@@ -22,6 +23,7 @@ private const val NUMERIC_PASSWORD = 90_210_555L
 private const val NON_DEFAULT_MAX_AGE_SECONDS = 1_800L
 
 private val SECRET_CLEARTEXTS = listOf(DB_PASSWORD, SESSION_SECRET, ADMIN_PASSWORD)
+private val SWEEP_INTERVAL = PositiveSeconds.of(300).shouldNotBeNull()
 
 private val CONFIG =
     AppConfig(
@@ -42,7 +44,7 @@ private val CONFIG =
                 adminPassword = ConfigSecret(ADMIN_PASSWORD),
                 cookieSecure = true,
             ),
-        cache = CacheConfig(defaultTtlSeconds = 300, sweepIntervalSeconds = 300),
+        cache = CacheConfig(defaultTtlSeconds = 300, sweepIntervalSeconds = SWEEP_INTERVAL),
         espn = EspnConfig(scoreboardCacheTtlSeconds = 300, scoreboardCacheMaxSize = 256),
         debug = DebugConfig(enabled = false),
     )

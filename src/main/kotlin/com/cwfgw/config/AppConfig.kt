@@ -1,6 +1,5 @@
 package com.cwfgw.config
 
-import com.sksamuel.hoplite.ConfigException
 import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.addMapSource
 import com.sksamuel.hoplite.addResourceSource
@@ -17,11 +16,11 @@ data class AppConfig(
         fun load(overrides: Map<String, Any> = emptyMap()): AppConfig =
             ConfigLoaderBuilder.default()
                 .addDecoder(ConfigSecretDecoder())
+                .addDecoder(PositiveSecondsDecoder())
                 .apply { if (overrides.isNotEmpty()) addMapSource(overrides) }
                 .addResourceSource("/application.yaml")
                 .build()
                 .loadConfigOrThrow<AppConfig>()
-                .also { requirePositiveSweepInterval(it.cache) }
     }
 }
 
@@ -52,18 +51,8 @@ data class AuthConfig(
  */
 data class CacheConfig(
     val defaultTtlSeconds: Long,
-    val sweepIntervalSeconds: Long,
+    val sweepIntervalSeconds: PositiveSeconds,
 )
-
-// `delay` returns at once for zero or less, so the sweep loop would spin on the database instead of waiting.
-private fun requirePositiveSweepInterval(cache: CacheConfig) {
-    if (cache.sweepIntervalSeconds <= 0) {
-        throw ConfigException(
-            "cache.sweepIntervalSeconds (CACHE_SWEEP_INTERVAL_SECONDS) must be positive, " +
-                "was ${cache.sweepIntervalSeconds}",
-        )
-    }
-}
 
 /**
  * One cache per JVM, so each Cloud Run instance holds its own. A `live=true` report bypasses the

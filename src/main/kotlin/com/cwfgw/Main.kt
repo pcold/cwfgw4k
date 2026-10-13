@@ -164,7 +164,7 @@ internal fun buildServices(
         userRepository = userRepository,
         transactor = transactor,
         requestCache = requestCache,
-        sweepIntervalSeconds = config.cache.sweepIntervalSeconds,
+        sweepIntervalSeconds = config.cache.sweepIntervalSeconds.value,
         authSetup = config.auth.toAuthSetup(),
         debugEnabled = config.debug.enabled,
     )
