@@ -1,11 +1,14 @@
 package com.cwfgw.testing
 
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.core.listeners.AfterSpecListener
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import java.sql.Connection
+import java.sql.DriverManager
 
 private const val SCRATCH_TABLE = "harness_scratch"
 
@@ -42,8 +45,19 @@ class PostgresHarnessSpec : FunSpec({
         postgres.databaseNames() shouldNotContain finished
     }
 
+    test("a spec's database is dropped while a connection from outside its pool is still open") {
+        val (finished, straggler) =
+            withSecondSpec { second -> second.databaseName() to second.connectionOutsidePool() }
+
+        straggler.use { postgres.databaseNames() shouldNotContain finished }
+    }
+
     test("the migrated template refuses connections") {
         postgres.acceptsConnections(TEMPLATE_DATABASE) shouldBe false
+    }
+
+    test("asking for the template migration a second time changes nothing") {
+        shouldNotThrowAny { migrateTemplateDatabase() }
     }
 })
 
@@ -75,6 +89,9 @@ private fun PostgresHarness.databaseNames(): List<String> =
 private fun PostgresHarness.clusterIdentifier(): Long = scalar("SELECT system_identifier FROM pg_control_system()")
 
 private fun PostgresHarness.hasTable(name: String): Boolean = scalar("SELECT to_regclass(?) IS NOT NULL", name)
+
+private fun PostgresHarness.connectionOutsidePool(): Connection =
+    DriverManager.getConnection(dataSource.jdbcUrl, dataSource.username, dataSource.password)
 
 private fun PostgresHarness.acceptsConnections(database: String): Boolean =
     scalar("SELECT datallowconn FROM pg_database WHERE datname = ?", database)

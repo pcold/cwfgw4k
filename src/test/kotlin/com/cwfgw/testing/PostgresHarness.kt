@@ -24,8 +24,8 @@ internal const val TEMPLATE_DATABASE = "migrated_template"
 private val PRESERVED_TABLES = setOf("flyway_schema_history")
 
 /**
- * [dataSource] reaches a database only this spec uses. [reset] runs before every test and clears rows
- * alone: a table or view a spec creates stays until the spec ends and its database is dropped.
+ * [dataSource] reaches a database only this spec uses. [reset] runs before every test and only empties
+ * the migrated schema's tables: anything else a spec creates stays until its database is dropped.
  */
 internal class PostgresHarness(
     val dataSource: HikariDataSource,
@@ -61,8 +61,8 @@ private val sharedPostgresExtension =
 private val specDatabaseCount = AtomicInteger()
 
 /**
- * The extension counts the container as started before `afterStart` runs, so a migration that throws
- * is never retried. Without this, every later spec would fail on the template instead of the migration.
+ * Neither extension signal says the template is ready: it counts the container started before
+ * `afterStart` runs, so a failed migration is not retried, and reruns `afterStart` when a Docker inspect errors.
  */
 private val templateMigrated = AtomicBoolean(false)
 
@@ -95,7 +95,8 @@ internal fun Spec.postgresHarness(): PostgresHarness {
  * `CREATE DATABASE … TEMPLATE` refuses a source with a session attached, so the template is closed
  * to connections as soon as it is migrated: no spec can hold one open on it.
  */
-private fun migrateTemplateDatabase() {
+internal fun migrateTemplateDatabase() {
+    if (templateMigrated.get()) return
     executeOnCluster("""CREATE DATABASE "$TEMPLATE_DATABASE"""")
     Flyway.configure()
         .dataSource(databaseUrl(TEMPLATE_DATABASE), sharedPostgres.username, sharedPostgres.password)
