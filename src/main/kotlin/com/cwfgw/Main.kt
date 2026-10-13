@@ -1,4 +1,4 @@
-@file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+@file:OptIn(ExperimentalCoroutinesApi::class)
 
 package com.cwfgw
 
@@ -42,6 +42,7 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.debug.DebugProbes
 import kotlinx.coroutines.runBlocking
 import java.security.KeyStore

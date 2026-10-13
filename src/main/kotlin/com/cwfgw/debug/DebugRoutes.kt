@@ -1,4 +1,4 @@
-@file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+@file:OptIn(ExperimentalCoroutinesApi::class)
 
 package com.cwfgw.debug
 
@@ -9,6 +9,7 @@ import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.debug.DebugProbes
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
