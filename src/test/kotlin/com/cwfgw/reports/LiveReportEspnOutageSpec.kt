@@ -1,13 +1,17 @@
 package com.cwfgw.reports
 
+import ch.qos.logback.classic.Level
 import com.cwfgw.espn.EspnClient
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.testing.ApiFixture
+import com.cwfgw.testing.CapturedLogs
 import com.cwfgw.testing.EspnOutage
 import com.cwfgw.testing.OUTAGE_TOURNAMENT
 import com.cwfgw.testing.apiTest
+import com.cwfgw.testing.captureLogs
+import com.cwfgw.testing.espnClientOver
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournaments.FakeTournamentRepository
@@ -15,6 +19,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.ints.shouldBeGreaterThan
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
+import io.ktor.client.engine.mock.respond
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
@@ -42,6 +47,15 @@ private val LIVE_CAPABLE_PATHS =
 
 private const val MASTERS_SCOREBOARD =
     """{"events":[{"id":"espn-masters","name":"The Masters","competitions":[{"competitors":[]}]}]}"""
+
+private const val LIVE_MASTERS_ROUTE = "GET /api/v1/seasons/{id}/report/{tid}?live=true"
+private val LIVE_MASTERS_URL = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
+
+private fun CapturedLogs.previewFailuresAtWarn(): List<String> =
+    events()
+        .filter { it.level == Level.WARN }
+        .map { it.formattedMessage }
+        .filter { it.contains("ESPN preview failed") }
 
 private fun mastersInPlay(espn: EspnClient): ApiFixture.() -> Unit =
     {
@@ -99,6 +113,30 @@ class LiveReportEspnOutageSpec : FunSpec({
                 client.get(url).body<WeeklyReport>().live shouldBe null
                 client.get(url).body<WeeklyReport>().live shouldBe true
             }
+        }
+
+        test("$LIVE_MASTERS_ROUTE logs one WARN naming the overlay when ESPN ${outage.description}") {
+            captureLogs { logs ->
+                apiTest(mastersInPlay(outage.client())) { client -> client.get(LIVE_MASTERS_URL) }
+
+                logs.previewFailuresAtWarn().single() shouldBe
+                    "live overlay $MASTERS_ID: ESPN preview failed: UpstreamUnavailable(failure=NoResponse)"
+            }
+        }
+    }
+
+    test("$LIVE_MASTERS_ROUTE logs no preview failure when ESPN has no event for the date") {
+        val requests = AtomicInteger()
+        val espn =
+            espnClientOver {
+                requests.incrementAndGet()
+                respond(content = """{"events":[]}""", status = HttpStatusCode.OK)
+            }
+        captureLogs { logs ->
+            apiTest(mastersInPlay(espn)) { client -> client.get(LIVE_MASTERS_URL) }
+
+            requests.get() shouldBeGreaterThan 0
+            logs.previewFailuresAtWarn() shouldBe emptyList()
         }
     }
 })
