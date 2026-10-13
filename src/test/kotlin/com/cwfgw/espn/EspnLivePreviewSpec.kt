@@ -150,7 +150,7 @@ private fun tournament(
 
 @Suppress("LongParameterList")
 private class PreviewFixture(
-    private val initialTournaments: List<Tournament> = emptyList(),
+    val initialTournaments: List<Tournament> = emptyList(),
     initialTeams: List<Team> = emptyList(),
     initialGolfers: List<Golfer> = emptyList(),
     initialRosters: List<RosterEntry> = emptyList(),
@@ -184,11 +184,11 @@ private class PreviewFixture(
                 tx = transactor,
             )
     }
-
-    // The context matches only the tournaments handed to it; it never reads them back out of [tournamentRepo].
-    suspend fun previewOn(date: LocalDate): Result<List<EspnLivePreview>, EspnError> =
-        service.previewByDate(service.loadLivePreviewContext(SEASON_ID, initialTournaments), date)
 }
+
+// The context matches only the tournaments handed to it; it never reads them back out of the repository.
+private suspend fun PreviewFixture.previewOn(date: LocalDate): Result<List<EspnLivePreview>, EspnError> =
+    service.previewByDate(service.loadLivePreviewContext(SEASON_ID, initialTournaments), date)
 
 class EspnLivePreviewSpec : FunSpec({
 
