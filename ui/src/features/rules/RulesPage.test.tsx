@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
+import { nth } from '@/shared/test/nth';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import RulesPage from './RulesPage';
 import type { League, Season, SeasonRules, Tournament } from '@/shared/api/types';
@@ -85,9 +86,9 @@ describe('RulesPage', () => {
     const payoutTable = screen.getByRole('table');
     const payoutRows = within(payoutTable).getAllByRole('row').slice(1);
     expect(payoutRows).toHaveLength(10);
-    expect(within(payoutRows[0]).getByText('1st')).toBeInTheDocument();
-    expect(within(payoutRows[0]).getByText('$18')).toBeInTheDocument();
-    expect(within(payoutRows[9]).getByText('10th')).toBeInTheDocument();
+    expect(within(nth(payoutRows, 0)).getByText('1st')).toBeInTheDocument();
+    expect(within(nth(payoutRows, 0)).getByText('$18')).toBeInTheDocument();
+    expect(within(nth(payoutRows, 9)).getByText('10th')).toBeInTheDocument();
   });
 
   it('uses season-specific payouts from the API instead of defaults', async () => {
@@ -146,14 +147,14 @@ describe('RulesPage', () => {
     const items = within(section).getAllByRole('listitem');
     expect(items).toHaveLength(3);
 
-    expect(within(items[0]).getByText('Regular Open')).toBeInTheDocument();
-    expect(within(items[0]).queryByText(/x$/)).not.toBeInTheDocument();
+    expect(within(nth(items, 0)).getByText('Regular Open')).toBeInTheDocument();
+    expect(within(nth(items, 0)).queryByText(/x$/)).not.toBeInTheDocument();
 
-    expect(within(items[1]).getByText('The Masters')).toBeInTheDocument();
-    expect(within(items[1]).getByText('2x')).toBeInTheDocument();
+    expect(within(nth(items, 1)).getByText('The Masters')).toBeInTheDocument();
+    expect(within(nth(items, 1)).getByText('2x')).toBeInTheDocument();
 
-    expect(within(items[2]).getByText('US Open')).toBeInTheDocument();
-    expect(within(items[2]).getByText('2x')).toBeInTheDocument();
+    expect(within(nth(items, 2)).getByText('US Open')).toBeInTheDocument();
+    expect(within(nth(items, 2)).getByText('2x')).toBeInTheDocument();
   });
 
   it('sorts the season schedule by start date regardless of API order', async () => {
@@ -170,8 +171,8 @@ describe('RulesPage', () => {
     }).parentElement;
     if (!scheduleSection) throw new Error('the Season Schedule heading has no section around it');
     const items = within(scheduleSection).getAllByRole('listitem');
-    expect(within(items[0]).getByText('Early Event')).toBeInTheDocument();
-    expect(within(items[1]).getByText('Late Event')).toBeInTheDocument();
+    expect(within(nth(items, 0)).getByText('Early Event')).toBeInTheDocument();
+    expect(within(nth(items, 1)).getByText('Late Event')).toBeInTheDocument();
   });
 
   it('shows the empty state when the season has no tournaments', async () => {
@@ -203,7 +204,7 @@ describe('RulesPage', () => {
     // Still renders with defaults (first payout = $18)
     const payoutTable = await screen.findByRole('table');
     const payoutRows = within(payoutTable).getAllByRole('row').slice(1);
-    expect(within(payoutRows[0]).getByText('$18')).toBeInTheDocument();
+    expect(within(nth(payoutRows, 0)).getByText('$18')).toBeInTheDocument();
   });
 
   it('surfaces a leagues error without blowing up', async () => {

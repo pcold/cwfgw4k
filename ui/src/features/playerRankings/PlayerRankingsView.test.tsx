@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PlayerRankingsView from './PlayerRankingsView';
 import type { PlayerRankingsRow } from '@/shared/api/types';
+import { nth } from '@/shared/test/nth';
 
 function r(overrides: Partial<PlayerRankingsRow>): PlayerRankingsRow {
   return {
@@ -36,7 +37,7 @@ describe('PlayerRankingsView', () => {
     const rows = screen.getAllByRole('row').slice(1);
     expect(rows).toHaveLength(2);
 
-    const first = within(rows[0]);
+    const first = within(nth(rows, 0));
     const firstCells = first.getAllByRole('cell');
     expect(firstCells[0]).toHaveTextContent('1');
     expect(firstCells[1]).toHaveTextContent('Scottie Scheffler');
@@ -45,7 +46,7 @@ describe('PlayerRankingsView', () => {
     expect(firstCells[4]).toHaveTextContent('Aces');
     expect(firstCells[5]).toHaveTextContent('1');
 
-    const second = within(rows[1]);
+    const second = within(nth(rows, 1));
     expect(second.getByText('P. Mickelson')).toBeInTheDocument();
     expect(second.getByText('undrafted')).toBeInTheDocument();
     expect(second.getByText('—')).toBeInTheDocument();
@@ -104,7 +105,7 @@ describe('PlayerRankingsView', () => {
 
     const rows = screen.getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
-    expect(within(rows[0]).getByText('Scottie Scheffler')).toBeInTheDocument();
+    expect(within(nth(rows, 0)).getByText('Scottie Scheffler')).toBeInTheDocument();
   });
 
   it('offers an Undrafted option that shows only undrafted players', async () => {
@@ -122,7 +123,7 @@ describe('PlayerRankingsView', () => {
 
     const rows = screen.getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
-    expect(within(rows[0]).getByText('P. Mickelson')).toBeInTheDocument();
+    expect(within(nth(rows, 0)).getByText('P. Mickelson')).toBeInTheDocument();
   });
 
   it('omits the Undrafted option when no undrafted players are present', () => {
@@ -180,7 +181,7 @@ describe('PlayerRankingsView', () => {
 
     const rows = screen.getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
-    expect(within(rows[0]).getByText('R3 Guy')).toBeInTheDocument();
+    expect(within(nth(rows, 0)).getByText('R3 Guy')).toBeInTheDocument();
   });
 
   it('offers an Undrafted option on the round filter when any undrafted players exist', async () => {
@@ -198,7 +199,7 @@ describe('PlayerRankingsView', () => {
 
     const rows = screen.getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
-    expect(within(rows[0]).getByText('Not Drafted')).toBeInTheDocument();
+    expect(within(nth(rows, 0)).getByText('Not Drafted')).toBeInTheDocument();
   });
 
   it('sorts round options ascending and dedupes', () => {
@@ -237,6 +238,6 @@ describe('PlayerRankingsView', () => {
 
     const rows = screen.getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
-    expect(within(rows[0]).getByText('Aces R1')).toBeInTheDocument();
+    expect(within(nth(rows, 0)).getByText('Aces R1')).toBeInTheDocument();
   });
 });

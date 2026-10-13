@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ScoreboardView from './ScoreboardView';
 import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
+import { nth } from '@/shared/test/nth';
 
 function row(overrides: Partial<ReportCell> = {}): ReportCell {
   return {
@@ -120,7 +121,7 @@ describe('ScoreboardView', () => {
     );
     const tables = screen.getAllByRole('table');
     // first table = teams, second = leaderboard (if any)
-    const teamRows = within(tables[0]).getAllByRole('row').slice(1);
+    const teamRows = within(nth(tables, 0)).getAllByRole('row').slice(1);
     const names = teamRows.map((r) => within(r).getAllByRole('cell')[1]?.textContent);
     expect(names).toEqual(['Birdies', 'Aces', 'Cuts']);
   });
@@ -142,7 +143,7 @@ describe('ScoreboardView', () => {
     expect(screen.getByRole('heading', { name: /Leaderboard/i })).toBeInTheDocument();
     // Tiger from the rostered team and Phil from undrafted both appear
     const tables = screen.getAllByRole('table');
-    const leaderboard = tables[1];
+    const leaderboard = nth(tables, 1);
     expect(within(leaderboard).getByText('Tiger')).toBeInTheDocument();
     expect(within(leaderboard).getByText('Phil')).toBeInTheDocument();
     expect(within(leaderboard).getByText('undrafted')).toBeInTheDocument();
@@ -231,10 +232,10 @@ describe('ScoreboardView', () => {
 
     await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'Aces');
 
-    const leaderboard = screen.getAllByRole('table')[1];
+    const leaderboard = nth(screen.getAllByRole('table'), 1);
     const rows = within(leaderboard).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
-    expect(within(rows[0]).getByText('Tiger')).toBeInTheDocument();
+    expect(within(nth(rows, 0)).getByText('Tiger')).toBeInTheDocument();
   });
 
   it('offers Undrafted on the leaderboard filter when undrafted golfers are present', async () => {
@@ -255,10 +256,10 @@ describe('ScoreboardView', () => {
 
     await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'Undrafted');
 
-    const leaderboard = screen.getAllByRole('table')[1];
+    const leaderboard = nth(screen.getAllByRole('table'), 1);
     const rows = within(leaderboard).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
-    expect(within(rows[0]).getByText('Phil')).toBeInTheDocument();
+    expect(within(nth(rows, 0)).getByText('Phil')).toBeInTheDocument();
   });
 
   it('omits the T prefix on a solo position in the Golfers in Top 10 column', () => {
@@ -283,9 +284,9 @@ describe('ScoreboardView', () => {
       />,
     );
 
-    const teamTable = screen.getAllByRole('table')[0];
+    const teamTable = nth(screen.getAllByRole('table'), 0);
     const teamCells = within(teamTable).getAllByRole('cell');
-    const golferCell = teamCells[teamCells.length - 1];
+    const golferCell = nth(teamCells, teamCells.length - 1);
     // Visible text should read "FITZPATRICK 1 $18" — no stray T.
     expect(golferCell.textContent ?? '').not.toMatch(/T\s*1\b/);
     expect(golferCell).toHaveTextContent('1');
@@ -313,9 +314,9 @@ describe('ScoreboardView', () => {
       />,
     );
 
-    const teamTable = screen.getAllByRole('table')[0];
+    const teamTable = nth(screen.getAllByRole('table'), 0);
     const teamCells = within(teamTable).getAllByRole('cell');
-    const golferCell = teamCells[teamCells.length - 1];
+    const golferCell = nth(teamCells, teamCells.length - 1);
     expect(golferCell.textContent ?? '').toMatch(/T\s*4/);
   });
 
@@ -340,7 +341,7 @@ describe('ScoreboardView', () => {
     await user.selectOptions(select, 'Aces');
     await user.selectOptions(select, 'Team');
 
-    const leaderboard = screen.getAllByRole('table')[1];
+    const leaderboard = nth(screen.getAllByRole('table'), 1);
     expect(within(leaderboard).getByText('Tiger')).toBeInTheDocument();
   });
 
@@ -358,11 +359,11 @@ describe('ScoreboardView', () => {
       />,
     );
 
-    const leaderboard = screen.getAllByRole('table')[1];
+    const leaderboard = nth(screen.getAllByRole('table'), 1);
     const rows = within(leaderboard).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
-    expect(within(rows[0]).getByText('McIlroy / Lowry')).toBeInTheDocument();
-    expect(within(rows[0]).getByText('undrafted / PAYRAY')).toBeInTheDocument();
+    expect(within(nth(rows, 0)).getByText('McIlroy / Lowry')).toBeInTheDocument();
+    expect(within(nth(rows, 0)).getByText('undrafted / PAYRAY')).toBeInTheDocument();
   });
 
   it('filter by a single team name matches pair rows where that team rostered one partner', async () => {
@@ -381,9 +382,9 @@ describe('ScoreboardView', () => {
     );
 
     await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'PAYRAY');
-    const leaderboard = screen.getAllByRole('table')[1];
+    const leaderboard = nth(screen.getAllByRole('table'), 1);
     const rows = within(leaderboard).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
-    expect(within(rows[0]).getByText('McIlroy / Lowry')).toBeInTheDocument();
+    expect(within(nth(rows, 0)).getByText('McIlroy / Lowry')).toBeInTheDocument();
   });
 });

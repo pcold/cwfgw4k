@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Rankings } from '@/shared/api/types';
+import { nth } from '@/shared/test/nth';
 import {
   buildChartLayout,
   DEFAULT_DIMENSIONS,
@@ -68,13 +69,16 @@ describe('buildChartLayout', () => {
   it('builds one line per team with a point per series value', () => {
     const layout = chartLayout(buildRankings());
     expect(layout.lines).toHaveLength(2);
-    expect(layout.lines[0].teamName).toBe('Aces');
-    expect(layout.lines[0].points).toHaveLength(3);
+    expect(nth(layout.lines, 0).teamName).toBe('Aces');
+    expect(nth(layout.lines, 0).points).toHaveLength(3);
   });
 
   it('spaces x positions evenly across the plot width', () => {
     const layout = chartLayout(buildRankings());
-    const [p0, p1, p2] = layout.lines[0].points;
+    const { points } = nth(layout.lines, 0);
+    const p0 = nth(points, 0);
+    const p1 = nth(points, 1);
+    const p2 = nth(points, 2);
     const step1 = p1.x - p0.x;
     const step2 = p2.x - p1.x;
     expect(step1).toBeCloseTo(step2, 5);
@@ -84,8 +88,8 @@ describe('buildChartLayout', () => {
 
   it('places the highest series value near the top of the plot', () => {
     const layout = chartLayout(buildRankings());
-    const highest = layout.lines[0].points[2]; // 150 -- max value
-    const lowest = layout.lines[1].points[2]; // -35 -- min value
+    const highest = nth(nth(layout.lines, 0).points, 2); // 150 -- max value
+    const lowest = nth(nth(layout.lines, 1).points, 2); // -35 -- min value
     expect(highest.y).toBeLessThan(lowest.y);
     expect(highest.y).toBeGreaterThanOrEqual(layout.plot.top);
     expect(lowest.y).toBeLessThanOrEqual(layout.plot.bottom);
@@ -93,11 +97,11 @@ describe('buildChartLayout', () => {
 
   it('attaches week labels and tournament names to each point', () => {
     const layout = chartLayout(buildRankings());
-    const [p0, p1, p2] = layout.lines[0].points;
-    expect(p0.weekLabel).toBe('9');
-    expect(p0.tournamentName).toBe('Sample Open');
-    expect(p1.tournamentName).toBe('Major');
-    expect(p2.tournamentName).toBe('Invitational');
+    const { points } = nth(layout.lines, 0);
+    expect(nth(points, 0).weekLabel).toBe('9');
+    expect(nth(points, 0).tournamentName).toBe('Sample Open');
+    expect(nth(points, 1).tournamentName).toBe('Major');
+    expect(nth(points, 2).tournamentName).toBe('Invitational');
   });
 
   it('derives x-axis ticks with "Wk N" labels', () => {
@@ -112,7 +116,7 @@ describe('buildChartLayout', () => {
 
   it('assigns distinct colors to consecutive teams', () => {
     const layout = chartLayout(buildRankings());
-    expect(layout.lines[0].color).not.toBe(layout.lines[1].color);
+    expect(nth(layout.lines, 0).color).not.toBe(nth(layout.lines, 1).color);
   });
 
   it('respects custom dimensions', () => {

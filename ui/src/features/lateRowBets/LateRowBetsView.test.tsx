@@ -110,7 +110,7 @@ describe('LateRowBetsView', () => {
     const round2Section = screen.getByRole('heading', { name: 'Round 2' }).parentElement;
     if (!round2Section) throw new Error('the Round 2 heading has no section around it');
     const rows = within(round2Section).getAllByRole('row').slice(1);
-    const teamCells = rows.map((r) => within(r).getAllByRole('cell')[0].textContent);
+    const teamCells = rows.map((r) => within(r).getAllByRole('cell')[0]?.textContent);
     expect(teamCells).toEqual(['Aces', 'Birdies', 'Eagles']);
   });
 
@@ -120,7 +120,7 @@ describe('LateRowBetsView', () => {
     const totalsSection = totalsHeading.parentElement;
     if (!totalsSection) throw new Error('the totals heading has no section around it');
     const rows = within(totalsSection).getAllByRole('row').slice(1);
-    const teamCells = rows.map((r) => within(r).getAllByRole('cell')[0].textContent);
+    const teamCells = rows.map((r) => within(r).getAllByRole('cell')[0]?.textContent);
     expect(teamCells).toEqual(['Aces', 'Eagles', 'Birdies']);
   });
 
