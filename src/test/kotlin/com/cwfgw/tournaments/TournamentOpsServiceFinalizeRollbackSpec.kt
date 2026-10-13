@@ -6,7 +6,6 @@ import com.cwfgw.espn.EspnClient
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnTournament
 import com.cwfgw.espn.FakeEspnClient
-import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
@@ -179,13 +178,6 @@ private class ThrowingOnUpsertStandingScoringRepository(
 
     context(ctx: TransactionContext)
     override fun upsertScore(record: UpsertScore): FantasyScore = delegate.upsertScore(record)
-
-    context(ctx: TransactionContext)
-    override fun golferPointTotal(
-        seasonId: SeasonId,
-        teamId: TeamId,
-        golferId: GolferId,
-    ): BigDecimal = delegate.golferPointTotal(seasonId, teamId, golferId)
 
     context(ctx: TransactionContext)
     override fun teamSeasonTotals(

@@ -18,22 +18,10 @@ import com.cwfgw.tournaments.TournamentResult
 import java.math.BigDecimal
 
 /**
- * Computes weekly fantasy scoring, season standings, and draft-round side-bet
- * standings.
- *
- * `getScores` and `getStandings` are simple lookups and return a list directly.
- * The compound operations ([calculateScores], [getSideBetStandings],
- * [refreshStandings]) return [Result] so each multi-mode failure (season
- * missing, tournament missing, no teams) can drive its own HTTP status at the
- * route boundary.
- *
- * The compound flows depend on repositories directly (rather than fanning
- * out through other services) so a season-missing/tournament-missing gate
- * check, the data gather, and the eventual write all happen inside the
- * same transaction. Calling another service mid-flow would open a fresh
- * transaction on a different connection and break the snapshot.
+ * Depends on repositories directly, never on other services: a service call mid-flow opens its own
+ * transaction on another connection, splitting the gate check, gather and write that [calculateScores]
+ * and [refreshStandings] run in one. See `src/CLAUDE.md` → Cross-repo flows.
  */
-@Suppress("LongParameterList")
 class ScoringService(
     private val repository: ScoringRepository,
     private val seasonRepository: SeasonRepository,
@@ -121,25 +109,6 @@ class ScoringService(
         return Result.Ok(standings)
     }
 
-    suspend fun getSideBetStandings(seasonId: SeasonId): Result<SideBetStandings, ScoringError> =
-        tx.read {
-            seasonRepository.findById(seasonId) ?: return@read Result.Err(ScoringError.SeasonNotFound)
-            val teams = teamRepository.findBySeason(seasonId)
-            if (teams.isEmpty()) return@read Result.Err(ScoringError.NoTeams)
-            val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
-            val context =
-                SideBetContext(
-                    seasonId = seasonId,
-                    teamNames = teams.associate { it.id to it.teamName },
-                    numTeams = teams.size,
-                    sideBetAmount = rules.sideBetAmount,
-                    rosters = teamRepository.findRostersBySeason(seasonId),
-                )
-            val rounds = rules.sideBetRounds.map { round -> buildSideBetRound(context, round) }
-            val totals = teamSideBetTotals(teams, rounds, rules.sideBetAmount)
-            Result.Ok(SideBetStandings(rounds = rounds, teamTotals = totals))
-        }
-
     context(ctx: TransactionContext)
     private fun scoreGolferForTeam(
         inputs: ScoringInputs,
@@ -208,66 +177,6 @@ class ScoringService(
         )
     }
 
-    context(ctx: TransactionContext)
-    private fun buildSideBetRound(
-        context: SideBetContext,
-        round: Int,
-    ): SideBetRound {
-        val roundPicks = context.rosters.filter { it.draftRound == round }
-        val sortedEntries =
-            roundPicks
-                .map { entry ->
-                    Triple(
-                        entry.teamId,
-                        entry.golferId,
-                        repository.golferPointTotal(context.seasonId, entry.teamId, entry.golferId),
-                    )
-                }
-                .sortedByDescending { it.third }
-
-        val winnerTriple = sortedEntries.firstOrNull()?.takeIf { it.third > BigDecimal.ZERO }
-        val winner =
-            winnerTriple?.let { (teamId, golferId, total) ->
-                SideBetWinner(
-                    teamId = teamId,
-                    teamName = context.teamNames[teamId] ?: "",
-                    golferId = golferId,
-                    cumulativeEarnings = total,
-                    netWinnings = context.sideBetAmount.multiply(BigDecimal(context.numTeams - 1)),
-                )
-            }
-        val entries =
-            sortedEntries.map { (teamId, golferId, total) ->
-                SideBetEntry(
-                    teamId = teamId,
-                    teamName = context.teamNames[teamId] ?: "",
-                    golferId = golferId,
-                    cumulativeEarnings = total,
-                )
-            }
-        return SideBetRound(round = round, active = winner != null, winner = winner, entries = entries)
-    }
-
-    private fun teamSideBetTotals(
-        teams: List<Team>,
-        rounds: List<SideBetRound>,
-        sideBetAmount: BigDecimal,
-    ): List<SideBetTeamTotal> {
-        val numTeams = teams.size
-        val activeBets = rounds.count { it.active }
-        val winnersByRound = rounds.mapNotNull { it.winner?.teamId }
-        return teams.map { team ->
-            val wins = winnersByRound.count { it == team.id }
-            val losses = activeBets - wins
-            val net =
-                sideBetAmount
-                    .multiply(BigDecimal(numTeams - 1))
-                    .multiply(BigDecimal(wins))
-                    .subtract(sideBetAmount.multiply(BigDecimal(losses)))
-            SideBetTeamTotal(teamId = team.id, teamName = team.teamName, wins = wins, net = net)
-        }
-    }
-
     private fun ownersByGolfer(allRosters: List<RosterEntry>): Map<GolferId, List<Pair<TeamId, BigDecimal>>> =
         allRosters
             .groupBy { it.golferId }
@@ -293,12 +202,3 @@ private data class ScoringInputs(
 ) {
     val resultsByGolfer: Map<GolferId, TournamentResult> = results.associateBy { it.golferId }
 }
-
-/** Per-call inputs for [ScoringService.getSideBetStandings]. */
-private data class SideBetContext(
-    val seasonId: SeasonId,
-    val teamNames: Map<TeamId, String>,
-    val numTeams: Int,
-    val sideBetAmount: BigDecimal,
-    val rosters: List<RosterEntry>,
-)

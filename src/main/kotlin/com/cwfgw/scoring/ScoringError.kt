@@ -9,6 +9,4 @@ sealed interface ScoringError {
     data object SeasonNotFound : ScoringError
 
     data object TournamentNotFound : ScoringError
-
-    data object NoTeams : ScoringError
 }

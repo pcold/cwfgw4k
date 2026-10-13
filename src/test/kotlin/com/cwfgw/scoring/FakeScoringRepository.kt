@@ -1,7 +1,6 @@
 package com.cwfgw.scoring
 
 import com.cwfgw.db.TransactionContext
-import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.TournamentId
@@ -13,7 +12,6 @@ import java.util.concurrent.ConcurrentHashMap
 class FakeScoringRepository(
     initialScores: List<FantasyScore> = emptyList(),
     initialStandings: List<SeasonStanding> = emptyList(),
-    private val pointTotals: Map<Triple<SeasonId, TeamId, GolferId>, BigDecimal> = emptyMap(),
     private val teamTotals: Map<Pair<SeasonId, TeamId>, TeamSeasonTotals> = emptyMap(),
     private val scoreIdFactory: () -> FantasyScoreId = { FantasyScoreId(UUID.randomUUID()) },
     private val standingIdFactory: () -> SeasonStandingId = { SeasonStandingId(UUID.randomUUID()) },
@@ -87,13 +85,6 @@ class FakeScoringRepository(
         scoreUpserts += score
         return score
     }
-
-    context(ctx: TransactionContext)
-    override fun golferPointTotal(
-        seasonId: SeasonId,
-        teamId: TeamId,
-        golferId: GolferId,
-    ): BigDecimal = pointTotals[Triple(seasonId, teamId, golferId)] ?: BigDecimal.ZERO
 
     context(ctx: TransactionContext)
     override fun teamSeasonTotals(

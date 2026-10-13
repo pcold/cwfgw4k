@@ -33,7 +33,6 @@
 #
 # What it tests:
 #   /api/v1/seasons/<sid>/standings              cached
-#   /api/v1/seasons/<sid>/scoring/side-bets      cached
 #   /api/v1/seasons/<sid>/rankings               cached
 #   /api/v1/seasons/<sid>/rankings?live=true     uncached, ESPN
 #   /api/v1/seasons/<sid>/report                 cached, multi-service
@@ -98,9 +97,6 @@ hey -n 10 -c 5 -t "${TIMEOUT}" "${BASE_URL}/api/v1/health" > /dev/null
 
 run_endpoint "Standings (cached)" \
   "/api/v1/seasons/${SEASON_ID}/standings"
-
-run_endpoint "Side-bet standings (cached)" \
-  "/api/v1/seasons/${SEASON_ID}/scoring/side-bets"
 
 run_endpoint "Rankings (cached)" \
   "/api/v1/seasons/${SEASON_ID}/rankings"

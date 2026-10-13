@@ -187,7 +187,6 @@ Routes nested under `/api/v1/seasons/{seasonId}/`.
 |--------|---------------------------------------------------------------|------|------------------------------------------------------|
 | GET    | `/api/v1/seasons/{sid}/standings`                             | No   | Cumulative season standings                          |
 | GET    | `/api/v1/seasons/{sid}/scoring/{tid}`                         | No   | Per-team score rows for one tournament               |
-| GET    | `/api/v1/seasons/{sid}/scoring/side-bets`                     | No   | Side-bet standings + per-round breakdown             |
 | POST   | `/api/v1/seasons/{sid}/scoring/calculate/{tid}`               | Yes  | Recompute and upsert scores for one tournament       |
 | POST   | `/api/v1/seasons/{sid}/scoring/refresh-standings`             | Yes  | Recompute and upsert season standings                |
 
