@@ -26,10 +26,7 @@ value class PositiveSeconds private constructor(val value: Long) {
     }
 }
 
-/**
- * Without it, Hoplite builds the value through the constructor and the bounds in [PositiveSeconds.of] never run.
- * An environment variable substituted into the YAML arrives as a string, a literal as a number.
- */
+/** Hoplite's inline-class fallback cannot call the private constructor, so without this no config loads at all. */
 internal class PositiveSecondsDecoder : NullHandlingDecoder<PositiveSeconds> {
     override fun supports(type: KType): Boolean = type.classifier == PositiveSeconds::class
 
