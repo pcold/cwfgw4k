@@ -346,7 +346,7 @@ class ErrorHandlingSpec : FunSpec({
         }
     }
 
-    test("a mapped DomainError logs nothing at WARN or above") {
+    test("DomainError.NotFound, Validation and Conflict log nothing at WARN or above") {
         captureLogs { logs ->
             errorHandlingTestApp { client ->
                 val paths = listOf("/throw/not-found", "/throw/validation", "/throw/conflict")
