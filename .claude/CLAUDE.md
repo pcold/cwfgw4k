@@ -332,9 +332,9 @@ and parallel subagents often have not.
   pinned to a single file and line range can never match again; enough of
   them make the list unreadable, which is how a bare wildcard goes
   unnoticed.
-- **MUST** write a path rule that reaches outside the clone (the worktree
-  root, the scratch directory) from `~/`, never from `//Users/<name>`. The
-  file is public and shared.
+- **MUST** write a path rule under the home directory (the worktree root,
+  sibling repos) from `~/`, never from `//Users/<name>`. The file is public
+  and shared.
 
 The `deny` list matches the command string, so a flag in an unusual position
 can slip past it. It is a speed bump for the common shape; branch protection
