@@ -180,6 +180,29 @@ class PayoutTableSpec : FunSpec({
         PayoutTable.tieSplitPayout(position = 4, numTied = 1, multiplier = ONE, rules = custom) shouldBe BigDecimal.ZERO
     }
 
+    // ----- tied units -----
+
+    test("tiedUnits counts every row at a position outside a team event") {
+        PayoutTable.tiedUnits(numTied = 1, isTeamEvent = false) shouldBe 1
+        PayoutTable.tiedUnits(numTied = 2, isTeamEvent = false) shouldBe 2
+        PayoutTable.tiedUnits(numTied = 3, isTeamEvent = false) shouldBe 3
+    }
+
+    test("tiedUnits counts a team event's two partner rows as one finisher") {
+        PayoutTable.tiedUnits(numTied = 2, isTeamEvent = true) shouldBe 1
+        PayoutTable.tiedUnits(numTied = 4, isTeamEvent = true) shouldBe 2
+        PayoutTable.tiedUnits(numTied = 6, isTeamEvent = true) shouldBe 3
+    }
+
+    test("tiedUnits rounds a team event's odd row count down to whole pairs") {
+        PayoutTable.tiedUnits(numTied = 3, isTeamEvent = true) shouldBe 1
+        PayoutTable.tiedUnits(numTied = 5, isTeamEvent = true) shouldBe 2
+    }
+
+    test("tiedUnits still counts one finisher when a team event shows a single partner row") {
+        PayoutTable.tiedUnits(numTied = 1, isTeamEvent = true) shouldBe 1
+    }
+
     // ----- property-based invariants -----
 
     test("splitOwnership: shares always sum exactly to base when no floor is applied") {

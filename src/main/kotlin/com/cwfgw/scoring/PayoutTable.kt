@@ -45,7 +45,7 @@ internal object PayoutTable {
         val payouts = rules.payouts
         val numPlaces = payouts.size
         if (position > numPlaces) return BigDecimal.ZERO
-        val tiedUnits = if (isTeamEvent) maxOf(1, numTied / 2) else numTied
+        val tiedUnits = tiedUnits(numTied, isTeamEvent)
         val perTeamPayout =
             if (tiedUnits <= 1) {
                 payouts.getOrNull(position - 1)?.multiply(multiplier) ?: BigDecimal.ZERO
@@ -65,6 +65,16 @@ internal object PayoutTable {
             }
         return applyFloor(perPlayerPayout, rules.tieFloor.multiply(multiplier))
     }
+
+    /**
+     * A team event lists both partners at their pair's position, so two rows there are one finisher and a
+     * pair alone is no tie. The payout split and a report cell's tie flag both read this count: a second
+     * copy of the rule could mark a cell tied while paying it a solo finish.
+     */
+    fun tiedUnits(
+        numTied: Int,
+        isTeamEvent: Boolean,
+    ): Int = if (isTeamEvent) maxOf(1, numTied / 2) else numTied
 
     private val TEAM_EVENT_SHARE: BigDecimal = BigDecimal(2)
 
