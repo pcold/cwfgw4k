@@ -150,7 +150,7 @@ private fun tournament(
 
 @Suppress("LongParameterList")
 private class PreviewFixture(
-    initialTournaments: List<Tournament> = emptyList(),
+    private val initialTournaments: List<Tournament> = emptyList(),
     initialTeams: List<Team> = emptyList(),
     initialGolfers: List<Golfer> = emptyList(),
     initialRosters: List<RosterEntry> = emptyList(),
@@ -184,6 +184,10 @@ private class PreviewFixture(
                 tx = transactor,
             )
     }
+
+    // The context matches only the tournaments handed to it; it never reads them back out of [tournamentRepo].
+    suspend fun previewOn(date: LocalDate): Result<List<EspnLivePreview>, EspnError> =
+        service.previewByDate(service.loadLivePreviewContext(SEASON_ID, initialTournaments), date)
 }
 
 class EspnLivePreviewSpec : FunSpec({
@@ -191,7 +195,7 @@ class EspnLivePreviewSpec : FunSpec({
     test("previewByDate returns an empty list when ESPN reports no tournaments for the date") {
         val fixture = PreviewFixture(tournamentsByDate = mapOf(START_DATE to emptyList()))
 
-        val result = fixture.service.previewByDate(SEASON_ID, START_DATE).orFail()
+        val result = fixture.previewOn(START_DATE).orFail()
         result.shouldBeEmpty()
     }
 
@@ -219,7 +223,7 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val preview = fixture.service.previewByDate(SEASON_ID, START_DATE).orFail().single()
+        val preview = fixture.previewOn(START_DATE).orFail().single()
 
         preview.espnId shouldBe "401580999"
         preview.totalCompetitors shouldBe 2
@@ -245,7 +249,7 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val preview = fixture.service.previewByDate(SEASON_ID, START_DATE).orFail().single()
+        val preview = fixture.previewOn(START_DATE).orFail().single()
 
         preview.payoutMultiplier.compareTo(BigDecimal(2)) shouldBe 0
         // $18 first place × 2.0 multiplier = $36
@@ -263,7 +267,7 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val preview = fixture.service.previewByDate(SEASON_ID, START_DATE).orFail().single()
+        val preview = fixture.previewOn(START_DATE).orFail().single()
 
         preview.payoutMultiplier.compareTo(BigDecimal.ONE) shouldBe 0
     }
@@ -284,7 +288,7 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val leaderboard = fixture.service.previewByDate(SEASON_ID, START_DATE).orFail().single().leaderboard
+        val leaderboard = fixture.previewOn(START_DATE).orFail().single().leaderboard
 
         leaderboard.map { it.name } shouldContainExactly
             listOf("First Place", "Second Place", "Third Place")
@@ -294,7 +298,7 @@ class EspnLivePreviewSpec : FunSpec({
     test("previewByDate returns UpstreamUnavailable when ESPN is down") {
         val fixture = PreviewFixture(upstreamError = EspnUpstreamException(503, "Service Unavailable"))
 
-        fixture.service.previewByDate(SEASON_ID, START_DATE) shouldBe
+        fixture.previewOn(START_DATE) shouldBe
             Result.Err(EspnError.UpstreamUnavailable(503))
     }
 
@@ -309,7 +313,7 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val leaderboard = fixture.service.previewByDate(SEASON_ID, START_DATE).orFail().single().leaderboard
+        val leaderboard = fixture.previewOn(START_DATE).orFail().single().leaderboard
 
         leaderboard shouldHaveSize 1
         leaderboard.single().rostered shouldBe true

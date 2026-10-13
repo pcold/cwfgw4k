@@ -116,42 +116,11 @@ class EspnService(
         }
 
     /**
-     * Dry-run scoring of every ESPN tournament starting on [date] against
-     * the league's current rosters. Returns one [EspnLivePreview] per
-     * ESPN event — projected per-team payouts + a top-N leaderboard
-     * snapshot. Does not write to the DB.
-     *
-     * The DB tournament for an ESPN event is resolved by exact
-     * `pga_tournament_id` match; if no DB row exists we fall through to
-     * the ESPN-only defaults (multiplier 1.0). With the calendar-driven
-     * confirmSeasonSchedule flow every operator-managed tournament is
-     * linked, so the unlinked branch is essentially defensive.
-     */
-    suspend fun previewByDate(
-        seasonId: SeasonId,
-        date: LocalDate,
-    ): Result<List<EspnLivePreview>, EspnError> {
-        val events = fetchOrFail(date).getOrElse { return Result.Err(it) }
-        val state = tx.read { gatherLivePreviewState(seasonId, date) }
-        return Result.Ok(
-            buildLivePreviews(
-                events = events,
-                allGolfers = state.golfers,
-                teams = state.teams,
-                rosters = state.rosters,
-                tournaments = state.dbTournamentsForDate,
-                rules = state.rules,
-                overridesByTournament = state.overridesByTournament,
-            ),
-        )
-    }
-
-    /**
      * Single-snapshot gather sized for a [LiveOverlayService] fold.
      * Loads season-scoped state plus per-candidate override maps in one
      * `tx.read` so a multi-event overlay only pays for the gather once
-     * instead of once per fold iteration (CWF-18). Pair with the
-     * [previewByDate] overload that consumes the returned context to
+     * instead of once per fold iteration (CWF-18). Pair with
+     * [previewByDate], which consumes the returned context to
      * skip the DB on subsequent per-event preview builds — they reuse
      * the snapshot and only need to fetch from ESPN.
      */
@@ -188,54 +157,6 @@ class EspnService(
         val events = fetchOrFail(date).getOrElse { return Result.Err(it) }
         return Result.Ok(events.map { event -> buildLivePreviewForEvent(event, ctx) })
     }
-
-    /**
-     * Single-snapshot gather for [previewByDate]. Folding every per-event
-     * service round-trip — rules, golfer list, team list, per-team rosters,
-     * tournament list, per-tournament override maps — into one
-     * `REPEATABLE READ READ ONLY` transaction is the cold-start wedge fix:
-     * the prior shape opened ~3 + numTeams + numTournamentsForDate
-     * separate Hikari checkouts per call, and the live-overlay loop calls
-     * us once per non-completed event, so a 1-CPU instance with three
-     * parallel live requests was spending most of its budget on
-     * BEGIN/COMMIT round-trips before the wedge.
-     */
-    context(ctx: TransactionContext)
-    private fun gatherLivePreviewState(
-        seasonId: SeasonId,
-        date: LocalDate,
-    ): LivePreviewState {
-        val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
-        val golfers = golferRepository.findAll(activeOnly = false, search = null)
-        val teams = teamRepository.findBySeason(seasonId)
-        val rosters = teamRepository.findRostersBySeason(seasonId)
-        val dbTournamentsForDate =
-            tournamentRepository.findAll(seasonId = seasonId, status = null)
-                .filter { it.startDate == date }
-        val overridesByTournament =
-            dbTournamentsForDate.associate { tournament ->
-                tournament.id to
-                    linkRepository.listByTournament(tournament.id)
-                        .associate { it.espnCompetitorId to it.golferId }
-            }
-        return LivePreviewState(
-            rules = rules,
-            golfers = golfers,
-            teams = teams,
-            rosters = rosters,
-            dbTournamentsForDate = dbTournamentsForDate,
-            overridesByTournament = overridesByTournament,
-        )
-    }
-
-    private data class LivePreviewState(
-        val rules: SeasonRules,
-        val golfers: List<Golfer>,
-        val teams: List<Team>,
-        val rosters: List<RosterEntry>,
-        val dbTournamentsForDate: List<Tournament>,
-        val overridesByTournament: Map<TournamentId, Map<String, GolferId>>,
-    )
 
     suspend fun importByDate(date: LocalDate): Result<EspnImportBatch, EspnError> {
         val events = fetchEspnEvents(date).getOrElse { return Result.Err(it) }
@@ -529,33 +450,6 @@ private fun matchesFullName(
     "${golfer.firstName} ${golfer.lastName}".equals(fullName, ignoreCase = true) ||
         golfer.lastName.equals(fullName, ignoreCase = true)
 
-/**
- * Pure: build live previews from already-loaded DB state and parsed ESPN
- * tournaments. Extracted from [EspnService.previewByDate] so the
- * per-tournament scoring math is unit-testable without touching a DB.
- */
-@Suppress("LongParameterList")
-internal fun buildLivePreviews(
-    events: List<EspnTournament>,
-    allGolfers: List<Golfer>,
-    teams: List<Team>,
-    rosters: List<RosterEntry>,
-    tournaments: List<Tournament>,
-    rules: SeasonRules,
-    overridesByTournament: Map<TournamentId, Map<String, GolferId>> = emptyMap(),
-): List<EspnLivePreview> {
-    val context =
-        LivePreviewContext.from(
-            allGolfers = allGolfers,
-            teams = teams,
-            rosters = rosters,
-            rules = rules,
-            tournaments = tournaments,
-            overridesByTournament = overridesByTournament,
-        )
-    return events.map { event -> buildLivePreviewForEvent(event, context) }
-}
-
 internal fun buildLivePreviewForEvent(
     event: EspnTournament,
     ctx: LivePreviewContext,
@@ -642,8 +536,8 @@ private fun buildTeamPreview(
 
 /**
  * Pre-derived lookups used by every per-event preview build. Computing
- * these once per [buildLivePreviews] call avoids walking the rosters
- * list for every team and every competitor.
+ * these once per [EspnService.loadLivePreviewContext] avoids walking the
+ * rosters list for every team and every competitor.
  *
  * Internal because [LiveOverlayService] holds one across its fold so a
  * multi-event overlay only pays for the season-scoped gather once
