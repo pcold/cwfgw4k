@@ -8,58 +8,104 @@ on:
 
 permissions:
   contents: read
+  # claude-code-action's bundled github_ci MCP server (CI / check-run status the
+  # review reads) needs read access to the Actions API; without it the action
+  # logs "Skipping CI server installation" and reviews blind to CI results.
+  actions: read
   pull-requests: write
   issues: write
   id-token: write
 
 jobs:
-  # Runs on every pull_request event without an @claude mention. The
-  # prompt below carries the review instructions; track_progress makes the
-  # action post a tracking comment that delivers the result — without it a
-  # clean review (no inline findings) leaves no visible summary (CWF-32).
+  # Automation mode: a prompt is supplied, so the action runs on every
+  # pull_request event without an @claude mention.
   pr-review:
     name: Automated PR review
-    if: github.event_name == 'pull_request'
+    # Skip Dependabot PRs: they run with a restricted token that can't read the
+    # CLAUDE_CODE_OAUTH_TOKEN secret (the review would fail), and dependency
+    # bumps are reviewed by the maintainer, not the bot.
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
+    # A burst of pushes to one PR otherwise stacks multi-minute reviews that all
+    # run to completion. Cancel superseded in-flight reviews per PR: the latest
+    # push still gets a full review, but obsolete intermediate commits don't.
+    # Keyed on the PR number (not ref) so distinct PRs never cancel each other.
+    concurrency:
+      group: claude-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          # The build below stamps the graph with whatever the workspace HEAD is,
+          # and claude-code-action then checks the PR head branch out over it. The
+          # default merge-ref checkout leaves `head_matches_build` false for the
+          # whole review, which the graph tools report and the reviewer reads as a
+          # stale graph.
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: astral-sh/setup-uv@v10.2.0
+      # Fresh build every run — .code-review-graph/ is gitignored and a full
+      # build takes about two seconds locally, so per-PR caching isn't worth
+      # the complexity.
+      - name: Build the code-review-graph
+        run: uvx code-review-graph build --repo "$GITHUB_WORKSPACE"
+      # track_progress makes the action post a tracking comment that delivers the
+      # result — without it a clean review (no inline findings) leaves no visible
+      # summary.
+      # No PR that edits this file can be reviewed by it: the action refuses to
+      # run when the file differs from the default branch's copy, and skips with a
+      # green job and no comment.
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          use_sticky_comment: true
           track_progress: true
+          use_sticky_comment: true
           prompt: |
-            You are reviewing this pull request as the cwfgw4k pre-merge gate.
+            You are reviewing this pull request as the cwfgw4k CI review — a
+            second-opinion pass that runs the same contract as the local
+            `cwf-review` gate, so the two reviews stay in sync.
 
-            First read the review contract:
-            - .claude/CLAUDE.md — cross-cutting rules: hygiene, naming,
-              change scope, and "Working with AI Assistants".
-            - src/CLAUDE.md for any change under src/ (Kotlin / Ktor /
-              jOOQ rules).
-            - ui/CLAUDE.md for any change under ui/ (React / TypeScript
-              rules).
+            First read the shared review contract: .claude/review-contract.md. It
+            defines what to review (correctness, MUST / MUST NOT compliance, test
+            coverage, change scope), the severity scheme, the full
+            patterns-to-check list, and the verdict. Then read the rule sources it
+            points to, as they apply to the diff:
+            - .claude/CLAUDE.md — cross-cutting rules: hygiene, naming, change
+              scope, and "Working with AI Assistants".
+            - src/CLAUDE.md for any change under src/ (Kotlin / Ktor / jOOQ /
+              Kotest rules).
+            - ui/CLAUDE.md for any change under ui/ (React / TypeScript /
+              TanStack / Tailwind / Vitest rules).
 
-            Then review the diff (use `gh pr diff` and `gh pr view`) for:
-            - Correctness and the MUST / MUST NOT rules in those guides.
-            - Test coverage: flag a production change with no
-              corresponding test as a gap worth filling.
-            - Change scope: one logical change per PR; flag bundled
-              unrelated changes, or a CLAUDE.md update mixed with the
-              work that motivated it.
+            Then review the diff. Resolve the base SHA with `gh pr view --json
+            baseRefOid --jq .baseRefOid` and the changed files with `gh pr diff
+            --name-only`. Call `get_minimal_context_tool(task="review PR",
+            base=<base sha>)` for a risk snapshot, then
+            `detect_changes_tool(base=<base sha>, changed_files=<paths>,
+            detail_level="minimal")` for the risk-scored, priority-ordered list to
+            walk. Pull touched-symbol source with `get_review_context_tool`
+            instead of re-reading whole files, and confirm test coverage per
+            flagged symbol with `query_graph_tool(pattern="tests_for",
+            target=<symbol>)` rather than guessing from file naming. If a graph
+            tool errors (uninitialized graph), fall back to `gh pr diff` for that
+            call rather than blocking.
+
+            Apply the contract's checklist and severity bar exactly — raise the
+            findings the local cwf-review would raise, and don't invent a
+            stricter or looser bar than the contract sets.
 
             Leave an inline comment on the specific line for each concrete
-            finding. Classify every finding as DEFECT (a MUST violation),
-            NEEDS JUSTIFICATION (a SHOULD violation), or NIT. Do not
-            nitpick generated code or pure mechanical renames.
+            finding, labelled DEFECT, NEEDS JUSTIFICATION, or NIT per the
+            contract. Honor its guards: do not nitpick generated code or pure
+            mechanical renames, and read surrounding context before firing a
+            defect.
 
-            Finish with one summary comment: counts by severity and a
-            verdict of BLOCK (any defects), PROCEED WITH JUSTIFICATIONS,
-            or CLEAN. Be concise. Do not modify the branch.
+            Finish with one summary comment: a count of findings per severity,
+            and the contract's Verdict section verdict: BLOCK, PROCEED WITH
+            JUSTIFICATIONS, or CLEAN. Be concise. Do not modify the branch.
           claude_args: |
             --model claude-sonnet-4-6
-            --allowedTools "Read,Grep,Glob,Bash(gh pr diff:*),Bash(gh pr view:*),mcp__github_inline_comment__create_inline_comment"
+            --allowedTools "Read,Grep,Glob,Bash(gh pr diff:*),Bash(gh pr view:*),mcp__github_inline_comment__create_inline_comment,mcp__code-review-graph__get_minimal_context_tool,mcp__code-review-graph__detect_changes_tool,mcp__code-review-graph__get_review_context_tool,mcp__code-review-graph__query_graph_tool"
 
   # Tag mode: NO prompt. The action stays dormant until a comment contains
   # the trigger phrase, then responds conversationally. Supplying a prompt
@@ -69,7 +115,7 @@ jobs:
     if: github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: anthropics/claude-code-action@v1
