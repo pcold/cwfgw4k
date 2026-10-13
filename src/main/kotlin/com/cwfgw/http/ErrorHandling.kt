@@ -2,8 +2,12 @@ package com.cwfgw.http
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
+import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.plugins.UnsupportedMediaTypeException
 import io.ktor.server.plugins.statuspages.StatusPages
+import io.ktor.server.plugins.statuspages.StatusPagesConfig
 import io.ktor.server.request.httpMethod
 import io.ktor.server.request.path
 import io.ktor.server.response.respond
@@ -44,9 +48,9 @@ sealed class DomainError(message: String, cause: Throwable? = null) : RuntimeExc
 private val logger = LoggerFactory.getLogger("com.cwfgw.http.ErrorHandling")
 
 /**
- * Install StatusPages with per-variant DomainError mappings and a last-resort
- * 500 handler that logs the exception and returns a generic message so internal
- * detail doesn't leak to clients.
+ * Install StatusPages with per-variant DomainError mappings, Ktor's receive
+ * failures as 400 / 415, and a last-resort 500 handler that logs the exception
+ * and returns a generic message so internal detail doesn't leak to clients.
  *
  * The `exception<Throwable>` handler is the one place in this codebase that
  * catches Throwable on purpose — StatusPages is the canonical HTTP-boundary
@@ -73,6 +77,7 @@ internal fun Application.installErrorHandling() {
         exception<DomainError.Forbidden> { call, cause ->
             call.respond(HttpStatusCode.Forbidden, ErrorBody(cause.message ?: "forbidden"))
         }
+        mapReceiveFailures()
         exception<Throwable> { call, cause ->
             logger.error(
                 "Unhandled error on {} {}",
@@ -83,4 +88,21 @@ internal fun Application.installErrorHandling() {
             call.respond(HttpStatusCode.InternalServerError, ErrorBody("Internal server error"))
         }
     }
+}
+
+/**
+ * Fixed messages, because the exception's own names the target class and the parser's complaint.
+ * [UnsupportedMediaTypeException] is mapped as a leaf: `PayloadTooLargeException` shares its base. A typed
+ * receive's mismatch never arrives here — Ktor 3.2's engine answers it a bare 415, which the status handler fills.
+ */
+private fun StatusPagesConfig.mapReceiveFailures() {
+    exception<BadRequestException> { call, _ ->
+        call.respond(HttpStatusCode.BadRequest, ErrorBody("malformed or invalid request body"))
+    }
+    exception<UnsupportedMediaTypeException> { call, _ -> call.respondUnsupportedMediaType() }
+    status(HttpStatusCode.UnsupportedMediaType) { call, _ -> call.respondUnsupportedMediaType() }
+}
+
+private suspend fun ApplicationCall.respondUnsupportedMediaType() {
+    respond(HttpStatusCode.UnsupportedMediaType, ErrorBody("unsupported or missing content type"))
 }
