@@ -2,12 +2,12 @@
 
 This guide covers the React + TypeScript frontend under `ui/`. The
 language-agnostic rules (Guiding Principles, Hygiene Rules, Naming, Change
-Scope, Working with AI Assistants) live in the root `.claude/CLAUDE.md` and
-apply unchanged here.
+Scope, Working with AI Assistants) live in the root [`.claude/CLAUDE.md`](../.claude/CLAUDE.md)
+and apply unchanged here.
 
 Stack: Vite + React 19 + TypeScript with strict mode. TanStack Query for
-server state. Tailwind for styling. Vitest + Testing Library for tests. The
-same guiding principles apply — type-system-first, explicit over implicit,
+server state. Tailwind v4 for styling. Vitest + Testing Library for tests.
+The same guiding principles apply — type-system-first, explicit over implicit,
 immutable by default, readable before clever.
 
 This document uses **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and
@@ -297,7 +297,10 @@ What stays in the UI:
 - **MUST** mock at the API client boundary (`vi.mock('@/api/client', …)`).
   Don't mock `fetch` — that couples tests to the transport.
 - **MUST** wrap component tests in the shared `renderWithProviders`
-  helper so Query, Router, and contexts are set up consistently.
+  helper so Query, Router, and contexts are set up consistently. The
+  auth context is opt-in (`{ withAuthProvider: true }`) because it mounts
+  the real `AuthProvider`, whose `auth/me` bootstrap the test then has to
+  mock; a test that stubs `useAuth` outright leaves it off.
 - **MUST NOT** test internal state (`useState` values) or call hooks in
   isolation with `renderHook` unless the hook is genuinely a public
   API. Test what renders.
@@ -353,10 +356,10 @@ What stays in the UI:
 
 ## Build and Verification
 
-- **MUST** keep `cd ui && npm run typecheck` clean before committing
-  any UI change.
-- **MUST** keep `cd ui && npm test` green. The combined gate
-  `./gradlew check` runs both backend and UI tests.
+- **MUST** keep `cd ui && npm run typecheck` clean before opening a PR
+  for any UI change.
+- **MUST** keep `cd ui && npm test` green. See root
+  [`.claude/CLAUDE.md`](../.claude/CLAUDE.md) → Verification.
 - **MUST NOT** lower the `vitest` coverage thresholds in
   `vite.config.ts` to make a build pass. Add tests instead.
 
