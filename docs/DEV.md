@@ -87,6 +87,17 @@ GitHub Actions runs the same gate on every pull request and on `main` after a me
 - **Rolling back.** The quickest way is to route traffic to the previous revision: `gcloud run services update-traffic cwfgw4k --region us-west1 --to-revisions <revision>=100`. Traffic then stays pinned there, so run the same command with `--to-latest` once a fixed revision is out.
 - **One-time setup.** `deploy/setup-github-deploy.sh` creates the service account and the Workload Identity Federation the workflow authenticates with, and prints the repository variables to set.
 
+## Claude Code settings
+
+`.claude/settings.json` is checked in, so a Claude Code session in a fresh clone behaves like one in any other. The deny list applies at once; the rest applies once the folder is trusted. It sets:
+
+- **Permissions.** An allow list of the specific git, gh, npm and Gradle subcommands the workflow uses, so they run without a prompt, and a deny list for force-push, `--amend`, `reset --hard` and `clean -fd`. The path rules cover the worktree root `~/code/cwfgw4k-wt` that the `parallel-tickets` skill uses, sibling repos under `~/code` for reading, and the session scratch directory.
+- **Auto-compact at 200k tokens**, through `CLAUDE_CODE_AUTO_COMPACT_WINDOW`.
+- **The status line**, drawn by `.claude/statusline.sh` (it needs `jq`): model and effort level, directory, branch, account, context used against the compact window, and rate-limit usage.
+- **The code-review-graph MCP server**, enabled without a prompt; see the next section.
+
+Personal overrides go in `.claude/settings.local.json`, which is gitignored. A clone kept somewhere other than `~/code` needs its own path rules there.
+
 ## Code-review graph (for Claude Code sessions)
 
 The repo is wired for [code-review-graph](https://pypi.org/project/code-review-graph/), a local knowledge graph of the code that Claude Code queries for callers, callees, tests and the impact of a change. It is optional: every hook checks for the tool and does nothing when it is missing.
