@@ -66,7 +66,9 @@ export interface ChartLayout {
 }
 
 export function teamColor(index: number): string {
-  return CHART_COLORS[index % CHART_COLORS.length];
+  // Only a non-negative integer is certain to land in the palette, and that is all any caller passes.
+  // The compiler cannot see that, so the first colour stands in rather than an undefined stroke.
+  return CHART_COLORS[index % CHART_COLORS.length] ?? CHART_COLORS[0];
 }
 
 function seriesValues(teams: TeamRanking[]): number[] {

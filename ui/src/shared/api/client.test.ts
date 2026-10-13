@@ -1,7 +1,19 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { nth } from '@/shared/test/nth';
 import { ApiError, api, camelizeKeys, snakeifyKeys } from './client';
 
-type FetchMock = ReturnType<typeof vi.fn>;
+type FetchMock = Mock<typeof fetch>;
+
+function apiError(caught: unknown): ApiError {
+  if (!(caught instanceof ApiError)) throw new Error(`Expected an ApiError, but caught ${String(caught)}.`);
+  return caught;
+}
+
+function requestInit(call: Parameters<typeof fetch>): RequestInit {
+  const init = call[1];
+  if (!init) throw new Error('fetch was called with a URL and no RequestInit.');
+  return init;
+}
 
 function mockJson(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -61,7 +73,7 @@ describe('api client', () => {
   let fetchMock: FetchMock;
 
   beforeEach(() => {
-    fetchMock = vi.fn();
+    fetchMock = vi.fn<typeof fetch>();
     vi.stubGlobal('fetch', fetchMock);
   });
 
@@ -155,9 +167,9 @@ describe('api client', () => {
       seasonYear: 2026,
       rules: { payouts: [18, 12], tieFloor: 1, sideBetRounds: [5, 6], sideBetAmount: 15 },
     });
-    const call = fetchMock.mock.calls[0];
+    const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/seasons');
-    const body = JSON.parse(String((call[1] as RequestInit).body)) as Record<string, unknown>;
+    const body: unknown = JSON.parse(String(requestInit(call).body));
     expect(body).toEqual({
       league_id: 'lg-1',
       name: 'Spring',
@@ -184,8 +196,8 @@ describe('api client', () => {
       (e: unknown) => e,
     );
     expect(err).toBeInstanceOf(ApiError);
-    expect((err as ApiError).message).toBe('Bad request');
-    expect((err as ApiError).status).toBe(400);
+    expect(apiError(err).message).toBe('Bad request');
+    expect(apiError(err).status).toBe(400);
   });
 
   it('login() posts credentials and returns the User from the body', async () => {
@@ -198,9 +210,9 @@ describe('api client', () => {
       }),
     );
     const result = await api.login('admin', 'secret');
-    const call = fetchMock.mock.calls[0];
+    const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/auth/login');
-    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+    expect(JSON.parse(String(requestInit(call).body))).toEqual({
       username: 'admin',
       password: 'secret',
     });
@@ -248,24 +260,24 @@ describe('api client', () => {
       (e: unknown) => e,
     );
     expect(err).toBeInstanceOf(ApiError);
-    expect((err as ApiError).status).toBe(500);
+    expect(apiError(err).status).toBe(500);
   });
 
   it('logout() POSTs and tolerates an empty 204 response', async () => {
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
     await expect(api.logout()).resolves.toBeUndefined();
-    const call = fetchMock.mock.calls[0];
+    const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/auth/logout');
-    expect((call[1] as RequestInit).method).toBe('POST');
+    expect(requestInit(call).method).toBe('POST');
   });
 
   it('resetTournament() posts to the tournament path without a body', async () => {
     fetchMock.mockResolvedValueOnce(mockJson({ message: 'Reset complete' }));
     const result = await api.resetTournament('tn-7');
-    const call = fetchMock.mock.calls[0];
+    const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/tournaments/tn-7/reset');
-    expect((call[1] as RequestInit).method).toBe('POST');
-    expect((call[1] as RequestInit).body).toBeUndefined();
+    expect(requestInit(call).method).toBe('POST');
+    expect(requestInit(call).body).toBeUndefined();
     expect(result).toEqual({ message: 'Reset complete' });
   });
 
@@ -298,10 +310,10 @@ describe('api client', () => {
   it('updateTournament() PUTs a snake_case body and url-encodes the id', async () => {
     fetchMock.mockResolvedValueOnce(mockJson({ id: 'tn-1', payout_multiplier: 2 }));
     await api.updateTournament('tn/1', { payoutMultiplier: 2 });
-    const call = fetchMock.mock.calls[0];
+    const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/tournaments/tn%2F1');
-    expect((call[1] as RequestInit).method).toBe('PUT');
-    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({ payout_multiplier: 2 });
+    expect(requestInit(call).method).toBe('PUT');
+    expect(JSON.parse(String(requestInit(call).body))).toEqual({ payout_multiplier: 2 });
   });
 
   it('updateTournament() surfaces the server-supplied error message on PUT failure', async () => {
@@ -316,8 +328,8 @@ describe('api client', () => {
       (e: unknown) => e,
     );
     expect(err).toBeInstanceOf(ApiError);
-    expect((err as ApiError).status).toBe(409);
-    expect((err as ApiError).message).toBe('cannot edit completed');
+    expect(apiError(err).status).toBe(409);
+    expect(apiError(err).message).toBe('cannot edit completed');
   });
 
   it('previewSeasonSchedule() POSTs the date range with the season in the path', async () => {
@@ -327,10 +339,10 @@ describe('api client', () => {
       startDate: '2026-01-01',
       endDate: '2026-04-01',
     });
-    const call = fetchMock.mock.calls[0];
+    const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/admin/seasons/sn%201/upload/preview');
-    expect((call[1] as RequestInit).method).toBe('POST');
-    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+    expect(requestInit(call).method).toBe('POST');
+    expect(JSON.parse(String(requestInit(call).body))).toEqual({
       start_date: '2026-01-01',
       end_date: '2026-04-01',
     });
@@ -344,10 +356,10 @@ describe('api client', () => {
         { espnEventId: 'e-1', name: 'Sony Open', startDate: '2026-01-15', endDate: '2026-01-18' },
       ],
     });
-    const call = fetchMock.mock.calls[0];
+    const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/admin/seasons/sn%201/upload/confirm');
-    expect((call[1] as RequestInit).method).toBe('POST');
-    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({
+    expect(requestInit(call).method).toBe('POST');
+    expect(JSON.parse(String(requestInit(call).body))).toEqual({
       entries: [
         { espn_event_id: 'e-1', name: 'Sony Open', start_date: '2026-01-15', end_date: '2026-01-18' },
       ],
@@ -360,10 +372,10 @@ describe('api client', () => {
     );
     const tsv = 'team_number\tteam_name\tround\tplayer_name\townership_pct\n1\tBROWN\t1\tScottie Scheffler\t';
     await api.previewRoster(tsv);
-    const call = fetchMock.mock.calls[0];
+    const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/admin/roster/preview');
-    expect((call[1] as RequestInit).headers).toEqual({ 'Content-Type': 'text/plain' });
-    expect((call[1] as RequestInit).body).toBe(tsv);
+    expect(requestInit(call).headers).toEqual({ 'Content-Type': 'text/plain' });
+    expect(requestInit(call).body).toBe(tsv);
   });
 
   it('previewRoster() surfaces the server error on a 400 response', async () => {
@@ -377,7 +389,7 @@ describe('api client', () => {
       () => null,
       (e: unknown) => e,
     );
-    expect((err as ApiError).message).toBe('header invalid');
+    expect(apiError(err).message).toBe('header invalid');
   });
 
   it('confirmRoster() POSTs a snake_case envelope including the discriminated assignment', async () => {
@@ -398,7 +410,7 @@ describe('api client', () => {
         },
       ],
     });
-    const body = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body));
+    const body = JSON.parse(String(requestInit(nth(fetchMock.mock.calls, 0)).body));
     expect(body).toEqual({
       season_id: 'sn-1',
       teams: [
@@ -452,9 +464,9 @@ describe('api client', () => {
   it('deleteSeason() DELETEs the season path and url-encodes the id', async () => {
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
     await expect(api.deleteSeason('sn 1')).resolves.toBeUndefined();
-    const call = fetchMock.mock.calls[0];
+    const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/seasons/sn%201');
-    expect((call[1] as RequestInit).method).toBe('DELETE');
+    expect(requestInit(call).method).toBe('DELETE');
   });
 
   it('deleteSeason() surfaces a server-supplied error message', async () => {
@@ -468,8 +480,8 @@ describe('api client', () => {
       () => null,
       (e: unknown) => e,
     );
-    expect((err as ApiError).status).toBe(409);
-    expect((err as ApiError).message).toBe('season has tournaments');
+    expect(apiError(err).status).toBe(409);
+    expect(apiError(err).message).toBe('season has tournaments');
   });
 
   it('deleteSeason() falls back to the status line when the error body is not JSON', async () => {
@@ -478,7 +490,7 @@ describe('api client', () => {
       () => null,
       (e: unknown) => e,
     );
-    expect((err as ApiError).message).toBe('500 Boom');
+    expect(apiError(err).message).toBe('500 Boom');
   });
 
   it('golfers() requests inactive too and adds the search filter when present', async () => {
@@ -528,10 +540,10 @@ describe('api client', () => {
       espnCompetitorId: 'abc',
       golferId: 'g-1',
     });
-    const call = fetchMock.mock.calls[0];
+    const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/admin/tournaments/tn-1/player-overrides');
-    expect((call[1] as RequestInit).method).toBe('POST');
-    const body = JSON.parse(String((call[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(requestInit(call).method).toBe('POST');
+    const body: unknown = JSON.parse(String(requestInit(call).body));
     expect(body).toEqual({ espn_competitor_id: 'abc', golfer_id: 'g-1' });
     expect(result).toEqual({
       tournamentId: 'tn-1',
@@ -543,9 +555,9 @@ describe('api client', () => {
   it('deleteTournamentPlayerOverride() DELETEs and url-encodes both ids', async () => {
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
     await api.deleteTournamentPlayerOverride('tn 1', 'team:1:1');
-    const call = fetchMock.mock.calls[0];
+    const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/admin/tournaments/tn%201/player-overrides/team%3A1%3A1');
-    expect((call[1] as RequestInit).method).toBe('DELETE');
+    expect(requestInit(call).method).toBe('DELETE');
   });
 
   it('createGolfer() POSTs a snake_case body to /api/v1/golfers', async () => {
@@ -562,10 +574,10 @@ describe('api client', () => {
       }),
     );
     const result = await api.createGolfer({ firstName: 'Alex', lastName: 'Fitzpatrick' });
-    const call = fetchMock.mock.calls[0];
+    const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/golfers');
-    expect((call[1] as RequestInit).method).toBe('POST');
-    const body = JSON.parse(String((call[1] as RequestInit).body)) as Record<string, unknown>;
+    expect(requestInit(call).method).toBe('POST');
+    const body: unknown = JSON.parse(String(requestInit(call).body));
     expect(body).toEqual({ first_name: 'Alex', last_name: 'Fitzpatrick' });
     expect(result.firstName).toBe('Alex');
     expect(result.pgaPlayerId).toBeNull();

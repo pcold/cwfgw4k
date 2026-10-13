@@ -5,6 +5,7 @@ import type { QueryKey } from '@tanstack/react-query';
 import UploadRostersSection, { buildConfirmTeams } from './UploadRostersSection';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type { RosterPreview } from '@/shared/api/types';
+import { nth } from '@/shared/test/nth';
 import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 
@@ -123,7 +124,7 @@ describe('buildConfirmTeams', () => {
       '1|3|Brand New': '',
     };
     const teams = buildConfirmTeams(preview, selections);
-    expect(teams[0].picks[1]).toMatchObject({
+    expect(nth(teams, 0).picks[1]).toMatchObject({
       assignment: { type: 'new', firstName: 'Cam', lastName: 'Smith' },
     });
   });
@@ -145,7 +146,7 @@ describe('buildConfirmTeams', () => {
       ],
     };
     const teams = buildConfirmTeams(preview, { '1|1|Madonna': '' });
-    expect(teams[0].picks[0].assignment).toEqual({
+    expect(nth(nth(teams, 0).picks, 0).assignment).toEqual({
       type: 'new',
       firstName: 'Madonna',
       lastName: '',
@@ -213,7 +214,7 @@ describe('UploadRostersSection', () => {
     await waitFor(() => {
       expect(confirmRosterMock).toHaveBeenCalledTimes(1);
     });
-    const args = confirmRosterMock.mock.calls[0][0];
+    const [args] = nth(confirmRosterMock.mock.calls, 0);
     expect(args.seasonId).toBe('sn-1');
     expect(args.teams[0].picks[1]).toMatchObject({
       round: 2,
@@ -222,7 +223,8 @@ describe('UploadRostersSection', () => {
     });
 
     expect(await screen.findByText('Rosters Created')).toBeInTheDocument();
-    const resultRegion = screen.getByText('Rosters Created').parentElement!;
+    const resultRegion = screen.getByText('Rosters Created').parentElement;
+    if (!resultRegion) throw new Error('the Rosters Created heading has no region around it');
     expect(within(resultRegion).getByText(/BROWN/)).toBeInTheDocument();
   });
 

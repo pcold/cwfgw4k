@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { nth } from '@/shared/test/nth';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import PlayerRankingsPage from './PlayerRankingsPage';
 import type {
@@ -122,14 +123,14 @@ describe('PlayerRankingsPage', () => {
     const dataRows = rows.slice(1);
     expect(dataRows).toHaveLength(2);
 
-    const scheffler = within(dataRows[0]).getAllByRole('cell');
+    const scheffler = within(nth(dataRows, 0)).getAllByRole('cell');
     expect(scheffler[1]).toHaveTextContent('Scottie Scheffler');
     expect(scheffler[2]).toHaveTextContent('2');
     expect(scheffler[3]).toHaveTextContent('$30');
     expect(scheffler[4]).toHaveTextContent('Aces');
     expect(scheffler[5]).toHaveTextContent('1');
 
-    const phil = within(dataRows[1]).getAllByRole('cell');
+    const phil = within(nth(dataRows, 1)).getAllByRole('cell');
     expect(phil[1]).toHaveTextContent('P. Mickelson');
     expect(phil[4]).toHaveTextContent('undrafted');
   });
@@ -153,7 +154,7 @@ describe('PlayerRankingsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<PlayerRankingsPage />);
     await screen.findByText('Scottie Scheffler');
-    expect(within(screen.getAllByRole('row')[1]).getAllByRole('cell')[3]).toHaveTextContent(
+    expect(within(nth(screen.getAllByRole('row'), 1)).getAllByRole('cell')[3]).toHaveTextContent(
       '$30.00',
     );
 

@@ -12,7 +12,7 @@ export function tournamentLabel(t: Tournament): string {
  * fallback (an "All Tournaments" rollup for report pages,
  * `defaultScoreboardTournament` for the scoreboard).
  */
-export function earliestUnfinalized(tournaments: Tournament[]): string | null {
+export function earliestUnfinalized(tournaments: readonly Tournament[]): string | null {
   return tournaments.find((t) => t.status !== 'completed')?.id ?? null;
 }
 
@@ -21,7 +21,6 @@ export function earliestUnfinalized(tournaments: Tournament[]): string | null {
  * finalized the scoreboard still wants a single tournament selected (no
  * "All" rollup), and the most useful one is the most recent.
  */
-export function defaultScoreboardTournament(tournaments: Tournament[]): string | null {
-  if (tournaments.length === 0) return null;
-  return earliestUnfinalized(tournaments) ?? tournaments[tournaments.length - 1].id;
+export function defaultScoreboardTournament(tournaments: readonly Tournament[]): string | null {
+  return earliestUnfinalized(tournaments) ?? tournaments.at(-1)?.id ?? null;
 }

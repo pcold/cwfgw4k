@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RostersView from './RostersView';
 import type { RosterTeam } from '@/shared/api/types';
+import { nth } from '@/shared/test/nth';
 
 function pick(round: number, name: string, pct = 100, id = `g-${round}-${name}`) {
   return { round, golferName: name, ownershipPct: pct, golferId: id };
@@ -77,7 +78,7 @@ describe('RostersView', () => {
     render(<RostersView teams={[aces]} sideBetRounds={[]} />);
     const rows = screen.getAllByRole('row').slice(1);
     // Aces has picks in rounds 1,2,3,5 — so rounds 4,6,7,8 should show the em dash
-    const round4 = rows[3];
+    const round4 = nth(rows, 3);
     expect(within(round4).getByText('—')).toBeInTheDocument();
   });
 
@@ -90,7 +91,8 @@ describe('RostersView', () => {
 
   it('surfaces shared players across teams', () => {
     render(<RostersView teams={[aces, birdies]} sideBetRounds={[]} />);
-    const callout = screen.getByText(/Shared Players:/i).parentElement!;
+    const callout = screen.getByText(/Shared Players:/i).parentElement;
+    if (!callout) throw new Error('the Shared Players label has no callout around it');
     expect(within(callout).getByText('Rory McIlroy')).toBeInTheDocument();
     expect(within(callout).getByText(/Aces/)).toBeInTheDocument();
     expect(within(callout).getByText(/Birdies/)).toBeInTheDocument();

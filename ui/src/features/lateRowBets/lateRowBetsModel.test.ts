@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ReportSideBetTeamEntry, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
+import { nth } from '@/shared/test/nth';
 import {
   lateRowBetRounds,
   lateRowBetTeamTotals,
@@ -81,9 +82,9 @@ describe('lateRowBetRounds', () => {
 
     const rounds = lateRowBetRounds(report);
     expect(rounds).toHaveLength(1);
-    expect(rounds[0].round).toBe(2);
-    expect(rounds[0].entries.map((e) => e.teamName)).toEqual(['Aces', 'Eagles', 'Birdies']);
-    expect(rounds[0].entries[0]).toMatchObject({
+    expect(nth(rounds, 0).round).toBe(2);
+    expect(nth(rounds, 0).entries.map((e) => e.teamName)).toEqual(['Aces', 'Eagles', 'Birdies']);
+    expect(nth(rounds, 0).entries[0]).toMatchObject({
       teamId: 't-1',
       golferName: 'Golfer',
       cumulativeEarnings: 200,
@@ -98,7 +99,8 @@ describe('lateRowBetRounds', () => {
       sideBetRules: { amountPerTeam: 20, rounds: [3] },
       sideBetDetail: [{ round: 3, teams: [entry({ teamId: 't-1', teamName: 'Aces' })] }],
     };
-    expect(lateRowBetRounds(report)[0].entries[0].teamName).toBe('Aces');
+    const { entries } = nth(lateRowBetRounds(report), 0);
+    expect(nth(entries, 0).teamName).toBe('Aces');
   });
 });
 

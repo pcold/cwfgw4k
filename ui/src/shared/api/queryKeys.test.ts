@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { QueryClient, type QueryKey } from '@tanstack/react-query';
+import { nth } from '@/shared/test/nth';
 import {
   invalidateAfterScoreChange,
   invalidateAfterScoreOwnerChange,
@@ -109,7 +110,7 @@ it('holds a chain entry for every key an entity builds', () => {
 });
 
 it('gives every entity a root of its own, so no invalidation can reach another entity', () => {
-  const roots = Object.values(KEY_CHAINS).map((chain) => chain[0][0]);
+  const roots = Object.values(KEY_CHAINS).map((chain) => nth(chain, 0)[0]);
 
   expect(new Set(roots).size).toBe(roots.length);
 });

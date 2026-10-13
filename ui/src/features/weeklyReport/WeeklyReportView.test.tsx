@@ -10,6 +10,7 @@ import type {
   SideBetOutcome,
   WeeklyReport,
 } from '@/shared/api/types';
+import { nth } from '@/shared/test/nth';
 
 function row(round: number, overrides: Partial<ReportCell> = {}): ReportCell {
   return {
@@ -230,7 +231,7 @@ describe('WeeklyReportView', () => {
     render(<WeeklyReportView report={withMissing} />);
     const rows = screen.getAllByRole('row');
     // rows[0] = team header, rows[1..8] = rounds 1..8
-    const round3 = rows[3];
+    const round3 = nth(rows, 3);
     expect(within(round3).getByText('—')).toBeInTheDocument();
   });
 
