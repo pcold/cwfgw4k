@@ -37,8 +37,8 @@ private suspend fun RoutingContext.getCalendar(service: EspnService) {
         try {
             service.fetchCalendar()
         } catch (e: EspnUpstreamException) {
-            log.warn(e) { "ESPN calendar fetch failed with status ${e.status}" }
-            throw DomainError.BadGateway("ESPN returned ${e.status}", cause = e)
+            log.warn(e) { "ESPN calendar fetch failed: ${e.message}" }
+            throw DomainError.BadGateway(e.failure.summary, cause = e)
         }
     call.respond(entries)
 }
@@ -69,7 +69,7 @@ private fun parseLocalDate(raw: String): LocalDate? =
 
 private fun EspnError.toDomainError(): DomainError =
     when (this) {
-        is EspnError.UpstreamUnavailable -> DomainError.BadGateway("ESPN returned $status")
+        is EspnError.UpstreamUnavailable -> DomainError.BadGateway(failure.summary)
         is EspnError.TournamentNotFound -> DomainError.NotFound("tournament ${tournamentId.value} not found")
         is EspnError.TournamentNotLinked ->
             DomainError.Conflict("tournament ${tournamentId.value} has no pga_tournament_id; link it before importing")

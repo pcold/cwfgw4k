@@ -35,7 +35,7 @@ sealed class DomainError(message: String, cause: Throwable? = null) : RuntimeExc
 
     class Conflict(message: String, cause: Throwable? = null) : DomainError(message, cause)
 
-    /** An upstream service we depend on (e.g. ESPN) returned an error. Maps to 502 Bad Gateway. */
+    /** An upstream service we depend on (e.g. ESPN) returned an error or did not respond. Maps to 502 Bad Gateway. */
     class BadGateway(message: String, cause: Throwable? = null) : DomainError(message, cause)
 
     /** Authentication required or failed — bad credentials, missing session. Maps to 401 Unauthorized. */

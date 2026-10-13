@@ -2,6 +2,7 @@ package com.cwfgw.tournaments
 
 import com.cwfgw.espn.EspnTournament
 import com.cwfgw.espn.EspnUpstreamException
+import com.cwfgw.espn.EspnUpstreamFailure
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
@@ -230,7 +231,7 @@ class TournamentOpsServiceSpec : FunSpec({
             )
 
         fixture.service.finalizeTournament(MASTERS_ID) shouldBe
-            Result.Err(TournamentOpsError.UpstreamUnavailable(503))
+            Result.Err(TournamentOpsError.UpstreamUnavailable(EspnUpstreamFailure.BadStatus(503)))
     }
 
     // ----- resetTournament -----

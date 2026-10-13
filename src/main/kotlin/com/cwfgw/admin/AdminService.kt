@@ -71,8 +71,8 @@ class AdminService(
             try {
                 espnService.fetchCalendar()
             } catch (e: EspnUpstreamException) {
-                log.warn(e) { "ESPN calendar fetch failed during admin season preview (status ${e.status})" }
-                return Result.Err(AdminError.UpstreamUnavailable(e.status))
+                log.warn(e) { "ESPN calendar fetch failed during admin season preview: ${e.message}" }
+                return Result.Err(AdminError.UpstreamUnavailable(e.failure))
             }
 
         val skipped = mutableListOf<SkippedEntry>()

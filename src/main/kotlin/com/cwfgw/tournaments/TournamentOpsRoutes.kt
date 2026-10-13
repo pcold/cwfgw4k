@@ -44,7 +44,7 @@ private fun TournamentOpsError.toDomainError(): DomainError =
     when (this) {
         is TournamentOpsError.TournamentNotFound -> DomainError.NotFound("tournament ${id.value} not found")
         is TournamentOpsError.OutOfOrder -> DomainError.Conflict(outOfOrderMessage())
-        is TournamentOpsError.UpstreamUnavailable -> DomainError.BadGateway("ESPN returned $status")
+        is TournamentOpsError.UpstreamUnavailable -> DomainError.BadGateway(failure.summary)
         is TournamentOpsError.EventNotInScoreboard ->
             DomainError.NotFound("ESPN scoreboard does not contain event $espnEventId for the linked date")
     }

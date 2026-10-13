@@ -154,7 +154,8 @@ class EspnServiceSpec : FunSpec({
         val fixture =
             Fixture(upstreamError = EspnUpstreamException(status = 503, message = "Service Unavailable"))
 
-        fixture.service.importByDate(START_DATE) shouldBe Result.Err(EspnError.UpstreamUnavailable(503))
+        fixture.service.importByDate(START_DATE) shouldBe
+            Result.Err(EspnError.UpstreamUnavailable(EspnUpstreamFailure.BadStatus(503)))
     }
 
     test("importByDate skips in-progress events and reports unlinked completed events without failing") {

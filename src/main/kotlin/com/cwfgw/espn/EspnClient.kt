@@ -6,6 +6,7 @@ import com.github.benmanes.caffeine.cache.Caffeine
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CoroutineScope
@@ -16,6 +17,8 @@ import kotlinx.coroutines.future.future
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.io.IOException
+import java.nio.channels.UnresolvedAddressException
 import java.time.Duration
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -35,8 +38,8 @@ private val log = KotlinLogging.logger {}
 interface EspnClient {
     /**
      * Fetch tournaments (completed + in-progress) for a specific date.
-     * Throws [EspnUpstreamException] on any non-200 response; callers decide
-     * how to translate that at the HTTP boundary.
+     * Throws [EspnUpstreamException] on a non-200 response and on a request
+     * that got none; callers decide how to translate that at the HTTP boundary.
      */
     suspend fun fetchScoreboard(date: LocalDate): List<EspnTournament>
 
@@ -202,37 +205,55 @@ private class HttpEspnClient(
 ) : EspnClient {
     override suspend fun fetchScoreboard(date: LocalDate): List<EspnTournament> {
         val dateStr = date.format(DateTimeFormatter.BASIC_ISO_DATE)
-        val response = httpClient.get("$baseUrl?dates=$dateStr")
-        if (response.status != HttpStatusCode.OK) {
-            throw EspnUpstreamException(
-                status = response.status.value,
-                message = "ESPN returned ${response.status.value} for $dateStr",
-            )
-        }
-        return parseScoreboard(response.bodyAsText())
+        return parseScoreboard(fetchBody(url = "$baseUrl?dates=$dateStr", subject = dateStr))
     }
 
-    override suspend fun fetchCalendar(): List<EspnCalendarEntry> {
-        val response = httpClient.get(baseUrl)
-        if (response.status != HttpStatusCode.OK) {
-            throw EspnUpstreamException(
-                status = response.status.value,
-                message = "ESPN returned ${response.status.value} for the calendar request",
-            )
+    override suspend fun fetchCalendar(): List<EspnCalendarEntry> =
+        parseCalendar(fetchBody(url = baseUrl, subject = "the calendar request"))
+
+    private suspend fun fetchBody(
+        url: String,
+        subject: String,
+    ): String =
+        try {
+            httpClient.get(url).bodyIfOk(subject)
+        } catch (e: IOException) {
+            throw noResponse(subject, e)
+        } catch (e: UnresolvedAddressException) {
+            // A DNS failure is an IllegalArgumentException, not an IOException, so it needs its own arm.
+            throw noResponse(subject, e)
         }
-        return parseCalendar(response.bodyAsText())
-    }
 }
 
+private suspend fun HttpResponse.bodyIfOk(subject: String): String {
+    if (status != HttpStatusCode.OK) {
+        throw EspnUpstreamException(status = status.value, message = "ESPN returned ${status.value} for $subject")
+    }
+    return bodyAsText()
+}
+
+private fun noResponse(
+    subject: String,
+    cause: Exception,
+): EspnUpstreamException =
+    EspnUpstreamException(
+        failure = EspnUpstreamFailure.NoResponse,
+        message = "ESPN did not respond for $subject: $cause",
+        cause = cause,
+    )
+
 /**
- * Non-200 response from ESPN. Kept in the client layer so callers can
- * distinguish upstream failures from our own bugs without catching
- * `Throwable`.
+ * Kept in the client layer so callers can distinguish upstream failures from our own bugs without
+ * catching `Throwable`. A transport failure has to arrive as this type too: it is the only one the cache
+ * logs and evicts synchronously, and the only one a caller falls back on.
  */
 class EspnUpstreamException(
-    val status: Int,
+    val failure: EspnUpstreamFailure,
     message: String,
-) : RuntimeException(message)
+    cause: Throwable? = null,
+) : RuntimeException(message, cause) {
+    constructor(status: Int, message: String) : this(EspnUpstreamFailure.BadStatus(status), message)
+}
 
 /**
  * Parse a raw ESPN scoreboard JSON payload into our domain tournaments.

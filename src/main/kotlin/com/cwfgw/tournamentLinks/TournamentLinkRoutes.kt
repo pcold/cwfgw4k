@@ -77,7 +77,7 @@ private fun TournamentLinkError.toDomainError(): DomainError =
 
 private fun EspnError.toDomainError(): DomainError =
     when (this) {
-        is EspnError.UpstreamUnavailable -> DomainError.BadGateway("ESPN returned $status")
+        is EspnError.UpstreamUnavailable -> DomainError.BadGateway(failure.summary)
         is EspnError.TournamentNotFound -> DomainError.NotFound("tournament ${tournamentId.value} not found")
         is EspnError.TournamentNotLinked ->
             DomainError.Conflict("tournament ${tournamentId.value} has no pga_tournament_id; link it before listing")
