@@ -41,6 +41,8 @@ Status code mappings:
 | `Conflict`                  | 409    |
 | `BadGateway`                | 502    |
 | `Unauthorized`              | 401    |
+| Malformed or empty body     | 400    |
+| Wrong or no `Content-Type`  | 415    |
 | Anything else (uncaught)    | 500    |
 
 Service-layer typed errors (e.g. `TournamentOpsError`, `DraftError`) are
