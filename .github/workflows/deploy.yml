@@ -28,17 +28,6 @@ on:
 permissions:
   contents: read
 
-# One deploy at a time, and one that has started always finishes. A newer run
-# queued behind it replaces an older one still queued, so only the latest
-# commit waits.
-#
-# This orders deploys; it is not what holds one for approval. The `production`
-# environment does that, per run, so a run that takes another's place in the
-# queue still waits for its own approval.
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
-
 jobs:
   deploy:
     name: deploy to Cloud Run
@@ -49,6 +38,18 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
+    # One deploy at a time, and one that has started always finishes. A newer run
+    # queued behind it replaces an older one still queued.
+    #
+    # On the job, not the workflow: a run the `if` above skips must never queue,
+    # where it would take the place of a real deploy waiting there. Check on
+    # main also completes cancelled or failed, and each starts this workflow.
+    #
+    # This orders deploys; it is not what holds one for approval. The
+    # `production` environment does that, per run.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     # Where a required reviewer holds a deploy for approval; see
     # deploy/setup-github-deploy.sh. With no reviewer set the deploy runs
     # straight through.
