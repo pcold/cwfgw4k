@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import { queryKeys } from '@/shared/api/queryKeys';
+import { invalidateAfterScoreOwnerChange, queryKeys } from '@/shared/api/queryKeys';
 import { QueryState } from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
 import type {
@@ -137,10 +137,7 @@ function CompetitorRow({
   // that can carry the overlay is affected, not only the scoreboard's own report.
   function invalidateAffected() {
     void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentCompetitors.byTournament(tournamentId) });
-    void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentReport.bySeason(seasonId) });
-    void queryClient.invalidateQueries({ queryKey: queryKeys.report.bySeason(seasonId) });
-    void queryClient.invalidateQueries({ queryKey: queryKeys.rankings.bySeason(seasonId) });
-    void queryClient.invalidateQueries({ queryKey: queryKeys.playerRankings.bySeason(seasonId) });
+    invalidateAfterScoreOwnerChange(queryClient, { type: 'season', seasonId });
   }
 
   const saveMutation = useMutation({
