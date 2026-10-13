@@ -1,19 +1,50 @@
 package com.cwfgw.http
 
+import com.cwfgw.testing.apiTest
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.MultiPartData
+import io.ktor.http.content.OutgoingContent
+import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.install
+import io.ktor.server.plugins.PayloadTooLargeException
+import io.ktor.server.request.receive
+import io.ktor.server.response.respond
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ServerContentNegotiation
 import io.ktor.server.routing.get as routingGet
+import io.ktor.server.routing.post as routingPost
+
+private const val MALFORMED_BODY = "malformed or invalid request body"
+private const val UNSUPPORTED_CONTENT_TYPE = "unsupported or missing content type"
+private const val LOGIN_PATH = "/api/v1/auth/login"
+
+@Serializable
+private data class NameHolder(val name: String)
+
+private class NoSerializer
+
+/**
+ * `setBody(String)` labels itself `text/plain`, so a request carrying no `Content-Type` at all is
+ * only reachable through content that declares no type of its own.
+ */
+private class UnlabeledBody(private val text: String) : OutgoingContent.ByteArrayContent() {
+    override fun bytes(): ByteArray = text.toByteArray()
+}
 
 private fun errorHandlingTestApp(block: suspend (HttpClient) -> Unit) =
     testApplication {
@@ -25,6 +56,21 @@ private fun errorHandlingTestApp(block: suspend (HttpClient) -> Unit) =
                 routingGet("/throw/validation") { throw DomainError.Validation("bad input") }
                 routingGet("/throw/conflict") { throw DomainError.Conflict("already exists") }
                 routingGet("/throw/unmapped") { error("boom") }
+                routingGet("/throw/payload-too-large") { throw PayloadTooLargeException(sizeLimit = 1_024) }
+                routingPost("/receive/plain") {
+                    call.receive<NameHolder>()
+                    call.respond(HttpStatusCode.OK)
+                }
+                routingPost("/receive/no-serializer") {
+                    call.receive<NoSerializer>()
+                    call.respond(HttpStatusCode.OK)
+                }
+                // The only receive here that raises UnsupportedMediaTypeException rather than
+                // CannotTransformContentToTypeException.
+                routingPost("/receive/multipart") {
+                    call.receive<MultiPartData>()
+                    call.respond(HttpStatusCode.OK)
+                }
             }
         }
         val client =
@@ -33,6 +79,14 @@ private fun errorHandlingTestApp(block: suspend (HttpClient) -> Unit) =
             }
         block(client)
     }
+
+private suspend fun HttpClient.postJson(
+    path: String,
+    body: String,
+) = post(path) {
+    contentType(ContentType.Application.Json)
+    setBody(body)
+}
 
 class ErrorHandlingSpec : FunSpec({
 
@@ -69,6 +123,122 @@ class ErrorHandlingSpec : FunSpec({
 
             response.status shouldBe HttpStatusCode.InternalServerError
             response.body<ErrorBody>().error shouldBe "Internal server error"
+        }
+    }
+
+    test("a truncated JSON body is a 400 with a fixed message") {
+        errorHandlingTestApp { client ->
+            val response = client.postJson("/receive/plain", """{"name":""")
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.body<ErrorBody>().error shouldBe MALFORMED_BODY
+        }
+    }
+
+    test("a mistyped field is a 400 whose body carries the fixed message and nothing from the parser") {
+        errorHandlingTestApp { client ->
+            val response = client.postJson("/receive/plain", """{"name":5}""")
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.bodyAsText() shouldBe """{"error":"malformed or invalid request body"}"""
+        }
+    }
+
+    test("an empty JSON body is the same 400, though Ktor reports it as a content-type mismatch") {
+        errorHandlingTestApp { client ->
+            val response = client.postJson("/receive/plain", "")
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.body<ErrorBody>().error shouldBe MALFORMED_BODY
+        }
+    }
+
+    test("a receive into a type with no serializer is a 500, because the fault is the server's and not the body's") {
+        errorHandlingTestApp { client ->
+            val response = client.postJson("/receive/no-serializer", """{"name":"ada"}""")
+
+            response.status shouldBe HttpStatusCode.InternalServerError
+            response.body<ErrorBody>().error shouldBe "Internal server error"
+        }
+    }
+
+    test("a content type no converter matches is a 415 with a fixed message") {
+        errorHandlingTestApp { client ->
+            val response =
+                client.post("/receive/plain") {
+                    contentType(ContentType.Text.Plain)
+                    setBody("""{"name":"ada"}""")
+                }
+
+            response.status shouldBe HttpStatusCode.UnsupportedMediaType
+            response.body<ErrorBody>().error shouldBe UNSUPPORTED_CONTENT_TYPE
+        }
+    }
+
+    test("an absent Content-Type header is the same 415, because it matches no converter either") {
+        errorHandlingTestApp { client ->
+            val response = client.post("/receive/plain") { setBody(UnlabeledBody("""{"name":"ada"}""")) }
+
+            response.status shouldBe HttpStatusCode.UnsupportedMediaType
+            response.body<ErrorBody>().error shouldBe UNSUPPORTED_CONTENT_TYPE
+        }
+    }
+
+    test("a multipart receive with no Content-Type is the same 415, though it fails with a different exception") {
+        errorHandlingTestApp { client ->
+            val response = client.post("/receive/multipart") { setBody(UnlabeledBody("x")) }
+
+            response.status shouldBe HttpStatusCode.UnsupportedMediaType
+            response.body<ErrorBody>().error shouldBe UNSUPPORTED_CONTENT_TYPE
+        }
+    }
+
+    test("a payload over the size limit is not answered 415, though it shares a base type with the failures that are") {
+        errorHandlingTestApp { client ->
+            val response = client.get("/throw/payload-too-large")
+
+            response.status shouldNotBe HttpStatusCode.UnsupportedMediaType
+        }
+    }
+
+    test("POST /api/v1/auth/login with a truncated JSON body is a 400, not a 500") {
+        apiTest { client ->
+            val response = client.postJson(LOGIN_PATH, """{"username":""")
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.body<ErrorBody>().error shouldBe MALFORMED_BODY
+        }
+    }
+
+    test("POST /api/v1/auth/login with an empty JSON body is a 400, not a 415") {
+        apiTest { client ->
+            val response = client.postJson(LOGIN_PATH, "")
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.body<ErrorBody>().error shouldBe MALFORMED_BODY
+        }
+    }
+
+    test("POST /api/v1/auth/login with a text/plain body is a 415 with the fixed message") {
+        apiTest { client ->
+            val response =
+                client.post(LOGIN_PATH) {
+                    contentType(ContentType.Text.Plain)
+                    setBody("""{"username":"ada","password":"lovelace"}""")
+                }
+
+            response.status shouldBe HttpStatusCode.UnsupportedMediaType
+            response.body<ErrorBody>().error shouldBe UNSUPPORTED_CONTENT_TYPE
+        }
+    }
+
+    test("POST /api/v1/auth/login with no Content-Type is a 415 with the fixed message") {
+        apiTest { client ->
+            val response =
+                client.post(LOGIN_PATH) { setBody(UnlabeledBody("""{"username":"ada","password":"lovelace"}""")) }
+
+            response.status shouldBe HttpStatusCode.UnsupportedMediaType
+            response.body<ErrorBody>().error shouldBe UNSUPPORTED_CONTENT_TYPE
         }
     }
 })
