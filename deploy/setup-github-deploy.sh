@@ -40,6 +40,10 @@ echo "==> Granting it what a deploy needs, and nothing else"
 # change who may invoke the service. The service's public binding is set once,
 # by hand, and outlives revisions.
 #
+# No Secret Manager or Cloud SQL role either. A deploy only names the secrets
+# and the instance; reading the one and connecting to the other is done by the
+# revision, as the runtime service account, which deploy/setup.sh grants.
+#
 # Retried because a freshly created service account is not immediately visible
 # to the IAM API, which rejects the binding with "does not exist" rather than
 # with anything that reads as a race.
