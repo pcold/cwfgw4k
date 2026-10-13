@@ -3,6 +3,7 @@ package com.cwfgw.http
 import com.cwfgw.testing.apiTest
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -35,6 +36,8 @@ private const val LOGIN_PATH = "/api/v1/auth/login"
 @Serializable
 private data class NameHolder(val name: String)
 
+private class NoSerializer
+
 /**
  * `setBody(String)` labels itself `text/plain`, so a request carrying no `Content-Type` at all is
  * only reachable through content that declares no type of its own.
@@ -56,6 +59,10 @@ private fun errorHandlingTestApp(block: suspend (HttpClient) -> Unit) =
                 routingGet("/throw/payload-too-large") { throw PayloadTooLargeException(sizeLimit = 1_024) }
                 routingPost("/receive/plain") {
                     call.receive<NameHolder>()
+                    call.respond(HttpStatusCode.OK)
+                }
+                routingPost("/receive/no-serializer") {
+                    call.receive<NoSerializer>()
                     call.respond(HttpStatusCode.OK)
                 }
                 // The only receive here that raises UnsupportedMediaTypeException rather than
@@ -137,6 +144,24 @@ class ErrorHandlingSpec : FunSpec({
         }
     }
 
+    test("an empty JSON body is the same 400, though Ktor reports it as a content-type mismatch") {
+        errorHandlingTestApp { client ->
+            val response = client.postJson("/receive/plain", "")
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.body<ErrorBody>().error shouldBe MALFORMED_BODY
+        }
+    }
+
+    test("a receive into a type with no serializer is a 500, because the fault is the server's and not the body's") {
+        errorHandlingTestApp { client ->
+            val response = client.postJson("/receive/no-serializer", """{"name":"ada"}""")
+
+            response.status shouldBe HttpStatusCode.InternalServerError
+            response.body<ErrorBody>().error shouldBe "Internal server error"
+        }
+    }
+
     test("a content type no converter matches is a 415 with a fixed message") {
         errorHandlingTestApp { client ->
             val response =
@@ -172,8 +197,7 @@ class ErrorHandlingSpec : FunSpec({
         errorHandlingTestApp { client ->
             val response = client.get("/throw/payload-too-large")
 
-            response.status shouldBe HttpStatusCode.InternalServerError
-            response.body<ErrorBody>().error shouldBe "Internal server error"
+            response.status shouldNotBe HttpStatusCode.UnsupportedMediaType
         }
     }
 
@@ -186,7 +210,16 @@ class ErrorHandlingSpec : FunSpec({
         }
     }
 
-    test("POST /api/v1/auth/login with a text/plain body is a 415, not a 500") {
+    test("POST /api/v1/auth/login with an empty JSON body is a 400, not a 415") {
+        apiTest { client ->
+            val response = client.postJson(LOGIN_PATH, "")
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.body<ErrorBody>().error shouldBe MALFORMED_BODY
+        }
+    }
+
+    test("POST /api/v1/auth/login with a text/plain body is a 415 with the fixed message") {
         apiTest { client ->
             val response =
                 client.post(LOGIN_PATH) {
@@ -199,7 +232,7 @@ class ErrorHandlingSpec : FunSpec({
         }
     }
 
-    test("POST /api/v1/auth/login with no Content-Type is a 415, not a 500") {
+    test("POST /api/v1/auth/login with no Content-Type is a 415 with the fixed message") {
         apiTest { client ->
             val response =
                 client.post(LOGIN_PATH) { setBody(UnlabeledBody("""{"username":"ada","password":"lovelace"}""")) }
