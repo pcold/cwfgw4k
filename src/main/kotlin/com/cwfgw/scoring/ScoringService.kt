@@ -22,7 +22,6 @@ import java.math.BigDecimal
  * transaction on another connection, splitting the gate check, gather and write that [calculateScores]
  * and [refreshStandings] run in one. See `src/CLAUDE.md` → Cross-repo flows.
  */
-@Suppress("LongParameterList")
 class ScoringService(
     private val repository: ScoringRepository,
     private val seasonRepository: SeasonRepository,
