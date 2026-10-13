@@ -107,8 +107,15 @@ private fun StatusPagesConfig.mapReceiveFailures() {
  * body, so it is neither echoed nor logged.
  */
 private suspend fun ApplicationCall.respondToBadRequest(cause: BadRequestException) {
-    if (cause.cause is ContentConvertException) respondMalformedBody() else respondUnhandled(cause)
+    if (cause.isRejectedBody()) respondMalformedBody() else respondUnhandled(cause)
 }
+
+/**
+ * Walks the chain because coroutine stack-trace recovery, on wherever assertions are and so in every test,
+ * hands StatusPages a copy whose cause is the original exception.
+ */
+private fun BadRequestException.isRejectedBody(): Boolean =
+    generateSequence<Throwable>(this) { it.cause }.any { it is ContentConvertException }
 
 /**
  * The JSON converter returns null for an empty body, so Ktor reports one as a content-type mismatch: a bare 415
