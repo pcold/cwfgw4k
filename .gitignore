@@ -23,3 +23,6 @@ out/
 # and inject each entry as an environment variable.
 dev.properties
 scheduled_tasks.lock
+
+# Added by code-review-graph
+.code-review-graph/
