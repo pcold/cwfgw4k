@@ -356,6 +356,26 @@ class EspnLivePreviewSpec : FunSpec({
 
         leaderboard shouldHaveSize 1
         leaderboard.single().rostered shouldBe true
-        leaderboard.single().teamName shouldBe "BROWN"
+        leaderboard.single().teamNames shouldContainExactly listOf("BROWN")
+    }
+
+    test("previewForTournament names every team rostering a golfer split across two") {
+        val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
+        val event = espnTournament(competitors = listOf(espnCompetitor("p1", "Scottie Scheffler", 1, -10)))
+        val fixture =
+            PreviewFixture(
+                initialTeams = listOf(team(TEAM_A_ID, "BROWN"), team(TEAM_B_ID, "WOMBLE")),
+                initialGolfers = listOf(scottie),
+                initialRosters =
+                    listOf(
+                        rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1),
+                        rosterEntry(TEAM_B_ID, SCOTTIE_ID, draftRound = 1),
+                    ),
+                tournamentsByDate = mapOf(START_DATE to listOf(event)),
+            )
+
+        val leaderboard = fixture.previewFor(tournament()).orFail().leaderboard
+
+        leaderboard.map { it.teamNames } shouldContainExactly listOf(listOf("BROWN", "WOMBLE"))
     }
 })

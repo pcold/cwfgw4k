@@ -652,19 +652,20 @@ private fun buildLivePreviewLeaderboard(
     teams: List<Team>,
     rosters: List<RosterEntry>,
 ): List<PreviewLeaderboardEntry> {
-    val rosterByGolfer = rosters.associateBy { it.golferId }
-    val teamsById = teams.associateBy { it.id }
+    val nameByTeam = teams.associate { it.id to it.teamName }
+    val teamNamesByGolfer =
+        rosters
+            .groupBy { it.golferId }
+            .mapValues { (_, entries) -> entries.mapNotNull { nameByTeam[it.teamId] } }
     return matchedCompetitors
         .sortedBy { (competitor, _) -> competitor.position }
         .map { (competitor, golfer) ->
-            val rosterEntry = golfer?.let { rosterByGolfer[it.id] }
             PreviewLeaderboardEntry(
                 name = competitor.name,
                 position = competitor.position,
                 scoreToPar = competitor.scoreToPar,
                 thru = competitor.roundScores.takeIf { it.isNotEmpty() }?.let { "${it.size} rounds" },
-                rostered = rosterEntry != null,
-                teamName = rosterEntry?.let { teamsById[it.teamId]?.teamName },
+                teamNames = golfer?.let { teamNamesByGolfer[it.id] }.orEmpty(),
                 pairKey = competitor.pairKey,
                 roundScores = competitor.roundScores,
                 totalStrokes = competitor.totalStrokes,

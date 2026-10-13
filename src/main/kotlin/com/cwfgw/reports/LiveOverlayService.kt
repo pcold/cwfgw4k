@@ -306,7 +306,9 @@ internal fun mergeLiveData(
     val finalTeams = phase1.map { it.toFinalTeam(numTeams, totalPot, liveSideBetTotals) }
     val updatedUndrafted =
         if (additive) report.undraftedTopTens else buildUndraftedFromLeaderboard(liveData, rules)
-    val liveLeaderboard = if (additive) report.liveLeaderboard else buildLiveLeaderboard(liveData)
+    // ESPN can match the event before it lists a field; the persisted rows are then the only leaderboard.
+    val liveLeaderboard =
+        if (additive) report.liveLeaderboard else buildLiveLeaderboard(liveData).ifEmpty { report.liveLeaderboard }
 
     return report.copy(
         teams = finalTeams,
@@ -502,16 +504,14 @@ private fun overlayTeamCells(
 internal fun buildLiveLeaderboard(liveData: EspnLivePreview): List<LiveLeaderboardEntry> =
     liveData.leaderboard
         .sortedBy { it.position }
-        .map { entry ->
+        .inCompetitorSlots(PreviewLeaderboardEntry::pairKey)
+        .map { slot ->
             LiveLeaderboardEntry(
-                name = entry.name,
-                position = entry.position,
-                scoreToPar = entry.scoreToPar,
-                rostered = entry.rostered,
-                teamName = entry.teamName,
-                pairKey = entry.pairKey,
-                roundScores = entry.roundScores,
-                totalStrokes = entry.totalStrokes,
+                position = slot.lead.position,
+                scoreToPar = slot.lead.scoreToPar,
+                players = slot.members.map { LeaderboardPlayer(name = it.name, teamNames = it.teamNames) },
+                roundScores = slot.lead.roundScores,
+                totalStrokes = slot.lead.totalStrokes,
             )
         }
 

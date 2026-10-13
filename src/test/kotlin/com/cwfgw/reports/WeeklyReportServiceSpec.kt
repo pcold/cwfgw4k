@@ -1161,11 +1161,32 @@ class WeeklyReportServiceSpec : FunSpec({
         val report = fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail()
 
         val leader = report.liveLeaderboard.single { it.position == 1 }
-        leader.name shouldBe "Scottie Scheffler"
+        leader.players shouldContainExactly listOf(LeaderboardPlayer("Scottie Scheffler", listOf("BROWN")))
         leader.roundScores shouldContainExactly listOf(68, 70, 69, 69)
         leader.totalStrokes shouldBe 276
         leader.rostered shouldBe true
-        leader.teamName shouldBe "BROWN"
+    }
+
+    test("getReport lists every team rostering a split golfer on the persisted leaderboard") {
+        val masters = tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+        val shared = golferFixture("d01", "Scottie", "Scheffler")
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(masters),
+                initialTeams = listOf(TEAM_A, TEAM_B),
+                initialGolfers = listOf(shared),
+                initialRosters =
+                    listOf(
+                        rosterEntry(TEAM_A.id, shared.id, draftRound = 1),
+                        rosterEntry(TEAM_B.id, shared.id, draftRound = 1),
+                    ),
+                initialResults = listOf(resultFixture(MASTERS_ID, shared.id, position = 1)),
+            )
+
+        val leaderboard = fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail().liveLeaderboard
+
+        leaderboard.map { it.players } shouldContainExactly
+            listOf(listOf(LeaderboardPlayer("Scottie Scheffler", listOf(TEAM_A.teamName, TEAM_B.teamName))))
     }
 
     test("getReport with live=true on a completed tournament skips the ESPN call entirely") {
@@ -1327,7 +1348,8 @@ class WeeklyReportServiceSpec : FunSpec({
 
         val report = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true).orFail()
 
-        report.liveLeaderboard.map { it.name } shouldContainExactly listOf("Leader", "Runner-up")
+        report.liveLeaderboard.map { row -> row.players.map { it.name } } shouldContainExactly
+            listOf(listOf("Leader"), listOf("Runner-up"))
         report.liveLeaderboard.forEach { it.rostered shouldBe false }
     }
 

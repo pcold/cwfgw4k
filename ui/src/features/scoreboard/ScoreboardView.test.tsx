@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import ScoreboardView from './ScoreboardView';
 import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
-import { makeWonLostTotals } from '@/shared/test/fixtures';
+import { makeLeaderboardEntry, makeWonLostTotals } from '@/shared/test/fixtures';
 
 function row(overrides: Partial<ReportCell> = {}): ReportCell {
   return {
@@ -42,6 +42,25 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
   };
 }
 
+const tiger = makeLeaderboardEntry({
+  position: 3,
+  scoreToPar: -8,
+  players: [{ name: 'Tiger', teamNames: ['Aces'] }],
+});
+const rory = makeLeaderboardEntry({
+  position: 5,
+  scoreToPar: -6,
+  players: [{ name: 'Rory', teamNames: ['Birdies'] }],
+});
+const phil = makeLeaderboardEntry({ position: 5, players: [{ name: 'Phil', teamNames: [] }] });
+const mcIlroyAndLowry = makeLeaderboardEntry({
+  scoreToPar: -28,
+  players: [
+    { name: 'McIlroy', teamNames: [] },
+    { name: 'Lowry', teamNames: ['PAYRAY'] },
+  ],
+});
+
 function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
   return {
     scope: 'tournament',
@@ -63,6 +82,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
+    weeklyTotals: makeWonLostTotals(),
     ...overrides,
   };
 }
@@ -130,27 +150,44 @@ describe('ScoreboardView', () => {
     expect(names).toEqual(['Birdies', 'Aces', 'Cuts']);
   });
 
-  it('renders the leaderboard with rostered golfers', () => {
+  it('renders the leaderboard the server sent, rostered and undrafted alike', () => {
+    render(<ScoreboardView report={report({ liveLeaderboard: [tiger, phil] })} />);
+    expect(screen.getByRole('heading', { name: /Leaderboard/i })).toBeInTheDocument();
+    const leaderboard = nth(screen.getAllByRole('table'), 1);
+    const rows = within(leaderboard).getAllByRole('row').slice(1);
+    expect(rows.map((r) => within(r).getAllByRole('cell').slice(0, 4).map((c) => c.textContent))).toEqual([
+      ['3', 'Tiger', 'Aces', '-8'],
+      ['5', 'Phil', 'undrafted', 'E'],
+    ]);
+  });
+
+  it('keeps the server\'s leaderboard order rather than sorting by position', () => {
+    render(<ScoreboardView report={report({ liveLeaderboard: [phil, tiger] })} />);
+    const leaderboard = nth(screen.getAllByRole('table'), 1);
+    const rows = within(leaderboard).getAllByRole('row').slice(1);
+    expect(rows.map((r) => within(r).getAllByRole('cell')[1]?.textContent)).toEqual(['Phil', 'Tiger']);
+  });
+
+  it('prints round scores and the stroke total, and a dash for a round not yet played', () => {
+    const leader = makeLeaderboardEntry({ scoreToPar: null, roundScores: [64, 68], totalStrokes: 132 });
+    render(<ScoreboardView report={report({ liveLeaderboard: [leader] })} />);
+    const leaderboard = nth(screen.getAllByRole('table'), 1);
+    const cells = within(nth(within(leaderboard).getAllByRole('row'), 1)).getAllByRole('cell');
+    expect(cells.slice(3).map((c) => c.textContent)).toEqual(['—', '64', '68', '—', '—', '132']);
+  });
+
+  it('shows the won, lost and net the server totalled, not a sum of the team rows', () => {
     render(
       <ScoreboardView
         report={report({
-          teams: [
-            team({
-              teamName: 'Aces',
-              cells: [row({ golferName: 'Tiger', positionStr: 'T3', finish: { position: 3, tied: true }, scoreToPar: -8 })],
-            }),
-          ],
-          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 0, pairKey: null }],
+          teams: [team({ weeklyTotal: 25 })],
+          weeklyTotals: { won: 55, lost: -66, net: -11 },
         })}
       />,
     );
-    expect(screen.getByRole('heading', { name: /Leaderboard/i })).toBeInTheDocument();
-    // Tiger from the rostered team and Phil from undrafted both appear
-    const tables = screen.getAllByRole('table');
-    const leaderboard = nth(tables, 1);
-    expect(within(leaderboard).getByText('Tiger')).toBeInTheDocument();
-    expect(within(leaderboard).getByText('Phil')).toBeInTheDocument();
-    expect(within(leaderboard).getByText('undrafted')).toBeInTheDocument();
+    expect(screen.getByText('Won').parentElement).toHaveTextContent('$55');
+    expect(screen.getByText('Lost').parentElement).toHaveTextContent('-$66');
+    expect(screen.getByText('Net').parentElement).toHaveTextContent('-$11');
   });
 
   it('makes rostered golfer names clickable when onGolferClick is provided', async () => {
@@ -162,8 +199,7 @@ describe('ScoreboardView', () => {
           teams: [
             team({
               teamName: 'Aces',
-              // finish null so the leaderboard ignores this row and we only see the name once
-              cells: [row({ golferId: 'g-42', golferName: 'TeamGolfer', positionStr: null, finish: null })],
+              cells: [row({ golferId: 'g-42', golferName: 'TeamGolfer' })],
             }),
           ],
         })}
@@ -180,7 +216,7 @@ describe('ScoreboardView', () => {
         report={report({
           teams: [
             team({
-              cells: [row({ golferId: 'g-1', golferName: 'PlainGolfer', positionStr: null, finish: null })],
+              cells: [row({ golferId: 'g-1', golferName: 'PlainGolfer' })],
             }),
           ],
         })}
@@ -190,50 +226,14 @@ describe('ScoreboardView', () => {
     expect(screen.getByText('PlainGolfer')).toBeInTheDocument();
   });
 
-  it('hides the leaderboard section when nothing qualifies', () => {
-    render(
-      <ScoreboardView
-        report={report({
-          teams: [
-            team({
-              cells: [row({ golferName: null, positionStr: null, finish: null, earnings: 0 })],
-            }),
-          ],
-        })}
-      />,
-    );
+  it('hides the leaderboard section when the server sent no rows, whatever the cells hold', () => {
+    render(<ScoreboardView report={report({ liveLeaderboard: [] })} />);
     expect(screen.queryByRole('heading', { name: /Leaderboard/i })).not.toBeInTheDocument();
   });
 
   it('filters the leaderboard to rostered golfers on the selected team', async () => {
     const user = userEvent.setup();
-    render(
-      <ScoreboardView
-        report={report({
-          teams: [
-            team({
-              teamId: 't-1',
-              teamName: 'Aces',
-              cells: [row({ golferName: 'Tiger', positionStr: 'T3', finish: { position: 3, tied: true }, scoreToPar: -8 })],
-            }),
-            team({
-              teamId: 't-2',
-              teamName: 'Birdies',
-              cells: [
-                row({
-                  golferId: 'g-2',
-                  golferName: 'Rory',
-                  positionStr: 'T5',
-                  finish: { position: 5, tied: true },
-                  scoreToPar: -6,
-                }),
-              ],
-            }),
-          ],
-          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 0, pairKey: null }],
-        })}
-      />,
-    );
+    render(<ScoreboardView report={report({ liveLeaderboard: [tiger, rory, phil] })} />);
 
     await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'Aces');
 
@@ -245,19 +245,7 @@ describe('ScoreboardView', () => {
 
   it('offers Undrafted on the leaderboard filter when undrafted golfers are present', async () => {
     const user = userEvent.setup();
-    render(
-      <ScoreboardView
-        report={report({
-          teams: [
-            team({
-              teamName: 'Aces',
-              cells: [row({ golferName: 'Tiger', positionStr: 'T3', finish: { position: 3, tied: true }, scoreToPar: -8 })],
-            }),
-          ],
-          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 0, pairKey: null }],
-        })}
-      />,
-    );
+    render(<ScoreboardView report={report({ liveLeaderboard: [tiger, phil] })} />);
 
     await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'Undrafted');
 
@@ -265,6 +253,12 @@ describe('ScoreboardView', () => {
     const rows = within(leaderboard).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
     expect(within(nth(rows, 0)).getByText('Phil')).toBeInTheDocument();
+  });
+
+  it('offers no Undrafted option when every leaderboard player is rostered', () => {
+    render(<ScoreboardView report={report({ liveLeaderboard: [tiger, rory] })} />);
+    const options = within(screen.getByLabelText(/Filter leaderboard by team/i)).getAllByRole('option');
+    expect(options.map((o) => o.textContent)).toEqual(['Team', 'Aces', 'Birdies']);
   });
 
   it('omits the T prefix on a solo position in the Golfers in Top 10 column', () => {
@@ -327,44 +321,20 @@ describe('ScoreboardView', () => {
     expect(golferCell.textContent ?? '').toMatch(/T\s*4/);
   });
 
-  it('shows a placeholder row and keeps the leaderboard filter reachable when it yields zero rows', async () => {
+  it('shows the whole leaderboard again when the filter is set back to Team', async () => {
     const user = userEvent.setup();
-    render(
-      <ScoreboardView
-        report={report({
-          teams: [
-            team({
-              teamName: 'Aces',
-              cells: [row({ golferName: 'Tiger', positionStr: 'T3', finish: { position: 3, tied: true }, scoreToPar: -8 })],
-            }),
-          ],
-          // No undrafted golfers — Undrafted option is not offered.
-        })}
-      />,
-    );
+    render(<ScoreboardView report={report({ liveLeaderboard: [tiger, rory] })} />);
 
-    // Narrow to Aces first, then switch back to Team to show a populated table again.
     const select = screen.getByLabelText(/Filter leaderboard by team/i);
     await user.selectOptions(select, 'Aces');
     await user.selectOptions(select, 'Team');
 
     const leaderboard = nth(screen.getAllByRole('table'), 1);
-    expect(within(leaderboard).getByText('Tiger')).toBeInTheDocument();
+    expect(within(leaderboard).getAllByRole('row').slice(1)).toHaveLength(2);
   });
 
-  it('renders pair entries as one row with slash-joined names and teams', () => {
-    render(
-      <ScoreboardView
-        report={report({
-          teams: [],
-          undraftedTopTens: [],
-          liveLeaderboard: [
-            { name: 'McIlroy', position: 1, scoreToPar: -28, rostered: false, teamName: null, pairKey: 'team:99', roundScores: [], totalStrokes: null },
-            { name: 'Lowry', position: 1, scoreToPar: -28, rostered: true, teamName: 'PAYRAY', pairKey: 'team:99', roundScores: [], totalStrokes: null },
-          ],
-        })}
-      />,
-    );
+  it('renders a pair as one row with slash-joined names and teams', () => {
+    render(<ScoreboardView report={report({ liveLeaderboard: [mcIlroyAndLowry] })} />);
 
     const leaderboard = nth(screen.getAllByRole('table'), 1);
     const rows = within(leaderboard).getAllByRole('row').slice(1);
@@ -375,23 +345,27 @@ describe('ScoreboardView', () => {
 
   it('filter by a single team name matches pair rows where that team rostered one partner', async () => {
     const user = userEvent.setup();
-    render(
-      <ScoreboardView
-        report={report({
-          teams: [],
-          liveLeaderboard: [
-            { name: 'McIlroy', position: 1, scoreToPar: -28, rostered: true, teamName: 'ROSEH2O', pairKey: 'team:1', roundScores: [], totalStrokes: null },
-            { name: 'Lowry', position: 1, scoreToPar: -28, rostered: true, teamName: 'PAYRAY', pairKey: 'team:1', roundScores: [], totalStrokes: null },
-            { name: 'Scheffler', position: 3, scoreToPar: -25, rostered: false, teamName: null, pairKey: null, roundScores: [], totalStrokes: null },
-          ],
-        })}
-      />,
-    );
+    render(<ScoreboardView report={report({ liveLeaderboard: [mcIlroyAndLowry, phil] })} />);
 
     await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'PAYRAY');
     const leaderboard = nth(screen.getAllByRole('table'), 1);
     const rows = within(leaderboard).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
     expect(within(nth(rows, 0)).getByText('McIlroy / Lowry')).toBeInTheDocument();
+  });
+
+  it('tints a rostered row and its team label, and leaves an undrafted pair plain', () => {
+    const undraftedPair = makeLeaderboardEntry({
+      position: 2,
+      players: [
+        { name: 'Novak', teamNames: [] },
+        { name: 'Griffin', teamNames: [] },
+      ],
+    });
+    render(<ScoreboardView report={report({ liveLeaderboard: [tiger, undraftedPair] })} />);
+
+    expect(screen.getByText('Tiger').closest('tr')).toHaveClass('bg-green-900/10');
+    expect(screen.getByText('undrafted / undrafted')).toHaveClass('text-gray-600');
+    expect(screen.getByText('undrafted / undrafted').closest('tr')).not.toHaveClass('bg-green-900/10');
   });
 });

@@ -552,35 +552,36 @@ internal fun assembleWeeklyReport(inputs: WeeklyReportInputs): WeeklyReport {
 private fun teamNamesByGolfer(
     rosters: List<RosterEntry>,
     teams: List<Team>,
-): Map<GolferId, String> {
+): Map<GolferId, List<String>> {
     val nameByTeam = teams.associate { it.id to it.teamName }
     return rosters
         .groupBy { it.golferId }
-        .mapValues { (_, entries) -> entries.mapNotNull { nameByTeam[it.teamId] }.joinToString(" / ") }
+        .mapValues { (_, entries) -> entries.mapNotNull { nameByTeam[it.teamId] } }
 }
 
 internal fun buildPersistedLeaderboard(
     results: List<TournamentResult>,
     golferMap: Map<GolferId, Golfer>,
-    teamsByGolfer: Map<GolferId, String>,
+    teamsByGolfer: Map<GolferId, List<String>>,
 ): List<LiveLeaderboardEntry> =
     results
         .filter { it.position != null }
         .sortedBy { it.position }
-        .map { result ->
-            val golfer = golferMap[result.golferId]
-            val name = golfer?.let { "${it.firstName} ${it.lastName}" } ?: "?"
-            val rounds = listOfNotNull(result.round1, result.round2, result.round3, result.round4)
-            val teamName = teamsByGolfer[result.golferId]
+        .inCompetitorSlots(TournamentResult::pairKey)
+        .map { slot ->
+            val lead = slot.lead
             LiveLeaderboardEntry(
-                name = name,
-                position = result.position ?: 0,
-                scoreToPar = result.scoreToPar,
-                rostered = teamName != null,
-                teamName = teamName,
-                pairKey = result.pairKey,
-                roundScores = rounds,
-                totalStrokes = result.totalStrokes,
+                position = lead.position ?: 0,
+                scoreToPar = lead.scoreToPar,
+                players =
+                    slot.members.map { result ->
+                        LeaderboardPlayer(
+                            name = golferMap[result.golferId]?.let { "${it.firstName} ${it.lastName}" } ?: "?",
+                            teamNames = teamsByGolfer[result.golferId].orEmpty(),
+                        )
+                    },
+                roundScores = listOfNotNull(lead.round1, lead.round2, lead.round3, lead.round4),
+                totalStrokes = lead.totalStrokes,
             )
         }
 

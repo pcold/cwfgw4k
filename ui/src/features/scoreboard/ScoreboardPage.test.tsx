@@ -117,6 +117,7 @@ function buildReport(name: string, tournamentId: string): WeeklyReport {
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
+    weeklyTotals: makeWonLostTotals(),
   };
 }
 

@@ -5,6 +5,8 @@ import com.cwfgw.db.Transactor
 import com.cwfgw.espn.CachingEspnClient
 import com.cwfgw.espn.EspnCalendarEntry
 import com.cwfgw.espn.EspnClient
+import com.cwfgw.espn.EspnCompetitor
+import com.cwfgw.espn.EspnStatus
 import com.cwfgw.espn.EspnTournament
 import com.cwfgw.espn.EspnUpstreamException
 import com.cwfgw.espn.FakeEspnClient
@@ -45,6 +47,7 @@ import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -345,6 +348,65 @@ private fun wireFinish(
         put("tied", tied)
     }
 
+private fun wirePlayer(
+    name: String,
+    vararg teamNames: String,
+): JsonObject =
+    buildJsonObject {
+        put("name", name)
+        putJsonArray("team_names") { teamNames.forEach { add(it) } }
+    }
+
+private fun wireLeaderboard(body: String): List<JsonObject> =
+    wireReport(body).getValue("live_leaderboard").jsonArray.map { it.jsonObject }
+
+private val SCHEFFLER = golferRow(SCOTTIE_ID, "Scottie", "Scheffler")
+
+private val MASTERS_GOLFERS =
+    listOf(SCHEFFLER, golferRow(RORY_ID, "Rory", "McIlroy"), golferRow(XANDER_ID, "Xander", "Schauffele"))
+
+// The Masters still in play, with [results] already persisted and ESPN reporting [field] for it.
+private fun mastersInPlay(
+    rosters: List<RosterEntry>,
+    results: List<TournamentResult>,
+    field: List<EspnCompetitor>,
+): ApiFixture.() -> Unit {
+    val masters =
+        tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
+            .copy(status = TournamentStatus.InProgress, pgaTournamentId = "espn-masters")
+    val liveMasters =
+        EspnTournament(
+            espnId = "espn-masters",
+            name = "The Masters",
+            completed = false,
+            competitors = field,
+            isTeamEvent = false,
+        )
+    return reportFixture(
+        initialTournaments = listOf(masters),
+        initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+        initialGolfers = MASTERS_GOLFERS,
+        initialRosters = rosters,
+        initialResults = results,
+        espn = FakeEspnClient(tournamentsByDate = mapOf(masters.startDate to listOf(liveMasters))),
+    )
+}
+
+private fun espnLeader(golfer: Golfer): EspnCompetitor =
+    EspnCompetitor(
+        espnId = golfer.pgaPlayerId.orEmpty(),
+        name = "${golfer.firstName} ${golfer.lastName}",
+        order = 1,
+        scoreStr = "-5",
+        scoreToPar = -5,
+        totalStrokes = null,
+        roundScores = emptyList(),
+        position = 1,
+        status = EspnStatus.Active,
+        isTeamPartner = false,
+        pairKey = null,
+    )
+
 class ReportRoutesSpec : FunSpec({
 
     // ----- GET /api/v1/seasons/{id}/report/{tournamentId} -----
@@ -457,7 +519,7 @@ class ReportRoutesSpec : FunSpec({
         "GET /api/v1/seasons/{id}/report/{tid}" to "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}",
         "GET /api/v1/seasons/{id}/report" to "/api/v1/seasons/${SEASON_ID.value}/report",
     ).forEach { (route, url) ->
-        test("$route puts the cash and side-bet totals on the wire") {
+        test("$route puts the cash, side-bet and weekly totals on the wire") {
             val brownOutEarnsWomble =
                 reportFixture(
                     initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
@@ -473,6 +535,7 @@ class ReportRoutesSpec : FunSpec({
                 // WOMBLE pays BROWN the 18 its pick earned and the default 15 side bet on round 5.
                 wireTotals(body, "cash_totals") shouldBe mapOf("won" to 33.0, "lost" to -33.0, "net" to 0.0)
                 wireTotals(body, "side_bet_totals") shouldBe mapOf("won" to 15.0, "lost" to -15.0, "net" to 0.0)
+                wireTotals(body, "weekly_totals") shouldBe mapOf("won" to 18.0, "lost" to -18.0, "net" to 0.0)
             }
         }
     }
@@ -582,6 +645,102 @@ class ReportRoutesSpec : FunSpec({
                 listOf(evenPar)
             report.getValue("live_leaderboard").jsonArray.map { it.jsonObject["score_to_par"] } shouldContainExactly
                 listOf(JsonPrimitive(-5), evenPar, evenPar)
+        }
+    }
+
+    // ----- leaderboard rows: built on the server, pairs collapsed -----
+
+    test("GET /api/v1/seasons/{id}/report/{tid} lists each leaderboard row's players with the teams rostering them") {
+        val sharedThird =
+            reportFixture(
+                initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers = MASTERS_GOLFERS,
+                initialRosters =
+                    listOf(
+                        rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5),
+                        rosterRow(TEAM_B, RORY_ID, draftRound = 5),
+                    ),
+                initialResults =
+                    listOf(
+                        resultRow(MASTERS_ID, SCOTTIE_ID, position = 1),
+                        resultRow(MASTERS_ID, RORY_ID, position = 3),
+                        resultRow(MASTERS_ID, XANDER_ID, position = 3),
+                    ),
+            )
+        apiTest(sharedThird) { client ->
+            val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}").bodyAsText()
+            val rows = wireLeaderboard(body)
+
+            // The two thirds arrive in the repository's order, which this does not pin.
+            rows.map { it["players"]?.jsonArray?.single() to it["rostered"] } shouldContainExactlyInAnyOrder
+                listOf(
+                    wirePlayer("Scottie Scheffler", "BROWN") to JsonPrimitive(true),
+                    wirePlayer("Rory McIlroy", "WOMBLE") to JsonPrimitive(true),
+                    wirePlayer("Xander Schauffele") to JsonPrimitive(false),
+                )
+            rows.map { it.keys }.distinct() shouldContainExactly
+                listOf(setOf("position", "score_to_par", "players", "round_scores", "total_strokes", "rostered"))
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/report/{tid} sends a team event's partners as one leaderboard row") {
+        val partnersThenASolo =
+            listOf(
+                resultRow(MASTERS_ID, SCOTTIE_ID, position = 1).copy(pairKey = "team:1"),
+                resultRow(MASTERS_ID, RORY_ID, position = 1).copy(pairKey = "team:1"),
+                resultRow(MASTERS_ID, XANDER_ID, position = 3),
+            )
+        val configure =
+            reportFixture(
+                initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers = MASTERS_GOLFERS,
+                initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, 5)),
+                initialResults = partnersThenASolo,
+            )
+        apiTest(configure) { client ->
+            val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}").bodyAsText()
+            val rows = wireLeaderboard(body)
+
+            rows.map { it["players"]?.jsonArray?.toList() } shouldContainExactly
+                listOf(
+                    listOf(wirePlayer("Scottie Scheffler", "BROWN"), wirePlayer("Rory McIlroy")),
+                    listOf(wirePlayer("Xander Schauffele")),
+                )
+            rows.map { it["rostered"] } shouldContainExactly listOf(JsonPrimitive(true), JsonPrimitive(false))
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/report/{tid}?live=true names every team rostering a live leaderboard player") {
+        val configure =
+            mastersInPlay(
+                rosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, 5), rosterRow(TEAM_B, SCOTTIE_ID, 5)),
+                results = emptyList(),
+                field = listOf(espnLeader(SCHEFFLER)),
+            )
+        apiTest(configure) { client ->
+            val url = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
+            val rows = wireLeaderboard(client.get(url).bodyAsText())
+
+            rows.map { it["players"]?.jsonArray?.toList() } shouldContainExactly
+                listOf(listOf(wirePlayer("Scottie Scheffler", "BROWN", "WOMBLE")))
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/report/{tid}?live=true keeps the persisted leaderboard when ESPN's field is empty") {
+        val configure =
+            mastersInPlay(
+                rosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, 5)),
+                results = listOf(resultRow(MASTERS_ID, SCOTTIE_ID, position = 1)),
+                field = emptyList(),
+            )
+        apiTest(configure) { client ->
+            val url = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
+            val body = client.get(url).bodyAsText()
+
+            wireReport(body)["live"] shouldBe JsonPrimitive(true)
+            wireLeaderboard(body).map { it["position"] } shouldContainExactly listOf(JsonPrimitive(1))
         }
     }
 

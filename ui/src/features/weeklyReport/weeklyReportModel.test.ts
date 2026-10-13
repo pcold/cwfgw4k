@@ -40,6 +40,7 @@ function reportScoped(scope: ReportScope, status: string | null = null): WeeklyR
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
+    weeklyTotals: makeWonLostTotals(),
   };
 }
 

@@ -88,15 +88,23 @@ export interface StandingsEntry {
   totalCash: number;
 }
 
-export interface LiveLeaderboardEntry {
+/** `teamNames` lists every team rostering the player, since a golfer can be split across teams; empty is undrafted. */
+export interface LeaderboardPlayer {
   name: string;
+  teamNames: string[];
+}
+
+/**
+ * One competitor slot, not one golfer: a team event's partners arrive as a
+ * single row of two `players`. Arrives sorted by position; never re-sort it.
+ */
+export interface LiveLeaderboardEntry {
   position: number;
   scoreToPar: number | null;
-  rostered: boolean;
-  teamName: string | null;
-  pairKey: string | null;
+  players: LeaderboardPlayer[];
   roundScores: number[];
   totalStrokes: number | null;
+  rostered: boolean;
 }
 
 /**
@@ -127,6 +135,8 @@ export interface WeeklyReport {
   cashTotals: WonLostTotals;
   /** Over every team's `sideBets`. @see WeeklyReport.cashTotals */
   sideBetTotals: WonLostTotals;
+  /** Over every team's `weeklyTotal`. @see WeeklyReport.cashTotals */
+  weeklyTotals: WonLostTotals;
 }
 
 export interface TeamRanking {

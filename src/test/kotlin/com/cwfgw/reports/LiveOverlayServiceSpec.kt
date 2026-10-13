@@ -82,18 +82,17 @@ private fun previewGolfer(
 private fun leaderboardEntry(
     name: String,
     position: Int,
-    rostered: Boolean = false,
-    teamName: String? = null,
+    teamNames: List<String> = emptyList(),
     scoreToPar: Int? = -10,
+    pairKey: String? = null,
 ): PreviewLeaderboardEntry =
     PreviewLeaderboardEntry(
         name = name,
         position = position,
         scoreToPar = scoreToPar,
         thru = null,
-        rostered = rostered,
-        teamName = teamName,
-        pairKey = null,
+        teamNames = teamNames,
+        pairKey = pairKey,
     )
 
 private fun cell(
@@ -583,6 +582,19 @@ class LiveOverlayServiceSpec : FunSpec({
         overlaid.sideBetTotals.lost.compareTo(BigDecimal(-20)) shouldBe 0
     }
 
+    test("mergeLiveData totals the overlaid weekly +/- where the base report's weekly totals were all zero") {
+        val base = brownLeadingRoundEight()
+
+        val overlaid = mergeLiveData(base, listOf(roryWinsLive()), DEFAULT_RULES, additive = false)
+
+        base.weeklyTotals.won.signum() shouldBe 0
+        base.weeklyTotals.lost.signum() shouldBe 0
+        overlaid.teams.map { it.weeklyTotal.toInt() } shouldContainExactly listOf(-18, 18)
+        overlaid.weeklyTotals.won.compareTo(BigDecimal(18)) shouldBe 0
+        overlaid.weeklyTotals.lost.compareTo(BigDecimal(-18)) shouldBe 0
+        overlaid.weeklyTotals.net.signum() shouldBe 0
+    }
+
     // ----- buildLiveLeaderboard / buildUndraftedFromLeaderboard -----
 
     test("buildLiveLeaderboard sorts by position and passes scoreToPar through as a number") {
@@ -597,8 +609,57 @@ class LiveOverlayServiceSpec : FunSpec({
             )
 
         val rendered = buildLiveLeaderboard(live)
-        rendered.map { it.name } shouldContainExactly listOf("Leader", "Second", "Third")
+        rendered.map { row -> row.players.map { it.name } } shouldContainExactly
+            listOf(listOf("Leader"), listOf("Second"), listOf("Third"))
         rendered.map { it.scoreToPar } shouldContainExactly listOf(-10, 0, -5)
+    }
+
+    test("buildLiveLeaderboard makes one row of a team event's partners, each with the teams rostering him") {
+        val bothTeams = listOf("BROWN", "WOMBLE")
+        val live =
+            preview(
+                leaderboard =
+                    listOf(
+                        leaderboardEntry("Novak", position = 1, teamNames = bothTeams, pairKey = "team:1"),
+                        leaderboardEntry("Griffin", position = 1, pairKey = "team:1"),
+                        leaderboardEntry("Solo", position = 2),
+                    ),
+            )
+
+        val rendered = buildLiveLeaderboard(live)
+
+        rendered.map { it.players } shouldContainExactly
+            listOf(
+                listOf(LeaderboardPlayer("Novak", bothTeams), LeaderboardPlayer("Griffin", emptyList())),
+                listOf(LeaderboardPlayer("Solo", emptyList())),
+            )
+        rendered.map { it.rostered } shouldContainExactly listOf(true, false)
+    }
+
+    test("mergeLiveData keeps the report's leaderboard when the live preview lists no field") {
+        val persisted =
+            LiveLeaderboardEntry(
+                position = 1,
+                scoreToPar = -5,
+                players = listOf(LeaderboardPlayer("Scottie Scheffler", listOf("BROWN"))),
+            )
+        val base = emptyReport(listOf(teamColumn(TEAM_A_ID))).copy(liveLeaderboard = listOf(persisted))
+
+        val overlaid = mergeLiveData(base, listOf(preview()), DEFAULT_RULES, additive = false)
+
+        overlaid.live shouldBe true
+        overlaid.liveLeaderboard shouldContainExactly listOf(persisted)
+    }
+
+    test("mergeLiveData replaces the report's leaderboard with a live field that has rows") {
+        val stale = listOf(LeaderboardPlayer("Stale", emptyList()))
+        val persisted = LiveLeaderboardEntry(position = 1, scoreToPar = -5, players = stale)
+        val base = emptyReport(listOf(teamColumn(TEAM_A_ID))).copy(liveLeaderboard = listOf(persisted))
+        val live = preview(leaderboard = listOf(leaderboardEntry("Leader", position = 1)))
+
+        val overlaid = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false)
+
+        overlaid.liveLeaderboard.flatMap { it.players }.map { it.name } shouldContainExactly listOf("Leader")
     }
 
     test("buildUndraftedFromLeaderboard returns only top-10 non-rostered competitors with their payouts") {
@@ -606,7 +667,7 @@ class LiveOverlayServiceSpec : FunSpec({
             preview(
                 leaderboard =
                     listOf(
-                        leaderboardEntry("Rostered Winner", position = 1, rostered = true, teamName = "BROWN"),
+                        leaderboardEntry("Rostered Winner", position = 1, teamNames = listOf("BROWN")),
                         leaderboardEntry("Undrafted T2", position = 2),
                         leaderboardEntry("Undrafted Outside", position = 11),
                     ),
@@ -623,8 +684,8 @@ class LiveOverlayServiceSpec : FunSpec({
             preview(
                 leaderboard =
                     listOf(
-                        leaderboardEntry("Winner", position = 1, rostered = true, teamName = "BROWN"),
-                        leaderboardEntry("Second", position = 2, rostered = true, teamName = "WOMBLE"),
+                        leaderboardEntry("Winner", position = 1, teamNames = listOf("BROWN")),
+                        leaderboardEntry("Second", position = 2, teamNames = listOf("WOMBLE")),
                     ),
             )
         buildUndraftedFromLeaderboard(live, DEFAULT_RULES).shouldBeEmpty()
