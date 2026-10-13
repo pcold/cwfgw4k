@@ -61,7 +61,8 @@ export function playerNames(entry: LiveLeaderboardEntry): string {
   return entry.players.map((player) => player.name).join(PARTNER_SEPARATOR);
 }
 
-// One label per player, in player order, so a pair's teams line up under its names.
+// One label per player, in player order. A split golfer's teams take the same separator, so a pair's
+// label lines up under its names only while neither partner is split.
 export function teamLabel(entry: LiveLeaderboardEntry): string {
   return entry.players
     .map((player) =>
