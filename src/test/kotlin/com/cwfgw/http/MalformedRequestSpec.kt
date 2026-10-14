@@ -78,7 +78,7 @@ private fun malformedRequestTestApp(block: suspend (HttpClient) -> Unit) =
         block(client)
     }
 
-private class RawResponse(val status: Int, val body: String)
+private data class RawResponse(val status: Int, val body: String)
 
 /**
  * The Ktor client decodes a URL while building the request and throws on one it cannot, so an undecodable
@@ -103,7 +103,7 @@ private fun rawGet(target: String): RawResponse {
     }
 }
 
-private class ClientFault(
+private data class ClientFault(
     val description: String,
     val body: String,
     val send: suspend (HttpClient) -> HttpResponse,
