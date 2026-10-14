@@ -1,7 +1,7 @@
 version: 2
 
 # Majors stay ungrouped: each tends to need its own attention, while minor and patch
-# bumps land as one PR per ecosystem.
+# bumps land as one PR per ecosystem. The exceptions are packages that only resolve together.
 updates:
   - package-ecosystem: gradle
     directory: "/"
@@ -16,6 +16,20 @@ updates:
     schedule:
       interval: weekly
     groups:
+      # Ahead of npm-minor-patch and takes majors too: @eslint/js ships in lockstep with eslint
+      # and the plugins peer on its major, so a lone bump fails `npm ci`. Enumerated for the
+      # same reason as vitest below.
+      eslint:
+        patterns:
+          - "eslint"
+          - "@eslint/js"
+          - "eslint-plugin-import-x"
+          - "eslint-plugin-jsx-a11y"
+          - "eslint-plugin-react"
+          - "eslint-plugin-react-hooks"
+          - "eslint-plugin-testing-library"
+          - "typescript-eslint"
+          - "@vitest/eslint-plugin"
       # Ahead of npm-minor-patch (first match wins) and takes majors too: the @vitest/*
       # packages peer on the exact vitest version, so none resolves bumped alone. Enumerated
       # because a scoped wildcard (`@vitest/*`) silently matches nothing.
@@ -26,6 +40,13 @@ updates:
           - "@vitest/ui"
       npm-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      # eslint-plugin-jsx-a11y and eslint-plugin-react cap their eslint peer at ^9 in their newest
+      # releases, so no plugin set resolves against eslint 10. Drop both once those two ship one.
+      - dependency-name: eslint
+        update-types: [version-update:semver-major]
+      - dependency-name: "@eslint/js"
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: "/"
