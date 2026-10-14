@@ -1,16 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CreateSeasonSection from './CreateSeasonSection';
+import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { makeSeason } from '@/shared/test/fixtures';
+import CreateSeasonSection from './CreateSeasonSection';
 
-const leaguesMock = vi.fn();
-const createSeasonMock = vi.fn();
+const leaguesMock = vi.fn<typeof api.leagues>();
+const createSeasonMock = vi.fn<typeof api.createSeason>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
     leagues: () => leaguesMock(),
-    createSeason: (input: unknown) => createSeasonMock(input),
+    createSeason: (input: Parameters<typeof api.createSeason>[0]) => createSeasonMock(input),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -26,14 +28,7 @@ describe('CreateSeasonSection', () => {
   });
 
   it('submits the season with the current rules', async () => {
-    createSeasonMock.mockResolvedValue({
-      id: 'sn-5',
-      leagueId: 'lg-1',
-      name: 'Spring',
-      seasonYear: 2030,
-      seasonNumber: 1,
-      status: 'active',
-    });
+    createSeasonMock.mockResolvedValue(makeSeason({ id: 'sn-5', seasonYear: 2030 }));
 
     const user = userEvent.setup();
     renderWithProviders(<CreateSeasonSection />, { withLeagueSeasonProvider: false });
@@ -43,7 +38,7 @@ describe('CreateSeasonSection', () => {
       expect(screen.getByLabelText(/^League$/i)).toHaveValue('lg-1');
     });
 
-    const yearInput = screen.getByLabelText(/Year/i) as HTMLInputElement;
+    const yearInput = screen.getByLabelText<HTMLInputElement>(/Year/i);
     await user.clear(yearInput);
     await user.type(yearInput, '2030');
     await user.type(screen.getByLabelText(/Season Name/i), 'Spring');

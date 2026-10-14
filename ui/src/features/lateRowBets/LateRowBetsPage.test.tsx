@@ -1,16 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
-import LateRowBetsPage from './LateRowBetsPage';
 import type { League, Season, Tournament, WeeklyReport } from '@/shared/api/types';
+import LateRowBetsPage from './LateRowBetsPage';
 
-const leaguesMock = vi.fn();
-const seasonsMock = vi.fn();
-const tournamentsMock = vi.fn();
-const seasonReportMock = vi.fn();
-const tournamentReportMock = vi.fn();
+const leaguesMock = vi.fn<typeof api.leagues>();
+const seasonsMock = vi.fn<typeof api.seasons>();
+const tournamentsMock = vi.fn<typeof api.tournaments>();
+const seasonReportMock = vi.fn<typeof api.seasonReport>();
+const tournamentReportMock = vi.fn<typeof api.tournamentReport>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -166,6 +167,7 @@ describe('LateRowBetsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
+    // @ts-expect-error -- a body cached before the server sent these fields no longer satisfies WeeklyReport.
     seasonReportMock.mockResolvedValue(buildReportWithoutSideBetFacts());
 
     renderWithProviders(<LateRowBetsPage />);

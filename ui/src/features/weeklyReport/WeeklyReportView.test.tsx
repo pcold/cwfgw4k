@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import WeeklyReportView from './WeeklyReportView';
 import type {
   ReportCell,
   ReportSideBetRules,
@@ -12,6 +11,7 @@ import type {
 } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
+import WeeklyReportView from './WeeklyReportView';
 
 function row(round: number, overrides: Partial<ReportCell> = {}): ReportCell {
   return {
@@ -88,7 +88,7 @@ function sideBetEntry(
 function roundRow(round: number): HTMLElement {
   const found = screen
     .getAllByRole('row')
-    .find((r) => within(r).queryAllByRole('cell')[0]?.textContent?.startsWith(`${round}`));
+    .find((r) => within(r).queryAllByRole('cell')[0]?.textContent.startsWith(`${round}`));
   if (!found) throw new Error(`no row for round ${round}`);
   return found;
 }

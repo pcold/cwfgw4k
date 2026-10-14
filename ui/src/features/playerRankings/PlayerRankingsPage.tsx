@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
@@ -11,7 +11,7 @@ import PlayerRankingsView from './PlayerRankingsView';
 
 const ALL_TOURNAMENTS = '';
 
-function PlayerRankingsPage() {
+function PlayerRankingsPage(): ReactNode {
   const { seasonId } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
   // null = use the computed default (earliest non-finalized tournament, or

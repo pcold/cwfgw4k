@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
@@ -7,8 +7,8 @@ import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
 import { earliestUnfinalized, tournamentLabel } from '@/shared/util/tournament';
-import WeeklyReportView from './WeeklyReportView';
 import type { Season, WeeklyReport } from '@/shared/api/types';
+import WeeklyReportView from './WeeklyReportView';
 
 function downloadPdf(report: WeeklyReport, season: Season | null): Promise<void> {
   return import('./weeklyReportPdf').then((m) => m.downloadWeeklyReportPdf(report, season));
@@ -16,7 +16,11 @@ function downloadPdf(report: WeeklyReport, season: Season | null): Promise<void>
 
 const ALL_TOURNAMENTS = '';
 
-function WeeklyReportPage() {
+const DOWNLOAD_BUTTON_CLASS =
+  'bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm hover:bg-gray-700 ' +
+  'disabled:opacity-50 disabled:cursor-not-allowed';
+
+function WeeklyReportPage(): ReactNode {
   const { seasonId, seasons } = useLeagueSeason();
   const currentSeason = seasons?.find((s) => s.id === seasonId) ?? null;
   const leaguesGate = useLeaguesGate();
@@ -72,8 +76,9 @@ function WeeklyReportPage() {
         <button
           type="button"
           disabled={!reportQuery.data}
+          // eslint-disable-next-line @typescript-eslint/no-misused-promises -- CWF-155: a failed PDF build rejects unhandled.
           onClick={() => reportQuery.data && downloadPdf(reportQuery.data, currentSeason)}
-          className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={DOWNLOAD_BUTTON_CLASS}
         >
           Download PDF
         </button>

@@ -45,7 +45,7 @@ export function snakeifyKeys(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(snakeifyKeys);
   if (value !== null && typeof value === 'object') {
     const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    for (const [k, v] of Object.entries(value)) {
       out[camelToSnake(k)] = snakeifyKeys(v);
     }
     return out;
@@ -61,7 +61,7 @@ export function camelizeKeys(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(camelizeKeys);
   if (value !== null && typeof value === 'object') {
     const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    for (const [k, v] of Object.entries(value)) {
       out[snakeToCamel(k)] = camelizeKeys(v);
     }
     return out;
@@ -72,7 +72,7 @@ export function camelizeKeys(value: unknown): unknown {
 async function getJson<T>(path: string): Promise<T> {
   const resp = await fetch(path);
   if (!resp.ok) throw new ApiError(resp.status, `${resp.status} ${resp.statusText}`);
-  const body = (await resp.json()) as unknown;
+  const body: unknown = await resp.json();
   return camelizeKeys(body) as T;
 }
 
@@ -88,7 +88,7 @@ async function postJson<T>(path: string, payload?: unknown): Promise<T> {
   if (!resp.ok) {
     const errMsg =
       parsed && typeof parsed === 'object' && 'error' in parsed
-        ? String((parsed as { error: unknown }).error)
+        ? String(parsed.error)
         : `${resp.status} ${resp.statusText}`;
     throw new ApiError(resp.status, errMsg);
   }
@@ -106,7 +106,7 @@ async function putJson<T>(path: string, payload: unknown): Promise<T> {
   if (!resp.ok) {
     const errMsg =
       parsed && typeof parsed === 'object' && 'error' in parsed
-        ? String((parsed as { error: unknown }).error)
+        ? String(parsed.error)
         : `${resp.status} ${resp.statusText}`;
     throw new ApiError(resp.status, errMsg);
   }
@@ -124,7 +124,7 @@ async function postText<T>(path: string, body: string): Promise<T> {
   if (!resp.ok) {
     const errMsg =
       parsed && typeof parsed === 'object' && 'error' in parsed
-        ? String((parsed as { error: unknown }).error)
+        ? String(parsed.error)
         : `${resp.status} ${resp.statusText}`;
     throw new ApiError(resp.status, errMsg);
   }
@@ -138,9 +138,9 @@ async function deleteEmpty(path: string): Promise<void> {
     let errMsg = `${resp.status} ${resp.statusText}`;
     if (text) {
       try {
-        const parsed = JSON.parse(text) as unknown;
+        const parsed: unknown = JSON.parse(text);
         if (parsed && typeof parsed === 'object' && 'error' in parsed) {
-          errMsg = String((parsed as { error: unknown }).error);
+          errMsg = String(parsed.error);
         }
       } catch {
         // fall through to the status-line message
@@ -151,65 +151,66 @@ async function deleteEmpty(path: string): Promise<void> {
 }
 
 export const api = {
-  leagues: () => getJson<League[]>('/api/v1/leagues'),
-  seasons: (leagueId: string) =>
+  leagues: (): Promise<League[]> => getJson<League[]>('/api/v1/leagues'),
+  seasons: (leagueId: string): Promise<Season[]> =>
     getJson<Season[]>(`/api/v1/seasons?league_id=${encodeURIComponent(leagueId)}`),
-  seasonRules: (seasonId: string) =>
+  seasonRules: (seasonId: string): Promise<SeasonRules> =>
     getJson<SeasonRules>(`/api/v1/seasons/${seasonId}/rules`),
-  seasonReport: (seasonId: string, live: boolean) =>
+  seasonReport: (seasonId: string, live: boolean): Promise<WeeklyReport> =>
     getJson<WeeklyReport>(`/api/v1/seasons/${seasonId}/report${live ? '?live=true' : ''}`),
-  rankings: (seasonId: string, live: boolean, throughTournamentId?: string) => {
+  rankings: (seasonId: string, live: boolean, throughTournamentId?: string): Promise<Rankings> => {
     const params = new URLSearchParams();
     if (live) params.set('live', 'true');
     if (throughTournamentId) params.set('through', throughTournamentId);
     const qs = params.toString();
     return getJson<Rankings>(`/api/v1/seasons/${seasonId}/rankings${qs ? `?${qs}` : ''}`);
   },
-  playerRankings: (seasonId: string, live: boolean, throughTournamentId?: string) => {
+  playerRankings: (seasonId: string, live: boolean, throughTournamentId?: string): Promise<PlayerRankings> => {
     const params = new URLSearchParams();
     if (live) params.set('live', 'true');
     if (throughTournamentId) params.set('through', throughTournamentId);
     const qs = params.toString();
     return getJson<PlayerRankings>(`/api/v1/seasons/${seasonId}/player-rankings${qs ? `?${qs}` : ''}`);
   },
-  rosters: (seasonId: string) => getJson<RosterTeam[]>(`/api/v1/seasons/${seasonId}/rosters`),
-  tournaments: (seasonId: string) =>
+  rosters: (seasonId: string): Promise<RosterTeam[]> =>
+    getJson<RosterTeam[]>(`/api/v1/seasons/${seasonId}/rosters`),
+  tournaments: (seasonId: string): Promise<Tournament[]> =>
     getJson<Tournament[]>(
       `/api/v1/tournaments?season_id=${encodeURIComponent(seasonId)}`,
     ),
-  updateTournament: (id: string, body: { payoutMultiplier?: number }) =>
+  updateTournament: (id: string, body: { payoutMultiplier?: number }): Promise<Tournament> =>
     putJson<Tournament>(`/api/v1/tournaments/${encodeURIComponent(id)}`, body),
-  tournamentReport: (seasonId: string, tournamentId: string, live: boolean) =>
+  tournamentReport: (seasonId: string, tournamentId: string, live: boolean): Promise<WeeklyReport> =>
     getJson<WeeklyReport>(
       `/api/v1/seasons/${seasonId}/report/${tournamentId}${live ? '?live=true' : ''}`,
     ),
-  golferHistory: (seasonId: string, golferId: string) =>
+  golferHistory: (seasonId: string, golferId: string): Promise<GolferHistory> =>
     getJson<GolferHistory>(`/api/v1/seasons/${seasonId}/golfer/${golferId}/history`),
   // The list endpoint is public and supports an optional case-insensitive
   // server-side `search` filter. We pass `active=false` so the picker can
   // also surface inactive golfers — admins occasionally need to link an
   // ESPN row to a previously-deactivated golfer.
-  golfers: (search?: string) => {
+  golfers: (search?: string): Promise<Golfer[]> => {
     const params = new URLSearchParams({ active: 'false' });
     if (search && search.trim().length > 0) params.set('search', search.trim());
     return getJson<Golfer[]>(`/api/v1/golfers?${params.toString()}`);
   },
-  createGolfer: (input: CreateGolferRequest) =>
+  createGolfer: (input: CreateGolferRequest): Promise<Golfer> =>
     postJson<Golfer>('/api/v1/golfers', input),
-  tournamentCompetitors: (tournamentId: string) =>
+  tournamentCompetitors: (tournamentId: string): Promise<TournamentCompetitorListing> =>
     getJson<TournamentCompetitorListing>(
       `/api/v1/admin/tournaments/${encodeURIComponent(tournamentId)}/competitors`,
     ),
   upsertTournamentPlayerOverride: (
     tournamentId: string,
     body: UpsertTournamentPlayerOverrideRequest,
-  ) =>
+  ): Promise<TournamentPlayerOverride> =>
     postJson<TournamentPlayerOverride>(
       `/api/v1/admin/tournaments/${encodeURIComponent(tournamentId)}/player-overrides`,
       body,
     ),
   // 404 is treated as "already cleared" by the panel — the caller maps it.
-  deleteTournamentPlayerOverride: (tournamentId: string, espnCompetitorId: string) =>
+  deleteTournamentPlayerOverride: (tournamentId: string, espnCompetitorId: string): Promise<void> =>
     deleteEmpty(
       `/api/v1/admin/tournaments/${encodeURIComponent(tournamentId)}/player-overrides/${encodeURIComponent(espnCompetitorId)}`,
     ),
@@ -225,7 +226,7 @@ export const api = {
       throw e;
     }
   },
-  login: (username: string, password: string) =>
+  login: (username: string, password: string): Promise<User> =>
     postJson<User>('/api/v1/auth/login', { username, password }),
   // Returns 204 No Content; we don't need the body.
   logout: async (): Promise<void> => {
@@ -233,35 +234,42 @@ export const api = {
     if (!resp.ok) throw new ApiError(resp.status, `${resp.status} ${resp.statusText}`);
   },
 
-  createLeague: (name: string) => postJson<League>('/api/v1/leagues', { name }),
+  createLeague: (name: string): Promise<League> => postJson<League>('/api/v1/leagues', { name }),
   createSeason: (input: {
     leagueId: string;
     name: string;
     seasonYear: number;
     rules: SeasonRules;
-  }) => postJson<Season>('/api/v1/seasons', input),
-  previewSeasonSchedule: (input: { seasonId: string; startDate: string; endDate: string }) =>
+  }): Promise<Season> => postJson<Season>('/api/v1/seasons', input),
+  previewSeasonSchedule: (input: {
+    seasonId: string;
+    startDate: string;
+    endDate: string;
+  }): Promise<SeasonSchedulePreviewResult> =>
     postJson<SeasonSchedulePreviewResult>(
       `/api/v1/admin/seasons/${encodeURIComponent(input.seasonId)}/upload/preview`,
       { startDate: input.startDate, endDate: input.endDate },
     ),
-  confirmSeasonSchedule: (input: { seasonId: string; entries: ConfirmedTournamentEntry[] }) =>
+  confirmSeasonSchedule: (input: {
+    seasonId: string;
+    entries: ConfirmedTournamentEntry[];
+  }): Promise<SeasonImportResult> =>
     postJson<SeasonImportResult>(
       `/api/v1/admin/seasons/${encodeURIComponent(input.seasonId)}/upload/confirm`,
       { entries: input.entries },
     ),
   // The backend's previewRoster route consumes the raw TSV/CSV body via
   // receiveText() rather than a JSON envelope, so post the text as-is.
-  previewRoster: (roster: string) =>
+  previewRoster: (roster: string): Promise<RosterPreview> =>
     postText<RosterPreview>('/api/v1/admin/roster/preview', roster),
-  confirmRoster: (input: { seasonId: string; teams: RosterConfirmTeamInput[] }) =>
+  confirmRoster: (input: { seasonId: string; teams: RosterConfirmTeamInput[] }): Promise<RosterConfirmResult> =>
     postJson<RosterConfirmResult>('/api/v1/admin/roster/confirm', input),
-  finalizeTournament: (tournamentId: string) =>
+  finalizeTournament: (tournamentId: string): Promise<Tournament> =>
     postJson<Tournament>(`/api/v1/tournaments/${tournamentId}/finalize`),
-  resetTournament: (tournamentId: string) =>
+  resetTournament: (tournamentId: string): Promise<Tournament> =>
     postJson<Tournament>(`/api/v1/tournaments/${tournamentId}/reset`),
-  cleanSeasonResults: (seasonId: string) =>
+  cleanSeasonResults: (seasonId: string): Promise<CleanSeasonResult> =>
     postJson<CleanSeasonResult>(`/api/v1/seasons/${seasonId}/clean-results`),
-  deleteSeason: (seasonId: string) =>
+  deleteSeason: (seasonId: string): Promise<void> =>
     deleteEmpty(`/api/v1/seasons/${encodeURIComponent(seasonId)}`),
 };

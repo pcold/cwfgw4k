@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { Rankings } from '@/shared/api/types';
 import { formatMoney } from '@/shared/util/money';
 import {
@@ -25,9 +26,9 @@ function TeamLine({ line }: LineProps) {
         strokeWidth={2}
         points={polylinePath(line.points)}
       />
-      {line.points.map((p, i) => (
+      {line.points.map((p) => (
         <circle
-          key={`${line.teamId}-${i}`}
+          key={`${line.teamId}-${p.x}`}
           cx={p.x}
           cy={p.y}
           r={3}
@@ -46,7 +47,7 @@ interface Props {
   rankings: Rankings;
 }
 
-function RankingsChart({ rankings }: Props) {
+function RankingsChart({ rankings }: Props): ReactNode {
   const layout = buildChartLayout(rankings, DEFAULT_DIMENSIONS);
 
   return (
@@ -86,8 +87,8 @@ function RankingsChart({ rankings }: Props) {
                 stroke="#374151"
               />
 
-              {layout.yTicks.map((tick, i) => (
-                <g key={`y-${i}`}>
+              {layout.yTicks.map((tick) => (
+                <g key={tick.position}>
                   <line
                     x1={layout.plot.left}
                     x2={layout.plot.right}
@@ -108,9 +109,9 @@ function RankingsChart({ rankings }: Props) {
                 </g>
               ))}
 
-              {layout.xTicks.map((tick, i) => (
+              {layout.xTicks.map((tick) => (
                 <text
-                  key={`x-${i}`}
+                  key={tick.position}
                   x={tick.position}
                   y={layout.plot.bottom + 18}
                   textAnchor="middle"

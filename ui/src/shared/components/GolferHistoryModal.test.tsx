@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import GolferHistoryModal from './GolferHistoryModal';
 import type { GolferHistory } from '@/shared/api/types';
+import GolferHistoryModal from './GolferHistoryModal';
 
-const golferHistoryMock = vi.fn();
+const golferHistoryMock = vi.fn<typeof api.golferHistory>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {

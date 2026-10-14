@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CreateLeagueSection from './CreateLeagueSection';
+import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { ApiError } from '@/shared/api/client';
+import CreateLeagueSection from './CreateLeagueSection';
 
-const createLeagueMock = vi.fn();
+const createLeagueMock = vi.fn<typeof api.createLeague>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {

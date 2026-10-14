@@ -289,6 +289,8 @@ tasks.register<com.github.gradle.node.npm.task.NpmTask>("uiTest") {
     inputs.file("ui/index.html")
     inputs.file("ui/package.json")
     inputs.file("ui/vite.config.ts")
+    // eslint.config.test.ts lints fixtures through the real config.
+    inputs.file("ui/eslint.config.js")
     // Vitest transforms the sources under the compiler options these set.
     inputs.files("ui/tsconfig.json", "ui/tsconfig.app.json", "ui/tsconfig.node.json")
     outputs.dir("ui/coverage")
@@ -310,6 +312,25 @@ tasks.register<com.github.gradle.node.npm.task.NpmTask>("uiBuild") {
     outputs.dir("ui/dist")
 }
 
+tasks.register<com.github.gradle.node.npm.task.NpmTask>("uiLint") {
+    description = "Lint the UI with ESLint"
+    group = "frontend"
+    dependsOn("uiInstall")
+    args.set(listOf("run", "lint"))
+    inputs.dir("ui/src")
+    inputs.files("ui/package.json", "ui/package-lock.json")
+    inputs.file("ui/eslint.config.js")
+    // Type-aware rules resolve every file through these.
+    inputs.files("ui/tsconfig.json", "ui/tsconfig.app.json", "ui/tsconfig.node.json")
+    // `eslint .` lints the config files at the ui/ root too.
+    inputs.files("ui/postcss.config.js", "ui/vite.config.ts")
+    // A stamp, not `eslint --cache`: that cache keys a file on its own text, so a type changed in one
+    // file leaves the type-aware findings it causes in another unreported.
+    val passedStamp = layout.buildDirectory.file("uiLint/passed")
+    outputs.file(passedStamp)
+    doLast { passedStamp.get().asFile.writeText("") }
+}
+
 // Bundle ui/dist into the runtime jar under static/ so StaticRoutes can serve the React UI
 // from the classpath in Cloud Run. Hooked into processResources (rather than only into the
 // jar tasks) so `./gradlew run` also serves the production bundle locally if you want it,
@@ -323,6 +344,7 @@ tasks.named<Copy>("processResources") {
 
 tasks.named("check") {
     dependsOn("uiTest")
+    dependsOn("uiLint")
 }
 
 // Load dev.properties (gitignored, copied from dev.properties.example) and apply each entry

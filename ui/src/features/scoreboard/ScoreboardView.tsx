@@ -40,7 +40,7 @@ interface Props {
   onGolferClick?: (golferId: string) => void;
 }
 
-function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
+function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNode {
   const teams = scoreboardTeams(report);
   const { tournament, weeklyTotals, liveLeaderboard: leaderboard } = report;
   const [leaderboardTeamFilter, setLeaderboardTeamFilter] = useState<string>(ALL);

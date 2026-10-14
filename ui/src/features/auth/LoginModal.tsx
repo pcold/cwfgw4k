@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useAuth } from '@/features/auth/AuthContext';
 
 interface Props {
@@ -6,7 +6,7 @@ interface Props {
   onClose: () => void;
 }
 
-function LoginModal({ open, onClose }: Props) {
+function LoginModal({ open, onClose }: Props): ReactNode {
   const { login, loginError, loginPending } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -48,7 +48,7 @@ function LoginModal({ open, onClose }: Props) {
         <h3 id="login-modal-title" className="text-lg font-bold mb-4">
           Admin Login
         </h3>
-        <form onSubmit={onSubmit}>
+        <form onSubmit={(e) => void onSubmit(e)}>
           <div className="mb-3">
             <label className="block text-xs text-gray-400 mb-1" htmlFor="login-username">
               Username
@@ -60,6 +60,7 @@ function LoginModal({ open, onClose }: Props) {
               onChange={(e) => setUsername(e.target.value)}
               className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full"
               placeholder="Username"
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- an open dialog must move focus inside it (WAI-ARIA dialog pattern).
               autoFocus
             />
           </div>

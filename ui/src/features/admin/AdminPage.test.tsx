@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import AdminPage from './AdminPage';
+import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { ApiError } from '@/shared/api/client';
+import AdminPage from './AdminPage';
 
-const authMeMock = vi.fn();
-const loginMock = vi.fn();
-const logoutMock = vi.fn();
+const authMeMock = vi.fn<typeof api.authMe>();
+const loginMock = vi.fn<typeof api.login>();
+const logoutMock = vi.fn<typeof api.logout>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {

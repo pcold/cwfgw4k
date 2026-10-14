@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
 import LoginModal from '@/features/auth/LoginModal';
@@ -9,7 +10,7 @@ import ResetTournamentSection from './ResetTournamentSection';
 import CleanSeasonSection from './CleanSeasonSection';
 import DeleteSeasonSection from './DeleteSeasonSection';
 
-function AdminPage() {
+function AdminPage(): ReactNode {
   const { authenticated, loading, username, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -21,7 +22,7 @@ function AdminPage() {
     return (
       <>
         <p className="text-gray-400">You must be logged in to access the admin page.</p>
-        <LoginModal open onClose={() => navigate('/')} />
+        <LoginModal open onClose={() => void navigate('/')} />
       </>
     );
   }

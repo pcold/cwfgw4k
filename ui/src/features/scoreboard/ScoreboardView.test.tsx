@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import ScoreboardView from './ScoreboardView';
 import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
 import { makeLeaderboardEntry, makeWonLostTotals } from '@/shared/test/fixtures';
+import ScoreboardView from './ScoreboardView';
 
 function row(overrides: Partial<ReportCell> = {}): ReportCell {
   return {
@@ -288,7 +288,7 @@ describe('ScoreboardView', () => {
     const teamCells = within(teamTable).getAllByRole('cell');
     const golferCell = nth(teamCells, teamCells.length - 1);
     // Visible text should read "FITZPATRICK 1 $18" — no stray T.
-    expect(golferCell.textContent ?? '').not.toMatch(/T\s*1\b/);
+    expect(golferCell.textContent).not.toMatch(/T\s*1\b/);
     expect(golferCell).toHaveTextContent('1');
   });
 
@@ -318,7 +318,7 @@ describe('ScoreboardView', () => {
     const teamTable = nth(screen.getAllByRole('table'), 0);
     const teamCells = within(teamTable).getAllByRole('cell');
     const golferCell = nth(teamCells, teamCells.length - 1);
-    expect(golferCell.textContent ?? '').toMatch(/T\s*4/);
+    expect(golferCell.textContent).toMatch(/T\s*4/);
   });
 
   it('shows the whole leaderboard again when the filter is set back to Team', async () => {

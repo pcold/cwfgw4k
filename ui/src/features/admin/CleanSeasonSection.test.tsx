@@ -2,14 +2,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { QueryKey } from '@tanstack/react-query';
-import CleanSeasonSection from './CleanSeasonSection';
+import type { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { makeSeason } from '@/shared/test/fixtures';
+import CleanSeasonSection from './CleanSeasonSection';
 
-const leaguesMock = vi.fn();
-const seasonsMock = vi.fn();
-const cleanMock = vi.fn();
+const leaguesMock = vi.fn<typeof api.leagues>();
+const seasonsMock = vi.fn<typeof api.seasons>();
+const cleanMock = vi.fn<typeof api.cleanSeasonResults>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -38,16 +40,7 @@ describe('CleanSeasonSection', () => {
     leaguesMock.mockResolvedValue([
       { id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' },
     ]);
-    seasonsMock.mockResolvedValue([
-      {
-        id: 'sn-1',
-        leagueId: 'lg-1',
-        name: 'Spring',
-        seasonYear: 2026,
-        seasonNumber: 1,
-        status: 'active',
-      },
-    ]);
+    seasonsMock.mockResolvedValue([makeSeason()]);
   });
 
   afterEach(() => {

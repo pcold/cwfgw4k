@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { formatMoney } from '@/shared/util/money';
 import ColumnHeaderFilter, {
   type ColumnHeaderFilterOption,
@@ -14,7 +14,7 @@ interface Props {
 const ALL = '';
 const UNDRAFTED = '__undrafted__';
 
-function PlayerRankingsView({ players, live, onGolferClick }: Props) {
+function PlayerRankingsView({ players, live, onGolferClick }: Props): ReactNode {
   const [teamFilter, setTeamFilter] = useState<string>(ALL);
   const [roundFilter, setRoundFilter] = useState<string>(ALL);
 

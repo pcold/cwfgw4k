@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
 import WeeklyReportPage from '@/features/weeklyReport/WeeklyReportPage';
 import RankingsPage from '@/features/rankings/RankingsPage';
 import PlayerRankingsPage from '@/features/playerRankings/PlayerRankingsPage';
@@ -24,6 +23,10 @@ const NAV_ITEMS: Array<{ to: string; label: string }> = [
   { to: '/admin', label: 'Admin' },
 ];
 
+const MENU_BUTTON_CLASS =
+  'lg:hidden inline-flex items-center justify-center w-11 h-11 rounded ' +
+  'text-gray-300 hover:text-white hover:bg-gray-700';
+
 const desktopLinkClass = ({ isActive }: { isActive: boolean }): string =>
   `px-3 py-2 rounded text-sm font-medium transition ${
     isActive ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
@@ -34,7 +37,7 @@ const mobileLinkClass = ({ isActive }: { isActive: boolean }): string =>
     isActive ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'
   }`;
 
-function App() {
+function App(): ReactNode {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const location = useLocation();
 
@@ -62,7 +65,7 @@ function App() {
 
             <button
               type="button"
-              className="lg:hidden inline-flex items-center justify-center w-11 h-11 rounded text-gray-300 hover:text-white hover:bg-gray-700"
+              className={MENU_BUTTON_CLASS}
               aria-label={mobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
               aria-expanded={mobileNavOpen}
               aria-controls="mobile-nav"

@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import PlayerRankingsView from './PlayerRankingsView';
 import type { PlayerRankingsRow } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
+import PlayerRankingsView from './PlayerRankingsView';
 
 function r(overrides: Partial<PlayerRankingsRow>): PlayerRankingsRow {
   return {
@@ -158,9 +158,9 @@ describe('PlayerRankingsView', () => {
       />,
     );
 
-    const select = screen.getByLabelText(/Filter by team/i) as HTMLSelectElement;
+    const select = screen.getByLabelText<HTMLSelectElement>(/Filter by team/i);
     const teamOptionLabels = Array.from(select.options)
-      .map((o) => o.textContent ?? '')
+      .map((o) => o.textContent)
       .filter((label) => label !== 'Team' && label !== 'Undrafted');
     expect(teamOptionLabels).toEqual(['Aces', 'Birdies', 'Cuts']);
   });
@@ -214,9 +214,9 @@ describe('PlayerRankingsView', () => {
       />,
     );
 
-    const select = screen.getByLabelText(/Filter by draft round/i) as HTMLSelectElement;
+    const select = screen.getByLabelText<HTMLSelectElement>(/Filter by draft round/i);
     const numericLabels = Array.from(select.options)
-      .map((o) => o.textContent ?? '')
+      .map((o) => o.textContent)
       .filter((label) => label !== 'Round' && label !== 'Undrafted');
     expect(numericLabels).toEqual(['1', '3', '7']);
   });

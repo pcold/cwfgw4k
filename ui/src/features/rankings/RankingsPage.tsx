@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
@@ -10,7 +10,7 @@ import RankingsView from './RankingsView';
 
 const ALL_TOURNAMENTS = '';
 
-function RankingsPage() {
+function RankingsPage(): ReactNode {
   const { seasonId } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
   // null = user hasn't picked yet, use the computed default; "" = user

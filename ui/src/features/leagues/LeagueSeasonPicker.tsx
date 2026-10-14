@@ -1,7 +1,8 @@
+import type { ReactNode } from 'react';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { seasonLabel } from '@/shared/util/season';
 
-function LeagueSeasonPicker() {
+function LeagueSeasonPicker(): ReactNode {
   const ctx = useLeagueSeason();
 
   if (!ctx.leagues || ctx.leagues.length === 0) return null;

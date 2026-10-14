@@ -1,26 +1,26 @@
 import type { ReactElement } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import PlayerLinksPanel from './PlayerLinksPanel';
 import type {
   Golfer,
   TournamentCompetitorListing,
 } from '@/shared/api/types';
+import PlayerLinksPanel from './PlayerLinksPanel';
 
-const competitorsMock = vi.fn();
-const golfersMock = vi.fn();
-const upsertMock = vi.fn();
-const deleteMock = vi.fn();
-const createGolferMock = vi.fn();
+const competitorsMock = vi.fn<typeof api.tournamentCompetitors>();
+const golfersMock = vi.fn<typeof api.golfers>();
+const upsertMock = vi.fn<typeof api.upsertTournamentPlayerOverride>();
+const deleteMock = vi.fn<typeof api.deleteTournamentPlayerOverride>();
+const createGolferMock = vi.fn<typeof api.createGolfer>();
 const onCloseMock = vi.fn();
-const tournamentReportMock = vi.fn();
-const rankingsMock = vi.fn();
-const playerRankingsMock = vi.fn();
+const tournamentReportMock = vi.fn<typeof api.tournamentReport>();
+const rankingsMock = vi.fn<typeof api.rankings>();
+const playerRankingsMock = vi.fn<typeof api.playerRankings>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -195,11 +195,12 @@ describe('PlayerLinksPanel', () => {
     });
   });
 
-  it.each([
-    ['an open live weekly report', <OpenLiveWeeklyReport />, tournamentReportMock],
-    ['open live rankings', <OpenLiveRankings />, rankingsMock],
-    ['open live player rankings', <OpenLivePlayerRankings />, playerRankingsMock],
-    ['an open live scoreboard report', <OpenLiveScoreboardReport />, tournamentReportMock],
+  // Widened to any resolving mock: the test counts fetches and never renders the `{}` it resolves.
+  it.each<[string, ReactElement, Mock<(...args: never[]) => Promise<unknown>>]>([
+    ['an open live weekly report', <OpenLiveWeeklyReport key="weekly" />, tournamentReportMock],
+    ['open live rankings', <OpenLiveRankings key="rankings" />, rankingsMock],
+    ['open live player rankings', <OpenLivePlayerRankings key="player-rankings" />, playerRankingsMock],
+    ['an open live scoreboard report', <OpenLiveScoreboardReport key="scoreboard" />, tournamentReportMock],
   ])('refetches %s after a link is saved', async (_page, openQuery, readMock) => {
     competitorsMock.mockResolvedValue(buildListing());
     upsertMock.mockResolvedValue({
@@ -324,8 +325,8 @@ describe('PlayerLinksPanel', () => {
     if (!partnerRow) throw new Error('partner row not found');
     await user.click(within(partnerRow as HTMLElement).getByRole('button', { name: /Create new golfer/i }));
 
-    const firstName = within(partnerRow as HTMLElement).getByLabelText(/First name/i) as HTMLInputElement;
-    const lastName = within(partnerRow as HTMLElement).getByLabelText(/Last name/i) as HTMLInputElement;
+    const firstName = within(partnerRow as HTMLElement).getByLabelText<HTMLInputElement>(/First name/i);
+    const lastName = within(partnerRow as HTMLElement).getByLabelText<HTMLInputElement>(/Last name/i);
     expect(firstName.value).toBe('');
     expect(lastName.value).toBe('Fitzpatrick');
   });
@@ -339,8 +340,8 @@ describe('PlayerLinksPanel', () => {
     if (!alexRow) throw new Error('competitor row not found');
     await user.click(within(alexRow as HTMLElement).getByRole('button', { name: /Create new golfer/i }));
 
-    const firstName = within(alexRow as HTMLElement).getByLabelText(/First name/i) as HTMLInputElement;
-    const lastName = within(alexRow as HTMLElement).getByLabelText(/Last name/i) as HTMLInputElement;
+    const firstName = within(alexRow as HTMLElement).getByLabelText<HTMLInputElement>(/First name/i);
+    const lastName = within(alexRow as HTMLElement).getByLabelText<HTMLInputElement>(/Last name/i);
     expect(firstName.value).toBe('Alex');
     expect(lastName.value).toBe('Fitzpatrick');
   });

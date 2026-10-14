@@ -2,15 +2,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { QueryKey } from '@tanstack/react-query';
-import ResetTournamentSection from './ResetTournamentSection';
+import type { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { makeSeason, makeTournament } from '@/shared/test/fixtures';
+import ResetTournamentSection from './ResetTournamentSection';
 
-const leaguesMock = vi.fn();
-const seasonsMock = vi.fn();
-const tournamentsMock = vi.fn();
-const resetTournamentMock = vi.fn();
+const leaguesMock = vi.fn<typeof api.leagues>();
+const seasonsMock = vi.fn<typeof api.seasons>();
+const tournamentsMock = vi.fn<typeof api.tournaments>();
+const resetTournamentMock = vi.fn<typeof api.resetTournament>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -41,16 +43,7 @@ describe('ResetTournamentSection', () => {
     leaguesMock.mockResolvedValue([
       { id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' },
     ]);
-    seasonsMock.mockResolvedValue([
-      {
-        id: 'sn-1',
-        leagueId: 'lg-1',
-        name: 'Spring',
-        seasonYear: 2026,
-        seasonNumber: 1,
-        status: 'active',
-      },
-    ]);
+    seasonsMock.mockResolvedValue([makeSeason()]);
     tournamentsMock.mockResolvedValue([
       {
         id: 'tn-1',
@@ -127,7 +120,7 @@ describe('ResetTournamentSection', () => {
     'refetches an open %s query after a reset',
     async (_root, queryKey) => {
       const fetcher = vi.fn().mockResolvedValue({});
-      resetTournamentMock.mockResolvedValue({ id: 'tn-1', name: 'Sony Open', status: 'upcoming' });
+      resetTournamentMock.mockResolvedValue(makeTournament({ name: 'Sony Open', status: 'upcoming' }));
       vi.spyOn(window, 'confirm').mockReturnValue(true);
 
       const user = userEvent.setup();

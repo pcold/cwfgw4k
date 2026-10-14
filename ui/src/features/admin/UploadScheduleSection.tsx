@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
@@ -18,7 +18,7 @@ function toConfirmedEntry(entry: PreviewedTournament): ConfirmedTournamentEntry 
   return { espnEventId: entry.espnEventId, name: entry.name, startDate: entry.startDate, endDate: entry.endDate };
 }
 
-function UploadScheduleSection() {
+function UploadScheduleSection(): ReactNode {
   const queryClient = useQueryClient();
 
   const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });

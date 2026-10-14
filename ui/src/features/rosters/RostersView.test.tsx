@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import RostersView from './RostersView';
 import type { RosterTeam } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
+import RostersView from './RostersView';
 
 function pick(round: number, name: string, pct = 100, id = `g-${round}-${name}`) {
   return { round, golferName: name, ownershipPct: pct, golferId: id };

@@ -13,7 +13,11 @@ import type { WeeklyReport } from '@/shared/api/types';
 import PlayerLinksPanel from './PlayerLinksPanel';
 import ScoreboardView from './ScoreboardView';
 
-function ScoreboardPage() {
+const FINALIZE_BUTTON_CLASS =
+  'bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-xs ' +
+  'font-medium whitespace-nowrap';
+
+function ScoreboardPage(): ReactNode {
   const { seasonId } = useLeagueSeason();
   const { authenticated, isAdmin } = useAuth();
   const leaguesGate = useLeaguesGate();
@@ -83,7 +87,7 @@ function ScoreboardPage() {
             type="button"
             onClick={() => finalizeMutation.mutate(tournamentId)}
             disabled={finalizeMutation.isPending}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-xs font-medium whitespace-nowrap"
+            className={FINALIZE_BUTTON_CLASS}
           >
             {finalizeMutation.isPending ? 'Finalizing…' : 'Finalize Results'}
           </button>

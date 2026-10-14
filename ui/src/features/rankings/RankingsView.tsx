@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { Rankings, TeamRanking } from '@/shared/api/types';
 import { formatMoney } from '@/shared/util/money';
 import RankingsChart from './RankingsChart';
@@ -16,7 +17,7 @@ function sumWhere(teams: TeamRanking[], predicate: (t: TeamRanking) => boolean):
   return teams.filter(predicate).reduce((acc, t) => acc + t.totalCash, 0);
 }
 
-function RankingsView({ rankings }: Props) {
+function RankingsView({ rankings }: Props): ReactNode {
   const sorted = [...rankings.teams].sort((a, b) => b.totalCash - a.totalCash);
   const sortedRankings: Rankings = { ...rankings, teams: sorted };
   const totalWon = sumWhere(sorted, (t) => t.totalCash > 0);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type jsPDF from 'jspdf';
 import type {
   ReportCell,
   ReportScope,
@@ -11,7 +12,6 @@ import type {
   WeeklyReport,
 } from '@/shared/api/types';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
-import type jsPDF from 'jspdf';
 import { buildWeeklyReportPdf } from './weeklyReportPdf';
 
 function row(overrides: Partial<ReportCell> = {}): ReportCell {

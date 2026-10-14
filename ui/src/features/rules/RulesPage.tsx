@@ -1,10 +1,11 @@
+import type { ReactNode } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api, ApiError } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { DEFAULT_RULES, ordinal } from './rulesModel';
 
-function RulesPage() {
+function RulesPage(): ReactNode {
   const { leaguesLoading, leaguesError, seasonId } = useLeagueSeason();
 
   const rulesQuery = useQuery({
@@ -66,6 +67,7 @@ function RulesPage() {
           </thead>
           <tbody className="text-gray-300">
             {rules.payouts.map((amount, i) => (
+              // eslint-disable-next-line react/no-array-index-key -- a payout row is its finishing position.
               <tr key={i}>
                 <td className="py-0.5">{ordinal(i + 1)}</td>
                 <td className="text-right">${amount}</td>

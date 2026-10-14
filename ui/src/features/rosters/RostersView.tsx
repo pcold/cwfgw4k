@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { RosterPick, RosterTeam } from '@/shared/api/types';
 
 interface Props {
@@ -32,7 +33,7 @@ function computeSharedPlayers(teams: RosterTeam[]): SharedPlayer[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function RostersView({ teams, sideBetRounds, onGolferClick }: Props) {
+function RostersView({ teams, sideBetRounds, onGolferClick }: Props): ReactNode {
   if (teams.length === 0) {
     return (
       <p className="text-gray-400 text-center py-12">

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreOwnerChange, queryKeys } from '@/shared/api/queryKeys';
@@ -21,6 +21,10 @@ function pickKey(teamNumber: number, pick: RosterPreviewPick): string {
 // Selections value is either a golferId (existing pick) or '' / 'none' for
 // "create new". Sentinels rather than null because <select> values are strings.
 const CREATE_NEW = 'none';
+
+const ROSTER_FILE_INPUT_CLASS =
+  'block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 ' +
+  'file:bg-gray-700 file:text-gray-100 hover:file:bg-gray-600';
 
 function initialSelections(preview: RosterPreview): Record<string, string> {
   const out: Record<string, string> = {};
@@ -66,7 +70,7 @@ function splitName(fullName: string): { firstName: string; lastName: string } {
   };
 }
 
-function UploadRostersSection() {
+function UploadRostersSection(): ReactNode {
   const queryClient = useQueryClient();
 
   const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
@@ -250,7 +254,7 @@ function RosterInputStep({
             if (!file) return;
             void file.text().then(onRosterChange);
           }}
-          className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-gray-700 file:text-gray-100 hover:file:bg-gray-600"
+          className={ROSTER_FILE_INPUT_CLASS}
         />
         {rosterText ? (
           <p className="mt-2 text-xs text-gray-400">
