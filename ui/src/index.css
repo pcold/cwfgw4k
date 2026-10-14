@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* They spell banned shades to name or test the lint, and Tailwind would ship a rule for each. */
+@source not "../eslint.config.js";
+@source not "./eslint.config.test.ts";
+@source not "../CLAUDE.md";
+
 /*
  * Names are benrollio DESIGN.md `colors:` keys wherever the role matches. Tokens sharing a ramp step hold
  * different roles, so never merge them. index.css.test.ts resolves each ramp alias; a literal it cannot.
