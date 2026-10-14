@@ -10,9 +10,8 @@ internal class CapturedLogs(private val appender: ListAppender<ILoggingEvent>) {
     fun messages(): List<String> = events().map { it.formattedMessage }
 
     /**
-     * Severity is not in a line's text, and `logback.xml` splits on it: WARN and above go to stderr, which
-     * Cloud Logging reads as ERROR. Copied under the appender's own lock, the one `doAppend` holds, because
-     * other threads keep appending while the block reads.
+     * The level is not in [messages], and it alone sets a line's severity in Cloud Logging. Copied under the
+     * appender's own lock, the one `doAppend` holds, because other threads keep appending while the block reads.
      */
     fun events(): List<ILoggingEvent> = synchronized(appender) { appender.list.toList() }
 }
