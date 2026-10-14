@@ -3,6 +3,7 @@ package com.cwfgw.leagues
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.testing.seedLeagues
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
@@ -21,13 +22,10 @@ private val CASTLEWOOD_CREATED_AT = Instant.parse("2026-01-01T00:00:00Z")
 private val CASTLEWOOD_SEED =
     League(id = CASTLEWOOD_ID, name = "Castlewood Fantasy Golf", createdAt = CASTLEWOOD_CREATED_AT)
 
-private fun seededLeagueService(): LeagueService =
-    LeagueService(FakeLeagueRepository(initial = listOf(CASTLEWOOD_SEED)), FakeTransactor())
-
 class LeagueRoutesSpec : FunSpec({
 
     test("GET /api/v1/leagues returns the seeded leagues") {
-        apiTest({ leagueService = seededLeagueService() }) { client ->
+        apiTest({ seedLeagues(CASTLEWOOD_SEED) }) { client ->
             val response = client.get("/api/v1/leagues")
 
             response.status shouldBe HttpStatusCode.OK

@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { buildRules, parseSideBetRounds } from './rulesInput';
+import { buildRules, formatSideBetRounds, parseSideBetRounds } from './rulesInput';
+
+describe('formatSideBetRounds', () => {
+  it('writes the rounds in the comma-separated form parseSideBetRounds reads back', () => {
+    expect(formatSideBetRounds([3, 4, 9])).toBe('3,4,9');
+    expect(parseSideBetRounds(formatSideBetRounds([3, 4, 9]))).toEqual([3, 4, 9]);
+  });
+
+  it('writes no rounds as an empty field', () => {
+    expect(formatSideBetRounds([])).toBe('');
+  });
+});
 
 describe('parseSideBetRounds', () => {
   it('parses a comma-separated list', () => {

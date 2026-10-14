@@ -160,7 +160,7 @@ class SeasonOpsServiceSpec : FunSpec({
         fixture.service.cleanSeasonResults(SEASON_ID).shouldBeNull()
     }
 
-    test("cleanSeasonResults wipes scores + results + standings and reverts every tournament to upcoming") {
+    test("cleanSeasonResults wipes scores + results and reverts every tournament to upcoming") {
         val sony = tournament(SONY_ID, "Sony Open", "2026-01-15", status = TournamentStatus.Completed)
         val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.Completed)
         val golferId = GolferId(UUID.randomUUID())

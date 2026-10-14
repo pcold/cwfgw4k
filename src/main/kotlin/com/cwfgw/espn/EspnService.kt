@@ -102,7 +102,7 @@ class EspnService(
     /**
      * Called once per overlay and reused across its fold, so the gather is not paid per candidate.
      * [candidates] must hold every tournament later handed to [previewForTournament]: one left out
-     * previews at multiplier 1 and without its link overrides.
+     * previews without its link overrides.
      */
     internal suspend fun loadLivePreviewContext(
         seasonId: SeasonId,
@@ -114,7 +114,6 @@ class EspnService(
                 teams = teamRepository.findBySeason(seasonId),
                 rosters = teamRepository.findRostersBySeason(seasonId),
                 rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults(),
-                tournaments = candidates,
                 overridesByTournament =
                     candidates.associate { candidate ->
                         candidate.id to
@@ -135,7 +134,7 @@ class EspnService(
         val events =
             fetchEspnEvents(tournament.startDate).getOrElse { return Result.Err(LivePreviewError.EspnUnavailable(it)) }
         val event = matchEvent(events, tournament) ?: return Result.Err(LivePreviewError.NoMatchingEvent)
-        return Result.Ok(buildLivePreviewForEvent(event, ctx))
+        return Result.Ok(buildLivePreviewForEvent(event, tournament, ctx))
     }
 
     /**
@@ -199,8 +198,7 @@ class EspnService(
     }
 
     /**
-     * Writes into the caller's transaction so finalize persists the import, the scores and the standings
-     * atomically.
+     * Writes into the caller's transaction so finalize persists the import and the scores atomically.
      */
     context(ctx: TransactionContext)
     internal fun persistImportIn(
@@ -379,16 +377,20 @@ private fun matchEvent(
     tournament: Tournament,
 ): EspnTournament? = events.firstOrNull { it.espnId == tournament.pgaTournamentId } ?: events.singleOrNull()
 
+/**
+ * Multiplier, team flag and overrides come from [tournament], never a lookup by [event]'s id: the lone-event
+ * fallback matches without that id, so the lookup would miss and preview at single payout.
+ */
 internal fun buildLivePreviewForEvent(
     event: EspnTournament,
+    tournament: Tournament,
     ctx: LivePreviewContext,
 ): EspnLivePreview {
-    val matchedDb = ctx.tournamentByPgaId[event.espnId]
-    val multiplier = matchedDb?.payoutMultiplier ?: BigDecimal.ONE
-    val isTeamEvent = event.isTeamEvent || matchedDb?.isTeamEvent == true
+    val multiplier = tournament.payoutMultiplier
+    val isTeamEvent = event.isTeamEvent || tournament.isTeamEvent
 
     val matchedCompetitors: List<Pair<EspnCompetitor, Golfer?>> =
-        event.competitors.map { competitor -> competitor to ctx.resolveGolfer(competitor, matchedDb?.id) }
+        event.competitors.map { competitor -> competitor to ctx.resolveGolfer(competitor, tournament.id) }
     val tiedCounts = event.competitors.groupingBy { it.position }.eachCount()
 
     val teamPreviews =
@@ -486,14 +488,13 @@ internal data class LivePreviewContext(
     val rostersByTeam: Map<TeamId, List<RosterEntry>>,
     val golferOwners: Map<GolferId, List<Pair<TeamId, BigDecimal>>>,
     val numPlaces: Int,
-    val tournamentByPgaId: Map<String, Tournament>,
     val overridesByTournament: Map<TournamentId, Map<String, GolferId>>,
 ) {
     fun resolveGolfer(
         competitor: EspnCompetitor,
-        tournamentId: TournamentId?,
+        tournamentId: TournamentId,
     ): Golfer? {
-        val override = tournamentId?.let { overridesByTournament[it]?.get(competitor.espnId) }
+        val override = overridesByTournament[tournamentId]?.get(competitor.espnId)
         if (override != null) golferById[override]?.let { return it }
         return resolveGolfer(competitor, golferByEspnId, golferByName, golferByLastName, rosteredGolferIds)
     }
@@ -504,8 +505,7 @@ internal data class LivePreviewContext(
             teams: List<Team>,
             rosters: List<RosterEntry>,
             rules: SeasonRules,
-            tournaments: List<Tournament> = emptyList(),
-            overridesByTournament: Map<TournamentId, Map<String, GolferId>> = emptyMap(),
+            overridesByTournament: Map<TournamentId, Map<String, GolferId>>,
         ): LivePreviewContext =
             LivePreviewContext(
                 teams = teams,
@@ -521,10 +521,6 @@ internal data class LivePreviewContext(
                     rosters.groupBy { it.golferId }
                         .mapValues { (_, entries) -> entries.map { it.teamId to it.ownershipPct } },
                 numPlaces = rules.payouts.size,
-                tournamentByPgaId =
-                    tournaments.mapNotNull { tournament ->
-                        tournament.pgaTournamentId?.let { it to tournament }
-                    }.toMap(),
                 overridesByTournament = overridesByTournament,
             )
     }

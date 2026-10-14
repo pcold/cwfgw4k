@@ -292,6 +292,12 @@ describe('api client', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/seasons/sn-1/rules');
   });
 
+  it('defaultSeasonRules() fetches the default-rules endpoint', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({}));
+    await api.defaultSeasonRules();
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/seasons/default-rules');
+  });
+
   it('tournaments() url-encodes the season id', async () => {
     fetchMock.mockResolvedValueOnce(mockJson([]));
     await api.tournaments('sn/1 a');
@@ -449,7 +455,6 @@ describe('api client', () => {
       mockJson({
         scores_deleted: 12,
         results_deleted: 3,
-        standings_deleted: 5,
         tournaments_reset: 2,
       }),
     );
@@ -461,7 +466,6 @@ describe('api client', () => {
     expect(result).toEqual({
       scoresDeleted: 12,
       resultsDeleted: 3,
-      standingsDeleted: 5,
       tournamentsReset: 2,
     });
   });

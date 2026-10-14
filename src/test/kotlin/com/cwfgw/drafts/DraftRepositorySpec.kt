@@ -8,10 +8,8 @@ import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.teams.CreateTeamRequest
-import com.cwfgw.teams.TeamId
-import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.postgresHarness
+import com.cwfgw.testing.seedTeams
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.nulls.shouldBeNull
@@ -25,7 +23,6 @@ class DraftRepositorySpec : FunSpec({
     val repository = DraftRepository()
     val leagueRepo = LeagueRepository()
     val seasonRepo = SeasonRepository()
-    val teamRepo = TeamRepository()
     val golferRepo = GolferRepository()
     val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
     var seasonId = SeasonId(UUID.randomUUID())
@@ -39,13 +36,6 @@ class DraftRepositorySpec : FunSpec({
                 )
             }.id
     }
-
-    suspend fun teamIds(): List<TeamId> =
-        tx.update {
-            listOf("Alpha", "Bravo", "Charlie").map { name ->
-                teamRepo.create(seasonId, CreateTeamRequest(ownerName = "Owner $name", teamName = name)).id
-            }
-        }
 
     test("create persists a draft with default status=pending and draftType=snake") {
         val created = tx.update { repository.create(seasonId, CreateDraftRequest()) }
@@ -89,7 +79,7 @@ class DraftRepositorySpec : FunSpec({
     }
 
     test("createPicks persists every slot returned from the snake order and getPicks orders by pick_num") {
-        val teams = teamIds()
+        val teams = tx.update { seedTeams(seasonId) }
         val (created, fetched) =
             tx.update {
                 val draft = repository.create(seasonId, CreateDraftRequest())
@@ -113,7 +103,7 @@ class DraftRepositorySpec : FunSpec({
     }
 
     test("makePick fills in the golfer_id and picked_at for an unfilled slot") {
-        val teams = teamIds()
+        val teams = tx.update { seedTeams(seasonId) }
         val made =
             tx.update {
                 val draft = repository.create(seasonId, CreateDraftRequest())
@@ -127,7 +117,7 @@ class DraftRepositorySpec : FunSpec({
     }
 
     test("makePick returns null when the pick is already filled") {
-        val teams = teamIds()
+        val teams = tx.update { seedTeams(seasonId) }
         val secondAttempt =
             tx.update {
                 val draft = repository.create(seasonId, CreateDraftRequest())
@@ -143,7 +133,7 @@ class DraftRepositorySpec : FunSpec({
     }
 
     test("getAvailableGolfers excludes picked golfers") {
-        val teams = teamIds()
+        val teams = tx.update { seedTeams(seasonId) }
         val (draftId, scottie) =
             tx.update {
                 val draft = repository.create(seasonId, CreateDraftRequest())

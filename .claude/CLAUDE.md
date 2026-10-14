@@ -158,6 +158,9 @@ wrong, not the rule — the code gets reworked.
 
   The budget caps the *length* of a catalog entry's doc and of cross-module
   KDoc; it waives neither the catalog rule nor the KDoc rule below.
+  detekt's `KDocLength` rule fails production KDoc past six lines of text — a
+  backstop, not the budget; waive it with `@Suppress("KDocLength") // reason` on
+  its line.
 - **MUST NOT** annotate code with a ticket id (`CWF-NNN`) as a matter of
   course. Lineage already lives in `git blame`, the commit, and the PR;
   a ticket id in a comment is a second copy that rots and that reads as

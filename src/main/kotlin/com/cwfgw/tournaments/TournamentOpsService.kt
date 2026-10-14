@@ -6,6 +6,7 @@ import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnTournament
 import com.cwfgw.result.Result
 import com.cwfgw.result.getOrElse
+import com.cwfgw.scoring.ScoringError
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -31,18 +32,25 @@ class TournamentOpsService(
             espnService.fetchEspnEvents(tournament.startDate)
                 .getOrElse { return Result.Err(TournamentOpsError.UpstreamUnavailable(it.failure)) }
 
-        return tx.update {
-            val blocking = findEarlierUnfinalized(tournament)
-            if (blocking.isNotEmpty()) {
-                return@update Result.Err(TournamentOpsError.OutOfOrder(TournamentOpsError.Action.Finalize, blocking))
-            }
+        return try {
+            tx.update {
+                val blocking = findEarlierUnfinalized(tournament)
+                if (blocking.isNotEmpty()) {
+                    return@update Result.Err(
+                        TournamentOpsError.OutOfOrder(TournamentOpsError.Action.Finalize, blocking),
+                    )
+                }
 
-            log.info { "Finalizing tournament '${tournament.name}' (${tournament.id.value})..." }
-            persistEspnEventsIn(tournament, events)
-            scoringService.calculateScoresIn(tournament.seasonId, tournamentId)
-            scoringService.refreshStandingsIn(tournament.seasonId)
-            log.info { "Finalized '${tournament.name}'" }
-            Result.Ok(tournamentRepository.findById(tournamentId) ?: tournament)
+                log.info { "Finalizing tournament '${tournament.name}' (${tournament.id.value})..." }
+                persistEspnEventsIn(tournament, events)
+                scoringService.calculateScoresIn(tournament.seasonId, tournamentId)
+                    .getOrElse { throw FinalizeAborted(it.toOpsError(tournament)) }
+                log.info { "Finalized '${tournament.name}'" }
+                Result.Ok(tournamentRepository.findById(tournamentId) ?: tournament)
+            }
+        } catch (aborted: FinalizeAborted) {
+            log.warn(aborted) { "Finalize of '${tournament.name}' rolled back: ${aborted.error}" }
+            Result.Err(aborted.error)
         }
     }
 
@@ -65,7 +73,6 @@ class TournamentOpsService(
                     tournamentId,
                     UpdateTournamentRequest(status = TournamentStatus.Upcoming),
                 )
-            scoringService.refreshStandingsIn(tournament.seasonId)
             log.info { "Reset complete for '${tournament.name}'" }
             Result.Ok(updated ?: tournament)
         }
@@ -113,3 +120,15 @@ class TournamentOpsService(
             .filter { it.id != tournament.id && it.startDate.isAfter(tournament.startDate) }
             .sortedBy { it.startDate }
 }
+
+/**
+ * Thrown, not returned, from `tx.update`: the block commits on any normal return, an Err included, so only a
+ * throw rolls the ESPN import back. Caught around `tx.update`; it never leaves the service.
+ */
+private class FinalizeAborted(val error: TournamentOpsError) : RuntimeException()
+
+private fun ScoringError.toOpsError(tournament: Tournament): TournamentOpsError =
+    when (this) {
+        ScoringError.SeasonNotFound -> TournamentOpsError.SeasonNotFound(tournament.seasonId)
+        ScoringError.TournamentNotFound -> TournamentOpsError.TournamentNotFound(tournament.id)
+    }

@@ -3,10 +3,9 @@ package com.cwfgw.drafts
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.teams.TeamId
-import com.cwfgw.testing.ApiFixture
-import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.testing.seedDrafts
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
@@ -35,21 +34,11 @@ private fun draft(
         createdAt = Instant.parse("2026-04-01T00:00:00Z"),
     )
 
-private fun withDraft(
-    drafts: List<Draft> = emptyList(),
-    picks: List<DraftPick> = emptyList(),
-): ApiFixture.() -> Unit =
-    {
-        val teamRepository = this.teamRepository
-        val fake = FakeDraftRepository(initialDrafts = drafts, initialPicks = picks)
-        draftService = DraftService(fake, teamRepository, FakeTransactor())
-    }
-
 class DraftRoutesSpec : FunSpec({
 
     test("GET /draft returns 200 with the draft") {
         val d = draft()
-        apiTest(withDraft(listOf(d))) { client ->
+        apiTest({ seedDrafts(listOf(d)) }) { client ->
             val response = client.get("/api/v1/seasons/${SEASON_ID.value}/draft")
             response.status shouldBe HttpStatusCode.OK
             response.body<Draft>() shouldBe d
@@ -75,7 +64,7 @@ class DraftRoutesSpec : FunSpec({
 
     test("POST /draft/start returns 409 when draft is already in_progress") {
         val d = draft(status = "in_progress")
-        authenticatedApiTest(withDraft(listOf(d))) { client ->
+        authenticatedApiTest({ seedDrafts(listOf(d)) }) { client ->
             client.post("/api/v1/seasons/${SEASON_ID.value}/draft/start").status shouldBe HttpStatusCode.Conflict
         }
     }
@@ -87,7 +76,7 @@ class DraftRoutesSpec : FunSpec({
     }
 
     test("POST /draft/start transitions a pending draft to in_progress") {
-        authenticatedApiTest(withDraft(listOf(draft(status = "pending")))) { client ->
+        authenticatedApiTest({ seedDrafts(listOf(draft(status = "pending"))) }) { client ->
             val response = client.post("/api/v1/seasons/${SEASON_ID.value}/draft/start")
 
             response.status shouldBe HttpStatusCode.OK
@@ -96,14 +85,14 @@ class DraftRoutesSpec : FunSpec({
     }
 
     test("POST /draft/initialize returns 409 when the season has no teams") {
-        authenticatedApiTest(withDraft(listOf(draft(status = "pending")))) { client ->
+        authenticatedApiTest({ seedDrafts(listOf(draft(status = "pending"))) }) { client ->
             client.post("/api/v1/seasons/${SEASON_ID.value}/draft/initialize")
                 .status shouldBe HttpStatusCode.Conflict
         }
     }
 
     test("POST /draft/initialize?rounds={bad} returns 400") {
-        authenticatedApiTest(withDraft(listOf(draft(status = "pending")))) { client ->
+        authenticatedApiTest({ seedDrafts(listOf(draft(status = "pending"))) }) { client ->
             client.post("/api/v1/seasons/${SEASON_ID.value}/draft/initialize?rounds=nope")
                 .status shouldBe HttpStatusCode.BadRequest
         }
@@ -115,7 +104,7 @@ class DraftRoutesSpec : FunSpec({
         val d = draft(status = "in_progress")
         val pick = DraftPick(DraftPickId(UUID.randomUUID()), d.id, teamA, null, 1, 1, null)
 
-        authenticatedApiTest(withDraft(listOf(d), listOf(pick))) { client ->
+        authenticatedApiTest({ seedDrafts(listOf(d), listOf(pick)) }) { client ->
             val response =
                 client.post("/api/v1/seasons/${SEASON_ID.value}/draft/pick") {
                     contentType(ContentType.Application.Json)

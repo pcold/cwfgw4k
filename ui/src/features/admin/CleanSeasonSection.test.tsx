@@ -51,7 +51,6 @@ describe('CleanSeasonSection', () => {
     cleanMock.mockResolvedValue({
       scoresDeleted: 12,
       resultsDeleted: 3,
-      standingsDeleted: 5,
       tournamentsReset: 2,
     });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -71,7 +70,7 @@ describe('CleanSeasonSection', () => {
     });
     expect(
       await screen.findByText(
-        /Cleaned 12 scores, 3 results, 5 standings; reset 2 tournaments\./,
+        /Cleaned 12 scores, 3 results; reset 2 tournaments\./,
       ),
     ).toBeInTheDocument();
   });
@@ -83,7 +82,6 @@ describe('CleanSeasonSection', () => {
       cleanMock.mockResolvedValue({
         scoresDeleted: 12,
         resultsDeleted: 3,
-        standingsDeleted: 5,
         tournamentsReset: 2,
       });
       vi.spyOn(window, 'confirm').mockReturnValue(true);

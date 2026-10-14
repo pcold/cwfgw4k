@@ -20,7 +20,7 @@ class SeasonOpsService(
     private val tx: Transactor,
 ) {
     /**
-     * Wipe every score / result / standing for the season and revert
+     * Wipe every score / result for the season and revert
      * every tournament back to upcoming. Destructive admin operation —
      * the operator is responsible for confirming intent at the UI layer.
      * Returns counts so the operator sees what was actually deleted.
@@ -32,16 +32,14 @@ class SeasonOpsService(
             log.info { "Cleaning all results for season '${season.name}'..." }
             val scoresDeleted = scoringRepository.deleteBySeason(seasonId)
             val resultsDeleted = tournamentRepository.deleteResultsBySeason(seasonId)
-            val standingsDeleted = scoringRepository.deleteStandingsBySeason(seasonId)
             val tournamentsReset = tournamentRepository.resetSeasonTournaments(seasonId)
             log.info {
-                "Cleaned season '${season.name}': $scoresDeleted scores, $resultsDeleted results, " +
-                    "$standingsDeleted standings deleted; $tournamentsReset tournaments reset to upcoming"
+                "Cleaned season '${season.name}': $scoresDeleted scores, $resultsDeleted results deleted; " +
+                    "$tournamentsReset tournaments reset to upcoming"
             }
             CleanSeasonResult(
                 scoresDeleted = scoresDeleted,
                 resultsDeleted = resultsDeleted,
-                standingsDeleted = standingsDeleted,
                 tournamentsReset = tournamentsReset,
             )
         }
@@ -56,6 +54,5 @@ class SeasonOpsService(
 data class CleanSeasonResult(
     val scoresDeleted: Int,
     val resultsDeleted: Int,
-    val standingsDeleted: Int,
     val tournamentsReset: Int,
 )

@@ -206,14 +206,7 @@ fun authenticatedApiTest(
     block: suspend ApplicationTestBuilder.(HttpClient) -> Unit,
 ) {
     val fixture = ApiFixture().apply(configure)
-    runBlocking {
-        val hash = fixture.authService.hashPassword(TEST_ADMIN_PASSWORD)
-        with(noopTransactionContext) {
-            fixture.userRepository.create(
-                NewUser(username = TEST_ADMIN_USERNAME, passwordHash = hash, role = UserRole.Admin),
-            )
-        }
-    }
+    fixture.seedUser(username = TEST_ADMIN_USERNAME, password = TEST_ADMIN_PASSWORD, role = UserRole.Admin)
     testApplication {
         application { module(fixture.toAppServices()) }
         val client = createCookieClient()
@@ -235,14 +228,7 @@ fun regularUserApiTest(
     block: suspend ApplicationTestBuilder.(HttpClient) -> Unit,
 ) {
     val fixture = ApiFixture().apply(configure)
-    runBlocking {
-        val hash = fixture.authService.hashPassword(TEST_USER_PASSWORD)
-        with(noopTransactionContext) {
-            fixture.userRepository.create(
-                NewUser(username = TEST_USER_USERNAME, passwordHash = hash, role = UserRole.User),
-            )
-        }
-    }
+    fixture.seedUser(username = TEST_USER_USERNAME, password = TEST_USER_PASSWORD, role = UserRole.User)
     testApplication {
         application { module(fixture.toAppServices()) }
         val client = createCookieClient()
@@ -251,6 +237,20 @@ fun regularUserApiTest(
             setBody(LoginRequest(username = TEST_USER_USERNAME, password = TEST_USER_PASSWORD))
         }
         block(client)
+    }
+}
+
+/** Writes into whatever [ApiFixture.userRepository] holds now; replacing it afterwards drops the user. */
+fun ApiFixture.seedUser(
+    username: String,
+    password: String,
+    role: UserRole,
+) {
+    runBlocking {
+        val hash = authService.hashPassword(password)
+        with(noopTransactionContext) {
+            userRepository.create(NewUser(username = username, passwordHash = hash, role = role))
+        }
     }
 }
 

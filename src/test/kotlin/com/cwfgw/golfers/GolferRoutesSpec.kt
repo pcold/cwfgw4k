@@ -1,9 +1,9 @@
 package com.cwfgw.golfers
 
-import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.testing.seedGolfers
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -39,15 +39,10 @@ private val TIGER =
         updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
     )
 
-private fun golfers(vararg seeded: Golfer): ApiFixture.() -> Unit =
-    {
-        golferService = GolferService(FakeGolferRepository(initial = seeded.toList()), FakeTransactor())
-    }
-
 class GolferRoutesSpec : FunSpec({
 
     test("GET /api/v1/golfers returns every golfer") {
-        apiTest(golfers(RORY, TIGER)) { client ->
+        apiTest({ seedGolfers(RORY, TIGER) }) { client ->
             val response = client.get("/api/v1/golfers")
 
             response.status shouldBe HttpStatusCode.OK
@@ -57,7 +52,7 @@ class GolferRoutesSpec : FunSpec({
     }
 
     test("GET /api/v1/golfers?search=wood matches Woods case-insensitively") {
-        apiTest(golfers(RORY, TIGER)) { client ->
+        apiTest({ seedGolfers(RORY, TIGER) }) { client ->
             val response = client.get("/api/v1/golfers?search=wood")
 
             response.status shouldBe HttpStatusCode.OK

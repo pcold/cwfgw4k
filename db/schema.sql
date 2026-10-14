@@ -41,6 +41,17 @@ CREATE UNLOGGED TABLE cwfgw4k.cache (
 
 
 --
+-- Name: cache_generation; Type: TABLE; Schema: cwfgw4k; Owner: -
+--
+
+CREATE TABLE cwfgw4k.cache_generation (
+    singleton boolean DEFAULT true NOT NULL,
+    generation bigint NOT NULL,
+    CONSTRAINT cache_generation_singleton_check CHECK (singleton)
+);
+
+
+--
 -- Name: draft_picks; Type: TABLE; Schema: cwfgw4k; Owner: -
 --
 
@@ -155,20 +166,6 @@ CREATE TABLE cwfgw4k.season_rule_side_bet_rounds (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     season_id uuid NOT NULL,
     round integer NOT NULL
-);
-
-
---
--- Name: season_standings; Type: TABLE; Schema: cwfgw4k; Owner: -
---
-
-CREATE TABLE cwfgw4k.season_standings (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    season_id uuid NOT NULL,
-    team_id uuid NOT NULL,
-    total_points numeric(14,4) DEFAULT 0 NOT NULL,
-    tournaments_played integer DEFAULT 0 NOT NULL,
-    last_updated timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -289,6 +286,14 @@ CREATE TABLE cwfgw4k.users (
 
 
 --
+-- Name: cache_generation cache_generation_pkey; Type: CONSTRAINT; Schema: cwfgw4k; Owner: -
+--
+
+ALTER TABLE ONLY cwfgw4k.cache_generation
+    ADD CONSTRAINT cache_generation_pkey PRIMARY KEY (singleton);
+
+
+--
 -- Name: cache cache_pkey; Type: CONSTRAINT; Schema: cwfgw4k; Owner: -
 --
 
@@ -406,22 +411,6 @@ ALTER TABLE ONLY cwfgw4k.season_rule_side_bet_rounds
 
 ALTER TABLE ONLY cwfgw4k.season_rule_side_bet_rounds
     ADD CONSTRAINT season_rule_side_bet_rounds_season_id_round_key UNIQUE (season_id, round);
-
-
---
--- Name: season_standings season_standings_pkey; Type: CONSTRAINT; Schema: cwfgw4k; Owner: -
---
-
-ALTER TABLE ONLY cwfgw4k.season_standings
-    ADD CONSTRAINT season_standings_pkey PRIMARY KEY (id);
-
-
---
--- Name: season_standings season_standings_season_id_team_id_key; Type: CONSTRAINT; Schema: cwfgw4k; Owner: -
---
-
-ALTER TABLE ONLY cwfgw4k.season_standings
-    ADD CONSTRAINT season_standings_season_id_team_id_key UNIQUE (season_id, team_id);
 
 
 --
@@ -710,22 +699,6 @@ ALTER TABLE ONLY cwfgw4k.season_rule_payouts
 
 ALTER TABLE ONLY cwfgw4k.season_rule_side_bet_rounds
     ADD CONSTRAINT season_rule_side_bet_rounds_season_id_fkey FOREIGN KEY (season_id) REFERENCES cwfgw4k.seasons(id) ON DELETE CASCADE;
-
-
---
--- Name: season_standings season_standings_season_id_fkey; Type: FK CONSTRAINT; Schema: cwfgw4k; Owner: -
---
-
-ALTER TABLE ONLY cwfgw4k.season_standings
-    ADD CONSTRAINT season_standings_season_id_fkey FOREIGN KEY (season_id) REFERENCES cwfgw4k.seasons(id) ON DELETE CASCADE;
-
-
---
--- Name: season_standings season_standings_team_id_fkey; Type: FK CONSTRAINT; Schema: cwfgw4k; Owner: -
---
-
-ALTER TABLE ONLY cwfgw4k.season_standings
-    ADD CONSTRAINT season_standings_team_id_fkey FOREIGN KEY (team_id) REFERENCES cwfgw4k.teams(id) ON DELETE CASCADE;
 
 
 --

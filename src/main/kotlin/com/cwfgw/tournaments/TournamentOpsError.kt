@@ -1,16 +1,20 @@
 package com.cwfgw.tournaments
 
 import com.cwfgw.espn.EspnUpstreamFailure
+import com.cwfgw.seasons.SeasonId
 
 /**
  * Typed failure modes for tournament-scope finalize/reset orchestration.
  * Variants stay free of HTTP concerns — routes map them to
  * [com.cwfgw.http.DomainError] at the boundary. The chronological-order
- * checks (`OutOfOrder`) are 409 refusals; the not-found variant is 404;
+ * checks (`OutOfOrder`) are 409 refusals; the not-found variants are 404;
  * upstream/import failures are 502 (carried through from EspnError).
  */
 sealed interface TournamentOpsError {
     data class TournamentNotFound(val id: TournamentId) : TournamentOpsError
+
+    /** Finalize only: the season was gone by the time scoring read it, after finalize had read the tournament. */
+    data class SeasonNotFound(val id: SeasonId) : TournamentOpsError
 
     /**
      * Returned when finalize/reset would violate chronological order:

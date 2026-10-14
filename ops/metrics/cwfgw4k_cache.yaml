@@ -1,4 +1,5 @@
-# Log-based counter metric for cache events emitted by RequestCache.
+# Log-based counter metric for cache events emitted by RequestCache and
+# clearResponseCacheOnWrite.
 # Sibling of cwfgw4k_request_count: same shape (one count per log line),
 # different label set tailored to cache hit-rate analysis.
 #
@@ -6,15 +7,19 @@
 #   cwfgw4k.cache event=hit       route=/api/v1/seasons/:id/report/:id
 #   cwfgw4k.cache event=miss      route=/api/v1/seasons/:id/report/:id
 #   cwfgw4k.cache event=put       route=/api/v1/seasons/:id/report/:id ttl_seconds=300
+#   cwfgw4k.cache event=discarded route=/api/v1/seasons/:id/report/:id
 #   cwfgw4k.cache event=coalesced route=/api/v1/seasons/:id/report/:id
 #   cwfgw4k.cache event=sweep     deleted=12
+#   cwfgw4k.cache event=clear     deleted=12
+# and at WARN: event=unstored, event=uncleared, event=error. fetch-enter and
+# fetch-exit both extract as `fetch`: the event regex stops at the hyphen.
 #
 # Apply with:
 #   gcloud logging metrics create cwfgw4k_cache \
 #     --project=cwfgw4k \
 #     --config-from-file=ops/metrics/cwfgw4k_cache.yaml
 name: cwfgw4k_cache
-description: Cache event count (hit, miss, put, sweep) emitted by RequestCache
+description: Cache event count (hit, miss, put, discarded, sweep, clear, ...) emitted by RequestCache and clearResponseCacheOnWrite
 filter: |
   resource.type="cloud_run_revision"
   AND resource.labels.service_name="cwfgw4k"
@@ -25,10 +30,10 @@ metricDescriptor:
   labels:
     - key: event
       valueType: STRING
-      description: hit | miss | put | coalesced | sweep
+      description: hit | miss | put | discarded | unstored | coalesced | fetch | error | sweep | clear | uncleared
     - key: route
       valueType: STRING
-      description: Normalized route template (UUIDs → :id, numeric segments → :n). Empty on sweep events.
+      description: Normalized route template (UUIDs → :id, numeric segments → :n). Empty on sweep, clear and uncleared events.
 labelExtractors:
   event: REGEXP_EXTRACT(jsonPayload.message, "event=([a-z]+)")
   route: REGEXP_EXTRACT(jsonPayload.message, "route=(\\S+)")

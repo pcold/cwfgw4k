@@ -1,10 +1,9 @@
 package com.cwfgw.tournaments
 
 import com.cwfgw.seasons.SeasonId
-import com.cwfgw.testing.ApiFixture
-import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.testing.seedTournaments
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
@@ -45,19 +44,13 @@ private fun tournament(
         createdAt = Instant.parse("2026-04-01T00:00:00Z"),
     )
 
-private fun tournaments(vararg seeded: Tournament): ApiFixture.() -> Unit =
-    {
-        tournamentService =
-            TournamentService(FakeTournamentRepository(initial = seeded.toList()), FakeTransactor())
-    }
-
 class TournamentRoutesSpec : FunSpec({
 
     test("GET /api/v1/tournaments returns every tournament") {
         val masters = tournament(name = "Masters")
         val open = tournament(name = "Open", startDate = LocalDate.parse("2026-07-16"))
 
-        apiTest(tournaments(masters, open)) { client ->
+        apiTest({ seedTournaments(masters, open) }) { client ->
             val response = client.get("/api/v1/tournaments")
 
             response.status shouldBe HttpStatusCode.OK
@@ -70,7 +63,7 @@ class TournamentRoutesSpec : FunSpec({
         val upcoming = tournament(name = "Upcoming", status = TournamentStatus.Upcoming)
         val completed = tournament(name = "Completed", status = TournamentStatus.Completed)
 
-        apiTest(tournaments(upcoming, completed)) { client ->
+        apiTest({ seedTournaments(upcoming, completed) }) { client ->
             val response =
                 client.get("/api/v1/tournaments?season_id=${SEASON_ID.value}&status=completed")
 
@@ -95,7 +88,7 @@ class TournamentRoutesSpec : FunSpec({
     test("PUT /api/v1/tournaments/{id} applies partial updates") {
         val masters = tournament(name = "Masters")
 
-        authenticatedApiTest(tournaments(masters)) { client ->
+        authenticatedApiTest({ seedTournaments(masters) }) { client ->
             val response =
                 client.put("/api/v1/tournaments/${masters.id.value}") {
                     contentType(ContentType.Application.Json)
@@ -131,7 +124,7 @@ class TournamentRoutesSpec : FunSpec({
 
     test("PUT /api/v1/tournaments/{id} returns 401 without an authenticated session") {
         val masters = tournament(name = "Masters")
-        apiTest(tournaments(masters)) { client ->
+        apiTest({ seedTournaments(masters) }) { client ->
             val response =
                 client.put("/api/v1/tournaments/${masters.id.value}") {
                     contentType(ContentType.Application.Json)

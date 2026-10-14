@@ -1,3 +1,16 @@
+# Provided by :detekt-rules, not by detekt itself. detekt rejects a config section naming a
+# ruleset it did not load, so this block is also the check that the module reached the
+# `detektPlugins` classpath of whichever module is being analyzed.
+cwfgw:
+  KDocLength:
+    active: true
+    # Production only, as in benrollio, whose sweeps that brought KDoc under budget never reached tests.
+    excludes: ['**/src/test/**']
+  UnsafeMessageInterpolation:
+    active: true
+    # Production only: a spec's message is read by the person whose spec failed, off a fixture they wrote.
+    excludes: ['**/src/test/**']
+
 coroutines:
   GlobalCoroutineUsage:
     active: true
@@ -58,6 +71,14 @@ style:
       - value: 'org.jooq.DSLContext.transactionResult'
         reason: 'Transactions are opened only by com.cwfgw.db.Transactor, on its pool-sized dispatcher (src/CLAUDE.md → jOOQ).'
       - value: 'org.jooq.DSLContext.transaction'
+        reason: 'Transactions are opened only by com.cwfgw.db.Transactor, on its pool-sized dispatcher (src/CLAUDE.md → jOOQ).'
+      - value: 'org.jooq.DSLContext.transactionAsync'
+        reason: 'Transactions are opened only by com.cwfgw.db.Transactor, on its pool-sized dispatcher (src/CLAUDE.md → jOOQ).'
+      - value: 'org.jooq.DSLContext.transactionResultAsync'
+        reason: 'Transactions are opened only by com.cwfgw.db.Transactor, on its pool-sized dispatcher (src/CLAUDE.md → jOOQ).'
+      - value: 'org.jooq.DSLContext.transactionPublisher'
+        reason: 'Transactions are opened only by com.cwfgw.db.Transactor, on its pool-sized dispatcher (src/CLAUDE.md → jOOQ).'
+      - value: 'org.jooq.DSLContext.startTransaction'
         reason: 'Transactions are opened only by com.cwfgw.db.Transactor, on its pool-sized dispatcher (src/CLAUDE.md → jOOQ).'
       - value: 'kotlin.collections.single'
         reason: 'Take the one element only from a collection whose size the reader can see proven; suppress at the declaration where it is, use singleOrNull where it is not (src/CLAUDE.md → Collections).'

@@ -356,7 +356,6 @@ export interface RosterConfirmResult {
 export interface CleanSeasonResult {
   scoresDeleted: number;
   resultsDeleted: number;
-  standingsDeleted: number;
   tournamentsReset: number;
 }
 
