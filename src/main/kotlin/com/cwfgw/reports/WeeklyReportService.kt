@@ -365,8 +365,8 @@ class WeeklyReportService(
             )
         }
 
-    // Every overlay and [hasLiveCandidate] draw from this one list, so the route's cache bypass cannot miss a
-    // tournament an overlay would fetch.
+    // [hasLiveCandidate] filters with this too, so the route's cache bypass applies the overlays' own rule: a
+    // second copy of the filter could drift and cache a live body.
     private fun liveOverlayCandidates(
         allTournaments: List<Tournament>,
         today: LocalDate,
