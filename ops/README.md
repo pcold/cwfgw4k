@@ -201,12 +201,12 @@ gcloud monitoring policies list --project=cwfgw4k --format='table(displayName,na
 
 | Tile | Source | Reading it |
 | --- | --- | --- |
-| Active instances | `container/instance_count` | Should be 0 when idle (min-instances=0), scales up to max-instances=2. |
+| Active instances | `container/instance_count` | Should be 0 when idle (min-instances=0), scales up to max-instances=6. |
 | 5xx rate (last 5 min) | `request_count`, `response_code_class=5xx` | Scorecard turns yellow at 0.1/s, red at 1.0/s. |
 | P95 request latency | `request_latencies` | Scorecard turns yellow at 500 ms, red at 2000 ms. |
 | Request rate by response class | `request_count`, grouped by class | Stacked area — compare 2xx/3xx/4xx/5xx shape. |
 | Request latency P50 / P95 / P99 | `request_latencies` | Three lines; P99 up while P95 flat = tail-heavy pathology. |
-| CPU / Memory utilization | `container/cpu/utilizations`, `container/memory/utilizations` | P95 per instance. Sustained >80% memory with max-instances=2 → OOM risk. |
+| CPU / Memory utilization | `container/cpu/utilizations`, `container/memory/utilizations` | P95 per instance. Sustained >80% memory with max-instances=6 → OOM risk. |
 | Container startup latency | `container/startup_latencies` | Spikes correspond to cold starts; empty when warm. |
 | Cloud SQL CPU / connections | `cloudsql.googleapis.com/database/...` | Connection spikes without traffic spikes suggest a pool leak. |
 | Unhandled errors | `cwfgw4k_unhandled_errors` | Any non-zero value means something escaped `installErrorHandling`. |
