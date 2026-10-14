@@ -27,9 +27,6 @@ sealed interface TournamentOpsError {
     /** ESPN was unreachable (or returned non-2xx) during the import step of finalize. */
     data class UpstreamUnavailable(val failure: EspnUpstreamFailure) : TournamentOpsError
 
-    /** ESPN's scoreboard for the tournament's date didn't include the linked event. */
-    data class EventNotInScoreboard(val espnEventId: String) : TournamentOpsError
-
     /** The action being attempted — used to render an action-specific message in [OutOfOrder]. */
     enum class Action { Finalize, Reset }
 }

@@ -46,8 +46,6 @@ private fun TournamentOpsError.toDomainError(): DomainError =
         is TournamentOpsError.OutOfOrder ->
             DomainError.Refused(outOfOrderMessage(), code = "tournament_out_of_order")
         is TournamentOpsError.UpstreamUnavailable -> DomainError.BadGateway(failure.summary)
-        is TournamentOpsError.EventNotInScoreboard ->
-            DomainError.NotFound("ESPN scoreboard does not contain event $espnEventId for the linked date")
     }
 
 private fun TournamentOpsError.OutOfOrder.outOfOrderMessage(): String {

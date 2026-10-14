@@ -145,7 +145,7 @@ class EspnService(
         tournament: Tournament,
     ): Result<EspnLivePreview, LivePreviewError> {
         val events =
-            fetchOrFail(tournament.startDate).getOrElse { return Result.Err(LivePreviewError.EspnUnavailable(it)) }
+            fetchEspnEvents(tournament.startDate).getOrElse { return Result.Err(LivePreviewError.EspnUnavailable(it)) }
         val event = matchEvent(events, tournament) ?: return Result.Err(LivePreviewError.NoMatchingEvent)
         return Result.Ok(buildLivePreviewForEvent(event, ctx))
     }
@@ -158,7 +158,13 @@ class EspnService(
      * latter can join an outer `tx.update` without holding a Postgres
      * connection across an HTTP round trip (CWF-25).
      */
-    suspend fun fetchEspnEvents(date: LocalDate): Result<List<EspnTournament>, EspnError> = fetchOrFail(date)
+    suspend fun fetchEspnEvents(date: LocalDate): Result<List<EspnTournament>, EspnError.UpstreamUnavailable> =
+        try {
+            Result.Ok(client.fetchScoreboard(date))
+        } catch (e: EspnUpstreamException) {
+            log.warn(e) { "ESPN scoreboard fetch failed for $date: ${e.message}" }
+            Result.Err(EspnError.UpstreamUnavailable(e.failure))
+        }
 
     /**
      * Dry-run "what would each ESPN competitor link to right now?" for the
@@ -177,7 +183,7 @@ class EspnService(
                 ?: return Result.Err(EspnError.TournamentNotFound(tournamentId))
         val espnId =
             tournament.pgaTournamentId ?: return Result.Err(EspnError.TournamentNotLinked(tournamentId))
-        val events = fetchOrFail(tournament.startDate).getOrElse { return Result.Err(it) }
+        val events = fetchEspnEvents(tournament.startDate).getOrElse { return Result.Err(it) }
         val event =
             events.firstOrNull { it.espnId == espnId } ?: return Result.Err(EspnError.EventNotInScoreboard(espnId))
 
@@ -203,14 +209,6 @@ class EspnService(
             ),
         )
     }
-
-    private suspend fun fetchOrFail(date: LocalDate): Result<List<EspnTournament>, EspnError.UpstreamUnavailable> =
-        try {
-            Result.Ok(client.fetchScoreboard(date))
-        } catch (e: EspnUpstreamException) {
-            log.warn(e) { "ESPN scoreboard fetch failed for $date: ${e.message}" }
-            Result.Err(EspnError.UpstreamUnavailable(e.failure))
-        }
 
     /**
      * Writes into the caller's transaction so finalize persists the import, the scores and the standings
