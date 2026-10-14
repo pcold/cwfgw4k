@@ -54,7 +54,6 @@ class SeasonRepositorySpec : FunSpec({
             created.name shouldBe "2026 Season"
             created.seasonYear shouldBe 2026
             created.seasonNumber shouldBe 1
-            created.status shouldBe "draft"
             created.maxTeams shouldBe 10
             created.tieFloor.compareTo(BigDecimal.ONE) shouldBe 0
             created.sideBetAmount.compareTo(BigDecimal(15)) shouldBe 0

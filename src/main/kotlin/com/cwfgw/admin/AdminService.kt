@@ -187,7 +187,7 @@ class AdminService(
                 is Result.Err -> return Result.Err(AdminError.InvalidRoster(r.error))
             }
 
-        val initialIndex = buildGolferNameIndex(golferService.list(activeOnly = false, search = null))
+        val initialIndex = buildGolferNameIndex(golferService.list(search = null))
         val initialMatches = parsed.flatMap { it.picks }.map { matchPick(it.playerName, initialIndex) }
         val anyUnmatched = initialMatches.any { it is PickMatch.NoMatch }
 
@@ -227,7 +227,7 @@ class AdminService(
                 ),
             )
         }
-        return buildGolferNameIndex(golferService.list(activeOnly = false, search = null))
+        return buildGolferNameIndex(golferService.list(search = null))
     }
 
     private fun splitName(fullName: String): Pair<String, String> {

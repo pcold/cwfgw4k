@@ -27,7 +27,6 @@ private fun season(
         name = name,
         seasonYear = seasonYear,
         seasonNumber = seasonNumber,
-        status = "draft",
         tieFloor = BigDecimal.ONE,
         sideBetAmount = BigDecimal(15),
         maxTeams = 10,
@@ -53,7 +52,7 @@ class SeasonServiceSpec : FunSpec({
         bothFilters shouldContainExactly listOf(c.id)
     }
 
-    test("create passes the request through and defaults status to draft") {
+    test("create passes the request through") {
         val newId = SeasonId(UUID.fromString("00000000-0000-0000-0000-00000000cccc"))
         val newTime = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeSeasonRepository(idFactory = { newId }, clock = { newTime })
@@ -65,7 +64,6 @@ class SeasonServiceSpec : FunSpec({
             )
 
         created.id shouldBe newId
-        created.status shouldBe "draft"
         created.updatedAt shouldBe newTime
     }
 

@@ -56,7 +56,6 @@ class FakeSeasonRepository(
                 name = request.name,
                 seasonYear = request.seasonYear,
                 seasonNumber = request.seasonNumber ?: nextSeasonNumber(request.leagueId, request.seasonYear),
-                status = "draft",
                 tieFloor = tieFloor,
                 sideBetAmount = sideBetAmount,
                 maxTeams = request.maxTeams ?: DEFAULT_MAX_TEAMS,

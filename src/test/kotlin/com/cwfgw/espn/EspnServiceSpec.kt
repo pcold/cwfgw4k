@@ -85,7 +85,6 @@ private fun golfer(
         lastName = lastName,
         country = null,
         worldRanking = null,
-        active = true,
         updatedAt = Instant.EPOCH,
     )
 
@@ -173,7 +172,7 @@ class EspnServiceSpec : FunSpec({
         fixture.persistImport(event)
 
         fixture.results().map { it.golferId } shouldBe listOf(rory.id)
-        with(noopTransactionContext) { fixture.golferRepo.findAll(activeOnly = false, search = null) }.shouldHaveSize(1)
+        with(noopTransactionContext) { fixture.golferRepo.findAll(search = null) }.shouldHaveSize(1)
     }
 
     test("persistImportIn auto-creates an unknown golfer and links the ESPN id as pga_player_id") {
@@ -223,7 +222,7 @@ class EspnServiceSpec : FunSpec({
         // Griffin was auto-created without a pgaPlayerId (synthetic id must never pollute golfers)
         val griffin =
             with(noopTransactionContext) {
-                fixture.golferRepo.findAll(activeOnly = false, search = "Griffin")
+                fixture.golferRepo.findAll(search = "Griffin")
             }.single()
         griffin.pgaPlayerId shouldBe null
     }
@@ -330,7 +329,7 @@ class EspnServiceSpec : FunSpec({
         fixture.persistImport(event)
 
         with(noopTransactionContext) {
-            fixture.golferRepo.findAll(activeOnly = false, search = "Lee").shouldHaveSize(3)
+            fixture.golferRepo.findAll(search = "Lee").shouldHaveSize(3)
             val results = fixture.tournamentRepo.getResults(TOURNAMENT_ID)
             val minWooResult = results.single { it.golferId == minWooLee.id }
             minWooResult.position shouldBe 2
@@ -430,7 +429,7 @@ class EspnServiceSpec : FunSpec({
         fixture.results().map { it.golferId } shouldBe listOf(rory.id)
         // The existing rory was used; no new golfer was created.
         with(noopTransactionContext) {
-            fixture.golferRepo.findAll(activeOnly = false, search = null)
+            fixture.golferRepo.findAll(search = null)
         }.shouldHaveSize(1)
     }
 
@@ -455,7 +454,7 @@ class EspnServiceSpec : FunSpec({
 
         // The two existing Smiths plus a new auto-created one (last name "Smith", empty first name).
         with(noopTransactionContext) {
-            fixture.golferRepo.findAll(activeOnly = false, search = "Smith")
+            fixture.golferRepo.findAll(search = "Smith")
         }.shouldHaveSize(3)
     }
 
@@ -477,7 +476,7 @@ class EspnServiceSpec : FunSpec({
         fixture.persistImport(event)
 
         with(noopTransactionContext) {
-            fixture.golferRepo.findAll(activeOnly = false, search = null)
+            fixture.golferRepo.findAll(search = null)
         }.shouldHaveSize(1)
     }
 
@@ -509,7 +508,7 @@ class EspnServiceSpec : FunSpec({
         // No new golfer auto-created — the override mapped the partner row to Matt directly.
         fixture.results().map { it.golferId } shouldBe listOf(matt.id)
         with(noopTransactionContext) {
-            fixture.golferRepo.findAll(activeOnly = false, search = "Fitzpatrick")
+            fixture.golferRepo.findAll(search = "Fitzpatrick")
         }.shouldHaveSize(2)
     }
 })

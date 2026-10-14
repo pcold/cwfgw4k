@@ -1,7 +1,6 @@
 package com.cwfgw.golfers
 
 import com.cwfgw.db.Transactor
-import com.cwfgw.testing.deactivateGolfer
 import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -33,36 +32,7 @@ class GolferRepositorySpec : FunSpec({
             }
 
         created.firstName shouldBe "Scottie"
-        created.active shouldBe true
         tx.read { repository.findById(created.id) }.shouldNotBeNull()
-    }
-
-    test("findAll with activeOnly=true excludes inactive golfers") {
-        val active =
-            tx.update { repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }
-        val inactive =
-            tx.update { repository.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods")) }
-        tx.update { deactivateGolfer(inactive.id) }
-
-        val result = tx.read { repository.findAll(activeOnly = true, search = null) }
-
-        result.map { it.id } shouldContainExactly listOf(active.id)
-    }
-
-    test("findAll with activeOnly=false returns every golfer") {
-        val a =
-            tx.update {
-                repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy", worldRanking = 2))
-            }
-        val b =
-            tx.update {
-                repository.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods", worldRanking = 1))
-            }
-        tx.update { deactivateGolfer(b.id) }
-
-        val result = tx.read { repository.findAll(activeOnly = false, search = null) }
-
-        result.map { it.id } shouldContainExactly listOf(b.id, a.id)
     }
 
     test("findAll sorts by world_ranking asc nulls last then last_name") {
@@ -77,7 +47,7 @@ class GolferRepositorySpec : FunSpec({
                 repository.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler", worldRanking = 1))
             }
 
-        val result = tx.read { repository.findAll(activeOnly = true, search = null) }
+        val result = tx.read { repository.findAll(search = null) }
 
         result.map { it.id } shouldContainInOrder listOf(ranked1.id, ranked2.id, unranked.id)
     }
@@ -87,10 +57,10 @@ class GolferRepositorySpec : FunSpec({
         val tiger = tx.update { repository.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods")) }
         tx.update { repository.create(CreateGolferRequest(firstName = "Phil", lastName = "Mickelson")) }
 
-        val firstNameMatch = tx.read { repository.findAll(activeOnly = true, search = "ROR") }
+        val firstNameMatch = tx.read { repository.findAll(search = "ROR") }
         firstNameMatch.map { it.id } shouldContainExactly listOf(rory.id)
 
-        val lastNameMatch = tx.read { repository.findAll(activeOnly = true, search = "wood") }
+        val lastNameMatch = tx.read { repository.findAll(search = "wood") }
         lastNameMatch.map { it.id } shouldContainExactly listOf(tiger.id)
     }
 
@@ -121,6 +91,6 @@ class GolferRepositorySpec : FunSpec({
     }
 
     test("empty table returns an empty list") {
-        tx.read { repository.findAll(activeOnly = true, search = null) }.shouldBeEmpty()
+        tx.read { repository.findAll(search = null) }.shouldBeEmpty()
     }
 })

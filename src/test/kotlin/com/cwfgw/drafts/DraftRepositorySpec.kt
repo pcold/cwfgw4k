@@ -11,7 +11,6 @@ import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.teams.CreateTeamRequest
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamRepository
-import com.cwfgw.testing.deactivateGolfer
 import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
@@ -143,7 +142,7 @@ class DraftRepositorySpec : FunSpec({
         secondAttempt.shouldBeNull()
     }
 
-    test("getAvailableGolfers excludes picked golfers and inactive golfers") {
+    test("getAvailableGolfers excludes picked golfers") {
         val teams = teamIds()
         val (draftId, scottie) =
             tx.update {
@@ -151,8 +150,6 @@ class DraftRepositorySpec : FunSpec({
                 repository.createPicks(draft.id, listOf(PickSlot(teams[0], 1, 1)))
                 val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")).id
                 val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")).id
-                val tiger = golferRepo.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods")).id
-                deactivateGolfer(tiger)
                 repository.makePick(draft.id, pickNum = 1, golferId = rory)
                 draft.id to scottie
             }

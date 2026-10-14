@@ -130,7 +130,6 @@ private val BROWN_DRAFTED_SCOTTIE_FIRST =
         draftRound = 1,
         ownershipPct = BigDecimal(100),
         acquiredAt = SEEDED_AT,
-        droppedAt = null,
         isActive = true,
     )
 

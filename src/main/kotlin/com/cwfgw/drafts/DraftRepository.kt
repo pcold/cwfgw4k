@@ -148,8 +148,7 @@ private class JooqDraftRepository : DraftRepository {
                 .where(DRAFT_PICKS.DRAFT_ID.eq(draftId.value))
                 .and(DRAFT_PICKS.GOLFER_ID.isNotNull)
         return ctx.dsl.selectFrom(GOLFERS)
-            .where(GOLFERS.ACTIVE.eq(true))
-            .and(GOLFERS.ID.notIn(pickedGolferIds))
+            .where(GOLFERS.ID.notIn(pickedGolferIds))
             .orderBy(GOLFERS.WORLD_RANKING.asc().nullsLast(), GOLFERS.LAST_NAME.asc())
             .fetch { record ->
                 Golfer(
@@ -159,7 +158,6 @@ private class JooqDraftRepository : DraftRepository {
                     lastName = record.lastName,
                     country = record.country,
                     worldRanking = record.worldRanking,
-                    active = record.required(GOLFERS.ACTIVE),
                     updatedAt = record.required(GOLFERS.UPDATED_AT).toInstant(),
                 )
             }

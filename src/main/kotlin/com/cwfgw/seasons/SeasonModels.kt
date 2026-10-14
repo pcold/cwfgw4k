@@ -27,7 +27,6 @@ data class Season(
     val name: String,
     val seasonYear: Int,
     val seasonNumber: Int,
-    val status: String,
     @Serializable(with = BigDecimalSerializer::class) val tieFloor: BigDecimal,
     @Serializable(with = BigDecimalSerializer::class) val sideBetAmount: BigDecimal,
     val maxTeams: Int,

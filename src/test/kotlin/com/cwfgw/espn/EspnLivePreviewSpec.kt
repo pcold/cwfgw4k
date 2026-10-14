@@ -90,7 +90,6 @@ private fun golfer(
         lastName = lastName,
         country = null,
         worldRanking = null,
-        active = true,
         updatedAt = Instant.EPOCH,
     )
 
@@ -122,7 +121,6 @@ private fun rosterEntry(
         draftRound = draftRound,
         ownershipPct = ownershipPct,
         acquiredAt = Instant.EPOCH,
-        droppedAt = null,
         isActive = true,
     )
 

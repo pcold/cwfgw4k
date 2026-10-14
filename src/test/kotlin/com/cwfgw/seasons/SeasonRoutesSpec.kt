@@ -36,7 +36,6 @@ private fun season(
         name = name,
         seasonYear = seasonYear,
         seasonNumber = seasonNumber,
-        status = "draft",
         tieFloor = BigDecimal.ONE,
         sideBetAmount = BigDecimal(15),
         maxTeams = 10,
@@ -123,7 +122,6 @@ class SeasonRoutesSpec : FunSpec({
             response.status shouldBe HttpStatusCode.Created
             val created: Season = response.body()
             created.id shouldBe newId
-            created.status shouldBe "draft"
             created.seasonNumber shouldBe 1
             created.maxTeams shouldBe 10
         }
