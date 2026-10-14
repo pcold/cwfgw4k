@@ -365,32 +365,18 @@ private val SCHEFFLER = golferRow(SCOTTIE_ID, "Scottie", "Scheffler")
 private val MASTERS_GOLFERS =
     listOf(SCHEFFLER, golferRow(RORY_ID, "Rory", "McIlroy"), golferRow(XANDER_ID, "Xander", "Schauffele"))
 
-// The Masters still in play, with [results] already persisted and ESPN reporting [field] for it.
-private fun mastersInPlay(
-    rosters: List<RosterEntry>,
-    results: List<TournamentResult>,
-    field: List<EspnCompetitor>,
-): ApiFixture.() -> Unit {
-    val masters =
-        tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
-            .copy(status = TournamentStatus.InProgress, pgaTournamentId = "espn-masters")
-    val liveMasters =
-        EspnTournament(
-            espnId = "espn-masters",
-            name = "The Masters",
-            completed = false,
-            competitors = field,
-            isTeamEvent = false,
-        )
-    return reportFixture(
-        initialTournaments = listOf(masters),
-        initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
-        initialGolfers = MASTERS_GOLFERS,
-        initialRosters = rosters,
-        initialResults = results,
-        espn = FakeEspnClient(tournamentsByDate = mapOf(masters.startDate to listOf(liveMasters))),
+private val MASTERS_IN_PLAY =
+    tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
+        .copy(status = TournamentStatus.InProgress, pgaTournamentId = "espn-masters")
+
+private fun espnMasters(field: List<EspnCompetitor>): EspnTournament =
+    EspnTournament(
+        espnId = "espn-masters",
+        name = "The Masters",
+        completed = false,
+        competitors = field,
+        isTeamEvent = false,
     )
-}
 
 private fun espnLeader(golfer: Golfer): EspnCompetitor =
     EspnCompetitor(
@@ -714,11 +700,22 @@ class ReportRoutesSpec : FunSpec({
     }
 
     test("GET /api/v1/seasons/{id}/report/{tid}?live=true names every team rostering a live leaderboard player") {
+        val schefflerOnTheCourse = espnMasters(field = listOf(espnLeader(SCHEFFLER)))
         val configure =
-            mastersInPlay(
-                rosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, 5), rosterRow(TEAM_B, SCOTTIE_ID, 5)),
-                results = emptyList(),
-                field = listOf(espnLeader(SCHEFFLER)),
+            reportFixture(
+                initialTournaments = listOf(MASTERS_IN_PLAY),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers = MASTERS_GOLFERS,
+                initialRosters =
+                    listOf(
+                        rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5),
+                        rosterRow(TEAM_B, SCOTTIE_ID, draftRound = 5),
+                    ),
+                espn =
+                    FakeEspnClient(
+                        tournamentsByDate =
+                            mapOf(MASTERS_IN_PLAY.startDate to listOf(schefflerOnTheCourse)),
+                    ),
             )
         apiTest(configure) { client ->
             val url = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
@@ -730,11 +727,15 @@ class ReportRoutesSpec : FunSpec({
     }
 
     test("GET /api/v1/seasons/{id}/report/{tid}?live=true keeps the persisted leaderboard when ESPN's field is empty") {
+        val noField = espnMasters(field = emptyList())
         val configure =
-            mastersInPlay(
-                rosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, 5)),
-                results = listOf(resultRow(MASTERS_ID, SCOTTIE_ID, position = 1)),
-                field = emptyList(),
+            reportFixture(
+                initialTournaments = listOf(MASTERS_IN_PLAY),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers = MASTERS_GOLFERS,
+                initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5)),
+                initialResults = listOf(resultRow(MASTERS_ID, SCOTTIE_ID, position = 1)),
+                espn = FakeEspnClient(tournamentsByDate = mapOf(MASTERS_IN_PLAY.startDate to listOf(noField))),
             )
         apiTest(configure) { client ->
             val url = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
