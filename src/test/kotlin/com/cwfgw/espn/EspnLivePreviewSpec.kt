@@ -186,7 +186,7 @@ private class PreviewFixture(
     }
 }
 
-// The context matches only the tournaments handed to it; it never reads them back out of the repository.
+// The context loads link overrides only for the tournaments handed to it; it never lists the repository's.
 private suspend fun PreviewFixture.previewFor(candidate: Tournament): Result<EspnLivePreview, LivePreviewError> =
     service.previewForTournament(service.loadLivePreviewContext(SEASON_ID, initialTournaments), candidate)
 
@@ -342,7 +342,13 @@ class EspnLivePreviewSpec : FunSpec({
                 initialGolfers = listOf(scottie),
                 initialRosters = listOf(rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1)),
                 initialOverrides =
-                    listOf(TournamentPlayerOverride(TOURNAMENT_ID, espnCompetitorId = "espn-x", golferId = SCOTTIE_ID)),
+                    listOf(
+                        TournamentPlayerOverride(
+                            tournamentId = TOURNAMENT_ID,
+                            espnCompetitorId = "espn-x",
+                            golferId = SCOTTIE_ID,
+                        ),
+                    ),
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
