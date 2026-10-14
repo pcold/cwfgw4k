@@ -24,6 +24,7 @@ describe('ErrorBoundary', () => {
       <ErrorBoundary>
         <p>Weekly report</p>
       </ErrorBoundary>,
+      { withLeagueSeasonProvider: false },
     );
 
     expect(screen.getByText('Weekly report')).toBeInTheDocument();
@@ -35,6 +36,7 @@ describe('ErrorBoundary', () => {
       <ErrorBoundary>
         <Boom />
       </ErrorBoundary>,
+      { withLeagueSeasonProvider: false },
     );
 
     expect(screen.getByRole('heading', { name: /something went wrong/i })).toBeInTheDocument();
@@ -47,6 +49,7 @@ describe('ErrorBoundary', () => {
         <p>Weekly report</p>
         <Boom />
       </ErrorBoundary>,
+      { withLeagueSeasonProvider: false },
     );
 
     expect(screen.queryByText('Weekly report')).not.toBeInTheDocument();
@@ -58,6 +61,7 @@ describe('ErrorBoundary', () => {
       <ErrorBoundary>
         <Boom />
       </ErrorBoundary>,
+      { withLeagueSeasonProvider: false },
     );
 
     const loggedArguments = vi.mocked(console.error).mock.calls.flat();
@@ -72,6 +76,7 @@ describe('ErrorBoundary', () => {
       <ErrorBoundary>
         <Boom />
       </ErrorBoundary>,
+      { withLeagueSeasonProvider: false },
     );
     await userEvent.click(screen.getByRole('button', { name: /reload/i }));
 
