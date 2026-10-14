@@ -98,6 +98,8 @@ expect 0 "the workflow's script was found in the YAML" test -s "${work}/step.sh"
 either 0 "${linear_name}"
 # 0 is the number of no issue, so quoting this name in a PR body links nothing.
 either 0 "a-b/cwf-0-x"
+# Linear keeps the underscore of a snake_case name in a ticket title.
+either 0 "pcold/cwf-157-drop-the-season_standings-table"
 either 1 "scratch"
 either 1 "pcold/CWF-65-x"
 either 1 "Pcold/cwf-65-x"
@@ -106,7 +108,6 @@ either 1 "pcold/abc-65-x"
 either 1 "pcold/cwf-65"
 either 1 "pcold/cwf-65-"
 either 1 "pcold/cwf-x-foo"
-either 1 "pcold/cwf-65-a_b"
 either 1 "a/pcold/cwf-65-x"
 either 1 "dependabot/npm_and_yarn/ui/foo-1.2.3"
 
