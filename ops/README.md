@@ -54,7 +54,8 @@ gcloud logging metrics create cwfgw4k_unhandled_errors \
 Counts ESPN integration warnings/errors — calendar fetches, scoreboard fetches,
 athlete lookups — logged by `EspnClient`, `EspnService`, and `AdminService`.
 `message` holds only the line's text, so the logger and `severity>=ERROR`
-clauses match what the logger name and level prefix of a text line once did.
+clauses stand in for the logger name and level prefix a text line carried. A
+stack trace is part of its entry, so one failure counts once, not once per line.
 
 ```bash
 gcloud logging metrics create cwfgw4k_espn_failures \
@@ -63,7 +64,7 @@ gcloud logging metrics create cwfgw4k_espn_failures \
   --log-filter='resource.type="cloud_run_revision"
     AND resource.labels.service_name="cwfgw4k"
     AND severity>=WARNING
-    AND (jsonPayload.message:"ESPN" OR jsonPayload.message:"espn" OR jsonPayload.logger:"espn")
+    AND (jsonPayload.message:"espn" OR jsonPayload.logger:"espn")
     AND (jsonPayload.message:"failed" OR jsonPayload.message:"error" OR jsonPayload.message:"returned"
       OR severity>=ERROR)'
 ```
@@ -115,6 +116,18 @@ Suggested dashboard panels:
 - **Sweep size** — `count(event=sweep)` is one per run; pair with the same log
   line's `deleted=N` if you want a row-count panel (regex-extract a separate
   metric for that).
+
+Updating any of the five metrics later — `create` refuses an existing one, and
+a metric counts only entries ingested after its filter changes, so apply an edit
+in the same window as the deploy that changes the log line:
+
+```bash
+gcloud logging metrics update cwfgw4k_cache \
+  --project=cwfgw4k \
+  --config-from-file=ops/metrics/cwfgw4k_cache.yaml
+```
+
+The two filter-only metrics take `--log-filter='…'` in place of `--config-from-file`.
 
 ### 6. Import the dashboards
 
