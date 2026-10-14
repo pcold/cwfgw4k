@@ -1,4 +1,10 @@
+import { notifySessionExpired } from '../sessionExpiry';
+
 const BASE = '/api/v1';
+
+// Their 401 answers the question asked rather than reporting an expiry: login's is a bad password,
+// and `me`'s is how the expiry gets confirmed, so reporting it would loop.
+const AUTH_PROBE_PATHS: readonly string[] = ['/auth/login', '/auth/me'];
 
 export class ApiError extends Error {
   readonly status: number;
@@ -67,6 +73,7 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
   const url = `${BASE}${path}`;
   const resp = await (init === undefined ? fetch(url) : fetch(url, init));
   if (resp.ok) return resp;
+  if (resp.status === 401 && !AUTH_PROBE_PATHS.includes(path)) notifySessionExpired();
   throw await requestError(resp);
 }
 

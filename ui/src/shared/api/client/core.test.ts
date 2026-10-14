@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { onSessionExpired } from '../sessionExpiry';
 import { ApiError, deleteNoContent, getJson, postJson } from './core';
+import { api } from './index';
 
 function refusal(status: number, body: string, statusText = ''): Response {
   return new Response(body, { status, statusText });
@@ -60,5 +62,73 @@ describe('decoding a refused request', () => {
     const error = await rejection(deleteNoContent('/seasons/sn-1'));
 
     expect(error.message).toBe('500 Server Error');
+  });
+});
+
+describe('reporting an expired session', () => {
+  const sessionExpired = vi.fn();
+  let fetchMock: Mock<typeof fetch>;
+  let unsubscribe: () => void = () => undefined;
+
+  beforeEach(() => {
+    fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal('fetch', fetchMock);
+    sessionExpired.mockReset();
+    unsubscribe = onSessionExpired(sessionExpired);
+  });
+
+  afterEach(() => {
+    unsubscribe();
+    vi.unstubAllGlobals();
+  });
+
+  const expired = (): Response => refusal(401, JSON.stringify({ error: 'authentication required' }));
+
+  it('reports a read the server refuses', async () => {
+    fetchMock.mockResolvedValue(expired());
+
+    await expect(api.tournamentCompetitors('tn-1')).rejects.toThrow('authentication required');
+
+    expect(sessionExpired).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a write the server refuses', async () => {
+    fetchMock.mockResolvedValue(expired());
+
+    await expect(api.createLeague('Castlewood')).rejects.toThrow('authentication required');
+
+    expect(sessionExpired).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays out of a rejected login, which the login modal answers itself', async () => {
+    fetchMock.mockResolvedValue(refusal(401, JSON.stringify({ error: 'invalid username or password' })));
+
+    await expect(api.login('admin', 'wrong')).rejects.toThrow('invalid username or password');
+
+    expect(sessionExpired).not.toHaveBeenCalled();
+  });
+
+  it('stays out of the session check, whose 401 is the answer and not a symptom', async () => {
+    fetchMock.mockResolvedValue(expired());
+
+    await expect(api.authMe()).resolves.toBeNull();
+
+    expect(sessionExpired).not.toHaveBeenCalled();
+  });
+
+  it('stays out of a refusal that is not a 401', async () => {
+    fetchMock.mockResolvedValue(refusal(403, JSON.stringify({ error: 'admin role required' })));
+
+    await expect(api.createLeague('Castlewood')).rejects.toThrow('admin role required');
+
+    expect(sessionExpired).not.toHaveBeenCalled();
+  });
+
+  it('reports every refusal, leaving the subscriber to collapse a page-wide expiry', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(expired()));
+
+    await Promise.allSettled([api.leagues(), api.tournaments('sn-1'), api.golfers()]);
+
+    expect(sessionExpired).toHaveBeenCalledTimes(3);
   });
 });

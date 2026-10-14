@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router';
 import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { ApiError } from '@/shared/api/client';
+import { notifySessionExpired } from '@/shared/api/sessionExpiry';
 import AdminPage from './AdminPage';
 
 const authMeMock = vi.fn<typeof api.authMe>();
@@ -171,5 +172,55 @@ describe('AdminPage', () => {
       expect(logoutMock).toHaveBeenCalled();
     });
     expect(await screen.findByRole('dialog', { name: /Admin Login/i })).toBeInTheDocument();
+  });
+
+  // The client reports a mid-session 401 through `sessionExpiry`, which this file leaves real.
+  describe('when a request reports the session expired', () => {
+    async function renderSignedIn(): Promise<void> {
+      authMeMock.mockResolvedValue(adminUser);
+      renderWithProviders(<AdminPage />, { withAuthProvider: true, withLeagueSeasonProvider: false });
+      await screen.findByRole('heading', { name: 'Admin' });
+    }
+
+    function reportExpiry(): void {
+      act(() => {
+        notifySessionExpired();
+      });
+    }
+
+    it('returns the admin to the login modal instead of leaving refused sections on screen', async () => {
+      await renderSignedIn();
+
+      authMeMock.mockResolvedValue(null);
+      reportExpiry();
+
+      expect(await screen.findByRole('dialog', { name: /Admin Login/i })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Admin' })).not.toBeInTheDocument();
+    });
+
+    it('asks the server once for a burst of refused requests', async () => {
+      await renderSignedIn();
+
+      authMeMock.mockResolvedValue(null);
+      reportExpiry();
+      await screen.findByRole('dialog', { name: /Admin Login/i });
+      reportExpiry();
+      reportExpiry();
+
+      expect(screen.getByRole('dialog', { name: /Admin Login/i })).toBeInTheDocument();
+      expect(authMeMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps a session the server still honours, as after a fresh login', async () => {
+      await renderSignedIn();
+
+      reportExpiry();
+
+      await waitFor(() => {
+        expect(authMeMock).toHaveBeenCalledTimes(2);
+      });
+      expect(await screen.findByRole('heading', { name: 'Admin' })).toBeInTheDocument();
+      expect(screen.queryByRole('dialog', { name: /Admin Login/i })).not.toBeInTheDocument();
+    });
   });
 });
