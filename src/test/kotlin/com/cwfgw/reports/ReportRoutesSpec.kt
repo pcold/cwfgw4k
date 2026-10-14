@@ -805,7 +805,7 @@ class ReportRoutesSpec : FunSpec({
         }
     }
 
-    // ----- response caching: live requests bypass it, the rest are served from it -----
+    // ----- response caching: live requests in a tournament's window bypass it, the rest are served from it -----
 
     LIVE_CAPABLE_PATHS.forEach { (label, path) ->
         val url = "/api/v1/seasons/${SEASON_ID.value}/$path"
