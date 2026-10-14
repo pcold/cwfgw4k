@@ -36,10 +36,8 @@ export function snakeifyKeys(value: unknown): unknown {
   return value;
 }
 
-// Recursively rewrites snake_case object keys to camelCase. The backend emits
-// snake_case via circe's `withSnakeCaseMemberNames` to stay compatible with the
-// legacy Alpine UI; this transform lets the React side use idiomatic camelCase
-// types. Once Alpine is retired we can drop the backend config and delete this.
+// The wire's snake_case comes from the backend's `appJson` naming strategy, not from a legacy client;
+// the UI's types are camelCase, so this and `snakeifyKeys` stay for as long as that strategy does.
 export function camelizeKeys(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(camelizeKeys);
   if (value !== null && typeof value === 'object') {
