@@ -43,9 +43,13 @@ private suspend fun RoutingContext.cleanSeasonResults(service: SeasonOpsService)
 private fun SeasonOpsError.toDomainError(): DomainError =
     when (this) {
         is SeasonOpsError.SeasonNotFound -> DomainError.NotFound("season ${id.value} not found")
-        SeasonOpsError.SeasonHasNoTournaments -> DomainError.Conflict("season has no tournaments to finalize")
+        SeasonOpsError.SeasonHasNoTournaments ->
+            DomainError.Refused("season has no tournaments to finalize", code = "season_has_no_tournaments")
         is SeasonOpsError.IncompleteTournaments ->
-            DomainError.Conflict("cannot finalize season — incomplete tournaments: " + incomplete.formatNames())
+            DomainError.Refused(
+                "cannot finalize season — incomplete tournaments: " + incomplete.formatNames(),
+                code = "season_has_incomplete_tournaments",
+            )
     }
 
 private fun List<Tournament>.formatNames(): String =

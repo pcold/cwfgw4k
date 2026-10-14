@@ -10,6 +10,7 @@ import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.shouldBeRefused
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
@@ -189,7 +190,7 @@ class EspnRoutesSpec : FunSpec({
         }
     }
 
-    test("POST /espn/import/tournament/{unlinked} returns 409 when the tournament has no pga_tournament_id") {
+    test("POST /espn/import/tournament/{unlinked} is refused when the tournament has no pga_tournament_id") {
         val seed =
             CreateTournamentRequest(
                 name = "Unlinked",
@@ -208,8 +209,7 @@ class EspnRoutesSpec : FunSpec({
                 client.get("/api/v1/tournaments").body<List<com.cwfgw.tournaments.Tournament>>()
             val seededId = tournamentsList.single().id
 
-            client.post("/api/v1/espn/import/tournament/${seededId.value}")
-                .status shouldBe HttpStatusCode.Conflict
+            client.post("/api/v1/espn/import/tournament/${seededId.value}").shouldBeRefused("tournament_not_linked")
         }
     }
 

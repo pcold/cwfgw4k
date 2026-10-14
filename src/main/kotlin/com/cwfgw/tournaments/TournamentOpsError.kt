@@ -6,7 +6,7 @@ import com.cwfgw.espn.EspnUpstreamFailure
  * Typed failure modes for tournament-scope finalize/reset orchestration.
  * Variants stay free of HTTP concerns — routes map them to
  * [com.cwfgw.http.DomainError] at the boundary. The chronological-order
- * checks (`OutOfOrder`) are 409 conflicts; the not-found variant is 404;
+ * checks (`OutOfOrder`) are 409 refusals; the not-found variant is 404;
  * upstream/import failures are 502 (carried through from EspnError).
  *
  * Season-scope ops have their own [com.cwfgw.seasons.SeasonOpsError]
