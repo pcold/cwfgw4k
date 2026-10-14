@@ -77,14 +77,14 @@ function RankingsChart({ rankings }: Props): ReactNode {
                 x2={layout.plot.right}
                 y1={layout.plot.bottom}
                 y2={layout.plot.bottom}
-                stroke="#374151"
+                className="stroke-hairline"
               />
               <line
                 x1={layout.plot.left}
                 x2={layout.plot.left}
                 y1={layout.plot.top}
                 y2={layout.plot.bottom}
-                stroke="#374151"
+                className="stroke-hairline"
               />
 
               {layout.yTicks.map((tick) => (
@@ -94,7 +94,7 @@ function RankingsChart({ rankings }: Props): ReactNode {
                     x2={layout.plot.right}
                     y1={tick.position}
                     y2={tick.position}
-                    stroke="#374151"
+                    className="stroke-hairline"
                     strokeDasharray="2 4"
                   />
                   <text
@@ -102,7 +102,7 @@ function RankingsChart({ rankings }: Props): ReactNode {
                     y={tick.position + 4}
                     textAnchor="end"
                     fontSize={11}
-                    fill="#9ca3af"
+                    className="fill-ink-muted"
                   >
                     {tick.label}
                   </text>
@@ -116,7 +116,7 @@ function RankingsChart({ rankings }: Props): ReactNode {
                   y={layout.plot.bottom + 18}
                   textAnchor="middle"
                   fontSize={11}
-                  fill="#9ca3af"
+                  className="fill-ink-muted"
                 >
                   {tick.label}
                 </text>

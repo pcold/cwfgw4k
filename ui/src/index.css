@@ -87,8 +87,8 @@ body,
 
 body {
   margin: 0;
-  background-color: #111827;
-  color: #f3f4f6;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
   font-family:
     ui-sans-serif,
     system-ui,
