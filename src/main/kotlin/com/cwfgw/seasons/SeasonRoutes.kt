@@ -14,17 +14,14 @@ import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
-import io.ktor.server.routing.put
 import io.ktor.server.routing.route
 
 fun Route.seasonRoutes(service: SeasonService) {
     route("/seasons") {
         get { listSeasons(service) }
-        get("/{id}") { getSeason(service) }
         get("/{id}/rules") { getRules(service) }
         authenticate(SESSION_AUTH_NAME) {
             post { createSeason(service) }
-            put("/{id}") { updateSeason(service) }
             delete("/{id}") { deleteSeason(service) }
         }
     }
@@ -39,24 +36,10 @@ private suspend fun RoutingContext.listSeasons(service: SeasonService) {
     call.respond(service.list(leagueId = leagueId, seasonYear = year))
 }
 
-private suspend fun RoutingContext.getSeason(service: SeasonService) {
-    val id = seasonId()
-    val season = service.get(id) ?: throw DomainError.NotFound("season ${id.value} not found")
-    call.respond(season)
-}
-
 private suspend fun RoutingContext.createSeason(service: SeasonService) {
     requireAdmin()
     val request = call.receive<CreateSeasonRequest>()
     call.respond(HttpStatusCode.Created, service.create(request))
-}
-
-private suspend fun RoutingContext.updateSeason(service: SeasonService) {
-    requireAdmin()
-    val id = seasonId()
-    val request = call.receive<UpdateSeasonRequest>()
-    val season = service.update(id, request) ?: throw DomainError.NotFound("season ${id.value} not found")
-    call.respond(season)
 }
 
 private suspend fun RoutingContext.getRules(service: SeasonService) {

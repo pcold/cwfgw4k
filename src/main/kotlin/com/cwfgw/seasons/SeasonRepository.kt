@@ -25,12 +25,6 @@ interface SeasonRepository {
     fun create(request: CreateSeasonRequest): Season
 
     context(ctx: TransactionContext)
-    fun update(
-        id: SeasonId,
-        request: UpdateSeasonRequest,
-    ): Season?
-
-    context(ctx: TransactionContext)
     fun getRules(id: SeasonId): SeasonRules?
 
     /**
@@ -123,27 +117,6 @@ private class JooqSeasonRepository : SeasonRepository {
     }
 
     context(ctx: TransactionContext)
-    override fun update(
-        id: SeasonId,
-        request: UpdateSeasonRequest,
-    ): Season? {
-        val changes = updateAssignments(request)
-        return if (changes.isEmpty()) {
-            ctx.dsl.selectFrom(SEASONS)
-                .where(SEASONS.ID.eq(id.value))
-                .fetchOne()
-                ?.let(::toSeason)
-        } else {
-            ctx.dsl.update(SEASONS)
-                .set(changes + (SEASONS.UPDATED_AT to DSL.currentOffsetDateTime()))
-                .where(SEASONS.ID.eq(id.value))
-                .returning()
-                .fetchOne()
-                ?.let(::toSeason)
-        }
-    }
-
-    context(ctx: TransactionContext)
     override fun getRules(id: SeasonId): SeasonRules? {
         val season =
             ctx.dsl.selectFrom(SEASONS)
@@ -211,15 +184,6 @@ private class JooqSeasonRepository : SeasonRepository {
             (request.rules?.sideBetAmount ?: request.sideBetAmount)?.let {
                 put(SEASONS.SIDE_BET_AMOUNT, it)
             }
-        }
-
-    private fun updateAssignments(request: UpdateSeasonRequest): Map<Field<*>, Any?> =
-        buildMap {
-            request.name?.let { put(SEASONS.NAME, it) }
-            request.status?.let { put(SEASONS.STATUS, it) }
-            request.maxTeams?.let { put(SEASONS.MAX_TEAMS, it) }
-            request.tieFloor?.let { put(SEASONS.TIE_FLOOR, it) }
-            request.sideBetAmount?.let { put(SEASONS.SIDE_BET_AMOUNT, it) }
         }
 
     private fun toSeason(record: SeasonsRecord): Season =

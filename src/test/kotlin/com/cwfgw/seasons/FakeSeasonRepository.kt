@@ -79,26 +79,6 @@ class FakeSeasonRepository(
             ?.plus(1) ?: 1
 
     context(ctx: TransactionContext)
-    override fun update(
-        id: SeasonId,
-        request: UpdateSeasonRequest,
-    ): Season? {
-        val current = store[id] ?: return null
-        val touched = request.hasAnyChange()
-        val updated =
-            current.copy(
-                name = request.name ?: current.name,
-                status = request.status ?: current.status,
-                maxTeams = request.maxTeams ?: current.maxTeams,
-                tieFloor = request.tieFloor ?: current.tieFloor,
-                sideBetAmount = request.sideBetAmount ?: current.sideBetAmount,
-                updatedAt = if (touched) clock() else current.updatedAt,
-            )
-        store[id] = updated
-        return updated
-    }
-
-    context(ctx: TransactionContext)
     override fun getRules(id: SeasonId): SeasonRules? {
         val season = store[id] ?: return null
         val custom = rulesStore[id]
@@ -115,13 +95,6 @@ class FakeSeasonRepository(
         rulesStore.remove(id)
         return store.remove(id) != null
     }
-
-    private fun UpdateSeasonRequest.hasAnyChange(): Boolean =
-        name != null ||
-            status != null ||
-            maxTeams != null ||
-            tieFloor != null ||
-            sideBetAmount != null
 
     companion object {
         private const val DEFAULT_MAX_TEAMS = 10

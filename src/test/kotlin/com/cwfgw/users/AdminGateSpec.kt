@@ -57,9 +57,9 @@ class AdminGateSpec : FunSpec({
         }
     }
 
-    test("SeasonOpsRoutes: POST /api/v1/seasons/{sid}/finalize rejects a regular user with 403") {
+    test("SeasonOpsRoutes: POST /api/v1/seasons/{sid}/clean-results rejects a regular user with 403") {
         regularUserApiTest { client ->
-            val response = client.post("/api/v1/seasons/$anySeasonId/finalize")
+            val response = client.post("/api/v1/seasons/$anySeasonId/clean-results")
             response.status shouldBe HttpStatusCode.Forbidden
         }
     }

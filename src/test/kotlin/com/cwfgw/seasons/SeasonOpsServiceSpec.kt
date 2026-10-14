@@ -2,7 +2,6 @@ package com.cwfgw.seasons
 
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.leagues.LeagueId
-import com.cwfgw.result.Result
 import com.cwfgw.scoring.FakeScoringRepository
 import com.cwfgw.scoring.FantasyScore
 import com.cwfgw.scoring.FantasyScoreId
@@ -11,7 +10,6 @@ import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamId
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
-import com.cwfgw.testing.orFail
 import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
@@ -22,9 +20,9 @@ import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
-import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -157,46 +155,9 @@ private class Fixture(
 
 class SeasonOpsServiceSpec : FunSpec({
 
-    // ----- finalizeSeason -----
-
-    test("finalizeSeason returns SeasonNotFound when the season id doesn't exist") {
+    test("cleanSeasonResults returns null when the season id doesn't exist") {
         val fixture = Fixture(seedSeason = false)
-        fixture.service.finalizeSeason(SEASON_ID) shouldBe Result.Err(SeasonOpsError.SeasonNotFound(SEASON_ID))
-    }
-
-    test("finalizeSeason returns SeasonHasNoTournaments when the season has zero tournaments") {
-        val fixture = Fixture()
-        fixture.service.finalizeSeason(SEASON_ID) shouldBe Result.Err(SeasonOpsError.SeasonHasNoTournaments)
-    }
-
-    test("finalizeSeason returns IncompleteTournaments listing every non-completed tournament") {
-        val sony = tournament(SONY_ID, "Sony Open", "2026-01-15", status = TournamentStatus.Completed)
-        val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.Upcoming)
-        val fixture = Fixture(initialTournaments = listOf(sony, masters))
-
-        val err =
-            fixture.service.finalizeSeason(SEASON_ID)
-                .shouldBeInstanceOf<Result.Err<SeasonOpsError>>()
-                .error
-                .shouldBeInstanceOf<SeasonOpsError.IncompleteTournaments>()
-        err.incomplete.map { it.id } shouldContainExactly listOf(MASTERS_ID)
-    }
-
-    test("finalizeSeason flips season status to completed when every tournament is already completed") {
-        val sony = tournament(SONY_ID, "Sony Open", "2026-01-15", status = TournamentStatus.Completed)
-        val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.Completed)
-        val fixture = Fixture(initialTournaments = listOf(sony, masters))
-
-        val finalized = fixture.service.finalizeSeason(SEASON_ID).orFail()
-        finalized.status shouldBe "completed"
-    }
-
-    // ----- cleanSeasonResults -----
-
-    test("cleanSeasonResults returns SeasonNotFound when the season id doesn't exist") {
-        val fixture = Fixture(seedSeason = false)
-        fixture.service.cleanSeasonResults(SEASON_ID) shouldBe
-            Result.Err(SeasonOpsError.SeasonNotFound(SEASON_ID))
+        fixture.service.cleanSeasonResults(SEASON_ID).shouldBeNull()
     }
 
     test("cleanSeasonResults wipes scores + results + standings and reverts every tournament to upcoming") {
@@ -210,7 +171,7 @@ class SeasonOpsServiceSpec : FunSpec({
                 initialScores = listOf(fantasyScore("c01", SONY_ID), fantasyScore("c01", MASTERS_ID)),
             )
 
-        val result = fixture.service.cleanSeasonResults(SEASON_ID).orFail()
+        val result = fixture.service.cleanSeasonResults(SEASON_ID).shouldNotBeNull()
         result.scoresDeleted shouldBe 2
         result.resultsDeleted shouldBe 1
         result.tournamentsReset shouldBe 2

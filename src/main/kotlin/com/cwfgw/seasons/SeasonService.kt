@@ -16,11 +16,6 @@ class SeasonService(
 
     suspend fun create(request: CreateSeasonRequest): Season = tx.update { repository.create(request) }
 
-    suspend fun update(
-        id: SeasonId,
-        request: UpdateSeasonRequest,
-    ): Season? = tx.update { repository.update(id, request) }
-
     suspend fun getRules(id: SeasonId): SeasonRules? = tx.get { repository.getRules(id) }
 
     suspend fun delete(id: SeasonId): Boolean = tx.update { repository.delete(id) }

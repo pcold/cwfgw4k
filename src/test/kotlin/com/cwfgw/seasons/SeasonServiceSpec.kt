@@ -69,18 +69,6 @@ class SeasonServiceSpec : FunSpec({
         created.updatedAt shouldBe newTime
     }
 
-    test("update delegates to the repository and returns null for unknown id") {
-        val existing = season(name = "Orig")
-        val fake = FakeSeasonRepository(initial = listOf(existing), clock = { Instant.parse("2026-04-01T00:00:00Z") })
-        val service = SeasonService(fake, FakeTransactor())
-
-        val updated = service.update(existing.id, UpdateSeasonRequest(status = "active"))
-        updated?.status shouldBe "active"
-        updated?.name shouldBe "Orig"
-
-        service.update(SeasonId(UUID.randomUUID()), UpdateSeasonRequest(name = "Nobody")).shouldBeNull()
-    }
-
     test("getRules returns defaults for a season with no custom rules") {
         val existing = season()
         val service = SeasonService(FakeSeasonRepository(initial = listOf(existing)), FakeTransactor())

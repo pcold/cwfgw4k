@@ -174,39 +174,6 @@ class SeasonRepositorySpec : FunSpec({
         tx.read { repository.findById(SeasonId(UUID.randomUUID())) }.shouldBeNull()
     }
 
-    test("update applies only supplied fields and bumps updated_at") {
-        tx.update {
-            val created =
-                repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "Orig", seasonYear = 2026))
-
-            val updated =
-                repository.update(created.id, UpdateSeasonRequest(status = "active", tieFloor = BigDecimal("2")))
-
-            updated.shouldNotBeNull()
-            updated.status shouldBe "active"
-            updated.tieFloor.compareTo(BigDecimal("2")) shouldBe 0
-            updated.name shouldBe "Orig"
-            (updated.updatedAt >= created.updatedAt) shouldBe true
-        }
-    }
-
-    test("update with no fields returns the existing row unchanged") {
-        tx.update {
-            val created =
-                repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "Orig", seasonYear = 2026))
-
-            val result = repository.update(created.id, UpdateSeasonRequest())
-
-            result shouldBe created
-        }
-    }
-
-    test("update returns null for unknown id") {
-        tx.update {
-            repository.update(SeasonId(UUID.randomUUID()), UpdateSeasonRequest(name = "Ghost")).shouldBeNull()
-        }
-    }
-
     test("getRules returns defaults when join tables are empty") {
         tx.update {
             val created =
