@@ -5,13 +5,12 @@ import com.cwfgw.testing.postgresHarness
 import io.kotest.assertions.nondeterministic.eventually
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import org.jooq.impl.DSL.condition
 import org.jooq.impl.DSL.table
-import java.util.concurrent.Executors
 import kotlin.time.Duration.Companion.seconds
 
 private const val CALLER_THREADS = 2
@@ -43,21 +42,18 @@ class TransactorDispatchSpec : FunSpec({
 private suspend fun PostgresHarness.assertCallsOutnumberCallerThreads(
     transact: suspend (context(TransactionContext) () -> Unit) -> Unit,
 ) {
-    // A pool of its own, not a view of Dispatchers.Default: when the calls wedge it, the polling below
-    // must still get a thread, or the gate is never opened and the run hangs instead of failing.
-    Executors.newFixedThreadPool(CALLER_THREADS).asCoroutineDispatcher().use { caller ->
-        dataSource.connection.use { gate ->
-            gate.autoCommit = false
-            gate.createStatement().use { it.execute("SELECT pg_advisory_xact_lock($GATE_LOCK_KEY)") }
-            coroutineScope {
-                val calls = List(CONCURRENT_CALLS) { launch(caller) { transact { waitForGate() } } }
-                try {
-                    eventually(5.seconds) { callsWaitingForGate() shouldBe CONCURRENT_CALLS }
-                } finally {
-                    gate.rollback()
-                }
-                calls.joinAll()
+    val caller = Dispatchers.Default.limitedParallelism(CALLER_THREADS)
+    dataSource.connection.use { gate ->
+        gate.autoCommit = false
+        gate.createStatement().use { it.execute("SELECT pg_advisory_xact_lock($GATE_LOCK_KEY)") }
+        coroutineScope {
+            val calls = List(CONCURRENT_CALLS) { launch(caller) { transact { waitForGate() } } }
+            try {
+                eventually(5.seconds) { callsWaitingForGate() shouldBe CONCURRENT_CALLS }
+            } finally {
+                gate.rollback()
             }
+            calls.joinAll()
         }
     }
 }
