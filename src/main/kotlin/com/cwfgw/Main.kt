@@ -17,6 +17,7 @@ import com.cwfgw.espn.EspnService
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.health.DatabaseHealthProbe
+import com.cwfgw.health.HealthRepository
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.leagues.LeagueService
 import com.cwfgw.reports.LiveOverlayService
@@ -131,7 +132,7 @@ internal fun buildServices(
             tx = transactor,
         )
     return AppServices(
-        healthProbe = DatabaseHealthProbe(database.dsl),
+        healthProbe = DatabaseHealthProbe(HealthRepository(), transactor),
         leagueService = LeagueService(LeagueRepository(), transactor),
         golferService = golferService,
         seasonService = seasonService,

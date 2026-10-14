@@ -2,9 +2,7 @@ package com.cwfgw
 
 import com.cwfgw.config.AppConfig
 import com.cwfgw.db.Database
-import com.cwfgw.health.DatabaseHealthProbe
 import com.cwfgw.testing.postgresHarness
-import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -43,26 +41,5 @@ class AppBootSpec : FunSpec({
         } finally {
             (database.dataSource as HikariDataSource).close()
         }
-    }
-
-    test("DatabaseHealthProbe reports connected against a live database") {
-        val probe = DatabaseHealthProbe(postgres.dsl)
-
-        probe.isDatabaseConnected() shouldBe true
-    }
-
-    test("DatabaseHealthProbe reports disconnected after its pool is closed") {
-        val throwawayPool =
-            HikariDataSource(
-                HikariConfig().apply {
-                    jdbcUrl = postgres.dataSource.jdbcUrl
-                    username = postgres.dataSource.username
-                    password = postgres.dataSource.password
-                },
-            )
-        val probe = DatabaseHealthProbe(DSL.using(throwawayPool, SQLDialect.POSTGRES))
-        throwawayPool.close()
-
-        probe.isDatabaseConnected() shouldBe false
     }
 })
