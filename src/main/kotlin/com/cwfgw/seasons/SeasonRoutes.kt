@@ -21,6 +21,7 @@ fun Route.seasonRoutes(service: SeasonService) {
         get { listSeasons(service) }
         get("/{id}/rules") { getRules(service) }
         authenticate(SESSION_AUTH_NAME) {
+            get("/default-rules") { getDefaultRules() }
             post { createSeason(service) }
             delete("/{id}") { deleteSeason(service) }
         }
@@ -39,13 +40,25 @@ private suspend fun RoutingContext.listSeasons(service: SeasonService) {
 private suspend fun RoutingContext.createSeason(service: SeasonService) {
     requireAdmin()
     val request = call.receive<CreateSeasonRequest>()
+    request.violation()?.let { throw it.toDomainError() }
     call.respond(HttpStatusCode.Created, service.create(request))
 }
+
+private fun CreateSeasonViolation.toDomainError(): DomainError =
+    when (this) {
+        CreateSeasonViolation.BlankName -> DomainError.Validation("season name must not be blank")
+        CreateSeasonViolation.NoPayoutPlaces -> DomainError.Validation("payouts must list at least one place")
+    }
 
 private suspend fun RoutingContext.getRules(service: SeasonService) {
     val id = seasonId()
     val rules = service.getRules(id) ?: throw DomainError.NotFound("season ${id.value} not found")
     call.respond(rules)
+}
+
+private suspend fun RoutingContext.getDefaultRules() {
+    requireAdmin()
+    call.respond(SeasonRules.defaults())
 }
 
 private suspend fun RoutingContext.deleteSeason(service: SeasonService) {
