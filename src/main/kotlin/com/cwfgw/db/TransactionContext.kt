@@ -13,9 +13,9 @@ interface TransactionContext {
 }
 
 /**
- * Only [Transactor.update] provides this. Every repository write, and any read that takes a row lock, declares
- * it, so calling one from [Transactor.read] or [Transactor.get] is a compile error rather than a `READ ONLY`
- * rejection or an autocommit that isn't atomic with its neighbours.
+ * In production only [Transactor.update] provides this; test Fakes mint their own. Every repository write, and
+ * any read that takes a row lock, declares it, so calling one from [Transactor.read] or [Transactor.get] is a
+ * compile error rather than a `READ ONLY` rejection or an autocommit that isn't atomic with its neighbours.
  */
 interface WriteTransactionContext : TransactionContext
 

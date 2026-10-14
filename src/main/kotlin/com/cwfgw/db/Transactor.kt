@@ -115,13 +115,13 @@ private class JooqTransactor(
 
     private suspend fun <C : TransactionContext, A> inTransaction(
         mode: TransactionMode,
-        context: (DSLContext) -> C,
+        contextFor: (DSLContext) -> C,
         block: context(C) () -> A,
     ): A =
         timed(mode.kind) {
             withContext(dispatcher) {
                 when (mode) {
-                    TransactionMode.AutoCommit -> with(context(rootDsl)) { block() }
+                    TransactionMode.AutoCommit -> with(contextFor(rootDsl)) { block() }
                     is TransactionMode.Transactional ->
                         // The one sanctioned call of the openers detekt.yml forbids, so neither runs
                         // off [dispatcher] or skips its prelude.
@@ -129,7 +129,7 @@ private class JooqTransactor(
                         rootDsl.transactionResult { config ->
                             val txDsl = config.dsl()
                             mode.prelude(txDsl)
-                            with(context(txDsl)) { block() }
+                            with(contextFor(txDsl)) { block() }
                         }
                 }
             }
