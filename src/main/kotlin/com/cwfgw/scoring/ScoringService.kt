@@ -1,6 +1,6 @@
 package com.cwfgw.scoring
 
-import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
@@ -31,7 +31,7 @@ class ScoringService(
      * Takes the caller's transaction rather than opening one, so these writes commit or roll back with the
      * rest of the tournament-ops flow that called it.
      */
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     internal fun calculateScoresIn(
         seasonId: SeasonId,
         tournamentId: TournamentId,
@@ -63,7 +63,7 @@ class ScoringService(
         return Result.Ok(buildWeeklyResult(tournament, perTeamResults))
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     private fun scoreGolferForTeam(
         inputs: ScoringInputs,
         teamId: TeamId,

@@ -3,6 +3,7 @@ package com.cwfgw.cache
 import ch.qos.logback.classic.Level
 import com.cwfgw.db.LOCK_NOT_AVAILABLE
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.http.installErrorHandling
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.captureLogs
@@ -65,7 +66,7 @@ private class FailingPutRepository(private val sqlState: String) : CacheReposito
     context(ctx: TransactionContext)
     override fun generation(): CacheGeneration = CacheGeneration(0)
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun put(
         key: String,
         value: String,
@@ -73,10 +74,10 @@ private class FailingPutRepository(private val sqlState: String) : CacheReposito
         generation: CacheGeneration,
     ): Boolean = throw DataAccessException("SQL [insert into cache ...]; ERROR", SQLException("ERROR", sqlState))
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteExpired(): Int = 0
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun clear(): Int = 0
 }
 

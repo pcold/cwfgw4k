@@ -1,6 +1,7 @@
 package com.cwfgw.golfers
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -35,7 +36,7 @@ class FakeGolferRepository(
     override fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
         store.values.firstOrNull { it.pgaPlayerId == pgaPlayerId }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun create(request: CreateGolferRequest): Golfer {
         val golfer =
             Golfer(

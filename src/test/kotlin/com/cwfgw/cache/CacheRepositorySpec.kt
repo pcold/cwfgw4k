@@ -1,7 +1,7 @@
 package com.cwfgw.cache
 
-import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.jooq.tables.references.CACHE_GENERATION
 import com.cwfgw.testing.PostgresHarness
 import com.cwfgw.testing.postgresHarness
@@ -28,14 +28,14 @@ private val LOCK_WAIT_DEADLINE: Duration = Duration.ofSeconds(10)
 
 /** Committed by hand, so a second transaction can run against it while it is still open. */
 private class OpenTransaction(private val connection: Connection) : AutoCloseable {
-    val context: TransactionContext
+    val context: WriteTransactionContext
 
     init {
         connection.autoCommit = false
         val dsl = DSL.using(connection, SQLDialect.POSTGRES)
         // Bounds a lock wait the assertions don't expect, rather than hanging the run.
         dsl.execute("SET LOCAL lock_timeout = '10s'")
-        context = TransactionContext(dsl)
+        context = WriteTransactionContext(dsl)
     }
 
     fun commit() = connection.commit()
@@ -67,7 +67,7 @@ private suspend fun PostgresHarness.awaitLockWait(pending: Job): Boolean {
     return false
 }
 
-context(ctx: TransactionContext)
+context(ctx: WriteTransactionContext)
 private fun CacheRepository.putCurrent(
     key: String,
     value: String,

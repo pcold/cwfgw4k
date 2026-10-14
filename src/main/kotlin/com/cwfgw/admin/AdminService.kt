@@ -1,7 +1,7 @@
 package com.cwfgw.admin
 
-import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.espn.EspnCalendarEntry
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnUpstreamException
@@ -371,7 +371,7 @@ class AdminService(
     // Repos are the right surface here: every write needs to join the
     // surrounding tx, and the services capture their own Transactor and
     // would each open a fresh nested transaction.
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     private fun persistConfirmedTeam(
         seasonId: SeasonId,
         team: ConfirmedTeam,

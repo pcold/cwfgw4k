@@ -1,6 +1,7 @@
 package com.cwfgw.users
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -28,7 +29,7 @@ class FakeUserRepository(
             .firstOrNull { it.user.username == username }
             ?.let { entry -> UserCredentials(user = entry.user, passwordHash = entry.passwordHash) }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun create(request: NewUser): User {
         require(store.values.none { it.user.username == request.username }) {
             "FakeUserRepository: duplicate username '${request.username}'"

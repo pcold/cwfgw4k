@@ -218,8 +218,8 @@ Use deliberately. Each scope function has a specific purpose:
   `x.run { }` reads better. **Carve-out:** `with(ctx) { ... }` used purely to
   bring a `context(...)` receiver *into scope* — not to access its members — is
   the accepted idiom for calling a context-parameter function, e.g. seeding a
-  Fake whose methods are `context(ctx: TransactionContext)` from a spec
-  via `with(noopTransactionContext) { repo.insert(...) }`. There `with` reads
+  Fake whose writes are `context(ctx: WriteTransactionContext)` from a spec
+  via `with(noopTransactionContext) { repo.create(...) }`. There `with` reads
   as "with this context in scope, run the block"; the rule targets member
   access, not context provision.
 
@@ -383,9 +383,14 @@ Rules:
   a pooled JDBC connection (the failure mode the bounded dispatcher exists
   to prevent).
 - **MUST NOT** capture a `DSLContext` in a repository constructor or pass one
-  through as a method argument. Repositories declare every method with
+  through as a method argument. Repositories declare every read with
   `context(ctx: TransactionContext)` and read the DSL via `ctx.dsl`. The
   no-arg factory shape is `fun XRepository(): XRepository = JooqXRepository()`.
+- **MUST** declare every repository write (insert, update, delete, upsert) and
+  any read that takes a row lock with `context(ctx: WriteTransactionContext)`.
+  In production only `tx.update` provides it, so the same call inside
+  `tx.read` or `tx.get` is a compile error rather than a `READ ONLY` rejection
+  or a write that isn't atomic with its neighbours.
 - **MUST** capture a `com.cwfgw.db.Transactor` in services that touch
   repositories. Pick the entry point by the work's shape:
   - `tx.get { repository.x(...) }` — single-statement read, no `BEGIN`/`COMMIT`

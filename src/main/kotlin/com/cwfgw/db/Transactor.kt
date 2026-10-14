@@ -32,7 +32,7 @@ interface Transactor {
      * rolled back when it throws. A lock wait past [LOCK_TIMEOUT_MS] throws
      * a [DataAccessException] for which [isLockTimeout] holds.
      */
-    suspend fun <A> update(block: context(TransactionContext) () -> A): A
+    suspend fun <A> update(block: context(WriteTransactionContext) () -> A): A
 }
 
 /**
@@ -99,30 +99,29 @@ private class JooqTransactor(
     private val rootDsl: DSLContext,
     maxPoolSize: Int,
 ) : Transactor {
-    private val rootContext: TransactionContext = TransactionContext(rootDsl)
-
     // Shared by `get`, `read` and `update` so the pool-size cap holds across all three:
     // a block waits here for a slot, never on another block in Hikari's `getConnection()`.
     // Not jOOQ's `transactionCoroutine`: its Reactor bridge can deadlock (CWF-24).
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(maxPoolSize)
 
     override suspend fun <A> get(block: context(TransactionContext) () -> A): A =
-        inTransaction(TransactionMode.AutoCommit, block)
+        inTransaction(TransactionMode.AutoCommit, ::TransactionContext, block)
 
     override suspend fun <A> read(block: context(TransactionContext) () -> A): A =
-        inTransaction(TransactionMode.Snapshot, block)
+        inTransaction(TransactionMode.Snapshot, ::TransactionContext, block)
 
-    override suspend fun <A> update(block: context(TransactionContext) () -> A): A =
-        inTransaction(TransactionMode.BoundedWrite, block)
+    override suspend fun <A> update(block: context(WriteTransactionContext) () -> A): A =
+        inTransaction(TransactionMode.BoundedWrite, ::WriteTransactionContext, block)
 
-    private suspend fun <A> inTransaction(
+    private suspend fun <C : TransactionContext, A> inTransaction(
         mode: TransactionMode,
-        block: context(TransactionContext) () -> A,
+        contextFor: (DSLContext) -> C,
+        block: context(C) () -> A,
     ): A =
         timed(mode.kind) {
             withContext(dispatcher) {
                 when (mode) {
-                    TransactionMode.AutoCommit -> with(rootContext) { block() }
+                    TransactionMode.AutoCommit -> with(contextFor(rootDsl)) { block() }
                     is TransactionMode.Transactional ->
                         // The one sanctioned call of the openers detekt.yml forbids, so neither runs
                         // off [dispatcher] or skips its prelude.
@@ -130,7 +129,7 @@ private class JooqTransactor(
                         rootDsl.transactionResult { config ->
                             val txDsl = config.dsl()
                             mode.prelude(txDsl)
-                            with(TransactionContext(txDsl)) { block() }
+                            with(contextFor(txDsl)) { block() }
                         }
                 }
             }

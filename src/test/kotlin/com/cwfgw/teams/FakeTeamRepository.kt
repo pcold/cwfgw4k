@@ -1,6 +1,7 @@
 package com.cwfgw.teams
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.seasons.SeasonId
 import java.math.BigDecimal
 import java.time.Instant
@@ -39,7 +40,7 @@ class FakeTeamRepository(
             .filter { it.seasonId == seasonId }
             .sortedWith(teamOrdering)
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
@@ -67,7 +68,7 @@ class FakeTeamRepository(
             .sortedWith(compareBy<RosterEntry> { it.teamId.value }.then(rosterOrdering))
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,

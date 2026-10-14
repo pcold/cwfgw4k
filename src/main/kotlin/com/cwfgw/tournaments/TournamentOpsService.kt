@@ -2,6 +2,7 @@ package com.cwfgw.tournaments
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnTournament
 import com.cwfgw.result.Result
@@ -88,7 +89,7 @@ class TournamentOpsService(
      * has no `pga_tournament_id` so it won't match, mirroring the
      * pre-CWF-25 behavior.
      */
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     private fun persistEspnEventsIn(
         tournament: Tournament,
         events: List<EspnTournament>,

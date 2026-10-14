@@ -1,7 +1,7 @@
 package com.cwfgw.tournaments
 
-import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
@@ -91,7 +91,7 @@ private val SOLE_WINNER =
 private class ThrowingOnUpdateTournamentRepository(
     delegate: TournamentRepository,
 ) : TournamentRepository by delegate {
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun update(
         id: TournamentId,
         request: UpdateTournamentRequest,

@@ -1,6 +1,7 @@
 package com.cwfgw.leagues
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.db.required
 import com.cwfgw.jooq.tables.records.LeaguesRecord
 import com.cwfgw.jooq.tables.references.LEAGUES
@@ -9,7 +10,7 @@ interface LeagueRepository {
     context(ctx: TransactionContext)
     fun findAll(): List<League>
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun create(request: CreateLeagueRequest): League
 }
 
@@ -23,7 +24,7 @@ private class JooqLeagueRepository : LeagueRepository {
             .orderBy(LEAGUES.NAME)
             .fetch { row -> toLeague(row.into(LEAGUES)) }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun create(request: CreateLeagueRequest): League {
         val inserted =
             ctx.dsl.insertInto(LEAGUES)

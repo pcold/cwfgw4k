@@ -1,6 +1,6 @@
 package com.cwfgw.testing
 
-import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.jooq.tables.references.SEASON_RULE_PAYOUTS
 import com.cwfgw.jooq.tables.references.SEASON_RULE_SIDE_BET_ROUNDS
 import com.cwfgw.leagues.CreateLeagueRequest
@@ -21,7 +21,7 @@ import java.time.LocalDate
  * A context parameter, not an extension on [PostgresHarness]: a seed has to share the caller's open
  * transaction, or it can't see a row the caller created earlier in it. [payouts] are (position, amount).
  */
-context(ctx: TransactionContext)
+context(ctx: WriteTransactionContext)
 fun seedSeasonRules(
     seasonId: SeasonId,
     payouts: List<Pair<Int, BigDecimal>>,
@@ -43,7 +43,7 @@ fun seedSeasonRules(
 }
 
 /** Seeds a fresh league and season on every call, so two seeded tournaments never share a season. */
-context(ctx: TransactionContext)
+context(ctx: WriteTransactionContext)
 fun seedTournament(): TournamentId {
     val league = LeagueRepository().create(CreateLeagueRequest(name = "Castlewood Fantasy Golf"))
     val season =
@@ -59,7 +59,7 @@ fun seedTournament(): TournamentId {
 }
 
 /** @see seedSeasonRules */
-context(ctx: TransactionContext)
+context(ctx: WriteTransactionContext)
 fun seedTeams(seasonId: SeasonId): List<TeamId> =
     listOf("Alpha", "Bravo", "Charlie").map { name ->
         TeamRepository().create(seasonId, CreateTeamRequest(ownerName = "Owner $name", teamName = name)).id

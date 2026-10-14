@@ -2,6 +2,7 @@ package com.cwfgw.espn
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
@@ -198,7 +199,7 @@ class EspnService(
     /**
      * Writes into the caller's transaction so finalize persists the import and the scores atomically.
      */
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     internal fun persistImportIn(
         tournament: Tournament,
         event: EspnTournament,
@@ -229,7 +230,7 @@ class EspnService(
         return MatchingContext(golfers = golfers, rosterGolferIds = rosterIds, overrides = overrides)
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     private fun matchOrCreateIn(
         competitor: EspnCompetitor,
         context: MatchingContext,
@@ -285,7 +286,7 @@ class EspnService(
         }
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     private fun persistResultsIn(
         tournamentId: TournamentId,
         matchedPairs: List<Pair<EspnCompetitor, GolferId>>,
@@ -315,7 +316,7 @@ class EspnService(
      * the calendar alone — partner rows only show up in the scoreboard
      * payload). Updates only when something actually changes.
      */
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     private fun syncTournamentFromEventIn(
         tournament: Tournament,
         event: EspnTournament,

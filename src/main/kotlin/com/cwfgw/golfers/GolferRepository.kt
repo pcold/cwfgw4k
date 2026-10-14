@@ -1,6 +1,7 @@
 package com.cwfgw.golfers
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.db.required
 import com.cwfgw.jooq.tables.records.GolfersRecord
 import com.cwfgw.jooq.tables.references.GOLFERS
@@ -17,7 +18,7 @@ interface GolferRepository {
     context(ctx: TransactionContext)
     fun findByPgaPlayerId(pgaPlayerId: String): Golfer?
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun create(request: CreateGolferRequest): Golfer
 }
 
@@ -48,7 +49,7 @@ private class JooqGolferRepository : GolferRepository {
             .fetchOne()
             ?.let(::toGolfer)
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun create(request: CreateGolferRequest): Golfer {
         val inserted =
             ctx.dsl.insertInto(GOLFERS)

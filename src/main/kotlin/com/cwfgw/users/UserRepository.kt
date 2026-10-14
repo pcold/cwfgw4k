@@ -1,6 +1,7 @@
 package com.cwfgw.users
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.db.required
 import com.cwfgw.jooq.tables.records.UsersRecord
 import com.cwfgw.jooq.tables.references.USERS
@@ -20,7 +21,7 @@ interface UserRepository {
     context(ctx: TransactionContext)
     fun findCredentials(username: String): UserCredentials?
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun create(request: NewUser): User
 
     /** Used by the boot-time admin seeder to decide whether to insert. */
@@ -57,7 +58,7 @@ private class JooqUserRepository : UserRepository {
             .fetchOne()
             ?.let { record -> UserCredentials(user = toUser(record), passwordHash = record.passwordHash) }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun create(request: NewUser): User {
         val inserted =
             ctx.dsl.insertInto(USERS)

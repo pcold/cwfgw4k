@@ -1,6 +1,7 @@
 package com.cwfgw.scoring
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.db.required
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.jooq.tables.records.FantasyScoresRecord
@@ -32,15 +33,15 @@ interface ScoringRepository {
         tournamentIds: Collection<TournamentId>? = null,
     ): List<FantasyScore>
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun upsertScore(record: UpsertScore): FantasyScore
 
     /** Wipe every fantasy score for the given tournament. Returns the row count for logging. */
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun deleteByTournament(tournamentId: TournamentId): Int
 
     /** Wipe every fantasy score for the season across all tournaments. */
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun deleteBySeason(seasonId: SeasonId): Int
 }
 
@@ -90,7 +91,7 @@ private class JooqScoringRepository : ScoringRepository {
             .fetch(::toFantasyScore)
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun upsertScore(record: UpsertScore): FantasyScore {
         val upserted =
             ctx.dsl.insertInto(FANTASY_SCORES)
@@ -108,13 +109,13 @@ private class JooqScoringRepository : ScoringRepository {
         return toFantasyScore(upserted)
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteByTournament(tournamentId: TournamentId): Int =
         ctx.dsl.deleteFrom(FANTASY_SCORES)
             .where(FANTASY_SCORES.TOURNAMENT_ID.eq(tournamentId.value))
             .execute()
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteBySeason(seasonId: SeasonId): Int =
         ctx.dsl.deleteFrom(FANTASY_SCORES)
             .where(FANTASY_SCORES.SEASON_ID.eq(seasonId.value))

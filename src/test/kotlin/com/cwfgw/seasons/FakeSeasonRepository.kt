@@ -1,6 +1,7 @@
 package com.cwfgw.seasons
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.leagues.LeagueId
 import java.time.Instant
 import java.util.UUID
@@ -40,7 +41,7 @@ class FakeSeasonRepository(
     context(ctx: TransactionContext)
     override fun findById(id: SeasonId): Season? = store[id]
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun create(request: CreateSeasonRequest): Season {
         val now = clock()
         // Mirrors the real repo: when `rules` is supplied it overrides the
@@ -89,7 +90,7 @@ class FakeSeasonRepository(
         )
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun delete(id: SeasonId): Boolean {
         rulesStore.remove(id)
         return store.remove(id) != null

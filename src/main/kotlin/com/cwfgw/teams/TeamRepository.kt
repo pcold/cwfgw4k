@@ -1,6 +1,7 @@
 package com.cwfgw.teams
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.db.required
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.jooq.tables.records.TeamRostersRecord
@@ -16,7 +17,7 @@ interface TeamRepository {
     context(ctx: TransactionContext)
     fun findBySeason(seasonId: SeasonId): List<Team>
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
@@ -26,7 +27,7 @@ interface TeamRepository {
     context(ctx: TransactionContext)
     fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry>
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,
@@ -60,7 +61,7 @@ private class JooqTeamRepository : TeamRepository {
             .orderBy(TEAMS.TEAM_NUMBER.asc().nullsLast(), TEAMS.TEAM_NAME.asc())
             .fetch(::toTeam)
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
@@ -91,7 +92,7 @@ private class JooqTeamRepository : TeamRepository {
             )
             .fetch(::toRosterEntry)
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun addToRoster(
         teamId: TeamId,
         request: AddToRosterRequest,
