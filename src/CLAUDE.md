@@ -82,9 +82,9 @@ Rules:
   route boundary.
 - **MUST NOT** mix error-handling conventions for the same conceptual
   operation. A single function signature uses one pattern. Across a module,
-  different operations can use different patterns (e.g., `get()` returning
-  `T?` alongside `finalizeTournament()` returning `Result<T, E>` is fine —
-  they have different failure-mode counts).
+  different operations can use different patterns (e.g., `findByPgaTournamentId()`
+  returning `T?` alongside `finalizeTournament()` returning `Result<T, E>` is
+  fine — they have different failure-mode counts).
 - **MUST** use sealed error hierarchies when returning `Result<T, E>`.
   `String` or `Throwable` as the error type is forbidden — the error must
   be an exhaustive sealed hierarchy so mapping at the boundary stays
