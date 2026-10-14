@@ -294,25 +294,25 @@ tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
 // The plugin hands `detekt` a hardcoded src/{main,test}/{java,kotlin}; deriving the source from the
 // source sets covers jooqCodegen too. The generated jOOQ directory is a source root of its own, so the
 // `**/generated/**` exclude cannot reach it — subtracting it is what keeps generated code out.
-fun detektSource(): List<File> = sourceSets.flatMap { it.kotlin.srcDirs } - jooqGenDir.get().asFile
+val analyzedSources: List<File> = sourceSets.flatMap { it.kotlin.srcDirs } - jooqGenDir.get().asFile
 
-// Type resolution: test's runtime classpath holds main's output and dependencies, and jooqCodegen's
-// generator libraries are on no other. A function, not a val: read at this line of the script, test's
-// runtime classpath came back without its dependencies and the run reported thousands of unresolved names.
-fun detektClasspath(): List<FileCollection> =
+// Test's runtime classpath holds main's output and dependencies; jooqCodegen's generator libraries are on no
+// other. Not named detektClasspath: inside a detekt task block, the task's own property of that name (detekt's
+// tool jars) shadows it, and the run reports thousands of unresolved names.
+val typeResolutionClasspath: List<FileCollection> =
     listOf(sourceSets["test"].runtimeClasspath, sourceSets["test"].output, sourceSets["jooqCodegen"].runtimeClasspath)
 
 // A different task type from `detekt` that inherits none of its configuration: without these two lines
 // the baseline it writes is missing every type-resolving rule's findings.
 tasks.withType<dev.detekt.gradle.DetektCreateBaselineTask>().configureEach {
     jvmTarget = "21"
-    setSource(detektSource())
-    classpath.setFrom(detektClasspath())
+    setSource(analyzedSources)
+    classpath.setFrom(typeResolutionClasspath)
 }
 
 tasks.named<dev.detekt.gradle.Detekt>("detekt") {
-    setSource(detektSource())
-    classpath.setFrom(detektClasspath())
+    setSource(analyzedSources)
+    classpath.setFrom(typeResolutionClasspath)
     // An empty classpath is not an error to detekt: every type-resolving rule is skipped and the run is green.
     doFirst {
         check(classpath.files.isNotEmpty()) {
