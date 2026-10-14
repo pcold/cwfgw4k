@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreOwnerChange, queryKeys } from '@/shared/api/queryKeys';
+import ModalShell from '@/shared/components/ModalShell';
 import { QueryState } from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
 import type {
@@ -28,41 +29,24 @@ function PlayerLinksPanel({ tournamentId, seasonId, onClose }: PlayerLinksPanelP
   });
 
   return (
-    <div
-      role="dialog"
-      aria-label="Manage player links"
-      className="fixed inset-0 z-40 flex items-start justify-center bg-black/60 p-4 overflow-y-auto"
-    >
-      <div className="bg-gray-900 border border-gray-700 rounded-lg shadow-xl max-w-3xl w-full my-8">
-        <header className="flex items-center justify-between border-b border-gray-700 px-4 py-3">
-          <h2 className="text-lg font-semibold text-white">Manage player links</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-sm"
-            aria-label="Close panel"
-          >
-            Close
-          </button>
-        </header>
-        <div className="p-4 space-y-4">
-          <QueryState query={competitorsQuery} label="competitors">
-            {(listing) => (
-              <QueryState query={golfersQuery} label="golfers">
-                {(golfers) => (
-                  <PlayerLinksBody
-                    listing={listing}
-                    golfers={golfers}
-                    tournamentId={tournamentId}
-                    seasonId={seasonId}
-                  />
-                )}
-              </QueryState>
-            )}
-          </QueryState>
-        </div>
+    <ModalShell title="Manage player links" onClose={onClose} width="wide">
+      <div className="space-y-4">
+        <QueryState query={competitorsQuery} label="competitors">
+          {(listing) => (
+            <QueryState query={golfersQuery} label="golfers">
+              {(golfers) => (
+                <PlayerLinksBody
+                  listing={listing}
+                  golfers={golfers}
+                  tournamentId={tournamentId}
+                  seasonId={seasonId}
+                />
+              )}
+            </QueryState>
+          )}
+        </QueryState>
       </div>
-    </div>
+    </ModalShell>
   );
 }
 

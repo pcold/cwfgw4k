@@ -22,7 +22,7 @@ function AdminPage(): ReactNode {
     return (
       <>
         <p className="text-gray-400">You must be logged in to access the admin page.</p>
-        <LoginModal open onClose={() => void navigate('/')} />
+        <LoginModal onClose={() => void navigate('/')} />
       </>
     );
   }

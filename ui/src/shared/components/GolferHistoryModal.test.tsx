@@ -95,6 +95,22 @@ describe('GolferHistoryModal', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('calls onClose on a click outside the panel, but not on one inside it', async () => {
+    golferHistoryMock.mockResolvedValue(sampleHistory);
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(
+      <GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={onClose} />,
+      { withLeagueSeasonProvider: false },
+    );
+
+    await user.click(await screen.findByText('Sample Open'));
+    expect(onClose).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('dialog').parentElement as HTMLElement);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it('shows an error state when the fetch fails', async () => {
     golferHistoryMock.mockRejectedValue(new Error('boom'));
     renderWithProviders(

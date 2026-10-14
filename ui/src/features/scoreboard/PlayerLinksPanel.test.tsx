@@ -304,7 +304,7 @@ describe('PlayerLinksPanel', () => {
     renderPanel();
     await screen.findByText('Alex Fitzpatrick');
 
-    await user.click(screen.getByRole('button', { name: /Close panel/i }));
+    await user.click(screen.getByRole('button', { name: 'Close' }));
     expect(onCloseMock).toHaveBeenCalledTimes(1);
   });
 
