@@ -75,7 +75,7 @@ What stays in the UI:
 
   Two boundary exceptions where `as` is the least-bad option and
   should stay confined to those boundaries:
-  - **JSON deserialization** (`shared/api/client.ts` post-parse):
+  - **JSON deserialization** (`shared/api/client/core.ts` post-parse):
     `unknown` from `JSON.parse` flows into `as T` once at the public
     function boundary. The API contract IS the type. Adopt runtime
     validation (e.g. Zod) before this surface gets larger.
@@ -235,8 +235,11 @@ What stays in the UI:
 
 ## Data Fetching (TanStack Query)
 
-- **MUST** route every API call through the typed `api` client in
-  `src/shared/api/client.ts`. No direct `fetch` calls in components.
+- **MUST** route every API call through the typed `api` object that
+  `src/shared/api/client/index.ts` assembles from one slice per domain.
+  No direct `fetch` calls in components, and no call site imports a
+  slice or `client/core.ts`, whose `request()` alone owns error decoding
+  and the session-expiry report.
 - **MUST** use a stable, hierarchical query key structured by entity, built
   by that entity's entry in `queryKeys` (`src/shared/api/queryKeys.ts`):
 
@@ -266,7 +269,7 @@ What stays in the UI:
   to gate the fetch instead.
 - **MUST NOT** spell a query-key root as a literal outside
   `src/shared/api/queryKeys.ts`, which sits beside the fetchers in
-  `client.ts`, and the pin in `queryKeys.test.ts`. A reader and every
+  `client/`, and the pin in `queryKeys.test.ts`. A reader and every
   invalidation that targets it take the key from the same `queryKeys` entry,
   and a new key spreads the wider key it narrows. A literal that drifts still
   type-checks and the write still succeeds; only the open page stays stale.
@@ -347,7 +350,7 @@ What stays in the UI:
       auth/         AuthContext, LoginModal, useAuth
       ...
     shared/
-      api/          client, queryKeys, types — cross-feature HTTP
+      api/          client/ (core + per-domain slices), queryKeys, types
       components/   genuinely cross-feature primitives (QueryState)
       util/         pure cross-feature helpers (money, tournament)
       test/         renderWithProviders + test-only fixtures
