@@ -131,7 +131,7 @@ internal fun buildServices(
             tx = transactor,
         )
     return AppServices(
-        healthProbe = DatabaseHealthProbe(database.dsl),
+        healthProbe = DatabaseHealthProbe(transactor),
         leagueService = LeagueService(LeagueRepository(), transactor),
         golferService = golferService,
         seasonService = seasonService,
