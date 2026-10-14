@@ -87,10 +87,9 @@ Variant names are SerialName-tagged; e.g. `PickMatch.Matched` serializes as
 
 ### Typed IDs
 
-Every domain ID — `LeagueId`, `SeasonId`, `TeamId`, `TournamentId`,
-`GolferId`, `RosterEntryId`, `FantasyScoreId`, `SeasonStandingId`,
-`TournamentResultId`, `DraftId`, `DraftPickId`, `UserId` — is a value
-class wrapping a `UUID`. On the wire each is just the raw UUID string.
+Every domain ID on the wire — `LeagueId`, `SeasonId`, `TeamId`,
+`TournamentId`, `GolferId`, `RosterEntryId`, `DraftId`, `DraftPickId`,
+`UserId` — is a value class wrapping a `UUID`, sent as the raw UUID string.
 Path-parameter parse failures return 400 with `"invalid <name> id"`.
 
 ### Query parameter parsing
