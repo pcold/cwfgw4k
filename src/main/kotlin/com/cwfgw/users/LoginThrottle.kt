@@ -19,9 +19,7 @@ class LoginThrottle(
     private val maxFailures: Int,
     private val window: Duration,
     private val clock: Clock = Clock.systemUTC(),
-    // Read inside the object expression below, where detekt stops looking for a use.
-    @Suppress("UnusedPrivateProperty")
-    private val maxTrackedKeys: Int = DEFAULT_MAX_TRACKED_KEYS,
+    maxTrackedKeys: Int = DEFAULT_MAX_TRACKED_KEYS,
 ) {
     init {
         require(maxFailures >= 1) { "maxFailures must be at least 1" }
@@ -31,7 +29,7 @@ class LoginThrottle(
     // Bounded because callers choose the keys; access order keeps a key under attack alive. A monitor, not a
     // concurrent map, because every write is read-then-write, and no block suspends.
     private val recentFailures =
-        object : LinkedHashMap<ThrottleKey, List<Instant>>(INITIAL_CAPACITY, LOAD_FACTOR, true) {
+        object : LinkedHashMap<ThrottleKey, List<Instant>>(INITIAL_CAPACITY, LOAD_FACTOR, ACCESS_ORDER) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<ThrottleKey, List<Instant>>): Boolean =
                 size > maxTrackedKeys
         }
@@ -85,10 +83,11 @@ class LoginThrottle(
     private fun List<Instant>.liveAt(now: Instant): List<Instant> = filter { failedAt -> now < failedAt.plus(window) }
 
     companion object {
-        // Each key cost an attacker a BCrypt verify, and the map stays a few MB when full.
+        // A few MB when full. An unknown username skips BCrypt, so a spray of fresh names is cheap to send.
         private const val DEFAULT_MAX_TRACKED_KEYS = 10_000
         private const val INITIAL_CAPACITY = 256
         private const val LOAD_FACTOR = 0.75f
+        private const val ACCESS_ORDER = true
     }
 }
 
