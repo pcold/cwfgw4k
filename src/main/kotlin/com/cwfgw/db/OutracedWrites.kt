@@ -29,6 +29,7 @@ internal suspend fun <T, E> Transactor.updateOrOutraced(
 
 /** Through jOOQ's cause walk, so a coroutine-recovered copy of the exception still matches. */
 private fun DataAccessException.violatedUniqueConstraint(): String? {
+    if (sqlState() != UNIQUE_VIOLATION) return null
     val serverError: ServerErrorMessage? = getCause(PSQLException::class.java)?.serverErrorMessage
-    return serverError?.takeIf { it.sqlState == UNIQUE_VIOLATION }?.constraint
+    return serverError?.constraint
 }

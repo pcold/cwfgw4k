@@ -34,6 +34,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.runBlocking
 import java.time.Instant
 import java.time.LocalDate
@@ -344,13 +345,15 @@ class AdminRoutesSpec : FunSpec({
     test("POST /api/v1/admin/roster/confirm returns 409 when a team name is already taken in the season") {
         authenticatedApiTest(adminFixture()) { client ->
             val brown = ConfirmedTeam(teamNumber = 1, teamName = "BROWN", picks = emptyList())
-            val twoBrowns = listOf(brown, brown.copy(teamNumber = 2))
-            val response =
+
+            suspend fun confirmBrown() =
                 client.post("/api/v1/admin/roster/confirm") {
                     contentType(ContentType.Application.Json)
-                    setBody(ConfirmRosterRequest(seasonId = SEASON_ID, teams = twoBrowns))
+                    setBody(ConfirmRosterRequest(seasonId = SEASON_ID, teams = listOf(brown)))
                 }
-            response.status shouldBe HttpStatusCode.Conflict
+
+            confirmBrown().status.isSuccess() shouldBe true
+            confirmBrown().status shouldBe HttpStatusCode.Conflict
         }
     }
 })
