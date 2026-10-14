@@ -182,7 +182,7 @@ without crying wolf on transient blips:
 | --- | --- | --- |
 | `cwfgw4k-5xx-rate.yaml` | More than 5 5xx in any 5-min window | Catches sustained user-facing errors (wedges, deploy failures, ESPN cascades). Single 5xx is ignored. |
 | `cwfgw4k-unhandled-errors.yaml` | Any unhandled exception in 5 min | Application bugs that escape `installErrorHandling`. Single occurrence fires — these are usually real. |
-| `cwfgw4k-espn-failures.yaml` | More than 5 ESPN warnings/errors in 10 min | Sustained ESPN integration trouble (vs. the routine flake the live overlay already swallows). |
+| `cwfgw4k-espn-failures.yaml` | More than 2 ESPN warnings/errors in 10 min | Sustained ESPN integration trouble (vs. the routine flake the live overlay already swallows). |
 
 Notification routes through one SMS channel — recreate it if needed:
 
