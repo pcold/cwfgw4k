@@ -5,8 +5,6 @@ import com.cwfgw.admin.AdminService
 import com.cwfgw.cache.FakeCacheRepository
 import com.cwfgw.cache.RequestCache
 import com.cwfgw.db.Transactor
-import com.cwfgw.drafts.DraftService
-import com.cwfgw.drafts.FakeDraftRepository
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
@@ -90,7 +88,6 @@ class ApiFixture {
     var teamService: TeamService = TeamService(teamRepository, transactor)
     var tournamentRepository: TournamentRepository = FakeTournamentRepository()
     var tournamentService: TournamentService = TournamentService(tournamentRepository, transactor)
-    var draftService: DraftService = DraftService(FakeDraftRepository(), teamRepository, transactor)
     var scoringRepository: ScoringRepository = FakeScoringRepository()
     var scoringService: ScoringService =
         ScoringService(
@@ -265,7 +262,6 @@ private fun ApiFixture.toAppServices(): AppServices =
         tournamentLinkService = tournamentLinkService,
         tournamentOpsService = tournamentOpsService,
         seasonOpsService = seasonOpsService,
-        draftService = draftService,
         espnService = espnService,
         adminService = adminService,
         liveOverlayService = liveOverlayService,

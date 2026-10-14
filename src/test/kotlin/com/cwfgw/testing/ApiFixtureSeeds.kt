@@ -1,9 +1,5 @@
 package com.cwfgw.testing
 
-import com.cwfgw.drafts.Draft
-import com.cwfgw.drafts.DraftPick
-import com.cwfgw.drafts.DraftService
-import com.cwfgw.drafts.FakeDraftRepository
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferService
@@ -38,13 +34,4 @@ fun ApiFixture.seedSeasons(vararg seasons: Season) {
 /** @see seedLeagues */
 fun ApiFixture.seedTournaments(vararg tournaments: Tournament) {
     tournamentService = TournamentService(FakeTournamentRepository(initial = tournaments.toList()), transactor)
-}
-
-/** @see seedLeagues */
-fun ApiFixture.seedDrafts(
-    drafts: List<Draft>,
-    picks: List<DraftPick> = emptyList(),
-) {
-    val repository = FakeDraftRepository(initialDrafts = drafts, initialPicks = picks)
-    draftService = DraftService(repository, teamRepository, transactor)
 }

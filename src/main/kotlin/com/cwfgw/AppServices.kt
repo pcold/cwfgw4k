@@ -3,7 +3,6 @@ package com.cwfgw
 import com.cwfgw.admin.AdminService
 import com.cwfgw.cache.RequestCache
 import com.cwfgw.db.Transactor
-import com.cwfgw.drafts.DraftService
 import com.cwfgw.espn.EspnService
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.health.HealthProbe
@@ -36,7 +35,6 @@ data class AppServices(
     val tournamentLinkService: TournamentLinkService,
     val tournamentOpsService: TournamentOpsService,
     val seasonOpsService: SeasonOpsService,
-    val draftService: DraftService,
     val espnService: EspnService,
     val adminService: AdminService,
     val liveOverlayService: LiveOverlayService,
