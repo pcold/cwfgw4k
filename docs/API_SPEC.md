@@ -152,7 +152,7 @@ Body shape: `{ "status": "ok" | "degraded", "service": "cwfgw", "database": "con
 
 | Method | Path                                | Auth | Description                                                                |
 |--------|-------------------------------------|------|----------------------------------------------------------------------------|
-| GET    | `/api/v1/golfers?active=&search=`   | No   | List golfers (default `active=true`); `search` matches first or last name |
+| GET    | `/api/v1/golfers?search=`           | No   | List golfers; `search` matches first or last name                          |
 | POST   | `/api/v1/golfers`                   | Yes  | Create a golfer                                                            |
 
 ### Rosters
@@ -311,7 +311,6 @@ data class Season(
     val name: String,
     val seasonYear: Int,
     val seasonNumber: Int,
-    val status: String,           // still stringly-typed; cleanup pending
     val tieFloor: BigDecimal,
     val sideBetAmount: BigDecimal,
     val maxTeams: Int,
