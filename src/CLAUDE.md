@@ -677,6 +677,10 @@ mean."
   `build.gradle.kts` forwards these two properties explicitly; a new module
   with its own `Test` task has to carry the forward too.
 - **MUST NOT** read a filtered run as a gate.
+- The house detekt rules live in `detekt-rules/` under the `cwfgw` rule set in
+  `detekt.yml`; `KDocLength` there fails production KDoc past six lines, a backstop to the root comment budget.
+- A custom detekt rule targets the 2.x API (`dev.detekt`): `Rule` is a concrete
+  class and type resolution is the Kotlin Analysis API, with no `BindingContext`.
 
 ---
 

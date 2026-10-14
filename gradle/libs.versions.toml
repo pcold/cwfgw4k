@@ -72,6 +72,11 @@ testcontainers-postgres = { module = "org.testcontainers:postgresql", version.re
 docker-java-api = { module = "com.github.docker-java:docker-java-api", version.ref = "docker-java" }
 docker-java-transport-zerodep = { module = "com.github.docker-java:docker-java-transport-zerodep", version.ref = "docker-java" }
 
+# The detekt rule module (:detekt-rules) compiles against these.
+detekt-api = { module = "dev.detekt:detekt-api", version.ref = "detekt" }
+detekt-kotlin-analysis-api = { module = "dev.detekt:detekt-kotlin-analysis-api", version.ref = "detekt" }
+detekt-test = { module = "dev.detekt:detekt-test", version.ref = "detekt" }
+
 [bundles]
 ktor-server = [
     "ktor-server-core",
