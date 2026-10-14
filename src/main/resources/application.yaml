@@ -15,8 +15,8 @@ auth:
   sessionSecret: ${AUTH_SESSION_SECRET:-}
   sessionMaxAgeSeconds: ${AUTH_SESSION_MAX_AGE:-86400}
   # If both adminUsername and adminPassword are set AND the users table is empty at startup, an admin
-  # user is seeded with these credentials. If either is missing the seeder logs a warning and skips —
-  # we never bake in a default password.
+  # user is seeded with these credentials. Setting only one refuses to boot; setting neither makes the
+  # seeder log a warning and skip — we never bake in a default password.
   adminUsername: ${AUTH_ADMIN_USERNAME:-}
   adminPassword: ${AUTH_ADMIN_PASSWORD:-}
   # Mark the session cookie `Secure` so browsers only ever send it over HTTPS.

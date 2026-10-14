@@ -52,7 +52,6 @@ import javax.net.ssl.X509TrustManager
 
 fun main() {
     val config = AppConfig.load()
-    requireValidAuthSecret(config.auth)
     // Install before any coroutines are launched so DebugProbes sees their creation sites.
     // Gated on the same flag that mounts /debug/threads — the probes have non-trivial
     // overhead and prod doesn't need them.
@@ -212,16 +211,6 @@ private fun defaultJdkTrustManager(): X509TrustManager? {
 
 private fun firstX509(tmf: TrustManagerFactory): X509TrustManager? =
     tmf.trustManagers.filterIsInstance<X509TrustManager>().firstOrNull()
-
-/**
- * Boot-time guard: refuse to start with a blank session secret. Extracted so
- * tests can exercise the predicate without spinning up the whole app.
- */
-internal fun requireValidAuthSecret(auth: AuthConfig) {
-    require(auth.sessionSecret.isNotBlank()) {
-        "AUTH_SESSION_SECRET must be set (generate with: openssl rand -hex 32)"
-    }
-}
 
 // The session secret's one unwrap. Its masked toString() compiles here too, and would sign every cookie with the mask.
 internal fun AuthConfig.toAuthSetup(): AuthSetup =

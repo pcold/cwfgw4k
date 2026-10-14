@@ -25,7 +25,7 @@ object ConfigPrecedenceProbe {
     @JvmStatic
     fun main(args: Array<String>) {
         val results = requireNotNull(args.singleOrNull()) { "usage: ConfigPrecedenceProbe <results file>" }
-        val config = AppConfig.load(mapOf("db.schema" to SCHEMA_OVERRIDE))
+        val config = AppConfig.load(mapOf("db.schema" to SCHEMA_OVERRIDE, "auth.sessionSecret" to "probe-secret"))
         File(results).writeText(listOf(config.db.schema, config.http.host, config.db.user).joinToString("\n"))
     }
 }

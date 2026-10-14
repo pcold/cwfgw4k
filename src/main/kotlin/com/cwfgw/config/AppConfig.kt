@@ -13,9 +13,22 @@ data class AppConfig(
     val debug: DebugConfig,
 ) {
     companion object {
+        /** @throws InvalidConfigException listing every rule the decoded config breaks, not only the first. */
+        fun load(overrides: Map<String, Any> = emptyMap()): AppConfig =
+            decode(overrides).also { config ->
+                requireNoViolations(config.authViolations() + config.sizingViolations())
+            }
+
+        /**
+         * Skips the auth rules: the seed never serves a request, so it neither signs a session nor seeds an admin,
+         * and a dev without either configured can still seed.
+         */
+        fun loadForSeed(overrides: Map<String, Any> = emptyMap()): AppConfig =
+            decode(overrides).also { config -> requireNoViolations(config.sizingViolations()) }
+
         // Not default(): since Hoplite 3.0 that ranks every environment variable above these sources, so an
         // exported DB_SCHEMA would beat an override. The environment reaches config only through ${...} substitution.
-        fun load(overrides: Map<String, Any> = emptyMap()): AppConfig =
+        private fun decode(overrides: Map<String, Any>): AppConfig =
             ConfigLoaderBuilder.defaultWithoutPropertySources()
                 .addDecoder(ConfigSecretDecoder())
                 .addDecoder(PositiveSecondsDecoder())
