@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { NavLink, Route, Routes, useLocation } from 'react-router';
 import WeeklyReportPage from '@/features/weeklyReport/WeeklyReportPage';
 import RankingsPage from '@/features/rankings/RankingsPage';
 import PlayerRankingsPage from '@/features/playerRankings/PlayerRankingsPage';
