@@ -161,4 +161,28 @@ describe('ResetTournamentSection', () => {
 
     expect(resetTournamentMock).not.toHaveBeenCalled();
   });
+
+  it('drops the picked tournament when the season changes', async () => {
+    seasonsMock.mockResolvedValue([makeSeason(), makeSeason({ id: 'sn-2', name: 'Fall' })]);
+
+    const user = userEvent.setup();
+    renderWithProviders(<ResetTournamentSection />, { withLeagueSeasonProvider: false });
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: /Wk 1 — Sony Open/ })).toBeInTheDocument();
+    });
+    await user.selectOptions(screen.getByLabelText(/Completed tournament/i), 'tn-1');
+    expect(screen.getByRole('button', { name: /Reset Results/i })).toBeEnabled();
+
+    await user.selectOptions(screen.getByLabelText(/^Season$/), 'sn-2');
+
+    expect(screen.getByLabelText(/Completed tournament/i)).toHaveValue('');
+    expect(screen.getByRole('button', { name: /Reset Results/i })).toBeDisabled();
+  });
+
+  it('names both pickers with visible labels', () => {
+    renderWithProviders(<ResetTournamentSection />, { withLeagueSeasonProvider: false });
+    expect(screen.getByText('Season')).toBeInTheDocument();
+    expect(screen.getByText('Completed tournament')).toBeInTheDocument();
+  });
 });

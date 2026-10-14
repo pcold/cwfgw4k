@@ -3,6 +3,7 @@ import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/reac
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreChange, queryKeys } from '@/shared/api/queryKeys';
 import type { League, Season, Tournament } from '@/shared/api/types';
+import { SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 
 function ResetTournamentSection(): ReactNode {
@@ -62,38 +63,30 @@ function ResetTournamentSection(): ReactNode {
         status.
       </p>
 
-      <div className="flex flex-wrap items-center gap-4">
-        <select
-          aria-label="Season"
+      <div className="flex flex-wrap items-end gap-4">
+        <SelectField
+          id="reset-season"
+          label="Season"
           value={seasonId}
-          onChange={(e) => {
-            setUserSeasonId(e.target.value);
+          error={undefined}
+          placeholder="Select a season"
+          options={(seasonsQuery.data ?? []).map((s) => ({ value: s.id, label: `${s.seasonYear} ${s.name}` }))}
+          width="w-full sm:w-64"
+          onChange={(value) => {
+            setUserSeasonId(value);
             setTournamentId('');
           }}
-          className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full sm:w-64"
-        >
-          <option value="" disabled>
-            Select a season
-          </option>
-          {(seasonsQuery.data ?? []).map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.seasonYear} {s.name}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Completed tournament"
+        />
+        <SelectField
+          id="reset-tournament"
+          label="Completed tournament"
           value={tournamentId}
-          onChange={(e) => setTournamentId(e.target.value)}
-          className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full sm:w-80"
-        >
-          <option value="">-- select completed tournament --</option>
-          {tournaments.map((t) => (
-            <option key={t.id} value={t.id}>
-              Wk {t.week ?? '?'} — {t.name}
-            </option>
-          ))}
-        </select>
+          error={undefined}
+          placeholder="-- select completed tournament --"
+          options={tournaments.map((t) => ({ value: t.id, label: `Wk ${t.week ?? '?'} — ${t.name}` }))}
+          width="w-full sm:w-80"
+          onChange={setTournamentId}
+        />
         <button
           type="button"
           onClick={onReset}

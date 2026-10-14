@@ -3,6 +3,7 @@ import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/reac
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreChange, queryKeys } from '@/shared/api/queryKeys';
 import type { League, Season } from '@/shared/api/types';
+import { SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
 
@@ -54,20 +55,17 @@ function CleanSeasonSection(): ReactNode {
         tournament back to upcoming.
       </p>
 
-      <div className="flex flex-wrap items-center gap-4">
-        <select
-          aria-label="Season to clean"
+      <div className="flex flex-wrap items-end gap-4">
+        <SelectField
+          id="clean-season"
+          label="Season to clean"
           value={seasonId}
-          onChange={(e) => setSeasonId(e.target.value)}
-          className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full sm:w-80"
-        >
-          <option value="">-- select season --</option>
-          {(seasonsQuery.data ?? []).map((s) => (
-            <option key={s.id} value={s.id}>
-              {seasonLabel(s)}
-            </option>
-          ))}
-        </select>
+          error={undefined}
+          placeholder="-- select season --"
+          options={(seasonsQuery.data ?? []).map((s) => ({ value: s.id, label: seasonLabel(s) }))}
+          width="w-full sm:w-80"
+          onChange={setSeasonId}
+        />
         <button
           type="button"
           onClick={onClean}

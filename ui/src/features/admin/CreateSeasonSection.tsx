@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type { League, Season } from '@/shared/api/types';
+import { FIELD_CLASS, FieldShell, TextField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import {
   DEFAULT_PAYOUTS,
@@ -57,15 +58,12 @@ function CreateSeasonSection(): ReactNode {
       </h3>
 
       <div className="flex flex-wrap gap-4 mb-4">
-        <div>
-          <label className="block text-xs text-gray-400 mb-1" htmlFor="season-league">
-            League
-          </label>
+        <FieldShell id="season-league" label="League" error={undefined} width="sm:w-64">
           <select
             id="season-league"
             value={leagueId}
             onChange={(e) => setUserLeagueId(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full sm:w-64"
+            className={FIELD_CLASS}
           >
             {(leaguesQuery.data ?? []).map((lg) => (
               <option key={lg.id} value={lg.id}>
@@ -73,32 +71,25 @@ function CreateSeasonSection(): ReactNode {
               </option>
             ))}
           </select>
-        </div>
-        <div>
-          <label className="block text-xs text-gray-400 mb-1" htmlFor="season-year">
-            Year
-          </label>
+        </FieldShell>
+        <FieldShell id="season-year" label="Year" error={undefined} width="w-24">
           <input
             id="season-year"
             type="number"
             value={seasonYear}
             onChange={(e) => setSeasonYear(Number(e.target.value))}
-            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-24"
+            className={FIELD_CLASS}
           />
-        </div>
-        <div>
-          <label className="block text-xs text-gray-400 mb-1" htmlFor="season-name">
-            Season Name
-          </label>
-          <input
-            id="season-name"
-            type="text"
-            value={seasonName}
-            onChange={(e) => setSeasonName(e.target.value)}
-            placeholder="e.g. Spring"
-            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full sm:w-48"
-          />
-        </div>
+        </FieldShell>
+        <TextField
+          id="season-name"
+          label="Season Name"
+          value={seasonName}
+          error={undefined}
+          placeholder="e.g. Spring"
+          width="sm:w-48"
+          onChange={setSeasonName}
+        />
       </div>
 
       <div className="mb-4">
@@ -140,49 +131,39 @@ function CreateSeasonSection(): ReactNode {
               - Remove last
             </button>
           </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1" htmlFor="season-tie-floor">
-              Tie Floor ($)
-            </label>
+          <FieldShell id="season-tie-floor" label="Tie Floor ($)" error={undefined} width="w-24">
             <input
               id="season-tie-floor"
               type="number"
               step="0.5"
               value={tieFloor}
               onChange={(e) => setTieFloor(Number(e.target.value))}
-              className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm w-16"
+              className={FIELD_CLASS}
             />
-          </div>
+          </FieldShell>
         </div>
 
         <h4 className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-2 mt-4">
           Side Bets
         </h4>
         <div className="flex flex-wrap gap-4 items-end">
-          <div>
-            <label className="block text-xs text-gray-400 mb-1" htmlFor="season-side-rounds">
-              Rounds
-            </label>
-            <input
-              id="season-side-rounds"
-              type="text"
-              value={sideBetRoundsStr}
-              onChange={(e) => setSideBetRoundsStr(e.target.value)}
-              className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm w-28"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1" htmlFor="season-side-amount">
-              Bet Amount ($)
-            </label>
+          <TextField
+            id="season-side-rounds"
+            label="Rounds"
+            value={sideBetRoundsStr}
+            error={undefined}
+            width="w-28"
+            onChange={setSideBetRoundsStr}
+          />
+          <FieldShell id="season-side-amount" label="Bet Amount ($)" error={undefined} width="w-24">
             <input
               id="season-side-amount"
               type="number"
               value={sideBetAmount}
               onChange={(e) => setSideBetAmount(Number(e.target.value))}
-              className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm w-16"
+              className={FIELD_CLASS}
             />
-          </div>
+          </FieldShell>
         </div>
       </div>
 

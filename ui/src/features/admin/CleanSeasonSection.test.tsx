@@ -126,4 +126,9 @@ describe('CleanSeasonSection', () => {
 
     expect(cleanMock).not.toHaveBeenCalled();
   });
+
+  it('names the season picker with a visible label', () => {
+    renderWithProviders(<CleanSeasonSection />, { withLeagueSeasonProvider: false });
+    expect(screen.getByText('Season to clean')).toBeInTheDocument();
+  });
 });
