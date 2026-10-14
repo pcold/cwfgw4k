@@ -1,22 +1,20 @@
 package com.cwfgw.teams
 
-import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.jooq.tables.references.TEAM_ROSTERS
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
+import com.cwfgw.testing.markDropped
 import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import java.math.BigDecimal
-import java.time.OffsetDateTime
 import java.util.UUID
 
 class TeamRepositorySpec : FunSpec({
@@ -204,12 +202,3 @@ class TeamRepositorySpec : FunSpec({
         }
     }
 })
-
-/** Nothing in production drops a roster entry, so the spec sets `dropped_at` itself to prove the filter. */
-context(ctx: TransactionContext)
-private fun markDropped(entryId: RosterEntryId) {
-    ctx.dsl.update(TEAM_ROSTERS)
-        .set(TEAM_ROSTERS.DROPPED_AT, OffsetDateTime.now())
-        .where(TEAM_ROSTERS.ID.eq(entryId.value))
-        .execute()
-}
