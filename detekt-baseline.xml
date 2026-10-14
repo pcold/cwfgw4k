@@ -9,8 +9,6 @@
     <ID>ForbiddenMethodCall:RosterParser.kt:RosterParser$first()</ID>
     <ID>ForbiddenMethodCall:SeedMain.kt:first()</ID>
     <ID>ForbiddenMethodCall:SeedMain.kt:runBlocking { seed(services) }</ID>
-    <ID>ForbiddenMethodCall:Transactor.kt:JooqTransactor$transactionResult { config -> val txDsl = config.dsl() // Must run before any other statement in the transaction; PG rejects // SET TRANSACTION after the snapshot has been taken by a real query. txDsl.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY") with(TransactionContext(txDsl)) { block() } }</ID>
-    <ID>ForbiddenMethodCall:Transactor.kt:JooqTransactor$transactionResult { config -> val txDsl = config.dsl() txDsl.setLocal(DSL.unquotedName("lock_timeout"), DSL.inline("${LOCK_TIMEOUT_MS}ms")).execute() with(TransactionContext(txDsl)) { block() } }</ID>
     <ID>HasPlatformType:RequestCacheSpec.kt:StepClock$override fun getZone</ID>
     <ID>ImplicitDefaultLocale:ScoringServiceSpec.kt:"00000000-0000-0000-0000-0000000000%02d".format(n)</ID>
     <ID>ImplicitDefaultLocale:ScoringServiceSpec.kt:"00000000-0000-0000-0000-000000000f%02d".format(n)</ID>
