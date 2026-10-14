@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
@@ -10,7 +10,7 @@ interface Props {
   onClose: () => void;
 }
 
-function GolferHistoryModal({ seasonId, golferId, onClose }: Props) {
+function GolferHistoryModal({ seasonId, golferId, onClose }: Props): ReactNode {
   const open = !!golferId;
 
   useEffect(() => {
@@ -37,6 +37,8 @@ function GolferHistoryModal({ seasonId, golferId, onClose }: Props) {
   const error = historyQuery.error;
 
   return (
+    /* eslint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions --
+       a backdrop click is a mouse shortcut; Escape and the Close button are the keyboard paths. */
     <div
       role="dialog"
       aria-modal="true"
@@ -46,6 +48,7 @@ function GolferHistoryModal({ seasonId, golferId, onClose }: Props) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
+      {/* eslint-enable jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
       <div className="bg-gray-800 rounded-lg shadow-xl w-[min(92vw,28rem)] max-h-[90vh] overflow-y-auto border border-gray-600">
         <div className="px-5 py-4 border-b border-gray-700 flex items-center justify-between">
           <h3 id="golfer-history-title" className="text-lg font-bold">

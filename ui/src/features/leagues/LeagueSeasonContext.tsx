@@ -7,7 +7,7 @@ import type { League, Season } from '@/shared/api/types';
 interface LeagueSeasonValue {
   leagues: League[] | undefined;
   leaguesLoading: boolean;
-  leaguesError: unknown;
+  leaguesError: Error | null;
   leagueId: string | null;
   setLeagueId: (id: string) => void;
 
@@ -22,7 +22,7 @@ interface LeagueSeasonValue {
 
 const LeagueSeasonContext = createContext<LeagueSeasonValue | null>(null);
 
-export function LeagueSeasonProvider({ children }: { children: ReactNode }) {
+export function LeagueSeasonProvider({ children }: { children: ReactNode }): ReactNode {
   const leaguesQuery = useQuery({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
   const [userLeagueId, setUserLeagueId] = useState<string | null>(null);
   // Derive the active league from the user's pick + loaded leagues so we don't

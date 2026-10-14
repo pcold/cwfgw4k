@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
@@ -12,7 +12,7 @@ import {
   buildRules,
 } from './rulesInput';
 
-function CreateSeasonSection() {
+function CreateSeasonSection(): ReactNode {
   const queryClient = useQueryClient();
 
   const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
@@ -107,6 +107,7 @@ function CreateSeasonSection() {
         </h4>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
           {payouts.map((amt, i) => (
+            // eslint-disable-next-line react/no-array-index-key -- a payout row is its finishing position; rows only append or pop.
             <div key={i} className="flex items-center gap-1">
               <span className="text-xs text-gray-500 w-6">{i + 1}.</span>
               <span className="text-xs text-gray-500">$</span>

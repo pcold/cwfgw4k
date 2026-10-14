@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type { League } from '@/shared/api/types';
 import { mutationError } from '@/shared/util/mutationError';
 
-function CreateLeagueSection() {
+function CreateLeagueSection(): ReactNode {
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [success, setSuccess] = useState<string | null>(null);

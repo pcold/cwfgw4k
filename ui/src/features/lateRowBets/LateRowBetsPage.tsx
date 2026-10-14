@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
@@ -9,7 +9,7 @@ import LateRowBetsView from './LateRowBetsView';
 
 const ALL_TOURNAMENTS = '';
 
-function LateRowBetsPage() {
+function LateRowBetsPage(): ReactNode {
   const { seasonId, live } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
   const [userTournamentId, setUserTournamentId] = useState<string | null>(null);

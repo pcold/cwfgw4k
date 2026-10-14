@@ -42,8 +42,8 @@ function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick }: R
     ? `${cell.positionStr ?? ''} - ${formatMoney(cell.earnings)}`
     : '-';
   const seasonEarningsLabel =
-    (cell.seasonTopTens ?? 0) > 0
-      ? `${formatMoney(cell.seasonEarnings ?? 0)} (${cell.seasonTopTens ?? 0})`
+    cell.seasonTopTens > 0
+      ? `${formatMoney(cell.seasonEarnings)} (${cell.seasonTopTens})`
       : '$0';
 
   const golferId = cell.golferId;
@@ -131,7 +131,7 @@ interface Props {
   onGolferClick?: (golferId: string) => void;
 }
 
-function WeeklyReportView({ report, onGolferClick }: Props) {
+function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
   const { tournament, teams, undraftedTopTens, sideBetDetail, cashTotals } = report;
   const seasonMode = isSeasonReport(report);
   const showSeasonFooter = !seasonMode;

@@ -196,6 +196,17 @@ function drawStandings(
   });
 }
 
+// jspdf-autotable records the drawn table on the doc as `lastAutoTable` but leaves it out of its typings.
+function lastTableFinalY(doc: jsPDF): number {
+  if ('lastAutoTable' in doc) {
+    const table = doc.lastAutoTable;
+    if (typeof table === 'object' && table !== null && 'finalY' in table && typeof table.finalY === 'number') {
+      return table.finalY;
+    }
+  }
+  throw new Error('jspdf-autotable recorded no finalY for the table it drew');
+}
+
 function drawFooter(
   doc: jsPDF,
   report: WeeklyReport,
@@ -334,8 +345,7 @@ export function buildWeeklyReportPdf(report: WeeklyReport): jsPDF {
     columnStyles: { 0: { cellWidth: 52 } },
   });
 
-  const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
-  drawFooter(doc, report, marginLeft, marginRight, finalY + 16);
+  drawFooter(doc, report, marginLeft, marginRight, lastTableFinalY(doc) + 16);
 
   return doc;
 }

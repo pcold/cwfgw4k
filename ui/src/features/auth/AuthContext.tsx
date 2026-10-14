@@ -18,7 +18,7 @@ interface AuthValue {
 
 const AuthContext = createContext<AuthValue | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
   const queryClient = useQueryClient();
 
   // null = explicitly unauthenticated (the client swallows 401 from /me into null).

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
@@ -7,7 +7,7 @@ import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import RostersView from './RostersView';
 
-function RostersPage() {
+function RostersPage(): ReactNode {
   const { seasonId } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
   const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);

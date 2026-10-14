@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreOwnerChange, queryKeys } from '@/shared/api/queryKeys';
@@ -16,7 +16,7 @@ interface PlayerLinksPanelProps {
   onClose: () => void;
 }
 
-function PlayerLinksPanel({ tournamentId, seasonId, onClose }: PlayerLinksPanelProps) {
+function PlayerLinksPanel({ tournamentId, seasonId, onClose }: PlayerLinksPanelProps): ReactNode {
   const competitorsQuery = useQuery({
     queryKey: queryKeys.tournamentCompetitors.byTournament(tournamentId),
     queryFn: () => api.tournamentCompetitors(tournamentId),

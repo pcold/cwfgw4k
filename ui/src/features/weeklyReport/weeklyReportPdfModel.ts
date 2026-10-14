@@ -30,8 +30,8 @@ export function cellContent(cell: ReportCell | undefined, showSeasonFooter: bool
     ? `${cell.positionStr ?? ''} - ${formatMoney(cell.earnings)}`
     : '-';
   if (!showSeasonFooter) return `${name}\n${earningsLine}`;
-  const cumLine = (cell.seasonTopTens ?? 0) > 0
-    ? `${formatMoney(cell.seasonEarnings ?? 0)} (${cell.seasonTopTens ?? 0})`
+  const cumLine = cell.seasonTopTens > 0
+    ? `${formatMoney(cell.seasonEarnings)} (${cell.seasonTopTens})`
     : '$0';
   return `${name}\n${earningsLine}\n${cumLine}`;
 }

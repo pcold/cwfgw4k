@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { ReportSideBetRules, WeeklyReport } from '@/shared/api/types';
 import { formatMoney } from '@/shared/util/money';
 import { lateRowBetRounds, lateRowBetTeamTotals, type LateRowBetEntry } from './lateRowBetsModel';
@@ -81,7 +82,7 @@ interface Props {
   report: WeeklyReport;
 }
 
-function LateRowBetsView({ report }: Props) {
+function LateRowBetsView({ report }: Props): ReactNode {
   const rounds = lateRowBetRounds(report);
   const totals = lateRowBetTeamTotals(report);
   const { sideBetTotals } = report;

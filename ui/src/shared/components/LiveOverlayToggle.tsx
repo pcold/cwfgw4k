@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import type { Tournament } from '@/shared/api/types';
 
@@ -66,7 +67,7 @@ interface LiveOverlayCheckboxProps {
   id?: string;
 }
 
-export function LiveOverlayCheckbox({ state, id }: LiveOverlayCheckboxProps) {
+export function LiveOverlayCheckbox({ state, id }: LiveOverlayCheckboxProps): ReactNode {
   if (!state.eligible) return null;
   return (
     <label
