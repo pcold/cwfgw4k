@@ -1,6 +1,7 @@
 package com.cwfgw.golfers
 
 import com.cwfgw.testing.FakeTransactor
+import com.cwfgw.testing.orFail
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.nulls.shouldBeNull
@@ -55,7 +56,7 @@ class GolferServiceSpec : FunSpec({
         val created =
             service.create(
                 CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler", worldRanking = 1),
-            )
+            ).orFail()
 
         created.id shouldBe newId
         created.updatedAt shouldBe newTime

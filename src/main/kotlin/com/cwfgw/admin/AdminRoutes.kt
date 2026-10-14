@@ -62,6 +62,8 @@ private fun AdminError.toDomainError(): DomainError =
         is AdminError.InvalidRoster -> DomainError.Validation(parseError.flattenMessage())
         is AdminError.GolferIdsNotFound ->
             DomainError.Validation("golfer ids not found: ${ids.joinToString(", ") { it.value.toString() }}")
+        is AdminError.TeamNameTaken ->
+            DomainError.Conflict("a team name in this roster is already taken in season ${seasonId.value}")
     }
 
 private fun RosterParseError.flattenMessage(): String =

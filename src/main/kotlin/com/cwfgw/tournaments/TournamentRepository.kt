@@ -5,6 +5,7 @@ import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.db.decoded
 import com.cwfgw.db.required
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.jooq.keys.TOURNAMENTS_PGA_TOURNAMENT_ID_KEY
 import com.cwfgw.jooq.tables.records.TournamentResultsRecord
 import com.cwfgw.jooq.tables.records.TournamentsRecord
 import com.cwfgw.jooq.tables.references.TOURNAMENTS
@@ -67,6 +68,8 @@ interface TournamentRepository {
 }
 
 fun TournamentRepository(): TournamentRepository = JooqTournamentRepository()
+
+internal val UNIQUE_PGA_TOURNAMENT_ID: String = TOURNAMENTS_PGA_TOURNAMENT_ID_KEY.name
 
 private class JooqTournamentRepository : TournamentRepository {
     context(ctx: TransactionContext)

@@ -340,6 +340,19 @@ class AdminRoutesSpec : FunSpec({
             response.bodyAsString().shouldContain(ghost.value.toString())
         }
     }
+
+    test("POST /api/v1/admin/roster/confirm returns 409 when a team name is already taken in the season") {
+        authenticatedApiTest(adminFixture()) { client ->
+            val brown = ConfirmedTeam(teamNumber = 1, teamName = "BROWN", picks = emptyList())
+            val twoBrowns = listOf(brown, brown.copy(teamNumber = 2))
+            val response =
+                client.post("/api/v1/admin/roster/confirm") {
+                    contentType(ContentType.Application.Json)
+                    setBody(ConfirmRosterRequest(seasonId = SEASON_ID, teams = twoBrowns))
+                }
+            response.status shouldBe HttpStatusCode.Conflict
+        }
+    }
 })
 
 private suspend fun io.ktor.client.statement.HttpResponse.bodyAsString(): String = body()

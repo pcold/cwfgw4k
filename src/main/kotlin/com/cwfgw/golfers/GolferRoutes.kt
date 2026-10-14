@@ -1,5 +1,7 @@
 package com.cwfgw.golfers
 
+import com.cwfgw.http.DomainError
+import com.cwfgw.result.Result
 import com.cwfgw.users.SESSION_AUTH_NAME
 import com.cwfgw.users.requireAdmin
 import io.ktor.http.HttpStatusCode
@@ -29,5 +31,16 @@ private suspend fun RoutingContext.listGolfers(service: GolferService) {
 private suspend fun RoutingContext.createGolfer(service: GolferService) {
     requireAdmin()
     val request = call.receive<CreateGolferRequest>()
-    call.respond(HttpStatusCode.Created, service.create(request))
+    call.respond(HttpStatusCode.Created, service.create(request).orThrow())
 }
+
+private fun GolferError.toDomainError(): DomainError =
+    when (this) {
+        GolferError.PgaPlayerIdTaken -> DomainError.Conflict("this pga player id is already taken")
+    }
+
+private fun <T> Result<T, GolferError>.orThrow(): T =
+    when (this) {
+        is Result.Ok -> value
+        is Result.Err -> throw error.toDomainError()
+    }
