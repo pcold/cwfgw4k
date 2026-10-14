@@ -3,10 +3,10 @@
 # different label set tailored to cache hit-rate analysis.
 #
 # Source log lines (INFO):
-#   cwfgw4k.cache event=hit       route=/api/v1/scoring/:id/:id
-#   cwfgw4k.cache event=miss      route=/api/v1/scoring/:id/:id
-#   cwfgw4k.cache event=put       route=/api/v1/scoring/:id/:id ttl_seconds=300
-#   cwfgw4k.cache event=coalesced route=/api/v1/scoring/:id/:id
+#   cwfgw4k.cache event=hit       route=/api/v1/seasons/:id/report/:id
+#   cwfgw4k.cache event=miss      route=/api/v1/seasons/:id/report/:id
+#   cwfgw4k.cache event=put       route=/api/v1/seasons/:id/report/:id ttl_seconds=300
+#   cwfgw4k.cache event=coalesced route=/api/v1/seasons/:id/report/:id
 #   cwfgw4k.cache event=sweep     deleted=12
 #
 # Apply with:

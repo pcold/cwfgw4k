@@ -3,7 +3,7 @@ package com.cwfgw.espn
 import com.cwfgw.tournaments.TournamentId
 
 /**
- * Typed failure modes the ESPN import service surfaces alongside success.
+ * Typed failure modes [EspnService.listCompetitorsForLinking] surfaces alongside success.
  * Variants stay free of HTTP concerns — routes map them to
  * [com.cwfgw.http.DomainError] at the boundary.
  */
@@ -11,7 +11,7 @@ sealed interface EspnError {
     /** @see EspnError */
     data class UpstreamUnavailable(val failure: EspnUpstreamFailure) : EspnError
 
-    /** The caller asked to import a tournament that does not exist in our DB. */
+    /** @see EspnError */
     data class TournamentNotFound(val tournamentId: TournamentId) : EspnError
 
     /** The tournament exists but has no `pga_tournament_id` set, so we can't match it to ESPN. */

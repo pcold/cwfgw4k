@@ -23,10 +23,9 @@ fun UUID.toTournamentId(): TournamentId = TournamentId(this)
 
 fun String.toTournamentId(): TournamentId? = toUUIDOrNull()?.toTournamentId()
 
-@Serializable
 @JvmInline
 value class TournamentResultId(
-    @Serializable(with = UUIDSerializer::class) val value: UUID,
+    val value: UUID,
 )
 
 @Serializable
@@ -46,7 +45,6 @@ data class Tournament(
     @Serializable(with = InstantSerializer::class) val createdAt: Instant,
 )
 
-@Serializable
 data class TournamentResult(
     val id: TournamentResultId,
     val tournamentId: TournamentId,
@@ -63,16 +61,15 @@ data class TournamentResult(
     val pairKey: String?,
 )
 
-@Serializable
 data class CreateTournamentRequest(
     val pgaTournamentId: String? = null,
     val name: String,
     val seasonId: SeasonId,
-    @Serializable(with = LocalDateSerializer::class) val startDate: LocalDate,
-    @Serializable(with = LocalDateSerializer::class) val endDate: LocalDate,
+    val startDate: LocalDate,
+    val endDate: LocalDate,
     val courseName: String? = null,
     val purseAmount: Long? = null,
-    @Serializable(with = BigDecimalSerializer::class) val payoutMultiplier: BigDecimal? = null,
+    val payoutMultiplier: BigDecimal? = null,
     val week: String? = null,
 )
 
@@ -88,7 +85,6 @@ data class UpdateTournamentRequest(
     val isTeamEvent: Boolean? = null,
 )
 
-@Serializable
 data class CreateTournamentResultRequest(
     val golferId: GolferId,
     val position: Int? = null,

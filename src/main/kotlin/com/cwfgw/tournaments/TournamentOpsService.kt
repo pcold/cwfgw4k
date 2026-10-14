@@ -2,7 +2,6 @@ package com.cwfgw.tournaments
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
-import com.cwfgw.espn.EspnError
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnTournament
 import com.cwfgw.result.Result
@@ -49,7 +48,7 @@ class TournamentOpsService(
 
         val events =
             espnService.fetchEspnEvents(tournament.startDate)
-                .getOrElse { return Result.Err(it.toOpsError()) }
+                .getOrElse { return Result.Err(TournamentOpsError.UpstreamUnavailable(it.failure)) }
 
         return tx.update {
             val blocking = findEarlierUnfinalized(tournament)
@@ -133,13 +132,3 @@ class TournamentOpsService(
             .filter { it.id != tournament.id && it.startDate.isAfter(tournament.startDate) }
             .sortedBy { it.startDate }
 }
-
-private fun EspnError.toOpsError(): TournamentOpsError =
-    when (this) {
-        is EspnError.UpstreamUnavailable -> TournamentOpsError.UpstreamUnavailable(failure)
-        is EspnError.EventNotInScoreboard -> TournamentOpsError.EventNotInScoreboard(espnEventId)
-        is EspnError.TournamentNotFound -> TournamentOpsError.TournamentNotFound(tournamentId)
-        is EspnError.TournamentNotLinked ->
-            // Caller already branched on pgaTournamentId; reaching this means race or stale state.
-            TournamentOpsError.TournamentNotFound(tournamentId)
-    }

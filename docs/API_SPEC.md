@@ -61,7 +61,7 @@ Refusal codes on the wire today:
 
 | `refusal`                           | Raised by |
 |-------------------------------------|-----------|
-| `tournament_not_linked`             | `POST /api/v1/espn/import/tournament/{tournamentId}`, `GET /api/v1/admin/tournaments/{id}/competitors` |
+| `tournament_not_linked`             | `GET /api/v1/admin/tournaments/{id}/competitors` |
 | `tournament_finalized`              | `POST /api/v1/admin/tournaments/{id}/player-overrides`, `DELETE /api/v1/admin/tournaments/{id}/player-overrides/{espnCompetitorId}` |
 | `tournament_out_of_order`           | `POST /api/v1/tournaments/{id}/finalize`, `POST /api/v1/tournaments/{id}/reset` |
 | `season_has_no_tournaments`         | `POST /api/v1/seasons/{sid}/finalize` |
@@ -87,10 +87,9 @@ Variant names are SerialName-tagged; e.g. `PickMatch.Matched` serializes as
 
 ### Typed IDs
 
-Every domain ID — `LeagueId`, `SeasonId`, `TeamId`, `TournamentId`,
-`GolferId`, `RosterEntryId`, `FantasyScoreId`, `SeasonStandingId`,
-`TournamentResultId`, `DraftId`, `DraftPickId`, `UserId` — is a value
-class wrapping a `UUID`. On the wire each is just the raw UUID string.
+Every domain ID on the wire — `LeagueId`, `SeasonId`, `TeamId`,
+`TournamentId`, `GolferId`, `RosterEntryId`, `DraftId`, `DraftPickId`,
+`UserId` — is a value class wrapping a `UUID`, sent as the raw UUID string.
 Path-parameter parse failures return 400 with `"invalid <name> id"`.
 
 ### Query parameter parsing
@@ -194,22 +193,9 @@ Routes nested under `/api/v1/seasons/{seasonId}/`.
 | Method | Path                                              | Auth | Description                                                                                    |
 |--------|---------------------------------------------------|------|------------------------------------------------------------------------------------------------|
 | GET    | `/api/v1/tournaments?season_id=&status=`          | No   | List tournaments. `status` is one of `upcoming`/`in_progress`/`completed`. Unknown values → 400 |
-| GET    | `/api/v1/tournaments/{id}`                        | No   | Get one tournament                                                                             |
-| GET    | `/api/v1/tournaments/{id}/results`                | No   | Get the leaderboard rows                                                                       |
-| POST   | `/api/v1/tournaments`                             | Yes  | Create a tournament                                                                            |
 | PUT    | `/api/v1/tournaments/{id}`                        | Yes  | Partial update (incl. `status`, `is_team_event`)                                               |
-| POST   | `/api/v1/tournaments/{id}/results`                | Yes  | Batch-upsert leaderboard rows                                                                  |
 | POST   | `/api/v1/tournaments/{id}/finalize`               | Yes  | Compose ESPN import → score calculation → standings refresh. Refuses out-of-order with 409 `tournament_out_of_order`. |
 | POST   | `/api/v1/tournaments/{id}/reset`                  | Yes  | Wipe scores + results, revert status to `upcoming`. Refuses when later tournaments are completed (409 `tournament_out_of_order`). |
-
-### Scoring
-
-| Method | Path                                                          | Auth | Description                                          |
-|--------|---------------------------------------------------------------|------|------------------------------------------------------|
-| GET    | `/api/v1/seasons/{sid}/standings`                             | No   | Cumulative season standings                          |
-| GET    | `/api/v1/seasons/{sid}/scoring/{tid}`                         | No   | Per-team score rows for one tournament               |
-| POST   | `/api/v1/seasons/{sid}/scoring/calculate/{tid}`               | Yes  | Recompute and upsert scores for one tournament       |
-| POST   | `/api/v1/seasons/{sid}/scoring/refresh-standings`             | Yes  | Recompute and upsert season standings                |
 
 ### Reports
 
@@ -270,14 +256,6 @@ the negative ones, so zero or negative) and `net` (`won` plus `lost`). A
 client displays them and never sums `total_cash` or `side_bets` itself. A
 live overlay's totals are those of its overlaid teams.
 
-### ESPN
-
-| Method | Path                                                     | Auth | Description                                                                            |
-|--------|----------------------------------------------------------|------|----------------------------------------------------------------------------------------|
-| GET    | `/api/v1/espn/calendar`                                  | No   | Read ESPN's PGA season schedule (`EspnCalendarEntry[]`). Used by admin previewSeasonSchedule |
-| POST   | `/api/v1/espn/import?date=YYYY-MM-DD`                    | Yes  | Import every completed event for the given date; results auto-link to existing tournaments by `pga_tournament_id` |
-| POST   | `/api/v1/espn/import/tournament/{tournamentId}`          | Yes  | Import results for one specific (already-linked) tournament                             |
-
 ### Admin
 
 | Method | Path                                              | Auth | Description                                                                                    |
@@ -336,19 +314,6 @@ data class Tournament(
     val week: String?,            // free-form label, e.g. "8A" / "8B"
     val isTeamEvent: Boolean,     // true for Zurich Classic; halves per-partner payout
     val createdAt: Instant,
-)
-
-data class TournamentResult(
-    val id: TournamentResultId,
-    val tournamentId: TournamentId,
-    val golferId: GolferId,
-    val position: Int?,
-    val scoreToPar: Int?,
-    val totalStrokes: Int?,
-    val earnings: Long?,
-    val round1: Int?, val round2: Int?, val round3: Int?, val round4: Int?,
-    val madeCut: Boolean,
-    val pairKey: String?,         // synthetic team-event partner key, e.g. "team:t1"
 )
 ```
 

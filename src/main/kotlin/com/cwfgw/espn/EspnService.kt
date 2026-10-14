@@ -58,11 +58,7 @@ class EspnService(
     private val linkRepository: TournamentLinkRepository,
     private val tx: Transactor,
 ) {
-    /**
-     * Fetch ESPN's season calendar. Pass-through to the client; surfaced on
-     * the service so routes stay service-only and don't pull [EspnClient]
-     * into their wiring.
-     */
+    /** Surfaced here so callers depend on this service and never take an [EspnClient] themselves. */
     suspend fun fetchCalendar(): List<EspnCalendarEntry> = client.fetchCalendar()
 
     /**
@@ -149,40 +145,9 @@ class EspnService(
         tournament: Tournament,
     ): Result<EspnLivePreview, LivePreviewError> {
         val events =
-            fetchOrFail(tournament.startDate).getOrElse { return Result.Err(LivePreviewError.EspnUnavailable(it)) }
+            fetchEspnEvents(tournament.startDate).getOrElse { return Result.Err(LivePreviewError.EspnUnavailable(it)) }
         val event = matchEvent(events, tournament) ?: return Result.Err(LivePreviewError.NoMatchingEvent)
         return Result.Ok(buildLivePreviewForEvent(event, ctx))
-    }
-
-    suspend fun importByDate(date: LocalDate): Result<EspnImportBatch, EspnError> {
-        val events = fetchEspnEvents(date).getOrElse { return Result.Err(it) }
-        return Result.Ok(
-            tx.update {
-                val imported = mutableListOf<EspnImport>()
-                val unlinked = mutableListOf<UnlinkedEvent>()
-                for (event in events.filter { it.completed }) {
-                    val tournament = tournamentRepository.findByPgaTournamentId(event.espnId)
-                    if (tournament == null) {
-                        unlinked += UnlinkedEvent(espnEventId = event.espnId, espnEventName = event.name)
-                    } else {
-                        imported += persistImportIn(tournament, event)
-                    }
-                }
-                EspnImportBatch(imported = imported, unlinked = unlinked)
-            },
-        )
-    }
-
-    suspend fun importForTournament(tournamentId: TournamentId): Result<EspnImport, EspnError> {
-        val tournament =
-            tx.get { tournamentRepository.findById(tournamentId) }
-                ?: return Result.Err(EspnError.TournamentNotFound(tournamentId))
-        val espnId =
-            tournament.pgaTournamentId ?: return Result.Err(EspnError.TournamentNotLinked(tournamentId))
-        val events = fetchEspnEvents(tournament.startDate).getOrElse { return Result.Err(it) }
-        val event =
-            events.firstOrNull { it.espnId == espnId } ?: return Result.Err(EspnError.EventNotInScoreboard(espnId))
-        return Result.Ok(tx.update { persistImportIn(tournament, event) })
     }
 
     /**
@@ -193,7 +158,13 @@ class EspnService(
      * latter can join an outer `tx.update` without holding a Postgres
      * connection across an HTTP round trip (CWF-25).
      */
-    suspend fun fetchEspnEvents(date: LocalDate): Result<List<EspnTournament>, EspnError> = fetchOrFail(date)
+    suspend fun fetchEspnEvents(date: LocalDate): Result<List<EspnTournament>, EspnError.UpstreamUnavailable> =
+        try {
+            Result.Ok(client.fetchScoreboard(date))
+        } catch (e: EspnUpstreamException) {
+            log.warn(e) { "ESPN scoreboard fetch failed for $date: ${e.message}" }
+            Result.Err(EspnError.UpstreamUnavailable(e.failure))
+        }
 
     /**
      * Dry-run "what would each ESPN competitor link to right now?" for the
@@ -212,7 +183,7 @@ class EspnService(
                 ?: return Result.Err(EspnError.TournamentNotFound(tournamentId))
         val espnId =
             tournament.pgaTournamentId ?: return Result.Err(EspnError.TournamentNotLinked(tournamentId))
-        val events = fetchOrFail(tournament.startDate).getOrElse { return Result.Err(it) }
+        val events = fetchEspnEvents(tournament.startDate).getOrElse { return Result.Err(it) }
         val event =
             events.firstOrNull { it.espnId == espnId } ?: return Result.Err(EspnError.EventNotInScoreboard(espnId))
 
@@ -239,58 +210,22 @@ class EspnService(
         )
     }
 
-    private suspend fun fetchOrFail(date: LocalDate): Result<List<EspnTournament>, EspnError.UpstreamUnavailable> =
-        try {
-            Result.Ok(client.fetchScoreboard(date))
-        } catch (e: EspnUpstreamException) {
-            log.warn(e) { "ESPN scoreboard fetch failed for $date: ${e.message}" }
-            Result.Err(EspnError.UpstreamUnavailable(e.failure))
-        }
-
     /**
-     * Persist one ESPN event's results, golfer matches, and any
-     * tournament-level fact updates inside the caller's transaction.
-     * Composes the match-or-create matcher, the per-competitor upserts,
-     * and the tournament status/team-event sync — all using repositories
-     * so the writes join the outer `tx.update`.
-     *
-     * Used by [importByDate], [importForTournament], and by
-     * [com.cwfgw.tournaments.TournamentOpsService.finalizeTournament]
-     * to keep the whole finalize flow atomic (CWF-25).
+     * Writes into the caller's transaction so finalize persists the import, the scores and the standings
+     * atomically.
      */
     context(ctx: TransactionContext)
     internal fun persistImportIn(
         tournament: Tournament,
         event: EspnTournament,
-    ): EspnImport {
+    ) {
         val matchingContext = buildMatchingContextIn(tournament.seasonId, tournament.id)
-        val matches = event.competitors.map { matchOrCreateIn(it, matchingContext) }
-
         val matchedPairs =
-            event.competitors
-                .zip(matches)
-                .mapNotNull { (competitor, match) -> match?.let { competitor to it } }
-        val unmatchedNames =
-            event.competitors
-                .zip(matches)
-                .filter { it.second == null }
-                .map { it.first.name }
-        val createdCount = matches.count { it?.created == true }
-        val collisions = detectCollisions(matchedPairs)
-
+            event.competitors.mapNotNull { competitor ->
+                matchOrCreateIn(competitor, matchingContext)?.let { golferId -> competitor to golferId }
+            }
         persistResultsIn(tournament.id, matchedPairs)
         syncTournamentFromEventIn(tournament, event)
-
-        return EspnImport(
-            tournamentId = tournament.id,
-            espnEventId = event.espnId,
-            espnEventName = event.name,
-            completed = event.completed,
-            matched = matchedPairs.size,
-            created = createdCount,
-            unmatched = unmatchedNames,
-            collisions = collisions,
-        )
     }
 
     context(ctx: TransactionContext)
@@ -314,9 +249,9 @@ class EspnService(
     private fun matchOrCreateIn(
         competitor: EspnCompetitor,
         context: MatchingContext,
-    ): GolferMatch? {
+    ): GolferId? {
         val existing = locateExistingGolferIn(competitor, context)
-        if (existing != null) return GolferMatch(existing.id, created = false)
+        if (existing != null) return existing.id
 
         val (firstName, lastName) = splitName(competitor.name) ?: return null
         val created =
@@ -327,7 +262,7 @@ class EspnService(
                     lastName = lastName,
                 ),
             )
-        return GolferMatch(created.id, created = true)
+        return created.id
     }
 
     context(ctx: TransactionContext)
@@ -369,12 +304,12 @@ class EspnService(
     context(ctx: TransactionContext)
     private fun persistResultsIn(
         tournamentId: TournamentId,
-        matchedPairs: List<Pair<EspnCompetitor, GolferMatch>>,
+        matchedPairs: List<Pair<EspnCompetitor, GolferId>>,
     ) {
         val requests =
-            matchedPairs.map { (competitor, match) ->
+            matchedPairs.map { (competitor, golferId) ->
                 CreateTournamentResultRequest(
-                    golferId = match.golferId,
+                    golferId = golferId,
                     position = competitor.position,
                     scoreToPar = competitor.scoreToPar,
                     totalStrokes = competitor.totalStrokes,
@@ -411,21 +346,10 @@ class EspnService(
         )
     }
 
-    private fun detectCollisions(matchedPairs: List<Pair<EspnCompetitor, GolferMatch>>): List<String> =
-        matchedPairs
-            .groupBy { it.second.golferId }
-            .filterValues { it.size > 1 }
-            .map { (_, pairs) -> pairs.joinToString(", ") { it.first.name } }
-
     private data class MatchingContext(
         val golfers: List<Golfer>,
         val rosterGolferIds: Set<GolferId>,
         val overrides: Map<String, GolferId>,
-    )
-
-    private data class GolferMatch(
-        val golferId: GolferId,
-        val created: Boolean,
     )
 
     companion object {

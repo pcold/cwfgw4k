@@ -10,7 +10,6 @@ import com.cwfgw.health.HealthProbe
 import com.cwfgw.leagues.LeagueService
 import com.cwfgw.reports.LiveOverlayService
 import com.cwfgw.reports.WeeklyReportService
-import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.SeasonOpsService
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.TeamService
@@ -38,7 +37,6 @@ data class AppServices(
     val tournamentOpsService: TournamentOpsService,
     val seasonOpsService: SeasonOpsService,
     val draftService: DraftService,
-    val scoringService: ScoringService,
     val espnService: EspnService,
     val adminService: AdminService,
     val liveOverlayService: LiveOverlayService,

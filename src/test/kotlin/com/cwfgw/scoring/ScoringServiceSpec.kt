@@ -12,7 +12,7 @@ import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.RosterEntryId
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
-import com.cwfgw.testing.FakeTransactor
+import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.testing.orFail
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
@@ -153,26 +153,31 @@ private class Fixture(
                 seasonRepository = seasonRepo,
                 tournamentRepository = tournamentRepo,
                 teamRepository = teamRepo,
-                tx = FakeTransactor(),
             )
     }
 }
 
+private fun Fixture.calculateScores(): Result<WeeklyScoreResult, ScoringError> =
+    with(noopTransactionContext) { service.calculateScoresIn(SEASON_ID, TOURNAMENT_ID) }
+
+private fun Fixture.refreshStandings(): Result<List<SeasonStanding>, ScoringError> =
+    with(noopTransactionContext) { service.refreshStandingsIn(SEASON_ID) }
+
 class ScoringServiceSpec : FunSpec({
 
-    test("calculateScores returns SeasonNotFound when the season does not exist") {
+    test("calculateScoresIn returns SeasonNotFound when the season does not exist") {
         val fixture = Fixture(world = World(season = null))
 
-        fixture.service.calculateScores(SEASON_ID, TOURNAMENT_ID) shouldBe Result.Err(ScoringError.SeasonNotFound)
+        fixture.calculateScores() shouldBe Result.Err(ScoringError.SeasonNotFound)
     }
 
-    test("calculateScores returns TournamentNotFound when the tournament does not exist") {
+    test("calculateScoresIn returns TournamentNotFound when the tournament does not exist") {
         val fixture = Fixture(world = World(tournament = null))
 
-        fixture.service.calculateScores(SEASON_ID, TOURNAMENT_ID) shouldBe Result.Err(ScoringError.TournamentNotFound)
+        fixture.calculateScores() shouldBe Result.Err(ScoringError.TournamentNotFound)
     }
 
-    test("calculateScores yields zero-sum weekly totals across teams") {
+    test("calculateScoresIn yields zero-sum weekly totals across teams") {
         val team1 = mkTeam(teamId(1), "Alice")
         val team2 = mkTeam(teamId(2), "Bob")
         val fixture =
@@ -185,7 +190,7 @@ class ScoringServiceSpec : FunSpec({
                     ),
             )
 
-        val weekly = fixture.service.calculateScores(SEASON_ID, TOURNAMENT_ID).orFail()
+        val weekly = fixture.calculateScores().orFail()
         weekly.numTeams shouldBe 2
         weekly.totalPot shouldBe BigDecimal(18)
         val byTeam = weekly.teams.associateBy { it.teamId }
@@ -195,7 +200,7 @@ class ScoringServiceSpec : FunSpec({
         byTeam.getValue(team2.id).weeklyTotal shouldBe BigDecimal(-18)
     }
 
-    test("calculateScores persists only golfers in the payout zone") {
+    test("calculateScoresIn persists only golfers in the payout zone") {
         val team = mkTeam(teamId(1), "Alice")
         val rosters =
             listOf(
@@ -206,12 +211,12 @@ class ScoringServiceSpec : FunSpec({
         val results = listOf(mkResult(golferId(1), null), mkResult(golferId(3), 50))
         val fixture = Fixture(world = World(teams = listOf(team), rosters = rosters, results = results))
 
-        fixture.service.calculateScores(SEASON_ID, TOURNAMENT_ID).shouldBeInstanceOf<Result.Ok<WeeklyScoreResult>>()
+        fixture.calculateScores().shouldBeInstanceOf<Result.Ok<WeeklyScoreResult>>()
 
         fixture.scoring.scoreUpserts.shouldHaveSize(0)
     }
 
-    test("calculateScores applies the tournament payout multiplier to the pot") {
+    test("calculateScoresIn applies the tournament payout multiplier to the pot") {
         val team1 = mkTeam(teamId(1), "Alice")
         val team2 = mkTeam(teamId(2), "Bob")
         val fixture =
@@ -225,12 +230,12 @@ class ScoringServiceSpec : FunSpec({
                     ),
             )
 
-        val weekly = fixture.service.calculateScores(SEASON_ID, TOURNAMENT_ID).orFail()
+        val weekly = fixture.calculateScores().orFail()
         weekly.multiplier shouldBe BigDecimal(2)
         weekly.totalPot shouldBe BigDecimal(36)
     }
 
-    test("refreshStandings upserts a standing per team in the season") {
+    test("refreshStandingsIn upserts a standing per team in the season") {
         val team1 = mkTeam(teamId(1), "Alice")
         val team2 = mkTeam(teamId(2), "Bob")
         val teamTotals =
@@ -244,7 +249,7 @@ class ScoringServiceSpec : FunSpec({
                 fakes = FakeData(teamTotals = teamTotals),
             )
 
-        val result = fixture.service.refreshStandings(SEASON_ID).orFail()
+        val result = fixture.refreshStandings().orFail()
         result.shouldHaveSize(2)
         fixture.scoring.standingUpserts.shouldHaveSize(2)
         val upsertedByTeam = fixture.scoring.standingUpserts.associateBy { it.teamId }
@@ -253,40 +258,9 @@ class ScoringServiceSpec : FunSpec({
         upsertedByTeam.getValue(team2.id).totalPoints shouldBe BigDecimal(80)
     }
 
-    test("refreshStandings returns SeasonNotFound when the season does not exist") {
+    test("refreshStandingsIn returns SeasonNotFound when the season does not exist") {
         val fixture = Fixture(world = World(season = null))
 
-        fixture.service.refreshStandings(SEASON_ID) shouldBe Result.Err(ScoringError.SeasonNotFound)
-    }
-
-    test("getScores delegates to the repository") {
-        val team = mkTeam(teamId(1), "Alice")
-        val score =
-            FantasyScore(
-                id = FantasyScoreId(UUID.randomUUID()),
-                seasonId = SEASON_ID,
-                teamId = team.id,
-                tournamentId = TOURNAMENT_ID,
-                golferId = golferId(1),
-                points = BigDecimal(18),
-                position = 1,
-                numTied = 1,
-                basePayout = BigDecimal(18),
-                ownershipPct = BigDecimal(100),
-                payout = BigDecimal(18),
-                multiplier = BigDecimal.ONE,
-                calculatedAt = Instant.EPOCH,
-            )
-        val scoring = FakeScoringRepository(initialScores = listOf(score))
-        val service =
-            ScoringService(
-                repository = scoring,
-                seasonRepository = FakeSeasonRepository(initial = listOf(mkSeason())),
-                tournamentRepository = FakeTournamentRepository(),
-                teamRepository = FakeTeamRepository(),
-                tx = FakeTransactor(),
-            )
-
-        service.getScores(SEASON_ID, TOURNAMENT_ID) shouldBe listOf(score)
+        fixture.refreshStandings() shouldBe Result.Err(ScoringError.SeasonNotFound)
     }
 })

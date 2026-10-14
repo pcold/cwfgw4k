@@ -14,20 +14,19 @@ import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
-import com.cwfgw.testing.orFail
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournamentLinks.TournamentPlayerOverride
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
+import com.cwfgw.tournaments.TournamentResult
 import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -139,40 +138,25 @@ private class Fixture(
         )
 }
 
+private fun Fixture.persistImport(
+    event: EspnTournament,
+    target: Tournament = tournament(),
+) = with(noopTransactionContext) { service.persistImportIn(target, event) }
+
+private fun Fixture.results(): List<TournamentResult> =
+    with(noopTransactionContext) { tournamentRepo.getResults(TOURNAMENT_ID) }
+
 class EspnServiceSpec : FunSpec({
 
-    test("importByDate returns an empty batch when ESPN has no events") {
-        val fixture = Fixture()
-
-        val batch = fixture.service.importByDate(START_DATE).orFail()
-
-        batch.imported.shouldHaveSize(0)
-        batch.unlinked.shouldHaveSize(0)
-    }
-
-    test("importByDate returns UpstreamUnavailable when the client throws an upstream exception") {
+    test("fetchEspnEvents returns UpstreamUnavailable when the client throws an upstream exception") {
         val fixture =
             Fixture(upstreamError = EspnUpstreamException(status = 503, message = "Service Unavailable"))
 
-        fixture.service.importByDate(START_DATE) shouldBe
+        fixture.service.fetchEspnEvents(START_DATE) shouldBe
             Result.Err(EspnError.UpstreamUnavailable(EspnUpstreamFailure.BadStatus(503)))
     }
 
-    test("importByDate skips in-progress events and reports unlinked completed events without failing") {
-        val event = espnTournament(completed = true, competitors = listOf(espnCompetitor("p1", "Rory McIlroy", 1, -10)))
-        val fixture =
-            Fixture(
-                tournamentsByDate = mapOf(START_DATE to listOf(event)),
-                // No tournament with pga_tournament_id matching the event
-            )
-
-        val batch = fixture.service.importByDate(START_DATE).orFail()
-
-        batch.imported.shouldHaveSize(0)
-        batch.unlinked shouldContainExactly listOf(UnlinkedEvent(event.espnId, event.name))
-    }
-
-    test("importByDate matches a tournament by pga_tournament_id and persists results") {
+    test("persistImportIn matches a golfer by pga_player_id and persists the result against them") {
         val rory = golfer(UUID.randomUUID(), "Rory", "McIlroy", pgaPlayerId = "p1")
         val event =
             espnTournament(
@@ -186,16 +170,13 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val batch = fixture.service.importByDate(START_DATE).orFail()
-        val import = batch.imported.single()
+        fixture.persistImport(event)
 
-        import.tournamentId shouldBe TOURNAMENT_ID
-        import.matched shouldBe 1
-        import.created shouldBe 0
-        import.unmatched shouldBe emptyList()
+        fixture.results().map { it.golferId } shouldBe listOf(rory.id)
+        with(noopTransactionContext) { fixture.golferRepo.findAll(activeOnly = false, search = null) }.shouldHaveSize(1)
     }
 
-    test("importByDate auto-creates an unknown golfer and links the ESPN id as pga_player_id") {
+    test("persistImportIn auto-creates an unknown golfer and links the ESPN id as pga_player_id") {
         val event =
             espnTournament(
                 espnId = "401580999",
@@ -207,9 +188,8 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val batch = fixture.service.importByDate(START_DATE).orFail()
+        fixture.persistImport(event)
 
-        batch.imported.single().created shouldBe 1
         val created = with(noopTransactionContext) { fixture.golferRepo.findByPgaPlayerId("unknown-espn") }
         // smoke — it exists in the fake repo
         val resaw = with(noopTransactionContext) { fixture.golferRepo.findByPgaPlayerId("unknown-espn") }
@@ -237,10 +217,9 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val batch = fixture.service.importByDate(START_DATE).orFail()
-        val import = batch.imported.single()
+        fixture.persistImport(event)
 
-        import.matched shouldBe 2
+        fixture.results().shouldHaveSize(2)
         // Griffin was auto-created without a pgaPlayerId (synthetic id must never pollute golfers)
         val griffin =
             with(noopTransactionContext) {
@@ -291,11 +270,11 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val batch = fixture.service.importByDate(START_DATE).orFail()
-        val import = batch.imported.single()
+        fixture.persistImport(event)
 
-        // Matched 1 (Smith → rosteredSmith); Jones auto-created → also matched.
-        import.matched shouldBe 2
+        // Smith resolves to rosteredSmith; Jones is auto-created, so both rows persist.
+        fixture.results().map { it.golferId } shouldContain rosteredSmith.id
+        fixture.results().shouldHaveSize(2)
         val smithResults =
             with(noopTransactionContext) { fixture.golferRepo.findByPgaPlayerId(rosteredSmith.pgaPlayerId ?: "-") }
         // rosteredSmith has no pgaPlayerId; verify otherSmith wasn't pulled in instead.
@@ -348,12 +327,10 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val import = fixture.service.importByDate(START_DATE).orFail().imported.single()
-
-        import.collisions shouldHaveSize 0
-        import.created shouldBe 1
+        fixture.persistImport(event)
 
         with(noopTransactionContext) {
+            fixture.golferRepo.findAll(activeOnly = false, search = "Lee").shouldHaveSize(3)
             val results = fixture.tournamentRepo.getResults(TOURNAMENT_ID)
             val minWooResult = results.single { it.golferId == minWooLee.id }
             minWooResult.position shouldBe 2
@@ -361,23 +338,23 @@ class EspnServiceSpec : FunSpec({
         }
     }
 
-    test("importByDate marks the tournament completed when ESPN says it finished") {
+    test("persistImportIn marks the tournament completed when ESPN says it finished") {
         val event = espnTournament(completed = true, competitors = emptyList())
+        val inProgress = tournament(pgaTournamentId = "401580999", status = TournamentStatus.InProgress)
         val fixture =
             Fixture(
-                initialTournaments =
-                    listOf(tournament(pgaTournamentId = "401580999", status = TournamentStatus.InProgress)),
+                initialTournaments = listOf(inProgress),
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        fixture.service.importByDate(START_DATE)
+        fixture.persistImport(event, target = inProgress)
 
         with(noopTransactionContext) {
             fixture.tournamentRepo.findById(TOURNAMENT_ID)?.status shouldBe TournamentStatus.Completed
         }
     }
 
-    test("importByDate flips is_team_event on the tournament once ESPN reports a team event") {
+    test("persistImportIn flips is_team_event on the tournament once ESPN reports a team event") {
         val novak = golfer(UUID.randomUUID(), "Novak", "Novakovich")
         val griffin = golfer(UUID.randomUUID(), "Ben", "Griffin")
         val event =
@@ -397,7 +374,7 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        fixture.service.importByDate(START_DATE)
+        fixture.persistImport(event)
 
         with(noopTransactionContext) {
             fixture.tournamentRepo.findById(TOURNAMENT_ID)?.isTeamEvent shouldBe true
@@ -406,22 +383,22 @@ class EspnServiceSpec : FunSpec({
         }
     }
 
-    test("importForTournament returns TournamentNotFound when the id does not exist") {
+    test("listCompetitorsForLinking returns TournamentNotFound when the id does not exist") {
         val fixture = Fixture()
 
-        fixture.service.importForTournament(TOURNAMENT_ID) shouldBe
+        fixture.service.listCompetitorsForLinking(TOURNAMENT_ID) shouldBe
             Result.Err(EspnError.TournamentNotFound(TOURNAMENT_ID))
     }
 
-    test("importForTournament returns TournamentNotLinked when pga_tournament_id is null") {
+    test("listCompetitorsForLinking returns TournamentNotLinked when pga_tournament_id is null") {
         val fixture =
             Fixture(initialTournaments = listOf(tournament(pgaTournamentId = null)))
 
-        fixture.service.importForTournament(TOURNAMENT_ID) shouldBe
+        fixture.service.listCompetitorsForLinking(TOURNAMENT_ID) shouldBe
             Result.Err(EspnError.TournamentNotLinked(TOURNAMENT_ID))
     }
 
-    test("importForTournament returns EventNotInScoreboard when ESPN's scoreboard lacks the linked espn id") {
+    test("listCompetitorsForLinking returns EventNotInScoreboard when ESPN's scoreboard lacks the linked espn id") {
         val event = espnTournament(espnId = "different-event", competitors = emptyList())
         val fixture =
             Fixture(
@@ -429,28 +406,8 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        fixture.service.importForTournament(TOURNAMENT_ID) shouldBe
+        fixture.service.listCompetitorsForLinking(TOURNAMENT_ID) shouldBe
             Result.Err(EspnError.EventNotInScoreboard("401580999"))
-    }
-
-    test("importForTournament returns Ok with a single import on success") {
-        val rory = golfer(UUID.randomUUID(), "Rory", "McIlroy", pgaPlayerId = "p1")
-        val event =
-            espnTournament(
-                espnId = "401580999",
-                competitors = listOf(espnCompetitor("p1", "Rory McIlroy", 1, -10)),
-            )
-        val fixture =
-            Fixture(
-                initialTournaments = listOf(tournament(pgaTournamentId = "401580999")),
-                initialGolfers = listOf(rory),
-                tournamentsByDate = mapOf(START_DATE to listOf(event)),
-            )
-
-        val import = fixture.service.importForTournament(TOURNAMENT_ID).orFail()
-
-        import.matched shouldBe 1
-        fixture.fakeClient.fetchCalls shouldBe listOf(START_DATE)
     }
 
     test("non-team competitor with no pga_player_id match falls back to exact full-name match") {
@@ -468,39 +425,13 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val import = fixture.service.importByDate(START_DATE).orFail().imported.single()
+        fixture.persistImport(event)
 
-        import.matched shouldBe 1
-        import.created shouldBe 0
+        fixture.results().map { it.golferId } shouldBe listOf(rory.id)
         // The existing rory was used; no new golfer was created.
         with(noopTransactionContext) {
             fixture.golferRepo.findAll(activeOnly = false, search = null)
         }.shouldHaveSize(1)
-    }
-
-    test("two ESPN competitors that map to the same Golfer surface as a collision") {
-        val rory = golfer(UUID.randomUUID(), "Rory", "McIlroy", pgaPlayerId = "p1")
-        // Two competitors: one matches rory by pgaPlayerId, the other by exact full-name.
-        val event =
-            espnTournament(
-                espnId = "401580999",
-                competitors =
-                    listOf(
-                        espnCompetitor("p1", "Rory McIlroy", 1, -10),
-                        espnCompetitor("p1-dup", "Rory McIlroy", 2, -9),
-                    ),
-            )
-        val fixture =
-            Fixture(
-                initialTournaments = listOf(tournament(pgaTournamentId = "401580999")),
-                initialGolfers = listOf(rory),
-                tournamentsByDate = mapOf(START_DATE to listOf(event)),
-            )
-
-        val import = fixture.service.importByDate(START_DATE).orFail().imported.single()
-
-        import.collisions shouldHaveSize 1
-        import.collisions.single().shouldContain("Rory McIlroy")
     }
 
     test("ambiguous last-name with no rostered candidate falls through to auto-create") {
@@ -520,10 +451,9 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val import = fixture.service.importByDate(START_DATE).orFail().imported.single()
+        fixture.persistImport(event)
 
         // The two existing Smiths plus a new auto-created one (last name "Smith", empty first name).
-        import.created shouldBe 1
         with(noopTransactionContext) {
             fixture.golferRepo.findAll(activeOnly = false, search = "Smith")
         }.shouldHaveSize(3)
@@ -543,8 +473,8 @@ class EspnServiceSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        fixture.service.importForTournament(TOURNAMENT_ID)
-        fixture.service.importForTournament(TOURNAMENT_ID)
+        fixture.persistImport(event)
+        fixture.persistImport(event)
 
         with(noopTransactionContext) {
             fixture.golferRepo.findAll(activeOnly = false, search = null)
@@ -574,11 +504,10 @@ class EspnServiceSpec : FunSpec({
                 initialOverrides = listOf(TournamentPlayerOverride(TOURNAMENT_ID, "team:t1:1", matt.id)),
             )
 
-        val import = fixture.service.importForTournament(TOURNAMENT_ID).orFail()
+        fixture.persistImport(event)
 
         // No new golfer auto-created — the override mapped the partner row to Matt directly.
-        import.created shouldBe 0
-        import.matched shouldBe 1
+        fixture.results().map { it.golferId } shouldBe listOf(matt.id)
         with(noopTransactionContext) {
             fixture.golferRepo.findAll(activeOnly = false, search = "Fitzpatrick")
         }.shouldHaveSize(2)
