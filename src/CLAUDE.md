@@ -63,12 +63,12 @@ Policy, in order of preference:
    lookups.
 2. **`com.cwfgw.result.Result<T, E>` with a domain-specific sealed error
    hierarchy** when a function has multiple distinct failure modes that need
-   to drive different caller behavior (e.g., a finalize where "not found,"
-   "out of order," and "upstream unavailable" must each produce a different
-   HTTP status). The error type lives in the domain package and stays free of
-   HTTP imports; routes map it to `DomainError` via a tiny `.orThrow()`
-   extension. The `TournamentOpsService` / `TournamentOpsRoutes` pair is the
-   reference shape.
+   to drive different caller behavior (e.g., a player-link upsert where
+   "tournament not found," "tournament finalized," and "golfer not found"
+   must each produce a different HTTP status). The error type lives in the
+   domain package and stays free of HTTP imports; routes map it to
+   `DomainError` via a tiny `.orThrow()` extension. The `TournamentLinkService`
+   / `TournamentLinkRoutes` pair is the reference shape.
 3. **Exceptions** for truly exceptional conditions: programmer errors
    (`IllegalArgumentException`, `IllegalStateException`), infrastructure
    failures, and at HTTP/framework boundaries — specifically `DomainError`
