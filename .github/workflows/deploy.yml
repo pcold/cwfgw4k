@@ -174,10 +174,10 @@ jobs:
             # start, where =1 costs ~$45/mo. The JDBC timeouts in 9d9043b bound
             # the idle wedge =1 was for; ops/load-test/soak.sh -m 0 checks for it.
             "--min-instances=0"
-            # Each instance holds DB_POOL=15 connections, and db-custom-1-3840
-            # allows 100 unless max_connections is raised, so 10 here overruns
-            # it from the seventh instance: CWF-102.
-            "--max-instances=10"
+            # Each instance holds DB_POOL=15 connections and db-custom-1-3840
+            # allows 100, so 6×15=90 leaves headroom for psql and Cloud SQL's
+            # own. Raising either number means raising max_connections first.
+            "--max-instances=6"
             # Below Cloud Run's 300s default so a wedged request frees its
             # concurrency slot sooner. Not lower: a cold start plus a cache
             # rebuild has to fit.

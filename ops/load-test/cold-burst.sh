@@ -156,7 +156,7 @@ gcloud run deploy "$STAGING_SERVICE" \
   --cpu="$CPU" \
   --concurrency="$CONCURRENCY" \
   --min-instances=0 \
-  --max-instances=10 \
+  --max-instances=6 \
   --timeout=90 \
   --quiet
 
