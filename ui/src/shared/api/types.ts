@@ -373,8 +373,7 @@ export interface CreateGolferRequest {
   worldRanking?: number | null;
 }
 
-// Mirrors backend com.cwfgw.golfers.Golfer. Returned by GET /api/v1/golfers
-// (list) and GET /api/v1/golfers/{id}.
+// Mirrors backend com.cwfgw.golfers.Golfer. Returned by GET /api/v1/golfers.
 export interface Golfer {
   id: string;
   pgaPlayerId: string | null;
