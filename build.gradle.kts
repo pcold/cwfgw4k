@@ -278,8 +278,8 @@ detekt {
     buildUponDefaultConfig = true
     allRules = false
     config.setFrom(files("$rootDir/detekt.yml"))
-    // What main raised when the rule set moved to benrollio's. It only shrinks: regenerate it with
-    // `./gradlew detektBaseline` after a fix, never to admit a new finding.
+    // What main raised when the rule set moved to benrollio's and when its cwfgw rules were ported. It only
+    // shrinks: regenerate it with `./gradlew :detektBaseline` after a fix, never to admit a new finding.
     baseline = file("$rootDir/detekt-baseline.xml")
     ignoreFailures = false
 }
