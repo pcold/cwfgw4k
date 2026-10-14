@@ -345,28 +345,6 @@ private fun wireFinish(
         put("tied", tied)
     }
 
-// BROWN's Scheffler wins alone at five under; WOMBLE's McIlroy shares third at even par with Schauffele,
-// whom nobody rostered. Both teams pick in round 5, so round 1 is an empty cell on each.
-private fun mastersWithASharedThird(): ApiFixture.() -> Unit =
-    reportFixture(
-        initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
-        initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
-        initialGolfers =
-            listOf(
-                golferRow(SCOTTIE_ID, "Scottie", "Scheffler"),
-                golferRow(RORY_ID, "Rory", "McIlroy"),
-                golferRow(XANDER_ID, "Xander", "Schauffele"),
-            ),
-        initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, 5), rosterRow(TEAM_B, RORY_ID, 5)),
-        initialResults =
-            listOf(
-                resultRow(MASTERS_ID, SCOTTIE_ID, position = 1),
-                resultRow(MASTERS_ID, RORY_ID, position = 3).copy(scoreToPar = 0),
-                resultRow(MASTERS_ID, XANDER_ID, position = 3).copy(scoreToPar = 0),
-            ),
-        initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
-    )
-
 class ReportRoutesSpec : FunSpec({
 
     // ----- GET /api/v1/seasons/{id}/report/{tournamentId} -----
@@ -502,7 +480,30 @@ class ReportRoutesSpec : FunSpec({
     // ----- typed finish and score to par -----
 
     test("GET /api/v1/seasons/{id}/report/{tid} sends a cell's finish as a position and a tie flag") {
-        apiTest(mastersWithASharedThird()) { client ->
+        val sharedThird =
+            reportFixture(
+                initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers =
+                    listOf(
+                        golferRow(SCOTTIE_ID, "Scottie", "Scheffler"),
+                        golferRow(RORY_ID, "Rory", "McIlroy"),
+                        golferRow(XANDER_ID, "Xander", "Schauffele"),
+                    ),
+                initialRosters =
+                    listOf(
+                        rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5),
+                        rosterRow(TEAM_B, RORY_ID, draftRound = 5),
+                    ),
+                initialResults =
+                    listOf(
+                        resultRow(MASTERS_ID, SCOTTIE_ID, position = 1).copy(scoreToPar = -5),
+                        resultRow(MASTERS_ID, RORY_ID, position = 3).copy(scoreToPar = 0),
+                        resultRow(MASTERS_ID, XANDER_ID, position = 3).copy(scoreToPar = 0),
+                    ),
+                initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
+            )
+        apiTest(sharedThird) { client ->
             val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}").bodyAsText()
             val report = wireReport(body)
 
@@ -513,7 +514,30 @@ class ReportRoutesSpec : FunSpec({
     }
 
     test("GET /api/v1/seasons/{id}/report sends no finish on a cell whose position_str counts top tens") {
-        apiTest(mastersWithASharedThird()) { client ->
+        val sharedThird =
+            reportFixture(
+                initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers =
+                    listOf(
+                        golferRow(SCOTTIE_ID, "Scottie", "Scheffler"),
+                        golferRow(RORY_ID, "Rory", "McIlroy"),
+                        golferRow(XANDER_ID, "Xander", "Schauffele"),
+                    ),
+                initialRosters =
+                    listOf(
+                        rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5),
+                        rosterRow(TEAM_B, RORY_ID, draftRound = 5),
+                    ),
+                initialResults =
+                    listOf(
+                        resultRow(MASTERS_ID, SCOTTIE_ID, position = 1).copy(scoreToPar = -5),
+                        resultRow(MASTERS_ID, RORY_ID, position = 3).copy(scoreToPar = 0),
+                        resultRow(MASTERS_ID, XANDER_ID, position = 3).copy(scoreToPar = 0),
+                    ),
+                initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
+            )
+        apiTest(sharedThird) { client ->
             val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report").bodyAsText()
             val scheffler = wireCell(wireReport(body), team = 0, round = 5)
 
@@ -523,7 +547,30 @@ class ReportRoutesSpec : FunSpec({
     }
 
     test("GET /api/v1/seasons/{id}/report/{tid} sends every score to par as a number") {
-        apiTest(mastersWithASharedThird()) { client ->
+        val sharedThird =
+            reportFixture(
+                initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers =
+                    listOf(
+                        golferRow(SCOTTIE_ID, "Scottie", "Scheffler"),
+                        golferRow(RORY_ID, "Rory", "McIlroy"),
+                        golferRow(XANDER_ID, "Xander", "Schauffele"),
+                    ),
+                initialRosters =
+                    listOf(
+                        rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5),
+                        rosterRow(TEAM_B, RORY_ID, draftRound = 5),
+                    ),
+                initialResults =
+                    listOf(
+                        resultRow(MASTERS_ID, SCOTTIE_ID, position = 1).copy(scoreToPar = -5),
+                        resultRow(MASTERS_ID, RORY_ID, position = 3).copy(scoreToPar = 0),
+                        resultRow(MASTERS_ID, XANDER_ID, position = 3).copy(scoreToPar = 0),
+                    ),
+                initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
+            )
+        apiTest(sharedThird) { client ->
             val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}").bodyAsText()
             val report = wireReport(body)
             val evenPar = JsonPrimitive(0)

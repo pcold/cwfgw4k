@@ -91,10 +91,8 @@ data class UndraftedGolfer(
 )
 
 /**
- * One leaderboard row from ESPN, populated only when a report is rendered
- * with `live=true`. The React scoreboard renders the full top-20 directly
- * from this list so it can mix rostered and undrafted players in the
- * correct order without having to merge two separate lists client-side.
+ * Built from a tournament's persisted results, and replaced by ESPN's field when a tournament report is
+ * rendered with `live=true`. Rostered and undrafted rows share one position-ordered list so the UI never merges two.
  */
 @Serializable
 data class LiveLeaderboardEntry(
