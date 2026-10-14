@@ -16,7 +16,6 @@ import org.jooq.exception.DataAccessException
 import java.time.Clock
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicLong
 
 private val log = KotlinLogging.logger {}
 
@@ -33,8 +32,8 @@ private val log = KotlinLogging.logger {}
  * every read.
  *
  * A write invalidates: [clearResponseCacheOnWrite] runs [clear] before any
- * admin write under `/api/v1` answers. One instance's clear can't stop a fill
- * already running on another, so [defaultTtl] still bounds that.
+ * admin write under `/api/v1` answers. The generation it advances lives in
+ * Postgres, so a fill that began before it stores nothing on any instance.
  *
  * A deploy does invalidate: [revision] prefixes every stored key, so a body
  * one revision encoded is never served by another. Not a table clear at
@@ -58,15 +57,13 @@ class RequestCache(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     /**
-     * Tracks the in-flight loader for each cache key and [generation] so
-     * concurrent misses coalesce onto a single [fetch] call. Bounded by
-     * request concurrency (entries are removed in the loader's finally
-     * block); not a leak.
+     * Tracks the in-flight loader for each cache key and generation so
+     * concurrent misses coalesce onto a single [fetch] call, and a read after
+     * a [clear] never joins a fill from before it. Bounded by request
+     * concurrency (entries are removed in the loader's finally block); not a
+     * leak.
      */
     private val inFlight = ConcurrentHashMap<InFlightKey, CompletableDeferred<String>>()
-
-    /** Bumped by [clear], so a fill whose fetch began before it neither keeps a body nor gains post-clear waiters. */
-    private val generation = AtomicLong()
 
     /**
      * Cache-aside fetch keyed by [revision] and [key] — joined here, the only
@@ -74,15 +71,15 @@ class RequestCache(
      * revision. Single-flight per key:
      *  1. `tx.get` checks the Postgres cache. Auto-commit single-statement
      *     read; connection held only for the SELECT itself.
-     *  2. On miss, try to claim the in-flight slot for [key] in the current
-     *     [generation] via an atomic `putIfAbsent` on a [CompletableDeferred].
+     *  2. On miss, read the cache generation, then try to claim the in-flight
+     *     slot for [key] in it via an atomic `putIfAbsent` on a [CompletableDeferred].
      *     If we lose the race we await the existing loader's deferred — no
      *     second [fetch], no second `tx.update`.
      *  3. The winning caller runs [fetch] outside any cache transaction
      *     (critical under load — [fetch] is the real handler that opens
      *     its own service transactions; holding a connection across it
      *     would consume two pool slots per request) and writes via
-     *     `tx.update`, unless a [clear] ran meanwhile.
+     *     `tx.update`, which stores nothing if a [clear] ran meanwhile.
      *  4. The loader completes the deferred (success or failure) and
      *     atomically removes itself from the in-flight map.
      *
@@ -106,7 +103,7 @@ class RequestCache(
             return hit
         }
 
-        val loadGeneration = generation.get()
+        val loadGeneration = tx.get { repository.generation() }
         val flightKey = InFlightKey(loadGeneration, storedKey)
         val ours = CompletableDeferred<String>()
         val existing = inFlight.putIfAbsent(flightKey, ours)
@@ -135,13 +132,7 @@ class RequestCache(
                 "cwfgw4k.cache event=fetch-exit route=$routeTemplate " +
                     "duration_ms=${System.currentTimeMillis() - fetchStarted}"
             }
-            if (generation.get() == loadGeneration) {
-                store(storedKey, fresh, routeTemplate, ttl)
-                // A clear that bumped after the check above may have deleted before this put committed.
-                if (generation.get() != loadGeneration) retract(storedKey, routeTemplate)
-            } else {
-                log.info { "cwfgw4k.cache event=discarded route=$routeTemplate" }
-            }
+            store(storedKey, fresh, loadGeneration, routeTemplate, ttl)
             ours.complete(fresh)
             return fresh
         } catch (t: Throwable) {
@@ -167,32 +158,23 @@ class RequestCache(
     private suspend fun store(
         storedKey: String,
         fresh: String,
+        loadGeneration: CacheGeneration,
         routeTemplate: String,
         ttl: Duration,
     ) {
-        try {
-            tx.update { repository.put(storedKey, fresh, clock.instant().plus(ttl)) }
-        } catch (e: DataAccessException) {
-            if (!e.isLockTimeout()) throw e
-            log.warn(e) { "cwfgw4k.cache event=unstored route=$routeTemplate" }
-            return
+        val stored =
+            try {
+                tx.update { repository.put(storedKey, fresh, clock.instant().plus(ttl), loadGeneration) }
+            } catch (e: DataAccessException) {
+                if (!e.isLockTimeout()) throw e
+                log.warn(e) { "cwfgw4k.cache event=unstored route=$routeTemplate" }
+                return
+            }
+        if (stored) {
+            log.info { "cwfgw4k.cache event=put route=$routeTemplate ttl_seconds=${ttl.seconds}" }
+        } else {
+            log.info { "cwfgw4k.cache event=discarded route=$routeTemplate" }
         }
-        log.info { "cwfgw4k.cache event=put route=$routeTemplate ttl_seconds=${ttl.seconds}" }
-    }
-
-    /** Like [store], a retraction that waits out the lock timeout leaves the GET its answer. */
-    private suspend fun retract(
-        storedKey: String,
-        routeTemplate: String,
-    ) {
-        try {
-            tx.update { repository.delete(storedKey) }
-        } catch (e: DataAccessException) {
-            if (!e.isLockTimeout()) throw e
-            log.warn(e) { "cwfgw4k.cache event=unretracted route=$routeTemplate" }
-            return
-        }
-        log.info { "cwfgw4k.cache event=retracted route=$routeTemplate" }
     }
 
     // A space, because a request URI cannot hold one: the last space in a stored
@@ -206,20 +188,16 @@ class RequestCache(
         return deleted
     }
 
-    /**
-     * Every revision's rows go, not just this one's. Bumps before deleting, so a fill's put either commits in time
-     * for the delete or sees the bump afterwards and retracts. A fill on another instance sees neither.
-     */
+    /** Every revision's rows go, not just this one's. */
     suspend fun clear(): Int {
-        generation.incrementAndGet()
-        val deleted = tx.update { repository.deleteAll() }
+        val deleted = tx.update { repository.clear() }
         log.info { "cwfgw4k.cache event=clear deleted=$deleted" }
         return deleted
     }
 }
 
 private data class InFlightKey(
-    val generation: Long,
+    val generation: CacheGeneration,
     val storedKey: String,
 )
 

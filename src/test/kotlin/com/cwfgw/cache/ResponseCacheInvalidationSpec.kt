@@ -64,26 +64,27 @@ private val WRITE_CASES =
         },
     )
 
-/** A cache-table delete that fails as jOOQ reports a failed statement; everything else is [FakeCacheRepository]. */
+/** A clear that fails as jOOQ reports a failed statement; everything else is [FakeCacheRepository]. */
 private class FailingClearRepository(private val rows: FakeCacheRepository) : CacheRepository {
     context(ctx: TransactionContext)
     override fun get(key: String): String? = rows.get(key)
+
+    context(ctx: TransactionContext)
+    override fun generation(): CacheGeneration = rows.generation()
 
     context(ctx: TransactionContext)
     override fun put(
         key: String,
         value: String,
         expiresAt: Instant,
-    ) = rows.put(key, value, expiresAt)
+        generation: CacheGeneration,
+    ): Boolean = rows.put(key, value, expiresAt, generation)
 
     context(ctx: TransactionContext)
     override fun deleteExpired(): Int = rows.deleteExpired()
 
     context(ctx: TransactionContext)
-    override fun deleteAll(): Int = throw DataAccessException("SQL [delete from cache]; ERROR", SQLException("ERROR"))
-
-    context(ctx: TransactionContext)
-    override fun delete(key: String): Int = rows.delete(key)
+    override fun clear(): Int = throw DataAccessException("SQL [delete from cache]; ERROR", SQLException("ERROR"))
 }
 
 /** Runs [onClear] inside the clear's transaction, before the rows go. */
@@ -95,23 +96,24 @@ private class ObservedClearRepository(
     override fun get(key: String): String? = rows.get(key)
 
     context(ctx: TransactionContext)
+    override fun generation(): CacheGeneration = rows.generation()
+
+    context(ctx: TransactionContext)
     override fun put(
         key: String,
         value: String,
         expiresAt: Instant,
-    ) = rows.put(key, value, expiresAt)
+        generation: CacheGeneration,
+    ): Boolean = rows.put(key, value, expiresAt, generation)
 
     context(ctx: TransactionContext)
     override fun deleteExpired(): Int = rows.deleteExpired()
 
     context(ctx: TransactionContext)
-    override fun deleteAll(): Int {
+    override fun clear(): Int {
         onClear()
-        return rows.deleteAll()
+        return rows.clear()
     }
-
-    context(ctx: TransactionContext)
-    override fun delete(key: String): Int = rows.delete(key)
 }
 
 private fun seededRows(): FakeCacheRepository =

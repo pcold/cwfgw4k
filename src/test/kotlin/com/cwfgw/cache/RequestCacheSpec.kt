@@ -24,7 +24,6 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.jooq.exception.DataAccessException
 import java.sql.SQLException
@@ -64,47 +63,21 @@ private class FailingPutRepository(private val sqlState: String) : CacheReposito
     override fun get(key: String): String? = null
 
     context(ctx: TransactionContext)
+    override fun generation(): CacheGeneration = CacheGeneration(0)
+
+    context(ctx: TransactionContext)
     override fun put(
         key: String,
         value: String,
         expiresAt: Instant,
-    ): Unit = throw DataAccessException("SQL [insert into cache ...]; ERROR", SQLException("ERROR", sqlState))
+        generation: CacheGeneration,
+    ): Boolean = throw DataAccessException("SQL [insert into cache ...]; ERROR", SQLException("ERROR", sqlState))
 
     context(ctx: TransactionContext)
     override fun deleteExpired(): Int = 0
 
     context(ctx: TransactionContext)
-    override fun deleteAll(): Int = 0
-
-    context(ctx: TransactionContext)
-    override fun delete(key: String): Int = 0
-}
-
-/** Runs [beforePut] ahead of each put, standing in for a clear whose delete lands before the put commits. */
-private class InterruptedPutRepository(private val rows: FakeCacheRepository) : CacheRepository {
-    var beforePut: () -> Unit = {}
-
-    context(ctx: TransactionContext)
-    override fun get(key: String): String? = rows.get(key)
-
-    context(ctx: TransactionContext)
-    override fun put(
-        key: String,
-        value: String,
-        expiresAt: Instant,
-    ) {
-        beforePut()
-        rows.put(key, value, expiresAt)
-    }
-
-    context(ctx: TransactionContext)
-    override fun deleteExpired(): Int = rows.deleteExpired()
-
-    context(ctx: TransactionContext)
-    override fun deleteAll(): Int = rows.deleteAll()
-
-    context(ctx: TransactionContext)
-    override fun delete(key: String): Int = rows.delete(key)
+    override fun clear(): Int = 0
 }
 
 class RequestCacheSpec : FunSpec({
@@ -284,17 +257,6 @@ class RequestCacheSpec : FunSpec({
 
             straddling.await() shouldBe "[\"pre-write\"]"
         }
-        rows.storedKeys().shouldBeEmpty()
-    }
-
-    test("a put that commits after a clear's delete is retracted") {
-        val rows = FakeCacheRepository()
-        val repository = InterruptedPutRepository(rows)
-        val cache = RequestCache(repository, FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
-        repository.beforePut = { runBlocking { cache.clear() } }
-
-        cache.cachedJsonGet(TEST_KEY, TEST_ROUTE) { "[\"pre-write\"]" } shouldBe "[\"pre-write\"]"
-
         rows.storedKeys().shouldBeEmpty()
     }
 

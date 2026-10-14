@@ -2,6 +2,7 @@ package com.cwfgw.cache
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.jooq.tables.references.CACHE
+import com.cwfgw.jooq.tables.references.CACHE_GENERATION
 import org.jooq.JSONB
 import org.jooq.impl.DSL
 import java.time.Instant
@@ -32,26 +33,38 @@ interface CacheRepository {
     context(ctx: TransactionContext)
     fun get(key: String): String?
 
-    /** UPSERT: insert or replace the entry's value and expiry. */
+    /** Read before a fill fetches, and handed back to [put]. */
+    context(ctx: TransactionContext)
+    fun generation(): CacheGeneration
+
+    /**
+     * UPSERT, only while the generation is still [generation]; false, storing nothing, once a [clear] has advanced
+     * it. Locks the generation row `FOR SHARE`, not `FOR KEY SHARE`, which [clear]'s non-key UPDATE wouldn't wait
+     * for. Must run in a transaction, or the lock ends before the insert.
+     */
     context(ctx: TransactionContext)
     fun put(
         key: String,
         value: String,
         expiresAt: Instant,
-    ): Unit
+        generation: CacheGeneration,
+    ): Boolean
 
     /** Delete every row whose [Instant] expiry has already passed. Returns the row count for logging. */
     context(ctx: TransactionContext)
     fun deleteExpired(): Int
 
-    /** Unlike [deleteExpired], takes live rows and every revision's. Returns the row count for logging. */
+    /**
+     * Unlike [deleteExpired], takes live rows and every revision's. Advances the generation before deleting: the
+     * UPDATE waits out every [put] holding the row, so the DELETE after it sees their rows. Returns the row count.
+     */
     context(ctx: TransactionContext)
-    fun deleteAll(): Int
-
-    /** Retracts a put that committed after the [deleteAll] it raced. Returns the row count for logging. */
-    context(ctx: TransactionContext)
-    fun delete(key: String): Int
+    fun clear(): Int
 }
+
+/** @see CacheRepository.generation */
+@JvmInline
+value class CacheGeneration(val value: Long)
 
 fun CacheRepository(): CacheRepository = JooqCacheRepository()
 
@@ -67,11 +80,18 @@ private class JooqCacheRepository : CacheRepository {
             ?.data()
 
     context(ctx: TransactionContext)
+    override fun generation(): CacheGeneration =
+        CacheGeneration(ctx.dsl.selectFrom(CACHE_GENERATION).fetchSingle().generation)
+
+    context(ctx: TransactionContext)
     override fun put(
         key: String,
         value: String,
         expiresAt: Instant,
-    ) {
+        generation: CacheGeneration,
+    ): Boolean {
+        val current = ctx.dsl.selectFrom(CACHE_GENERATION).forShare().fetchSingle().generation
+        if (current != generation.value) return false
         val expiry = OffsetDateTime.ofInstant(expiresAt, ZoneOffset.UTC)
         ctx.dsl.insertInto(CACHE)
             .set(CACHE.KEY, key)
@@ -82,6 +102,7 @@ private class JooqCacheRepository : CacheRepository {
             .set(CACHE.VALUE, JSONB.valueOf(value))
             .set(CACHE.EXPIRES_AT, expiry)
             .execute()
+        return true
     }
 
     context(ctx: TransactionContext)
@@ -91,8 +112,10 @@ private class JooqCacheRepository : CacheRepository {
             .execute()
 
     context(ctx: TransactionContext)
-    override fun deleteAll(): Int = ctx.dsl.deleteFrom(CACHE).execute()
-
-    context(ctx: TransactionContext)
-    override fun delete(key: String): Int = ctx.dsl.deleteFrom(CACHE).where(CACHE.KEY.eq(key)).execute()
+    override fun clear(): Int {
+        ctx.dsl.update(CACHE_GENERATION)
+            .set(CACHE_GENERATION.GENERATION, CACHE_GENERATION.GENERATION.plus(1))
+            .execute()
+        return ctx.dsl.deleteFrom(CACHE).execute()
+    }
 }

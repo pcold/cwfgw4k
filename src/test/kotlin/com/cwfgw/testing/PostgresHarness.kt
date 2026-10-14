@@ -21,7 +21,7 @@ internal const val TEMPLATE_DATABASE = "migrated_template"
  * Tables excluded from automatic reset between tests. Add tables here that hold
  * reference data loaded by migrations and expected to persist across tests.
  */
-private val PRESERVED_TABLES = setOf("flyway_schema_history")
+private val PRESERVED_TABLES = setOf("flyway_schema_history", "cache_generation")
 
 /**
  * [dataSource] reaches a database only this spec uses. [reset] runs before every test and only empties
