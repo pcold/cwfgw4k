@@ -1,0 +1,22 @@
+// Over the compression floor; CompressionSpec asserts on its encoding.
+export const fixture = "test-fixture-large";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
+export const filler = "compression floor padding for the test-fixture-large bundle";
