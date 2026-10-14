@@ -526,7 +526,6 @@ data class RosterUploadResult(
 data class CleanSeasonResult(
     val scoresDeleted: Int,
     val resultsDeleted: Int,
-    val standingsDeleted: Int,
     val tournamentsReset: Int,
 )
 ```
