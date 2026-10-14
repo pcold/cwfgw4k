@@ -81,4 +81,16 @@ class CacheRepositorySpec : FunSpec({
         tx.read { repository.get("rev-a /api/v1/live") }.shouldBeNull()
         tx.read { repository.get("rev-b /api/v1/live") }.shouldBeNull()
     }
+
+    test("delete removes only the row under its key") {
+        val expiresAt = Instant.now().plusSeconds(60)
+        tx.update {
+            repository.put(key = "rev-a /api/v1/retracted", value = "\"old\"", expiresAt = expiresAt)
+            repository.put(key = "rev-a /api/v1/kept", value = "\"ok\"", expiresAt = expiresAt)
+        }
+
+        tx.update { repository.delete("rev-a /api/v1/retracted") } shouldBe 1
+        tx.read { repository.get("rev-a /api/v1/retracted") }.shouldBeNull()
+        tx.read { repository.get("rev-a /api/v1/kept") } shouldBe "\"ok\""
+    }
 })

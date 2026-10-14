@@ -45,6 +45,9 @@ class FakeCacheRepository(
         return deleted
     }
 
+    context(ctx: TransactionContext)
+    override fun delete(key: String): Int = if (store.remove(key) != null) 1 else 0
+
     fun storedKeys(): Set<String> = store.keys.toSet()
 }
 

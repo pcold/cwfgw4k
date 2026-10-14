@@ -65,7 +65,7 @@ class RequestCache(
      */
     private val inFlight = ConcurrentHashMap<InFlightKey, CompletableDeferred<String>>()
 
-    /** Bumped by [clear], so a fill whose fetch began before it neither stores nor gains post-clear waiters. */
+    /** Bumped by [clear], so a fill whose fetch began before it neither keeps a body nor gains post-clear waiters. */
     private val generation = AtomicLong()
 
     /**
@@ -137,6 +137,8 @@ class RequestCache(
             }
             if (generation.get() == loadGeneration) {
                 store(storedKey, fresh, routeTemplate, ttl)
+                // A clear that bumped after the check above may have deleted before this put committed.
+                if (generation.get() != loadGeneration) retract(storedKey, routeTemplate)
             } else {
                 log.info { "cwfgw4k.cache event=discarded route=$routeTemplate" }
             }
@@ -178,6 +180,21 @@ class RequestCache(
         log.info { "cwfgw4k.cache event=put route=$routeTemplate ttl_seconds=${ttl.seconds}" }
     }
 
+    /** Like [store], a retraction that waits out the lock timeout leaves the GET its answer. */
+    private suspend fun retract(
+        storedKey: String,
+        routeTemplate: String,
+    ) {
+        try {
+            tx.update { repository.delete(storedKey) }
+        } catch (e: DataAccessException) {
+            if (!e.isLockTimeout()) throw e
+            log.warn(e) { "cwfgw4k.cache event=unretracted route=$routeTemplate" }
+            return
+        }
+        log.info { "cwfgw4k.cache event=retracted route=$routeTemplate" }
+    }
+
     // A space, because a request URI cannot hold one: the last space in a stored
     // key always ends the revision, whatever characters the revision has.
     private fun versioned(key: String): String = "$revision $key"
@@ -190,8 +207,8 @@ class RequestCache(
     }
 
     /**
-     * Every revision's rows go, not just this one's. A fill that checked [generation] before the bump and
-     * puts after the delete still stores its body; that window is the put's own round trip.
+     * Every revision's rows go, not just this one's. Bumps before deleting, so a fill's put either commits in time
+     * for the delete or sees the bump afterwards and retracts. A fill on another instance sees neither.
      */
     suspend fun clear(): Int {
         generation.incrementAndGet()

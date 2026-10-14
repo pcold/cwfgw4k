@@ -47,6 +47,10 @@ interface CacheRepository {
     /** Unlike [deleteExpired], takes live rows and every revision's. Returns the row count for logging. */
     context(ctx: TransactionContext)
     fun deleteAll(): Int
+
+    /** Retracts a put that committed after the [deleteAll] it raced. Returns the row count for logging. */
+    context(ctx: TransactionContext)
+    fun delete(key: String): Int
 }
 
 fun CacheRepository(): CacheRepository = JooqCacheRepository()
@@ -88,4 +92,7 @@ private class JooqCacheRepository : CacheRepository {
 
     context(ctx: TransactionContext)
     override fun deleteAll(): Int = ctx.dsl.deleteFrom(CACHE).execute()
+
+    context(ctx: TransactionContext)
+    override fun delete(key: String): Int = ctx.dsl.deleteFrom(CACHE).where(CACHE.KEY.eq(key)).execute()
 }
