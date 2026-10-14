@@ -163,7 +163,12 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
 
     test("finalizeTournament rolls back the ESPN import when scoring can't find the season") {
         val seeded = runBlocking { tx.update { seedUpcomingMasters() } }
-        val opsService = opsServiceScoringThrough(tx, seeded, scoringSeasons = SeasonHidingSeasonRepository(seasonRepo))
+        val opsService =
+            opsServiceScoringThrough(
+                tx,
+                seeded,
+                scoringSeasons = SeasonHidingSeasonRepository(SeasonRepository()),
+            )
 
         val outcome = runBlocking { opsService.finalizeTournament(seeded.id) }
 
@@ -177,7 +182,7 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
             opsServiceScoringThrough(
                 tx,
                 seeded,
-                scoringTournaments = TournamentHidingTournamentRepository(tournamentRepo),
+                scoringTournaments = TournamentHidingTournamentRepository(TournamentRepository()),
             )
 
         val outcome = runBlocking { opsService.finalizeTournament(seeded.id) }
