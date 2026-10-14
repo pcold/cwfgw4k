@@ -3,6 +3,7 @@ package com.cwfgw.http
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.classic.spi.ThrowableProxyUtil
+import com.cwfgw.db.LOCK_NOT_AVAILABLE
 import com.cwfgw.testing.CapturedLogs
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.captureLogs
@@ -34,6 +35,8 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.jooq.exception.DataAccessException
+import java.sql.SQLException
 import java.time.Duration
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ServerContentNegotiation
 import io.ktor.server.routing.get as routingGet
@@ -43,6 +46,7 @@ private const val MALFORMED_BODY = "malformed or invalid request body"
 private const val UNSUPPORTED_CONTENT_TYPE = "unsupported or missing content type"
 private const val LOGIN_PATH = "/api/v1/auth/login"
 private const val CLIENT_MARKER = "zq7-client-marker"
+private const val LOCK_TIMEOUT_PATH = "/throw/lock-timeout"
 private const val FORBIDDEN_ID = "3f1c2b7e-0d4a-4e8b-9c6f-5a2e1d7b8c90"
 
 /** Unauthorized among them: scan traffic draws 401s in volume, so only a 403 earns a line. */
@@ -105,6 +109,8 @@ private fun errorHandlingTestApp(block: suspend (HttpClient) -> Unit) =
                 routingGet("/throw/forbidden/{id}") { throw DomainError.Forbidden("admin role required") }
                 routingGet("/throw/unmapped") { error("boom") }
                 routingGet("/throw/payload-too-large") { throw PayloadTooLargeException(sizeLimit = 1_024) }
+                routingGet(LOCK_TIMEOUT_PATH) { throw databaseFailure(sqlState = LOCK_NOT_AVAILABLE) }
+                routingGet("/throw/unique-violation") { throw databaseFailure(sqlState = "23505") }
                 routingPost("/receive/plain") {
                     call.receive<NameHolder>()
                     call.respond(HttpStatusCode.OK)
@@ -127,6 +133,10 @@ private fun errorHandlingTestApp(block: suspend (HttpClient) -> Unit) =
             }
         block(client)
     }
+
+/** jOOQ's shape for a failed statement: [DataAccessException.sqlState] reads the wrapped driver exception. */
+private fun databaseFailure(sqlState: String): DataAccessException =
+    DataAccessException("SQL [update ...]; ERROR", SQLException("ERROR", sqlState))
 
 private suspend fun HttpClient.postJson(
     path: String,
@@ -460,6 +470,34 @@ class ErrorHandlingSpec : FunSpec({
             val unhandled = logs.unhandledErrorsOn("GET /throw/unmapped")
             unhandled.map { it.level } shouldBe listOf(Level.ERROR)
             unhandled.map { it.throwableProxy?.message } shouldBe listOf("boom")
+        }
+    }
+
+    test("a lock wait that timed out maps to 409 with a fixed message, logged once at WARN and never at ERROR") {
+        captureLogs { logs ->
+            errorHandlingTestApp { client ->
+                val response = client.get(LOCK_TIMEOUT_PATH)
+
+                response.status shouldBe HttpStatusCode.Conflict
+                response.bodyAsText() shouldBe """{"error":"another change is being saved here; try again"}"""
+            }
+
+            val lockTimeoutLine = "cwfgw4k.db.lock_timeout method=GET route=$LOCK_TIMEOUT_PATH"
+            logs.atWarnOrAbove() shouldBe listOf("WARN com.cwfgw.http.ErrorHandling - $lockTimeoutLine")
+        }
+    }
+
+    test("any other database failure is still the generic 500, logged once at ERROR") {
+        captureLogs { logs ->
+            errorHandlingTestApp { client ->
+                val response = client.get("/throw/unique-violation")
+
+                response.status shouldBe HttpStatusCode.InternalServerError
+                response.body<ErrorBody>().error shouldBe "Internal server error"
+            }
+
+            logs.atWarnOrAbove() shouldBe
+                listOf("ERROR com.cwfgw.http.ErrorHandling - Unhandled error on GET /throw/unique-violation")
         }
     }
 

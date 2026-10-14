@@ -1,5 +1,6 @@
 package com.cwfgw.http
 
+import com.cwfgw.db.isLockTimeout
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.ContentConvertException
@@ -16,6 +17,7 @@ import io.ktor.server.request.path
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import kotlinx.serialization.Serializable
+import org.jooq.exception.DataAccessException
 import org.slf4j.LoggerFactory
 import java.time.Duration
 
@@ -82,8 +84,9 @@ private val logger = LoggerFactory.getLogger("com.cwfgw.http.ErrorHandling")
 
 /**
  * Install StatusPages with per-variant DomainError mappings, Ktor's receive
- * failures as 400 / 415, and a last-resort 500 handler that logs the exception
- * and returns a generic message so internal detail doesn't leak to clients.
+ * failures as 400 / 415, a timed-out lock wait as 409, and a last-resort 500
+ * handler that logs the exception and returns a generic message so internal
+ * detail doesn't leak to clients.
  *
  * The `exception<Throwable>` handler is the one place in this codebase that
  * catches Throwable on purpose — StatusPages is the canonical HTTP-boundary
@@ -126,6 +129,7 @@ internal fun Application.installErrorHandling() {
             call.respond(HttpStatusCode.TooManyRequests, ErrorBody(cause.message ?: "too many requests"))
         }
         mapReceiveFailures()
+        mapLockTimeouts()
         exception<Throwable> { call, cause -> call.respondUnhandled(cause) }
     }
 }
@@ -182,6 +186,26 @@ private suspend fun ApplicationCall.respondToBadRequest(cause: BadRequestExcepti
  */
 private fun BadRequestException.isRejectedBody(): Boolean =
     generateSequence<Throwable>(this) { it.cause }.any { it is ContentConvertException }
+
+/**
+ * StatusPages answers with the most specific handler, so every other database failure is sent back to
+ * [respondUnhandled] here. No retry: the waiter's transaction has already rolled back.
+ */
+private fun StatusPagesConfig.mapLockTimeouts() {
+    exception<DataAccessException> { call, cause ->
+        if (cause.isLockTimeout()) call.respondLockTimeout(cause) else call.respondUnhandled(cause)
+    }
+}
+
+private suspend fun ApplicationCall.respondLockTimeout(cause: DataAccessException) {
+    logger.warn(
+        "cwfgw4k.db.lock_timeout method={} route={}",
+        request.httpMethod.value,
+        normalizeRoute(request.path()),
+        cause,
+    )
+    respond(HttpStatusCode.Conflict, ErrorBody("another change is being saved here; try again"))
+}
 
 private suspend fun ApplicationCall.respondMalformedBody() {
     respond(HttpStatusCode.BadRequest, ErrorBody("malformed or invalid request body"))
