@@ -1,8 +1,12 @@
-build:
-  maxIssues: 0
-
 coroutines:
   GlobalCoroutineUsage:
+    active: true
+  InjectDispatcher:
+    active: true
+    # IO is left out: src/CLAUDE.md → Concurrency hardcodes withContext(Dispatchers.IO) around blocking
+    # calls, and Transactor's limitedParallelism must equal the pool size, which an injected dispatcher breaks.
+    dispatcherNames: ['Default', 'Unconfined']
+  RedundantSuspendModifier:
     active: true
 
 exceptions:
@@ -24,12 +28,6 @@ exceptions:
   ThrowingExceptionsWithoutMessageOrCause:
     active: true
 
-potential-bugs:
-  UnsafeCallOnNullableType:
-    active: true
-  UnsafeCast:
-    active: true
-
 style:
   MagicNumber:
     active: false
@@ -39,7 +37,7 @@ style:
     active: true
   ForbiddenImport:
     active: true
-    imports:
+    forbiddenImports:
       - value: 'org.springframework.**'
         reason: 'Spring is excluded by CLAUDE.md — use Ktor.'
       - value: 'com.fasterxml.jackson.**'
@@ -52,19 +50,79 @@ style:
         reason: 'JPA is excluded by CLAUDE.md — use jOOQ.'
   ForbiddenMethodCall:
     active: true
+    # Production only: in a spec, `.single()` over an empty collection throwing is the assertion failure.
+    excludes: ['**/src/test/**']
     methods:
       - value: 'kotlinx.coroutines.runBlocking'
         reason: 'runBlocking is forbidden outside main entrypoints and tests (CLAUDE.md).'
-  UnnecessaryAbstractClass:
+      - value: 'org.jooq.DSLContext.transactionResult'
+        reason: 'Transactions are opened only by com.cwfgw.db.Transactor, on its pool-sized dispatcher (src/CLAUDE.md → jOOQ).'
+      - value: 'org.jooq.DSLContext.transaction'
+        reason: 'Transactions are opened only by com.cwfgw.db.Transactor, on its pool-sized dispatcher (src/CLAUDE.md → jOOQ).'
+      - value: 'kotlin.collections.single'
+        reason: 'Take the one element only from a collection whose size the reader can see proven; suppress at the declaration where it is, use singleOrNull where it is not (src/CLAUDE.md → Collections).'
+      - value: 'kotlin.collections.first'
+        reason: 'Take the head only from a collection whose size the reader can see proven; suppress at the declaration where it is, use firstOrNull where it is not (src/CLAUDE.md → Collections).'
+  AbstractClassCanBeConcreteClass:
+    active: true
+  AbstractClassCanBeInterface:
+    active: true
+  UnusedPrivateFunction:
+    active: true
+  UnusedPrivateProperty:
+    active: true
+  UnusedVariable:
+    active: true
+  UseCheckNotNull:
     active: true
   UseCheckOrError:
     active: true
+  UseOrEmpty:
+    active: true
   UseRequire:
+    active: true
+  UseRequireNotNull:
+    active: true
+
+potential-bugs:
+  IgnoredReturnValue:
+    active: true
+    # The rule's returnValueTypes include kotlin.Function*, so shouldNotBeNull on a function-typed
+    # subject reads as a produced function nothing consumes.
+    ignoreFunctionCall: ['io.kotest.matchers.nulls.shouldNotBeNull']
+  ImplicitDefaultLocale:
+    active: true
+  UnsafeCallOnNullableType:
+    active: true
+    # Emptied rather than inherited: the default carves out tests, and a `!!` in a spec is a review finding too.
+    excludes: []
+  UnsafeCast:
+    active: true
+
+performance:
+  SpreadOperator:
+    active: true
+    # Production only: a test does not pay the per-call array copy twice.
+    excludes: ['**/src/test/**']
+
+naming:
+  NoNameShadowing:
     active: true
 
 complexity:
+  # A Kotest spec's tests are all arguments to its superclass constructor, so on a spec this rule measures
+  # the file, not a class.
+  LargeClass:
+    excludes: ['**/src/test/**']
   LongMethod:
     active: true
-    threshold: 50
+    allowedLines: 50
+  # benrollio's calibration: a repository insert's one-parameter-per-column, and a service's
+  # one-constructor-parameter-per-repository under Cross-repo flows. Exceptions are suppressed at the declaration.
+  LongParameterList:
+    active: true
+    excludes: ['**/src/test/**']
+    allowedFunctionParameters: 11
+    allowedConstructorParameters: 9
   TooManyFunctions:
     active: false

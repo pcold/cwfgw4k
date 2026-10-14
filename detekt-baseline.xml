@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ForbiddenMethodCall:AdminService.kt:AdminService$single()</ID>
+    <ID>ForbiddenMethodCall:EspnService.kt:EspnService$single()</ID>
+    <ID>ForbiddenMethodCall:EspnService.kt:single()</ID>
+    <ID>ForbiddenMethodCall:Main.kt:runBlocking { seedAdminIfEmpty(services.authService, services.userRepository, services.transactor, config.auth) }</ID>
+    <ID>ForbiddenMethodCall:RosterParser.kt:RosterParser$first()</ID>
+    <ID>ForbiddenMethodCall:SeedMain.kt:first()</ID>
+    <ID>ForbiddenMethodCall:SeedMain.kt:runBlocking { seed(services) }</ID>
+    <ID>ForbiddenMethodCall:Transactor.kt:JooqTransactor$transactionResult { config -> val txDsl = config.dsl() // Must run before any other statement in the transaction; PG rejects // SET TRANSACTION after the snapshot has been taken by a real query. txDsl.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY") with(TransactionContext(txDsl)) { block() } }</ID>
+    <ID>ForbiddenMethodCall:Transactor.kt:JooqTransactor$transactionResult { config -> val txDsl = config.dsl() txDsl.setLocal(DSL.unquotedName("lock_timeout"), DSL.inline("${LOCK_TIMEOUT_MS}ms")).execute() with(TransactionContext(txDsl)) { block() } }</ID>
+    <ID>HasPlatformType:RequestCacheSpec.kt:StepClock$override fun getZone</ID>
+    <ID>ImplicitDefaultLocale:ScoringServiceSpec.kt:"00000000-0000-0000-0000-0000000000%02d".format(n)</ID>
+    <ID>ImplicitDefaultLocale:ScoringServiceSpec.kt:"00000000-0000-0000-0000-000000000f%02d".format(n)</ID>
+    <ID>InjectDispatcher:AuthService.kt:AuthService$Default</ID>
+    <ID>InjectDispatcher:TransactorDispatchSpec.kt:Default</ID>
+    <ID>SleepInsteadOfDelay:CachingEspnClientSpec.kt:CachingEspnClientSpec$sleep(EXPIRY_WAIT_MS)</ID>
+    <ID>SleepInsteadOfDelay:CachingEspnClientSpec.kt:CachingEspnClientSpec$sleep(SETTLE_MS)</ID>
+    <ID>SleepInsteadOfDelay:RequestCacheSpec.kt:RequestCacheSpec$sleep(SETTLE_MS)</ID>
+    <ID>UnsafeCallOnNullableType:AdminSeederSpec.kt:AdminSeederSpec$users.single()!!</ID>
+    <ID>UseOrEmpty:FakeEspnClient.kt:FakeEspnClient$tournamentsByDate[date] ?: emptyList()</ID>
+    <ID>UseOrEmpty:FakeTeamRepository.kt:FakeTeamRepository$rosterViews[seasonId] ?: emptyList()</ID>
+    <ID>UseOrEmpty:LiveOverlayService.kt:tournament.week ?: ""</ID>
+    <ID>UseOrEmpty:RosterParser.kt:RosterParser$cells.getOrNull(4)?.trim() ?: ""</ID>
+    <ID>UseOrEmpty:RosterParser.kt:RosterParser$existing?.picks ?: emptyList()</ID>
+    <ID>UseOrEmpty:ScoringService.kt:ScoringService$inputs.ownersByGolfer[entry.golferId] ?: emptyList()</ID>
+    <ID>UseOrEmpty:ScoringService.kt:ScoringService$rostersByTeam[team.id] ?: emptyList()</ID>
+    <ID>UseOrEmpty:WeeklyReportService.kt:WeeklyReportService$it.week ?: ""</ID>
+    <ID>UseOrEmpty:WeeklyReportService.kt:WeeklyReportService$resultsByTournamentId[it.id] ?: emptyList()</ID>
+  </CurrentIssues>
+</SmellBaseline>

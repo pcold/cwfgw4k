@@ -268,27 +268,57 @@ tasks.named("compileKotlin") {
     dependsOn(generateJooq)
 }
 
+// dev.detekt 2.0.0-alpha.6, the version benrollio pins: an alpha, but a build-time analyzer whose
+// failure mode is a broken build rather than broken production. Move to 2.0.0 stable when it ships.
 detekt {
     buildUponDefaultConfig = true
     allRules = false
     config.setFrom(files("$rootDir/detekt.yml"))
+    // What main raised when the rule set moved to benrollio's. It only shrinks: regenerate it with
+    // `./gradlew detektBaseline` after a fix, never to admit a new finding.
+    baseline = file("$rootDir/detekt-baseline.xml")
     ignoreFailures = false
 }
 
-tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
     jvmTarget = "21"
     exclude("**/generated/**")
     reports {
         html.required.set(true)
-        xml.required.set(true)
-        txt.required.set(false)
+        checkstyle.required.set(true)
         sarif.required.set(false)
-        md.required.set(false)
+        markdown.required.set(false)
     }
 }
 
-tasks.withType<io.gitlab.arturbosch.detekt.DetektCreateBaselineTask>().configureEach {
+// The plugin hands `detekt` a hardcoded src/{main,test}/{java,kotlin}; deriving the source from the
+// source sets covers jooqCodegen too. The generated jOOQ directory is a source root of its own, so the
+// `**/generated/**` exclude cannot reach it — subtracting it is what keeps generated code out.
+fun detektSource(): List<File> = sourceSets.flatMap { it.kotlin.srcDirs } - jooqGenDir.get().asFile
+
+// Type resolution: test's runtime classpath holds main's output and dependencies, and jooqCodegen's
+// generator libraries are on no other. A function, not a val: read at this line of the script, test's
+// runtime classpath came back without its dependencies and the run reported thousands of unresolved names.
+fun detektClasspath(): List<FileCollection> =
+    listOf(sourceSets["test"].runtimeClasspath, sourceSets["test"].output, sourceSets["jooqCodegen"].runtimeClasspath)
+
+// A different task type from `detekt` that inherits none of its configuration: without these two lines
+// the baseline it writes is missing every type-resolving rule's findings.
+tasks.withType<dev.detekt.gradle.DetektCreateBaselineTask>().configureEach {
     jvmTarget = "21"
+    setSource(detektSource())
+    classpath.setFrom(detektClasspath())
+}
+
+tasks.named<dev.detekt.gradle.Detekt>("detekt") {
+    setSource(detektSource())
+    classpath.setFrom(detektClasspath())
+    // An empty classpath is not an error to detekt: every type-resolving rule is skipped and the run is green.
+    doFirst {
+        check(classpath.files.isNotEmpty()) {
+            "detekt has no compile classpath, so every type-resolving rule would be skipped silently"
+        }
+    }
 }
 
 ktlint {
