@@ -65,8 +65,8 @@ fun Application.module(
 }
 
 /**
- * Catches where the two loops below do not: a sweep ended by one database blip would leave expired
- * rows piling up until the process restarts.
+ * The one loop that catches, as the only pass here that does I/O: a sweep ended by one database blip
+ * would leave expired rows piling up until the process restarts.
  */
 private fun Application.launchCacheSweep(
     requestCache: RequestCache,
@@ -91,7 +91,8 @@ private val cacheSweepLog = KotlinLogging.logger("com.cwfgw.cache.Sweep")
 
 /**
  * `ops/` filters logs on the `cwfgw4k.db.pool …` line format, so it is a contract. A sustained
- * non-zero `waiting` means requests are queueing for a connection.
+ * non-zero `waiting` means requests are queueing. No catch: a snapshot reads in-memory counters,
+ * closed pool included, and throws only on a programming error.
  */
 private fun Application.launchPoolMetricsLog(metrics: PoolMetrics) {
     val intervalMs = POOL_METRICS_INTERVAL_SECONDS * 1000L
@@ -113,7 +114,8 @@ private const val POOL_METRICS_INTERVAL_SECONDS: Long = 30
 
 /**
  * Pushed from the application scope, not pulled through `/debug/threads`, so the dump keeps coming
- * when the request pipeline itself is wedged. `cwfgw4k.debug.probe` opens each one for grep.
+ * when the request pipeline is wedged; `cwfgw4k.debug.probe` opens each for grep. No catch: what the
+ * dump documents throwing needs a security manager, a non-HotSpot JVM or uninstalled probes.
  */
 private fun Application.launchDebugProbeLog() {
     val intervalMs = DEBUG_PROBE_INTERVAL_SECONDS * 1000L
