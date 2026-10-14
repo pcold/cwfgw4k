@@ -5,7 +5,6 @@ import com.cwfgw.testing.TEST_ADMIN_PASSWORD
 import com.cwfgw.testing.TEST_ADMIN_USERNAME
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
-import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.testing.seedUser
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -26,7 +25,6 @@ import io.ktor.http.contentType
 import io.ktor.http.setCookie
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.ApplicationTestBuilder
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
@@ -182,17 +180,11 @@ class AuthRoutesSpec : FunSpec({
 
     test("a user deleted from the DB mid-session can no longer hit /me — revocation is immediate") {
         val repo = FakeUserRepository()
-        val service = AuthService(repo, FakeTransactor(), cost = TEST_BCRYPT_COST)
-        runBlocking {
-            val hash = service.hashPassword("hunter2")
-            with(noopTransactionContext) {
-                repo.create(NewUser(username = "admin", passwordHash = hash, role = UserRole.Admin))
-            }
-        }
         apiTest(
             {
                 userRepository = repo
-                authService = service
+                authService = AuthService(repo, FakeTransactor(), cost = TEST_BCRYPT_COST)
+                seedUser(username = "admin", password = "hunter2", role = UserRole.Admin)
             },
         ) { _ ->
             val client = cookieClient()
