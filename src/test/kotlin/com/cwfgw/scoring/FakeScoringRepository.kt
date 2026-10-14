@@ -51,12 +51,6 @@ class FakeScoringRepository(
     }
 
     context(ctx: TransactionContext)
-    override fun getStandings(seasonId: SeasonId): List<SeasonStanding> =
-        standings.values
-            .filter { it.seasonId == seasonId }
-            .sortedByDescending { it.totalPoints }
-
-    context(ctx: TransactionContext)
     override fun upsertScore(record: UpsertScore): FantasyScore {
         val existing =
             scores.values.firstOrNull { existing ->

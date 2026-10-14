@@ -2,7 +2,6 @@ package com.cwfgw.tournaments
 
 import com.cwfgw.db.Transactor
 import com.cwfgw.seasons.SeasonId
-import java.time.LocalDate
 
 class TournamentService(
     private val repository: TournamentRepository,
@@ -13,20 +12,6 @@ class TournamentService(
         status: TournamentStatus?,
     ): List<Tournament> = tx.get { repository.findAll(seasonId = seasonId, status = status) }
 
-    /**
-     * Tournaments in [seasonId] that the live-overlay path should fan out
-     * over: not finalized, and started on or before [today]. See
-     * [isLiveOverlayCandidate] for the rule and the rationale.
-     */
-    suspend fun listLiveCandidates(
-        seasonId: SeasonId,
-        today: LocalDate = LocalDate.now(ESPN_SCHEDULE_ZONE),
-    ): List<Tournament> =
-        tx.get { repository.findAll(seasonId = seasonId, status = null) }
-            .filter { it.isLiveOverlayCandidate(today) }
-
-    suspend fun get(id: TournamentId): Tournament? = tx.get { repository.findById(id) }
-
     suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
         tx.get { repository.findByPgaTournamentId(pgaTournamentId) }
 
@@ -36,21 +21,4 @@ class TournamentService(
         id: TournamentId,
         request: UpdateTournamentRequest,
     ): Tournament? = tx.update { repository.update(id, request) }
-
-    suspend fun getResults(tournamentId: TournamentId): List<TournamentResult> =
-        tx.get { repository.getResults(tournamentId) }
-
-    suspend fun importResults(
-        tournamentId: TournamentId,
-        requests: List<CreateTournamentResultRequest>,
-    ): List<TournamentResult> = tx.update { requests.map { repository.upsertResult(tournamentId, it) } }
-
-    suspend fun deleteResults(tournamentId: TournamentId): Int =
-        tx.update { repository.deleteResultsByTournament(tournamentId) }
-
-    suspend fun deleteResultsBySeason(seasonId: SeasonId): Int =
-        tx.update { repository.deleteResultsBySeason(seasonId) }
-
-    suspend fun resetSeasonTournaments(seasonId: SeasonId): Int =
-        tx.update { repository.resetSeasonTournaments(seasonId) }
 }

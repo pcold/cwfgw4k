@@ -109,7 +109,6 @@ internal fun buildServices(
             seasonRepository,
             tournamentRepository,
             teamRepository,
-            transactor,
         )
     val adminService =
         AdminService(
@@ -156,7 +155,6 @@ internal fun buildServices(
                 tx = transactor,
             ),
         draftService = DraftService(DraftRepository(), teamRepository, transactor),
-        scoringService = scoringService,
         espnService = espnService,
         adminService = adminService,
         liveOverlayService = liveOverlayService,

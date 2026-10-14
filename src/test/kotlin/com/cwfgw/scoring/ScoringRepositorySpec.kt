@@ -155,15 +155,6 @@ class ScoringRepositorySpec : FunSpec({
         second.tournamentsPlayed shouldBe 5
     }
 
-    test("getStandings returns standings for the season ordered by points desc") {
-        tx.update { repository.upsertStanding(seasonId, teamA, BigDecimal(50), 3) }
-        tx.update { repository.upsertStanding(seasonId, teamB, BigDecimal(80), 4) }
-
-        val standings = tx.read { repository.getStandings(seasonId) }
-
-        standings.map { it.teamId } shouldBe listOf(teamB, teamA)
-    }
-
     test("getScoresBySeason with null tournamentIds returns every score for the season") {
         upsert(teamA, tournamentA, golfer1, breakdown(1))
         upsert(teamA, tournamentB, golfer1, breakdown(4, payout = BigDecimal(7)))

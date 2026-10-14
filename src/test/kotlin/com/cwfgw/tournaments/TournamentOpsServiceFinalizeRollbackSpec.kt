@@ -12,7 +12,6 @@ import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.scoring.FantasyScore
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
-import com.cwfgw.scoring.SeasonStanding
 import com.cwfgw.scoring.TeamSeasonTotals
 import com.cwfgw.scoring.UpsertScore
 import com.cwfgw.seasons.CreateSeasonRequest
@@ -56,7 +55,7 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
     val realScoringRepo = ScoringRepository()
     val linkRepo = TournamentLinkRepository()
 
-    test("finalizeTournament rolls back ESPN status write when refreshStandings throws") {
+    test("finalizeTournament rolls back ESPN status write when refreshStandingsIn throws") {
         // Seed: league + season + one team + one tournament with a matching pga_tournament_id.
         // No roster, so calculateScoresIn never calls upsertScore — we want the throw
         // to land in refreshStandingsIn so it's clear it fires AFTER the ESPN write.
@@ -127,7 +126,6 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
                 seasonRepository = seasonRepo,
                 tournamentRepository = tournamentRepo,
                 teamRepository = teamRepo,
-                tx = tx,
             )
         val opsService =
             TournamentOpsService(
@@ -174,9 +172,6 @@ private class ThrowingOnUpsertStandingScoringRepository(
     ): List<FantasyScore> = delegate.getScoresBySeason(seasonId, tournamentIds)
 
     context(ctx: TransactionContext)
-    override fun getStandings(seasonId: SeasonId): List<SeasonStanding> = delegate.getStandings(seasonId)
-
-    context(ctx: TransactionContext)
     override fun upsertScore(record: UpsertScore): FantasyScore = delegate.upsertScore(record)
 
     context(ctx: TransactionContext)
@@ -191,7 +186,7 @@ private class ThrowingOnUpsertStandingScoringRepository(
         teamId: TeamId,
         totalPoints: BigDecimal,
         tournamentsPlayed: Int,
-    ): Nothing = error("Forced rollback in test — refreshStandings should not have reached upsertStanding")
+    ): Nothing = error("Forced rollback in test — refreshStandingsIn should not have reached upsertStanding")
 
     context(ctx: TransactionContext)
     override fun deleteByTournament(tournamentId: TournamentId): Int =

@@ -98,7 +98,6 @@ class ApiFixture {
             seasonRepository = seasonRepository,
             tournamentRepository = tournamentRepository,
             teamRepository = teamRepository,
-            tx = transactor,
         )
     var tournamentLinkRepository: TournamentLinkRepository = FakeTournamentLinkRepository()
     var tournamentLinkService: TournamentLinkService =
@@ -267,7 +266,6 @@ private fun ApiFixture.toAppServices(): AppServices =
         tournamentOpsService = tournamentOpsService,
         seasonOpsService = seasonOpsService,
         draftService = draftService,
-        scoringService = scoringService,
         espnService = espnService,
         adminService = adminService,
         liveOverlayService = liveOverlayService,

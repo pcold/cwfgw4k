@@ -253,7 +253,6 @@ private fun reportFixture(
                 seasonRepository = seasonRepo,
                 tournamentRepository = tournamentRepo,
                 teamRepository = teamRepo,
-                tx = FakeTransactor(),
             )
         val sharedTx = FakeTransactor()
         val linkRepo = FakeTournamentLinkRepository()

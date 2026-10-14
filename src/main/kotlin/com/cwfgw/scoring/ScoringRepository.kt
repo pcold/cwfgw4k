@@ -36,9 +36,6 @@ interface ScoringRepository {
     ): List<FantasyScore>
 
     context(ctx: TransactionContext)
-    fun getStandings(seasonId: SeasonId): List<SeasonStanding>
-
-    context(ctx: TransactionContext)
     fun upsertScore(record: UpsertScore): FantasyScore
 
     context(ctx: TransactionContext)
@@ -118,13 +115,6 @@ private class JooqScoringRepository : ScoringRepository {
             .orderBy(FANTASY_SCORES.TOURNAMENT_ID.asc(), FANTASY_SCORES.POINTS.desc())
             .fetch(::toFantasyScore)
     }
-
-    context(ctx: TransactionContext)
-    override fun getStandings(seasonId: SeasonId): List<SeasonStanding> =
-        ctx.dsl.selectFrom(SEASON_STANDINGS)
-            .where(SEASON_STANDINGS.SEASON_ID.eq(seasonId.value))
-            .orderBy(SEASON_STANDINGS.TOTAL_POINTS.desc())
-            .fetch(::toSeasonStanding)
 
     context(ctx: TransactionContext)
     override fun upsertScore(record: UpsertScore): FantasyScore {

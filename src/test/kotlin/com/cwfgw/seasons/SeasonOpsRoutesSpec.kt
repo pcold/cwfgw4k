@@ -72,7 +72,7 @@ private fun opsFixture(initialTournaments: List<Tournament> = emptyList()): ApiF
         seasonService = SeasonService(seasonRepo, sharedTx)
         tournamentService = TournamentService(tournamentRepo, sharedTx)
         teamService = TeamService(teamRepo, sharedTx)
-        scoringService = ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo, sharedTx)
+        scoringService = ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo)
         seasonOpsService =
             SeasonOpsService(
                 seasonRepository = seasonRepo,

@@ -23,10 +23,10 @@ private object CancelledEspnClient : EspnClient {
 class EspnServiceOutageSpec : FunSpec({
 
     EspnOutage.entries.forEach { outage ->
-        test("importByDate returns UpstreamUnavailable with no response when ESPN ${outage.description}") {
+        test("fetchEspnEvents returns UpstreamUnavailable with no response when ESPN ${outage.description}") {
             val service = testEspnService(client = outage.client())
 
-            service.importByDate(OUTAGE_TOURNAMENT.startDate) shouldBe NO_RESPONSE
+            service.fetchEspnEvents(OUTAGE_TOURNAMENT.startDate) shouldBe NO_RESPONSE
         }
 
         test("listCompetitorsForLinking returns UpstreamUnavailable with no response when ESPN ${outage.description}") {
@@ -37,9 +37,9 @@ class EspnServiceOutageSpec : FunSpec({
         }
     }
 
-    test("importByDate lets a CancellationException from the client propagate") {
+    test("fetchEspnEvents lets a CancellationException from the client propagate") {
         val service = testEspnService(client = CancelledEspnClient)
 
-        shouldThrow<CancellationException> { service.importByDate(OUTAGE_TOURNAMENT.startDate) }
+        shouldThrow<CancellationException> { service.fetchEspnEvents(OUTAGE_TOURNAMENT.startDate) }
     }
 })

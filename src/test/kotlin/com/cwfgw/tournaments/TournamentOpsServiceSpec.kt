@@ -146,7 +146,7 @@ private class Fixture(
                 tx = transactor,
             )
         val scoringService =
-            ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo, transactor)
+            ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo)
         service =
             TournamentOpsService(
                 tournamentRepository = tournamentRepo,

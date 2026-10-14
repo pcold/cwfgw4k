@@ -1,7 +1,6 @@
 package com.cwfgw.scoring
 
 import com.cwfgw.db.TransactionContext
-import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
@@ -19,47 +18,18 @@ import java.math.BigDecimal
 
 /**
  * Depends on repositories directly, never on other services: a service call mid-flow opens its own
- * transaction on another connection, splitting the gate check, gather and write that [calculateScores]
- * and [refreshStandings] run in one. See `src/CLAUDE.md` → Cross-repo flows.
+ * transaction on another connection, splitting the gate check, gather and write that [calculateScoresIn]
+ * and [refreshStandingsIn] run in one. See `src/CLAUDE.md` → Cross-repo flows.
  */
 class ScoringService(
     private val repository: ScoringRepository,
     private val seasonRepository: SeasonRepository,
     private val tournamentRepository: TournamentRepository,
     private val teamRepository: TeamRepository,
-    private val tx: Transactor,
 ) {
-    suspend fun getScores(
-        seasonId: SeasonId,
-        tournamentId: TournamentId,
-    ): List<FantasyScore> = tx.get { repository.getScores(seasonId, tournamentId) }
-
-    suspend fun getStandings(seasonId: SeasonId): List<SeasonStanding> =
-        tx.get { repository.getStandings(seasonId) }
-
-    suspend fun deleteScoresByTournament(tournamentId: TournamentId): Int =
-        tx.update { repository.deleteByTournament(tournamentId) }
-
-    suspend fun deleteScoresBySeason(seasonId: SeasonId): Int =
-        tx.update { repository.deleteBySeason(seasonId) }
-
-    suspend fun deleteStandingsBySeason(seasonId: SeasonId): Int =
-        tx.update { repository.deleteStandingsBySeason(seasonId) }
-
-    suspend fun calculateScores(
-        seasonId: SeasonId,
-        tournamentId: TournamentId,
-    ): Result<WeeklyScoreResult, ScoringError> =
-        tx.update { calculateScoresIn(seasonId, tournamentId) }
-
     /**
-     * Composable variant of [calculateScores]: runs the same logic inside
-     * the caller's transaction context instead of opening a fresh one.
-     * Used by orchestration services (e.g. [com.cwfgw.tournaments.TournamentOpsService])
-     * that need score calculation to atomically share a transaction with
-     * subsequent writes — see the "Cross-repo flows" rule in
-     * `src/CLAUDE.md`. The standalone [calculateScores] is just this
-     * wrapped in [Transactor.update].
+     * Takes the caller's transaction rather than opening one, so finalize and reset commit or roll back
+     * these writes together with the rest of their flow.
      */
     context(ctx: TransactionContext)
     internal fun calculateScoresIn(
@@ -93,10 +63,7 @@ class ScoringService(
         return Result.Ok(buildWeeklyResult(tournament, perTeamResults))
     }
 
-    suspend fun refreshStandings(seasonId: SeasonId): Result<List<SeasonStanding>, ScoringError> =
-        tx.update { refreshStandingsIn(seasonId) }
-
-    /** Composable variant of [refreshStandings]; see [calculateScoresIn] for the rationale. */
+    /** @see calculateScoresIn */
     context(ctx: TransactionContext)
     internal fun refreshStandingsIn(seasonId: SeasonId): Result<List<SeasonStanding>, ScoringError> {
         seasonRepository.findById(seasonId) ?: return Result.Err(ScoringError.SeasonNotFound)
@@ -187,7 +154,7 @@ class ScoringService(
 }
 
 /**
- * Per-call inputs for [ScoringService.calculateScores]. Bundles the data
+ * Per-call inputs for [ScoringService.calculateScoresIn]. Bundles the data
  * needed to score every golfer for every team in a single tournament so the
  * inner loop reads as a small function instead of a long parameter list.
  */
