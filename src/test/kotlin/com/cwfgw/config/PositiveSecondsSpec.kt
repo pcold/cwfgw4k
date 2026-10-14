@@ -10,13 +10,16 @@ import com.sksamuel.hoplite.Node
 import com.sksamuel.hoplite.Pos
 import com.sksamuel.hoplite.decoder.DotPath
 import com.sksamuel.hoplite.fp.Validated
+import io.kotest.assertions.throwables.shouldNotThrowAny
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.longs.shouldBeGreaterThan
 import io.kotest.matchers.longs.shouldBeLessThan
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlin.reflect.typeOf
 
@@ -24,6 +27,14 @@ private const val SWEEP_INTERVAL_KEY = "cache.sweepIntervalSeconds"
 private const val UNMISTAKABLE_NEGATIVE = "-7919"
 private const val MILLIS_PER_SECOND = 1_000L
 private const val FRACTIONAL_SECONDS = 1.5
+
+private val SESSION_SECRET_SET: Pair<String, Any> = "auth.sessionSecret" to "session-secret"
+
+private val TTL_VIOLATIONS: Map<String, ConfigViolation> =
+    mapOf(
+        "cache.defaultTtlSeconds" to ConfigViolation.RequestCacheTtlOutOfRange,
+        "espn.scoreboardCacheTtlSeconds" to ConfigViolation.ScoreboardCacheTtlOutOfRange,
+    )
 
 private fun decode(node: Node): ConfigResult<PositiveSeconds> =
     PositiveSecondsDecoder().decode(node, typeOf<PositiveSeconds>(), DecoderContext.zero)
@@ -65,7 +76,34 @@ class PositiveSecondsSpec : FunSpec({
     }
 
     test("the loader accepts a sweep interval of one second") {
-        AppConfig.load(mapOf(SWEEP_INTERVAL_KEY to "1")).cache.sweepIntervalSeconds.value shouldBe 1L
+        val config = AppConfig.load(mapOf(SWEEP_INTERVAL_KEY to "1", SESSION_SECRET_SET))
+
+        config.cache.sweepIntervalSeconds.value shouldBe 1L
+    }
+
+    TTL_VIOLATIONS.forEach { (key, violation) ->
+        listOf("0", UNMISTAKABLE_NEGATIVE, (PositiveSeconds.MAX.value + 1).toString()).forEach { raw ->
+            test("the loader refuses a $key of $raw by the same bounds, naming the setting") {
+                val failure =
+                    shouldThrow<InvalidConfigException> { AppConfig.load(mapOf(key to raw, SESSION_SECRET_SET)) }
+
+                failure.violations shouldContain violation
+                failure.message shouldContain key
+            }
+        }
+
+        test("the loader's refusal of a $key does not print the value it refused") {
+            val failure =
+                shouldThrow<InvalidConfigException> {
+                    AppConfig.load(mapOf(key to UNMISTAKABLE_NEGATIVE, SESSION_SECRET_SET))
+                }
+
+            failure.message shouldNotContain UNMISTAKABLE_NEGATIVE
+        }
+
+        test("the loader accepts a $key of one second") {
+            shouldNotThrowAny { AppConfig.load(mapOf(key to "1", SESSION_SECRET_SET)) }
+        }
     }
 
     test("the decoder holds a numeric node to the same bounds as a string") {

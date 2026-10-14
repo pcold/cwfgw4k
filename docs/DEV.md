@@ -17,7 +17,7 @@ echo "AUTH_SESSION_SECRET=$(openssl rand -hex 32)" >> dev.properties
 
 `dev.properties` is gitignored. The Gradle `run` and `seed` tasks read it and inject each entry as an environment variable on the JVM, mirroring how Cloud Run injects config in production. Pick a stable session secret and leave it alone — regenerating it invalidates every logged-in session.
 
-If you want a bootstrapped admin user on first boot (so you can log in to the UI), set `AUTH_ADMIN_USERNAME` and `AUTH_ADMIN_PASSWORD` in `dev.properties`. The seeder only fires when the users table is empty; once an admin exists, those values are ignored.
+If you want a bootstrapped admin user on first boot (so you can log in to the UI), set `AUTH_ADMIN_USERNAME` and `AUTH_ADMIN_PASSWORD` in `dev.properties`. The seeder only fires when the users table is empty; once an admin exists, it ignores them. Set both or neither: the app refuses to boot with only one, even after an admin exists.
 
 ## Database
 

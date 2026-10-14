@@ -1,14 +1,11 @@
 package com.cwfgw
 
 import com.cwfgw.config.AppConfig
-import com.cwfgw.config.AuthConfig
-import com.cwfgw.config.ConfigSecret
 import com.cwfgw.db.Database
 import com.cwfgw.health.DatabaseHealthProbe
 import com.cwfgw.testing.postgresHarness
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import org.jooq.SQLDialect
@@ -67,32 +64,5 @@ class AppBootSpec : FunSpec({
         throwawayPool.close()
 
         probe.isDatabaseConnected() shouldBe false
-    }
-
-    test("requireValidAuthSecret refuses to boot when AUTH_SESSION_SECRET is blank") {
-        val blankSecret =
-            AuthConfig(
-                sessionSecret = ConfigSecret(""),
-                sessionMaxAgeSeconds = 3600,
-                adminUsername = null,
-                adminPassword = null,
-                cookieSecure = true,
-            )
-
-        shouldThrow<IllegalArgumentException> { requireValidAuthSecret(blankSecret) }
-    }
-
-    test("requireValidAuthSecret accepts a non-blank session secret") {
-        val withSecret =
-            AuthConfig(
-                sessionSecret = ConfigSecret("any-non-blank-string"),
-                sessionMaxAgeSeconds = 3600,
-                adminUsername = null,
-                adminPassword = null,
-                cookieSecure = true,
-            )
-
-        // No exception expected.
-        requireValidAuthSecret(withSecret)
     }
 })

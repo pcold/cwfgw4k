@@ -53,6 +53,7 @@ private fun everySecretOverride(): Map<String, Any> =
     mapOf(
         "db.password" to DB_PASSWORD,
         "auth.sessionSecret" to SESSION_SECRET,
+        "auth.adminUsername" to "admin",
         "auth.adminPassword" to ADMIN_PASSWORD,
     )
 
@@ -115,9 +116,11 @@ class ConfigSecretSpec : FunSpec({
     }
 
     test("the loader decodes a blank string to a blank secret rather than refusing it or reading it as absent") {
-        val config = AppConfig.load(mapOf("auth.sessionSecret" to "", "auth.adminPassword" to ""))
+        val blanks = mapOf("db.password" to "", "auth.adminPassword" to "")
 
-        config.auth.sessionSecret.cleartext shouldBe ""
+        val config = AppConfig.load(blanks + ("auth.sessionSecret" to SESSION_SECRET))
+
+        config.db.password.cleartext shouldBe ""
         config.auth.adminPassword?.cleartext shouldBe ""
     }
 

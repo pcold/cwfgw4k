@@ -27,7 +27,7 @@ private val log = KotlinLogging.logger {}
 /**
  * Development-only seed entrypoint wired into the `seed` Gradle task.
  *
- * Loads the same [AppConfig] as the running server, opens the DB
+ * Loads the server's [AppConfig] without its auth rules, opens the DB
  * (which also runs every Flyway migration), then composes the real
  * service graph to populate one full 2026 season:
  *   - create league + season
@@ -46,7 +46,7 @@ private val log = KotlinLogging.logger {}
  */
 fun main() {
     log.info { "SeedMain: loading config" }
-    val config = AppConfig.load()
+    val config = AppConfig.loadForSeed()
 
     log.info { "SeedMain: starting database (runs Flyway migrations against ${config.db.jdbcUrlWithoutQuery})" }
     val database = Database.start(config.db)
