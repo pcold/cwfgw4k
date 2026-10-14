@@ -14,7 +14,7 @@ private val log = KotlinLogging.logger {}
 class DatabaseHealthProbe(private val tx: Transactor) : HealthProbe {
     override suspend fun isDatabaseConnected(): Boolean =
         try {
-            tx.get { selectOne() }
+            tx.get { pingDatabase() }
             true
         } catch (e: DataAccessException) {
             log.error(e) { "Database probe failed" }
@@ -23,6 +23,6 @@ class DatabaseHealthProbe(private val tx: Transactor) : HealthProbe {
 }
 
 context(ctx: TransactionContext)
-private fun selectOne() {
+private fun pingDatabase() {
     ctx.dsl.selectOne().fetch()
 }
