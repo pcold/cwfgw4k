@@ -55,6 +55,7 @@ Status code mappings:
 | `TooManyRequests`           | 429, with `Retry-After` in whole seconds |
 | Malformed or empty body     | 400    |
 | Wrong or no `Content-Type`  | 415    |
+| Undecodable URL, unparseable `Accept` or `Content-Type`, missing or unconvertible parameter | 400 |
 | A write's lock wait timed out (SQLSTATE 55P03) | 409; the write rolled back, so retry |
 | Anything else (uncaught)    | 500    |
 
