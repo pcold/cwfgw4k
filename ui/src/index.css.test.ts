@@ -23,17 +23,29 @@ type Backdrop = string | Wash;
 // WCAG 2.2 §1.4.3. The large-text carve-out (3:1) is not taken: no more than a page heading could claim it.
 const AA_NORMAL_TEXT = 4.5;
 
-// Where each text token renders, from the call sites. Hover fills are listed because the label stays put;
-// disabled controls are not, since §1.4.3 exempts an inactive component.
+// The scoreboard's tinted team and leaderboard rows, and the weekly report's cash-total row.
+const SUCCESS_ROW: Wash = { token: 'semantic-success-tint', percent: 10, over: 'canvas' };
+const DANGER_ROW: Wash = { token: 'semantic-danger-tint', percent: 10, over: 'canvas' };
+const CASH_TOTAL_ROW: Wash = { token: 'gold-soft', percent: 30, over: 'canvas' };
+
+// Where each text token renders, from the call sites, inherited colour included. Hover fills are listed
+// because the label stays put; disabled controls are not, since §1.4.3 exempts an inactive component.
+// A wash of one listed backdrop over a darker one needs no row: light ink contrasts more on the blend.
 const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
   'ink-strong': ['surface-card', 'surface-raised'],
-  ink: ['canvas', 'surface-card', 'surface-raised'],
+  ink: ['canvas', 'surface-card', 'surface-raised', 'gold-tint', SUCCESS_ROW, DANGER_ROW],
   'ink-body': ['surface-card', 'surface-raised', 'side-bet-winner'],
-  'ink-secondary': ['canvas', 'surface-card', 'surface-raised'],
+  'ink-secondary': ['canvas', 'surface-card', 'surface-raised', SUCCESS_ROW, DANGER_ROW],
   'ink-label': ['surface-card', 'surface-raised'],
-  'ink-muted': ['canvas', 'surface-card'],
-  'ink-soft': ['canvas', 'surface-card'],
-  'ink-faint': ['canvas', 'surface-card'],
+  'ink-muted': [
+    'canvas',
+    'surface-card',
+    { token: 'surface-raised', percent: 50, over: 'surface-card' },
+    SUCCESS_ROW,
+    DANGER_ROW,
+  ],
+  'ink-soft': ['canvas', 'surface-card', 'surface-raised', 'side-bet-winner', SUCCESS_ROW, DANGER_ROW, CASH_TOTAL_ROW],
+  'ink-faint': ['canvas', 'surface-card', SUCCESS_ROW, DANGER_ROW],
   'on-primary': ['primary', 'primary-hover'],
   'on-fill': [
     'semantic-danger-fill',
@@ -44,7 +56,15 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
     'secondary-hover',
   ],
   'primary-ink': ['canvas', 'surface-card'],
-  'semantic-success': ['canvas', 'surface-card', 'side-bet-winner'],
+  'semantic-success': [
+    'canvas',
+    'surface-card',
+    'surface-raised',
+    'side-bet-winner',
+    SUCCESS_ROW,
+    DANGER_ROW,
+    CASH_TOTAL_ROW,
+  ],
   'semantic-success-ink': [{ token: 'semantic-success-tint', percent: 30, over: 'canvas' }],
   'semantic-warning': ['canvas', 'surface-card'],
   'semantic-warning-ink': [
@@ -52,7 +72,7 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
     { token: 'semantic-warning-tint', percent: 30, over: 'surface-card' },
     { token: 'semantic-warning-soft', percent: 50, over: 'canvas' },
   ],
-  'semantic-danger': ['canvas', 'surface-card'],
+  'semantic-danger': ['canvas', 'surface-card', 'surface-raised', DANGER_ROW, CASH_TOTAL_ROW],
   'semantic-danger-hover': ['surface-card'],
   'semantic-danger-strong': ['surface-card'],
   'semantic-info': ['surface-card'],
@@ -67,8 +87,16 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
 const BELOW_AA_AT_INTRODUCTION: ReadonlySet<string> = new Set([
   'ink-soft on canvas',
   'ink-soft on surface-card',
+  'ink-soft on surface-raised',
+  'ink-soft on side-bet-winner',
+  'ink-soft on semantic-success-tint/10 over canvas',
+  'ink-soft on semantic-danger-tint/10 over canvas',
+  'ink-soft on gold-soft/30 over canvas',
   'ink-faint on canvas',
   'ink-faint on surface-card',
+  'ink-faint on semantic-success-tint/10 over canvas',
+  'ink-faint on semantic-danger-tint/10 over canvas',
+  'semantic-danger on surface-raised',
   'on-primary on primary',
   'on-gold-earnings on gold-bright',
 ]);
