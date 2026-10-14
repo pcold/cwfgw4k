@@ -305,7 +305,7 @@ echo
 echo "    Pool state (should stay waiting=0 — that's the diagnostic point):"
 echo "    resource.type=\"cloud_run_revision\" AND \\"
 echo "    resource.labels.service_name=\"$STAGING_SERVICE\" AND \\"
-echo "    textPayload:\"cwfgw4k.db.pool\""
+echo "    jsonPayload.message:\"cwfgw4k.db.pool\""
 
 if [[ $ANY_FAIL -eq 1 ]]; then
   exit 1

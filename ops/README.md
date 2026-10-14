@@ -46,13 +46,15 @@ gcloud logging metrics create cwfgw4k_unhandled_errors \
   --log-filter='resource.type="cloud_run_revision"
     AND resource.labels.service_name="cwfgw4k"
     AND severity>=ERROR
-    AND textPayload:"Unhandled error on"'
+    AND jsonPayload.message:"Unhandled error on"'
 ```
 
 ### 2. Create the `espn_failures` log-based metric
 
 Counts ESPN integration warnings/errors — calendar fetches, scoreboard fetches,
 athlete lookups — logged by `EspnClient`, `EspnService`, and `AdminService`.
+`message` holds only the line's text, so the logger and `severity>=ERROR`
+clauses match what the logger name and level prefix of a text line once did.
 
 ```bash
 gcloud logging metrics create cwfgw4k_espn_failures \
@@ -61,8 +63,9 @@ gcloud logging metrics create cwfgw4k_espn_failures \
   --log-filter='resource.type="cloud_run_revision"
     AND resource.labels.service_name="cwfgw4k"
     AND severity>=WARNING
-    AND (textPayload:"ESPN" OR textPayload:"espn")
-    AND (textPayload:"failed" OR textPayload:"error" OR textPayload:"returned")'
+    AND (jsonPayload.message:"ESPN" OR jsonPayload.message:"espn" OR jsonPayload.logger:"espn")
+    AND (jsonPayload.message:"failed" OR jsonPayload.message:"error" OR jsonPayload.message:"returned"
+      OR severity>=ERROR)'
 ```
 
 ### 3. Create the `cwfgw4k_requests` distribution metric

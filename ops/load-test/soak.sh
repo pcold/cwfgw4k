@@ -147,4 +147,4 @@ echo
 echo "    Pool counters across the run:"
 echo "    resource.type=\"cloud_run_revision\" AND \\"
 echo "    resource.labels.service_name=\"$STAGING_SERVICE\" AND \\"
-echo "    textPayload:\"cwfgw4k.db.pool\""
+echo "    jsonPayload.message:\"cwfgw4k.db.pool\""

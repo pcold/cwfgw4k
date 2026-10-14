@@ -14,7 +14,7 @@ description: Request count (per method/route/status) extracted from RequestMetri
 filter: |
   resource.type="cloud_run_revision"
   AND resource.labels.service_name="cwfgw4k"
-  AND textPayload:"cwfgw4k.request"
+  AND jsonPayload.message:"cwfgw4k.request"
 metricDescriptor:
   metricKind: DELTA
   valueType: INT64
@@ -29,6 +29,6 @@ metricDescriptor:
       valueType: STRING
       description: First digit of the HTTP status code (2, 3, 4, 5)
 labelExtractors:
-  method: REGEXP_EXTRACT(textPayload, "method=([A-Z]+)")
-  route: REGEXP_EXTRACT(textPayload, "route=(\\S+)")
-  status_class: REGEXP_EXTRACT(textPayload, "status=([0-9])")
+  method: REGEXP_EXTRACT(jsonPayload.message, "method=([A-Z]+)")
+  route: REGEXP_EXTRACT(jsonPayload.message, "route=(\\S+)")
+  status_class: REGEXP_EXTRACT(jsonPayload.message, "status=([0-9])")

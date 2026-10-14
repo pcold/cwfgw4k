@@ -18,7 +18,7 @@ description: Cache event count (hit, miss, put, sweep) emitted by RequestCache
 filter: |
   resource.type="cloud_run_revision"
   AND resource.labels.service_name="cwfgw4k"
-  AND textPayload:"cwfgw4k.cache"
+  AND jsonPayload.message:"cwfgw4k.cache"
 metricDescriptor:
   metricKind: DELTA
   valueType: INT64
@@ -30,5 +30,5 @@ metricDescriptor:
       valueType: STRING
       description: Normalized route template (UUIDs → :id, numeric segments → :n). Empty on sweep events.
 labelExtractors:
-  event: REGEXP_EXTRACT(textPayload, "event=([a-z]+)")
-  route: REGEXP_EXTRACT(textPayload, "route=(\\S+)")
+  event: REGEXP_EXTRACT(jsonPayload.message, "event=([a-z]+)")
+  route: REGEXP_EXTRACT(jsonPayload.message, "route=(\\S+)")

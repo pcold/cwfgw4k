@@ -4,9 +4,8 @@
 #
 # The log-based metric `cwfgw4k_unhandled_errors` was created in the
 # initial ops/README.md setup; its filter matches `severity>=ERROR
-# AND textPayload:"Unhandled error on"`. With the May 4 logback fix
-# (WARN+ to stderr) those lines now arrive at severity ERROR in Cloud
-# Logging, so the metric counts what we expect.
+# AND jsonPayload.message:"Unhandled error on"`. Each log line carries its
+# own severity in its JSON, so a WARN never reaches that count.
 #
 # Apply with:
 #   gcloud monitoring policies create \
@@ -40,7 +39,7 @@ documentation:
         resource.type="cloud_run_revision"
         AND resource.labels.service_name="cwfgw4k"
         AND severity>=ERROR
-        AND textPayload:"Unhandled error"
+        AND jsonPayload.message:"Unhandled error"
 
     Single occurrence is enough to fire — these are usually real bugs,
     not transient infrastructure issues.
