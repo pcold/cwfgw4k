@@ -15,6 +15,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import java.math.BigDecimal
 import java.util.UUID
 
 private val LEAGUE = LeagueId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
@@ -45,6 +46,21 @@ class CreateSeasonViolationSpec : FunSpec({
     test("a side-bet round listed twice is DuplicateSideBetRound") {
         val repeated = SeasonRules.defaults().copy(sideBetRounds = listOf(5, 6, 5))
         request(repeated).violation() shouldBe CreateSeasonViolation.DuplicateSideBetRound
+    }
+
+    test("a negative flat side-bet amount is NegativeSideBetAmount even without rules") {
+        val negative = request(rules = null).copy(sideBetAmount = BigDecimal("-0.01"))
+        negative.violation() shouldBe CreateSeasonViolation.NegativeSideBetAmount
+    }
+
+    test("a negative side-bet amount in rules is NegativeSideBetAmount") {
+        request(SeasonRules.defaults().copy(sideBetAmount = BigDecimal("-15"))).violation() shouldBe
+            CreateSeasonViolation.NegativeSideBetAmount
+    }
+
+    test("a zero side-bet amount has no violation, since zero is the season with no side bets") {
+        request(SeasonRules.defaults().copy(sideBetAmount = BigDecimal.ZERO)).violation().shouldBeNull()
+        request(rules = null).copy(sideBetAmount = BigDecimal.ZERO).violation().shouldBeNull()
     }
 
     test("POST /api/v1/seasons refuses a violation with 400, its message, and no season written") {
@@ -85,6 +101,20 @@ class CreateSeasonViolationSpec : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.body<ErrorBody>().error shouldBe "side bet rounds must list at least one round"
+        }
+    }
+
+    test("POST /api/v1/seasons refuses a negative flat side-bet amount with 400, its message, and no season written") {
+        authenticatedApiTest { client ->
+            val response =
+                client.post("/api/v1/seasons") {
+                    contentType(ContentType.Application.Json)
+                    setBody(request(rules = null).copy(sideBetAmount = BigDecimal("-15")))
+                }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.body<ErrorBody>().error shouldBe "side bet amount must not be negative"
+            client.get("/api/v1/seasons").body<List<Season>>().shouldBeEmpty()
         }
     }
 })
