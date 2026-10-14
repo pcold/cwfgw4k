@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
-import LateRowBetsView from './LateRowBetsView';
 import type {
   ReportSideBetTeamEntry,
   ReportTeamColumn,
@@ -8,6 +7,7 @@ import type {
   WeeklyReport,
 } from '@/shared/api/types';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
+import LateRowBetsView from './LateRowBetsView';
 
 function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
   return {

@@ -15,6 +15,12 @@ function requestInit(call: Parameters<typeof fetch>): RequestInit {
   return init;
 }
 
+function jsonBody(call: Parameters<typeof fetch>): unknown {
+  const body = requestInit(call).body;
+  if (typeof body !== 'string') throw new Error('fetch was called without a string body.');
+  return JSON.parse(body);
+}
+
 function mockJson(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -169,7 +175,7 @@ describe('api client', () => {
     });
     const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/seasons');
-    const body: unknown = JSON.parse(String(requestInit(call).body));
+    const body = jsonBody(call);
     expect(body).toEqual({
       league_id: 'lg-1',
       name: 'Spring',
@@ -212,7 +218,7 @@ describe('api client', () => {
     const result = await api.login('admin', 'secret');
     const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/auth/login');
-    expect(JSON.parse(String(requestInit(call).body))).toEqual({
+    expect(jsonBody(call)).toEqual({
       username: 'admin',
       password: 'secret',
     });
@@ -313,7 +319,7 @@ describe('api client', () => {
     const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/tournaments/tn%2F1');
     expect(requestInit(call).method).toBe('PUT');
-    expect(JSON.parse(String(requestInit(call).body))).toEqual({ payout_multiplier: 2 });
+    expect(jsonBody(call)).toEqual({ payout_multiplier: 2 });
   });
 
   it('updateTournament() surfaces the server-supplied error message on PUT failure', async () => {
@@ -342,7 +348,7 @@ describe('api client', () => {
     const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/admin/seasons/sn%201/upload/preview');
     expect(requestInit(call).method).toBe('POST');
-    expect(JSON.parse(String(requestInit(call).body))).toEqual({
+    expect(jsonBody(call)).toEqual({
       start_date: '2026-01-01',
       end_date: '2026-04-01',
     });
@@ -359,7 +365,7 @@ describe('api client', () => {
     const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/admin/seasons/sn%201/upload/confirm');
     expect(requestInit(call).method).toBe('POST');
-    expect(JSON.parse(String(requestInit(call).body))).toEqual({
+    expect(jsonBody(call)).toEqual({
       entries: [
         { espn_event_id: 'e-1', name: 'Sony Open', start_date: '2026-01-15', end_date: '2026-01-18' },
       ],
@@ -410,7 +416,7 @@ describe('api client', () => {
         },
       ],
     });
-    const body = JSON.parse(String(requestInit(nth(fetchMock.mock.calls, 0)).body));
+    const body = jsonBody(nth(fetchMock.mock.calls, 0));
     expect(body).toEqual({
       season_id: 'sn-1',
       teams: [
@@ -543,7 +549,7 @@ describe('api client', () => {
     const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/admin/tournaments/tn-1/player-overrides');
     expect(requestInit(call).method).toBe('POST');
-    const body: unknown = JSON.parse(String(requestInit(call).body));
+    const body = jsonBody(call);
     expect(body).toEqual({ espn_competitor_id: 'abc', golfer_id: 'g-1' });
     expect(result).toEqual({
       tournamentId: 'tn-1',
@@ -577,7 +583,7 @@ describe('api client', () => {
     const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/golfers');
     expect(requestInit(call).method).toBe('POST');
-    const body: unknown = JSON.parse(String(requestInit(call).body));
+    const body = jsonBody(call);
     expect(body).toEqual({ first_name: 'Alex', last_name: 'Fitzpatrick' });
     expect(result.firstName).toBe('Alex');
     expect(result.pgaPlayerId).toBeNull();

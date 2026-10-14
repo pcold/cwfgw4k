@@ -1,22 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import UploadScheduleSection from './UploadScheduleSection';
+import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { makeSeason } from '@/shared/test/fixtures';
+import UploadScheduleSection from './UploadScheduleSection';
 
-const leaguesMock = vi.fn();
-const seasonsMock = vi.fn();
-const previewSeasonScheduleMock = vi.fn();
-const confirmSeasonScheduleMock = vi.fn();
-const updateTournamentMock = vi.fn();
+const leaguesMock = vi.fn<typeof api.leagues>();
+const seasonsMock = vi.fn<typeof api.seasons>();
+const previewSeasonScheduleMock = vi.fn<typeof api.previewSeasonSchedule>();
+const confirmSeasonScheduleMock = vi.fn<typeof api.confirmSeasonSchedule>();
+const updateTournamentMock = vi.fn<typeof api.updateTournament>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
-    previewSeasonSchedule: (input: unknown) => previewSeasonScheduleMock(input),
-    confirmSeasonSchedule: (input: unknown) => confirmSeasonScheduleMock(input),
-    updateTournament: (id: string, body: unknown) => updateTournamentMock(id, body),
+    previewSeasonSchedule: (input: Parameters<typeof api.previewSeasonSchedule>[0]) => previewSeasonScheduleMock(input),
+    confirmSeasonSchedule: (input: Parameters<typeof api.confirmSeasonSchedule>[0]) => confirmSeasonScheduleMock(input),
+    updateTournament: (id: string, body: Parameters<typeof api.updateTournament>[1]) => updateTournamentMock(id, body),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -58,16 +60,7 @@ describe('UploadScheduleSection', () => {
     leaguesMock.mockResolvedValue([
       { id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' },
     ]);
-    seasonsMock.mockResolvedValue([
-      {
-        id: 'sn-1',
-        leagueId: 'lg-1',
-        name: 'Spring',
-        seasonYear: 2026,
-        seasonNumber: 1,
-        status: 'active',
-      },
-    ]);
+    seasonsMock.mockResolvedValue([makeSeason()]);
   });
 
   async function previewSchedule(user: ReturnType<typeof userEvent.setup>) {
@@ -140,7 +133,7 @@ describe('UploadScheduleSection', () => {
           id,
           name: 'The Masters',
           week: '15',
-          payoutMultiplier: (body as { payoutMultiplier: number }).payoutMultiplier,
+          payoutMultiplier: body.payoutMultiplier,
         }),
       ),
     );
@@ -154,9 +147,9 @@ describe('UploadScheduleSection', () => {
 
     const mastersRow = (await screen.findByText('The Masters')).closest('tr');
     if (!mastersRow) throw new Error('row not found');
-    const multiplierInput = within(mastersRow).getByLabelText(
+    const multiplierInput = within(mastersRow).getByLabelText<HTMLInputElement>(
       /Payout multiplier for The Masters/i,
-    ) as HTMLInputElement;
+    );
     const saveButton = within(mastersRow).getByRole('button', { name: /Save/i });
     expect(saveButton).toBeDisabled();
 

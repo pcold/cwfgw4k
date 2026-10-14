@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import App from './App';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import App from './App';
 
 vi.mock('@/shared/api/client', () => ({
   api: {

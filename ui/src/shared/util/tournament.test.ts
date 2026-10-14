@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { defaultScoreboardTournament, earliestUnfinalized, tournamentLabel } from './tournament';
 import type { Tournament } from '@/shared/api/types';
+import { defaultScoreboardTournament, earliestUnfinalized, tournamentLabel } from './tournament';
 
 function makeTournament(overrides: Partial<Tournament> = {}): Tournament {
   return {

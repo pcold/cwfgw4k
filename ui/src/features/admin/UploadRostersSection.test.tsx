@@ -2,24 +2,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { QueryKey } from '@tanstack/react-query';
-import UploadRostersSection, { buildConfirmTeams } from './UploadRostersSection';
+import type { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type { RosterPreview } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
 import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { makeSeason } from '@/shared/test/fixtures';
+import UploadRostersSection, { buildConfirmTeams } from './UploadRostersSection';
 
-const leaguesMock = vi.fn();
-const seasonsMock = vi.fn();
-const previewRosterMock = vi.fn();
-const confirmRosterMock = vi.fn();
+const leaguesMock = vi.fn<typeof api.leagues>();
+const seasonsMock = vi.fn<typeof api.seasons>();
+const previewRosterMock = vi.fn<typeof api.previewRoster>();
+const confirmRosterMock = vi.fn<typeof api.confirmRoster>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
     previewRoster: (roster: string) => previewRosterMock(roster),
-    confirmRoster: (input: unknown) => confirmRosterMock(input),
+    confirmRoster: (input: Parameters<typeof api.confirmRoster>[0]) => confirmRosterMock(input),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -37,7 +39,7 @@ const OPEN_WHEN_AN_UPLOAD_LANDS: [string, QueryKey][] = [
 
 async function uploadRosterFile(user: ReturnType<typeof userEvent.setup>, contents: string) {
   const file = new File([contents], 'roster.tsv', { type: 'text/tab-separated-values' });
-  const input = screen.getByLabelText(/Roster file/i) as HTMLInputElement;
+  const input = screen.getByLabelText<HTMLInputElement>(/Roster file/i);
   await user.upload(input, file);
 }
 
@@ -163,16 +165,7 @@ describe('UploadRostersSection', () => {
     leaguesMock.mockResolvedValue([
       { id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' },
     ]);
-    seasonsMock.mockResolvedValue([
-      {
-        id: 'sn-1',
-        leagueId: 'lg-1',
-        name: 'Spring',
-        seasonYear: 2026,
-        seasonNumber: 1,
-        status: 'active',
-      },
-    ]);
+    seasonsMock.mockResolvedValue([makeSeason()]);
   });
 
   it('runs preview, allows resolving an ambiguous pick, and confirms', async () => {
@@ -216,7 +209,7 @@ describe('UploadRostersSection', () => {
     });
     const [args] = nth(confirmRosterMock.mock.calls, 0);
     expect(args.seasonId).toBe('sn-1');
-    expect(args.teams[0].picks[1]).toMatchObject({
+    expect(nth(args.teams, 0).picks[1]).toMatchObject({
       round: 2,
       ownershipPct: 100,
       assignment: { type: 'existing', golferId: 'g-100' },
@@ -267,7 +260,7 @@ describe('UploadRostersSection', () => {
       expect(screen.getByText('2026 Spring')).toBeInTheDocument();
     });
 
-    const seasonSelect = screen.getByLabelText(/^Season$/) as HTMLSelectElement;
+    const seasonSelect = screen.getByLabelText<HTMLSelectElement>(/^Season$/);
     expect(seasonSelect.value).toBe('sn-1');
 
     const button = screen.getByRole('button', { name: /Match Players with ESPN/i });

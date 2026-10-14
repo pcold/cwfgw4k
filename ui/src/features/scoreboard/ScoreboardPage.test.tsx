@@ -6,21 +6,21 @@ import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import { makeWonLostTotals } from '@/shared/test/fixtures';
-import ScoreboardPage from './ScoreboardPage';
+import { makeTournament, makeWonLostTotals } from '@/shared/test/fixtures';
 import type { League, Season, Tournament, WeeklyReport } from '@/shared/api/types';
+import ScoreboardPage from './ScoreboardPage';
 
-const leaguesMock = vi.fn();
-const seasonsMock = vi.fn();
-const seasonReportMock = vi.fn();
-const tournamentsMock = vi.fn();
-const tournamentReportMock = vi.fn();
-const authMeMock = vi.fn();
-const finalizeMock = vi.fn();
-const competitorsMock = vi.fn();
-const golfersMock = vi.fn();
-const playerRankingsMock = vi.fn();
-const golferHistoryMock = vi.fn();
+const leaguesMock = vi.fn<typeof api.leagues>();
+const seasonsMock = vi.fn<typeof api.seasons>();
+const seasonReportMock = vi.fn<typeof api.seasonReport>();
+const tournamentsMock = vi.fn<typeof api.tournaments>();
+const tournamentReportMock = vi.fn<typeof api.tournamentReport>();
+const authMeMock = vi.fn<typeof api.authMe>();
+const finalizeMock = vi.fn<typeof api.finalizeTournament>();
+const competitorsMock = vi.fn<typeof api.tournamentCompetitors>();
+const golfersMock = vi.fn<typeof api.golfers>();
+const playerRankingsMock = vi.fn<typeof api.playerRankings>();
+const golferHistoryMock = vi.fn<typeof api.golferHistory>();
 const otherTournamentReportMock = vi.fn();
 const rankingsMock = vi.fn();
 
@@ -304,7 +304,7 @@ describe('ScoreboardPage', () => {
         week: '10',
       },
     });
-    finalizeMock.mockResolvedValue({ message: 'ok' });
+    finalizeMock.mockResolvedValue(makeTournament());
 
     const user = userEvent.setup();
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
@@ -342,7 +342,7 @@ describe('ScoreboardPage', () => {
       ...buildReport('All Tournaments', 'tn-active'),
       scope: 'season',
     });
-    finalizeMock.mockResolvedValue({ message: 'ok' });
+    finalizeMock.mockResolvedValue(makeTournament());
 
     const user = userEvent.setup();
     renderWithProviders(
@@ -366,13 +366,14 @@ describe('ScoreboardPage', () => {
   });
 
   it.each([
-    ['open player rankings', <OpenPlayerRankings />, playerRankingsMock],
-    ['an open golfer history', <OpenGolferHistory />, golferHistoryMock],
+    ['open player rankings', <OpenPlayerRankings key="player-rankings" />, playerRankingsMock],
+    ['an open golfer history', <OpenGolferHistory key="golfer-history" />, golferHistoryMock],
     // Another tournament's, because the body resolves readMock to {} and the page cannot render
     // that as its own report.
     [
       'the scoreboard report of another tournament',
       <OpenQuery
+        key="other-tournament-report"
         queryKey={queryKeys.tournamentReport.detail('sn-1', 'tn-completed', false)}
         fetcher={otherTournamentReportMock}
       />,
@@ -381,6 +382,7 @@ describe('ScoreboardPage', () => {
     [
       'open rankings',
       <OpenQuery
+        key="rankings"
         queryKey={queryKeys.rankings.detail('sn-1', false, 'tn-active')}
         fetcher={rankingsMock}
       />,
@@ -409,7 +411,7 @@ describe('ScoreboardPage', () => {
       },
     });
     readMock.mockResolvedValue({});
-    finalizeMock.mockResolvedValue({ message: 'ok' });
+    finalizeMock.mockResolvedValue(makeTournament());
 
     const user = userEvent.setup();
     renderWithProviders(

@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { api } from '@/shared/api/client';
 import { nth } from '@/shared/test/nth';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import PlayerRankingsPage from './PlayerRankingsPage';
 import type {
   League,
   PlayerRankings,
@@ -11,11 +11,12 @@ import type {
   Season,
   Tournament,
 } from '@/shared/api/types';
+import PlayerRankingsPage from './PlayerRankingsPage';
 
-const leaguesMock = vi.fn();
-const seasonsMock = vi.fn();
-const tournamentsMock = vi.fn();
-const playerRankingsMock = vi.fn();
+const leaguesMock = vi.fn<typeof api.leagues>();
+const seasonsMock = vi.fn<typeof api.seasons>();
+const tournamentsMock = vi.fn<typeof api.tournaments>();
+const playerRankingsMock = vi.fn<typeof api.playerRankings>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -184,7 +185,7 @@ describe('PlayerRankingsPage', () => {
     renderWithProviders(<PlayerRankingsPage />);
 
     await screen.findByRole('option', { name: /tn-upcoming|Sample Open.*upcoming/i });
-    const select = screen.getByLabelText(/Through/i) as HTMLSelectElement;
+    const select = screen.getByLabelText<HTMLSelectElement>(/Through/i);
     expect(select.value).toBe('tn-upcoming');
   });
 

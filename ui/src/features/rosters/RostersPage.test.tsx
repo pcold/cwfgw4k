@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
+import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import RostersPage from './RostersPage';
 import type { League, RosterTeam, Season, SeasonRules } from '@/shared/api/types';
+import RostersPage from './RostersPage';
 
-const leaguesMock = vi.fn();
-const seasonsMock = vi.fn();
-const rostersMock = vi.fn();
-const seasonRulesMock = vi.fn();
+const leaguesMock = vi.fn<typeof api.leagues>();
+const seasonsMock = vi.fn<typeof api.seasons>();
+const rostersMock = vi.fn<typeof api.rosters>();
+const seasonRulesMock = vi.fn<typeof api.seasonRules>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {

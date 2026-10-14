@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import RankingsPage from './RankingsPage';
 import type { League, Rankings, Season, Tournament } from '@/shared/api/types';
+import RankingsPage from './RankingsPage';
 
-const leaguesMock = vi.fn();
-const seasonsMock = vi.fn();
-const rankingsMock = vi.fn();
-const tournamentsMock = vi.fn();
+const leaguesMock = vi.fn<typeof api.leagues>();
+const seasonsMock = vi.fn<typeof api.seasons>();
+const rankingsMock = vi.fn<typeof api.rankings>();
+const tournamentsMock = vi.fn<typeof api.tournaments>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
