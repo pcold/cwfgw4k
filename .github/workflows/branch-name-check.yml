@@ -22,7 +22,7 @@ jobs:
       - name: Validate the head branch is <user>/cwf-<num>-<slug>
         # The pattern is duplicated in .githooks/pre-push; change the two together.
         run: |
-          pattern='^[a-z0-9-]+/cwf-[0-9]+-[a-z0-9-]+$'
+          pattern='^[a-z0-9-]+/cwf-[0-9]+-[a-z0-9_-]+$'
           branch="$GITHUB_HEAD_REF"
           if ! [[ "$branch" =~ $pattern ]]; then
             echo "::error::Branch '$branch' does not match <user>/cwf-<num>-<slug>."
