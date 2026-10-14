@@ -279,7 +279,7 @@ function NewGolferInlineForm({
   const valid = firstName.trim().length > 0 && lastName.trim().length > 0;
 
   return (
-    <div className="border border-gray-700 rounded p-2 space-y-2 bg-gray-800/50">
+    <div className="border border-gray-700 rounded p-2 space-y-2 bg-gray-700/50">
       <p className="text-xs text-gray-400">
         Creates a new golfer with no ESPN id and pins this competitor to them.
       </p>
