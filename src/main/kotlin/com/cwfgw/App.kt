@@ -9,6 +9,7 @@ import com.cwfgw.debug.debugRoutes
 import com.cwfgw.golfers.golferRoutes
 import com.cwfgw.health.healthRoutes
 import com.cwfgw.http.appJson
+import com.cwfgw.http.installCompression
 import com.cwfgw.http.installErrorHandling
 import com.cwfgw.http.installRequestLogging
 import com.cwfgw.http.spaFallback
@@ -50,6 +51,7 @@ fun Application.module(
     }
     installSessionAuth(services.authSetup, services.authService)
     installRequestLogging()
+    installCompression()
     installErrorHandling()
     launchCacheSweep(services.requestCache, services.sweepIntervalSeconds)
     poolMetrics?.let(::launchPoolMetricsLog)
