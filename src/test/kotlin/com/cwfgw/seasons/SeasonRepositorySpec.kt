@@ -308,6 +308,7 @@ class SeasonRepositorySpec : FunSpec({
         // Sanity: rows are present before we cascade them away.
         postgres.dsl.fetchCount(TEAM_ROSTERS, TEAM_ROSTERS.TEAM_ID.eq(teamId.value)) shouldBe 1
         postgres.dsl.fetchCount(DRAFT_PICKS, DRAFT_PICKS.DRAFT_ID.eq(draftId)) shouldBe 1
+        postgres.dsl.fetchCount(DRAFTS, DRAFTS.ID.eq(draftId)) shouldBe 1
 
         tx.update { repository.delete(seasonId) }.shouldBeTrue()
 
@@ -316,6 +317,7 @@ class SeasonRepositorySpec : FunSpec({
         tx.read { tournamentRepo.findAll(seasonId = seasonId, status = null) }.shouldBeEmpty()
         postgres.dsl.fetchCount(TEAM_ROSTERS, TEAM_ROSTERS.TEAM_ID.eq(teamId.value)) shouldBe 0
         postgres.dsl.fetchCount(DRAFT_PICKS, DRAFT_PICKS.DRAFT_ID.eq(draftId)) shouldBe 0
+        postgres.dsl.fetchCount(DRAFTS, DRAFTS.ID.eq(draftId)) shouldBe 0
     }
 
     test("delete returns false for unknown id") {
