@@ -1,6 +1,6 @@
 package com.cwfgw.tournaments
 
-/** @see com.cwfgw.golfers.GolferError */
+/** @see com.cwfgw.db.updateOrOutraced */
 sealed interface TournamentError {
     /**
      * Another confirm committed this `pga_tournament_id` first; the schedule confirm re-reads it in a new

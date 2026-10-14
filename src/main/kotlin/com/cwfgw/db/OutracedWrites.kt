@@ -12,7 +12,8 @@ private val log = KotlinLogging.logger("com.cwfgw.db.OutracedWrites")
 
 /**
  * Converts a 23505 on [constraint] alone: one SQLSTATE covers every unique key on a table, and beside a key a race
- * can reach sits one only a bug can. The block has rolled back by then, so a loser re-reads in a new transaction.
+ * can reach sits one only a bug can. The block has rolled back by then, so a loser wanting the winner's row reads it
+ * in a new transaction.
  */
 internal suspend fun <T, E> Transactor.updateOrOutraced(
     constraint: String,
