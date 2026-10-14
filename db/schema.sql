@@ -41,6 +41,17 @@ CREATE UNLOGGED TABLE cwfgw4k.cache (
 
 
 --
+-- Name: cache_generation; Type: TABLE; Schema: cwfgw4k; Owner: -
+--
+
+CREATE TABLE cwfgw4k.cache_generation (
+    singleton boolean DEFAULT true NOT NULL,
+    generation bigint NOT NULL,
+    CONSTRAINT cache_generation_singleton_check CHECK (singleton)
+);
+
+
+--
 -- Name: draft_picks; Type: TABLE; Schema: cwfgw4k; Owner: -
 --
 
@@ -272,6 +283,14 @@ CREATE TABLE cwfgw4k.users (
     role text DEFAULT 'user'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
+
+
+--
+-- Name: cache_generation cache_generation_pkey; Type: CONSTRAINT; Schema: cwfgw4k; Owner: -
+--
+
+ALTER TABLE ONLY cwfgw4k.cache_generation
+    ADD CONSTRAINT cache_generation_pkey PRIMARY KEY (singleton);
 
 
 --

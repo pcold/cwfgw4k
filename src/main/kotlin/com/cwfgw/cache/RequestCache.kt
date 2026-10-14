@@ -26,12 +26,14 @@ private val log = KotlinLogging.logger {}
  * delegates to the handler — serializing and storing the result before
  * sending it.
  *
- * Pure-TTL semantics: the underlying [CacheRepository.get] only returns
- * non-expired rows. [deleteExpired] is the periodic sweep that keeps the
- * table small; it's invoked from a background coroutine launched at boot
- * (see App.kt), not on every read. Mutations (POST / PUT / DELETE) do not
- * invalidate cache entries — the [defaultTtl] window is the maximum
- * staleness consumers can see.
+ * The underlying [CacheRepository.get] only returns non-expired rows.
+ * [deleteExpired] is the periodic sweep that keeps the table small; it's
+ * invoked from a background coroutine launched at boot (see App.kt), not on
+ * every read.
+ *
+ * A write invalidates: [clearResponseCacheOnWrite] runs [clear] before any
+ * admin write under `/api/v1` answers. The generation it advances lives in
+ * Postgres, so a fill that began before it stores nothing on any instance.
  *
  * A deploy does invalidate: [revision] prefixes every stored key, so a body
  * one revision encoded is never served by another. Not a table clear at
@@ -41,8 +43,8 @@ private val log = KotlinLogging.logger {}
  * the cache key carries no user identity, so two sessions hitting the same
  * URI would share the same cached body.
  *
- * Each hit / miss / put / sweep emits one structured INFO log line shaped
- * for Cloud Logging metric extraction:
+ * Each cache event emits one structured log line shaped for Cloud Logging
+ * metric extraction:
  * `cwfgw4k.cache event=… route=… [ttl_seconds=…] [deleted=…]`. The matching
  * metric config lives in `ops/metrics/cwfgw4k_cache.yaml`; changing the
  * format requires updating that config.
@@ -55,11 +57,13 @@ class RequestCache(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     /**
-     * Tracks the in-flight loader for each cache key so concurrent misses
-     * coalesce onto a single [fetch] call. Bounded by request concurrency
-     * (entries are removed in the loader's finally block); not a leak.
+     * Tracks the in-flight loader for each cache key and generation so
+     * concurrent misses coalesce onto a single [fetch] call, and a read after
+     * a [clear] never joins a fill from before it. Bounded by request
+     * concurrency (entries are removed in the loader's finally block); not a
+     * leak.
      */
-    private val inFlight = ConcurrentHashMap<String, CompletableDeferred<String>>()
+    private val inFlight = ConcurrentHashMap<InFlightKey, CompletableDeferred<String>>()
 
     /**
      * Cache-aside fetch keyed by [revision] and [key] — joined here, the only
@@ -67,15 +71,15 @@ class RequestCache(
      * revision. Single-flight per key:
      *  1. `tx.get` checks the Postgres cache. Auto-commit single-statement
      *     read; connection held only for the SELECT itself.
-     *  2. On miss, try to claim the in-flight slot for [key] via an atomic
-     *     `putIfAbsent` on a [CompletableDeferred]. If we lose the race we
-     *     await the existing loader's deferred — no second [fetch], no
-     *     second `tx.update`.
+     *  2. On miss, read the cache generation, then try to claim the in-flight
+     *     slot for [key] in it via an atomic `putIfAbsent` on a [CompletableDeferred].
+     *     If we lose the race we await the existing loader's deferred — no
+     *     second [fetch], no second `tx.update`.
      *  3. The winning caller runs [fetch] outside any cache transaction
      *     (critical under load — [fetch] is the real handler that opens
      *     its own service transactions; holding a connection across it
      *     would consume two pool slots per request) and writes via
-     *     `tx.update`.
+     *     `tx.update`, which stores nothing if a [clear] ran meanwhile.
      *  4. The loader completes the deferred (success or failure) and
      *     atomically removes itself from the in-flight map.
      *
@@ -99,8 +103,10 @@ class RequestCache(
             return hit
         }
 
+        val loadGeneration = tx.get { repository.generation() }
+        val flightKey = InFlightKey(loadGeneration, storedKey)
         val ours = CompletableDeferred<String>()
-        val existing = inFlight.putIfAbsent(storedKey, ours)
+        val existing = inFlight.putIfAbsent(flightKey, ours)
         if (existing != null) {
             log.info { "cwfgw4k.cache event=coalesced route=$routeTemplate" }
             return existing.await()
@@ -126,7 +132,7 @@ class RequestCache(
                 "cwfgw4k.cache event=fetch-exit route=$routeTemplate " +
                     "duration_ms=${System.currentTimeMillis() - fetchStarted}"
             }
-            store(storedKey, fresh, routeTemplate, ttl)
+            store(storedKey, fresh, loadGeneration, routeTemplate, ttl)
             ours.complete(fresh)
             return fresh
         } catch (t: Throwable) {
@@ -141,7 +147,7 @@ class RequestCache(
             // Atomic remove only if our deferred is still the registered one,
             // so a same-key request that arrives after we complete but before
             // we clean up doesn't get a stale stub.
-            inFlight.remove(storedKey, ours)
+            inFlight.remove(flightKey, ours)
         }
     }
 
@@ -152,17 +158,23 @@ class RequestCache(
     private suspend fun store(
         storedKey: String,
         fresh: String,
+        loadGeneration: CacheGeneration,
         routeTemplate: String,
         ttl: Duration,
     ) {
-        try {
-            tx.update { repository.put(storedKey, fresh, clock.instant().plus(ttl)) }
-        } catch (e: DataAccessException) {
-            if (!e.isLockTimeout()) throw e
-            log.warn(e) { "cwfgw4k.cache event=unstored route=$routeTemplate" }
-            return
+        val stored =
+            try {
+                tx.update { repository.put(storedKey, fresh, clock.instant().plus(ttl), loadGeneration) }
+            } catch (e: DataAccessException) {
+                if (!e.isLockTimeout()) throw e
+                log.warn(e) { "cwfgw4k.cache event=unstored route=$routeTemplate" }
+                return
+            }
+        if (stored) {
+            log.info { "cwfgw4k.cache event=put route=$routeTemplate ttl_seconds=${ttl.seconds}" }
+        } else {
+            log.info { "cwfgw4k.cache event=discarded route=$routeTemplate" }
         }
-        log.info { "cwfgw4k.cache event=put route=$routeTemplate ttl_seconds=${ttl.seconds}" }
     }
 
     // A space, because a request URI cannot hold one: the last space in a stored
@@ -175,7 +187,19 @@ class RequestCache(
         log.info { "cwfgw4k.cache event=sweep deleted=$deleted" }
         return deleted
     }
+
+    /** Every revision's rows go, not just this one's. */
+    suspend fun clear(): Int {
+        val deleted = tx.update { repository.clear() }
+        log.info { "cwfgw4k.cache event=clear deleted=$deleted" }
+        return deleted
+    }
 }
+
+private data class InFlightKey(
+    val generation: CacheGeneration,
+    val storedKey: String,
+)
 
 /**
  * Route-handler helper: caches the JSON response body keyed by [cache]'s

@@ -213,7 +213,8 @@ falls back to the base report.
 
 A report GET is served from the Postgres response cache, keyed on the
 deployed revision and the full request URI, for 300 seconds
-(`CACHE_DEFAULT_TTL_SECONDS`). That includes a `live=true` request while no
+(`CACHE_DEFAULT_TTL_SECONDS`) or until an admin write, which empties the
+cache before it answers. That includes a `live=true` request while no
 tournament in the season is a live candidate (not `completed`, and starting
 within three days or already started): nothing would be overlaid, so it is
 cached under its own URI like any other. While one is, a `live=true` request
