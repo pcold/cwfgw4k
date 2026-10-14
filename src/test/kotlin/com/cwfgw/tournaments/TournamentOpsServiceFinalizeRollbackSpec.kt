@@ -44,6 +44,8 @@ import java.time.LocalDate
  * `Upcoming` even though `persistImportIn` already flipped it to
  * `Completed` before the throw.
  *
+ * The Err cases hide a row from [ScoringService] alone, so `calculateScoresIn` returns an Err rather than throwing.
+ *
  * Fakes can't honestly model rollback (there's no real transaction);
  * the spec uses [postgresHarness] for the same reason
  * `AdminServiceConfirmRosterSpec` does.
