@@ -226,7 +226,7 @@ These are the most-often-missed patterns. Grep / scan for each.
 **Frontend (TypeScript / React):**
 
 - `any` type, `as` casts outside the two documented boundary exceptions (JSON
-  deserialization in shared/api/client.ts and Testing Library DOM narrowing in
+  deserialization in shared/api/client/core.ts and Testing Library DOM narrowing in
   test files), `!` non-null assertions.
 - `React.FC` / `React.FunctionComponent`.
 - `useEffect` used to derive state, fetch data, or reset state on prop change
