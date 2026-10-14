@@ -58,7 +58,11 @@ private fun throughProductionConfig(block: (LoggerContext) -> Unit): Streams {
     return Streams(stdout.toString(Charsets.UTF_8), stderr.toString(Charsets.UTF_8))
 }
 
-private fun String.linesFrom(logger: String): List<String> = lines().filter { it.contains("\"logger\":\"$logger\"") }
+private val SAMPLE_MESSAGES = listOf("a client mistake", "a real fault")
+
+/** By text rather than by JSON field, so a line some other encoder wrote is caught too. */
+private fun String.linesMentioning(messages: List<String>): List<String> =
+    lines().filter { line -> messages.any { it in line } }
 
 class CloudLoggingJsonEncoderSpec : FunSpec({
 
@@ -105,10 +109,10 @@ class CloudLoggingJsonEncoderSpec : FunSpec({
                 logger.error("a real fault", IllegalStateException("boom"))
             }
 
-        val emitted = streams.stdout.linesFrom(SAMPLE_LOGGER).map { it.parsed() }
+        val emitted = streams.stdout.linesMentioning(SAMPLE_MESSAGES).map { it.parsed() }
         emitted.map { it.text("severity") to it.text("message") } shouldBe
             listOf("WARNING" to "a client mistake", "ERROR" to "a real fault")
         emitted.last().text("stack_trace") shouldStartWith "java.lang.IllegalStateException: boom"
-        streams.stderr.linesFrom(SAMPLE_LOGGER) shouldBe emptyList()
+        streams.stderr.linesMentioning(SAMPLE_MESSAGES) shouldBe emptyList()
     }
 })

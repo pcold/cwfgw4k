@@ -30,7 +30,10 @@ class CloudLoggingJsonEncoder : EncoderBase<ILoggingEvent>() {
     }
 }
 
-/** `ops/` filters and extracts on `jsonPayload.message`, so renaming that field silently empties every metric. */
+/**
+ * `ops/` metrics read `severity`, `jsonPayload.message` and `jsonPayload.logger`; renaming any of them silently
+ * empties a metric, and no test here can see it.
+ */
 @Serializable
 internal data class CloudLogEntry(
     val severity: String,
