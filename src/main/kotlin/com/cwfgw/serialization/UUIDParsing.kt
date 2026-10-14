@@ -8,8 +8,8 @@ import java.util.UUID
  * the IllegalArgumentException at WARN here because (a) every per-resource
  * route uses this against path params, so any URL crawler hitting random paths
  * would flood the log, and (b) the exception's stack and message are
- * informationally identical every call ("Invalid UUID string: <raw>") and the
- * raw value is already echoed in the eventual 400 response. The standard
+ * informationally identical every call ("Invalid UUID string: <raw>"), and
+ * that raw value is caller input, which is neither echoed nor logged. The standard
  * "log at WARN with throwable" rule applies elsewhere; this is the carve-out.
  */
 fun String.toUUIDOrNull(): UUID? =

@@ -46,8 +46,8 @@ private const val CLIENT_MARKER = "zq7-client-marker"
 private const val FORBIDDEN_ID = "3f1c2b7e-0d4a-4e8b-9c6f-5a2e1d7b8c90"
 
 /** Unauthorized among them: scan traffic draws 401s in volume, so only a 403 earns a line. */
-private val quietDomainErrors =
-    linkedMapOf(
+private val QUIET_DOMAIN_ERRORS =
+    mapOf(
         "/throw/not-found" to HttpStatusCode.NotFound,
         "/throw/validation" to HttpStatusCode.BadRequest,
         "/throw/unprocessable" to HttpStatusCode.UnprocessableEntity,
@@ -55,6 +55,16 @@ private val quietDomainErrors =
         "/throw/refused" to HttpStatusCode.Conflict,
         "/throw/throttled" to HttpStatusCode.TooManyRequests,
         "/throw/unauthorized" to HttpStatusCode.Unauthorized,
+    )
+
+/** (seconds, nanos) of the wait → the header. The last overflows any conversion to millis or a +1. */
+private val RETRY_AFTER_BY_WAIT =
+    mapOf(
+        (1L to 400_000L) to "2",
+        (0L to 120_000_000L) to "1",
+        (0L to 0L) to "1",
+        (-5L to 0L) to "1",
+        (Long.MAX_VALUE to 999_999_999L) to Long.MAX_VALUE.toString(),
     )
 
 @Serializable
@@ -86,8 +96,10 @@ private fun errorHandlingTestApp(block: suspend (HttpClient) -> Unit) =
                 routingGet("/throw/throttled") {
                     throw DomainError.TooManyRequests("slow down", Duration.ofMillis(1_500))
                 }
-                routingGet("/throw/throttled-sub-second") {
-                    throw DomainError.TooManyRequests("slow down", Duration.ofMillis(120))
+                routingGet("/throw/throttled-for") {
+                    val seconds = call.request.queryParameters["seconds"].orEmpty().toLong()
+                    val nanos = call.request.queryParameters["nanos"].orEmpty().toLong()
+                    throw DomainError.TooManyRequests("slow down", Duration.ofSeconds(seconds, nanos))
                 }
                 routingGet("/throw/unauthorized") { throw DomainError.Unauthorized("authentication required") }
                 routingGet("/throw/forbidden/{id}") { throw DomainError.Forbidden("admin role required") }
@@ -252,9 +264,13 @@ class ErrorHandlingSpec : FunSpec({
         }
     }
 
-    test("a sub-second Retry-After floors at one second rather than telling the client to retry now") {
+    test("Retry-After never names a deadline that has not arrived, nor one sooner than a second away") {
         errorHandlingTestApp { client ->
-            client.get("/throw/throttled-sub-second").headers[HttpHeaders.RetryAfter] shouldBe "1"
+            RETRY_AFTER_BY_WAIT.forEach { (wait, header) ->
+                val (seconds, nanos) = wait
+                client.get("/throw/throttled-for?seconds=$seconds&nanos=$nanos")
+                    .headers[HttpHeaders.RetryAfter] shouldBe header
+            }
         }
     }
 
@@ -413,7 +429,7 @@ class ErrorHandlingSpec : FunSpec({
     test("every 4xx DomainError but Forbidden logs nothing at WARN or above") {
         captureLogs { logs ->
             errorHandlingTestApp { client ->
-                quietDomainErrors.keys.map { client.get(it).status } shouldBe quietDomainErrors.values.toList()
+                QUIET_DOMAIN_ERRORS.keys.map { client.get(it).status } shouldBe QUIET_DOMAIN_ERRORS.values.toList()
             }
 
             logs.atWarnOrAbove().shouldBeEmpty()

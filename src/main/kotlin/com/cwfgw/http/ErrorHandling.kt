@@ -46,10 +46,13 @@ sealed class DomainError(message: String, cause: Throwable? = null) : RuntimeExc
     /** Maps to 422: each part is valid, but the pairing is one the resource cannot take. */
     class Unprocessable(message: String, cause: Throwable? = null) : DomainError(message, cause)
 
-    /** Maps to 409: the resource's current state collides with the write, such as a duplicate. */
+    /** Maps to 409: the write collides with another row or another write, such as a duplicate key. */
     class Conflict(message: String, cause: Throwable? = null) : DomainError(message, cause)
 
-    /** In place of [Conflict] when a business rule refuses the request: 409 with a [RefusalBody]. */
+    /**
+     * Maps to 409 with a [RefusalBody]: a business rule declines the request in the resource's present
+     * lifecycle state, such as a write to a finalized tournament. Not [Conflict], which nothing collided to cause.
+     */
     class Refused(
         message: String,
         val code: String,
@@ -137,7 +140,10 @@ private suspend fun ApplicationCall.respondUnhandled(cause: Throwable) {
  * Rounding down hands back a deadline that has not arrived, so a client
  * obeying it exactly earns a second 429.
  */
-private fun Duration.toRetryAfterSeconds(): Long = Math.ceilDiv(toMillis(), 1_000L).coerceAtLeast(1L)
+private fun Duration.toRetryAfterSeconds(): Long {
+    val partialSecond = if (nano > 0 && seconds < Long.MAX_VALUE) 1L else 0L
+    return (seconds + partialSecond).coerceAtLeast(1L)
+}
 
 /**
  * Of the 4xx, only 403 adds a line beyond the request log: scan traffic produces 401 and 404 in volume.

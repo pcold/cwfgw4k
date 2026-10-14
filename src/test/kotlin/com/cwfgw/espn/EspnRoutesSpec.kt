@@ -1,5 +1,6 @@
 package com.cwfgw.espn
 
+import ch.qos.logback.classic.spi.ThrowableProxyUtil
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.seasons.SeasonId
@@ -142,7 +143,7 @@ class EspnRoutesSpec : FunSpec({
                 response.bodyAsText() shouldNotContain CLIENT_MARKER
             }
 
-            val logged = logs.events().flatMap { listOfNotNull(it.formattedMessage, it.throwableProxy?.message) }
+            val logged = logs.events().map { it.formattedMessage + ThrowableProxyUtil.asString(it.throwableProxy) }
             logged.filter { CLIENT_MARKER in it }.shouldBeEmpty()
         }
     }
