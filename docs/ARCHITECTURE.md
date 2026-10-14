@@ -71,10 +71,11 @@ User (username, role admin | user)
 ```
 
 - **League.** One row in practice. Seasons hang off it.
-- **Season.** Identified by `season_year` and `season_number` (the next free number, computed on insert by
-  `SeasonRepository.nextSeasonNumber`). Owns its rules: the payout table and the side-bet rounds live in the
+- **Season.** Identified by `season_year` and `season_number` (when the create request names none, the next free
+  number, from `SeasonRepository.nextSeasonNumber`). Owns its rules: the payout table and the side-bet rounds live in the
   side tables `season_rule_payouts` and `season_rule_side_bet_rounds`; the tie floor and side-bet amount are
-  columns. `max_teams` is stored but nothing reads it; the team count is whatever the roster upload creates.
+  columns. `max_teams` is stored and returned but nothing enforces it; the team count is whatever the roster upload
+  creates.
 - **Tournament.** A season's schedule entry. `pga_tournament_id` is the ESPN event id once linked.
   `payout_multiplier` (default 1) scales every payout for that event. `is_team_event` marks two-player events
   such as the Zurich Classic. `week` is the display label from the schedule upload.
@@ -96,10 +97,12 @@ Every API route sits under `/api/v1` (`App.kt`). Anything else serves the bundle
 `/static/{file}`, then a fallback that returns `index.html` for client routes. An unmatched path whose first
 segment is `api` answers 404, never the UI shell (`http/StaticRoutes.kt`).
 
-Auth is a session cookie, `cwfgw_session`: HttpOnly, Secure, SameSite=Lax, HMAC-signed with
+Auth is a session cookie, `cwfgw_session`: HttpOnly, SameSite=Lax, Secure unless
+`AUTH_COOKIE_SECURE=false` (local http), HMAC-signed with
 `AUTH_SESSION_SECRET`, holding only the user id. The user is re-read on every request, so a role change or
-deletion takes effect at once (`users/SessionAuth.kt`). Every write, and the admin-only reads, call
-`requireAdmin` (`users/AdminGate.kt`): 401 with no session, 403 for a signed-in non-admin, plus a WARN `cwfgw4k.forbidden`.
+deletion takes effect at once (`users/SessionAuth.kt`). Every data write, and the admin-only reads,
+call `requireAdmin` (`users/AdminGate.kt`): 401 with no session, 403 for a signed-in non-admin, plus a WARN
+`cwfgw4k.forbidden`.
 
 An admin account is seeded at boot from `AUTH_ADMIN_USERNAME` / `AUTH_ADMIN_PASSWORD` only when the users
 table is empty. Setting one without the other, or a blank `AUTH_SESSION_SECRET`, refuses boot
@@ -133,9 +136,11 @@ A `Refused` carries a stable code the UI branches on: `tournament_out_of_order`,
 - Sealed types serialize with a `type` discriminator.
 - IDs are value classes (`SeasonId`, `TournamentId`, ...). A path id that is not a UUID answers 400
   "invalid season id" and the like.
-- Optional query parameters go through `optionalQueryParam` (`http/QueryParams.kt`): absent means absent, and a
-  value that fails to parse answers 400 rather than being ignored.
-- Money is `BigDecimal` end to end, stored as `NUMERIC`.
+- Typed optional query parameters go through `optionalQueryParam` (`http/QueryParams.kt`): absent means
+  absent, and a value that fails to parse answers 400 rather than being ignored. Free text such as the golfer
+  `search` is read directly, and a blank value counts as absent.
+- League money (payouts, rules, scores) is `BigDecimal` end to end, stored as `NUMERIC`. ESPN's purse and
+  earnings figures are whole dollars in `bigint`.
 - Tournament status is `upcoming`, `in_progress` or `completed` on the wire and in the database.
 
 ### Logging and compression
@@ -145,7 +150,7 @@ it groups: UUID segments become `:id`, numeric segments `:n`, and anything under
 `/assets/*` (`http/RequestLogging.kt`). Other structured lines share the `cwfgw4k.<area>` prefix
 (`cwfgw4k.db.pool`, `cwfgw4k.cache`, `cwfgw4k.espn`).
 
-Responses outside `/api` are gzip/deflate-compressed above 1 KiB. API responses are never compressed: they
+Responses outside `/api` that are `text/*`, JavaScript or SVG are gzip/deflate-compressed above 1 KiB. API responses are never compressed: they
 reflect request input next to the session cookie, which is the BREACH precondition (`http/Compression.kt`).
 
 ## 4. Persistence
@@ -187,15 +192,16 @@ about the block:
   for single-statement lookups.
 
 Blocks are plain (non-suspending) functions. They run on `Dispatchers.IO.limitedParallelism(maxPoolSize)`,
-so coroutines queue for a pool slot instead of parking threads inside Hikari. A transaction that holds its
-connection for 3 s or more logs a WARN. The Postgres driver bounds connection setup at 10 s and a single read
-at 30 s, so a stuck socket fails fast instead of hanging until Cloud Run's timeout (`db/Database.kt`). Pool occupancy logs every 30 s as `cwfgw4k.db.pool`.
+so coroutines queue for a pool slot instead of parking threads inside Hikari. A block that takes 3 s or
+more, queue wait included, logs WARN `cwfgw4k.db.slow_tx kind=<read|get|update>`. The Postgres driver bounds
+connection setup at 10 s and a single read at 30 s, so a stuck socket fails fast instead of hanging until
+Cloud Run's timeout (`db/Database.kt`). Pool occupancy logs every 30 s as `cwfgw4k.db.pool`.
 
 ### WriteTransactionContext
 
 Only `update` provides a `WriteTransactionContext` (`db/TransactionContext.kt`). Every repository write, and
 every read that takes a row lock, declares it as a context parameter. Calling a write from inside `read` or
-`get` is therefore a compile error, not a runtime surprise (#130).
+`get` is therefore a compile error, not a runtime surprise.
 
 ### Response cache
 
@@ -221,9 +227,10 @@ Report routes skip the cache only when the request asks for `live=true` and the 
 
 Each of these runs in exactly one `tx.update`, so it lands whole or not at all:
 
-- **Season create** writes the season row and both rules tables (`SeasonRepository.kt`).
+- **Season create** writes the season row and, when the request carries rules, both rules tables
+  (`SeasonRepository.kt`). A season created without rules reads back the defaults.
 - **Finalize** checks ordering, imports ESPN results and computes every fantasy score. A scoring failure throws
-  and rolls back the import with it (`FinalizeRollbackSpec`). The ESPN fetch happens *before* the transaction,
+  and rolls back the import with it (`TournamentOpsServiceFinalizeRollbackSpec`). The ESPN fetch happens *before* the transaction,
   so no connection is held across the network call.
 - **Reset** checks no later tournament is completed, deletes the tournament's scores and results, and sets it
   back to `upcoming`.
@@ -256,7 +263,7 @@ Not atomic, deliberately or by default:
 `in_progress`; only an admin's `PUT` sets it, and nothing requires it. "Is it live?" is decided by dates, not
 by this status (see [Live overlay](#live-overlay)).
 
-**Finalize** (`TournamentOpsService.finalize`):
+**Finalize** (`TournamentOpsService.finalizeTournament`):
 
 1. Read the tournament. Fetch ESPN's scoreboard for its start date, outside any transaction. ESPN unreachable
    answers 502.
@@ -273,7 +280,8 @@ Re-finalizing a completed tournament is not blocked; it re-imports and upserts t
 **Reset** refuses when a later tournament in the season is completed, so results are always unwound newest
 first. **Season clean-results** resets the whole season at once.
 
-Pinned by `TournamentOpsServiceSpec`, `FinalizeRollbackSpec` and `ResetSpec`.
+Pinned by `TournamentOpsServiceSpec`, `TournamentOpsServiceFinalizeRollbackSpec` and
+`TournamentOpsServiceResetSpec`.
 
 ## 7. Scoring and Payouts
 
@@ -470,13 +478,15 @@ shared code in `shared/`.
 
 ## 11. Deployment
 
-- **Gate.** `.github/workflows/check.yml` runs `./gradlew check --rerun-tasks` on every pull request and every
-  push to `main`. `main` requires it to pass.
+- **Gate.** `.github/workflows/check.yml` runs `./gradlew check --rerun-tasks` on pull requests and pushes to
+  `main`, and `main` requires it to pass. It skips the Gradle run, still reporting success, for a pull request
+  whose every changed file is a `.md`, and for a push to `main` whose exact tree an earlier run already passed.
 - **Deploy.** `.github/workflows/deploy.yml` starts when Check succeeds on a push to `main`, or by manual
   dispatch with a sha. The job runs in the `production` environment, which holds it for a required reviewer's
   approval. It authenticates with Workload Identity Federation, builds the fat jar, pushes the image to
   Artifact Registry in `us-west1` tagged with the sha and `latest`, deploys Cloud Run service `cwfgw4k`, and
-  curls `/api/v1/health`. Deploys never cancel each other.
+  curls `/api/v1/health`. A started deploy always finishes; a newer run
+  replaces one still waiting in the queue.
 - **Runtime.** Cloud Run, 1 GiB and 2 CPU, 20 concurrent requests per instance, 0 to 6 instances, 90 s
   request timeout. The JVM heap is capped at 512 MiB in the image.
 - **Database.** Cloud SQL Postgres instance `cwfgw4k-prod`, reached through the Cloud SQL socket factory.
