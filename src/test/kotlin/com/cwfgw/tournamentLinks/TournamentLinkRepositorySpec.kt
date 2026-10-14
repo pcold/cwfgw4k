@@ -1,9 +1,9 @@
 package com.cwfgw.tournamentLinks
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.seedTournament
 import com.cwfgw.tournaments.TournamentId
@@ -11,6 +11,8 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import org.jooq.SQLDialect
+import org.jooq.impl.DSL
 import java.util.UUID
 
 class TournamentLinkRepositorySpec : FunSpec({
@@ -101,7 +103,9 @@ class TournamentLinkRepositorySpec : FunSpec({
     }
 
     test("listByTournaments returns empty for no ids without issuing a query") {
-        // A connectionless DSL: any statement executed through it throws.
-        with(noopTransactionContext) { repository.listByTournaments(emptyList()) }.shouldBeEmpty()
+        val connectionless = TransactionContext(DSL.using(SQLDialect.POSTGRES))
+
+        // Any statement executed through a connectionless DSL throws.
+        with(connectionless) { repository.listByTournaments(emptyList()) }.shouldBeEmpty()
     }
 })

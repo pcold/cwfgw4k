@@ -10,10 +10,7 @@ interface TournamentLinkRepository {
     context(ctx: TransactionContext)
     fun listByTournament(tournamentId: TournamentId): List<TournamentPlayerOverride>
 
-    /**
-     * Empty [ids] returns empty without a query. Ordered by tournament, then competitor, so a caller's
-     * `groupBy { it.tournamentId }` keeps each tournament's order.
-     */
+    /** Empty [ids] returns empty without a query. Rows come in competitor order, not grouped by tournament. */
     context(ctx: TransactionContext)
     fun listByTournaments(ids: Collection<TournamentId>): List<TournamentPlayerOverride>
 
@@ -49,7 +46,7 @@ private class JooqTournamentLinkRepository : TournamentLinkRepository {
         )
             .from(TOURNAMENT_PLAYER_OVERRIDES)
             .where(TOURNAMENT_PLAYER_OVERRIDES.TOURNAMENT_ID.`in`(ids.map { it.value }))
-            .orderBy(TOURNAMENT_PLAYER_OVERRIDES.TOURNAMENT_ID, TOURNAMENT_PLAYER_OVERRIDES.ESPN_COMPETITOR_ID)
+            .orderBy(TOURNAMENT_PLAYER_OVERRIDES.ESPN_COMPETITOR_ID)
             .fetch { row -> toOverride(row.into(TOURNAMENT_PLAYER_OVERRIDES)) }
     }
 

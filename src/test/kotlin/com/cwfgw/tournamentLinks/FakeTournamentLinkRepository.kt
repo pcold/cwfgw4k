@@ -16,16 +16,14 @@ class FakeTournamentLinkRepository(
 
     context(ctx: TransactionContext)
     override fun listByTournament(tournamentId: TournamentId): List<TournamentPlayerOverride> =
-        store.values
-            .filter { it.tournamentId == tournamentId }
-            .sortedBy { it.espnCompetitorId }
+        listByTournaments(listOf(tournamentId))
 
     context(ctx: TransactionContext)
     override fun listByTournaments(ids: Collection<TournamentId>): List<TournamentPlayerOverride> {
-        val idSet = ids.toSet()
+        val requested = ids.toSet()
         return store.values
-            .filter { it.tournamentId in idSet }
-            .sortedWith(compareBy({ it.tournamentId.value }, { it.espnCompetitorId }))
+            .filter { it.tournamentId in requested }
+            .sortedBy { it.espnCompetitorId }
     }
 
     context(ctx: TransactionContext)
