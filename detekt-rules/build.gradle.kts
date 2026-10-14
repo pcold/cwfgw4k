@@ -35,10 +35,8 @@ kotlin {
 // the default role would also publish it as an attribute-less variant of this module.
 val ruleFixtures = configurations.resolvable("ruleFixtures").get()
 
-// The Gradle daemon caches the worker classloader detekt loads this jar into, keyed on the
-// classpath and not on its contents: a rule edit rebuilds the jar, and `:detekt` then runs the
-// previous rule and reports the previous findings. `./gradlew --stop` between the edit and the
-// run is what makes a local rule change visible.
+// The daemon caches detekt's worker classloader by classpath, not by contents, so after a rule edit
+// `:detekt` still runs the previous rule. `./gradlew --stop` between the edit and the run makes it visible.
 dependencies {
     // compileOnly, not implementation: detekt loads this jar into a classloader that
     // already holds its own api and analysis-api jars, and a second copy there would

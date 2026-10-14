@@ -84,11 +84,9 @@ public class UnsafeMessageInterpolation(
         analyze(message) {
             for (entry in message.entries.filterIsInstance<KtStringTemplateEntryWithExpression>()) {
                 val reason = entry.expression?.let { interpolated -> unsafeReason(interpolated) } ?: continue
-                // Anchored at the whole literal, not at the entry: detekt builds a baseline
-                // signature out of the reported element's text, and `$name` as a signature
-                // suppresses every `$name` in the file — including ones written later. The
-                // literal narrows that but does not close it: the signature carries no line
-                // number, so two identical literals in one class are one baseline entry.
+                // Anchored at the literal, not the entry: a baseline signature is the element's
+                // text, so `$name` would waive every later `$name` in the file. Two identical
+                // literals in one class still share one entry.
                 report(
                     Finding(
                         Entity.from(message),
@@ -151,10 +149,9 @@ private fun KaSession.resolvedCallableName(expression: KtCallExpression): String
 
 private const val MAX_TYPE_DEPTH = 5
 
-// `java.math.BigDecimal` is deliberately absent. It renders a bare number like the primitives
-// above, but in this repo it is the money and percentage scalar — a payout, a side bet, a team's
-// ownership share — so the bare number is the member datum, not a count of something.
-// Add it only alongside a decision about what a message may say about an amount.
+// No `java.math.BigDecimal`: here it is the money and percentage scalar (a payout, a side bet, an
+// ownership share), so its bare number is the member datum. Add it only alongside a decision about
+// what a message may say about an amount.
 private val SAFE_SCALAR_TYPES =
     setOf(
         "kotlin.Byte", "kotlin.Short", "kotlin.Int", "kotlin.Long",
