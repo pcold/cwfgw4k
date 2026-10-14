@@ -59,6 +59,42 @@ internal fun DataAccessException.isLockTimeout(): Boolean = sqlState() == LOCK_N
 
 private val log = KotlinLogging.logger("com.cwfgw.db.Transactor")
 
+/**
+ * [kind] is the `kind=` token on `cwfgw4k.db.slow_tx` that `ops/` searches for; renaming a variant must not
+ * rename it.
+ */
+private sealed interface TransactionMode {
+    val kind: String
+
+    /** No `BEGIN`, so there is no transaction for a prelude to set up. */
+    data object AutoCommit : TransactionMode {
+        override val kind: String = "get"
+    }
+
+    /** [prelude] runs first: PG rejects `SET TRANSACTION` once a query has taken the snapshot. */
+    sealed interface Transactional : TransactionMode {
+        fun prelude(txDsl: DSLContext)
+    }
+
+    /** @see Transactor.read */
+    data object Snapshot : Transactional {
+        override val kind: String = "read"
+
+        override fun prelude(txDsl: DSLContext) {
+            txDsl.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+        }
+    }
+
+    /** @see Transactor.update */
+    data object BoundedWrite : Transactional {
+        override val kind: String = "update"
+
+        override fun prelude(txDsl: DSLContext) {
+            txDsl.setLocal(DSL.unquotedName("lock_timeout"), DSL.inline("${LOCK_TIMEOUT_MS}ms")).execute()
+        }
+    }
+}
+
 private class JooqTransactor(
     private val rootDsl: DSLContext,
     maxPoolSize: Int,
@@ -71,32 +107,31 @@ private class JooqTransactor(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(maxPoolSize)
 
     override suspend fun <A> get(block: context(TransactionContext) () -> A): A =
-        timed("get") {
-            withContext(dispatcher) {
-                with(rootContext) { block() }
-            }
-        }
+        inTransaction(TransactionMode.AutoCommit, block)
 
     override suspend fun <A> read(block: context(TransactionContext) () -> A): A =
-        timed("read") {
-            withContext(dispatcher) {
-                rootDsl.transactionResult { config ->
-                    val txDsl = config.dsl()
-                    // Must run before any other statement in the transaction; PG rejects
-                    // SET TRANSACTION after the snapshot has been taken by a real query.
-                    txDsl.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
-                    with(TransactionContext(txDsl)) { block() }
-                }
-            }
-        }
+        inTransaction(TransactionMode.Snapshot, block)
 
     override suspend fun <A> update(block: context(TransactionContext) () -> A): A =
-        timed("update") {
+        inTransaction(TransactionMode.BoundedWrite, block)
+
+    private suspend fun <A> inTransaction(
+        mode: TransactionMode,
+        block: context(TransactionContext) () -> A,
+    ): A =
+        timed(mode.kind) {
             withContext(dispatcher) {
-                rootDsl.transactionResult { config ->
-                    val txDsl = config.dsl()
-                    txDsl.setLocal(DSL.unquotedName("lock_timeout"), DSL.inline("${LOCK_TIMEOUT_MS}ms")).execute()
-                    with(TransactionContext(txDsl)) { block() }
+                when (mode) {
+                    TransactionMode.AutoCommit -> with(rootContext) { block() }
+                    is TransactionMode.Transactional ->
+                        // The one opener detekt lets through, so no transaction runs off [dispatcher]
+                        // or skips its prelude.
+                        @Suppress("ForbiddenMethodCall")
+                        rootDsl.transactionResult { config ->
+                            val txDsl = config.dsl()
+                            mode.prelude(txDsl)
+                            with(TransactionContext(txDsl)) { block() }
+                        }
                 }
             }
         }
