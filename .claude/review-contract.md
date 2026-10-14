@@ -190,7 +190,8 @@ These are the most-often-missed patterns. Grep / scan for each.
 - Trailing-lambda used where it isn't the conceptual body of the call.
 - Inline FQN references instead of imports (`org.jooq.DSLContext` in a
   signature when there's no name collision).
-- Repository methods that don't take `context(ctx: TransactionContext)`, or
+- Repository methods that take no transaction context, or a write (DML or a
+  row lock) typed `TransactionContext` rather than `WriteTransactionContext`;
   services that capture a `DSLContext` instead of a `Transactor`.
 - Services calling other services inside a `tx.read` / `tx.update` for flows
   that need read-then-write atomicity or one read snapshot (see "Cross-repo
