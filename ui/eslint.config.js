@@ -75,6 +75,30 @@ const TESTID_MESSAGE =
   'Query by accessible role/label/text, not data-testid (ui/CLAUDE.md → Testing). ' +
   'If there is genuinely no accessible selector, add an eslint-disable with a one-line reason.';
 
+// The lookbehind guards the prefix position: it is what stops the `text-gray-500` inside `subtext-gray-500`.
+const COLOR_UTILITY_PREFIXES =
+  'bg|text|decoration|border(?:-[xytrbsel])?|divide|outline|ring(?:-offset)?|inset-ring|' +
+  'shadow|inset-shadow|drop-shadow|text-shadow|fill|stroke|accent|caret|placeholder|from|via|to';
+
+const TAILWIND_COLOR_RAMPS =
+  'red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|' +
+  'fuchsia|pink|rose|slate|gray|zinc|neutral|stone';
+
+const COLOR_SHADE = `(?:(?:${TAILWIND_COLOR_RAMPS})-(?:50|950|[1-9]00)|white|black)`;
+
+const RAW_COLOR_PATTERN = `(?<![\\w-])(?:${COLOR_UTILITY_PREFIXES})-${COLOR_SHADE}(?![\\w-])`;
+
+const RAW_COLOR_MESSAGE =
+  "Name the colour with a token from src/index.css's `@theme` block (ui/CLAUDE.md → Styling): " +
+  '`text-ink-muted`, not `text-gray-400`. A shade no token names gets a token there first.';
+
+// Every Literal and TemplateElement, not only `className`: hoisted class constants and the model
+// helpers that return a class name hold colours too. The prefix anchoring keeps prose out.
+const PALETTE_RESTRICTIONS = [
+  { selector: `Literal[value=/${RAW_COLOR_PATTERN}/]`, message: RAW_COLOR_MESSAGE },
+  { selector: `TemplateElement[value.raw=/${RAW_COLOR_PATTERN}/]`, message: RAW_COLOR_MESSAGE },
+];
+
 export default tseslint.config(
   { ignores: ['dist', 'coverage', 'test-report', 'node_modules'] },
   js.configs.recommended,
@@ -132,12 +156,17 @@ export default tseslint.config(
       ],
       'import-x/no-duplicates': 'error',
       'no-restricted-imports': ['error', IMPORT_RESTRICTIONS],
-      'no-restricted-syntax': ['error', { selector: AS_CAST_SELECTOR, message: AS_CAST_MESSAGE }],
+      'no-restricted-syntax': [
+        'error',
+        { selector: AS_CAST_SELECTOR, message: AS_CAST_MESSAGE },
+        ...PALETTE_RESTRICTIONS,
+      ],
     },
   },
   {
-    // `no-restricted-syntax` replaces rather than merges across blocks, so the `as` ban is restated
-    // here or every test file loses it. `no-restricted-imports` is never restated, so it carries over.
+    // `no-restricted-syntax` replaces rather than merges across blocks, so the `as` ban and the
+    // palette are restated here or every test file loses them. `no-restricted-imports` is never
+    // restated, so it carries over.
     files: ['**/*.test.{ts,tsx}'],
     plugins: { vitest, 'testing-library': testingLibrary },
     rules: {
@@ -154,6 +183,7 @@ export default tseslint.config(
         },
         { selector: 'MemberExpression[property.name=/ByTestId$/]', message: TESTID_MESSAGE },
         { selector: 'CallExpression[callee.name=/ByTestId$/]', message: TESTID_MESSAGE },
+        ...PALETTE_RESTRICTIONS,
       ],
     },
   },
@@ -170,6 +200,7 @@ export default tseslint.config(
             'The only `as` this file may use is the `camelizeKeys(parsed) as T` JSON boundary ' +
             '(ui/CLAUDE.md). Any other cast belongs behind a type guard.',
         },
+        ...PALETTE_RESTRICTIONS,
       ],
     },
   },

@@ -44,6 +44,28 @@ const CLIENT_BOUNDARY_LINES: readonly string[] = [
 
 const CONST_ASSERTION_LINE = "export const modes = ['live', 'final'] as const;";
 
+/* eslint-disable no-restricted-syntax -- fixture text: the spellings this spec exists to keep banned */
+const RAW_SHADE_LINES: readonly string[] = [
+  "export const cardClass = 'rounded-md bg-gray-800 p-4';",
+  'export const badgeClass = (tone: string): string => `border ${tone} hover:text-red-400`;',
+];
+const RAW_SHADE_JSX_LINE = 'export const Panel = () => <div className="bg-white/60" />;';
+/* eslint-enable no-restricted-syntax */
+
+// Each line would be reported by a pattern missing its lookbehind or lookahead.
+const NON_UTILITY_LINES: readonly string[] = [
+  "export const balance = 'auto-white';",
+  "export const swatchVariable = '--color-bg-white';",
+  "export const curtain = 'bg-blackout';",
+  "export const tone = 'white';",
+];
+
+// Matched on `@theme`, the token source the message names, so a rewording does not empty the filter.
+const paletteReports = (messages: readonly Linter.LintMessage[], lines: readonly string[]): readonly (string | undefined)[] =>
+  messages
+    .filter((message) => message.ruleId === 'no-restricted-syntax' && message.message.includes('@theme'))
+    .map((message) => lines[message.line - 1]);
+
 const reportedLines = (
   messages: readonly Linter.LintMessage[],
   ruleId: string,
@@ -81,6 +103,19 @@ describe.each(GOVERNED_FILES)("eslint.config.js over '%s'", (hostFile) => {
     const messages = await lintFixture([CONST_ASSERTION_LINE], hostFile);
 
     expect(reportedLines(messages, 'no-restricted-syntax', [CONST_ASSERTION_LINE])).toEqual([]);
+  });
+
+  it('reports every raw colour shade the file can hold', async () => {
+    const lines = hostFile.endsWith('.tsx') ? [...RAW_SHADE_LINES, RAW_SHADE_JSX_LINE] : RAW_SHADE_LINES;
+    const messages = await lintFixture(lines, hostFile);
+
+    expect(paletteReports(messages, lines)).toEqual(lines);
+  });
+
+  it('leaves text that only looks like a colour utility alone', async () => {
+    const messages = await lintFixture(NON_UTILITY_LINES, hostFile);
+
+    expect(reportedLines(messages, 'no-restricted-syntax', NON_UTILITY_LINES)).toEqual([]);
   });
 });
 
