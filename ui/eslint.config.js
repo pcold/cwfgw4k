@@ -91,15 +91,32 @@ const COLOR_SHADE = `(?:(?:${TAILWIND_COLOR_RAMPS})-(?:50|950|[1-9]00)|white|bla
 
 const RAW_COLOR_PATTERN = `(?<![\\w-])(?:${COLOR_UTILITY_PREFIXES})-${COLOR_SHADE}(?![\\w-])`;
 
+const COLOR_FUNCTION = '(?:rgba?|hsla?|hwb|oklch|oklab|lab|lch|color-mix|color)\\(';
+
+// An arbitrary-value utility (`bg-[#1f2937]`, `text-(--color-gray-400)`) or a ramp variable anywhere.
+const RAW_COLOR_VALUE_PATTERN =
+  `(?:(?<![\\w-])(?:${COLOR_UTILITY_PREFIXES})-[\\[(](?:#|${COLOR_FUNCTION}|color:|var\\(--color-|--color-)` +
+  `|--color-${COLOR_SHADE}(?![\\w-]))`;
+
+// Anchored to the whole string, so `'#root'` and prose that mentions `rgb(` stay out.
+const COLOR_LITERAL_PATTERN = `^\\s*(?:#[0-9a-fA-F]{3,8}|${COLOR_FUNCTION}.*)\\s*$`;
+
 const RAW_COLOR_MESSAGE =
   "Name the colour with a token from src/index.css's `@theme` block (ui/CLAUDE.md → Styling): " +
   '`text-ink-muted`, not `text-gray-400`. A shade no token names gets a token there first.';
 
-// Every Literal and TemplateElement, not only `className`: hoisted class constants and the model
-// helpers that return a class name hold colours too. The prefix anchoring keeps prose out.
+const RAW_COLOR_VALUE_MESSAGE =
+  "Name the colour with a token from src/index.css's `@theme` block (ui/CLAUDE.md → Styling): a utility " +
+  'such as `fill-ink-muted`, or `var(--color-ink-muted)` where only a value fits, never a hex or ramp variable.';
+
+// Every Literal and TemplateElement, not only `className`: hoisted class constants, the model helpers
+// that return a class name, and SVG paint attributes hold colours too. The anchoring keeps prose out.
 const PALETTE_RESTRICTIONS = [
   { selector: `Literal[value=/${RAW_COLOR_PATTERN}/]`, message: RAW_COLOR_MESSAGE },
   { selector: `TemplateElement[value.raw=/${RAW_COLOR_PATTERN}/]`, message: RAW_COLOR_MESSAGE },
+  { selector: `Literal[value=/${RAW_COLOR_VALUE_PATTERN}/]`, message: RAW_COLOR_VALUE_MESSAGE },
+  { selector: `TemplateElement[value.raw=/${RAW_COLOR_VALUE_PATTERN}/]`, message: RAW_COLOR_VALUE_MESSAGE },
+  { selector: `Literal[value=/${COLOR_LITERAL_PATTERN}/]`, message: RAW_COLOR_VALUE_MESSAGE },
 ];
 
 export default tseslint.config(

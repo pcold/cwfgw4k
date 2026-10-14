@@ -51,6 +51,14 @@ const RAW_SHADE_LINES: readonly string[] = [
   "export const chipClass = 'bg-taupe-950';",
 ];
 const RAW_SHADE_JSX_LINE = 'export const Panel = () => <div className="bg-white/60" />;';
+const RAW_VALUE_LINES: readonly string[] = [
+  "export const gridLine = '#374151';",
+  "export const axisInk = 'rgb(156 163 175)';",
+  "export const arbitraryClass = 'rounded bg-[#1f2937]';",
+  'export const variableClass = (size: string): string => `${size} text-(--color-gray-400)`;',
+  "export const rampVariable = 'var(--color-gray-400)';",
+];
+const RAW_VALUE_JSX_LINE = 'export const Axis = () => <line stroke="#9ca3af" />;';
 /* eslint-enable no-restricted-syntax */
 
 // Each line would be reported by a pattern missing its lookbehind or lookahead.
@@ -59,6 +67,10 @@ const NON_UTILITY_LINES: readonly string[] = [
   "export const swatchVariable = '--color-bg-white';",
   "export const curtain = 'bg-blackout';",
   "export const tone = 'white';",
+  "export const anchor = '#root';",
+  "export const width = 'text-[13px] w-[37px]';",
+  "export const tokenVariable = 'var(--color-ink-muted)';",
+  "export const note = 'converted with rgb(r g b)';",
 ];
 
 // Matched on `@theme`, the token source the message names, so a rewording does not empty the filter.
@@ -106,8 +118,9 @@ describe.each(GOVERNED_FILES)("eslint.config.js over '%s'", (hostFile) => {
     expect(reportedLines(messages, 'no-restricted-syntax', [CONST_ASSERTION_LINE])).toEqual([]);
   });
 
-  it('reports every raw colour shade the file can hold', async () => {
-    const lines = hostFile.endsWith('.tsx') ? [...RAW_SHADE_LINES, RAW_SHADE_JSX_LINE] : RAW_SHADE_LINES;
+  it('reports every raw colour the file can hold', async () => {
+    const plainLines = [...RAW_SHADE_LINES, ...RAW_VALUE_LINES];
+    const lines = hostFile.endsWith('.tsx') ? [...plainLines, RAW_SHADE_JSX_LINE, RAW_VALUE_JSX_LINE] : plainLines;
     const messages = await lintFixture(lines, hostFile);
 
     expect(paletteReports(messages, lines)).toEqual(lines);
