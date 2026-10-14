@@ -58,6 +58,11 @@ class CreateSeasonViolationSpec : FunSpec({
             CreateSeasonViolation.NegativeSideBetAmount
     }
 
+    test("a negative flat side-bet amount is NegativeSideBetAmount even when rules carry the written amount") {
+        val shadowed = request(SeasonRules.defaults()).copy(sideBetAmount = BigDecimal("-15"))
+        shadowed.violation() shouldBe CreateSeasonViolation.NegativeSideBetAmount
+    }
+
     test("a zero side-bet amount has no violation, since zero is the season with no side bets") {
         request(SeasonRules.defaults().copy(sideBetAmount = BigDecimal.ZERO)).violation().shouldBeNull()
         request(rules = null).copy(sideBetAmount = BigDecimal.ZERO).violation().shouldBeNull()
