@@ -1,6 +1,5 @@
 package com.cwfgw.http
 
-import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.ContentConvertException
@@ -8,10 +7,10 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
 import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.plugins.CannotTransformContentToTypeException
 import io.ktor.server.plugins.UnsupportedMediaTypeException
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.plugins.statuspages.StatusPagesConfig
-import io.ktor.server.request.contentType
 import io.ktor.server.request.httpMethod
 import io.ktor.server.request.path
 import io.ktor.server.response.header
@@ -159,14 +158,13 @@ private fun ApplicationCall.logDeniedAuthorization(reason: String) {
 }
 
 /**
- * [UnsupportedMediaTypeException] is mapped as a leaf: `PayloadTooLargeException` shares its base. A typed
- * receive's mismatch never arrives as an exception — Ktor 3.2's engine answers it a bare 415, which the status
- * handler fills.
+ * Each 415 exception is mapped as a leaf: `PayloadTooLargeException` shares their base. An empty JSON body is not
+ * a 415 but a rejected body, like a truncated one, so no `status` handler backs these up.
  */
 private fun StatusPagesConfig.mapReceiveFailures() {
     exception<BadRequestException> { call, cause -> call.respondToBadRequest(cause) }
     exception<UnsupportedMediaTypeException> { call, _ -> call.respondUnsupportedMediaType() }
-    status(HttpStatusCode.UnsupportedMediaType) { call, _ -> call.respondToBareUnsupportedMediaType() }
+    exception<CannotTransformContentToTypeException> { call, _ -> call.respondUnsupportedMediaType() }
 }
 
 /**
@@ -184,15 +182,6 @@ private suspend fun ApplicationCall.respondToBadRequest(cause: BadRequestExcepti
  */
 private fun BadRequestException.isRejectedBody(): Boolean =
     generateSequence<Throwable>(this) { it.cause }.any { it is ContentConvertException }
-
-/**
- * The JSON converter returns null for an empty body, so Ktor reports one as a content-type mismatch: a bare 415
- * on a request labeled JSON is that body, and not its label, at fault.
- */
-private suspend fun ApplicationCall.respondToBareUnsupportedMediaType() {
-    val labeledJson = request.contentType().match(ContentType.Application.Json)
-    if (labeledJson) respondMalformedBody() else respondUnsupportedMediaType()
-}
 
 private suspend fun ApplicationCall.respondMalformedBody() {
     respond(HttpStatusCode.BadRequest, ErrorBody("malformed or invalid request body"))

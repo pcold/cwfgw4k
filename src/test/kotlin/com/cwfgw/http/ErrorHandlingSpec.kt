@@ -301,7 +301,7 @@ class ErrorHandlingSpec : FunSpec({
         }
     }
 
-    test("an empty JSON body is the same 400, though Ktor reports it as a content-type mismatch") {
+    test("an empty JSON body is the same 400") {
         errorHandlingTestApp { client ->
             val response = client.postJson("/receive/plain", "")
 
