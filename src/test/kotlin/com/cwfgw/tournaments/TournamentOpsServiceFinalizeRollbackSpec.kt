@@ -159,52 +159,81 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
         afterRollback?.status shouldBe TournamentStatus.Upcoming
     }
 
-    test("finalizeTournament rolls back the ESPN import when calculateScoresIn returns an error") {
+    test("finalizeTournament rolls back the ESPN import when scoring can't find the season") {
         val seeded = runBlocking { tx.update { seedUpcomingMasters() } }
-        val espnEvent =
-            EspnTournament(
-                espnId = "401580999",
-                name = "The Masters",
-                completed = true,
-                competitors = listOf(unseenWinner()),
-                isTeamEvent = false,
-            )
-        val espnService =
-            EspnService(
-                client = FakeEspnClient(tournamentsByDate = mapOf(seeded.startDate to listOf(espnEvent))),
-                seasonRepository = seasonRepo,
-                golferRepository = golferRepo,
-                teamRepository = teamRepo,
-                tournamentRepository = tournamentRepo,
-                linkRepository = linkRepo,
-                tx = tx,
-            )
-        val scoringService =
-            ScoringService(
-                repository = realScoringRepo,
-                seasonRepository = SeasonHidingSeasonRepository(seasonRepo),
-                tournamentRepository = tournamentRepo,
-                teamRepository = teamRepo,
-            )
+        val opsService = opsServiceScoringThrough(tx, seeded, scoringSeasons = SeasonHidingSeasonRepository(seasonRepo))
+
+        val outcome = runBlocking { opsService.finalizeTournament(seeded.id) }
+
+        tx.shouldHoldNothingImportedFor(seeded)
+        outcome shouldBe Result.Err(TournamentOpsError.SeasonNotFound(seeded.seasonId))
+    }
+
+    test("finalizeTournament rolls back the ESPN import when scoring can't find the tournament") {
+        val seeded = runBlocking { tx.update { seedUpcomingMasters() } }
         val opsService =
-            TournamentOpsService(
-                tournamentRepository = tournamentRepo,
-                scoringService = scoringService,
-                scoringRepository = realScoringRepo,
-                espnService = espnService,
-                tx = tx,
+            opsServiceScoringThrough(
+                tx,
+                seeded,
+                scoringTournaments = TournamentHidingTournamentRepository(tournamentRepo),
             )
 
         val outcome = runBlocking { opsService.finalizeTournament(seeded.id) }
 
-        runBlocking { tx.read { tournamentRepo.findById(seeded.id) } }?.status shouldBe TournamentStatus.Upcoming
-        runBlocking { tx.read { tournamentRepo.getResults(seeded.id) } }.shouldBeEmpty()
-        runBlocking { tx.read { golferRepo.findByPgaPlayerId(UNSEEN_WINNER_ESPN_ID) } } shouldBe null
-        outcome shouldBe Result.Err(TournamentOpsError.SeasonNotFound(seeded.seasonId))
+        tx.shouldHoldNothingImportedFor(seeded)
+        outcome shouldBe Result.Err(TournamentOpsError.TournamentNotFound(seeded.id))
     }
 })
 
+private const val MASTERS_ESPN_ID = "401580999"
 private const val UNSEEN_WINNER_ESPN_ID = "3470"
+
+/** Only scoring reads through [scoringSeasons] and [scoringTournaments]; finalize and the import see every row. */
+private fun opsServiceScoringThrough(
+    tx: Transactor,
+    seeded: Tournament,
+    scoringSeasons: SeasonRepository = SeasonRepository(),
+    scoringTournaments: TournamentRepository = TournamentRepository(),
+): TournamentOpsService {
+    val espnEvent =
+        EspnTournament(
+            espnId = MASTERS_ESPN_ID,
+            name = "The Masters",
+            completed = true,
+            competitors = listOf(unseenWinner()),
+            isTeamEvent = false,
+        )
+    val espnService =
+        EspnService(
+            client = FakeEspnClient(tournamentsByDate = mapOf(seeded.startDate to listOf(espnEvent))),
+            seasonRepository = SeasonRepository(),
+            golferRepository = GolferRepository(),
+            teamRepository = TeamRepository(),
+            tournamentRepository = TournamentRepository(),
+            linkRepository = TournamentLinkRepository(),
+            tx = tx,
+        )
+    val scoringService =
+        ScoringService(
+            repository = ScoringRepository(),
+            seasonRepository = scoringSeasons,
+            tournamentRepository = scoringTournaments,
+            teamRepository = TeamRepository(),
+        )
+    return TournamentOpsService(
+        tournamentRepository = TournamentRepository(),
+        scoringService = scoringService,
+        scoringRepository = ScoringRepository(),
+        espnService = espnService,
+        tx = tx,
+    )
+}
+
+private suspend fun Transactor.shouldHoldNothingImportedFor(tournament: Tournament) {
+    read { TournamentRepository().findById(tournament.id) }?.status shouldBe TournamentStatus.Upcoming
+    read { TournamentRepository().getResults(tournament.id) }.shouldBeEmpty()
+    read { GolferRepository().findByPgaPlayerId(UNSEEN_WINNER_ESPN_ID) } shouldBe null
+}
 
 context(ctx: TransactionContext)
 private fun seedUpcomingMasters(): Tournament {
@@ -219,7 +248,7 @@ private fun seedUpcomingMasters(): Tournament {
             seasonId = season.id,
             startDate = LocalDate.parse("2026-04-09"),
             endDate = LocalDate.parse("2026-04-12"),
-            pgaTournamentId = "401580999",
+            pgaTournamentId = MASTERS_ESPN_ID,
             payoutMultiplier = BigDecimal.ONE,
         ),
     )
@@ -241,12 +270,20 @@ private fun unseenWinner(): EspnCompetitor =
         pairKey = null,
     )
 
-/** Hides every season from [findById], which is the first thing `calculateScoresIn` reads, so it returns an Err. */
+/** `calculateScoresIn` returns Err on a null [findById]; finalize has already written by then. */
 private class SeasonHidingSeasonRepository(
     delegate: SeasonRepository,
 ) : SeasonRepository by delegate {
     context(ctx: TransactionContext)
     override fun findById(id: SeasonId): Season? = null
+}
+
+/** @see SeasonHidingSeasonRepository */
+private class TournamentHidingTournamentRepository(
+    delegate: TournamentRepository,
+) : TournamentRepository by delegate {
+    context(ctx: TransactionContext)
+    override fun findById(id: TournamentId): Tournament? = null
 }
 
 /**
