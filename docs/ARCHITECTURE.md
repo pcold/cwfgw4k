@@ -316,7 +316,9 @@ The payout table's length is the number of paying places. An admin sets the rule
    *p* … *p*+`numTied`−1, counting places past the table as $0. T4 with three tied averages ($8+$7+$6)/3 = $7
    (`PayoutTable.tieSplitPayout`; spec: ties, tail tie).
 3. **The tournament multiplier scales payouts and the floor.** Base payout and floor are both multiplied by the
-   tournament's `payout_multiplier` (spec: multiplier; `ScoringServiceSpec` multiplier).
+   tournament's `payout_multiplier` (spec: multiplier; `ScoringServiceSpec` multiplier). By league convention
+   an admin sets 2 on the four majors, The Players Championship and the Tour Championship; no code knows which
+   events those are.
 4. **Team events count pairs, not golfers.** ESPN lists both partners at the pair's position, so tied units are
    `numTied / 2` (at least 1), and each partner gets half the pair's payout (`PayoutTable.tiedUnits`; spec:
    team event cases).
@@ -514,5 +516,7 @@ shared code in `shared/`.
   live overlay instead races it at $0 and charges it, so the two views disagree.
 - **A season with no side-bet rounds (CWF-186).** Create refuses an empty round list, and an empty rules table
   reads back as the default rounds, so a side-bet amount of 0 is the only way to turn the bets off.
+- **A pick outside rounds 1–8, or a second pick in one round (CWF-195).** Upload accepts it, and the report's
+  ledger then stops being zero-sum (see Weekly ledger).
 - **A shared ESPN-event resolver (CWF-179).** Finalize, schedule preview and the competitors route each match a
   tournament to its ESPN event their own way.
