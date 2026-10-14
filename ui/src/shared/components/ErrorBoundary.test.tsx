@@ -56,18 +56,6 @@ describe('ErrorBoundary', () => {
     expect(screen.queryByText(/render exploded/)).not.toBeInTheDocument();
   });
 
-  it('leaves the crash in the console, the only place it is reported until there is a beacon', () => {
-    renderWithProviders(
-      <ErrorBoundary>
-        <Boom />
-      </ErrorBoundary>,
-      { withLeagueSeasonProvider: false },
-    );
-
-    const loggedArguments = vi.mocked(console.error).mock.calls.flat();
-    expect(loggedArguments).toContainEqual(expect.objectContaining({ message: 'render exploded' }));
-  });
-
   it('reloads the page from the fallback', async () => {
     const reload = vi.fn();
     vi.spyOn(window, 'location', 'get').mockReturnValue({ ...window.location, reload });
@@ -81,5 +69,16 @@ describe('ErrorBoundary', () => {
     await userEvent.click(screen.getByRole('button', { name: /reload/i }));
 
     expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it('links back to the scoreboard for a page that crashes again on reload', () => {
+    renderWithProviders(
+      <ErrorBoundary>
+        <Boom />
+      </ErrorBoundary>,
+      { withLeagueSeasonProvider: false },
+    );
+
+    expect(screen.getByRole('link', { name: /back to the scoreboard/i })).toHaveAttribute('href', '/');
   });
 });

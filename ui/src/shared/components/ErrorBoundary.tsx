@@ -36,6 +36,11 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
           <button type="button" className={RELOAD_BUTTON_CLASS} onClick={() => window.location.reload()}>
             Reload
           </button>
+          {/* A plain anchor, not a router Link: the boundary sits outside the router. The way out when this URL
+              crashes on every load. */}
+          <a href="/" className="mt-4 block text-sm text-gray-400 hover:text-white">
+            Back to the scoreboard
+          </a>
         </div>
       </div>
     );
