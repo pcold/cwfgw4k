@@ -13,8 +13,10 @@ data class AppConfig(
     val debug: DebugConfig,
 ) {
     companion object {
+        // Not default(): since Hoplite 3.0 that ranks every environment variable above these sources, so an
+        // exported DB_SCHEMA would beat an override. The environment reaches config only through ${...} substitution.
         fun load(overrides: Map<String, Any> = emptyMap()): AppConfig =
-            ConfigLoaderBuilder.default()
+            ConfigLoaderBuilder.defaultWithoutPropertySources()
                 .addDecoder(ConfigSecretDecoder())
                 .addDecoder(PositiveSecondsDecoder())
                 .apply { if (overrides.isNotEmpty()) addMapSource(overrides) }
