@@ -1,12 +1,11 @@
 package com.cwfgw.users
 
-import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.TEST_ADMIN_PASSWORD
 import com.cwfgw.testing.TEST_ADMIN_USERNAME
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
-import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.seedUser
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -26,29 +25,11 @@ import io.ktor.http.contentType
 import io.ktor.http.setCookie
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.ApplicationTestBuilder
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
 
 private const val TEST_BCRYPT_COST = 4
-
-private fun withSeededAdmin(
-    username: String = "admin",
-    password: String = "hunter2",
-): ApiFixture.() -> Unit =
-    {
-        val repo = FakeUserRepository()
-        val service = AuthService(repo, FakeTransactor(), cost = TEST_BCRYPT_COST)
-        runBlocking {
-            val hash = service.hashPassword(password)
-            with(noopTransactionContext) {
-                repo.create(NewUser(username = username, passwordHash = hash, role = UserRole.Admin))
-            }
-        }
-        userRepository = repo
-        authService = service
-    }
 
 @OptIn(ExperimentalSerializationApi::class)
 private val TEST_JSON =
@@ -83,7 +64,7 @@ private suspend fun HttpClient.sessionCookieFromLogin(): Cookie {
 class AuthRoutesSpec : FunSpec({
 
     test("POST /auth/login with valid credentials returns 200 with the user and sets a session cookie") {
-        apiTest(withSeededAdmin()) { _ ->
+        apiTest({ seedUser(username = "admin", password = "hunter2", role = UserRole.Admin) }) { _ ->
             val client = cookieClient()
             val response =
                 client.post("/api/v1/auth/login") {
@@ -138,7 +119,7 @@ class AuthRoutesSpec : FunSpec({
     }
 
     test("POST /auth/login with the wrong password returns 401 with the generic credential message") {
-        apiTest(withSeededAdmin()) { client ->
+        apiTest({ seedUser(username = "admin", password = "hunter2", role = UserRole.Admin) }) { client ->
             val response =
                 client.post("/api/v1/auth/login") {
                     contentType(ContentType.Application.Json)
@@ -150,7 +131,7 @@ class AuthRoutesSpec : FunSpec({
     }
 
     test("POST /auth/login with an unknown username returns the same 401 — no enumeration leak") {
-        apiTest(withSeededAdmin()) { client ->
+        apiTest({ seedUser(username = "admin", password = "hunter2", role = UserRole.Admin) }) { client ->
             val response =
                 client.post("/api/v1/auth/login") {
                     contentType(ContentType.Application.Json)
@@ -162,13 +143,13 @@ class AuthRoutesSpec : FunSpec({
     }
 
     test("GET /auth/me without a session returns 401") {
-        apiTest(withSeededAdmin()) { client ->
+        apiTest({ seedUser(username = "admin", password = "hunter2", role = UserRole.Admin) }) { client ->
             client.get("/api/v1/auth/me").status shouldBe HttpStatusCode.Unauthorized
         }
     }
 
     test("GET /auth/me after login returns the authenticated user") {
-        apiTest(withSeededAdmin()) { _ ->
+        apiTest({ seedUser(username = "admin", password = "hunter2", role = UserRole.Admin) }) { _ ->
             val client = cookieClient()
             client.post("/api/v1/auth/login") {
                 contentType(ContentType.Application.Json)
@@ -183,7 +164,7 @@ class AuthRoutesSpec : FunSpec({
     }
 
     test("POST /auth/logout invalidates the session so subsequent /me returns 401") {
-        apiTest(withSeededAdmin()) { _ ->
+        apiTest({ seedUser(username = "admin", password = "hunter2", role = UserRole.Admin) }) { _ ->
             val client = cookieClient()
             client.post("/api/v1/auth/login") {
                 contentType(ContentType.Application.Json)
@@ -199,17 +180,11 @@ class AuthRoutesSpec : FunSpec({
 
     test("a user deleted from the DB mid-session can no longer hit /me — revocation is immediate") {
         val repo = FakeUserRepository()
-        val service = AuthService(repo, FakeTransactor(), cost = TEST_BCRYPT_COST)
-        runBlocking {
-            val hash = service.hashPassword("hunter2")
-            with(noopTransactionContext) {
-                repo.create(NewUser(username = "admin", passwordHash = hash, role = UserRole.Admin))
-            }
-        }
         apiTest(
             {
                 userRepository = repo
-                authService = service
+                authService = AuthService(repo, FakeTransactor(), cost = TEST_BCRYPT_COST)
+                seedUser(username = "admin", password = "hunter2", role = UserRole.Admin)
             },
         ) { _ ->
             val client = cookieClient()
@@ -227,7 +202,7 @@ class AuthRoutesSpec : FunSpec({
     }
 
     test("a tampered cookie value fails HMAC verification and is treated as no session") {
-        apiTest(withSeededAdmin()) { client ->
+        apiTest({ seedUser(username = "admin", password = "hunter2", role = UserRole.Admin) }) { client ->
             val response =
                 client.get("/api/v1/auth/me") {
                     cookie(name = "cwfgw_session", value = "not-a-valid-signed-session")

@@ -3,48 +3,24 @@ package com.cwfgw.tournamentLinks
 import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.leagues.CreateLeagueRequest
-import com.cwfgw.leagues.LeagueRepository
-import com.cwfgw.seasons.CreateSeasonRequest
-import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.testing.postgresHarness
-import com.cwfgw.tournaments.CreateTournamentRequest
+import com.cwfgw.testing.seedTournament
 import com.cwfgw.tournaments.TournamentId
-import com.cwfgw.tournaments.TournamentRepository
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import java.time.LocalDate
 import java.util.UUID
 
 class TournamentLinkRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
     val repository = TournamentLinkRepository()
-    val leagueRepo = LeagueRepository()
-    val seasonRepo = SeasonRepository()
-    val tournamentRepo = TournamentRepository()
     val golferRepo = GolferRepository()
     val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
 
-    suspend fun seedTournament(): TournamentId =
-        tx.update {
-            val league = leagueRepo.create(CreateLeagueRequest(name = "Castlewood Fantasy Golf"))
-            val season =
-                seasonRepo.create(CreateSeasonRequest(leagueId = league.id, name = "2026 Season", seasonYear = 2026))
-            tournamentRepo.create(
-                CreateTournamentRequest(
-                    name = "Zurich Classic",
-                    seasonId = season.id,
-                    startDate = LocalDate.parse("2026-04-23"),
-                    endDate = LocalDate.parse("2026-04-26"),
-                ),
-            ).id
-        }
-
     test("upsert inserts a new override and listByTournament returns it") {
-        val tournamentId = seedTournament()
+        val tournamentId = tx.update { seedTournament() }
         val golfer = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick")) }
 
         val saved =
@@ -58,7 +34,7 @@ class TournamentLinkRepositorySpec : FunSpec({
     }
 
     test("upsert on existing key replaces the linked golfer") {
-        val tournamentId = seedTournament()
+        val tournamentId = tx.update { seedTournament() }
         val (first, second) =
             tx.update {
                 golferRepo.create(CreateGolferRequest(firstName = "Alex", lastName = "Fitzpatrick")) to
@@ -73,8 +49,8 @@ class TournamentLinkRepositorySpec : FunSpec({
     }
 
     test("listByTournament scopes results to one tournament") {
-        val tournamentA = seedTournament()
-        val tournamentB = seedTournament()
+        val tournamentA = tx.update { seedTournament() }
+        val tournamentB = tx.update { seedTournament() }
         val golfer = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick")) }
 
         tx.update {
@@ -87,7 +63,7 @@ class TournamentLinkRepositorySpec : FunSpec({
     }
 
     test("delete removes the matching row and returns true") {
-        val tournamentId = seedTournament()
+        val tournamentId = tx.update { seedTournament() }
         val golfer = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick")) }
         tx.update { repository.upsert(tournamentId, "abc-123", golfer.id) }
 
@@ -96,7 +72,7 @@ class TournamentLinkRepositorySpec : FunSpec({
     }
 
     test("delete returns false when no matching row exists") {
-        val tournamentId = seedTournament()
+        val tournamentId = tx.update { seedTournament() }
 
         tx.update { repository.delete(tournamentId, "never-stored") } shouldBe false
     }

@@ -1,10 +1,10 @@
 package com.cwfgw.seasons
 
 import com.cwfgw.leagues.LeagueId
-import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.testing.seedSeasons
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
@@ -43,16 +43,11 @@ private fun season(
         updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
     )
 
-private fun seasons(vararg seeded: Season): ApiFixture.() -> Unit =
-    {
-        seasonService = SeasonService(FakeSeasonRepository(initial = seeded.toList()), FakeTransactor())
-    }
-
 class SeasonRoutesSpec : FunSpec({
 
     test("GET /api/v1/seasons returns seeded seasons") {
         val s = season()
-        apiTest(seasons(s)) { client ->
+        apiTest({ seedSeasons(s) }) { client ->
             val response = client.get("/api/v1/seasons")
 
             response.status shouldBe HttpStatusCode.OK
@@ -66,7 +61,7 @@ class SeasonRoutesSpec : FunSpec({
         val castlewoodSeason = season(leagueId = CASTLEWOOD_ID)
         val otherSeason = season(leagueId = otherLeague, name = "Other")
 
-        apiTest(seasons(castlewoodSeason, otherSeason)) { client ->
+        apiTest({ seedSeasons(castlewoodSeason, otherSeason) }) { client ->
             val response = client.get("/api/v1/seasons?league_id=${CASTLEWOOD_ID.value}")
 
             response.status shouldBe HttpStatusCode.OK
@@ -79,7 +74,7 @@ class SeasonRoutesSpec : FunSpec({
         val y2025 = season(name = "2025", seasonYear = 2025)
         val y2026 = season(name = "2026", seasonYear = 2026)
 
-        apiTest(seasons(y2025, y2026)) { client ->
+        apiTest({ seedSeasons(y2025, y2026) }) { client ->
             val response = client.get("/api/v1/seasons?year=2025")
 
             val seasons: List<Season> = response.body()
@@ -141,7 +136,7 @@ class SeasonRoutesSpec : FunSpec({
 
     test("DELETE /api/v1/seasons/{id} returns 204 and the season leaves the list") {
         val s = season()
-        authenticatedApiTest(seasons(s)) { client ->
+        authenticatedApiTest({ seedSeasons(s) }) { client ->
             val deleteResponse = client.delete("/api/v1/seasons/${s.id.value}")
             deleteResponse.status shouldBe HttpStatusCode.NoContent
 
@@ -160,7 +155,7 @@ class SeasonRoutesSpec : FunSpec({
 
     test("DELETE /api/v1/seasons/{id} returns 401 without an authenticated session") {
         val s = season()
-        apiTest(seasons(s)) { client ->
+        apiTest({ seedSeasons(s) }) { client ->
             val response = client.delete("/api/v1/seasons/${s.id.value}")
 
             response.status shouldBe HttpStatusCode.Unauthorized
@@ -169,7 +164,7 @@ class SeasonRoutesSpec : FunSpec({
 
     test("GET /api/v1/seasons/{id}/rules returns the default rules") {
         val s = season()
-        apiTest(seasons(s)) { client ->
+        apiTest({ seedSeasons(s) }) { client ->
             val response = client.get("/api/v1/seasons/${s.id.value}/rules")
 
             response.status shouldBe HttpStatusCode.OK
