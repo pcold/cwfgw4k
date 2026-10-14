@@ -17,7 +17,10 @@ interface FieldShellProps {
   readonly label: string;
   readonly error: string | undefined;
   readonly optional?: boolean;
-  /** Sizes the box the label sits in too, and the control fills it; unset, the box fits its contents. */
+  /**
+   * Sizes the box the label sits in too, and the control fills it. Unset, the box is a plain block: its
+   * contents' width in a flex row, but the container's full width in block flow.
+   */
   readonly width?: string;
   /** For a control a table column already heads; the label still names it for assistive tech. */
   readonly hideLabel?: boolean;
