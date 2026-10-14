@@ -33,20 +33,8 @@ import java.time.format.DateTimeParseException
 private val log = KotlinLogging.logger {}
 
 /**
- * Pulls tournament results from ESPN and writes them into our DB. Composes
- * the [EspnClient] with the existing tournament / golfer / team services —
- * no direct repository access here.
- *
- * Matching strategy per competitor:
- * 1. (Non-team) match by `pga_player_id = competitor.espnId` — strongest signal.
- * 2. Fall back to exact full-name match.
- * 3. Fall back to unique last-name match, preferring a golfer already on one
- *    of this season's rosters when multiple golfers share the last name —
- *    critical for Zurich Classic team-partner rows that carry a synthetic id
- *    and can only be matched by name.
- * 4. Otherwise auto-create a Golfer. Non-team entries keep the ESPN id as
- *    their `pga_player_id`; team-partner rows skip that since the id is
- *    synthetic (`team:X:N`).
+ * A named competitor [locateExistingGolferIn] can't match becomes a new golfer. A team-partner row gets no
+ * `pga_player_id`, because its ESPN id is synthetic (`team:X:N`).
  */
 @Suppress("LongParameterList")
 class EspnService(

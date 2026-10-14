@@ -13,26 +13,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 private val log = KotlinLogging.logger {}
 
 /**
- * Orchestrates per-tournament state transitions:
- *   - finalizeTournament: ESPN import → score calculation → standings refresh
- *   - resetTournament:   delete scores + results, revert to upcoming, refresh standings
- *
- * Ordering is enforced chronologically: a tournament can't be finalized
- * while an earlier one in the same season is still upcoming/in_progress;
- * conversely, a tournament can't be reset while a later one is already
- * completed. Lives in its own service (rather than on [TournamentService])
- * so the dependency arrow points outward without creating a cycle —
- * [ScoringService] and [EspnService] both already depend on
- * [TournamentService]. Season-scope orchestration lives in
- * [com.cwfgw.seasons.SeasonOpsService].
- *
- * Both methods follow the cross-repo-flows rule: ordering check, ESPN
- * persistence (when applicable), scoring writes, standings refresh, and
- * the final read all run inside one `tx.update` via direct repositories
- * + the composable [ScoringService.calculateScoresIn] /
- * [ScoringService.refreshStandingsIn]. The ESPN network call lives
- * outside the transaction so a Postgres connection is never held across
- * an HTTP round trip (CWF-25).
+ * Finalize fetches from ESPN before opening its `tx.update`, so no connection is held across the HTTP round trip.
  */
 class TournamentOpsService(
     private val tournamentRepository: TournamentRepository,
