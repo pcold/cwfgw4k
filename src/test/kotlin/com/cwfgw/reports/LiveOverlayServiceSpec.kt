@@ -321,6 +321,21 @@ class LiveOverlayServiceSpec : FunSpec({
         cell.positionStr shouldBe "T2"
     }
 
+    test("mergeLiveData leaves a team event's partner untied when his pair has the position to itself") {
+        val base = emptyReport(listOf(teamColumn(TEAM_A_ID, cells = listOf(cell(round = 1, golferId = SCOTTIE_ID)))))
+        val oneOfTwoPartnerRows = previewGolfer(SCOTTIE_ID, position = 1, payout = BigDecimal(9), numTied = 2)
+        val live =
+            preview(
+                teams = listOf(previewTeam(teamId = TEAM_A_ID, golfers = listOf(oneOfTwoPartnerRows))),
+                isTeamEvent = true,
+            )
+
+        val cell = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false).teams.single().cells.single()
+
+        cell.finish shouldBe ReportCellFinish(position = 1, tied = false)
+        cell.positionStr shouldBe "1"
+    }
+
     test("mergeLiveData bumps team.topTenMoney + topTenCount for live wins (non-additive mode)") {
         val base =
             emptyReport(
