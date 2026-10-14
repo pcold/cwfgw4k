@@ -20,6 +20,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.MultiPartData
 import io.ktor.http.content.OutgoingContent
@@ -33,6 +34,7 @@ import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import java.time.Duration
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ServerContentNegotiation
 import io.ktor.server.routing.get as routingGet
 import io.ktor.server.routing.post as routingPost
@@ -41,6 +43,29 @@ private const val MALFORMED_BODY = "malformed or invalid request body"
 private const val UNSUPPORTED_CONTENT_TYPE = "unsupported or missing content type"
 private const val LOGIN_PATH = "/api/v1/auth/login"
 private const val CLIENT_MARKER = "zq7-client-marker"
+private const val FORBIDDEN_ID = "3f1c2b7e-0d4a-4e8b-9c6f-5a2e1d7b8c90"
+
+/** Unauthorized among them: scan traffic draws 401s in volume, so only a 403 earns a line. */
+private val QUIET_DOMAIN_ERRORS =
+    mapOf(
+        "/throw/not-found" to HttpStatusCode.NotFound,
+        "/throw/validation" to HttpStatusCode.BadRequest,
+        "/throw/unprocessable" to HttpStatusCode.UnprocessableEntity,
+        "/throw/conflict" to HttpStatusCode.Conflict,
+        "/throw/refused" to HttpStatusCode.Conflict,
+        "/throw/throttled" to HttpStatusCode.TooManyRequests,
+        "/throw/unauthorized" to HttpStatusCode.Unauthorized,
+    )
+
+/** (seconds, nanos) of the wait → the header. The last overflows any conversion to millis or a +1. */
+private val RETRY_AFTER_BY_WAIT =
+    mapOf(
+        (1L to 400_000L) to "2",
+        (0L to 120_000_000L) to "1",
+        (0L to 0L) to "1",
+        (-5L to 0L) to "1",
+        (Long.MAX_VALUE to 999_999_999L) to Long.MAX_VALUE.toString(),
+    )
 
 @Serializable
 private data class NameHolder(val name: String)
@@ -63,7 +88,21 @@ private fun errorHandlingTestApp(block: suspend (HttpClient) -> Unit) =
             routing {
                 routingGet("/throw/not-found") { throw DomainError.NotFound("league xyz") }
                 routingGet("/throw/validation") { throw DomainError.Validation("bad input") }
+                routingGet("/throw/unprocessable") { throw DomainError.Unprocessable("not this pairing") }
                 routingGet("/throw/conflict") { throw DomainError.Conflict("already exists") }
+                routingGet("/throw/refused") {
+                    throw DomainError.Refused("links are locked", code = "tournament_finalized")
+                }
+                routingGet("/throw/throttled") {
+                    throw DomainError.TooManyRequests("slow down", Duration.ofMillis(1_500))
+                }
+                routingGet("/throw/throttled-for") {
+                    val seconds = call.request.queryParameters["seconds"].orEmpty().toLong()
+                    val nanos = call.request.queryParameters["nanos"].orEmpty().toLong()
+                    throw DomainError.TooManyRequests("slow down", Duration.ofSeconds(seconds, nanos))
+                }
+                routingGet("/throw/unauthorized") { throw DomainError.Unauthorized("authentication required") }
+                routingGet("/throw/forbidden/{id}") { throw DomainError.Forbidden("admin role required") }
                 routingGet("/throw/unmapped") { error("boom") }
                 routingGet("/throw/payload-too-large") { throw PayloadTooLargeException(sizeLimit = 1_024) }
                 routingPost("/receive/plain") {
@@ -162,6 +201,9 @@ private fun CapturedLogs.atWarnOrAbove(): List<String> =
 private fun CapturedLogs.rendered(): List<String> =
     events().map { it.formattedMessage + ThrowableProxyUtil.asString(it.throwableProxy) }
 
+private fun CapturedLogs.deniedAuthorizations(): List<ILoggingEvent> =
+    events().filter { it.formattedMessage.startsWith("cwfgw4k.forbidden ") }
+
 private fun CapturedLogs.unhandledErrorsOn(request: String): List<ILoggingEvent> =
     events().filter { it.formattedMessage == "Unhandled error on $request" }
 
@@ -191,6 +233,44 @@ class ErrorHandlingSpec : FunSpec({
 
             response.status shouldBe HttpStatusCode.Conflict
             response.body<ErrorBody>().error shouldBe "already exists"
+        }
+    }
+
+    test("DomainError.Unprocessable maps to 422 with the error message in the body") {
+        errorHandlingTestApp { client ->
+            val response = client.get("/throw/unprocessable")
+
+            response.status shouldBe HttpStatusCode.UnprocessableEntity
+            response.bodyAsText() shouldBe """{"error":"not this pairing"}"""
+        }
+    }
+
+    test("DomainError.Refused maps to 409 with its code beside the error message in the body") {
+        errorHandlingTestApp { client ->
+            val response = client.get("/throw/refused")
+
+            response.status shouldBe HttpStatusCode.Conflict
+            response.bodyAsText() shouldBe """{"refusal":"tournament_finalized","error":"links are locked"}"""
+        }
+    }
+
+    test("DomainError.TooManyRequests maps to 429 with a Retry-After rounded up to whole seconds") {
+        errorHandlingTestApp { client ->
+            val response = client.get("/throw/throttled")
+
+            response.status shouldBe HttpStatusCode.TooManyRequests
+            response.bodyAsText() shouldBe """{"error":"slow down"}"""
+            response.headers[HttpHeaders.RetryAfter] shouldBe "2"
+        }
+    }
+
+    test("Retry-After never names a deadline that has not arrived, nor one sooner than a second away") {
+        errorHandlingTestApp { client ->
+            RETRY_AFTER_BY_WAIT.forEach { (wait, header) ->
+                val (seconds, nanos) = wait
+                client.get("/throw/throttled-for?seconds=$seconds&nanos=$nanos")
+                    .headers[HttpHeaders.RetryAfter] shouldBe header
+            }
         }
     }
 
@@ -346,16 +426,28 @@ class ErrorHandlingSpec : FunSpec({
         }
     }
 
-    test("DomainError.NotFound, Validation and Conflict log nothing at WARN or above") {
+    test("every 4xx DomainError but Forbidden logs nothing at WARN or above") {
         captureLogs { logs ->
             errorHandlingTestApp { client ->
-                val paths = listOf("/throw/not-found", "/throw/validation", "/throw/conflict")
-
-                paths.map { client.get(it).status } shouldBe
-                    listOf(HttpStatusCode.NotFound, HttpStatusCode.BadRequest, HttpStatusCode.Conflict)
+                QUIET_DOMAIN_ERRORS.keys.map { client.get(it).status } shouldBe QUIET_DOMAIN_ERRORS.values.toList()
             }
 
             logs.atWarnOrAbove().shouldBeEmpty()
+        }
+    }
+
+    test("DomainError.Forbidden logs one line at WARN naming the method, the normalized route and the reason") {
+        captureLogs { logs ->
+            errorHandlingTestApp { client ->
+                val response = client.get("/throw/forbidden/$FORBIDDEN_ID")
+
+                response.status shouldBe HttpStatusCode.Forbidden
+                response.bodyAsText() shouldBe """{"error":"admin role required"}"""
+            }
+
+            logs.deniedAuthorizations().map { it.level } shouldBe listOf(Level.WARN)
+            logs.deniedAuthorizations().map { it.formattedMessage } shouldBe
+                listOf("""cwfgw4k.forbidden method=GET route=/throw/forbidden/:id reason="admin role required"""")
         }
     }
 

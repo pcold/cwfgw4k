@@ -43,7 +43,8 @@ private suspend fun RoutingContext.resetTournament(service: TournamentOpsService
 private fun TournamentOpsError.toDomainError(): DomainError =
     when (this) {
         is TournamentOpsError.TournamentNotFound -> DomainError.NotFound("tournament ${id.value} not found")
-        is TournamentOpsError.OutOfOrder -> DomainError.Conflict(outOfOrderMessage())
+        is TournamentOpsError.OutOfOrder ->
+            DomainError.Refused(outOfOrderMessage(), code = "tournament_out_of_order")
         is TournamentOpsError.UpstreamUnavailable -> DomainError.BadGateway(failure.summary)
         is TournamentOpsError.EventNotInScoreboard ->
             DomainError.NotFound("ESPN scoreboard does not contain event $espnEventId for the linked date")

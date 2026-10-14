@@ -16,6 +16,7 @@ import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.testing.shouldBeRefused
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
@@ -183,7 +184,7 @@ class TournamentLinkRoutesSpec : FunSpec({
         }
     }
 
-    test("POST /admin/tournaments/{id}/player-overrides returns 409 when the tournament is finalized") {
+    test("POST /admin/tournaments/{id}/player-overrides is refused when the tournament is finalized") {
         val configure =
             fixture(tournaments = listOf(tournament(FINALIZED_TOURNAMENT_ID, status = TournamentStatus.Completed)))
         authenticatedApiTest(configure) { client ->
@@ -192,7 +193,7 @@ class TournamentLinkRoutesSpec : FunSpec({
                     contentType(ContentType.Application.Json)
                     setBody(UpsertTournamentPlayerOverrideRequest("abc-123", GOLFER_ID))
                 }
-            response.status shouldBe HttpStatusCode.Conflict
+            response.shouldBeRefused("tournament_finalized")
         }
     }
 
@@ -224,7 +225,7 @@ class TournamentLinkRoutesSpec : FunSpec({
         }
     }
 
-    test("DELETE returns 409 when the tournament is finalized") {
+    test("DELETE is refused when the tournament is finalized") {
         val configure =
             fixture(
                 tournaments = listOf(tournament(FINALIZED_TOURNAMENT_ID, status = TournamentStatus.Completed)),
@@ -234,7 +235,7 @@ class TournamentLinkRoutesSpec : FunSpec({
         authenticatedApiTest(configure) { client ->
             val response =
                 client.delete("/api/v1/admin/tournaments/${FINALIZED_TOURNAMENT_ID.value}/player-overrides/abc-123")
-            response.status shouldBe HttpStatusCode.Conflict
+            response.shouldBeRefused("tournament_finalized")
         }
     }
 
@@ -311,12 +312,12 @@ class TournamentLinkRoutesSpec : FunSpec({
         }
     }
 
-    test("GET /admin/tournaments/{id}/competitors returns 409 when the tournament has no pgaTournamentId") {
+    test("GET /admin/tournaments/{id}/competitors is refused when the tournament has no pgaTournamentId") {
         val configure =
             fixture(tournaments = listOf(tournament(TOURNAMENT_ID, pgaTournamentId = null)))
         authenticatedApiTest(configure) { client ->
             val response = client.get("/api/v1/admin/tournaments/${TOURNAMENT_ID.value}/competitors")
-            response.status shouldBe HttpStatusCode.Conflict
+            response.shouldBeRefused("tournament_not_linked")
         }
     }
 })

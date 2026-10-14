@@ -18,6 +18,7 @@ import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.shouldBeRefused
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
@@ -152,7 +153,7 @@ class TournamentOpsRoutesSpec : FunSpec({
         }
     }
 
-    test("POST /api/v1/tournaments/{id}/finalize returns 409 when an earlier tournament is unfinalized") {
+    test("POST /api/v1/tournaments/{id}/finalize is refused when an earlier tournament is unfinalized") {
         val sony = tournament(SONY_ID, "Sony Open", "2026-01-15", status = TournamentStatus.Upcoming)
         val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.Upcoming)
         val configure =
@@ -167,7 +168,7 @@ class TournamentOpsRoutesSpec : FunSpec({
 
         authenticatedApiTest(configure) { client ->
             val response = client.post("/api/v1/tournaments/${MASTERS_ID.value}/finalize")
-            response.status shouldBe HttpStatusCode.Conflict
+            response.shouldBeRefused("tournament_out_of_order")
             response.bodyAsText().shouldContain("Sony Open")
         }
     }
@@ -196,12 +197,12 @@ class TournamentOpsRoutesSpec : FunSpec({
         }
     }
 
-    test("POST /api/v1/tournaments/{id}/reset returns 409 when a later tournament is already completed") {
+    test("POST /api/v1/tournaments/{id}/reset is refused when a later tournament is already completed") {
         val sony = tournament(SONY_ID, "Sony Open", "2026-01-15", status = TournamentStatus.Completed)
         val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.Completed)
         authenticatedApiTest(opsFixture(initialTournaments = listOf(sony, masters))) { client ->
             val response = client.post("/api/v1/tournaments/${SONY_ID.value}/reset")
-            response.status shouldBe HttpStatusCode.Conflict
+            response.shouldBeRefused("tournament_out_of_order")
             response.bodyAsText().shouldContain("The Masters")
         }
     }
