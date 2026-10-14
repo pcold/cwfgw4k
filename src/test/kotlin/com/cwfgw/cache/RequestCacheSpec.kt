@@ -237,9 +237,10 @@ class RequestCacheSpec : FunSpec({
         cache.cachedJsonGet(TEST_KEY, TEST_ROUTE, fetch = fetch) shouldBe "[\"2\"]"
     }
 
-    test("a fill whose fetch straddles a clear answers its caller but stores nothing") {
+    test("a fill whose fetch straddles another instance's clear answers its caller but stores nothing") {
         val rows = FakeCacheRepository()
         val cache = RequestCache(rows, FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
+        val otherInstance = RequestCache(rows, FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
         val fetchStarted = CompletableDeferred<Unit>()
         val gate = CompletableDeferred<String>()
 
@@ -252,7 +253,7 @@ class RequestCacheSpec : FunSpec({
                     }
                 }
             fetchStarted.await()
-            cache.clear()
+            otherInstance.clear()
             gate.complete("[\"pre-write\"]")
 
             straddling.await() shouldBe "[\"pre-write\"]"
@@ -260,9 +261,10 @@ class RequestCacheSpec : FunSpec({
         rows.storedKeys().shouldBeEmpty()
     }
 
-    test("a read after a clear fetches for itself instead of joining a fill that began before it") {
-        val cache =
-            RequestCache(FakeCacheRepository(), FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
+    test("a read after another instance's clear fetches for itself instead of joining a fill that began before it") {
+        val rows = FakeCacheRepository()
+        val cache = RequestCache(rows, FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
+        val otherInstance = RequestCache(rows, FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
         val fetchStarted = CompletableDeferred<Unit>()
         val gate = CompletableDeferred<String>()
 
@@ -275,7 +277,7 @@ class RequestCacheSpec : FunSpec({
                     }
                 }
             fetchStarted.await()
-            cache.clear()
+            otherInstance.clear()
             val afterClear =
                 async(start = CoroutineStart.UNDISPATCHED) {
                     cache.cachedJsonGet(TEST_KEY, TEST_ROUTE) { "[\"post-write\"]" }
