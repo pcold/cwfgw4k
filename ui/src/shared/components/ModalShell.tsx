@@ -15,7 +15,7 @@ const FOCUSABLE_SELECTOR = [
 /** `wide` is for a list of editable rows, whose controls sit beside each row's label. */
 export type ModalWidth = 'form' | 'detail' | 'wide';
 
-const PANEL_GEOMETRY = 'bg-gray-800 rounded-lg shadow-xl max-h-[90vh] overflow-y-auto border border-gray-600';
+const PANEL_GEOMETRY = 'bg-gray-800 rounded-lg shadow-xl max-h-[90dvh] overflow-y-auto border border-gray-600';
 
 const PANEL_WIDTH: Record<ModalWidth, string> = {
   form: 'w-[min(92vw,22rem)]',
@@ -54,7 +54,8 @@ function trapDestination(panel: HTMLElement, event: KeyboardEvent): HTMLElement 
 
 /**
  * Trapped, not merely moved: `aria-modal` has told a screen reader the page is inert, so the keyboard
- * must not reach it either. Mount is open.
+ * must not reach it either. Mount is open. Shells don't stack: each owns the scroll lock and Escape
+ * outright, so a second one open at once would be released and closed with the first.
  */
 function useModalDialog(onClose: () => void): RefObject<HTMLDivElement | null> {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -112,7 +113,7 @@ function useModalDialog(onClose: () => void): RefObject<HTMLDivElement | null> {
 
 /**
  * For a modal gating its body on a query, whose `QueryState` must sit inside the panel; all else uses
- * `FormModal`.
+ * `FormModal`. The cap is `dvh`: mobile `vh` ignores the on-screen keyboard and pushes the footer off-screen.
  */
 export default function ModalShell({
   title,
