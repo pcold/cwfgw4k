@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jooq.DSLContext
 import org.jooq.exception.DataAccessException
+import org.jooq.impl.DSL
 
 /**
  * `block` is not `suspend` on purpose: it parks a thread on a pooled
@@ -47,12 +48,13 @@ private const val SLOW_TX_THRESHOLD_MS: Long = 3_000
 // SLOW_TX_THRESHOLD_MS, so the holder that timed a waiter out logs slow_tx when it ends.
 internal const val LOCK_TIMEOUT_MS: Long = 5_000
 
-private const val BOUNDED_LOCK_WAITS = "SET LOCAL lock_timeout = '${LOCK_TIMEOUT_MS}ms'"
-
 /** SQLSTATE `lock_not_available`. Read through jOOQ's cause walk, so a coroutine-recovered copy still matches. */
 internal const val LOCK_NOT_AVAILABLE = "55P03"
 
-/** The block's writes did not happen: its transaction rolled back when the waiting statement failed. */
+/**
+ * The block's writes did not happen: its transaction rolled back when the waiting statement failed. True
+ * while only [Transactor.update] sets a bound and nothing locks `NOWAIT` inside an auto-commit [Transactor.get].
+ */
 internal fun DataAccessException.isLockTimeout(): Boolean = sqlState() == LOCK_NOT_AVAILABLE
 
 private val log = KotlinLogging.logger("com.cwfgw.db.Transactor")
@@ -93,7 +95,7 @@ private class JooqTransactor(
             withContext(dispatcher) {
                 rootDsl.transactionResult { config ->
                     val txDsl = config.dsl()
-                    txDsl.execute(BOUNDED_LOCK_WAITS)
+                    txDsl.setLocal(DSL.unquotedName("lock_timeout"), DSL.inline("${LOCK_TIMEOUT_MS}ms")).execute()
                     with(TransactionContext(txDsl)) { block() }
                 }
             }

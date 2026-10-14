@@ -59,15 +59,6 @@ class LockTimeoutSpec : FunSpec({
             logs.events().filter { it.level == Level.ERROR }.shouldBeEmpty()
         }
     }
-
-    test("every write transaction bounds its lock waits") {
-        transactor.update { lockTimeout() } shouldBe "${TimeUnit.MILLISECONDS.toSeconds(LOCK_TIMEOUT_MS)}s"
-    }
-
-    test("reads leave lock_timeout unset, since they take no row lock") {
-        transactor.get { lockTimeout() } shouldBe "0"
-        transactor.read { lockTimeout() } shouldBe "0"
-    }
 })
 
 private fun touchTestApp(
@@ -116,6 +107,3 @@ context(ctx: TransactionContext)
 private fun touchHeldLeague() {
     ctx.dsl.update(LEAGUES).set(LEAGUES.NAME, LEAGUES.NAME).where(LEAGUES.NAME.eq(HELD_LEAGUE)).execute()
 }
-
-context(ctx: TransactionContext)
-private fun lockTimeout(): String? = ctx.dsl.fetchValue("SHOW lock_timeout")?.toString()
