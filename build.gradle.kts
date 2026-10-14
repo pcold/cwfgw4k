@@ -318,13 +318,17 @@ tasks.register<com.github.gradle.node.npm.task.NpmTask>("uiLint") {
     dependsOn("uiInstall")
     args.set(listOf("run", "lint"))
     inputs.dir("ui/src")
-    inputs.file("ui/package.json")
+    inputs.files("ui/package.json", "ui/package-lock.json")
     inputs.file("ui/eslint.config.js")
     // Type-aware rules resolve every file through these.
     inputs.files("ui/tsconfig.json", "ui/tsconfig.app.json", "ui/tsconfig.node.json")
     // `eslint .` lints the config files at the ui/ root too.
     inputs.files("ui/postcss.config.js", "ui/vite.config.ts")
-    outputs.file("ui/.eslintcache")
+    // A stamp, not `eslint --cache`: that cache keys a file on its own text, so a type changed in one
+    // file leaves the type-aware findings it causes in another unreported.
+    val passedStamp = layout.buildDirectory.file("uiLint/passed")
+    outputs.file(passedStamp)
+    doLast { passedStamp.get().asFile.writeText("") }
 }
 
 // Bundle ui/dist into the runtime jar under static/ so StaticRoutes can serve the React UI

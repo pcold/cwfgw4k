@@ -24,4 +24,3 @@ test-report
 *.njsproj
 *.sln
 *.sw?
-.eslintcache
