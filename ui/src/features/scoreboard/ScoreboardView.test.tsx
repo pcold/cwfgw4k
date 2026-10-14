@@ -162,7 +162,7 @@ describe('ScoreboardView', () => {
           teams: [
             team({
               teamName: 'Aces',
-              // positionStr null so the leaderboard ignores this row and we only see the name once
+              // finish null so the leaderboard ignores this row and we only see the name once
               cells: [row({ golferId: 'g-42', golferName: 'TeamGolfer', positionStr: null, finish: null })],
             }),
           ],
