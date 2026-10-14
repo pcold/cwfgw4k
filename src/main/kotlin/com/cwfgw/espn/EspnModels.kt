@@ -2,7 +2,6 @@ package com.cwfgw.espn
 
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.teams.TeamId
-import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 
 /**
@@ -66,16 +65,10 @@ enum class EspnStatus(val code: String) {
 }
 
 /**
- * One entry in ESPN's season schedule — a tournament's stable id, a
- * human-readable label, and an ISO date for when it starts. Returned by
- * `GET /api/v1/espn/calendar` so operators can preview which events are
- * available before linking them to local tournaments.
- *
  * `startDate` stays a String because ESPN's format includes a time
  * component we don't parse here; the field is informational and we don't
  * make scheduling decisions off it.
  */
-@Serializable
 data class EspnCalendarEntry(
     val id: String,
     val label: String,
