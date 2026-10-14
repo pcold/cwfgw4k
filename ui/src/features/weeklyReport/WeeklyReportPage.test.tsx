@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
 import type { League, Season, Tournament, WeeklyReport } from '@/shared/api/types';
 import WeeklyReportPage from './WeeklyReportPage';
+import type { downloadWeeklyReportPdf } from './weeklyReportPdf';
 
 const leaguesMock = vi.fn<typeof api.leagues>();
 const seasonsMock = vi.fn<typeof api.seasons>();
@@ -25,6 +26,13 @@ vi.mock('@/shared/api/client', () => ({
       tournamentReportMock(seasonId, tournamentId, live),
   },
   ApiError: class ApiError extends Error {},
+}));
+
+const downloadPdfMock = vi.fn<typeof downloadWeeklyReportPdf>();
+
+vi.mock('./weeklyReportPdf', () => ({
+  downloadWeeklyReportPdf: (report: WeeklyReport, season: Season | null) =>
+    downloadPdfMock(report, season),
 }));
 
 const league: League = { id: 'lg-1', name: 'Test League', createdAt: '2026-01-01T00:00:00Z' };
@@ -144,6 +152,7 @@ describe('WeeklyReportPage', () => {
     tournamentsMock.mockReset();
     seasonReportMock.mockReset();
     tournamentReportMock.mockReset();
+    downloadPdfMock.mockReset();
   });
 
   it('loads the season report by default (All Tournaments) when the season has no tournaments yet', async () => {
@@ -268,5 +277,45 @@ describe('WeeklyReportPage', () => {
 
     const button = await screen.findByRole('button', { name: /Download PDF/i });
     expect(button).toBeDisabled();
+  });
+
+  it('shows an error and re-enables Download PDF when the PDF build fails', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([]);
+    seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
+    downloadPdfMock.mockImplementation(() => {
+      throw new Error('autoTable exploded');
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<WeeklyReportPage />);
+    await screen.findByRole('heading', { name: /All Tournaments/i });
+    const button = screen.getByRole('button', { name: /Download PDF/i });
+    await user.click(button);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Failed to generate PDF.*autoTable exploded/);
+    expect(button).toBeEnabled();
+  });
+
+  it('clears the PDF error when the next download attempt starts', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([]);
+    seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
+    downloadPdfMock.mockImplementationOnce(() => {
+      throw new Error('autoTable exploded');
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<WeeklyReportPage />);
+    await screen.findByRole('heading', { name: /All Tournaments/i });
+    const button = screen.getByRole('button', { name: /Download PDF/i });
+    await user.click(button);
+    await screen.findByRole('alert');
+    await user.click(button);
+
+    await waitFor(() => expect(downloadPdfMock).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
