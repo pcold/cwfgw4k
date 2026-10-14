@@ -1,6 +1,7 @@
 package com.cwfgw.cache
 
 import com.cwfgw.db.Transactor
+import com.cwfgw.db.isLockTimeout
 import com.cwfgw.http.appJson
 import com.cwfgw.http.normalizeRoute
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -11,6 +12,7 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.RoutingContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.serialization.serializer
+import org.jooq.exception.DataAccessException
 import java.time.Clock
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
@@ -124,8 +126,7 @@ class RequestCache(
                 "cwfgw4k.cache event=fetch-exit route=$routeTemplate " +
                     "duration_ms=${System.currentTimeMillis() - fetchStarted}"
             }
-            tx.update { repository.put(storedKey, fresh, clock.instant().plus(ttl)) }
-            log.info { "cwfgw4k.cache event=put route=$routeTemplate ttl_seconds=${ttl.seconds}" }
+            store(storedKey, fresh, routeTemplate, ttl)
             ours.complete(fresh)
             return fresh
         } catch (t: Throwable) {
@@ -142,6 +143,26 @@ class RequestCache(
             // we clean up doesn't get a stale stub.
             inFlight.remove(storedKey, ours)
         }
+    }
+
+    /**
+     * A put that waits out the lock timeout leaves the entry unstored rather than failing the GET that
+     * already holds its answer. `unstored`, not a hyphenated event: the metric extracts `[a-z]+`.
+     */
+    private suspend fun store(
+        storedKey: String,
+        fresh: String,
+        routeTemplate: String,
+        ttl: Duration,
+    ) {
+        try {
+            tx.update { repository.put(storedKey, fresh, clock.instant().plus(ttl)) }
+        } catch (e: DataAccessException) {
+            if (!e.isLockTimeout()) throw e
+            log.warn(e) { "cwfgw4k.cache event=unstored route=$routeTemplate" }
+            return
+        }
+        log.info { "cwfgw4k.cache event=put route=$routeTemplate ttl_seconds=${ttl.seconds}" }
     }
 
     // A space, because a request URI cannot hold one: the last space in a stored

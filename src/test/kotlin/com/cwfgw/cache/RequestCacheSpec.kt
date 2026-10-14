@@ -1,13 +1,31 @@
 package com.cwfgw.cache
 
+import ch.qos.logback.classic.Level
+import com.cwfgw.db.LOCK_NOT_AVAILABLE
+import com.cwfgw.db.TransactionContext
+import com.cwfgw.http.installErrorHandling
 import com.cwfgw.testing.FakeTransactor
+import com.cwfgw.testing.captureLogs
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpStatusCode
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.application.install
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.routing.get
+import io.ktor.server.routing.routing
+import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.serialization.json.Json
+import org.jooq.exception.DataAccessException
+import java.sql.SQLException
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -36,6 +54,22 @@ private class StepClock(start: Instant = Instant.parse("2026-05-03T00:00:00Z")) 
     override fun getZone() = ZoneOffset.UTC
 
     override fun withZone(zone: ZoneId) = error("not used in tests")
+}
+
+/** Every put fails as jOOQ reports a failed statement, with [sqlState] on the wrapped driver exception. */
+private class FailingPutRepository(private val sqlState: String) : CacheRepository {
+    context(ctx: TransactionContext)
+    override fun get(key: String): String? = null
+
+    context(ctx: TransactionContext)
+    override fun put(
+        key: String,
+        value: String,
+        expiresAt: Instant,
+    ): Unit = throw DataAccessException("SQL [insert into cache ...]; ERROR", SQLException("ERROR", sqlState))
+
+    context(ctx: TransactionContext)
+    override fun deleteExpired(): Int = 0
 }
 
 class RequestCacheSpec : FunSpec({
@@ -140,5 +174,47 @@ class RequestCacheSpec : FunSpec({
         val deleted = cache.deleteExpired()
 
         deleted shouldBe 1
+    }
+
+    test("a cached GET whose put waits out the lock timeout answers 200 with its body, logging the skip at WARN") {
+        val cache =
+            RequestCache(
+                FailingPutRepository(sqlState = LOCK_NOT_AVAILABLE),
+                FakeTransactor(),
+                TEST_REVISION,
+                defaultTtl = Duration.ofMinutes(5),
+            )
+
+        captureLogs { logs ->
+            testApplication {
+                application {
+                    install(ContentNegotiation) { json(Json) }
+                    installErrorHandling()
+                    routing { get(TEST_KEY) { cachedRespond(cache) { listOf("fresh") } } }
+                }
+                val response = client.get(TEST_KEY)
+
+                response.status shouldBe HttpStatusCode.OK
+                response.bodyAsText() shouldBe """["fresh"]"""
+            }
+
+            logs.events().filter { it.formattedMessage.startsWith("cwfgw4k.cache event=unstored ") }
+                .map { it.level } shouldBe listOf(Level.WARN)
+            logs.events().filter { it.level == Level.ERROR }.shouldBeEmpty()
+        }
+    }
+
+    test("a put that fails for any other reason still fails the GET") {
+        val cache =
+            RequestCache(
+                FailingPutRepository(sqlState = "23505"),
+                FakeTransactor(),
+                TEST_REVISION,
+                defaultTtl = Duration.ofMinutes(5),
+            )
+
+        shouldThrow<DataAccessException> {
+            cache.cachedJsonGet(TEST_KEY, TEST_ROUTE) { "[\"fresh\"]" }
+        }
     }
 })
