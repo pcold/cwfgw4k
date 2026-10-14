@@ -34,7 +34,7 @@ fun isOnOrBefore(
     b: Tournament,
 ): Boolean = tournamentOrdering.compare(a, b) <= 0
 
-/** [numTied] is every result row at [position] across the whole field, the count the payout was split on. */
+/** [numTied] is every result row at [position] across the whole field, as [PayoutTable.tieSplitPayout] takes it. */
 internal fun finishAt(
     position: Int,
     numTied: Int,
