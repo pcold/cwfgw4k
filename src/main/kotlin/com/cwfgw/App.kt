@@ -65,8 +65,8 @@ fun Application.module(
 }
 
 /**
- * The one loop that catches, as the only pass here that does I/O: a sweep ended by one database blip
- * would leave expired rows piling up until the process restarts.
+ * The one loop that catches, as the only pass here that reaches the database: a sweep ended by one
+ * blip would leave expired rows piling up until the process restarts.
  */
 private fun Application.launchCacheSweep(
     requestCache: RequestCache,
@@ -114,8 +114,8 @@ private const val POOL_METRICS_INTERVAL_SECONDS: Long = 30
 
 /**
  * Pushed from the application scope, not pulled through `/debug/threads`, so the dump keeps coming
- * when the request pipeline is wedged; `cwfgw4k.debug.probe` opens each for grep. No catch: what the
- * dump documents throwing needs a security manager, a non-HotSpot JVM or uninstalled probes.
+ * when the request pipeline is wedged; `cwfgw4k.debug.probe` opens each for grep. No catch: its
+ * documented throws need a security manager, a JVM without lock-usage monitoring, or probes uninstalled mid-dump.
  */
 private fun Application.launchDebugProbeLog() {
     val intervalMs = DEBUG_PROBE_INTERVAL_SECONDS * 1000L
