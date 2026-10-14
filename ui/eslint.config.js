@@ -160,7 +160,7 @@ export default tseslint.config(
   {
     // Pinned rather than switched off for the file, which would also pass any later cast in the
     // module every endpoint call goes through.
-    files: ['src/shared/api/client.ts'],
+    files: ['src/shared/api/client/core.ts'],
     rules: {
       'no-restricted-syntax': [
         'error',

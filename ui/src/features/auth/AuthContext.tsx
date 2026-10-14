@@ -1,7 +1,8 @@
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from 'react';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { ApiError, api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
+import { onSessionExpired } from '@/shared/api/sessionExpiry';
 import type { User, UserRole } from '@/shared/api/types';
 
 interface AuthValue {
@@ -18,6 +19,16 @@ interface AuthValue {
 
 const AuthContext = createContext<AuthValue | null>(null);
 
+/**
+ * Re-ask `me` rather than set it to null: a 401 from a request sent before a fresh login must not
+ * sign the new session out. Not a reset, which would unmount the page (and its unsaved input) while
+ * `me` answers; `cancelRefetch: false` joins a burst of reports to the one re-ask in flight.
+ */
+function expireSession(queryClient: QueryClient): void {
+  if (!queryClient.getQueryData<User | null>(queryKeys.auth.me())) return;
+  void queryClient.refetchQueries({ queryKey: queryKeys.auth.me() }, { cancelRefetch: false });
+}
+
 export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
   const queryClient = useQueryClient();
 
@@ -28,6 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
     queryFn: api.authMe,
     staleTime: Infinity,
   });
+
+  useEffect(() => onSessionExpired(() => expireSession(queryClient)), [queryClient]);
 
   const loginMutation = useMutation({
     mutationFn: ({ username, password }: { username: string; password: string }) =>

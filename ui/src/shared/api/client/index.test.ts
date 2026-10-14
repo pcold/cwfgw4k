@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { nth } from '@/shared/test/nth';
-import { ApiError, api, camelizeKeys, snakeifyKeys } from './client';
+import { ApiError, api, camelizeKeys, snakeifyKeys } from './index';
+import { adminApi } from './admin';
+import { authApi } from './auth';
+import { golfersApi } from './golfers';
+import { leaguesApi } from './leagues';
+import { reportsApi } from './reports';
+import { seasonsApi } from './seasons';
+import { teamsApi } from './teams';
+import { tournamentLinksApi } from './tournamentLinks';
+import { tournamentsApi } from './tournaments';
 
 type FetchMock = Mock<typeof fetch>;
 
@@ -588,5 +597,24 @@ describe('api client', () => {
     expect(body).toEqual({ first_name: 'Alex', last_name: 'Fitzpatrick' });
     expect(result.firstName).toBe('Alex');
     expect(result.pgaPlayerId).toBeNull();
+  });
+});
+
+describe('api', () => {
+  it('takes every endpoint from exactly one slice, so no spread silently shadows another', () => {
+    const slices = [
+      adminApi,
+      authApi,
+      golfersApi,
+      leaguesApi,
+      reportsApi,
+      seasonsApi,
+      teamsApi,
+      tournamentLinksApi,
+      tournamentsApi,
+    ];
+    const declared = slices.flatMap((slice) => Object.keys(slice));
+
+    expect(Object.keys(api)).toHaveLength(declared.length);
   });
 });

@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router';
 import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { ApiError } from '@/shared/api/client';
+import { notifySessionExpired } from '@/shared/api/sessionExpiry';
 import AdminPage from './AdminPage';
 
 const authMeMock = vi.fn<typeof api.authMe>();
@@ -171,5 +172,73 @@ describe('AdminPage', () => {
       expect(logoutMock).toHaveBeenCalled();
     });
     expect(await screen.findByRole('dialog', { name: /Admin Login/i })).toBeInTheDocument();
+  });
+
+  // The client reports a mid-session 401 through `sessionExpiry`, which this file leaves real.
+  describe('when a request reports the session expired', () => {
+    async function renderSignedIn(): Promise<void> {
+      authMeMock.mockResolvedValue(adminUser);
+      renderWithProviders(<AdminPage />, { withAuthProvider: true, withLeagueSeasonProvider: false });
+      await screen.findByRole('heading', { name: 'Admin' });
+    }
+
+    function reportExpiry(times = 1): void {
+      act(() => {
+        for (let report = 0; report < times; report += 1) notifySessionExpired();
+      });
+    }
+
+    function holdTheReask(): (answer: Awaited<ReturnType<typeof api.authMe>>) => void {
+      let answerReask: (answer: Awaited<ReturnType<typeof api.authMe>>) => void = () => undefined;
+      authMeMock.mockReturnValue(
+        new Promise((resolve) => {
+          answerReask = resolve;
+        }),
+      );
+      return (answer) => {
+        act(() => {
+          answerReask(answer);
+        });
+      };
+    }
+
+    it('returns the admin to the login modal instead of leaving refused sections on screen', async () => {
+      await renderSignedIn();
+
+      authMeMock.mockResolvedValue(null);
+      reportExpiry();
+
+      expect(await screen.findByRole('dialog', { name: /Admin Login/i })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Admin' })).not.toBeInTheDocument();
+    });
+
+    it('asks the server once for a burst of refused requests', async () => {
+      await renderSignedIn();
+
+      const answerReask = holdTheReask();
+      reportExpiry(3);
+      answerReask(null);
+      await screen.findByRole('dialog', { name: /Admin Login/i });
+      reportExpiry(2);
+
+      expect(screen.getByRole('dialog', { name: /Admin Login/i })).toBeInTheDocument();
+      expect(authMeMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps a session the server still honours, and the input typed into it', async () => {
+      const user = userEvent.setup();
+      await renderSignedIn();
+      await user.type(screen.getByLabelText('New league name'), 'Castlewood');
+
+      const answerReask = holdTheReask();
+      reportExpiry();
+      await waitFor(() => {
+        expect(authMeMock).toHaveBeenCalledTimes(2);
+      });
+      answerReask(adminUser);
+
+      expect(await screen.findByLabelText('New league name')).toHaveValue('Castlewood');
+      expect(screen.queryByRole('dialog', { name: /Admin Login/i })).not.toBeInTheDocument();
+    });
   });
 });

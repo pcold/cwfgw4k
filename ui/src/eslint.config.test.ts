@@ -20,7 +20,7 @@ const COLD_START_TIMEOUT_MS = 120_000;
 
 const PRODUCTION_FILE = 'src/main.tsx';
 const TEST_FILE = 'src/App.test.tsx';
-const CLIENT_FILE = 'src/shared/api/client.ts';
+const CLIENT_FILE = 'src/shared/api/client/core.ts';
 const GOVERNED_FILES: readonly string[] = [PRODUCTION_FILE, TEST_FILE, CLIENT_FILE];
 
 const BANNED_IMPORT_LINES: readonly string[] = [
