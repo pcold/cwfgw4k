@@ -14,7 +14,7 @@ class DatabaseHealthProbeSpec : FunSpec({
     val postgres = postgresHarness()
 
     test("reports connected against a live database") {
-        val probe = DatabaseHealthProbe(Transactor(postgres.dsl, postgres.maxPoolSize))
+        val probe = DatabaseHealthProbe(HealthRepository(), Transactor(postgres.dsl, postgres.maxPoolSize))
 
         probe.isDatabaseConnected() shouldBe true
     }
@@ -31,6 +31,7 @@ class DatabaseHealthProbeSpec : FunSpec({
             )
         val probe =
             DatabaseHealthProbe(
+                HealthRepository(),
                 Transactor(DSL.using(throwawayPool, SQLDialect.POSTGRES), throwawayPool.maximumPoolSize),
             )
         throwawayPool.close()
