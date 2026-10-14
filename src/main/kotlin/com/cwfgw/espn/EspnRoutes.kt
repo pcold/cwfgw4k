@@ -59,12 +59,15 @@ private suspend fun RoutingContext.importForTournament(service: EspnService) {
 private fun RoutingContext.tournamentId(): TournamentId =
     call.parameters["tournamentId"]?.toTournamentId() ?: throw DomainError.Validation("invalid tournament id")
 
-/** Not logged: the value is caller input, the exception quotes it, and the 400 already answers the caller. */
-private fun parseLocalDate(raw: String): LocalDate? =
+/**
+ * Chained rather than logged: the exception quotes the caller's input, and a [DomainError.Validation] never reaches
+ * a log line.
+ */
+private fun parseLocalDate(raw: String): LocalDate =
     try {
         LocalDate.parse(raw)
-    } catch (_: DateTimeParseException) {
-        null
+    } catch (e: DateTimeParseException) {
+        throw DomainError.Validation("invalid query parameter date", cause = e)
     }
 
 private fun EspnError.toDomainError(): DomainError =

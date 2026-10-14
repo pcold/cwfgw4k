@@ -140,8 +140,8 @@ private suspend fun ApplicationCall.respondUnhandled(cause: Throwable) {
 private fun Duration.toRetryAfterSeconds(): Long = Math.ceilDiv(toMillis(), 1_000L).coerceAtLeast(1L)
 
 /**
- * Only 403 is logged: scan traffic produces 401 and 404 in volume. Never log the body or a header;
- * neither is vetted for PII.
+ * Of the 4xx, only 403 adds a line beyond the request log: scan traffic produces 401 and 404 in volume.
+ * Never log the body or a header; neither is vetted for PII.
  */
 private fun ApplicationCall.logDeniedAuthorization(reason: String) {
     logger.warn(

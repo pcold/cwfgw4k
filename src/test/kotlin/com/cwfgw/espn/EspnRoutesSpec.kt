@@ -142,7 +142,8 @@ class EspnRoutesSpec : FunSpec({
                 response.bodyAsText() shouldNotContain CLIENT_MARKER
             }
 
-            logs.messages().filter { CLIENT_MARKER in it }.shouldBeEmpty()
+            val logged = logs.events().flatMap { listOfNotNull(it.formattedMessage, it.throwableProxy?.message) }
+            logged.filter { CLIENT_MARKER in it }.shouldBeEmpty()
         }
     }
 

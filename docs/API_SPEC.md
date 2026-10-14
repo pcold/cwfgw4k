@@ -61,8 +61,8 @@ Refusal codes on the wire today:
 
 | `refusal`                           | Raised by |
 |-------------------------------------|-----------|
-| `tournament_not_linked`             | `POST /api/v1/espn/import/tournament/{id}`, `GET /api/v1/admin/tournaments/{id}/competitors` |
-| `tournament_finalized`              | `POST` / `DELETE` `/api/v1/admin/tournaments/{id}/player-overrides` |
+| `tournament_not_linked`             | `POST /api/v1/espn/import/tournament/{tournamentId}`, `GET /api/v1/admin/tournaments/{id}/competitors` |
+| `tournament_finalized`              | `POST /api/v1/admin/tournaments/{id}/player-overrides`, `DELETE /api/v1/admin/tournaments/{id}/player-overrides/{espnCompetitorId}` |
 | `tournament_out_of_order`           | `POST /api/v1/tournaments/{id}/finalize`, `POST /api/v1/tournaments/{id}/reset` |
 | `season_has_no_tournaments`         | `POST /api/v1/seasons/{sid}/finalize` |
 | `season_has_incomplete_tournaments` | `POST /api/v1/seasons/{sid}/finalize` |
@@ -606,8 +606,8 @@ for Cloud Logging metric extraction; changing it requires coordinating
 with the shared cwfgw ops config.
 
 A 403 logs one `WARN` line, `cwfgw4k.forbidden method=GET route=/api/v1/... reason="..."`,
-with the route normalized the same way. No other 4xx logs: scan traffic
-draws 401s and 404s in volume.
+with the route normalized the same way. No other 4xx adds a line beyond
+the request log: scan traffic draws 401s and 404s in volume.
 
 Caught exceptions in service code are logged at `WARN` (root logger is
 `INFO` so `DEBUG` would go nowhere), with the throwable attached.
