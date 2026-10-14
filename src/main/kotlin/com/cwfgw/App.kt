@@ -6,7 +6,6 @@ import com.cwfgw.cache.clearResponseCacheOnWrite
 import com.cwfgw.db.PoolMetrics
 import com.cwfgw.debug.buildDebugDump
 import com.cwfgw.debug.debugRoutes
-import com.cwfgw.drafts.draftRoutes
 import com.cwfgw.golfers.golferRoutes
 import com.cwfgw.health.healthRoutes
 import com.cwfgw.http.appJson
@@ -141,7 +140,6 @@ private fun Routing.apiRoutes(services: AppServices) {
         tournamentRoutes(services.tournamentService)
         tournamentOpsRoutes(services.tournamentOpsService)
         seasonOpsRoutes(services.seasonOpsService)
-        draftRoutes(services.draftService)
         adminRoutes(services.adminService)
         tournamentLinkRoutes(services.espnService, services.tournamentLinkService)
         reportRoutes(services.weeklyReportService, services.requestCache)

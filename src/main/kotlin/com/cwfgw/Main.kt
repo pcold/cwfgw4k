@@ -10,8 +10,6 @@ import com.cwfgw.config.AuthConfig
 import com.cwfgw.db.Database
 import com.cwfgw.db.Transactor
 import com.cwfgw.db.poolMetricsOrNull
-import com.cwfgw.drafts.DraftRepository
-import com.cwfgw.drafts.DraftService
 import com.cwfgw.espn.EspnClient
 import com.cwfgw.espn.EspnService
 import com.cwfgw.golfers.GolferRepository
@@ -154,7 +152,6 @@ internal fun buildServices(
                 scoringRepository = scoringRepository,
                 tx = transactor,
             ),
-        draftService = DraftService(DraftRepository(), teamRepository, transactor),
         espnService = espnService,
         adminService = adminService,
         liveOverlayService = liveOverlayService,

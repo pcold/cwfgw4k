@@ -67,7 +67,7 @@ Refusal codes on the wire today:
 | `tournament_finalized`              | `POST /api/v1/admin/tournaments/{id}/player-overrides`, `DELETE /api/v1/admin/tournaments/{id}/player-overrides/{espnCompetitorId}` |
 | `tournament_out_of_order`           | `POST /api/v1/tournaments/{id}/finalize`, `POST /api/v1/tournaments/{id}/reset` |
 
-Service-layer typed errors (e.g. `TournamentOpsError`, `DraftError`) are
+Service-layer typed errors (e.g. `TournamentOpsError`) are
 mapped to `DomainError` at the route boundary.
 
 ### JSON casing
@@ -88,8 +88,8 @@ Variant names are SerialName-tagged; e.g. `PickMatch.Matched` serializes as
 ### Typed IDs
 
 Every domain ID on the wire — `LeagueId`, `SeasonId`, `TeamId`,
-`TournamentId`, `GolferId`, `DraftId`, `DraftPickId`, `UserId` — is a
-value class wrapping a `UUID`, sent as the raw UUID string.
+`TournamentId`, `GolferId`, `UserId` — is a value class wrapping a
+`UUID`, sent as the raw UUID string.
 Path-parameter parse failures return 400 with `"invalid <name> id"`.
 
 ### Query parameter parsing
@@ -169,18 +169,6 @@ Body shape: `{ "status": "ok" | "degraded", "service": "cwfgw", "database": "con
 | Method | Path                             | Auth | Description                                                 |
 |--------|----------------------------------|------|-------------------------------------------------------------|
 | GET    | `/api/v1/seasons/{sid}/rosters`  | No   | Display-shaped view: every team in the season + their picks |
-
-### Drafts
-
-| Method | Path                                                | Auth | Description                                                                          |
-|--------|-----------------------------------------------------|------|--------------------------------------------------------------------------------------|
-| GET    | `/api/v1/seasons/{sid}/draft`                       | No   | Get the season's draft                                                               |
-| GET    | `/api/v1/seasons/{sid}/draft/picks`                 | No   | List all picks made so far                                                           |
-| GET    | `/api/v1/seasons/{sid}/draft/available`             | No   | List golfers eligible for the next pick                                              |
-| POST   | `/api/v1/seasons/{sid}/draft`                       | Yes  | Create a draft for the season                                                        |
-| POST   | `/api/v1/seasons/{sid}/draft/start`                 | Yes  | Transition draft state from `pending` → `in_progress`                                |
-| POST   | `/api/v1/seasons/{sid}/draft/initialize?rounds=`    | Yes  | Generate snake-order picks (default 6 rounds)                                        |
-| POST   | `/api/v1/seasons/{sid}/draft/pick`                  | Yes  | Make a pick. Body: `{ "team_id": UUID, "golfer_id": UUID }`. Returns `Result<DraftPick, DraftError>` shape — typed errors map to 404/409 at the boundary |
 
 ### Tournaments
 
