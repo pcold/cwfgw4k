@@ -244,9 +244,10 @@ Two stages on purpose: `\b` in a `git grep -E` pattern matches nothing on
 macOS, and an empty result reads as clean. Markdown is taken whole, because
 its prose carries no comment marker to filter on.
 
-The grep reaches past the diff because `docs/API_SPEC.md` documents every
-endpoint and its wire shape and `README.md` states the league's rules, and a
-change to a route, a DTO or a payout rule is exactly what falsifies them.
+The grep reaches past the diff because `docs/ARCHITECTURE.md` lists every
+endpoint in its HTTP table and states the league's payout rules (`README.md`
+points there), and a change to a route or a payout rule is exactly what
+falsifies them.
 
 Every hit is a `DEFECT` unless the comment is still true. A migration whose header
 describes *its own era* is not rot — an early migration may say it created a
