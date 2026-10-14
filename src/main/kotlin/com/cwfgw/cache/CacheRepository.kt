@@ -50,13 +50,17 @@ interface CacheRepository {
         generation: CacheGeneration,
     ): Boolean
 
-    /** Delete every row whose [Instant] expiry has already passed. Returns the row count for logging. */
+    /**
+     * Delete every row whose [Instant] expiry has already passed. Returns the row count for logging. Shares the
+     * generation row first, as [clear] locks it first: deleting overlapping rows in index vs heap order can deadlock.
+     */
     context(ctx: TransactionContext)
     fun deleteExpired(): Int
 
     /**
      * Unlike [deleteExpired], takes live rows and every revision's. Advances the generation before deleting: the
-     * UPDATE waits out every [put] holding the row, so the DELETE after it sees their rows. Returns the row count.
+     * UPDATE waits out every [put] holding the row, and the DELETE sees their rows only because READ COMMITTED takes
+     * it a new snapshot. Throws when the generation row is missing. Returns the deleted row count.
      */
     context(ctx: TransactionContext)
     fun clear(): Int
@@ -106,16 +110,19 @@ private class JooqCacheRepository : CacheRepository {
     }
 
     context(ctx: TransactionContext)
-    override fun deleteExpired(): Int =
-        ctx.dsl.deleteFrom(CACHE)
+    override fun deleteExpired(): Int {
+        ctx.dsl.selectFrom(CACHE_GENERATION).forShare().fetchSingle()
+        return ctx.dsl.deleteFrom(CACHE)
             .where(CACHE.EXPIRES_AT.lessOrEqual(DSL.currentOffsetDateTime()))
             .execute()
+    }
 
     context(ctx: TransactionContext)
     override fun clear(): Int {
         ctx.dsl.update(CACHE_GENERATION)
             .set(CACHE_GENERATION.GENERATION, CACHE_GENERATION.GENERATION.plus(1))
-            .execute()
+            .returning(CACHE_GENERATION.GENERATION)
+            .fetchSingle()
         return ctx.dsl.deleteFrom(CACHE).execute()
     }
 }
