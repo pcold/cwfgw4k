@@ -38,6 +38,7 @@ private val CACHED_PROBE_ROWS: List<String> = List(100) { index -> "cached probe
 private const val TEXT_PROBE = "/api/v1/test/text-probe"
 private const val CACHED_PROBE = "/api/v1/test/cached-probe"
 private const val BODY_SIZE_PROBE = "/api/v1/test/body-size"
+private const val CACHE_REVISION = "compression-test"
 
 /**
  * Text, not JSON: text is on the encoder's allowlist, so this probe is what separates "`/api` is
@@ -165,7 +166,8 @@ class CompressionSpec : FunSpec({
     }
 
     test("a cached /api body is served uncompressed on the miss and on every hit after it") {
-        val cache = RequestCache(FakeCacheRepository(), FakeTransactor(), "compression-test", Duration.ofMinutes(5))
+        val cache =
+            RequestCache(FakeCacheRepository(), FakeTransactor(), CACHE_REVISION, defaultTtl = Duration.ofMinutes(5))
         val fetches = AtomicInteger()
         apiTest({ requestCache = cache }) { client ->
             mountCachedProbe(cache, fetches)
