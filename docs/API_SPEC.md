@@ -210,10 +210,13 @@ pull can't change them. An ESPN failure — a non-200, a timeout, a
 connection that fails — is absorbed (logged at WARN) and the response
 falls back to the base report.
 
-A report GET without `live=true` is served from the Postgres response
-cache, keyed on the deployed revision and the full request URI, for 300 seconds
-(`CACHE_DEFAULT_TTL_SECONDS`). A `live=true` request never reads or
-writes that cache: the report is rebuilt on every request, and its ESPN
+A report GET is served from the Postgres response cache, keyed on the
+deployed revision and the full request URI, for 300 seconds
+(`CACHE_DEFAULT_TTL_SECONDS`). That includes a `live=true` request while no
+tournament in the season is a live candidate (not `completed`, and starting
+within three days or already started): nothing would be overlaid, so it is
+cached under its own URI like any other. While one is, a `live=true` request
+never reads or writes that cache: the report is rebuilt on every request, and its ESPN
 data comes from an in-process cache of ESPN's scoreboard that holds each
 date for 60 seconds (`ESPN_SCOREBOARD_CACHE_TTL_SECONDS`), which is the
 most a live report can trail ESPN. A failed ESPN fetch is not cached, so
