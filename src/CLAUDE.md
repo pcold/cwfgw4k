@@ -418,11 +418,11 @@ Rules:
   and keep the app guard on top of it, returning a typed error rather than
   catching the database exception. A guard protects one code path; the
   constraint protects every one.
-- **MUST** route a unique-key write a concurrent writer can beat through
-  `tx.updateOrOutraced`, keyed on the constraint's constant, and give the loser
-  a typed error: no read-first guard closes that window. A write nested in a
-  larger transaction uses `ON CONFLICT ON CONSTRAINT` instead, since a 23505
-  aborts the whole transaction.
+- **MUST** wrap the transaction holding a unique-key write a concurrent writer
+  can beat in `tx.updateOrOutraced`, keyed on the constraint's constant, so the
+  loser gets a typed error: the guard above cannot close that window. A
+  find-or-create that must carry on inside its transaction uses
+  `ON CONFLICT ON CONSTRAINT` instead, since a 23505 aborts the whole transaction.
 - **MUST NOT** edit a landed migration, comments included. Flyway validates
   checksums on migrate, so every database holding that version refuses to
   boot, and `PostgresHarness` builds a fresh one each run, so no test sees it.
