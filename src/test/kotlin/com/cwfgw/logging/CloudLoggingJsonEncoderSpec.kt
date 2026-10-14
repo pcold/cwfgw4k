@@ -33,7 +33,7 @@ private fun String.parsed(): JsonObject = Json.parseToJsonElement(this).jsonObje
 
 private fun JsonObject.text(field: String): String? = this[field]?.jsonPrimitive?.content
 
-private class Streams(val stdout: String, val stderr: String)
+private data class Streams(val stdout: String, val stderr: String)
 
 /** Through `logback.xml` itself in a context of its own, so the test JVM's logging is left as it was. */
 private fun throughProductionConfig(block: (LoggerContext) -> Unit): Streams {
