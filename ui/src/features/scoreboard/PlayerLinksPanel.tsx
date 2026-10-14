@@ -201,7 +201,7 @@ function CompetitorRow({
           value={draftGolferId}
           disabled={disabled || pending}
           onChange={(e) => setDraftGolferId(e.target.value)}
-          className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm w-full max-w-sm disabled:opacity-50"
+          className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm w-full max-w-sm disabled:opacity-50"
         >
           <option value="">— unlinked —</option>
           {sortedGolfers.map((golfer) => (
@@ -291,7 +291,7 @@ function NewGolferInlineForm({
             value={firstName}
             disabled={pending}
             onChange={(e) => setFirstName(e.target.value)}
-            className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white disabled:opacity-50"
+            className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white disabled:opacity-50"
           />
         </label>
         <label className="text-xs text-gray-400 flex flex-col">
@@ -301,7 +301,7 @@ function NewGolferInlineForm({
             value={lastName}
             disabled={pending}
             onChange={(e) => setLastName(e.target.value)}
-            className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white disabled:opacity-50"
+            className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white disabled:opacity-50"
           />
         </label>
       </div>
