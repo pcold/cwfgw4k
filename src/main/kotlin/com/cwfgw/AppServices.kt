@@ -17,6 +17,7 @@ import com.cwfgw.tournaments.TournamentOpsService
 import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.users.AuthService
 import com.cwfgw.users.AuthSetup
+import com.cwfgw.users.LoginThrottle
 import com.cwfgw.users.UserRepository
 
 /**
@@ -40,6 +41,7 @@ data class AppServices(
     val liveOverlayService: LiveOverlayService,
     val weeklyReportService: WeeklyReportService,
     val authService: AuthService,
+    val loginThrottle: LoginThrottle,
     val userRepository: UserRepository,
     val transactor: Transactor,
     val requestCache: RequestCache,

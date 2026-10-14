@@ -1,5 +1,7 @@
 package com.cwfgw.users
 
+import java.time.Duration
+
 /**
  * Typed failure modes the auth service surfaces alongside success. Variants
  * stay free of HTTP concerns — routes map them to
@@ -13,4 +15,7 @@ sealed interface AuthError {
      * looks identical to the caller.
      */
     data object InvalidCredentials : AuthError
+
+    /** Answered before the password is verified, so a correct one inside the lockout gets this too. */
+    data class TooManyAttempts(val retryAfter: Duration) : AuthError
 }
