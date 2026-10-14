@@ -1,3 +1,16 @@
+# Provided by :detekt-rules, not by detekt itself. detekt rejects a config section naming a
+# ruleset it did not load, so this block is also the check that the module reached the
+# `detektPlugins` classpath of whichever module is being analyzed.
+cwfgw:
+  KDocLength:
+    active: true
+    # Production only, as in benrollio, whose sweeps that brought KDoc under budget never reached tests.
+    excludes: ['**/src/test/**']
+  UnsafeMessageInterpolation:
+    active: true
+    # Production only: a spec's message is read by the person whose spec failed, off a fixture they wrote.
+    excludes: ['**/src/test/**']
+
 coroutines:
   GlobalCoroutineUsage:
     active: true
