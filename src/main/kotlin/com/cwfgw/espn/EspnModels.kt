@@ -65,9 +65,8 @@ enum class EspnStatus(val code: String) {
 }
 
 /**
- * `startDate` stays a String because ESPN's format includes a time
- * component we don't parse here; the field is informational and we don't
- * make scheduling decisions off it.
+ * `startDate` stays ESPN's raw string, time component included: the admin schedule import parses only
+ * its date prefix, and skips an entry it can't parse rather than failing the preview.
  */
 data class EspnCalendarEntry(
     val id: String,
