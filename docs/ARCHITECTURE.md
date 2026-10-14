@@ -499,8 +499,7 @@ shared code in `shared/`.
   dispatch with a sha. The job runs in the `production` environment, which holds it for a required reviewer's
   approval. It authenticates with Workload Identity Federation, builds the fat jar, pushes the image to
   Artifact Registry in `us-west1` tagged with the sha and `latest`, deploys Cloud Run service `cwfgw4k`, and
-  curls `/api/v1/health`. A started deploy always finishes; a newer run
-  replaces one still waiting in the queue.
+  curls `/api/v1/health`. A started deploy always finishes; a newer run replaces one still waiting in the queue.
 - **Runtime.** Cloud Run, 1 GiB and 2 CPU, 20 concurrent requests per instance, 0 to 6 instances, 90 s
   request timeout. The JVM heap is capped at 512 MiB in the image.
 - **Database.** Cloud SQL Postgres instance `cwfgw4k-prod`, reached through the Cloud SQL socket factory.
