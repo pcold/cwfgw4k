@@ -78,8 +78,7 @@ function CleanSeasonSection(): ReactNode {
       {cleanMutation.data ? (
         <span className="block mt-3 text-sm text-green-400">
           Cleaned {cleanMutation.data.scoresDeleted} scores,{' '}
-          {cleanMutation.data.resultsDeleted} results,{' '}
-          {cleanMutation.data.standingsDeleted} standings; reset{' '}
+          {cleanMutation.data.resultsDeleted} results; reset{' '}
           {cleanMutation.data.tournamentsReset} tournaments.
         </span>
       ) : null}

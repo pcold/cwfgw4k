@@ -4,15 +4,12 @@ import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.required
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.jooq.tables.records.FantasyScoresRecord
-import com.cwfgw.jooq.tables.records.SeasonStandingsRecord
 import com.cwfgw.jooq.tables.references.FANTASY_SCORES
-import com.cwfgw.jooq.tables.references.SEASON_STANDINGS
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.TournamentId
 import org.jooq.Field
 import org.jooq.impl.DSL
-import java.math.BigDecimal
 
 interface ScoringRepository {
     context(ctx: TransactionContext)
@@ -38,20 +35,6 @@ interface ScoringRepository {
     context(ctx: TransactionContext)
     fun upsertScore(record: UpsertScore): FantasyScore
 
-    context(ctx: TransactionContext)
-    fun teamSeasonTotals(
-        seasonId: SeasonId,
-        teamId: TeamId,
-    ): TeamSeasonTotals
-
-    context(ctx: TransactionContext)
-    fun upsertStanding(
-        seasonId: SeasonId,
-        teamId: TeamId,
-        totalPoints: BigDecimal,
-        tournamentsPlayed: Int,
-    ): SeasonStanding
-
     /** Wipe every fantasy score for the given tournament. Returns the row count for logging. */
     context(ctx: TransactionContext)
     fun deleteByTournament(tournamentId: TournamentId): Int
@@ -59,16 +42,7 @@ interface ScoringRepository {
     /** Wipe every fantasy score for the season across all tournaments. */
     context(ctx: TransactionContext)
     fun deleteBySeason(seasonId: SeasonId): Int
-
-    /** Wipe every standings row for the season. */
-    context(ctx: TransactionContext)
-    fun deleteStandingsBySeason(seasonId: SeasonId): Int
 }
-
-data class TeamSeasonTotals(
-    val totalPoints: BigDecimal,
-    val tournamentsPlayed: Int,
-)
 
 /**
  * Inputs to upsert one golfer's score for a team in a tournament. The
@@ -135,25 +109,6 @@ private class JooqScoringRepository : ScoringRepository {
     }
 
     context(ctx: TransactionContext)
-    override fun teamSeasonTotals(
-        seasonId: SeasonId,
-        teamId: TeamId,
-    ): TeamSeasonTotals {
-        val totalField = DSL.coalesce(DSL.sum(FANTASY_SCORES.POINTS), BigDecimal.ZERO)
-        val countField = DSL.countDistinct(FANTASY_SCORES.TOURNAMENT_ID)
-        return ctx.dsl.select(totalField, countField)
-            .from(FANTASY_SCORES)
-            .where(FANTASY_SCORES.SEASON_ID.eq(seasonId.value))
-            .and(FANTASY_SCORES.TEAM_ID.eq(teamId.value))
-            .fetchOne { record ->
-                TeamSeasonTotals(
-                    totalPoints = record.value1() ?: BigDecimal.ZERO,
-                    tournamentsPlayed = record.value2() ?: 0,
-                )
-            } ?: TeamSeasonTotals(BigDecimal.ZERO, 0)
-    }
-
-    context(ctx: TransactionContext)
     override fun deleteByTournament(tournamentId: TournamentId): Int =
         ctx.dsl.deleteFrom(FANTASY_SCORES)
             .where(FANTASY_SCORES.TOURNAMENT_ID.eq(tournamentId.value))
@@ -164,43 +119,6 @@ private class JooqScoringRepository : ScoringRepository {
         ctx.dsl.deleteFrom(FANTASY_SCORES)
             .where(FANTASY_SCORES.SEASON_ID.eq(seasonId.value))
             .execute()
-
-    context(ctx: TransactionContext)
-    override fun deleteStandingsBySeason(seasonId: SeasonId): Int =
-        ctx.dsl.deleteFrom(SEASON_STANDINGS)
-            .where(SEASON_STANDINGS.SEASON_ID.eq(seasonId.value))
-            .execute()
-
-    context(ctx: TransactionContext)
-    override fun upsertStanding(
-        seasonId: SeasonId,
-        teamId: TeamId,
-        totalPoints: BigDecimal,
-        tournamentsPlayed: Int,
-    ): SeasonStanding {
-        val insertValues =
-            mapOf<Field<*>, Any?>(
-                SEASON_STANDINGS.SEASON_ID to seasonId.value,
-                SEASON_STANDINGS.TEAM_ID to teamId.value,
-                SEASON_STANDINGS.TOTAL_POINTS to totalPoints,
-                SEASON_STANDINGS.TOURNAMENTS_PLAYED to tournamentsPlayed,
-            )
-        val updateValues =
-            mapOf<Field<*>, Any?>(
-                SEASON_STANDINGS.TOTAL_POINTS to totalPoints,
-                SEASON_STANDINGS.TOURNAMENTS_PLAYED to tournamentsPlayed,
-                SEASON_STANDINGS.LAST_UPDATED to DSL.currentOffsetDateTime(),
-            )
-        val upserted =
-            ctx.dsl.insertInto(SEASON_STANDINGS)
-                .set(insertValues)
-                .onConflict(SEASON_STANDINGS.SEASON_ID, SEASON_STANDINGS.TEAM_ID)
-                .doUpdate()
-                .set(updateValues)
-                .returning()
-                .fetchSingle()
-        return toSeasonStanding(upserted)
-    }
 
     private fun scoreInsertAssignments(record: UpsertScore): Map<Field<*>, Any?> =
         mapOf(
@@ -244,15 +162,5 @@ private class JooqScoringRepository : ScoringRepository {
             payout = record.required(FANTASY_SCORES.PAYOUT),
             multiplier = record.required(FANTASY_SCORES.MULTIPLIER),
             calculatedAt = record.required(FANTASY_SCORES.CALCULATED_AT).toInstant(),
-        )
-
-    private fun toSeasonStanding(record: SeasonStandingsRecord): SeasonStanding =
-        SeasonStanding(
-            id = SeasonStandingId(record.required(SEASON_STANDINGS.ID)),
-            seasonId = SeasonId(record.seasonId),
-            teamId = TeamId(record.teamId),
-            totalPoints = record.required(SEASON_STANDINGS.TOTAL_POINTS),
-            tournamentsPlayed = record.required(SEASON_STANDINGS.TOURNAMENTS_PLAYED),
-            lastUpdated = record.required(SEASON_STANDINGS.LAST_UPDATED).toInstant(),
         )
 }

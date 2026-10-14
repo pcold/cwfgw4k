@@ -449,7 +449,6 @@ describe('api client', () => {
       mockJson({
         scores_deleted: 12,
         results_deleted: 3,
-        standings_deleted: 5,
         tournaments_reset: 2,
       }),
     );
@@ -461,7 +460,6 @@ describe('api client', () => {
     expect(result).toEqual({
       scoresDeleted: 12,
       resultsDeleted: 3,
-      standingsDeleted: 5,
       tournamentsReset: 2,
     });
   });
