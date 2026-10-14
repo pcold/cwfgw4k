@@ -1,6 +1,7 @@
 package com.cwfgw.tournamentLinks
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.jooq.tables.records.TournamentPlayerOverridesRecord
 import com.cwfgw.jooq.tables.references.TOURNAMENT_PLAYER_OVERRIDES
@@ -14,7 +15,7 @@ interface TournamentLinkRepository {
     context(ctx: TransactionContext)
     fun listByTournaments(ids: Collection<TournamentId>): List<TournamentPlayerOverride>
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun upsert(
         tournamentId: TournamentId,
         espnCompetitorId: String,
@@ -22,7 +23,7 @@ interface TournamentLinkRepository {
     ): TournamentPlayerOverride
 
     /** @return true if a row was deleted, false if no override existed for that pair. */
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun delete(
         tournamentId: TournamentId,
         espnCompetitorId: String,
@@ -50,7 +51,7 @@ private class JooqTournamentLinkRepository : TournamentLinkRepository {
             .fetch { row -> toOverride(row.into(TOURNAMENT_PLAYER_OVERRIDES)) }
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun upsert(
         tournamentId: TournamentId,
         espnCompetitorId: String,
@@ -76,7 +77,7 @@ private class JooqTournamentLinkRepository : TournamentLinkRepository {
         return toOverride(inserted)
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun delete(
         tournamentId: TournamentId,
         espnCompetitorId: String,

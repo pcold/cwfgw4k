@@ -1,6 +1,7 @@
 package com.cwfgw.tournamentLinks
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.tournaments.TournamentId
 import java.util.concurrent.ConcurrentHashMap
@@ -26,7 +27,7 @@ class FakeTournamentLinkRepository(
             .sortedBy { it.espnCompetitorId }
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun upsert(
         tournamentId: TournamentId,
         espnCompetitorId: String,
@@ -42,7 +43,7 @@ class FakeTournamentLinkRepository(
         return override
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun delete(
         tournamentId: TournamentId,
         espnCompetitorId: String,

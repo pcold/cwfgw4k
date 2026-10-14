@@ -2,6 +2,7 @@ package com.cwfgw.tournaments
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.espn.EspnClient
 import com.cwfgw.espn.EspnCompetitor
 import com.cwfgw.espn.EspnService
@@ -242,7 +243,7 @@ private suspend fun Transactor.shouldHoldNothingImportedFor(tournament: Tourname
     read { GolferRepository().findByPgaPlayerId(UNSEEN_WINNER_ESPN_ID) } shouldBe null
 }
 
-context(ctx: TransactionContext)
+context(ctx: WriteTransactionContext)
 private fun seedUpcomingMasters(): Tournament {
     val league = LeagueRepository().create(CreateLeagueRequest(name = "Castlewood"))
     val season =
@@ -315,15 +316,15 @@ private class ThrowingOnUpsertScoreScoringRepository(
         tournamentIds: Collection<TournamentId>?,
     ): List<FantasyScore> = delegate.getScoresBySeason(seasonId, tournamentIds)
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun upsertScore(record: UpsertScore): Nothing =
         error("Forced rollback in test: upsertScore always throws")
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteByTournament(tournamentId: TournamentId): Int =
         delegate.deleteByTournament(tournamentId)
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteBySeason(seasonId: SeasonId): Int =
         delegate.deleteBySeason(seasonId)
 }

@@ -1,6 +1,7 @@
 package com.cwfgw.scoring
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.tournaments.TournamentId
 import java.time.Instant
@@ -42,7 +43,7 @@ class FakeScoringRepository(
             .sortedWith(compareBy<FantasyScore> { it.tournamentId.value }.thenByDescending { it.points })
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun upsertScore(record: UpsertScore): FantasyScore {
         val existing =
             scores.values.firstOrNull { existing ->
@@ -72,14 +73,14 @@ class FakeScoringRepository(
         return score
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteByTournament(tournamentId: TournamentId): Int {
         val matching = scores.values.filter { it.tournamentId == tournamentId }
         matching.forEach { scores.remove(it.id) }
         return matching.size
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteBySeason(seasonId: SeasonId): Int {
         val matching = scores.values.filter { it.seasonId == seasonId }
         matching.forEach { scores.remove(it.id) }

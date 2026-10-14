@@ -2,6 +2,7 @@ package com.cwfgw.testing
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
+import com.cwfgw.db.WriteTransactionContext
 import org.jooq.SQLDialect
 import org.jooq.impl.DSL
 
@@ -12,7 +13,7 @@ import org.jooq.impl.DSL
  * opened, so this won't blow up against a connectionless DSL.
  */
 internal class FakeTransactor(
-    private val ctx: TransactionContext = noopTransactionContext,
+    private val ctx: WriteTransactionContext = noopTransactionContext,
 ) : Transactor {
     override suspend fun <A> get(block: context(TransactionContext) () -> A): A =
         with(ctx) { block() }
@@ -20,15 +21,14 @@ internal class FakeTransactor(
     override suspend fun <A> read(block: context(TransactionContext) () -> A): A =
         with(ctx) { block() }
 
-    override suspend fun <A> update(block: context(TransactionContext) () -> A): A =
+    override suspend fun <A> update(block: context(WriteTransactionContext) () -> A): A =
         with(ctx) { block() }
 }
 
 /**
- * A [TransactionContext] usable from tests that call a Fake repository directly
- * (rather than going through a service). The wrapped DSL is a connectionless
- * Postgres handle — fine for satisfying the `context(ctx: TransactionContext)`
- * signature on a Fake whose body never reaches into `ctx.dsl`. Never execute
- * SQL through this.
+ * A [WriteTransactionContext] usable from tests that call a Fake repository directly
+ * (rather than going through a service), so it satisfies a write's signature as well
+ * as a read's. The wrapped DSL is a connectionless Postgres handle — fine for a Fake
+ * whose body never reaches into `ctx.dsl`. Never execute SQL through this.
  */
-internal val noopTransactionContext: TransactionContext = TransactionContext(DSL.using(SQLDialect.POSTGRES))
+internal val noopTransactionContext: WriteTransactionContext = WriteTransactionContext(DSL.using(SQLDialect.POSTGRES))

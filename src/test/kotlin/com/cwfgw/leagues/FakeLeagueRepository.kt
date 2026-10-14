@@ -1,6 +1,7 @@
 package com.cwfgw.leagues
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -19,7 +20,7 @@ class FakeLeagueRepository(
     context(ctx: TransactionContext)
     override fun findAll(): List<League> = store.values.sortedBy { it.name }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun create(request: CreateLeagueRequest): League {
         val league = League(id = idFactory(), name = request.name, createdAt = clock())
         store[league.id] = league

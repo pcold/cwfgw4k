@@ -1,6 +1,7 @@
 package com.cwfgw.cache
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import java.time.Clock
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
@@ -26,7 +27,7 @@ class FakeCacheRepository(
     context(ctx: TransactionContext)
     override fun generation(): CacheGeneration = CacheGeneration(currentGeneration.get())
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun put(
         key: String,
         value: String,
@@ -38,7 +39,7 @@ class FakeCacheRepository(
         return true
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteExpired(): Int {
         val now = clock.instant()
         val expired = store.entries.filter { !it.value.expiresAt.isAfter(now) }
@@ -46,7 +47,7 @@ class FakeCacheRepository(
         return expired.size
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun clear(): Int {
         currentGeneration.incrementAndGet()
         val deleted = store.size

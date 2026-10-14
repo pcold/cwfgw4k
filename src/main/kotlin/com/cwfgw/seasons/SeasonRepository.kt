@@ -1,6 +1,7 @@
 package com.cwfgw.seasons
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.db.required
 import com.cwfgw.jooq.tables.records.SeasonsRecord
 import com.cwfgw.jooq.tables.references.SEASONS
@@ -21,7 +22,7 @@ interface SeasonRepository {
     context(ctx: TransactionContext)
     fun findById(id: SeasonId): Season?
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun create(request: CreateSeasonRequest): Season
 
     context(ctx: TransactionContext)
@@ -33,7 +34,7 @@ interface SeasonRepository {
      * Returns true if a row was deleted, false if the id didn't exist.
      * Single SQL DELETE — the FKs migrated in V010 cascade the subtree.
      */
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun delete(id: SeasonId): Boolean
 }
 
@@ -65,7 +66,7 @@ private class JooqSeasonRepository : SeasonRepository {
     // rounds need to be atomic. Callers reach this through tx.update { }, so
     // ctx.dsl is already transactional — every statement here joins that
     // outer transaction without a nested transactionResult.
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun create(request: CreateSeasonRequest): Season {
         val seasonNumber = request.seasonNumber ?: nextSeasonNumber(request.leagueId, request.seasonYear)
         val values = insertAssignments(request, seasonNumber)
@@ -96,7 +97,7 @@ private class JooqSeasonRepository : SeasonRepository {
         return (highestExisting ?: 0) + 1
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     private fun writeRules(
         seasonId: SeasonId,
         rules: SeasonRules,
@@ -153,7 +154,7 @@ private class JooqSeasonRepository : SeasonRepository {
         )
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun delete(id: SeasonId): Boolean =
         ctx.dsl.deleteFrom(SEASONS).where(SEASONS.ID.eq(id.value)).execute() > 0
 

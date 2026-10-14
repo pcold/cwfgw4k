@@ -1,6 +1,7 @@
 package com.cwfgw.tournaments
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.db.decoded
 import com.cwfgw.db.required
 import com.cwfgw.golfers.GolferId
@@ -24,10 +25,10 @@ interface TournamentRepository {
     context(ctx: TransactionContext)
     fun findByPgaTournamentId(pgaTournamentId: String): Tournament?
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun create(request: CreateTournamentRequest): Tournament
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun update(
         id: TournamentId,
         request: UpdateTournamentRequest,
@@ -46,22 +47,22 @@ interface TournamentRepository {
     context(ctx: TransactionContext)
     fun getResultsByTournaments(ids: Collection<TournamentId>): List<TournamentResult>
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun upsertResult(
         tournamentId: TournamentId,
         request: CreateTournamentResultRequest,
     ): TournamentResult
 
     /** Wipe every leaderboard row for the given tournament. Returns the row count for logging. */
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun deleteResultsByTournament(tournamentId: TournamentId): Int
 
     /** Wipe every leaderboard row for every tournament in the given season. */
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun deleteResultsBySeason(seasonId: SeasonId): Int
 
     /** Reset every tournament in the season to status `Upcoming`. Returns the row count for logging. */
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun resetSeasonTournaments(seasonId: SeasonId): Int
 }
 
@@ -98,7 +99,7 @@ private class JooqTournamentRepository : TournamentRepository {
             .fetchOne()
             ?.let(::toTournament)
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun create(request: CreateTournamentRequest): Tournament {
         val inserted =
             ctx.dsl.insertInto(TOURNAMENTS)
@@ -108,7 +109,7 @@ private class JooqTournamentRepository : TournamentRepository {
         return toTournament(inserted)
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun update(
         id: TournamentId,
         request: UpdateTournamentRequest,
@@ -149,13 +150,13 @@ private class JooqTournamentRepository : TournamentRepository {
             .fetch(::toResult)
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteResultsByTournament(tournamentId: TournamentId): Int =
         ctx.dsl.deleteFrom(TOURNAMENT_RESULTS)
             .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.eq(tournamentId.value))
             .execute()
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteResultsBySeason(seasonId: SeasonId): Int {
         val tournamentIds =
             ctx.dsl.select(TOURNAMENTS.ID)
@@ -171,14 +172,14 @@ private class JooqTournamentRepository : TournamentRepository {
         }
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun resetSeasonTournaments(seasonId: SeasonId): Int =
         ctx.dsl.update(TOURNAMENTS)
             .set(TOURNAMENTS.STATUS, TournamentStatus.Upcoming.value)
             .where(TOURNAMENTS.SEASON_ID.eq(seasonId.value))
             .execute()
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun upsertResult(
         tournamentId: TournamentId,
         request: CreateTournamentResultRequest,

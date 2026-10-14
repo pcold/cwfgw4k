@@ -2,6 +2,7 @@ package com.cwfgw.cache
 
 import ch.qos.logback.classic.Level
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.seasons.CreateSeasonRequest
@@ -72,7 +73,7 @@ private class FailingClearRepository(private val rows: FakeCacheRepository) : Ca
     context(ctx: TransactionContext)
     override fun generation(): CacheGeneration = rows.generation()
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun put(
         key: String,
         value: String,
@@ -80,10 +81,10 @@ private class FailingClearRepository(private val rows: FakeCacheRepository) : Ca
         generation: CacheGeneration,
     ): Boolean = rows.put(key, value, expiresAt, generation)
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteExpired(): Int = rows.deleteExpired()
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun clear(): Int = throw DataAccessException("SQL [delete from cache]; ERROR", SQLException("ERROR"))
 }
 
@@ -98,7 +99,7 @@ private class ObservedClearRepository(
     context(ctx: TransactionContext)
     override fun generation(): CacheGeneration = rows.generation()
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun put(
         key: String,
         value: String,
@@ -106,10 +107,10 @@ private class ObservedClearRepository(
         generation: CacheGeneration,
     ): Boolean = rows.put(key, value, expiresAt, generation)
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteExpired(): Int = rows.deleteExpired()
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun clear(): Int {
         onClear()
         return rows.clear()

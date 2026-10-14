@@ -1,6 +1,7 @@
 package com.cwfgw.cache
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.jooq.tables.references.CACHE
 import com.cwfgw.jooq.tables.references.CACHE_GENERATION
 import org.jooq.JSONB
@@ -42,7 +43,7 @@ interface CacheRepository {
      * it. Locks the generation row `FOR SHARE`, not `FOR KEY SHARE`, which [clear]'s non-key UPDATE wouldn't wait
      * for. Must run in a transaction, or the lock ends before the insert.
      */
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun put(
         key: String,
         value: String,
@@ -54,7 +55,7 @@ interface CacheRepository {
      * Delete every row whose [Instant] expiry has already passed. Returns the row count for logging. Shares the
      * generation row first, as [clear] locks it first: deleting overlapping rows in index vs heap order can deadlock.
      */
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun deleteExpired(): Int
 
     /**
@@ -62,7 +63,7 @@ interface CacheRepository {
      * UPDATE waits out every [put] holding the row, and the DELETE sees their rows only because READ COMMITTED takes
      * it a new snapshot. Throws when the generation row is missing. Returns the deleted row count.
      */
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     fun clear(): Int
 }
 
@@ -87,7 +88,7 @@ private class JooqCacheRepository : CacheRepository {
     override fun generation(): CacheGeneration =
         CacheGeneration(ctx.dsl.selectFrom(CACHE_GENERATION).fetchSingle().generation)
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun put(
         key: String,
         value: String,
@@ -109,7 +110,7 @@ private class JooqCacheRepository : CacheRepository {
         return true
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteExpired(): Int {
         ctx.dsl.selectFrom(CACHE_GENERATION).forShare().fetchSingle()
         return ctx.dsl.deleteFrom(CACHE)
@@ -117,7 +118,7 @@ private class JooqCacheRepository : CacheRepository {
             .execute()
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun clear(): Int {
         ctx.dsl.update(CACHE_GENERATION)
             .set(CACHE_GENERATION.GENERATION, CACHE_GENERATION.GENERATION.plus(1))

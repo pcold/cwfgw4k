@@ -1,6 +1,7 @@
 package com.cwfgw.tournaments
 
 import com.cwfgw.db.TransactionContext
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.seasons.SeasonId
 import java.math.BigDecimal
 import java.time.Instant
@@ -48,7 +49,7 @@ class FakeTournamentRepository(
     override fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
         tournaments.values.firstOrNull { it.pgaTournamentId == pgaTournamentId }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun create(request: CreateTournamentRequest): Tournament {
         val tournament =
             Tournament(
@@ -70,7 +71,7 @@ class FakeTournamentRepository(
         return tournament
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun update(
         id: TournamentId,
         request: UpdateTournamentRequest,
@@ -106,14 +107,14 @@ class FakeTournamentRepository(
             .sortedWith(compareBy<TournamentResult> { it.tournamentId.value }.then(resultOrdering))
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteResultsByTournament(tournamentId: TournamentId): Int {
         val matching = results.values.filter { it.tournamentId == tournamentId }
         matching.forEach { results.remove(it.id) }
         return matching.size
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun deleteResultsBySeason(seasonId: SeasonId): Int {
         val tournamentIds = tournaments.values.filter { it.seasonId == seasonId }.map { it.id }.toSet()
         val matching = results.values.filter { it.tournamentId in tournamentIds }
@@ -121,14 +122,14 @@ class FakeTournamentRepository(
         return matching.size
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun resetSeasonTournaments(seasonId: SeasonId): Int {
         val matching = tournaments.values.filter { it.seasonId == seasonId }
         matching.forEach { tournaments[it.id] = it.copy(status = TournamentStatus.Upcoming) }
         return matching.size
     }
 
-    context(ctx: TransactionContext)
+    context(ctx: WriteTransactionContext)
     override fun upsertResult(
         tournamentId: TournamentId,
         request: CreateTournamentResultRequest,
