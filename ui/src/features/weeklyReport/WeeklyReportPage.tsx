@@ -76,7 +76,7 @@ function WeeklyReportPage(): ReactNode {
         <button
           type="button"
           disabled={!reportQuery.data}
-          // eslint-disable-next-line @typescript-eslint/no-misused-promises -- known bug, reported: a failed PDF build rejects unhandled.
+          // eslint-disable-next-line @typescript-eslint/no-misused-promises -- CWF-155: a failed PDF build rejects unhandled.
           onClick={() => reportQuery.data && downloadPdf(reportQuery.data, currentSeason)}
           className={DOWNLOAD_BUTTON_CLASS}
         >
