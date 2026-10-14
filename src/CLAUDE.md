@@ -383,9 +383,14 @@ Rules:
   a pooled JDBC connection (the failure mode the bounded dispatcher exists
   to prevent).
 - **MUST NOT** capture a `DSLContext` in a repository constructor or pass one
-  through as a method argument. Repositories declare every method with
+  through as a method argument. Repositories declare every read with
   `context(ctx: TransactionContext)` and read the DSL via `ctx.dsl`. The
   no-arg factory shape is `fun XRepository(): XRepository = JooqXRepository()`.
+- **MUST** declare every repository write (insert, update, delete, upsert) and
+  any read that takes a row lock with `context(ctx: WriteTransactionContext)`.
+  Only `tx.update` provides it, so the same call inside `tx.read` or `tx.get`
+  is a compile error rather than a `READ ONLY` rejection or a write that
+  isn't atomic with its neighbours.
 - **MUST** capture a `com.cwfgw.db.Transactor` in services that touch
   repositories. Pick the entry point by the work's shape:
   - `tx.get { repository.x(...) }` — single-statement read, no `BEGIN`/`COMMIT`
