@@ -58,9 +58,10 @@ class RequestCache(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     /**
-     * Tracks the in-flight loader for each cache key so concurrent misses
-     * coalesce onto a single [fetch] call. Bounded by request concurrency
-     * (entries are removed in the loader's finally block); not a leak.
+     * Tracks the in-flight loader for each cache key and [generation] so
+     * concurrent misses coalesce onto a single [fetch] call. Bounded by
+     * request concurrency (entries are removed in the loader's finally
+     * block); not a leak.
      */
     private val inFlight = ConcurrentHashMap<InFlightKey, CompletableDeferred<String>>()
 
@@ -73,15 +74,15 @@ class RequestCache(
      * revision. Single-flight per key:
      *  1. `tx.get` checks the Postgres cache. Auto-commit single-statement
      *     read; connection held only for the SELECT itself.
-     *  2. On miss, try to claim the in-flight slot for [key] via an atomic
-     *     `putIfAbsent` on a [CompletableDeferred]. If we lose the race we
-     *     await the existing loader's deferred — no second [fetch], no
-     *     second `tx.update`.
+     *  2. On miss, try to claim the in-flight slot for [key] in the current
+     *     [generation] via an atomic `putIfAbsent` on a [CompletableDeferred].
+     *     If we lose the race we await the existing loader's deferred — no
+     *     second [fetch], no second `tx.update`.
      *  3. The winning caller runs [fetch] outside any cache transaction
      *     (critical under load — [fetch] is the real handler that opens
      *     its own service transactions; holding a connection across it
      *     would consume two pool slots per request) and writes via
-     *     `tx.update`.
+     *     `tx.update`, unless a [clear] ran meanwhile.
      *  4. The loader completes the deferred (success or failure) and
      *     atomically removes itself from the in-flight map.
      *
