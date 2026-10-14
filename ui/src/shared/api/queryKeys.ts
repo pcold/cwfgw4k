@@ -123,6 +123,11 @@ export const queryKeys = {
       live: boolean,
     ): QueryKey => [...queryKeys.playerRankings.bySeason(seasonId), throughTournamentId, live],
   },
+
+  /** @see queryKeys */
+  defaultSeasonRules: {
+    root: ['defaultSeasonRules'] as const,
+  },
 };
 
 /**

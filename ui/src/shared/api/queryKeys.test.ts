@@ -47,6 +47,7 @@ const KEY_CHAINS: Record<keyof typeof queryKeys, readonly QueryKey[]> = {
     queryKeys.playerRankings.bySeason('sn-1'),
     queryKeys.playerRankings.detail('sn-1', null, true),
   ],
+  defaultSeasonRules: [queryKeys.defaultSeasonRules.root],
 };
 
 // The one place a root is spelled outside its factory. A page test cannot catch an edited root —
@@ -74,6 +75,7 @@ it('pins the value of every key, root first', () => {
       ['player-rankings', 'sn-1'],
       ['player-rankings', 'sn-1', null, true],
     ],
+    defaultSeasonRules: [['defaultSeasonRules']],
   });
 });
 

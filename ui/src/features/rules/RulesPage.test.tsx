@@ -78,7 +78,7 @@ describe('RulesPage', () => {
     expect(
       await screen.findByRole('heading', { name: /Season Rules/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /The Draft/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /The Draft/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Weekly Payouts/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Zero-Sum Scoring/i })).toBeInTheDocument();
 
@@ -91,7 +91,7 @@ describe('RulesPage', () => {
     expect(within(nth(payoutRows, 9)).getByText('10th')).toBeInTheDocument();
   });
 
-  it('uses season-specific payouts from the API instead of defaults', async () => {
+  it('renders season-specific payouts and side bets from the API', async () => {
     seasonRulesMock.mockResolvedValue({
       payouts: [25, 15, 10],
       tieFloor: 2,
@@ -102,7 +102,6 @@ describe('RulesPage', () => {
 
     renderWithProviders(<RulesPage />);
 
-    // Wait for the season-specific payouts to replace the default fallback
     await screen.findByText('$25');
     const payoutTable = screen.getByRole('table');
     const payoutRows = within(payoutTable).getAllByRole('row').slice(1);
@@ -195,16 +194,25 @@ describe('RulesPage', () => {
     expect(screen.getByText('$15')).toBeInTheDocument();
   });
 
-  it('falls back to default rules when the rules query fails', async () => {
+  it('shows the rules failure instead of payouts it cannot know', async () => {
     seasonRulesMock.mockRejectedValue(new Error('network down'));
     tournamentsMock.mockResolvedValue([]);
 
     renderWithProviders(<RulesPage />);
 
-    // Still renders with defaults (first payout = $18)
-    const payoutTable = await screen.findByRole('table');
-    const payoutRows = within(payoutTable).getAllByRole('row').slice(1);
-    expect(within(nth(payoutRows, 0)).getByText('$18')).toBeInTheDocument();
+    expect(await screen.findByText(/Failed to load season rules/i)).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('shows no payout table for a league without a season', async () => {
+    seasonsMock.mockResolvedValue([]);
+    tournamentsMock.mockResolvedValue([]);
+
+    renderWithProviders(<RulesPage />);
+
+    expect(await screen.findByRole('heading', { name: /Season Rules/i })).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(seasonRulesMock).not.toHaveBeenCalled();
   });
 
   it('surfaces a leagues error without blowing up', async () => {

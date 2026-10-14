@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
-import { api, ApiError } from '@/shared/api/client';
+import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
+import type { SeasonRules, Tournament } from '@/shared/api/types';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
-import { DEFAULT_RULES, ordinal } from './rulesModel';
+import { QueryState } from '@/shared/components/QueryState';
+import { ordinal } from './rulesModel';
 
 function RulesPage(): ReactNode {
   const { leaguesLoading, leaguesError, seasonId } = useLeagueSeason();
@@ -22,7 +24,6 @@ function RulesPage(): ReactNode {
   if (leaguesError)
     return <p className="text-red-400">Failed to load leagues: {String(leaguesError)}</p>;
 
-  const rules = rulesQuery.data ?? DEFAULT_RULES;
   const schedule = [...(tournamentsQuery.data ?? [])].sort((a, b) =>
     a.startDate.localeCompare(b.startDate),
   );
@@ -30,13 +31,28 @@ function RulesPage(): ReactNode {
   return (
     <section className="space-y-6">
       <h2 className="text-xl font-bold">Season Rules</h2>
+      <QueryState query={rulesQuery} label="season rules">
+        {(rules) => (
+          <RulesView
+            rules={rules}
+            schedule={schedule}
+            scheduleLoading={tournamentsQuery.isLoading}
+          />
+        )}
+      </QueryState>
+    </section>
+  );
+}
 
-      {rulesQuery.error && !(rulesQuery.error instanceof ApiError) ? (
-        <p className="text-yellow-400 text-sm">
-          Could not load season rules; showing defaults.
-        </p>
-      ) : null}
+interface RulesViewProps {
+  rules: SeasonRules;
+  schedule: Tournament[];
+  scheduleLoading: boolean;
+}
 
+function RulesView({ rules, schedule, scheduleLoading }: RulesViewProps): ReactNode {
+  return (
+    <>
       <div className="bg-gray-800 rounded-lg p-6">
         <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
           The Draft
@@ -85,7 +101,7 @@ function RulesPage(): ReactNode {
           Tournaments on the season calendar. A highlighted multiplier means payouts are
           boosted for that week (e.g. 2x for majors).
         </p>
-        {tournamentsQuery.isLoading ? (
+        {scheduleLoading ? (
           <p className="text-gray-500 text-sm">Loading schedule…</p>
         ) : schedule.length > 0 ? (
           <ul className="text-gray-300 text-sm space-y-0.5">
@@ -167,7 +183,7 @@ function RulesPage(): ReactNode {
           </ul>
         </div>
       ) : null}
-    </section>
+    </>
   );
 }
 

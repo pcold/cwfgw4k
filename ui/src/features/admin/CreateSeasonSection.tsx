@@ -2,18 +2,35 @@ import { useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
-import type { League, Season } from '@/shared/api/types';
+import type { League, Season, SeasonRules } from '@/shared/api/types';
 import { FIELD_CLASS, FieldShell, TextField } from '@/shared/components/formFields';
+import { QueryState } from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
-import {
-  DEFAULT_PAYOUTS,
-  DEFAULT_SIDE_BET_AMOUNT,
-  DEFAULT_SIDE_BET_ROUNDS_STR,
-  DEFAULT_TIE_FLOOR,
-  buildRules,
-} from './rulesInput';
+import { buildRules, formatSideBetRounds } from './rulesInput';
 
 function CreateSeasonSection(): ReactNode {
+  const defaultsQuery = useQuery({
+    queryKey: queryKeys.defaultSeasonRules.root,
+    queryFn: api.defaultSeasonRules,
+  });
+
+  return (
+    <div className="bg-gray-800 rounded-lg p-6">
+      <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+        Create Season
+      </h3>
+      <QueryState query={defaultsQuery} label="default season rules">
+        {(defaults) => <CreateSeasonForm defaults={defaults} />}
+      </QueryState>
+    </div>
+  );
+}
+
+interface CreateSeasonFormProps {
+  defaults: SeasonRules;
+}
+
+function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
   const queryClient = useQueryClient();
 
   const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
@@ -23,10 +40,15 @@ function CreateSeasonSection(): ReactNode {
   const leagueId = userLeagueId || (leaguesQuery.data?.[0]?.id ?? '');
   const [seasonYear, setSeasonYear] = useState<number>(new Date().getFullYear());
   const [seasonName, setSeasonName] = useState('');
-  const [payouts, setPayouts] = useState<number[]>(DEFAULT_PAYOUTS);
-  const [tieFloor, setTieFloor] = useState<number>(DEFAULT_TIE_FLOOR);
-  const [sideBetRoundsStr, setSideBetRoundsStr] = useState<string>(DEFAULT_SIDE_BET_ROUNDS_STR);
-  const [sideBetAmount, setSideBetAmount] = useState<number>(DEFAULT_SIDE_BET_AMOUNT);
+  // Null until edited, rather than seeded from `defaults`, so no prop is copied into state.
+  const [editedPayouts, setEditedPayouts] = useState<number[] | null>(null);
+  const [editedTieFloor, setEditedTieFloor] = useState<number | null>(null);
+  const [editedSideBetRounds, setEditedSideBetRounds] = useState<string | null>(null);
+  const [editedSideBetAmount, setEditedSideBetAmount] = useState<number | null>(null);
+  const payouts = editedPayouts ?? defaults.payouts;
+  const tieFloor = editedTieFloor ?? defaults.tieFloor;
+  const sideBetRoundsStr = editedSideBetRounds ?? formatSideBetRounds(defaults.sideBetRounds);
+  const sideBetAmount = editedSideBetAmount ?? defaults.sideBetAmount;
   const [success, setSuccess] = useState<string | null>(null);
 
   const createMutation = useMutation({
@@ -48,15 +70,11 @@ function CreateSeasonSection(): ReactNode {
   const disabled = createMutation.isPending || !seasonName.trim() || !leagueId;
 
   const updatePayout = (index: number, value: number) => {
-    setPayouts((prev) => prev.map((p, i) => (i === index ? value : p)));
+    setEditedPayouts(payouts.map((p, i) => (i === index ? value : p)));
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-        Create Season
-      </h3>
-
+    <>
       <div className="flex flex-wrap gap-4 mb-4">
         <FieldShell id="season-league" label="League" error={undefined} width="sm:w-64">
           <select
@@ -116,16 +134,14 @@ function CreateSeasonSection(): ReactNode {
           <div>
             <button
               type="button"
-              onClick={() => setPayouts((prev) => [...prev, 0])}
+              onClick={() => setEditedPayouts([...payouts, 0])}
               className="text-xs text-blue-400 hover:text-blue-300"
             >
               + Add place
             </button>
             <button
               type="button"
-              onClick={() =>
-                setPayouts((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev))
-              }
+              onClick={() => setEditedPayouts(payouts.length > 1 ? payouts.slice(0, -1) : payouts)}
               className="text-xs text-red-400 hover:text-red-300 ml-2"
             >
               - Remove last
@@ -137,7 +153,7 @@ function CreateSeasonSection(): ReactNode {
               type="number"
               step="0.5"
               value={tieFloor}
-              onChange={(e) => setTieFloor(Number(e.target.value))}
+              onChange={(e) => setEditedTieFloor(Number(e.target.value))}
               className={FIELD_CLASS}
             />
           </FieldShell>
@@ -153,14 +169,14 @@ function CreateSeasonSection(): ReactNode {
             value={sideBetRoundsStr}
             error={undefined}
             width="w-28"
-            onChange={setSideBetRoundsStr}
+            onChange={setEditedSideBetRounds}
           />
           <FieldShell id="season-side-amount" label="Bet Amount ($)" error={undefined} width="w-24">
             <input
               id="season-side-amount"
               type="number"
               value={sideBetAmount}
-              onChange={(e) => setSideBetAmount(Number(e.target.value))}
+              onChange={(e) => setEditedSideBetAmount(Number(e.target.value))}
               className={FIELD_CLASS}
             />
           </FieldShell>
@@ -183,7 +199,7 @@ function CreateSeasonSection(): ReactNode {
           </span>
         ) : null}
       </div>
-    </div>
+    </>
   );
 }
 
