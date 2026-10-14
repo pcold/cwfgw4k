@@ -15,7 +15,7 @@ import org.jooq.exception.DataAccessException
 
 private val log = KotlinLogging.logger {}
 
-private val READ_METHODS: Set<HttpMethod> = setOf(HttpMethod.Get, HttpMethod.Head, HttpMethod.Options)
+internal val READ_METHODS: Set<HttpMethod> = setOf(HttpMethod.Get, HttpMethod.Head, HttpMethod.Options)
 
 /**
  * Empties [cache] when an admin writes anywhere under this route. Before the answer goes out, not after, so the

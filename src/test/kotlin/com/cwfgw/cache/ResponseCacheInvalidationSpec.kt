@@ -25,7 +25,6 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
-import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.server.application.plugin
@@ -82,6 +81,37 @@ private class FailingClearRepository(private val rows: FakeCacheRepository) : Ca
 
     context(ctx: TransactionContext)
     override fun deleteAll(): Int = throw DataAccessException("SQL [delete from cache]; ERROR", SQLException("ERROR"))
+
+    context(ctx: TransactionContext)
+    override fun delete(key: String): Int = rows.delete(key)
+}
+
+/** Runs [onClear] inside the clear's transaction, before the rows go. */
+private class ObservedClearRepository(
+    private val rows: FakeCacheRepository,
+    private val onClear: context(TransactionContext) () -> Unit,
+) : CacheRepository {
+    context(ctx: TransactionContext)
+    override fun get(key: String): String? = rows.get(key)
+
+    context(ctx: TransactionContext)
+    override fun put(
+        key: String,
+        value: String,
+        expiresAt: Instant,
+    ) = rows.put(key, value, expiresAt)
+
+    context(ctx: TransactionContext)
+    override fun deleteExpired(): Int = rows.deleteExpired()
+
+    context(ctx: TransactionContext)
+    override fun deleteAll(): Int {
+        onClear()
+        return rows.deleteAll()
+    }
+
+    context(ctx: TransactionContext)
+    override fun delete(key: String): Int = rows.delete(key)
 }
 
 private fun seededRows(): FakeCacheRepository =
@@ -107,7 +137,7 @@ private fun Route.ancestors(): Sequence<Route> = generateSequence(this) { it.par
 
 class ResponseCacheInvalidationSpec : FunSpec({
 
-    test("every non-GET route the app mounts sits under /api/v1, where the clear is installed") {
+    test("every write route the app mounts sits under /api/v1, where the clear is installed") {
         apiTest { _ ->
             startApplication()
             val root = application.plugin(RoutingRoot)
@@ -115,7 +145,7 @@ class ResponseCacheInvalidationSpec : FunSpec({
             val writes =
                 root.descendants().filter { node ->
                     val selector = node.selector
-                    selector is HttpMethodRouteSelector && selector.method != HttpMethod.Get
+                    selector is HttpMethodRouteSelector && selector.method !in READ_METHODS
                 }.toList()
 
             writes.shouldNotBeEmpty()
@@ -149,6 +179,26 @@ class ResponseCacheInvalidationSpec : FunSpec({
 
                 rows.storedKeys().shouldBeEmpty()
             }
+        }
+    }
+
+    test("the clear runs once the write has landed, so a read it lets through cannot see the pre-write rows") {
+        val seasonsAtClear = mutableListOf<List<Season>>()
+        authenticatedApiTest(
+            configure = {
+                cacheOver(
+                    ObservedClearRepository(FakeCacheRepository()) {
+                        seasonsAtClear += seasonRepository.findAll(leagueId = null, seasonYear = null)
+                    },
+                )
+            },
+        ) { client ->
+            val season = client.createSeason()
+            seasonsAtClear.clear()
+
+            client.delete("/api/v1/seasons/${season.id.value}").status shouldBe HttpStatusCode.NoContent
+
+            seasonsAtClear shouldBe listOf(emptyList())
         }
     }
 
