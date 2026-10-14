@@ -9,9 +9,10 @@ private val log = KotlinLogging.logger {}
 /**
  * Seed an initial admin user at boot if the users table is empty AND the
  * config supplies both `adminUsername` and `adminPassword`. We deliberately
- * never bake in a default password — if either is missing, log a warning
- * and skip. The first deploy must set the env vars; later deploys are
- * no-ops because [UserRepository.countAll] returns > 0.
+ * never bake in a default password — if neither is set, log a warning and
+ * skip; [com.cwfgw.config.AppConfig.load] refuses a config that sets only one.
+ * The first deploy must set the env vars; later deploys are no-ops because
+ * [UserRepository.countAll] returns > 0.
  */
 suspend fun seedAdminIfEmpty(
     authService: AuthService,
@@ -21,9 +22,9 @@ suspend fun seedAdminIfEmpty(
 ) {
     if (tx.get { userRepository.countAll() } > 0) return
 
-    val username = config.adminUsername
-    val password = config.adminPassword
-    if (username.isNullOrBlank() || password == null || password.isBlank()) {
+    val username = config.configuredAdminUsername
+    val password = config.configuredAdminPassword
+    if (username == null || password == null) {
         log.warn {
             "Users table is empty but auth.adminUsername / auth.adminPassword are not configured; " +
                 "skipping admin seed. Set AUTH_ADMIN_USERNAME and AUTH_ADMIN_PASSWORD to bootstrap an admin."

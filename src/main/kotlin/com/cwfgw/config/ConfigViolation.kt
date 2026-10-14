@@ -71,8 +71,8 @@ internal fun AppConfig.sizingViolations(): List<ConfigViolation> =
     )
 
 private fun AppConfig.adminViolation(): ConfigViolation? {
-    val usernameSet = !auth.adminUsername.isNullOrBlank()
-    val passwordSet = auth.adminPassword?.isNotBlank() == true
+    val usernameSet = auth.configuredAdminUsername != null
+    val passwordSet = auth.configuredAdminPassword != null
     return when {
         usernameSet && !passwordSet -> ConfigViolation.AdminUsernameWithoutPassword
         passwordSet && !usernameSet -> ConfigViolation.AdminPasswordWithoutUsername

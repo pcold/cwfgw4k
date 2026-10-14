@@ -61,7 +61,13 @@ data class AuthConfig(
     val adminUsername: String?,
     val adminPassword: ConfigSecret?,
     val cookieSecure: Boolean,
-)
+) {
+    /** Blank counts as unset: the YAML defaults both to an empty string, so an unexported pair decodes blank. */
+    val configuredAdminUsername: String? get() = adminUsername?.takeIf { it.isNotBlank() }
+
+    /** @see configuredAdminUsername */
+    val configuredAdminPassword: ConfigSecret? get() = adminPassword?.takeIf { it.isNotBlank() }
+}
 
 /**
  * Tuning for the Postgres-backed request cache. [defaultTtlSeconds] is the
