@@ -43,8 +43,8 @@ private val log = KotlinLogging.logger {}
  * the cache key carries no user identity, so two sessions hitting the same
  * URI would share the same cached body.
  *
- * Each hit / miss / put / sweep emits one structured INFO log line shaped
- * for Cloud Logging metric extraction:
+ * Each cache event emits one structured log line shaped for Cloud Logging
+ * metric extraction:
  * `cwfgw4k.cache event=… route=… [ttl_seconds=…] [deleted=…]`. The matching
  * metric config lives in `ops/metrics/cwfgw4k_cache.yaml`; changing the
  * format requires updating that config.

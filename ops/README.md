@@ -24,9 +24,9 @@ ingestion cost — the charts read from:
   latency), and `cwfgw4k_request_count` is its counter sibling over the same
   log line — xyCharts need a scalar metric to rank series for top-N plotting,
   which distributions can't provide. `cwfgw4k_cache` counts the cache events
-  emitted by `RequestCache` (hit, miss, put, discarded, sweep, clear and the
-  rest its `event` label lists) and is labeled by event type and normalized
-  route.
+  emitted by `RequestCache` and `clearResponseCacheOnWrite` (hit, miss, put,
+  discarded, sweep, clear and the rest its `event` label lists) and is labeled
+  by event type and normalized route.
 
 ## One-time setup
 
@@ -98,7 +98,8 @@ gcloud logging metrics create cwfgw4k_request_count \
 ### 5. Create the `cwfgw4k_cache` counter metric
 
 Counts cache events (hit, miss, put, discarded, sweep, clear, and the rest the
-metric's `event` label lists) emitted by `RequestCache`.
+metric's `event` label lists) emitted by `RequestCache` and
+`clearResponseCacheOnWrite`.
 Labeled by `event` and normalized `route` so dashboards can compute hit
 rate per endpoint.
 
