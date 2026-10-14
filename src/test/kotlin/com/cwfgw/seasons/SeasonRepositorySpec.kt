@@ -1,11 +1,9 @@
 package com.cwfgw.seasons
 
 import com.cwfgw.db.Transactor
-import com.cwfgw.drafts.CreateDraftRequest
-import com.cwfgw.drafts.DraftRepository
-import com.cwfgw.drafts.PickSlot
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
+import com.cwfgw.jooq.tables.references.DRAFTS
 import com.cwfgw.jooq.tables.references.DRAFT_PICKS
 import com.cwfgw.jooq.tables.references.TEAM_ROSTERS
 import com.cwfgw.leagues.CreateLeagueRequest
@@ -268,10 +266,9 @@ class SeasonRepositorySpec : FunSpec({
     test("delete cascades through teams + tournaments + team_rosters + draft_picks via the V010 FKs") {
         val teamRepo = TeamRepository()
         val tournamentRepo = TournamentRepository()
-        val draftRepo = DraftRepository()
         val golferRepo = GolferRepository()
 
-        val (seasonId, teamId, draftId) =
+        val (seasonId, teamId, golferId) =
             tx.update {
                 val season =
                     repository.create(
@@ -292,18 +289,25 @@ class SeasonRepositorySpec : FunSpec({
                 )
                 val golfer = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
                 teamRepo.addToRoster(team.id, AddToRosterRequest(golferId = golfer.id))
-                val draft = draftRepo.create(seasonId = season.id, request = CreateDraftRequest())
-                draftRepo.createPicks(
-                    draftId = draft.id,
-                    slots = listOf(PickSlot(teamId = team.id, roundNum = 1, pickNum = 1)),
-                )
-                draftRepo.makePick(draftId = draft.id, pickNum = 1, golferId = golfer.id)
-                Triple(season.id, team.id, draft.id)
+                Triple(season.id, team.id, golfer.id)
             }
+        // No repository writes drafts any more, but their FK still cascades until CWF-120 drops the tables.
+        val draftId =
+            postgres.dsl.insertInto(DRAFTS)
+                .set(DRAFTS.SEASON_ID, seasonId.value)
+                .returning(DRAFTS.ID)
+                .fetchSingle(DRAFTS.ID)
+        postgres.dsl.insertInto(DRAFT_PICKS)
+            .set(DRAFT_PICKS.DRAFT_ID, draftId)
+            .set(DRAFT_PICKS.TEAM_ID, teamId.value)
+            .set(DRAFT_PICKS.GOLFER_ID, golferId.value)
+            .set(DRAFT_PICKS.ROUND_NUM, 1)
+            .set(DRAFT_PICKS.PICK_NUM, 1)
+            .execute()
 
         // Sanity: rows are present before we cascade them away.
         postgres.dsl.fetchCount(TEAM_ROSTERS, TEAM_ROSTERS.TEAM_ID.eq(teamId.value)) shouldBe 1
-        postgres.dsl.fetchCount(DRAFT_PICKS, DRAFT_PICKS.DRAFT_ID.eq(draftId.value)) shouldBe 1
+        postgres.dsl.fetchCount(DRAFT_PICKS, DRAFT_PICKS.DRAFT_ID.eq(draftId)) shouldBe 1
 
         tx.update { repository.delete(seasonId) }.shouldBeTrue()
 
@@ -311,7 +315,7 @@ class SeasonRepositorySpec : FunSpec({
         tx.read { teamRepo.findBySeason(seasonId) }.shouldBeEmpty()
         tx.read { tournamentRepo.findAll(seasonId = seasonId, status = null) }.shouldBeEmpty()
         postgres.dsl.fetchCount(TEAM_ROSTERS, TEAM_ROSTERS.TEAM_ID.eq(teamId.value)) shouldBe 0
-        postgres.dsl.fetchCount(DRAFT_PICKS, DRAFT_PICKS.DRAFT_ID.eq(draftId.value)) shouldBe 0
+        postgres.dsl.fetchCount(DRAFT_PICKS, DRAFT_PICKS.DRAFT_ID.eq(draftId)) shouldBe 0
     }
 
     test("delete returns false for unknown id") {
