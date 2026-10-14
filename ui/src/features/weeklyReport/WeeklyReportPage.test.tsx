@@ -116,6 +116,7 @@ function buildReport(name: string, tournamentId: string | null = null): WeeklyRe
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
+    weeklyTotals: makeWonLostTotals(),
   };
 }
 

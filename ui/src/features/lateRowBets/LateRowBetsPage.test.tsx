@@ -103,6 +103,7 @@ function buildReport(): WeeklyReport {
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
+    weeklyTotals: makeWonLostTotals(),
   };
 }
 

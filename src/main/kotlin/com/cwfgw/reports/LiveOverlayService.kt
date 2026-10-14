@@ -279,8 +279,9 @@ private fun bumpPriorTeamCells(
  * (single-tournament report path) the per-cell `earnings` is replaced
  * outright — this is the in-progress projection, not a sum. When true
  * (season-aggregate path, used in commit C) the live amounts add to
- * what's already there. Also surfaces the full ESPN leaderboard and
- * builds undrafted top-10s from it for the scoreboard view.
+ * what's already there. Also surfaces the full ESPN leaderboard for the
+ * scoreboard view, keeping the report's own where ESPN lists no field,
+ * and rebuilds the undrafted top-10s from ESPN's.
  */
 internal fun mergeLiveData(
     report: WeeklyReport,
@@ -306,7 +307,9 @@ internal fun mergeLiveData(
     val finalTeams = phase1.map { it.toFinalTeam(numTeams, totalPot, liveSideBetTotals) }
     val updatedUndrafted =
         if (additive) report.undraftedTopTens else buildUndraftedFromLeaderboard(liveData, rules)
-    val liveLeaderboard = if (additive) report.liveLeaderboard else buildLiveLeaderboard(liveData)
+    // ESPN can match the event before it lists a field; the persisted rows are then the only leaderboard.
+    val liveLeaderboard =
+        if (additive) report.liveLeaderboard else buildLiveLeaderboard(liveData).ifEmpty { report.liveLeaderboard }
 
     return report.copy(
         teams = finalTeams,
@@ -502,16 +505,14 @@ private fun overlayTeamCells(
 internal fun buildLiveLeaderboard(liveData: EspnLivePreview): List<LiveLeaderboardEntry> =
     liveData.leaderboard
         .sortedBy { it.position }
-        .map { entry ->
+        .inCompetitorSlots(PreviewLeaderboardEntry::pairKey)
+        .map { slot ->
             LiveLeaderboardEntry(
-                name = entry.name,
-                position = entry.position,
-                scoreToPar = entry.scoreToPar,
-                rostered = entry.rostered,
-                teamName = entry.teamName,
-                pairKey = entry.pairKey,
-                roundScores = entry.roundScores,
-                totalStrokes = entry.totalStrokes,
+                position = slot.lead.position,
+                scoreToPar = slot.lead.scoreToPar,
+                players = slot.members.map { LeaderboardPlayer(name = it.name, teamNames = it.teamNames) },
+                roundScores = slot.lead.roundScores,
+                totalStrokes = slot.lead.totalStrokes,
             )
         }
 

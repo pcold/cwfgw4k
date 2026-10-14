@@ -80,6 +80,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
+    weeklyTotals: makeWonLostTotals(),
     ...overrides,
   };
 }

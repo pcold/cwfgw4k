@@ -34,7 +34,7 @@ data class ReportCellFinish(
  * because a team may have an empty slot for a round, or the picked
  * golfer may have no result yet (cut, withdrew, no-show). `pairKey` is
  * set only for team events (e.g. Zurich Classic), where two partners
- * share a synthetic team id and need to be regrouped on the UI.
+ * share a synthetic team id.
  */
 @Serializable
 data class ReportCell(
@@ -90,23 +90,30 @@ data class UndraftedGolfer(
     val pairKey: String? = null,
 )
 
+/** [teamNames] lists every team rostering the player, since a golfer can be split across teams; empty is undrafted. */
+@Serializable
+data class LeaderboardPlayer(
+    val name: String,
+    val teamNames: List<String>,
+)
+
 /**
- * Built from a tournament's persisted results, and replaced by ESPN's field when a tournament report is
- * rendered with `live=true`. Rostered and undrafted rows share one position-ordered list so the UI never merges two.
+ * One competitor slot, not one golfer: a team event's partners are a single row of two [players] sharing its
+ * position, score and rounds. [rostered] is a body property so it cannot disagree with [players], and
+ * reaches the wire only because `appJson` encodes defaults.
  */
 @Serializable
 data class LiveLeaderboardEntry(
-    val name: String,
     val position: Int,
     val scoreToPar: Int?,
-    val rostered: Boolean,
-    val teamName: String?,
-    val pairKey: String? = null,
+    val players: List<LeaderboardPlayer>,
     /** Per-round stroke totals (R1..R4) when ESPN ships them. Empty list if pre-tournament. */
     val roundScores: List<Int> = emptyList(),
     /** Sum of [roundScores] when at least one round has been played; null otherwise. */
     val totalStrokes: Int? = null,
-)
+) {
+    val rostered: Boolean = players.any { it.teamNames.isNotEmpty() }
+}
 
 /**
  * Pure tags on the wire, so an `enum class` as [ReportScope] is. An entry the round has settled nothing
@@ -220,9 +227,9 @@ data class WonLostTotals private constructor(
  * [sideBetRules] is null for a season that stakes nothing on side bets, and [sideBetDetail] is then empty.
  * It has no default for the reason [scope] has none.
  *
- * [cashTotals] and [sideBetTotals] are body properties so that `copy(teams = ...)` recomputes them: as
- * constructor parameters a live overlay would carry the base report's. They reach the wire only because
- * `appJson` encodes defaults.
+ * [cashTotals], [sideBetTotals] and [weeklyTotals] are body properties so that `copy(teams = ...)`
+ * recomputes them: as constructor parameters a live overlay would carry the base report's. They reach the
+ * wire only because `appJson` encodes defaults.
  */
 @Serializable
 data class WeeklyReport(
@@ -238,6 +245,7 @@ data class WeeklyReport(
 ) {
     val cashTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::totalCash))
     val sideBetTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::sideBets))
+    val weeklyTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::weeklyTotal))
 }
 
 /**

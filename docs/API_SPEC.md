@@ -381,11 +381,27 @@ data class WeeklyReport(
     val sideBetDetail: List<ReportSideBetRound>,     // one per round in sideBetRules.rounds, same order
     val standingsOrder: List<StandingsEntry>,
     val live: Boolean? = null,                       // populated only by live overlay
-    val liveLeaderboard: List<LiveLeaderboardEntry> = emptyList(),
+    val liveLeaderboard: List<LiveLeaderboardEntry> = emptyList(), // sorted by position; ESPN's field when live and ESPN lists one, else persisted rows
 ) {
     val cashTotals: WonLostTotals                    // over teams[].totalCash; derived, so a copy recomputes it
     val sideBetTotals: WonLostTotals                 // over teams[].sideBets, likewise
+    val weeklyTotals: WonLostTotals                  // over teams[].weeklyTotal, likewise
 }
+
+data class LiveLeaderboardEntry(                     // one competitor slot, not one golfer
+    val position: Int,
+    val scoreToPar: Int?,                            // strokes relative to par; 0 is even
+    val players: List<LeaderboardPlayer>,            // one, or a team event's two partners
+    val roundScores: List<Int> = emptyList(),        // R1..R4 strokes for the rounds played
+    val totalStrokes: Int? = null,
+) {
+    val rostered: Boolean                            // some player has a team; derived from players
+}
+
+data class LeaderboardPlayer(
+    val name: String,
+    val teamNames: List<String>,                     // every team rostering the player; empty is undrafted
+)
 
 data class WonLostTotals(                            // the server builds it only by WonLostTotals.over(amounts)
     val won: BigDecimal,                             // sum of the positive amounts

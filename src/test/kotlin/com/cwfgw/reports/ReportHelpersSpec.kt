@@ -74,6 +74,11 @@ private fun sideBetEntry(
         outcome = null,
     )
 
+private data class FieldRow(
+    val name: String,
+    val pairKey: String? = null,
+)
+
 class ReportHelpersSpec : FunSpec({
 
     // ----- ReportCellFinish.label -----
@@ -93,6 +98,45 @@ class ReportHelpersSpec : FunSpec({
     test("finishAt reads a team event's two partner rows as one finisher, tied only once a second pair joins") {
         finishAt(position = 4, numTied = 2, isTeamEvent = true) shouldBe ReportCellFinish(position = 4, tied = false)
         finishAt(position = 4, numTied = 4, isTeamEvent = true) shouldBe ReportCellFinish(position = 4, tied = true)
+    }
+
+    // ----- inCompetitorSlots -----
+
+    test("inCompetitorSlots keeps rows without a pair key as slots of their own, in order") {
+        val alone = listOf(FieldRow("Leader"), FieldRow("Second"))
+
+        alone.inCompetitorSlots(FieldRow::pairKey) shouldContainExactly
+            listOf(CompetitorSlot(FieldRow("Leader"), emptyList()), CompetitorSlot(FieldRow("Second"), emptyList()))
+    }
+
+    test("inCompetitorSlots seats partners where the first of them stood, even when another row sits between") {
+        val novak = FieldRow("Novak", pairKey = "team:1")
+        val griffin = FieldRow("Griffin", pairKey = "team:1")
+        val solo = FieldRow("Solo")
+
+        val slots = listOf(novak, solo, griffin).inCompetitorSlots(FieldRow::pairKey)
+
+        slots shouldContainExactly listOf(CompetitorSlot(novak, listOf(griffin)), CompetitorSlot(solo, emptyList()))
+        slots.map { slot -> slot.members.map { it.name } } shouldContainExactly
+            listOf(listOf("Novak", "Griffin"), listOf("Solo"))
+    }
+
+    test("inCompetitorSlots keeps two equal rows without a pair key apart") {
+        val twins = listOf(FieldRow("Smith"), FieldRow("Smith"))
+
+        twins.inCompetitorSlots(FieldRow::pairKey).map { it.partners } shouldContainExactly
+            listOf(emptyList(), emptyList())
+    }
+
+    test("inCompetitorSlots keeps rows with an empty pair key apart") {
+        val unkeyed = listOf(FieldRow("Smith", pairKey = ""), FieldRow("Jones", pairKey = ""))
+
+        unkeyed.inCompetitorSlots(FieldRow::pairKey).map { slot -> slot.members.map { it.name } } shouldContainExactly
+            listOf(listOf("Smith"), listOf("Jones"))
+    }
+
+    test("inCompetitorSlots of no rows is no slots") {
+        emptyList<FieldRow>().inCompetitorSlots(FieldRow::pairKey).shouldBeEmpty()
     }
 
     // ----- tournament ordering -----

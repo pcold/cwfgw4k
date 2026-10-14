@@ -55,6 +55,7 @@ function baseReport(): WeeklyReport {
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
+    weeklyTotals: makeWonLostTotals(),
   };
 }
 

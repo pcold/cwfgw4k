@@ -4,7 +4,15 @@ import { formatMoney } from '@/shared/util/money';
 import ColumnHeaderFilter, {
   type ColumnHeaderFilterOption,
 } from '@/shared/components/ColumnHeaderFilter';
-import { deriveScoreboard, formatScoreToPar } from './scoreboardModel';
+import {
+  formatScoreToPar,
+  hasPlayerOn,
+  hasUndraftedPlayer,
+  leaderboardTeamNames,
+  playerNames,
+  scoreboardTeams,
+  teamLabel,
+} from './scoreboardModel';
 
 const ALL = '';
 const UNDRAFTED = '__undrafted__';
@@ -33,41 +41,24 @@ interface Props {
 }
 
 function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
-  const scoreboard = deriveScoreboard(report);
-  const tournament = report.tournament;
+  const teams = scoreboardTeams(report);
+  const { tournament, weeklyTotals, liveLeaderboard: leaderboard } = report;
   const [leaderboardTeamFilter, setLeaderboardTeamFilter] = useState<string>(ALL);
 
-  const leaderboardTeamOptions = useMemo<ColumnHeaderFilterOption[]>(() => {
-    const names = new Set<string>();
-    let hasUndrafted = false;
-    for (const entry of scoreboard.leaderboard) {
-      const parts = entry.teamName ? entry.teamName.split(' / ') : [];
-      if (parts.length === 0) hasUndrafted = true;
-      for (const part of parts) {
-        if (part === 'undrafted') hasUndrafted = true;
-        else names.add(part);
-      }
-    }
-    const sorted = Array.from(names).sort((a, b) => a.localeCompare(b));
-    return [
+  const leaderboardTeamOptions = useMemo<ColumnHeaderFilterOption[]>(
+    () => [
       { value: ALL, label: 'Team' },
-      ...sorted.map((name) => ({ value: name, label: name })),
-      ...(hasUndrafted ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
-    ];
-  }, [scoreboard.leaderboard]);
+      ...leaderboardTeamNames(leaderboard).map((name) => ({ value: name, label: name })),
+      ...(leaderboard.some(hasUndraftedPlayer) ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
+    ],
+    [leaderboard],
+  );
 
   const filteredLeaderboard = useMemo(() => {
-    if (leaderboardTeamFilter === ALL) return scoreboard.leaderboard;
-    if (leaderboardTeamFilter === UNDRAFTED)
-      return scoreboard.leaderboard.filter((e) => {
-        if (!e.teamName) return true;
-        return e.teamName.split(' / ').some((p) => p === 'undrafted');
-      });
-    return scoreboard.leaderboard.filter((e) => {
-      if (!e.teamName) return false;
-      return e.teamName.split(' / ').some((p) => p === leaderboardTeamFilter);
-    });
-  }, [scoreboard.leaderboard, leaderboardTeamFilter]);
+    if (leaderboardTeamFilter === ALL) return leaderboard;
+    if (leaderboardTeamFilter === UNDRAFTED) return leaderboard.filter(hasUndraftedPlayer);
+    return leaderboard.filter((entry) => hasPlayerOn(entry, leaderboardTeamFilter));
+  }, [leaderboard, leaderboardTeamFilter]);
   const isCompleted = tournament.status === 'completed';
   const statusBanner = isCompleted
     ? 'Results finalized'
@@ -107,7 +98,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">
-            {scoreboard.teams.map((team, i) => (
+            {teams.map((team, i) => (
               <tr key={team.teamId} className={`hover:bg-gray-800/60 ${rowTint(team.weeklyTotal)}`}>
                 <td className="px-4 py-3 text-gray-500">{i + 1}</td>
                 <td className="px-4 py-3 font-medium text-gray-100 uppercase">{team.teamName}</td>
@@ -159,24 +150,24 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
         <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
           <span className="text-gray-500">Won</span>
           <span className="font-semibold text-green-400 tabular-nums">
-            {formatMoney(scoreboard.totalWon)}
+            {formatMoney(weeklyTotals.won)}
           </span>
         </div>
         <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
           <span className="text-gray-500">Lost</span>
           <span className="font-semibold text-red-400 tabular-nums">
-            {formatMoney(scoreboard.totalLost)}
+            {formatMoney(weeklyTotals.lost)}
           </span>
         </div>
         <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
           <span className="text-gray-500">Net</span>
-          <span className={`font-semibold tabular-nums ${signColor(scoreboard.net)}`}>
-            {formatMoney(scoreboard.net)}
+          <span className={`font-semibold tabular-nums ${signColor(weeklyTotals.net)}`}>
+            {formatMoney(weeklyTotals.net)}
           </span>
         </div>
       </div>
 
-      {scoreboard.leaderboard.length > 0 ? (
+      {leaderboard.length > 0 ? (
         <div>
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
             Leaderboard
@@ -213,15 +204,15 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props) {
                 ) : (
                   filteredLeaderboard.map((entry) => (
                     <tr
-                      key={entry.name}
+                      key={playerNames(entry)}
                       className={entry.rostered ? 'bg-green-900/10' : ''}
                     >
-                      <td className="px-3 py-2 text-gray-400">{entry.position ?? '—'}</td>
-                      <td className="px-3 py-2 text-gray-100">{entry.name}</td>
+                      <td className="px-3 py-2 text-gray-400">{entry.position}</td>
+                      <td className="px-3 py-2 text-gray-100">{playerNames(entry)}</td>
                       <td
-                        className={`px-3 py-2 text-xs ${entry.teamName ? 'text-green-400 uppercase' : 'text-gray-600'}`}
+                        className={`px-3 py-2 text-xs ${entry.rostered ? 'text-green-400 uppercase' : 'text-gray-600'}`}
                       >
-                        {entry.teamName ?? 'undrafted'}
+                        {teamLabel(entry)}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums">
                         {formatScoreToPar(entry.scoreToPar)}

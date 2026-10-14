@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
-import { makeWonLostTotals } from '@/shared/test/fixtures';
-import { collapsePairs, deriveScoreboard, formatScoreToPar } from './scoreboardModel';
-import type { LeaderboardEntry } from './scoreboardModel';
+import { makeLeaderboardEntry, makeWonLostTotals } from '@/shared/test/fixtures';
+import {
+  formatScoreToPar,
+  hasPlayerOn,
+  hasUndraftedPlayer,
+  leaderboardTeamNames,
+  playerNames,
+  scoreboardTeams,
+  teamLabel,
+} from './scoreboardModel';
 
 function row(overrides: Partial<ReportCell> = {}): ReportCell {
   return {
@@ -62,13 +69,14 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
+    weeklyTotals: makeWonLostTotals(),
     ...overrides,
   };
 }
 
-describe('deriveScoreboard', () => {
+describe('scoreboardTeams', () => {
   it('uses per-tournament top-10 earnings, not cumulative season earnings', () => {
-    const scoreboard = deriveScoreboard(
+    const teams = scoreboardTeams(
       report({
         teams: [
           teamColumn({
@@ -80,11 +88,11 @@ describe('deriveScoreboard', () => {
         ],
       }),
     );
-    expect(nth(scoreboard.teams, 0).topTenEarnings).toBe(42);
+    expect(nth(teams, 0).topTenEarnings).toBe(42);
   });
 
   it('sorts teams by weeklyTotal descending', () => {
-    const scoreboard = deriveScoreboard(
+    const teams = scoreboardTeams(
       report({
         teams: [
           teamColumn({ teamId: 't-1', teamName: 'Aces', weeklyTotal: 10 }),
@@ -93,11 +101,11 @@ describe('deriveScoreboard', () => {
         ],
       }),
     );
-    expect(scoreboard.teams.map((t) => t.teamName)).toEqual(['Birdies', 'Aces', 'Cuts']);
+    expect(teams.map((t) => t.teamName)).toEqual(['Birdies', 'Aces', 'Cuts']);
   });
 
   it('includes only rows with positive earnings in golferScores', () => {
-    const scoreboard = deriveScoreboard(
+    const teams = scoreboardTeams(
       report({
         teams: [
           teamColumn({
@@ -110,240 +118,100 @@ describe('deriveScoreboard', () => {
         ],
       }),
     );
-    const golfers = nth(scoreboard.teams, 0).golferScores.map((g) => g.golferName);
+    const golfers = nth(teams, 0).golferScores.map((g) => g.golferName);
     expect(golfers).toEqual(['Alpha', 'Gamma']);
   });
 
+  it('leaves a paid cell with no golfer out of golferScores', () => {
+    const teams = scoreboardTeams(
+      report({ teams: [teamColumn({ cells: [row({ golferName: null, earnings: 50 })] })] }),
+    );
+    expect(nth(teams, 0).golferScores).toEqual([]);
+  });
+
   it('carries a tied finish through as its position and tie flag', () => {
-    const scoreboard = deriveScoreboard(
+    const teams = scoreboardTeams(
       report({
         teams: [teamColumn({ cells: [row({ positionStr: 'T5', finish: { position: 5, tied: true } })] })],
       }),
     );
-    const golfer = nth(nth(scoreboard.teams, 0).golferScores, 0);
+    const golfer = nth(nth(teams, 0).golferScores, 0);
     expect(golfer.position).toBe(5);
     expect(golfer.tied).toBe(true);
   });
 
   it('carries a solo finish through as not tied', () => {
-    const scoreboard = deriveScoreboard(
+    const teams = scoreboardTeams(
       report({
         teams: [teamColumn({ cells: [row({ positionStr: '1', finish: { position: 1, tied: false } })] })],
       }),
     );
-    const golfer = nth(nth(scoreboard.teams, 0).golferScores, 0);
+    const golfer = nth(nth(teams, 0).golferScores, 0);
     expect(golfer.position).toBe(1);
     expect(golfer.tied).toBe(false);
   });
+});
 
-  it('computes the zero-sum won/lost/net summary', () => {
-    const scoreboard = deriveScoreboard(
-      report({
-        teams: [
-          teamColumn({ teamId: 't-1', weeklyTotal: 30 }),
-          teamColumn({ teamId: 't-2', weeklyTotal: 10 }),
-          teamColumn({ teamId: 't-3', weeklyTotal: -40 }),
-        ],
-      }),
-    );
-    expect(scoreboard.totalWon).toBe(40);
-    expect(scoreboard.totalLost).toBe(-40);
-    expect(scoreboard.net).toBe(0);
+describe('leaderboard labels', () => {
+  const pair = makeLeaderboardEntry({
+    players: [
+      { name: 'McIlroy', teamNames: [] },
+      { name: 'Lowry', teamNames: ['PAYRAY'] },
+    ],
   });
 
-  it('builds a leaderboard with rostered + undrafted and dedupes by name', () => {
-    const scoreboard = deriveScoreboard(
-      report({
-        teams: [
-          teamColumn({
-            teamName: 'Aces',
-            cells: [
-              row({ golferName: 'Scheffler', positionStr: 'T1', finish: { position: 1, tied: true }, scoreToPar: -12 }),
-              row({ golferName: 'Rahm', positionStr: 'T5', finish: { position: 5, tied: true }, scoreToPar: -6 }),
-            ],
-          }),
-          teamColumn({
-            teamId: 't-2',
-            teamName: 'Birdies',
-            cells: [
-              // same Rahm, rostered by both teams — dedup should keep one
-              row({ golferName: 'Rahm', positionStr: 'T5', finish: { position: 5, tied: true }, scoreToPar: -6 }),
-            ],
-          }),
-        ],
-        undraftedTopTens: [
-          { name: 'Unknown1', position: 3, payout: 0, scoreToPar: -10, pairKey: null },
-        ],
-      }),
-    );
-    const names = scoreboard.leaderboard.map((e) => e.name);
-    expect(names).toContain('Scheffler');
-    expect(names).toContain('Rahm');
-    expect(names).toContain('Unknown1');
-    // dedupe: Rahm appears once
-    expect(names.filter((n) => n === 'Rahm')).toHaveLength(1);
-    // sorted by position ascending
-    expect(nth(scoreboard.leaderboard, 0).name).toBe('Scheffler');
+  it('prints a lone player by name and a pair slash-joined in player order', () => {
+    expect(playerNames(makeLeaderboardEntry({ players: [{ name: 'Solo', teamNames: [] }] }))).toBe('Solo');
+    expect(playerNames(pair)).toBe('McIlroy / Lowry');
   });
 
-  it('uses liveLeaderboard when present and ignores rostered row fallback', () => {
-    const scoreboard = deriveScoreboard(
-      report({
-        teams: [
-          teamColumn({
-            teamName: 'Aces',
-            // Rostered row uses last-name spelling and would normally feed the leaderboard
-            cells: [row({ golferName: 'SCHEFFLER', positionStr: 'T1', finish: { position: 1, tied: true }, scoreToPar: -12 })],
-          }),
-        ],
-        undraftedTopTens: [
-          { name: 'Old Undrafted', position: 9, payout: 0, scoreToPar: -2, pairKey: null },
-        ],
-        liveLeaderboard: [
-          { name: 'Scottie Scheffler', position: 1, scoreToPar: -12, rostered: true, teamName: 'Aces', pairKey: null, roundScores: [], totalStrokes: null },
-          { name: 'Rory McIlroy', position: 2, scoreToPar: -10, rostered: false, teamName: null, pairKey: null, roundScores: [], totalStrokes: null },
-          { name: 'Phil Mickelson', position: 5, scoreToPar: -7, rostered: false, teamName: null, pairKey: null, roundScores: [], totalStrokes: null },
-        ],
-      }),
-    );
-    expect(scoreboard.leaderboard.map((e) => e.name)).toEqual([
-      'Scottie Scheffler',
-      'Rory McIlroy',
-      'Phil Mickelson',
-    ]);
-    expect(nth(scoreboard.leaderboard, 1).rostered).toBe(false);
-    expect(nth(scoreboard.leaderboard, 1).scoreToPar).toBe(-10);
-    // The legacy fallback names ('SCHEFFLER', 'Old Undrafted') must not appear
-    expect(scoreboard.leaderboard.find((e) => e.name === 'SCHEFFLER')).toBeUndefined();
-    expect(scoreboard.leaderboard.find((e) => e.name === 'Old Undrafted')).toBeUndefined();
+  it('labels each partner in player order, an undrafted one as "undrafted"', () => {
+    expect(teamLabel(pair)).toBe('undrafted / PAYRAY');
   });
 
-  it('threads round scores and total strokes through the live leaderboard when the backend ships them', () => {
-    const scoreboard = deriveScoreboard(
-      report({
-        liveLeaderboard: [
-          {
-            name: 'Scottie Scheffler',
-            position: 1,
-            scoreToPar: -12,
-            rostered: true,
-            teamName: 'Aces',
-            pairKey: null,
-            roundScores: [64, 68, 70, 67],
-            totalStrokes: 269,
-          },
-        ],
-      }),
-    );
-    expect(scoreboard.leaderboard).toHaveLength(1);
-    expect(nth(scoreboard.leaderboard, 0).roundScores).toEqual([64, 68, 70, 67]);
-    expect(nth(scoreboard.leaderboard, 0).totalStrokes).toBe(269);
-  });
-
-  it('marks rostered vs undrafted leaderboard entries', () => {
-    const scoreboard = deriveScoreboard(
-      report({
-        teams: [
-          teamColumn({
-            teamName: 'Aces',
-            cells: [row({ golferName: 'Tiger', positionStr: 'T10', finish: { position: 10, tied: true } })],
-          }),
-        ],
-        undraftedTopTens: [
-          { name: 'Phil', position: 4, payout: 0, scoreToPar: 0, pairKey: null },
-        ],
-      }),
-    );
-    const phil = scoreboard.leaderboard.find((e) => e.name === 'Phil');
-    const tiger = scoreboard.leaderboard.find((e) => e.name === 'Tiger');
-    expect(phil?.rostered).toBe(false);
-    expect(phil?.teamName).toBe(null);
-    expect(phil?.scoreToPar).toBe(0);
-    expect(tiger?.rostered).toBe(true);
-    expect(tiger?.teamName).toBe('Aces');
-  });
-
-  it('collapses team-event pairs from liveLeaderboard into a single row', () => {
-    const scoreboard = deriveScoreboard(
-      report({
-        liveLeaderboard: [
-          { name: 'McIlroy', position: 1, scoreToPar: -28, rostered: false, teamName: null, pairKey: 'team:99', roundScores: [], totalStrokes: null },
-          { name: 'Lowry', position: 1, scoreToPar: -28, rostered: true, teamName: 'PAYRAY', pairKey: 'team:99', roundScores: [], totalStrokes: null },
-          { name: 'Scheffler', position: 3, scoreToPar: -25, rostered: false, teamName: null, pairKey: null, roundScores: [], totalStrokes: null },
-        ],
-      }),
-    );
-    expect(scoreboard.leaderboard).toHaveLength(2);
-    expect(nth(scoreboard.leaderboard, 0).name).toBe('McIlroy / Lowry');
-    expect(nth(scoreboard.leaderboard, 0).teamName).toBe('undrafted / PAYRAY');
-    expect(nth(scoreboard.leaderboard, 0).rostered).toBe(true);
-    expect(nth(scoreboard.leaderboard, 1).name).toBe('Scheffler');
+  it('names every team rostering a golfer split across them', () => {
+    const split = makeLeaderboardEntry({ players: [{ name: 'Rahm', teamNames: ['Aces', 'Birdies'] }] });
+    expect(teamLabel(split)).toBe('Aces / Birdies');
   });
 });
 
-describe('collapsePairs', () => {
-  const entry = (over: Partial<LeaderboardEntry>): LeaderboardEntry => ({
-    name: 'x',
-    position: 1,
-    scoreToPar: 0,
-    rostered: false,
-    teamName: null,
-    pairKey: null,
-    roundScores: [],
-    totalStrokes: null,
-    ...over,
+describe('leaderboard team filter', () => {
+  const pair = makeLeaderboardEntry({
+    players: [
+      { name: 'McIlroy', teamNames: ['ROSEH2O'] },
+      { name: 'Lowry', teamNames: ['PAYRAY', 'Aces'] },
+    ],
+  });
+  const undrafted = makeLeaderboardEntry({ players: [{ name: 'Scheffler', teamNames: [] }] });
+
+  it('lists each team on the leaderboard once, alphabetically', () => {
+    const again = makeLeaderboardEntry({ players: [{ name: 'Rahm', teamNames: ['Aces'] }] });
+    expect(leaderboardTeamNames([pair, undrafted, again])).toEqual(['Aces', 'PAYRAY', 'ROSEH2O']);
   });
 
-  it('keeps non-pair entries untouched', () => {
-    const input = [entry({ name: 'Solo' })];
-    expect(collapsePairs(input)).toEqual(input);
+  it('matches a row to a team that rosters either partner', () => {
+    expect(hasPlayerOn(pair, 'PAYRAY')).toBe(true);
+    expect(hasPlayerOn(pair, 'ROSEH2O')).toBe(true);
+    expect(hasPlayerOn(pair, 'Birdies')).toBe(false);
   });
 
-  it('joins two entries sharing a pairKey with / separator in matching order', () => {
-    const input = [
-      entry({ name: 'A', pairKey: 'p1', teamName: 'X' }),
-      entry({ name: 'B', pairKey: 'p1', teamName: 'Y' }),
-    ];
-    const out = collapsePairs(input);
-    expect(out).toHaveLength(1);
-    expect(nth(out, 0).name).toBe('A / B');
-    expect(nth(out, 0).teamName).toBe('X / Y');
+  it('matches a team by its whole name, however the name is spelled', () => {
+    const awkward = makeLeaderboardEntry({ players: [{ name: 'Rahm', teamNames: ['undrafted / Aces'] }] });
+    expect(hasPlayerOn(awkward, 'Aces')).toBe(false);
+    expect(hasUndraftedPlayer(awkward)).toBe(false);
+    expect(leaderboardTeamNames([awkward])).toEqual(['undrafted / Aces']);
   });
 
-  it('fills in "undrafted" when a partner has no team', () => {
-    const input = [
-      entry({ name: 'A', pairKey: 'p1', teamName: null }),
-      entry({ name: 'B', pairKey: 'p1', teamName: 'WOMBLE' }),
-    ];
-    const out = collapsePairs(input);
-    expect(nth(out, 0).teamName).toBe('undrafted / WOMBLE');
-  });
-
-  it('fills in "undrafted" in second place when the later partner has no team', () => {
-    const input = [
-      entry({ name: 'A', pairKey: 'p1', teamName: 'WOMBLE' }),
-      entry({ name: 'B', pairKey: 'p1', teamName: null }),
-    ];
-    expect(collapsePairs(input).map((row) => row.teamName)).toEqual(['WOMBLE / undrafted']);
-  });
-
-  it('marks the collapsed row as rostered if either partner is rostered', () => {
-    const input = [
-      entry({ name: 'A', pairKey: 'p1', rostered: false }),
-      entry({ name: 'B', pairKey: 'p1', rostered: true }),
-    ];
-    expect(nth(collapsePairs(input), 0).rostered).toBe(true);
-  });
-
-  it('keeps distinct pairKeys as separate rows', () => {
-    const input = [
-      entry({ name: 'A', pairKey: 'p1' }),
-      entry({ name: 'B', pairKey: 'p1' }),
-      entry({ name: 'C', pairKey: 'p2' }),
-      entry({ name: 'D', pairKey: 'p2' }),
-    ];
-    const out = collapsePairs(input);
-    expect(out.map((r) => r.name)).toEqual(['A / B', 'C / D']);
+  it('counts a row undrafted when any partner has no team', () => {
+    const half = makeLeaderboardEntry({
+      players: [
+        { name: 'McIlroy', teamNames: [] },
+        { name: 'Lowry', teamNames: ['PAYRAY'] },
+      ],
+    });
+    expect(hasUndraftedPlayer(half)).toBe(true);
+    expect(hasUndraftedPlayer(undrafted)).toBe(true);
+    expect(hasUndraftedPlayer(pair)).toBe(false);
   });
 });
 

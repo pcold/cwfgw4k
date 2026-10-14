@@ -125,6 +125,7 @@ function buildFixture(overrides: {
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
+    weeklyTotals: makeWonLostTotals(),
   };
 }
 

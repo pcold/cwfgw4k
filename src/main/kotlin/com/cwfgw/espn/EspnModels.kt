@@ -139,18 +139,18 @@ data class PreviewGolferScore(
 )
 
 /**
- * One row of the projected leaderboard — top-N competitors regardless of
- * roster status. Lets the UI render a unified scoreboard with rostered
- * and undrafted players in correct position order.
+ * One row per competitor in ESPN's field, rostered or not. [teamNames] lists every team rostering the golfer,
+ * since one can be split across teams; [rostered] is derived from it so the two cannot disagree.
  */
 data class PreviewLeaderboardEntry(
     val name: String,
     val position: Int,
     val scoreToPar: Int?,
     val thru: String?,
-    val rostered: Boolean,
-    val teamName: String?,
+    val teamNames: List<String>,
     val pairKey: String? = null,
     val roundScores: List<Int> = emptyList(),
     val totalStrokes: Int? = null,
-)
+) {
+    val rostered: Boolean get() = teamNames.isNotEmpty()
+}

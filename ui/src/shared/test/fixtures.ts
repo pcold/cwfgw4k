@@ -1,4 +1,11 @@
-import type { Season, Tournament, League, User, WonLostTotals } from '@/shared/api/types';
+import type {
+  League,
+  LiveLeaderboardEntry,
+  Season,
+  Tournament,
+  User,
+  WonLostTotals,
+} from '@/shared/api/types';
 
 // Centralized factories for the most-mocked API shapes. Tests that don't
 // care about a specific field get sensible defaults; everything else is
@@ -61,4 +68,20 @@ export function makeUser(overrides: Partial<User> = {}): User {
 
 export function makeWonLostTotals(overrides: Partial<WonLostTotals> = {}): WonLostTotals {
   return { won: 0, lost: 0, net: 0, ...overrides };
+}
+
+// `rostered` follows `players` unless overridden, as it does on the wire.
+export function makeLeaderboardEntry(
+  overrides: Partial<LiveLeaderboardEntry> = {},
+): LiveLeaderboardEntry {
+  const players = overrides.players ?? [{ name: 'Scottie Scheffler', teamNames: [] }];
+  return {
+    position: 1,
+    scoreToPar: 0,
+    roundScores: [],
+    totalStrokes: null,
+    rostered: players.some((player) => player.teamNames.length > 0),
+    ...overrides,
+    players,
+  };
 }
