@@ -189,8 +189,8 @@ export const api = {
   golfers: (search?: string): Promise<Golfer[]> => {
     const params = new URLSearchParams();
     if (search && search.trim().length > 0) params.set('search', search.trim());
-    const query = params.toString();
-    return getJson<Golfer[]>(query ? `/api/v1/golfers?${query}` : '/api/v1/golfers');
+    const qs = params.toString();
+    return getJson<Golfer[]>(`/api/v1/golfers${qs ? `?${qs}` : ''}`);
   },
   createGolfer: (input: CreateGolferRequest): Promise<Golfer> =>
     postJson<Golfer>('/api/v1/golfers', input),
