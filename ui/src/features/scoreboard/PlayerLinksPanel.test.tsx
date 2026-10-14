@@ -52,7 +52,6 @@ const mattGolfer: Golfer = {
   lastName: 'Fitzpatrick',
   country: null,
   worldRanking: null,
-  active: true,
   updatedAt: '2026-01-01T00:00:00Z',
 };
 const alexGolfer: Golfer = { ...mattGolfer, id: 'g-alex', firstName: 'Alex' };

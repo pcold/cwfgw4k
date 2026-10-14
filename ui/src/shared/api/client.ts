@@ -186,14 +186,11 @@ export const api = {
     ),
   golferHistory: (seasonId: string, golferId: string): Promise<GolferHistory> =>
     getJson<GolferHistory>(`/api/v1/seasons/${seasonId}/golfer/${golferId}/history`),
-  // The list endpoint is public and supports an optional case-insensitive
-  // server-side `search` filter. We pass `active=false` so the picker can
-  // also surface inactive golfers — admins occasionally need to link an
-  // ESPN row to a previously-deactivated golfer.
   golfers: (search?: string): Promise<Golfer[]> => {
-    const params = new URLSearchParams({ active: 'false' });
+    const params = new URLSearchParams();
     if (search && search.trim().length > 0) params.set('search', search.trim());
-    return getJson<Golfer[]>(`/api/v1/golfers?${params.toString()}`);
+    const query = params.toString();
+    return getJson<Golfer[]>(query ? `/api/v1/golfers?${query}` : '/api/v1/golfers');
   },
   createGolfer: (input: CreateGolferRequest): Promise<Golfer> =>
     postJson<Golfer>('/api/v1/golfers', input),

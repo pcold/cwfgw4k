@@ -216,7 +216,6 @@ export interface Season {
   name: string;
   seasonYear: number;
   seasonNumber: number;
-  status: string;
   tieFloor: number;
   sideBetAmount: number;
   maxTeams: number;
@@ -381,7 +380,6 @@ export interface Golfer {
   lastName: string;
   country: string | null;
   worldRanking: number | null;
-  active: boolean;
   updatedAt: string;
 }
 
