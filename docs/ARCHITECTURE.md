@@ -72,8 +72,8 @@ User (username, role admin | user)
 
 - **League.** One row in practice. Seasons hang off it.
 - **Season.** Identified by `season_year` and `season_number` (when the create request names none, the next free
-  number, from `SeasonRepository.nextSeasonNumber`). Owns its rules: the payout table and the side-bet rounds live in the
-  side tables `season_rule_payouts` and `season_rule_side_bet_rounds`; the tie floor and side-bet amount are
+  number, from `SeasonRepository.nextSeasonNumber`). Owns its rules: the payout table and the side-bet rounds live
+  in the side tables `season_rule_payouts` and `season_rule_side_bet_rounds`; the tie floor and side-bet amount are
   columns. `max_teams` is stored and returned but nothing enforces it; the team count is whatever the roster upload
   creates.
 - **Tournament.** A season's schedule entry. `pga_tournament_id` is the ESPN event id once linked.
@@ -150,8 +150,9 @@ it groups: UUID segments become `:id`, numeric segments `:n`, and anything under
 `/assets/*` (`http/RequestLogging.kt`). Other structured lines share the `cwfgw4k.<area>` prefix
 (`cwfgw4k.db.pool`, `cwfgw4k.cache`, `cwfgw4k.espn`).
 
-Responses outside `/api` that are `text/*`, JavaScript or SVG are gzip/deflate-compressed above 1 KiB. API responses are never compressed: they
-reflect request input next to the session cookie, which is the BREACH precondition (`http/Compression.kt`).
+Responses outside `/api` that are `text/*`, JavaScript or SVG are gzip/deflate-compressed above 1 KiB. API
+responses are never compressed: they reflect request input next to the session cookie, which is the BREACH
+precondition (`http/Compression.kt`).
 
 ## 4. Persistence
 
@@ -229,9 +230,9 @@ Each of these runs in exactly one `tx.update`, so it lands whole or not at all:
 
 - **Season create** writes the season row and, when the request carries rules, both rules tables
   (`SeasonRepository.kt`). A season created without rules reads back the defaults.
-- **Finalize** checks ordering, imports ESPN results and computes every fantasy score. A scoring failure throws
-  and rolls back the import with it (`TournamentOpsServiceFinalizeRollbackSpec`). The ESPN fetch happens *before* the transaction,
-  so no connection is held across the network call.
+- **Finalize** checks ordering, imports ESPN results and computes every fantasy score. A scoring failure throws and
+  rolls back the import with it (`TournamentOpsServiceFinalizeRollbackSpec`). The ESPN fetch happens *before* the
+  transaction, so no connection is held across the network call.
 - **Reset** checks no later tournament is completed, deletes the tournament's scores and results, and sets it
   back to `upcoming`.
 - **Season clean-results** wipes every score and result in the season and returns every tournament to
@@ -289,7 +290,8 @@ Payouts are the app's most important behavior. The arithmetic is in `scoring/Pay
 pinned by example and property tests in `PayoutTableSpec`. `scoring/ScoringService.kt` applies it per roster
 entry inside finalize and persists `fantasy_scores`.
 
-All amounts are dollars as `BigDecimal`. Divisions round `HALF_UP` to four decimal places.
+All amounts are dollars as `BigDecimal`. Payout divisions (tie averages, team-event halves, ownership shares)
+round `HALF_UP` to four decimal places; a side-bet pool split rounds to cents.
 
 ### Rules and their defaults
 
@@ -313,15 +315,16 @@ The payout table's length is the number of paying places. An admin sets the rule
 2. **Ties average the places they span.** `numTied` golfers at position *p* share the mean of places
    *p* … *p*+`numTied`−1, counting places past the table as $0. T4 with three tied averages ($8+$7+$6)/3 = $7
    (`PayoutTable.tieSplitPayout`; spec: ties, tail tie).
-3. **The tournament multiplier scales everything.** Base payout and floor are both multiplied by the
+3. **The tournament multiplier scales payouts and the floor.** Base payout and floor are both multiplied by the
    tournament's `payout_multiplier` (spec: multiplier; `ScoringServiceSpec` multiplier).
 4. **Team events count pairs, not golfers.** ESPN lists both partners at the pair's position, so tied units are
    `numTied / 2` (at least 1), and each partner gets half the pair's payout (`PayoutTable.tiedUnits`; spec:
    team event cases).
 5. **Shared ownership splits the payout.** A golfer owned by several teams pays each its `ownership_pct` of the
-   base. The largest share rounds first and the last owner takes the remainder, so the shares sum exactly to
-   the base. A golfer with a single owner pays that team the full base, whatever its percentage
-   (`PayoutTable.splitOwnership`; spec: `splitOwnership` cases and property).
+   base, rounded `HALF_UP` to four places, except the smallest stake, which takes what is left. The shares sum
+   exactly to the base even when the percentages do not total 100, which nothing enforces. A golfer with a single
+   owner pays that team the full base, whatever its percentage (`PayoutTable.splitOwnership`; spec:
+   `splitOwnership` cases and property).
 6. **The floor.** Any positive amount below `tie_floor × multiplier` is raised to it: a tie average, a team
    partner's half, or an ownership share. Zero stays zero. The floor is a guarantee, not a redistribution, so a
    floored split can pay out more than the base (spec: tail-tie floor, 4 × 25% of $2, floor on both owners).
@@ -333,17 +336,22 @@ team pays every other team's winnings, so
 
 `weekly +/- = topTens × numTeams − totalPot`
 
-where `totalPot` is all teams' `topTens` summed (`ScoringService.buildWeeklyResult`; `ScoringServiceSpec`
-zero-sum property). Standings rank teams by their season total with sequential ranks; equal totals still get
-distinct ranks (`ReportHelpersSpec`).
+where `totalPot` is all teams' payouts summed. Finalize computes this (`ScoringService.buildWeeklyResult`;
+`ScoringServiceSpec` zero-sum example), but the ledger the report shows is recomputed from persisted scores
+(`WeeklyReportService.buildReportTeamColumn`). There `topTens` sums the eight draft-round cells, one pick per
+round, while `totalPot` sums every score, so a pick outside rounds 1–8, or a second pick in one round, is paid into
+the pot but not shown, and the report stops being zero-sum. Roster upload accepts any round number. Standings rank
+teams by their season total with sequential ranks; equal totals still get distinct ranks (`ReportHelpersSpec`).
 
 ### Late-row side bets
 
 For each side-bet round, every team's pick from that draft round races for the season
-(`reports/ReportHelpers.kt`, `WeeklyReportService.buildSideBetPerRound`; `ReportHelpersSpec`):
+(`reports/ReportHelpers.kt`, `WeeklyReportService.buildSideBetPerRound`; `ReportHelpersSpec`,
+`WeeklyReportServiceSpec`):
 
-- A pick's score is the sum of its fantasy-score payouts over completed tournaments (up to `through` on
-  rankings), plus the live tournaments in a live report.
+- A pick's score is the sum of its fantasy-score payouts over completed tournaments (through the selected
+  tournament on a weekly report, up to `through` on rankings), plus the live tournaments in a live report. A
+  team with two picks in one round races with only one of them.
 - While every pick in the round is at $0 the bet has no outcome.
 - The pick(s) at the maximum win; everyone else loses. Each loser pays the side-bet amount, so the pool is
   `amount × (numTeams − winners)`.
@@ -353,10 +361,11 @@ For each side-bet round, every team's pick from that draft round races for the s
 
 ### Report assembly
 
-Reports (`reports/WeeklyReportService.kt`) read persisted `fantasy_scores` of completed tournaments only, in
-one `tx.read` per request. The weekly grid shows eight draft rounds per team, and every golfer who finished in
-the top 10, drafted or not. Golfer history recomputes each finish's payout from `tournament_results` at
-full ownership, which is what the golfer earned rather than what any one team took.
+Reports (`reports/WeeklyReportService.kt`) read persisted `fantasy_scores` of completed tournaments only, and
+gather them in one `tx.read`; a live request adds the route's live-candidate check and one more read for the
+overlay's context. The weekly grid shows eight draft rounds per team, and every golfer who finished in a fixed top
+10 (independent of the payout table's length), drafted or not. Golfer history recomputes each finish's payout from
+`tournament_results` at full ownership, which is what the golfer earned rather than what any one team took.
 
 ## 8. ESPN Integration
 
@@ -366,8 +375,9 @@ full ownership, which is what the golfer earned rather than what any one team to
 `site.web.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard`; the other ESPN host answers this app with 403.
 `CachingEspnClient` wraps it in a per-JVM Caffeine cache: entries live `ESPN_SCOREBOARD_CACHE_TTL_SECONDS` (60),
 up to `ESPN_SCOREBOARD_CACHE_MAX_SIZE` (256). Concurrent misses share one request, and a failed request is
-evicted rather than cached. Each lookup logs `cwfgw4k.espn event=hit|miss|error endpoint=scoreboard|calendar`
-(`CachingEspnClientSpec`).
+evicted rather than cached (`CachingEspnClientSpec`). Each load logs
+`cwfgw4k.espn event=hit|miss|error endpoint=scoreboard|calendar`; a caller that joins an in-flight load logs
+nothing.
 
 ### Parsing
 
@@ -375,7 +385,9 @@ evicted rather than cached. Each lookup logs `cwfgw4k.espn event=hit|miss|error 
   sharing a `pair_key` of `team:<id>`.
 - **Positions.** Competitors are sorted by score to par, then ESPN's order. Equal scores share a position, and
   the next position skips past them, counting a pair as one. Once the event is completed a tie for the lead is
-  broken by ESPN's order (the playoff result). A competitor with no score sorts last.
+  broken by ESPN's order (the playoff result): every playoff entrant gets its own place, so a three-way playoff
+  pays 1st, 2nd and 3rd, not a shared T2. Ties below the lead stay shared. A competitor with no score sorts
+  last, each in its own position.
 
 Pinned by `EspnClientSpec`.
 
@@ -389,17 +401,19 @@ tournament is finalized.
 
 ### Live overlay
 
-A tournament is a **live candidate** when it is not completed and starts within three days of today, in
-`America/New_York` (`tournaments/TournamentPredicates.kt`; `TournamentPredicatesSpec`). The window shows the
-field and tee times from the Monday before a Thursday start.
+A tournament is a **live candidate** when it is not completed and its start date is no later than three days after
+today in `America/New_York`, so an unfinalized tournament that started earlier stays a candidate
+(`tournaments/TournamentPredicates.kt`; `TournamentPredicatesSpec`). The window shows the field and tee times from
+the Monday before a Thursday start.
 
 When a report is requested with `live=true`, `reports/LiveOverlayService.kt` fetches each candidate's
 leaderboard, scores it with the same payout rules, and overlays the result on the persisted report without
 writing anything. Rankings gain a column per live candidate; player rankings fold in the live payouts. A
 completed tournament selected in the weekly report is never overlaid.
 
-**Fallback.** If ESPN fails, the overlay logs a WARN and returns the persisted report unchanged, so an ESPN
-outage degrades live data and never the page (`LiveReportEspnOutageSpec`, `CompletedTournamentLiveGuardSpec`).
+**Fallback.** If ESPN does not answer or answers non-200, the overlay logs a WARN and skips that candidate, so a
+full outage returns the persisted report unchanged (`LiveReportEspnOutageSpec`,
+`CompletedTournamentLiveGuardSpec`). A malformed 200 body is not caught and fails the request.
 
 ## 9. HTTP API Surface
 
@@ -496,8 +510,9 @@ shared code in `shared/`.
 
 ## 12. Open Questions
 
-- **A team with no pick in a side-bet round (CWF-83).** Such a team is absent from that round's race, yet the
-  pool still counts every team as a loser, so the round is not zero-sum.
+- **A team with no pick in a side-bet round (CWF-83).** The persisted report and rankings leave such a team out of
+  that round's race, yet the pool counts it among the losers, so the round pays out a stake nobody paid. The
+  live overlay instead races it at $0 and charges it, so the two views disagree.
 - **A season with no side-bet rounds (CWF-186).** Create refuses an empty round list, and an empty rules table
   reads back as the default rounds, so a side-bet amount of 0 is the only way to turn the bets off.
 - **A shared ESPN-event resolver (CWF-179).** Finalize, schedule preview and the competitors route each match a
