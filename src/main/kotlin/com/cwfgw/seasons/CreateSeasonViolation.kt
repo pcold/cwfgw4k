@@ -1,6 +1,6 @@
 package com.cwfgw.seasons
 
-/** Refused before any row is written. Without `rules` the defaults apply, so only the flat fields can violate. */
+/** Refused before any row is written. Without `rules`, payouts and rounds default and only the amount is checked. */
 internal sealed interface CreateSeasonViolation {
     /** An empty list writes no payout rows, so the season would silently read back the default payouts. */
     data object NoPayoutPlaces : CreateSeasonViolation
@@ -11,10 +11,7 @@ internal sealed interface CreateSeasonViolation {
     /** The UNIQUE (season_id, round) constraint would refuse it anyway, as a 500. */
     data object DuplicateSideBetRound : CreateSeasonViolation
 
-    /**
-     * Counts as staked, so settlement would pay the losers; zero means no side bets and stays allowed. The
-     * CHECK `seasons_side_bet_amount_non_negative` would refuse it anyway, as a 500.
-     */
+    /** Settles inverted, paying the losers; zero means no side bets. A CHECK would refuse it anyway, as a 500. */
     data object NegativeSideBetAmount : CreateSeasonViolation
 }
 

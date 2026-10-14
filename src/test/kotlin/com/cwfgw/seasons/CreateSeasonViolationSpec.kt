@@ -122,4 +122,17 @@ class CreateSeasonViolationSpec : FunSpec({
             client.get("/api/v1/seasons").body<List<Season>>().shouldBeEmpty()
         }
     }
+
+    test("POST /api/v1/seasons refuses a negative side-bet amount in rules with 400 and its message") {
+        authenticatedApiTest { client ->
+            val response =
+                client.post("/api/v1/seasons") {
+                    contentType(ContentType.Application.Json)
+                    setBody(request(SeasonRules.defaults().copy(sideBetAmount = BigDecimal("-15"))))
+                }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.body<ErrorBody>().error shouldBe "side bet amount must not be negative"
+        }
+    }
 })
