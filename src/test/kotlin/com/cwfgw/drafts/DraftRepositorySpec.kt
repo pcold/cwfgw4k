@@ -3,7 +3,6 @@ package com.cwfgw.drafts
 import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.golfers.deactivateGolfer
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.seasons.CreateSeasonRequest
@@ -12,6 +11,7 @@ import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.teams.CreateTeamRequest
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamRepository
+import com.cwfgw.testing.deactivateGolfer
 import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly

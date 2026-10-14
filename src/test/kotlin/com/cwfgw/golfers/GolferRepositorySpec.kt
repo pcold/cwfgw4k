@@ -1,6 +1,7 @@
 package com.cwfgw.golfers
 
 import com.cwfgw.db.Transactor
+import com.cwfgw.testing.deactivateGolfer
 import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
