@@ -109,17 +109,15 @@ class EspnService(
         candidates: List<Tournament>,
     ): LivePreviewContext =
         tx.read {
+            val overrides =
+                linkRepository.listByTournaments(candidates.map { it.id })
+                    .groupBy({ it.tournamentId }, { it.espnCompetitorId to it.golferId })
             LivePreviewContext.from(
                 allGolfers = golferRepository.findAll(search = null),
                 teams = teamRepository.findBySeason(seasonId),
                 rosters = teamRepository.findRostersBySeason(seasonId),
                 rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults(),
-                overridesByTournament =
-                    candidates.associate { candidate ->
-                        candidate.id to
-                            linkRepository.listByTournament(candidate.id)
-                                .associate { it.espnCompetitorId to it.golferId }
-                    },
+                overridesByTournament = candidates.associate { it.id to overrides[it.id].orEmpty().toMap() },
             )
         }
 
