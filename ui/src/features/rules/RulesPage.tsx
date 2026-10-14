@@ -159,7 +159,7 @@ function RulesView({ rules }: RulesViewProps): ReactNode {
 }
 
 interface ScheduleListProps {
-  tournaments: Tournament[];
+  tournaments: readonly Tournament[];
 }
 
 function ScheduleList({ tournaments }: ScheduleListProps): ReactNode {

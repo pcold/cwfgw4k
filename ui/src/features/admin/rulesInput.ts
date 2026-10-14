@@ -12,7 +12,7 @@ export function parseSideBetRounds(input: string): number[] {
 }
 
 export function buildRules(input: {
-  payouts: number[];
+  payouts: readonly number[];
   tieFloor: number;
   sideBetRoundsStr: string;
   sideBetAmount: number;
