@@ -218,7 +218,7 @@ Use deliberately. Each scope function has a specific purpose:
   `x.run { }` reads better. **Carve-out:** `with(ctx) { ... }` used purely to
   bring a `context(...)` receiver *into scope* — not to access its members — is
   the accepted idiom for calling a context-parameter function, e.g. seeding a
-  Fake whose methods are `context(ctx: TransactionContext)` from a spec
+  Fake whose writes are `context(ctx: WriteTransactionContext)` from a spec
   via `with(noopTransactionContext) { repo.insert(...) }`. There `with` reads
   as "with this context in scope, run the block"; the rule targets member
   access, not context provision.
