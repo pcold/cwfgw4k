@@ -75,16 +75,19 @@ private fun emptyEspnEvent(
 
 @Suppress("LongParameterList")
 private fun opsFixture(
+    seedSeason: Boolean = true,
     initialTournaments: List<Tournament> = emptyList(),
     espnByDate: Map<LocalDate, List<EspnTournament>> = emptyMap(),
 ): ApiFixture.() -> Unit =
     {
         val seasonRepo = FakeSeasonRepository(idFactory = { SEASON_ID })
-        kotlinx.coroutines.runBlocking {
-            with(noopTransactionContext) {
-                seasonRepo.create(
-                    CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
-                )
+        if (seedSeason) {
+            kotlinx.coroutines.runBlocking {
+                with(noopTransactionContext) {
+                    seasonRepo.create(
+                        CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
+                    )
+                }
             }
         }
         val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
@@ -150,6 +153,26 @@ class TournamentOpsRoutesSpec : FunSpec({
         authenticatedApiTest(opsFixture()) { client ->
             val response = client.post("/api/v1/tournaments/${MASTERS_ID.value}/finalize")
             response.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    test("POST /api/v1/tournaments/{id}/finalize returns 404 when scoring can't find the tournament's season") {
+        val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09")
+        val configure =
+            opsFixture(
+                seedSeason = false,
+                initialTournaments = listOf(masters),
+                espnByDate =
+                    mapOf(
+                        LocalDate.parse("2026-04-09") to
+                            listOf(emptyEspnEvent("espn-${MASTERS_ID.value}", "Masters")),
+                    ),
+            )
+
+        authenticatedApiTest(configure) { client ->
+            val response = client.post("/api/v1/tournaments/${MASTERS_ID.value}/finalize")
+            response.status shouldBe HttpStatusCode.NotFound
+            response.bodyAsText().shouldContain("season ${SEASON_ID.value} not found")
         }
     }
 

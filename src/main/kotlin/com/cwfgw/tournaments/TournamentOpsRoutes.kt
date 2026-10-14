@@ -43,6 +43,7 @@ private suspend fun RoutingContext.resetTournament(service: TournamentOpsService
 private fun TournamentOpsError.toDomainError(): DomainError =
     when (this) {
         is TournamentOpsError.TournamentNotFound -> DomainError.NotFound("tournament ${id.value} not found")
+        is TournamentOpsError.SeasonNotFound -> DomainError.NotFound("season ${id.value} not found")
         is TournamentOpsError.OutOfOrder ->
             DomainError.Refused(outOfOrderMessage(), code = "tournament_out_of_order")
         is TournamentOpsError.UpstreamUnavailable -> DomainError.BadGateway(failure.summary)

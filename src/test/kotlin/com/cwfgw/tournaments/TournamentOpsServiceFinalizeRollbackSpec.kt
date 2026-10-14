@@ -3,18 +3,22 @@ package com.cwfgw.tournaments
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
 import com.cwfgw.espn.EspnClient
+import com.cwfgw.espn.EspnCompetitor
 import com.cwfgw.espn.EspnService
+import com.cwfgw.espn.EspnStatus
 import com.cwfgw.espn.EspnTournament
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
+import com.cwfgw.result.Result
 import com.cwfgw.scoring.FantasyScore
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.scoring.UpsertScore
 import com.cwfgw.seasons.CreateSeasonRequest
+import com.cwfgw.seasons.Season
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.teams.AddToRosterRequest
@@ -24,6 +28,7 @@ import com.cwfgw.testing.postgresHarness
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.runBlocking
 import java.math.BigDecimal
@@ -153,7 +158,96 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
         val afterRollback = runBlocking { tx.read { tournamentRepo.findById(seeded.id) } }
         afterRollback?.status shouldBe TournamentStatus.Upcoming
     }
+
+    test("finalizeTournament rolls back the ESPN import when calculateScoresIn returns an error") {
+        val seeded = runBlocking { tx.update { seedUpcomingMasters() } }
+        val espnEvent =
+            EspnTournament(
+                espnId = "401580999",
+                name = "The Masters",
+                completed = true,
+                competitors = listOf(unseenWinner()),
+                isTeamEvent = false,
+            )
+        val espnService =
+            EspnService(
+                client = FakeEspnClient(tournamentsByDate = mapOf(seeded.startDate to listOf(espnEvent))),
+                seasonRepository = seasonRepo,
+                golferRepository = golferRepo,
+                teamRepository = teamRepo,
+                tournamentRepository = tournamentRepo,
+                linkRepository = linkRepo,
+                tx = tx,
+            )
+        val scoringService =
+            ScoringService(
+                repository = realScoringRepo,
+                seasonRepository = SeasonHidingSeasonRepository(seasonRepo),
+                tournamentRepository = tournamentRepo,
+                teamRepository = teamRepo,
+            )
+        val opsService =
+            TournamentOpsService(
+                tournamentRepository = tournamentRepo,
+                scoringService = scoringService,
+                scoringRepository = realScoringRepo,
+                espnService = espnService,
+                tx = tx,
+            )
+
+        val outcome = runBlocking { opsService.finalizeTournament(seeded.id) }
+
+        runBlocking { tx.read { tournamentRepo.findById(seeded.id) } }?.status shouldBe TournamentStatus.Upcoming
+        runBlocking { tx.read { tournamentRepo.getResults(seeded.id) } }.shouldBeEmpty()
+        runBlocking { tx.read { golferRepo.findByPgaPlayerId(UNSEEN_WINNER_ESPN_ID) } } shouldBe null
+        outcome shouldBe Result.Err(TournamentOpsError.SeasonNotFound(seeded.seasonId))
+    }
 })
+
+private const val UNSEEN_WINNER_ESPN_ID = "3470"
+
+context(ctx: TransactionContext)
+private fun seedUpcomingMasters(): Tournament {
+    val league = LeagueRepository().create(CreateLeagueRequest(name = "Castlewood"))
+    val season =
+        SeasonRepository().create(
+            CreateSeasonRequest(leagueId = league.id, name = "2026 Spring", seasonYear = 2026),
+        )
+    return TournamentRepository().create(
+        CreateTournamentRequest(
+            name = "The Masters",
+            seasonId = season.id,
+            startDate = LocalDate.parse("2026-04-09"),
+            endDate = LocalDate.parse("2026-04-12"),
+            pgaTournamentId = "401580999",
+            payoutMultiplier = BigDecimal.ONE,
+        ),
+    )
+}
+
+/** No golfer carries this ESPN id, so the import creates one and writes its result: two rows a rollback must undo. */
+private fun unseenWinner(): EspnCompetitor =
+    EspnCompetitor(
+        espnId = UNSEEN_WINNER_ESPN_ID,
+        name = "Rory McIlroy",
+        order = 1,
+        scoreStr = "-12",
+        scoreToPar = -12,
+        totalStrokes = 276,
+        roundScores = listOf(69, 69, 69, 69),
+        position = 1,
+        status = EspnStatus.Active,
+        isTeamPartner = false,
+        pairKey = null,
+    )
+
+/** Hides every season from [findById], which is the first thing `calculateScoresIn` reads, so it returns an Err. */
+private class SeasonHidingSeasonRepository(
+    delegate: SeasonRepository,
+) : SeasonRepository by delegate {
+    context(ctx: TransactionContext)
+    override fun findById(id: SeasonId): Season? = null
+}
 
 /**
  * Forwards every [ScoringRepository] call to the real repository except
