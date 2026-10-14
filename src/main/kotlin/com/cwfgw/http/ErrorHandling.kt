@@ -186,7 +186,7 @@ private fun StatusPagesConfig.mapMalformedRequests() {
 
 /**
  * Not negotiated: an unparseable Accept is one of these faults, and negotiating the answer would raise it again.
- * The cause quotes what the client sent, so it is neither echoed nor logged.
+ * A client fault's cause quotes what the client sent, so it is neither echoed nor logged.
  */
 private suspend fun ApplicationCall.respondToBadRequest(cause: BadRequestException) {
     val fault = cause.clientFault()
