@@ -9,8 +9,8 @@ import testingLibrary from 'eslint-plugin-testing-library';
 import globals from 'globals';
 
 /**
- * Mechanizes the statically-checkable MUST rules of ui/CLAUDE.md, as ktlint and detekt do for the
- * backend. Wired into `./gradlew check` through the `uiLint` Gradle task.
+ * Mechanizes MUST rules from ui/CLAUDE.md, as ktlint and detekt do for the backend. Wired into
+ * `./gradlew check` through the `uiLint` Gradle task.
  */
 
 // ui/CLAUDE.md → What We Do Not Use: banning the import turns "discuss before adding" into a red build.
