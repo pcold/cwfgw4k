@@ -199,7 +199,6 @@ private val unmarkedMistakes =
     )
 
 /**
- * WARN counts with ERROR: `logback.xml` sends both to stderr, which Cloud Logging reads as severity ERROR.
  * Unfiltered by logger, so each line names its own and one from an unrelated thread says so in the failure.
  */
 private fun CapturedLogs.atWarnOrAbove(): List<String> =

@@ -237,9 +237,9 @@ echo
 echo "    Cache events:"
 echo "    resource.type=\"cloud_run_revision\" AND \\"
 echo "    resource.labels.service_name=\"$STAGING_SERVICE\" AND \\"
-echo "    textPayload:\"cwfgw4k.cache\""
+echo "    jsonPayload.message:\"cwfgw4k.cache\""
 echo
 echo "    ESPN calls:"
 echo "    resource.type=\"cloud_run_revision\" AND \\"
 echo "    resource.labels.service_name=\"$STAGING_SERVICE\" AND \\"
-echo "    textPayload:\"cwfgw4k.espn\""
+echo "    jsonPayload.message:\"cwfgw4k.espn\""

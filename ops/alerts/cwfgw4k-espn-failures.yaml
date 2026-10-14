@@ -38,7 +38,7 @@ documentation:
 
         resource.type="cloud_run_revision"
         AND resource.labels.service_name="cwfgw4k"
-        AND textPayload:"cwfgw4k.espn event=error"
+        AND jsonPayload.message:"cwfgw4k.espn event=error"
 
     Common causes:
     - ESPN upstream is sick (often transient — wait it out)

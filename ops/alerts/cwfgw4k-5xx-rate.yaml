@@ -36,14 +36,15 @@ documentation:
 
     Triage:
     - `severity>=ERROR` in Cloud Logging for application exception stacks
-      (logback now routes WARN+ to stderr → severity ERROR in Cloud Logging)
+      (in `jsonPayload.stack_trace`; a 4xx logs at WARNING and stays out)
     - `cwfgw4k.db.slow_tx kind=…` for slow tx blocks
     - `cwfgw4k.db.slow_acquire duration_ms=…` for pool wait
     - `cwfgw4k.db.pool waiting=N` for pool exhaustion
 
     Common causes:
     - Cold-start blip (single instance starting after idle); usually self-heals
-    - DB connection refill flakiness (Broken Pipe); see `severity>=ERROR`
+    - DB connection refill flakiness (Broken Pipe); see `severity>=WARNING`,
+      since Hikari logs a failed validation at WARN
     - Application bug; see `cwfgw4k_unhandled_errors` alert
   mimeType: text/markdown
 alertStrategy:

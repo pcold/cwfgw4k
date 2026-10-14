@@ -138,7 +138,7 @@ awk '
 echo
 echo "Cross-reference Cloud Logging for the run window:"
 echo "  resource.type=\"cloud_run_revision\" AND \\"
-echo "  textPayload:\"cwfgw4k.db.pool\""
+echo "  jsonPayload.message:\"cwfgw4k.db.pool\""
 echo "  → look for waiting > 0 sustained (pool exhaustion)"
 echo
 echo "  resource.type=\"cloud_run_revision\" AND \\"

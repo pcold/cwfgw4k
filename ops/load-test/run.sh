@@ -113,5 +113,5 @@ echo
 echo "Done. Cross-reference with Cloud Logging during the run window:"
 echo "  resource.type=\"cloud_run_revision\" AND \\"
 echo "  resource.labels.service_name=\"cwfgw4k\" AND \\"
-echo "  textPayload:\"cwfgw4k.cache\""
+echo "  jsonPayload.message:\"cwfgw4k.cache\""
 echo "to see hit / miss / put rates. Aim for hit rate > 0.7 on warm cached endpoints; live=true logs none."
