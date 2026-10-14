@@ -48,7 +48,7 @@ fun main() {
     log.info { "SeedMain: loading config" }
     val config = AppConfig.load()
 
-    log.info { "SeedMain: starting database (runs Flyway migrations against ${config.db.jdbcUrl})" }
+    log.info { "SeedMain: starting database (runs Flyway migrations against ${config.db.jdbcUrlWithoutQuery})" }
     val database = Database.start(config.db)
     val httpClient = buildHttpClient()
 
