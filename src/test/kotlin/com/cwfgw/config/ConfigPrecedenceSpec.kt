@@ -32,10 +32,10 @@ private suspend fun loadInChildJvm(
     results: File,
 ): List<String> =
     withContext(Dispatchers.IO) {
-        val java = Path.of(System.getProperty("java.home"), "bin", "java").toString()
+        val launcher = Path.of(System.getProperty("java.home"), "bin", "java").toString()
         val classpath = System.getProperty("java.class.path")
         val process =
-            ProcessBuilder(java, "-cp", classpath, ConfigPrecedenceProbe::class.java.name, results.path)
+            ProcessBuilder(launcher, "-cp", classpath, ConfigPrecedenceProbe::class.java.name, results.path)
                 .inheritIO()
                 .apply {
                     environment().clear()

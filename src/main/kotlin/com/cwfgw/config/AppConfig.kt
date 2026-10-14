@@ -14,7 +14,7 @@ data class AppConfig(
 ) {
     companion object {
         // Not default(): since Hoplite 3.0 that ranks every environment variable above these sources, so an
-        // exported DB_SCHEMA would beat an override. The environment reaches config only through the yaml's ${...}.
+        // exported DB_SCHEMA would beat an override. The environment reaches config only through ${...} substitution.
         fun load(overrides: Map<String, Any> = emptyMap()): AppConfig =
             ConfigLoaderBuilder.defaultWithoutPropertySources()
                 .addDecoder(ConfigSecretDecoder())
