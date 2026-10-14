@@ -146,7 +146,7 @@ Body shape: `{ "status": "ok" | "degraded", "service": "cwfgw", "database": "con
 | GET    | `/api/v1/seasons/{id}/rules`          | No   | Get the season's `SeasonRules` (payouts, tie floor, side bet rounds + amount)      |
 | POST   | `/api/v1/seasons`                     | Yes  | Create a season. Body accepts an optional `rules: SeasonRules` — when supplied, the side tables for payouts + side-bet rounds are populated atomically with the seasons row, and the rules' `tie_floor`/`side_bet_amount` override the top-level fields |
 | DELETE | `/api/v1/seasons/{id}`                | Yes  | Delete the season; its teams, rosters, tournaments and draft cascade with it. 204, or 404 for an unknown id |
-| POST   | `/api/v1/seasons/{sid}/clean-results` | Yes  | Destructive: wipe all scores/results/standings + revert every tournament to upcoming. Returns deletion counts. |
+| POST   | `/api/v1/seasons/{sid}/clean-results` | Yes  | Destructive: wipe all scores/results + revert every tournament to upcoming. Returns deletion counts. |
 
 ### Golfers
 
@@ -179,7 +179,7 @@ Body shape: `{ "status": "ok" | "degraded", "service": "cwfgw", "database": "con
 |--------|---------------------------------------------------|------|------------------------------------------------------------------------------------------------|
 | GET    | `/api/v1/tournaments?season_id=&status=`          | No   | List tournaments. `status` is one of `upcoming`/`in_progress`/`completed`. Unknown values → 400 |
 | PUT    | `/api/v1/tournaments/{id}`                        | Yes  | Partial update (incl. `status`, `is_team_event`)                                               |
-| POST   | `/api/v1/tournaments/{id}/finalize`               | Yes  | Compose ESPN import → score calculation → standings refresh. Refuses out-of-order with 409 `tournament_out_of_order`. |
+| POST   | `/api/v1/tournaments/{id}/finalize`               | Yes  | Compose ESPN import → score calculation. Refuses out-of-order with 409 `tournament_out_of_order`. |
 | POST   | `/api/v1/tournaments/{id}/reset`                  | Yes  | Wipe scores + results, revert status to `upcoming`. Refuses when later tournaments are completed (409 `tournament_out_of_order`). |
 
 ### Reports
@@ -526,7 +526,6 @@ data class RosterUploadResult(
 data class CleanSeasonResult(
     val scoresDeleted: Int,
     val resultsDeleted: Int,
-    val standingsDeleted: Int,
     val tournamentsReset: Int,
 )
 ```

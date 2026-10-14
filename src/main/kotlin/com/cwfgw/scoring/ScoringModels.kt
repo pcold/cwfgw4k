@@ -13,11 +13,6 @@ value class FantasyScoreId(
     val value: UUID,
 )
 
-@JvmInline
-value class SeasonStandingId(
-    val value: UUID,
-)
-
 /**
  * Persisted record of a golfer's payout for one team in one tournament. The
  * tuple `(season_id, team_id, tournament_id, golfer_id)` is unique so a
@@ -37,16 +32,6 @@ data class FantasyScore(
     val payout: BigDecimal,
     val multiplier: BigDecimal,
     val calculatedAt: Instant,
-)
-
-/** Persisted aggregate of a team's season-long earnings, refreshed after scoring. */
-data class SeasonStanding(
-    val id: SeasonStandingId,
-    val seasonId: SeasonId,
-    val teamId: TeamId,
-    val totalPoints: BigDecimal,
-    val tournamentsPlayed: Int,
-    val lastUpdated: Instant,
 )
 
 /** How a single golfer's payout was derived. Persisted alongside [FantasyScore]. */

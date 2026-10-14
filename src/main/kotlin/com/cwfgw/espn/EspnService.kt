@@ -199,8 +199,7 @@ class EspnService(
     }
 
     /**
-     * Writes into the caller's transaction so finalize persists the import, the scores and the standings
-     * atomically.
+     * Writes into the caller's transaction so finalize persists the import and the scores atomically.
      */
     context(ctx: TransactionContext)
     internal fun persistImportIn(

@@ -2,28 +2,20 @@ package com.cwfgw.scoring
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.seasons.SeasonId
-import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.TournamentId
-import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 class FakeScoringRepository(
     initialScores: List<FantasyScore> = emptyList(),
-    initialStandings: List<SeasonStanding> = emptyList(),
-    private val teamTotals: Map<Pair<SeasonId, TeamId>, TeamSeasonTotals> = emptyMap(),
     private val scoreIdFactory: () -> FantasyScoreId = { FantasyScoreId(UUID.randomUUID()) },
-    private val standingIdFactory: () -> SeasonStandingId = { SeasonStandingId(UUID.randomUUID()) },
 ) : ScoringRepository {
     private val scores = ConcurrentHashMap<FantasyScoreId, FantasyScore>()
-    private val standings = ConcurrentHashMap<SeasonStandingId, SeasonStanding>()
     val scoreUpserts = mutableListOf<FantasyScore>()
-    val standingUpserts = mutableListOf<SeasonStanding>()
 
     init {
         initialScores.forEach { scores[it.id] = it }
-        initialStandings.forEach { standings[it.id] = it }
     }
 
     context(ctx: TransactionContext)
@@ -81,37 +73,6 @@ class FakeScoringRepository(
     }
 
     context(ctx: TransactionContext)
-    override fun teamSeasonTotals(
-        seasonId: SeasonId,
-        teamId: TeamId,
-    ): TeamSeasonTotals = teamTotals[seasonId to teamId] ?: TeamSeasonTotals(BigDecimal.ZERO, 0)
-
-    context(ctx: TransactionContext)
-    override fun upsertStanding(
-        seasonId: SeasonId,
-        teamId: TeamId,
-        totalPoints: BigDecimal,
-        tournamentsPlayed: Int,
-    ): SeasonStanding {
-        val existing =
-            standings.values.firstOrNull { existing ->
-                existing.seasonId == seasonId && existing.teamId == teamId
-            }
-        val standing =
-            SeasonStanding(
-                id = existing?.id ?: standingIdFactory(),
-                seasonId = seasonId,
-                teamId = teamId,
-                totalPoints = totalPoints,
-                tournamentsPlayed = tournamentsPlayed,
-                lastUpdated = Instant.now(),
-            )
-        standings[standing.id] = standing
-        standingUpserts += standing
-        return standing
-    }
-
-    context(ctx: TransactionContext)
     override fun deleteByTournament(tournamentId: TournamentId): Int {
         val matching = scores.values.filter { it.tournamentId == tournamentId }
         matching.forEach { scores.remove(it.id) }
@@ -122,13 +83,6 @@ class FakeScoringRepository(
     override fun deleteBySeason(seasonId: SeasonId): Int {
         val matching = scores.values.filter { it.seasonId == seasonId }
         matching.forEach { scores.remove(it.id) }
-        return matching.size
-    }
-
-    context(ctx: TransactionContext)
-    override fun deleteStandingsBySeason(seasonId: SeasonId): Int {
-        val matching = standings.values.filter { it.seasonId == seasonId }
-        matching.forEach { standings.remove(it.id) }
         return matching.size
     }
 }
