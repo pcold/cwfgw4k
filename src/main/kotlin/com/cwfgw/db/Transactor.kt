@@ -124,8 +124,8 @@ private class JooqTransactor(
                 when (mode) {
                     TransactionMode.AutoCommit -> with(rootContext) { block() }
                     is TransactionMode.Transactional ->
-                        // The one opener detekt lets through, so no transaction runs off [dispatcher]
-                        // or skips its prelude.
+                        // The one sanctioned call of the openers detekt.yml forbids, so neither runs
+                        // off [dispatcher] or skips its prelude.
                         @Suppress("ForbiddenMethodCall")
                         rootDsl.transactionResult { config ->
                             val txDsl = config.dsl()
