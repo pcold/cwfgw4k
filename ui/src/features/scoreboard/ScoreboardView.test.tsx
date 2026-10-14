@@ -12,7 +12,8 @@ function row(overrides: Partial<ReportCell> = {}): ReportCell {
     golferName: 'Scottie Scheffler',
     golferId: 'g-1',
     positionStr: 'T1',
-    scoreToPar: '-12',
+    finish: { position: 1, tied: true },
+    scoreToPar: -12,
     earnings: 50,
     topTens: 1,
     ownershipPct: 100,
@@ -136,10 +137,10 @@ describe('ScoreboardView', () => {
           teams: [
             team({
               teamName: 'Aces',
-              cells: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
+              cells: [row({ golferName: 'Tiger', positionStr: 'T3', finish: { position: 3, tied: true }, scoreToPar: -8 })],
             }),
           ],
-          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 'E', pairKey: null }],
+          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 0, pairKey: null }],
         })}
       />,
     );
@@ -161,8 +162,8 @@ describe('ScoreboardView', () => {
           teams: [
             team({
               teamName: 'Aces',
-              // positionStr null so the leaderboard ignores this row and we only see the name once
-              cells: [row({ golferId: 'g-42', golferName: 'TeamGolfer', positionStr: null })],
+              // finish null so the leaderboard ignores this row and we only see the name once
+              cells: [row({ golferId: 'g-42', golferName: 'TeamGolfer', positionStr: null, finish: null })],
             }),
           ],
         })}
@@ -179,7 +180,7 @@ describe('ScoreboardView', () => {
         report={report({
           teams: [
             team({
-              cells: [row({ golferId: 'g-1', golferName: 'PlainGolfer', positionStr: null })],
+              cells: [row({ golferId: 'g-1', golferName: 'PlainGolfer', positionStr: null, finish: null })],
             }),
           ],
         })}
@@ -195,7 +196,7 @@ describe('ScoreboardView', () => {
         report={report({
           teams: [
             team({
-              cells: [row({ golferName: null, positionStr: null, earnings: 0 })],
+              cells: [row({ golferName: null, positionStr: null, finish: null, earnings: 0 })],
             }),
           ],
         })}
@@ -213,7 +214,7 @@ describe('ScoreboardView', () => {
             team({
               teamId: 't-1',
               teamName: 'Aces',
-              cells: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
+              cells: [row({ golferName: 'Tiger', positionStr: 'T3', finish: { position: 3, tied: true }, scoreToPar: -8 })],
             }),
             team({
               teamId: 't-2',
@@ -223,12 +224,13 @@ describe('ScoreboardView', () => {
                   golferId: 'g-2',
                   golferName: 'Rory',
                   positionStr: 'T5',
-                  scoreToPar: '-6',
+                  finish: { position: 5, tied: true },
+                  scoreToPar: -6,
                 }),
               ],
             }),
           ],
-          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 'E', pairKey: null }],
+          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 0, pairKey: null }],
         })}
       />,
     );
@@ -249,10 +251,10 @@ describe('ScoreboardView', () => {
           teams: [
             team({
               teamName: 'Aces',
-              cells: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
+              cells: [row({ golferName: 'Tiger', positionStr: 'T3', finish: { position: 3, tied: true }, scoreToPar: -8 })],
             }),
           ],
-          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 'E', pairKey: null }],
+          undraftedTopTens: [{ name: 'Phil', position: 5, payout: 0, scoreToPar: 0, pairKey: null }],
         })}
       />,
     );
@@ -277,7 +279,8 @@ describe('ScoreboardView', () => {
                   golferId: 'g-1',
                   golferName: 'FITZPATRICK',
                   positionStr: '1',
-                  scoreToPar: '-19',
+                  finish: { position: 1, tied: false },
+                  scoreToPar: -19,
                   earnings: 18,
                 }),
               ],
@@ -307,7 +310,8 @@ describe('ScoreboardView', () => {
                   golferId: 'g-1',
                   golferName: 'MORIKAWA',
                   positionStr: 'T4',
-                  scoreToPar: '-13',
+                  finish: { position: 4, tied: true },
+                  scoreToPar: -13,
                   earnings: 7,
                 }),
               ],
@@ -331,7 +335,7 @@ describe('ScoreboardView', () => {
           teams: [
             team({
               teamName: 'Aces',
-              cells: [row({ golferName: 'Tiger', positionStr: 'T3', scoreToPar: '-8' })],
+              cells: [row({ golferName: 'Tiger', positionStr: 'T3', finish: { position: 3, tied: true }, scoreToPar: -8 })],
             }),
           ],
           // No undrafted golfers — Undrafted option is not offered.
@@ -355,8 +359,8 @@ describe('ScoreboardView', () => {
           teams: [],
           undraftedTopTens: [],
           liveLeaderboard: [
-            { name: 'McIlroy', position: 1, scoreToPar: '-28', rostered: false, teamName: null, pairKey: 'team:99' },
-            { name: 'Lowry', position: 1, scoreToPar: '-28', rostered: true, teamName: 'PAYRAY', pairKey: 'team:99' },
+            { name: 'McIlroy', position: 1, scoreToPar: -28, rostered: false, teamName: null, pairKey: 'team:99', roundScores: [], totalStrokes: null },
+            { name: 'Lowry', position: 1, scoreToPar: -28, rostered: true, teamName: 'PAYRAY', pairKey: 'team:99', roundScores: [], totalStrokes: null },
           ],
         })}
       />,
@@ -376,9 +380,9 @@ describe('ScoreboardView', () => {
         report={report({
           teams: [],
           liveLeaderboard: [
-            { name: 'McIlroy', position: 1, scoreToPar: '-28', rostered: true, teamName: 'ROSEH2O', pairKey: 'team:1' },
-            { name: 'Lowry', position: 1, scoreToPar: '-28', rostered: true, teamName: 'PAYRAY', pairKey: 'team:1' },
-            { name: 'Scheffler', position: 3, scoreToPar: '-25', rostered: false, teamName: null, pairKey: null },
+            { name: 'McIlroy', position: 1, scoreToPar: -28, rostered: true, teamName: 'ROSEH2O', pairKey: 'team:1', roundScores: [], totalStrokes: null },
+            { name: 'Lowry', position: 1, scoreToPar: -28, rostered: true, teamName: 'PAYRAY', pairKey: 'team:1', roundScores: [], totalStrokes: null },
+            { name: 'Scheffler', position: 3, scoreToPar: -25, rostered: false, teamName: null, pairKey: null, roundScores: [], totalStrokes: null },
           ],
         })}
       />,

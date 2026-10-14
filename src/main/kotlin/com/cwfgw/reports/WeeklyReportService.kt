@@ -575,7 +575,7 @@ internal fun buildPersistedLeaderboard(
             LiveLeaderboardEntry(
                 name = name,
                 position = result.position ?: 0,
-                scoreToPar = result.scoreToPar?.let(::formatScoreToPar),
+                scoreToPar = result.scoreToPar,
                 rostered = teamName != null,
                 teamName = teamName,
                 pairKey = result.pairKey,
@@ -599,7 +599,7 @@ private data class ReportContext(
     val cumulativeTopTenEarnings: Map<TeamId, BigDecimal>,
     val sideBetPerRound: List<SideBetRoundSnapshot>,
     val sideBetResults: Map<TeamId, BigDecimal>,
-    val numTiedByPosition: Map<Int, Int>,
+    val finishByPosition: Map<Int, ReportCellFinish>,
 )
 
 private fun deriveReportContext(inputs: WeeklyReportInputs): ReportContext {
@@ -622,7 +622,11 @@ private fun deriveReportContext(inputs: WeeklyReportInputs): ReportContext {
         cumulativeTopTenEarnings = throughScores.groupBy { it.teamId }.mapValues { (_, scores) -> scores.sumPoints() },
         sideBetPerRound = sideBetPerRound,
         sideBetResults = aggregateSideBets(sideBetPerRound),
-        numTiedByPosition = inputs.results.mapNotNull { it.position }.groupingBy { it }.eachCount(),
+        finishByPosition =
+            inputs.results.mapNotNull { it.position }.groupingBy { it }.eachCount()
+                .mapValues { (position, numTied) ->
+                    finishAt(position = position, numTied = numTied, isTeamEvent = inputs.tournament.isTeamEvent)
+                },
     )
 }
 
@@ -643,7 +647,7 @@ private fun buildTeamColumnFromContext(
         cumulativeTopTenCounts = ctx.cumulativeTopTenCounts,
         cumulativeTopTenEarnings = ctx.cumulativeTopTenEarnings,
         sideBetResults = ctx.sideBetResults,
-        numTiedByPosition = ctx.numTiedByPosition,
+        finishByPosition = ctx.finishByPosition,
         numTeams = inputs.teams.size,
     )
 
@@ -750,6 +754,7 @@ private fun buildSeasonCells(
             golferName = golferName,
             golferId = entry.golferId,
             positionStr = positionStr,
+            finish = null,
             scoreToPar = null,
             earnings = earnings,
             topTens = topTens,
@@ -880,7 +885,7 @@ internal fun buildReportTeamColumn(
     cumulativeTopTenCounts: Map<TeamId, Int>,
     cumulativeTopTenEarnings: Map<TeamId, BigDecimal>,
     sideBetResults: Map<TeamId, BigDecimal>,
-    numTiedByPosition: Map<Int, Int>,
+    finishByPosition: Map<Int, ReportCellFinish>,
     numTeams: Int,
 ): ReportTeamColumn {
     val roster =
@@ -894,7 +899,7 @@ internal fun buildReportTeamColumn(
             resultsByGolfer = resultsByGolfer,
             scoresByTeamGolfer = scoresByTeamGolfer,
             cumulativeByTeamGolfer = cumulativeByTeamGolfer,
-            numTiedByPosition = numTiedByPosition,
+            finishByPosition = finishByPosition,
             teamId = team.id,
         )
 
@@ -931,7 +936,7 @@ private fun buildWeeklyCells(
     resultsByGolfer: Map<GolferId, TournamentResult>,
     scoresByTeamGolfer: Map<Pair<TeamId, GolferId>, FantasyScore>,
     cumulativeByTeamGolfer: Map<Pair<TeamId, GolferId>, Pair<BigDecimal, Int>>,
-    numTiedByPosition: Map<Int, Int>,
+    finishByPosition: Map<Int, ReportCellFinish>,
     teamId: TeamId,
 ): List<ReportCell> =
     (1..ROUNDS_PER_REPORT).map { round ->
@@ -947,7 +952,7 @@ private fun buildWeeklyCells(
                 resultsByGolfer = resultsByGolfer,
                 scoresByTeamGolfer = scoresByTeamGolfer,
                 cumulativeByTeamGolfer = cumulativeByTeamGolfer,
-                numTiedByPosition = numTiedByPosition,
+                finishByPosition = finishByPosition,
             )
         }
     }
@@ -961,22 +966,23 @@ private fun cellForEntry(
     resultsByGolfer: Map<GolferId, TournamentResult>,
     scoresByTeamGolfer: Map<Pair<TeamId, GolferId>, FantasyScore>,
     cumulativeByTeamGolfer: Map<Pair<TeamId, GolferId>, Pair<BigDecimal, Int>>,
-    numTiedByPosition: Map<Int, Int>,
+    finishByPosition: Map<Int, ReportCellFinish>,
 ): ReportCell {
     val golferName = golferMap[entry.golferId]?.lastName?.uppercase() ?: "?"
     val result = resultsByGolfer[entry.golferId]
     val score = scoresByTeamGolfer[teamId to entry.golferId]
-    val position = result?.position
+    val finish = result?.position?.let { finishByPosition[it] }
     val (cumulativeEarnings, cumulativeTopTens) =
         cumulativeByTeamGolfer[teamId to entry.golferId] ?: (BigDecimal.ZERO to 0)
     return ReportCell(
         round = round,
         golferName = golferName,
         golferId = entry.golferId,
-        positionStr = position?.let { positionString(it, numTiedByPosition[it] ?: 1) },
-        scoreToPar = result?.scoreToPar?.let(::formatScoreToPar),
+        positionStr = finish?.label(),
+        finish = finish,
+        scoreToPar = result?.scoreToPar,
         earnings = score?.points ?: BigDecimal.ZERO,
-        topTens = if (position != null && position <= TOP_TEN_CUTOFF) 1 else 0,
+        topTens = if (finish != null && finish.position <= TOP_TEN_CUTOFF) 1 else 0,
         ownershipPct = entry.ownershipPct,
         seasonEarnings = cumulativeEarnings,
         seasonTopTens = cumulativeTopTens,
@@ -990,6 +996,7 @@ private fun emptyCell(round: Int): ReportCell =
         golferName = null,
         golferId = null,
         positionStr = null,
+        finish = null,
         scoreToPar = null,
         earnings = BigDecimal.ZERO,
         topTens = 0,
@@ -997,12 +1004,6 @@ private fun emptyCell(round: Int): ReportCell =
         seasonEarnings = BigDecimal.ZERO,
         seasonTopTens = 0,
     )
-
-/** Render a leaderboard position with a `T` prefix when more than one golfer shares the position. */
-private fun positionString(
-    position: Int,
-    numTied: Int,
-): String = if (numTied > 1) "T$position" else position.toString()
 
 @Suppress("LongParameterList")
 internal fun buildUndraftedForTournament(
@@ -1035,7 +1036,7 @@ internal fun buildUndraftedForTournament(
                 name = name,
                 position = result.position,
                 payout = payout,
-                scoreToPar = result.scoreToPar?.let(::formatScoreToPar),
+                scoreToPar = result.scoreToPar,
                 pairKey = result.pairKey,
             )
         }

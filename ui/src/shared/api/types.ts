@@ -8,12 +8,22 @@ export interface ReportTournamentInfo {
   week: string | null;
 }
 
+export interface ReportCellFinish {
+  position: number;
+  tied: boolean;
+}
+
 export interface ReportCell {
   round: number;
   golferName: string | null;
   golferId: string | null;
   positionStr: string | null;
-  scoreToPar: string | null;
+  /**
+   * Set exactly where `positionStr` is a finish label, which a season cell's
+   * top-ten count is not. Read position and tie state here; never parse `positionStr`.
+   */
+  finish: ReportCellFinish | null;
+  scoreToPar: number | null;
   earnings: number;
   topTens: number;
   ownershipPct: number;
@@ -41,7 +51,7 @@ export interface UndraftedGolfer {
   name: string;
   position: number | null;
   payout: number;
-  scoreToPar: string | null;
+  scoreToPar: number | null;
   pairKey: string | null;
 }
 
@@ -81,15 +91,12 @@ export interface StandingsEntry {
 export interface LiveLeaderboardEntry {
   name: string;
   position: number;
-  scoreToPar: string | null;
+  scoreToPar: number | null;
   rostered: boolean;
   teamName: string | null;
   pairKey: string | null;
-  // Optional on the wire because older finalized-tournament responses may
-  // pre-date the round-by-round columns. The scoreboard model coerces
-  // missing values to [] / null.
-  roundScores?: number[];
-  totalStrokes?: number | null;
+  roundScores: number[];
+  totalStrokes: number | null;
 }
 
 /**

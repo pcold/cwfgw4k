@@ -52,6 +52,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
@@ -76,6 +77,7 @@ private val TEAM_A = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c0
 private val TEAM_B = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c02"))
 private val SCOTTIE_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d01"))
 private val RORY_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d02"))
+private val XANDER_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d03"))
 
 private val LIVE_CAPABLE_PATHS =
     listOf(
@@ -325,6 +327,24 @@ private fun wireTotals(
 ): Map<String, Double> =
     appJson.parseToJsonElement(body).jsonObject.getValue(field).jsonObject.mapValues { it.value.jsonPrimitive.double }
 
+private fun wireReport(body: String): JsonObject = appJson.parseToJsonElement(body).jsonObject
+
+// No team here has a number, so the report falls back to listing them by name: [team] is an alphabetical index.
+private fun wireCell(
+    report: JsonObject,
+    team: Int,
+    round: Int,
+): JsonObject = report.getValue("teams").jsonArray[team].jsonObject.getValue("cells").jsonArray[round - 1].jsonObject
+
+private fun wireFinish(
+    position: Int,
+    tied: Boolean,
+): JsonObject =
+    buildJsonObject {
+        put("position", position)
+        put("tied", tied)
+    }
+
 class ReportRoutesSpec : FunSpec({
 
     // ----- GET /api/v1/seasons/{id}/report/{tournamentId} -----
@@ -454,6 +474,114 @@ class ReportRoutesSpec : FunSpec({
                 wireTotals(body, "cash_totals") shouldBe mapOf("won" to 33.0, "lost" to -33.0, "net" to 0.0)
                 wireTotals(body, "side_bet_totals") shouldBe mapOf("won" to 15.0, "lost" to -15.0, "net" to 0.0)
             }
+        }
+    }
+
+    // ----- typed finish and score to par -----
+
+    test("GET /api/v1/seasons/{id}/report/{tid} sends a cell's finish as a position and a tie flag") {
+        val sharedThird =
+            reportFixture(
+                initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers =
+                    listOf(
+                        golferRow(SCOTTIE_ID, "Scottie", "Scheffler"),
+                        golferRow(RORY_ID, "Rory", "McIlroy"),
+                        golferRow(XANDER_ID, "Xander", "Schauffele"),
+                    ),
+                initialRosters =
+                    listOf(
+                        rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5),
+                        rosterRow(TEAM_B, RORY_ID, draftRound = 5),
+                    ),
+                initialResults =
+                    listOf(
+                        resultRow(MASTERS_ID, SCOTTIE_ID, position = 1).copy(scoreToPar = -5),
+                        resultRow(MASTERS_ID, RORY_ID, position = 3).copy(scoreToPar = 0),
+                        resultRow(MASTERS_ID, XANDER_ID, position = 3).copy(scoreToPar = 0),
+                    ),
+                initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
+            )
+        apiTest(sharedThird) { client ->
+            val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}").bodyAsText()
+            val report = wireReport(body)
+
+            wireCell(report, team = 0, round = 5)["finish"] shouldBe wireFinish(position = 1, tied = false)
+            wireCell(report, team = 1, round = 5)["finish"] shouldBe wireFinish(position = 3, tied = true)
+            wireCell(report, team = 0, round = 1)["finish"] shouldBe JsonNull
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/report sends no finish on a cell whose position_str counts top tens") {
+        val sharedThird =
+            reportFixture(
+                initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers =
+                    listOf(
+                        golferRow(SCOTTIE_ID, "Scottie", "Scheffler"),
+                        golferRow(RORY_ID, "Rory", "McIlroy"),
+                        golferRow(XANDER_ID, "Xander", "Schauffele"),
+                    ),
+                initialRosters =
+                    listOf(
+                        rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5),
+                        rosterRow(TEAM_B, RORY_ID, draftRound = 5),
+                    ),
+                initialResults =
+                    listOf(
+                        resultRow(MASTERS_ID, SCOTTIE_ID, position = 1).copy(scoreToPar = -5),
+                        resultRow(MASTERS_ID, RORY_ID, position = 3).copy(scoreToPar = 0),
+                        resultRow(MASTERS_ID, XANDER_ID, position = 3).copy(scoreToPar = 0),
+                    ),
+                initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
+            )
+        apiTest(sharedThird) { client ->
+            val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report").bodyAsText()
+            val scheffler = wireCell(wireReport(body), team = 0, round = 5)
+
+            scheffler["position_str"] shouldBe JsonPrimitive("1x")
+            scheffler["finish"] shouldBe JsonNull
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/report/{tid} sends every score to par as a number") {
+        val sharedThird =
+            reportFixture(
+                initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers =
+                    listOf(
+                        golferRow(SCOTTIE_ID, "Scottie", "Scheffler"),
+                        golferRow(RORY_ID, "Rory", "McIlroy"),
+                        golferRow(XANDER_ID, "Xander", "Schauffele"),
+                    ),
+                initialRosters =
+                    listOf(
+                        rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5),
+                        rosterRow(TEAM_B, RORY_ID, draftRound = 5),
+                    ),
+                initialResults =
+                    listOf(
+                        resultRow(MASTERS_ID, SCOTTIE_ID, position = 1).copy(scoreToPar = -5),
+                        resultRow(MASTERS_ID, RORY_ID, position = 3).copy(scoreToPar = 0),
+                        resultRow(MASTERS_ID, XANDER_ID, position = 3).copy(scoreToPar = 0),
+                    ),
+                initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
+            )
+        apiTest(sharedThird) { client ->
+            val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}").bodyAsText()
+            val report = wireReport(body)
+            val evenPar = JsonPrimitive(0)
+
+            wireCell(report, team = 0, round = 5)["score_to_par"] shouldBe JsonPrimitive(-5)
+            wireCell(report, team = 1, round = 5)["score_to_par"] shouldBe evenPar
+            wireCell(report, team = 0, round = 1)["score_to_par"] shouldBe JsonNull
+            report.getValue("undrafted_top_tens").jsonArray.map { it.jsonObject["score_to_par"] } shouldContainExactly
+                listOf(evenPar)
+            report.getValue("live_leaderboard").jsonArray.map { it.jsonObject["score_to_par"] } shouldContainExactly
+                listOf(JsonPrimitive(-5), evenPar, evenPar)
         }
     }
 

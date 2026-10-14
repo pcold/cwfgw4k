@@ -19,6 +19,13 @@ import java.math.BigDecimal
  * Going file-wide keeps the property declarations uncluttered too.
  */
 
+/** A type of its own, rather than two nullable fields on [ReportCell], so a tie without a position cannot be built. */
+@Serializable
+data class ReportCellFinish(
+    val position: Int,
+    val tied: Boolean,
+)
+
 /**
  * One cell in the weekly report grid — the intersection of a team
  * (column) and a draft round (row). Carries the picked golfer's
@@ -35,7 +42,12 @@ data class ReportCell(
     val golferName: String?,
     val golferId: GolferId?,
     val positionStr: String?,
-    val scoreToPar: String?,
+    /**
+     * Set exactly where [positionStr] is a finish label, which a season cell's top-ten count is not. Position
+     * and tie state are read from here, never parsed back out of that label.
+     */
+    val finish: ReportCellFinish?,
+    val scoreToPar: Int?,
     val earnings: BigDecimal,
     val topTens: Int,
     val ownershipPct: BigDecimal,
@@ -74,21 +86,19 @@ data class UndraftedGolfer(
     val name: String,
     val position: Int?,
     val payout: BigDecimal,
-    val scoreToPar: String? = null,
+    val scoreToPar: Int? = null,
     val pairKey: String? = null,
 )
 
 /**
- * One leaderboard row from ESPN, populated only when a report is rendered
- * with `live=true`. The React scoreboard renders the full top-20 directly
- * from this list so it can mix rostered and undrafted players in the
- * correct order without having to merge two separate lists client-side.
+ * Built from a tournament's persisted results, and replaced by ESPN's field when a tournament report is
+ * rendered with `live=true`. Rostered and undrafted rows share one position-ordered list so the UI never merges two.
  */
 @Serializable
 data class LiveLeaderboardEntry(
     val name: String,
     val position: Int,
-    val scoreToPar: String?,
+    val scoreToPar: Int?,
     val rostered: Boolean,
     val teamName: String?,
     val pairKey: String? = null,

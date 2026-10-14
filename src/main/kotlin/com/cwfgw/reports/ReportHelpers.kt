@@ -1,5 +1,6 @@
 package com.cwfgw.reports
 
+import com.cwfgw.scoring.PayoutTable
 import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.Tournament
 import java.math.BigDecimal
@@ -33,18 +34,19 @@ fun isOnOrBefore(
     b: Tournament,
 ): Boolean = tournamentOrdering.compare(a, b) <= 0
 
-/**
- * Format a score-to-par integer for display: `"E"` for even, `"+5"` for
- * over par, `"-3"` for under. Centralized so every column on the report
- * formats the same way (the UI relies on string equality to highlight
- * leaders).
- */
-fun formatScoreToPar(scoreToPar: Int): String =
-    when {
-        scoreToPar == 0 -> "E"
-        scoreToPar > 0 -> "+$scoreToPar"
-        else -> scoreToPar.toString()
-    }
+/** [numTied] is every result row at [position] across the whole field, as [PayoutTable.tieSplitPayout] takes it. */
+internal fun finishAt(
+    position: Int,
+    numTied: Int,
+    isTeamEvent: Boolean,
+): ReportCellFinish =
+    ReportCellFinish(
+        position = position,
+        tied = PayoutTable.tiedUnits(numTied = numTied, isTeamEvent = isTeamEvent) > 1,
+    )
+
+/** The only place a finish becomes [ReportCell.positionStr], so the label cannot disagree with the typed fact. */
+internal fun ReportCellFinish.label(): String = if (tied) "T$position" else position.toString()
 
 /**
  * Standings panel rows, sorted by `totalCash` descending and assigned a

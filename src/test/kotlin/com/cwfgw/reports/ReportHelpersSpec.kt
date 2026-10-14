@@ -76,20 +76,23 @@ private fun sideBetEntry(
 
 class ReportHelpersSpec : FunSpec({
 
-    // ----- formatScoreToPar -----
+    // ----- ReportCellFinish.label -----
 
-    test("formatScoreToPar renders even par as 'E', over par with a leading +, under par as a signed integer") {
-        formatScoreToPar(0) shouldBe "E"
-        formatScoreToPar(5) shouldBe "+5"
-        formatScoreToPar(-3) shouldBe "-3"
+    test("label prefixes a tied finish with T and prints a solo one bare") {
+        ReportCellFinish(position = 3, tied = true).label() shouldBe "T3"
+        ReportCellFinish(position = 3, tied = false).label() shouldBe "3"
     }
 
-    test("formatScoreToPar always parses back to the same integer (round-trip property)") {
-        checkAll(Arb.int(-30..30)) { score ->
-            val rendered = formatScoreToPar(score)
-            val recovered = if (rendered == "E") 0 else rendered.replace("+", "").toInt()
-            recovered shouldBe score
-        }
+    // ----- finishAt -----
+
+    test("finishAt reads tied once a second golfer shares the position") {
+        finishAt(position = 4, numTied = 1, isTeamEvent = false) shouldBe ReportCellFinish(position = 4, tied = false)
+        finishAt(position = 4, numTied = 2, isTeamEvent = false) shouldBe ReportCellFinish(position = 4, tied = true)
+    }
+
+    test("finishAt reads a team event's two partner rows as one finisher, tied only once a second pair joins") {
+        finishAt(position = 4, numTied = 2, isTeamEvent = true) shouldBe ReportCellFinish(position = 4, tied = false)
+        finishAt(position = 4, numTied = 4, isTeamEvent = true) shouldBe ReportCellFinish(position = 4, tied = true)
     }
 
     // ----- tournament ordering -----

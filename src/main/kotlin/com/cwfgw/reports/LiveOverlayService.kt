@@ -31,7 +31,7 @@ private val log = KotlinLogging.logger {}
  *     the selected tournament.
  *
  *  2. **The selected tournament itself, if in-progress** — replaces
- *     per-cell `earnings`/`positionStr`/`scoreToPar` with live ESPN
+ *     per-cell `earnings`/`positionStr`/`finish`/`scoreToPar` with live ESPN
  *     projections, recomputes weekly +/- and total cash, and surfaces
  *     the full live leaderboard for the scoreboard view.
  *
@@ -407,7 +407,16 @@ private fun livePayoutMap(liveData: EspnLivePreview): Map<Pair<TeamId, GolferId>
     liveData.teams.flatMap { team ->
         team.golferScores.map { score ->
             (team.teamId to score.golferId) to
-                LiveCellInputs(payout = score.payout, position = score.position, scoreToPar = score.scoreToPar)
+                LiveCellInputs(
+                    payout = score.payout,
+                    finish =
+                        finishAt(
+                            position = score.position,
+                            numTied = score.numTied,
+                            isTeamEvent = liveData.isTeamEvent,
+                        ),
+                    scoreToPar = score.scoreToPar,
+                )
         }
     }.toMap()
 
@@ -440,10 +449,10 @@ private data class TeamPhase1(
     val originalSideBets: BigDecimal,
 )
 
-/** What the live preview tells us about one (team, golfer) pairing — payout + ESPN position + score. */
+/** What the live preview tells us about one (team, golfer) pairing — payout + ESPN finish + score. */
 private data class LiveCellInputs(
     val payout: BigDecimal,
-    val position: Int,
+    val finish: ReportCellFinish,
     val scoreToPar: Int?,
 )
 
@@ -452,21 +461,19 @@ private fun overlayTeamCells(
     livePayout: Map<Pair<TeamId, GolferId>, LiveCellInputs>,
     additive: Boolean,
 ): TeamPhase1 {
-    val livePositionTallies = livePayout.values.groupingBy { it.position }.eachCount()
     val updatedCells =
         team.cells.map { cell ->
             val live = cell.golferId?.let { livePayout[team.teamId to it] }
             if (live == null) {
                 if (additive) cell else cell.copy(earnings = BigDecimal.ZERO, topTens = 0)
             } else {
-                val numTied = livePositionTallies[live.position] ?: 1
-                val positionStr = if (numTied > 1) "T${live.position}" else live.position.toString()
                 val newEarnings = if (additive) cell.earnings.add(live.payout) else live.payout
                 val newTopTens = if (additive) cell.topTens + 1 else 1
                 cell.copy(
                     earnings = newEarnings,
-                    positionStr = positionStr,
-                    scoreToPar = live.scoreToPar?.let(::formatScoreToPar),
+                    positionStr = live.finish.label(),
+                    finish = live.finish,
+                    scoreToPar = live.scoreToPar,
                     topTens = newTopTens,
                     seasonEarnings = cell.seasonEarnings.add(live.payout),
                     seasonTopTens = cell.seasonTopTens + 1,
@@ -499,7 +506,7 @@ internal fun buildLiveLeaderboard(liveData: EspnLivePreview): List<LiveLeaderboa
             LiveLeaderboardEntry(
                 name = entry.name,
                 position = entry.position,
-                scoreToPar = entry.scoreToPar?.let(::formatScoreToPar),
+                scoreToPar = entry.scoreToPar,
                 rostered = entry.rostered,
                 teamName = entry.teamName,
                 pairKey = entry.pairKey,
@@ -530,7 +537,7 @@ internal fun buildUndraftedFromLeaderboard(
                 name = entry.name,
                 position = entry.position,
                 payout = payout,
-                scoreToPar = entry.scoreToPar?.let(::formatScoreToPar),
+                scoreToPar = entry.scoreToPar,
             )
         }
 }

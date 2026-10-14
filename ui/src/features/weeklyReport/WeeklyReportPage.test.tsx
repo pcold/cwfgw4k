@@ -77,6 +77,7 @@ function buildReport(name: string, tournamentId: string | null = null): WeeklyRe
           golferName: `Golfer ${r}`,
           golferId: `g-${r}`,
           positionStr: null,
+          finish: null,
           scoreToPar: null,
           earnings: 0,
           topTens: 0,

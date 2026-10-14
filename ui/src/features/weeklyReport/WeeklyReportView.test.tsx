@@ -19,7 +19,8 @@ function row(round: number, overrides: Partial<ReportCell> = {}): ReportCell {
     golferName: `Golfer ${round}`,
     golferId: `g-${round}`,
     positionStr: 'T1',
-    scoreToPar: '-10',
+    finish: { position: 1, tied: true },
+    scoreToPar: -10,
     earnings: 0,
     topTens: 0,
     ownershipPct: 100,
@@ -212,7 +213,7 @@ describe('WeeklyReportView', () => {
       <WeeklyReportView
         report={report({
           undraftedTopTens: [
-            { name: 'Lefty', position: 5, payout: 8, scoreToPar: '-3', pairKey: null },
+            { name: 'Lefty', position: 5, payout: 8, scoreToPar: -3, pairKey: null },
           ],
         })}
       />,
