@@ -19,7 +19,7 @@ import java.math.BigDecimal
 /**
  * Depends on repositories directly, never on other services: a service call mid-flow opens its own
  * transaction on another connection, splitting the gate check, gather and write that [calculateScoresIn]
- * and [refreshStandingsIn] run in one. See `src/CLAUDE.md` → Cross-repo flows.
+ * runs in one. See `src/CLAUDE.md` → Cross-repo flows.
  */
 class ScoringService(
     private val repository: ScoringRepository,
@@ -61,19 +61,6 @@ class ScoringService(
                 team to golferScores
             }
         return Result.Ok(buildWeeklyResult(tournament, perTeamResults))
-    }
-
-    /** @see calculateScoresIn */
-    context(ctx: TransactionContext)
-    internal fun refreshStandingsIn(seasonId: SeasonId): Result<List<SeasonStanding>, ScoringError> {
-        seasonRepository.findById(seasonId) ?: return Result.Err(ScoringError.SeasonNotFound)
-        val teams = teamRepository.findBySeason(seasonId)
-        val standings =
-            teams.map { team ->
-                val totals = repository.teamSeasonTotals(seasonId, team.id)
-                repository.upsertStanding(seasonId, team.id, totals.totalPoints, totals.tournamentsPlayed)
-            }
-        return Result.Ok(standings)
     }
 
     context(ctx: TransactionContext)

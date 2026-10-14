@@ -29,7 +29,7 @@ interface SeasonRepository {
 
     /**
      * Delete a season and everything that hangs off it (teams, tournaments,
-     * rosters, draft picks, scores, standings, payout/side-bet rules, drafts).
+     * rosters, draft picks, scores, payout/side-bet rules, drafts).
      * Returns true if a row was deleted, false if the id didn't exist.
      * Single SQL DELETE — the FKs migrated in V010 cascade the subtree.
      */

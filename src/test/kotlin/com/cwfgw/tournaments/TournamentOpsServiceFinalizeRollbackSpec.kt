@@ -6,19 +6,19 @@ import com.cwfgw.espn.EspnClient
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnTournament
 import com.cwfgw.espn.FakeEspnClient
+import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.scoring.FantasyScore
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
-import com.cwfgw.scoring.TeamSeasonTotals
 import com.cwfgw.scoring.UpsertScore
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
+import com.cwfgw.teams.AddToRosterRequest
 import com.cwfgw.teams.CreateTeamRequest
-import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
@@ -32,8 +32,8 @@ import java.time.LocalDate
 /**
  * Real-DB coverage for [TournamentOpsService.finalizeTournament]'s
  * atomicity invariant (CWF-25). Forces a mid-flow exception inside
- * [ScoringService.refreshStandingsIn] via a wrapping [ScoringRepository]
- * that throws on `upsertStanding`. Verifies that the ESPN
+ * [ScoringService.calculateScoresIn] via a wrapping [ScoringRepository]
+ * that throws on `upsertScore`. Verifies that the ESPN
  * `syncTournamentFromEvent` write performed earlier in the same
  * `tx.update` is rolled back — i.e., the tournament status stays
  * `Upcoming` even though `persistImportIn` already flipped it to
@@ -55,10 +55,9 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
     val realScoringRepo = ScoringRepository()
     val linkRepo = TournamentLinkRepository()
 
-    test("finalizeTournament rolls back ESPN status write when refreshStandingsIn throws") {
-        // Seed: league + season + one team + one tournament with a matching pga_tournament_id.
-        // No roster, so calculateScoresIn never calls upsertScore — we want the throw
-        // to land in refreshStandingsIn so it's clear it fires AFTER the ESPN write.
+    test("finalizeTournament rolls back ESPN status write when calculateScoresIn throws") {
+        // The rostered golfer's seeded win is what makes calculateScoresIn reach upsertScore: the ESPN
+        // event below carries no competitors, so scoring finds no result unless one is seeded here.
         val seeded =
             runBlocking {
                 tx.update {
@@ -71,15 +70,18 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
                                 seasonYear = 2026,
                             ),
                         )
-                    teamRepo.create(
-                        seasonId = season.id,
-                        request =
-                            CreateTeamRequest(
-                                ownerName = "Alice",
-                                teamName = "Eagles",
-                                teamNumber = 1,
-                            ),
-                    )
+                    val team =
+                        teamRepo.create(
+                            seasonId = season.id,
+                            request =
+                                CreateTeamRequest(
+                                    ownerName = "Alice",
+                                    teamName = "Eagles",
+                                    teamNumber = 1,
+                                ),
+                        )
+                    val golfer = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
+                    teamRepo.addToRoster(team.id, AddToRosterRequest(golferId = golfer.id))
                     val tournament =
                         tournamentRepo.create(
                             CreateTournamentRequest(
@@ -91,6 +93,10 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
                                 payoutMultiplier = BigDecimal.ONE,
                             ),
                         )
+                    tournamentRepo.upsertResult(
+                        tournament.id,
+                        CreateTournamentResultRequest(golferId = golfer.id, position = 1),
+                    )
                     tournament
                 }
             }
@@ -122,7 +128,7 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
             )
         val scoringService =
             ScoringService(
-                repository = ThrowingOnUpsertStandingScoringRepository(realScoringRepo),
+                repository = ThrowingOnUpsertScoreScoringRepository(realScoringRepo),
                 seasonRepository = seasonRepo,
                 tournamentRepository = tournamentRepo,
                 teamRepository = teamRepo,
@@ -151,12 +157,12 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
 
 /**
  * Forwards every [ScoringRepository] call to the real repository except
- * [upsertStanding], which throws unconditionally. Lets the rollback spec
+ * [upsertScore], which throws unconditionally. Lets the rollback spec
  * land the failure precisely where it needs to fire — after
  * `syncTournamentFromEvent` has already attempted a write but before the
  * outer transaction commits.
  */
-private class ThrowingOnUpsertStandingScoringRepository(
+private class ThrowingOnUpsertScoreScoringRepository(
     private val delegate: ScoringRepository,
 ) : ScoringRepository {
     context(ctx: TransactionContext)
@@ -172,21 +178,8 @@ private class ThrowingOnUpsertStandingScoringRepository(
     ): List<FantasyScore> = delegate.getScoresBySeason(seasonId, tournamentIds)
 
     context(ctx: TransactionContext)
-    override fun upsertScore(record: UpsertScore): FantasyScore = delegate.upsertScore(record)
-
-    context(ctx: TransactionContext)
-    override fun teamSeasonTotals(
-        seasonId: SeasonId,
-        teamId: TeamId,
-    ): TeamSeasonTotals = delegate.teamSeasonTotals(seasonId, teamId)
-
-    context(ctx: TransactionContext)
-    override fun upsertStanding(
-        seasonId: SeasonId,
-        teamId: TeamId,
-        totalPoints: BigDecimal,
-        tournamentsPlayed: Int,
-    ): Nothing = error("Forced rollback in test — refreshStandingsIn should not have reached upsertStanding")
+    override fun upsertScore(record: UpsertScore): Nothing =
+        error("Forced rollback in test: upsertScore always throws")
 
     context(ctx: TransactionContext)
     override fun deleteByTournament(tournamentId: TournamentId): Int =
@@ -195,8 +188,4 @@ private class ThrowingOnUpsertStandingScoringRepository(
     context(ctx: TransactionContext)
     override fun deleteBySeason(seasonId: SeasonId): Int =
         delegate.deleteBySeason(seasonId)
-
-    context(ctx: TransactionContext)
-    override fun deleteStandingsBySeason(seasonId: SeasonId): Int =
-        delegate.deleteStandingsBySeason(seasonId)
 }

@@ -128,33 +128,6 @@ class ScoringRepositorySpec : FunSpec({
         scores.map { it.golferId } shouldBe listOf(golfer1, golfer2)
     }
 
-    test("teamSeasonTotals sums points and counts distinct tournaments") {
-        upsert(teamA, tournamentA, golfer1, breakdown(1))
-        upsert(teamA, tournamentA, golfer2, breakdown(2, payout = BigDecimal(12)))
-        upsert(teamA, tournamentB, golfer1, breakdown(4, payout = BigDecimal(7)))
-
-        val totals = tx.read { repository.teamSeasonTotals(seasonId, teamA) }
-
-        totals.totalPoints.compareTo(BigDecimal(37)) shouldBe 0
-        totals.tournamentsPlayed shouldBe 2
-    }
-
-    test("teamSeasonTotals returns zeros when no scores exist") {
-        val totals = tx.read { repository.teamSeasonTotals(seasonId, teamA) }
-
-        totals.totalPoints.compareTo(BigDecimal.ZERO) shouldBe 0
-        totals.tournamentsPlayed shouldBe 0
-    }
-
-    test("upsertStanding inserts then updates the same row on conflict") {
-        val first = tx.update { repository.upsertStanding(seasonId, teamA, BigDecimal(50), 3) }
-        val second = tx.update { repository.upsertStanding(seasonId, teamA, BigDecimal(80), 5) }
-
-        first.id shouldBe second.id
-        second.totalPoints.compareTo(BigDecimal(80)) shouldBe 0
-        second.tournamentsPlayed shouldBe 5
-    }
-
     test("getScoresBySeason with null tournamentIds returns every score for the season") {
         upsert(teamA, tournamentA, golfer1, breakdown(1))
         upsert(teamA, tournamentB, golfer1, breakdown(4, payout = BigDecimal(7)))

@@ -126,15 +126,10 @@ private data class World(
     val results: List<TournamentResult> = emptyList(),
 )
 
-private data class FakeData(
-    val teamTotals: Map<Pair<SeasonId, TeamId>, TeamSeasonTotals> = emptyMap(),
-)
-
 private class Fixture(
     world: World = World(),
-    fakes: FakeData = FakeData(),
 ) {
-    val scoring = FakeScoringRepository(teamTotals = fakes.teamTotals)
+    val scoring = FakeScoringRepository()
     val service: ScoringService
 
     init {
@@ -157,9 +152,6 @@ private class Fixture(
 
 private fun Fixture.calculateScores(): Result<WeeklyScoreResult, ScoringError> =
     with(noopTransactionContext) { service.calculateScoresIn(SEASON_ID, TOURNAMENT_ID) }
-
-private fun Fixture.refreshStandings(): Result<List<SeasonStanding>, ScoringError> =
-    with(noopTransactionContext) { service.refreshStandingsIn(SEASON_ID) }
 
 class ScoringServiceSpec : FunSpec({
 
@@ -231,34 +223,5 @@ class ScoringServiceSpec : FunSpec({
         val weekly = fixture.calculateScores().orFail()
         weekly.multiplier shouldBe BigDecimal(2)
         weekly.totalPot shouldBe BigDecimal(36)
-    }
-
-    test("refreshStandingsIn upserts a standing per team in the season") {
-        val team1 = mkTeam(teamId(1), "Alice")
-        val team2 = mkTeam(teamId(2), "Bob")
-        val teamTotals =
-            mapOf(
-                (SEASON_ID to team1.id) to TeamSeasonTotals(BigDecimal(100), 5),
-                (SEASON_ID to team2.id) to TeamSeasonTotals(BigDecimal(80), 5),
-            )
-        val fixture =
-            Fixture(
-                world = World(teams = listOf(team1, team2)),
-                fakes = FakeData(teamTotals = teamTotals),
-            )
-
-        val result = fixture.refreshStandings().orFail()
-        result.shouldHaveSize(2)
-        fixture.scoring.standingUpserts.shouldHaveSize(2)
-        val upsertedByTeam = fixture.scoring.standingUpserts.associateBy { it.teamId }
-        upsertedByTeam.getValue(team1.id).totalPoints shouldBe BigDecimal(100)
-        upsertedByTeam.getValue(team1.id).tournamentsPlayed shouldBe 5
-        upsertedByTeam.getValue(team2.id).totalPoints shouldBe BigDecimal(80)
-    }
-
-    test("refreshStandingsIn returns SeasonNotFound when the season does not exist") {
-        val fixture = Fixture(world = World(season = null))
-
-        fixture.refreshStandings() shouldBe Result.Err(ScoringError.SeasonNotFound)
     }
 })

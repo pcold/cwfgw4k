@@ -40,7 +40,6 @@ class TournamentOpsService(
             log.info { "Finalizing tournament '${tournament.name}' (${tournament.id.value})..." }
             persistEspnEventsIn(tournament, events)
             scoringService.calculateScoresIn(tournament.seasonId, tournamentId)
-            scoringService.refreshStandingsIn(tournament.seasonId)
             log.info { "Finalized '${tournament.name}'" }
             Result.Ok(tournamentRepository.findById(tournamentId) ?: tournament)
         }
@@ -65,7 +64,6 @@ class TournamentOpsService(
                     tournamentId,
                     UpdateTournamentRequest(status = TournamentStatus.Upcoming),
                 )
-            scoringService.refreshStandingsIn(tournament.seasonId)
             log.info { "Reset complete for '${tournament.name}'" }
             Result.Ok(updated ?: tournament)
         }
