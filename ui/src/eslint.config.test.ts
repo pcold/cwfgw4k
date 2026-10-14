@@ -48,6 +48,7 @@ const CONST_ASSERTION_LINE = "export const modes = ['live', 'final'] as const;";
 const RAW_SHADE_LINES: readonly string[] = [
   "export const cardClass = 'rounded-md bg-gray-800 p-4';",
   'export const badgeClass = (tone: string): string => `border ${tone} hover:text-red-400`;',
+  "export const chipClass = 'bg-taupe-950';",
 ];
 const RAW_SHADE_JSX_LINE = 'export const Panel = () => <div className="bg-white/60" />;';
 /* eslint-enable no-restricted-syntax */

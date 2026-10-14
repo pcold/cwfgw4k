@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import react from 'eslint-plugin-react';
@@ -80,9 +82,10 @@ const COLOR_UTILITY_PREFIXES =
   'bg|text|decoration|border(?:-[xytrbsel])?|divide|outline|ring(?:-offset)?|inset-ring|' +
   'shadow|inset-shadow|drop-shadow|text-shadow|fill|stroke|accent|caret|placeholder|from|via|to';
 
-const TAILWIND_COLOR_RAMPS =
-  'red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|' +
-  'fuchsia|pink|rose|slate|gray|zinc|neutral|stone';
+// Read from the theme that ships, so a ramp a Tailwind upgrade adds is banned with no edit here.
+const tailwindTheme = readFileSync(createRequire(import.meta.url).resolve('tailwindcss/theme.css'), 'utf8');
+const TAILWIND_COLOR_RAMPS = [...new Set([...tailwindTheme.matchAll(/--color-([a-z]+)-950:/g)].map(([, ramp]) => ramp))]
+  .join('|');
 
 const COLOR_SHADE = `(?:(?:${TAILWIND_COLOR_RAMPS})-(?:50|950|[1-9]00)|white|black)`;
 
