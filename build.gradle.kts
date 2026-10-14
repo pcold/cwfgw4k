@@ -220,10 +220,6 @@ val checkSchemaDump by tasks.registering {
     dependsOn(generateSchemaDump)
     inputs.file(trackedSchemaDump)
     inputs.file(regeneratedSchemaDump)
-    // A verification task with no output always re-runs, which here means a container start on
-    // every `check`.
-    val stamp = layout.buildDirectory.file("schema/up-to-date").get().asFile
-    outputs.file(stamp)
     // Locals, not the script properties above: a doLast that reads a script property captures the
     // whole build script, which the configuration cache cannot serialize.
     val tracked = trackedSchemaDump
@@ -232,9 +228,7 @@ val checkSchemaDump by tasks.registering {
     doLast {
         val before = tracked.readLines()
         val after = regenerated.readLines()
-        if (before == after) {
-            stamp.writeText("")
-        } else {
+        if (before != after) {
             // Lines unique to one side rather than a positional diff: a dump's statements are
             // distinct, so this names the column or constraint that moved, where a positional diff
             // of a file whose middle grew reports every line after the insertion.
