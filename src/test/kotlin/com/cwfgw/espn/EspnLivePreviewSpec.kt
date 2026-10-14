@@ -311,6 +311,27 @@ class EspnLivePreviewSpec : FunSpec({
         preview.teams.single().topTenEarnings.compareTo(BigDecimal(36)) shouldBe 0
     }
 
+    test("previewForTournament prices a stale-id fallback from its own row, not the one linked to the event") {
+        val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
+        val event = espnTournament(competitors = listOf(espnCompetitor("p1", "Scottie Scheffler", 1, -10)))
+        val stale = tournament(pgaTournamentId = "espn-stale", payoutMultiplier = BigDecimal(3))
+        val linkedToEvent =
+            tournament(payoutMultiplier = BigDecimal(2))
+                .copy(id = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b02")))
+        val fixture =
+            PreviewFixture(
+                initialTournaments = listOf(stale, linkedToEvent),
+                initialTeams = listOf(team(TEAM_A_ID, "BROWN")),
+                initialGolfers = listOf(scottie),
+                initialRosters = listOf(rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1)),
+                tournamentsByDate = mapOf(START_DATE to listOf(event)),
+            )
+
+        val preview = fixture.previewFor(stale).orFail()
+
+        preview.payoutMultiplier.compareTo(BigDecimal(3)) shouldBe 0
+    }
+
     test("previewForTournament pays a fallback-matched team event as one, though ESPN does not flag it") {
         val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
         val event = espnTournament(competitors = listOf(espnCompetitor("p1", "Scottie Scheffler", 1, -10)))

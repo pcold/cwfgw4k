@@ -505,7 +505,7 @@ internal data class LivePreviewContext(
             teams: List<Team>,
             rosters: List<RosterEntry>,
             rules: SeasonRules,
-            overridesByTournament: Map<TournamentId, Map<String, GolferId>> = emptyMap(),
+            overridesByTournament: Map<TournamentId, Map<String, GolferId>>,
         ): LivePreviewContext =
             LivePreviewContext(
                 teams = teams,
