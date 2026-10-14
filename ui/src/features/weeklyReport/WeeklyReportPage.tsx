@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { skipToken, useQuery } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
@@ -30,6 +30,10 @@ function WeeklyReportPage(): ReactNode {
   const tournamentsQuery = useQuery({
     queryKey: queryKeys.tournaments.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
+  });
+
+  const pdfMutation = useMutation({
+    mutationFn: (report: WeeklyReport) => downloadPdf(report, currentSeason),
   });
 
   const tournaments = tournamentsQuery.data ?? [];
@@ -75,13 +79,17 @@ function WeeklyReportPage(): ReactNode {
         </select>
         <button
           type="button"
-          disabled={!reportQuery.data}
-          // eslint-disable-next-line @typescript-eslint/no-misused-promises -- CWF-155: a failed PDF build rejects unhandled.
-          onClick={() => reportQuery.data && downloadPdf(reportQuery.data, currentSeason)}
+          disabled={!reportQuery.data || pdfMutation.isPending}
+          onClick={() => reportQuery.data && pdfMutation.mutate(reportQuery.data)}
           className={DOWNLOAD_BUTTON_CLASS}
         >
           Download PDF
         </button>
+        {pdfMutation.isError ? (
+          <span role="alert" className="text-red-400 text-sm">
+            Failed to generate PDF: {String(pdfMutation.error)}
+          </span>
+        ) : null}
         <LiveOverlayCheckbox state={liveOverlay} id="weekly-report-live-overlay" />
       </div>
 
