@@ -10,9 +10,6 @@ interface LeagueRepository {
     fun findAll(): List<League>
 
     context(ctx: TransactionContext)
-    fun findById(id: LeagueId): League?
-
-    context(ctx: TransactionContext)
     fun create(request: CreateLeagueRequest): League
 }
 
@@ -25,13 +22,6 @@ private class JooqLeagueRepository : LeagueRepository {
             .from(LEAGUES)
             .orderBy(LEAGUES.NAME)
             .fetch { row -> toLeague(row.into(LEAGUES)) }
-
-    context(ctx: TransactionContext)
-    override fun findById(id: LeagueId): League? =
-        ctx.dsl.select(LEAGUES.ID, LEAGUES.NAME, LEAGUES.CREATED_AT)
-            .from(LEAGUES)
-            .where(LEAGUES.ID.eq(id.value))
-            .fetchOne { row -> toLeague(row.into(LEAGUES)) }
 
     context(ctx: TransactionContext)
     override fun create(request: CreateLeagueRequest): League {

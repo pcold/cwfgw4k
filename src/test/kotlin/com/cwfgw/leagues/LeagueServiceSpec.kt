@@ -3,7 +3,6 @@ package com.cwfgw.leagues
 import com.cwfgw.testing.FakeTransactor
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import java.time.Instant
 import java.util.UUID
@@ -29,18 +28,6 @@ class LeagueServiceSpec : FunSpec({
         service.list() shouldContainExactly listOf(ALPHA, BETA)
     }
 
-    test("get returns the league when present") {
-        val service = LeagueService(FakeLeagueRepository(initial = listOf(ALPHA)), FakeTransactor())
-
-        service.get(ALPHA.id) shouldBe ALPHA
-    }
-
-    test("get returns null when the id is unknown") {
-        val service = LeagueService(FakeLeagueRepository(initial = listOf(ALPHA)), FakeTransactor())
-
-        service.get(LeagueId(UUID.randomUUID())).shouldBeNull()
-    }
-
     test("create delegates to the repository and returns the inserted league") {
         val newId = LeagueId(UUID.fromString("00000000-0000-0000-0000-00000000000c"))
         val newCreatedAt = Instant.parse("2026-03-15T00:00:00Z")
@@ -52,6 +39,6 @@ class LeagueServiceSpec : FunSpec({
         created.id shouldBe newId
         created.name shouldBe "Gamma League"
         created.createdAt shouldBe newCreatedAt
-        service.get(newId) shouldBe created
+        service.list() shouldContainExactly listOf(created)
     }
 })

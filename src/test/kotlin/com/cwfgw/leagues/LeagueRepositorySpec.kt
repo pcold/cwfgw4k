@@ -4,9 +4,7 @@ import com.cwfgw.db.Transactor
 import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
-import java.util.UUID
 
 class LeagueRepositorySpec : FunSpec({
 
@@ -23,18 +21,6 @@ class LeagueRepositorySpec : FunSpec({
         val leagues = tx.read { repository.findAll() }
 
         leagues.map { it.name } shouldContainExactly listOf("Alpha Golf", "Bravo Golf")
-    }
-
-    test("findById returns a created league") {
-        val created = tx.update { repository.create(CreateLeagueRequest(name = "Test League")) }
-
-        val found = tx.read { repository.findById(created.id) }
-
-        found shouldBe created
-    }
-
-    test("findById returns null for an unknown id") {
-        tx.read { repository.findById(LeagueId(UUID.randomUUID())) }.shouldBeNull()
     }
 
     test("create populates id and createdAt") {
