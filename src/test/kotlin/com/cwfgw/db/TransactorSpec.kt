@@ -11,6 +11,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Real-DB coverage for the [Transactor] interface contract.
@@ -74,7 +75,19 @@ class TransactorSpec : FunSpec({
         // Sanity: outside the read snapshot, the writer's commit is visible.
         transactor.read { countLeagues() } shouldBe 1
     }
+
+    test("update bounds its lock waits") {
+        transactor.update { lockTimeout() } shouldBe "${TimeUnit.MILLISECONDS.toSeconds(LOCK_TIMEOUT_MS)}s"
+    }
+
+    test("get and read leave lock_timeout unset, since they take no row lock") {
+        transactor.get { lockTimeout() } shouldBe "0"
+        transactor.read { lockTimeout() } shouldBe "0"
+    }
 })
+
+context(ctx: TransactionContext)
+private fun lockTimeout(): String? = ctx.dsl.fetchValue("SHOW lock_timeout")?.toString()
 
 context(ctx: TransactionContext)
 private fun countLeagues(): Int = ctx.dsl.fetchCount(LEAGUES)
