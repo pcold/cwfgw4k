@@ -1,14 +1,19 @@
 package com.cwfgw.http
 
 import com.cwfgw.db.isLockTimeout
+import io.ktor.http.BadContentTypeFormatException
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.URLDecodeException
 import io.ktor.serialization.ContentConvertException
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
 import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.CannotTransformContentToTypeException
+import io.ktor.server.plugins.MissingRequestParameterException
+import io.ktor.server.plugins.ParameterConversionException
 import io.ktor.server.plugins.UnsupportedMediaTypeException
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.plugins.statuspages.StatusPagesConfig
@@ -16,6 +21,8 @@ import io.ktor.server.request.httpMethod
 import io.ktor.server.request.path
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondText
+import io.ktor.util.converters.DataConversionException
 import kotlinx.serialization.Serializable
 import org.jooq.exception.DataAccessException
 import org.slf4j.LoggerFactory
@@ -83,8 +90,14 @@ sealed class DomainError(message: String, cause: Throwable? = null) : RuntimeExc
 private val logger = LoggerFactory.getLogger("com.cwfgw.http.ErrorHandling")
 
 /**
- * Install StatusPages with per-variant DomainError mappings, Ktor's receive
- * failures as 400 / 415, a timed-out lock wait as 409, and a last-resort 500
+ * Netty's query decoder fails with a bare IllegalArgumentException, which the engine wraps under only this message.
+ * Matched by message because a missing serializer is an IllegalArgumentException too, and that one is ours.
+ */
+private const val NETTY_UNDECODABLE_QUERY = "Unable to decode query parameters"
+
+/**
+ * Install StatusPages with per-variant DomainError mappings, a request Ktor
+ * cannot parse as 400 / 415, a timed-out lock wait as 409, and a last-resort 500
  * handler that logs the exception and returns a generic message so internal
  * detail doesn't leak to clients.
  *
@@ -128,7 +141,7 @@ internal fun Application.installErrorHandling() {
             call.response.header(HttpHeaders.RetryAfter, cause.retryAfter.toRetryAfterSeconds().toString())
             call.respond(HttpStatusCode.TooManyRequests, ErrorBody(cause.message ?: "too many requests"))
         }
-        mapReceiveFailures()
+        mapMalformedRequests()
         mapLockTimeouts()
         exception<Throwable> { call, cause -> call.respondUnhandled(cause) }
     }
@@ -165,27 +178,42 @@ private fun ApplicationCall.logDeniedAuthorization(reason: String) {
  * Each 415 exception is mapped as a leaf: `PayloadTooLargeException` shares their base. An empty JSON body is not
  * a 415 but a rejected body, like a truncated one, so no `status` handler backs these up.
  */
-private fun StatusPagesConfig.mapReceiveFailures() {
+private fun StatusPagesConfig.mapMalformedRequests() {
     exception<BadRequestException> { call, cause -> call.respondToBadRequest(cause) }
     exception<UnsupportedMediaTypeException> { call, _ -> call.respondUnsupportedMediaType() }
     exception<CannotTransformContentToTypeException> { call, _ -> call.respondUnsupportedMediaType() }
 }
 
 /**
- * Ktor wraps whatever a converter throws in [BadRequestException], a missing serializer included, and raises it
- * for an undecodable URL too: only a [ContentConvertException] cause is the body's fault. That cause quotes the
- * body, so it is neither echoed nor logged.
+ * Not negotiated: an unparseable Accept is one of these faults, and negotiating the answer would raise it again.
+ * A client fault's cause quotes what the client sent, so it is neither echoed nor logged.
  */
 private suspend fun ApplicationCall.respondToBadRequest(cause: BadRequestException) {
-    if (cause.isRejectedBody()) respondMalformedBody() else respondUnhandled(cause)
+    val fault = cause.clientFault()
+    if (fault == null) {
+        respondUnhandled(cause)
+    } else {
+        respondText(appJson.encodeToString(ErrorBody(fault)), ContentType.Application.Json, HttpStatusCode.BadRequest)
+    }
 }
 
 /**
- * Walks the chain because coroutine stack-trace recovery, on wherever assertions are and so in every test,
- * hands StatusPages a copy whose cause is the original exception.
+ * Null for a server fault, a missing serializer among them; a type the conversion service lacks fails with the same
+ * [DataConversionException] as a bad enum name, so both stay 500. Walks the chain: stack-trace recovery, on in every
+ * test, hands StatusPages a copy caused by the original.
  */
-private fun BadRequestException.isRejectedBody(): Boolean =
-    generateSequence<Throwable>(this) { it.cause }.any { it is ContentConvertException }
+private fun BadRequestException.clientFault(): String? {
+    val chain = generateSequence<Throwable>(this) { it.cause }.toList()
+    val undecodableUrl = chain.any { it is URLDecodeException || it.message == NETTY_UNDECODABLE_QUERY }
+    val badParameter = chain.any { it is MissingRequestParameterException || it is ParameterConversionException }
+    return when {
+        chain.any { it is ContentConvertException } -> "malformed or invalid request body"
+        undecodableUrl -> "malformed request URL"
+        chain.any { it is BadContentTypeFormatException } -> "malformed Accept or Content-Type header"
+        badParameter && chain.none { it is DataConversionException } -> "missing or invalid request parameter"
+        else -> null
+    }
+}
 
 /**
  * StatusPages answers with the most specific handler, so every other database failure is sent back to
@@ -205,10 +233,6 @@ private suspend fun ApplicationCall.respondLockTimeout(cause: DataAccessExceptio
         cause,
     )
     respond(HttpStatusCode.Conflict, ErrorBody("another change is being saved here; try again"))
-}
-
-private suspend fun ApplicationCall.respondMalformedBody() {
-    respond(HttpStatusCode.BadRequest, ErrorBody("malformed or invalid request body"))
 }
 
 private suspend fun ApplicationCall.respondUnsupportedMediaType() {
