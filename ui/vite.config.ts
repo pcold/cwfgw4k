@@ -23,7 +23,7 @@ export default defineConfig({
     css: true,
     reporters: [
       'default',
-      ['html', { outputFile: './test-report/index.html' }],
+      ['html', { outputDir: './test-report' }],
       ['junit', { outputFile: './test-report/junit.xml' }],
     ],
     coverage: {
