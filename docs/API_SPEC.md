@@ -32,22 +32,43 @@ Errors are emitted by `installErrorHandling()` in a uniform shape:
 { "error": "human-readable message" }
 ```
 
+A business-rule refusal (`Refused`) adds a stable machine-readable code
+beside the same `error` key, so a client reading only `error` still shows
+a sentence:
+
+```json
+{ "refusal": "tournament_out_of_order", "error": "human-readable message" }
+```
+
 Status code mappings:
 
 | `DomainError` variant       | Status |
 |-----------------------------|--------|
 | `NotFound`                  | 404    |
 | `Validation`                | 400    |
+| `Unprocessable`             | 422    |
 | `Conflict`                  | 409    |
+| `Refused`                   | 409, with `refusal` |
 | `BadGateway`                | 502    |
 | `Unauthorized`              | 401    |
+| `Forbidden`                 | 403    |
+| `TooManyRequests`           | 429, with `Retry-After` in whole seconds |
 | Malformed or empty body     | 400    |
 | Wrong or no `Content-Type`  | 415    |
 | Anything else (uncaught)    | 500    |
 
+Refusal codes on the wire today:
+
+| `refusal`                           | Raised by |
+|-------------------------------------|-----------|
+| `tournament_not_linked`             | `POST /api/v1/espn/import/tournament/{tournamentId}`, `GET /api/v1/admin/tournaments/{id}/competitors` |
+| `tournament_finalized`              | `POST /api/v1/admin/tournaments/{id}/player-overrides`, `DELETE /api/v1/admin/tournaments/{id}/player-overrides/{espnCompetitorId}` |
+| `tournament_out_of_order`           | `POST /api/v1/tournaments/{id}/finalize`, `POST /api/v1/tournaments/{id}/reset` |
+| `season_has_no_tournaments`         | `POST /api/v1/seasons/{sid}/finalize` |
+| `season_has_incomplete_tournaments` | `POST /api/v1/seasons/{sid}/finalize` |
+
 Service-layer typed errors (e.g. `TournamentOpsError`, `DraftError`) are
-mapped to `DomainError` at the route boundary; the wire body always uses
-the same `{ "error": "..." }` shape.
+mapped to `DomainError` at the route boundary.
 
 ### JSON casing
 
@@ -178,8 +199,8 @@ Routes nested under `/api/v1/seasons/{seasonId}/`.
 | POST   | `/api/v1/tournaments`                             | Yes  | Create a tournament                                                                            |
 | PUT    | `/api/v1/tournaments/{id}`                        | Yes  | Partial update (incl. `status`, `is_team_event`)                                               |
 | POST   | `/api/v1/tournaments/{id}/results`                | Yes  | Batch-upsert leaderboard rows                                                                  |
-| POST   | `/api/v1/tournaments/{id}/finalize`               | Yes  | Compose ESPN import → score calculation → standings refresh. Rejects out-of-order with 409.   |
-| POST   | `/api/v1/tournaments/{id}/reset`                  | Yes  | Wipe scores + results, revert status to `upcoming`. Rejects when later tournaments are completed (409). |
+| POST   | `/api/v1/tournaments/{id}/finalize`               | Yes  | Compose ESPN import → score calculation → standings refresh. Refuses out-of-order with 409 `tournament_out_of_order`. |
+| POST   | `/api/v1/tournaments/{id}/reset`                  | Yes  | Wipe scores + results, revert status to `upcoming`. Refuses when later tournaments are completed (409 `tournament_out_of_order`). |
 
 ### Scoring
 
@@ -210,10 +231,13 @@ pull can't change them. An ESPN failure — a non-200, a timeout, a
 connection that fails — is absorbed (logged at WARN) and the response
 falls back to the base report.
 
-A report GET without `live=true` is served from the Postgres response
-cache, keyed on the deployed revision and the full request URI, for 300 seconds
-(`CACHE_DEFAULT_TTL_SECONDS`). A `live=true` request never reads or
-writes that cache: the report is rebuilt on every request, and its ESPN
+A report GET is served from the Postgres response cache, keyed on the
+deployed revision and the full request URI, for 300 seconds
+(`CACHE_DEFAULT_TTL_SECONDS`). That includes a `live=true` request while no
+tournament in the season is a live candidate (not `completed`, and starting
+within three days or already started): nothing would be overlaid, so it is
+cached under its own URI like any other. While one is, a `live=true` request
+never reads or writes that cache: the report is rebuilt on every request, and its ESPN
 data comes from an in-process cache of ESPN's scoreboard that holds each
 date for 60 seconds (`ESPN_SCOREBOARD_CACHE_TTL_SECONDS`), which is the
 most a live report can trail ESPN. A failed ESPN fetch is not cached, so
@@ -274,6 +298,7 @@ property names; on the wire they're snake-cased.
 
 ```kotlin
 data class ErrorBody(val error: String)
+data class RefusalBody(val refusal: String, val error: String)
 ```
 
 ### User
@@ -559,8 +584,9 @@ data class CleanSeasonResult(
 
 `finalizeTournament` and `resetTournament` return the affected `Tournament`;
 `finalizeSeason` returns the affected `Season`. State-machine violations
-(`OutOfOrder`, `IncompleteTournaments`, `SeasonHasNoTournaments`) map to 409
-with a human-readable error body that names the blocking tournaments.
+(`OutOfOrder`, `IncompleteTournaments`, `SeasonHasNoTournaments`) map to a
+409 refusal whose code is in the table under Error responses, and whose
+`error` names the blocking tournaments.
 
 ---
 
@@ -578,6 +604,10 @@ Path placeholders are normalized: UUIDs → `:id`, integer path segments →
 `:n`, `/assets/*` collapsed to `/assets/:asset`. The format is load-bearing
 for Cloud Logging metric extraction; changing it requires coordinating
 with the shared cwfgw ops config.
+
+A 403 logs one `WARN` line, `cwfgw4k.forbidden method=GET route=/api/v1/... reason="..."`,
+with the route normalized the same way. No other 4xx adds a line beyond
+the request log: scan traffic draws 401s and 404s in volume.
 
 Caught exceptions in service code are logged at `WARN` (root logger is
 `INFO` so `DEBUG` would go nowhere), with the throwable attached.

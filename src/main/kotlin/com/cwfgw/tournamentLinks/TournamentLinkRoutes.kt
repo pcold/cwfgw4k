@@ -23,7 +23,7 @@ import io.ktor.server.routing.route
  * Admin-only routes for managing manual ESPN→golfer link overrides on a
  * tournament. The GET delegates to ESPN to list every competitor with its
  * current (override-aware) match. The POST/DELETE mutate the overrides
- * stored locally; both return Conflict once the tournament is finalized.
+ * stored locally; both are refused once the tournament is finalized.
  */
 fun Route.tournamentLinkRoutes(
     espnService: EspnService,
@@ -71,7 +71,10 @@ private fun TournamentLinkError.toDomainError(): DomainError =
     when (this) {
         is TournamentLinkError.TournamentNotFound -> DomainError.NotFound("tournament ${id.value} not found")
         is TournamentLinkError.TournamentFinalized ->
-            DomainError.Conflict("tournament ${id.value} is finalized; player links are locked")
+            DomainError.Refused(
+                "tournament ${id.value} is finalized; player links are locked",
+                code = "tournament_finalized",
+            )
         is TournamentLinkError.GolferNotFound -> DomainError.Validation("golfer ${id.value} not found")
     }
 
@@ -80,7 +83,10 @@ private fun EspnError.toDomainError(): DomainError =
         is EspnError.UpstreamUnavailable -> DomainError.BadGateway(failure.summary)
         is EspnError.TournamentNotFound -> DomainError.NotFound("tournament ${tournamentId.value} not found")
         is EspnError.TournamentNotLinked ->
-            DomainError.Conflict("tournament ${tournamentId.value} has no pga_tournament_id; link it before listing")
+            DomainError.Refused(
+                "tournament ${tournamentId.value} has no pga_tournament_id; link it before listing",
+                code = "tournament_not_linked",
+            )
         is EspnError.EventNotInScoreboard ->
             DomainError.NotFound("ESPN scoreboard does not contain event $espnEventId for the linked date")
     }

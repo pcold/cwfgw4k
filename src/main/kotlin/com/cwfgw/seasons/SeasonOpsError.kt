@@ -6,7 +6,7 @@ import com.cwfgw.tournaments.Tournament
  * Typed failure modes for season-scope finalize / clean-results
  * orchestration. Variants stay free of HTTP concerns — routes map them
  * to [com.cwfgw.http.DomainError] at the boundary. The "not yet
- * complete" variants are 409 conflicts; the not-found variant is 404.
+ * complete" variants are 409 refusals; the not-found variant is 404.
  *
  * Tournament-scope ops have their own
  * [com.cwfgw.tournaments.TournamentOpsError]; the two state machines

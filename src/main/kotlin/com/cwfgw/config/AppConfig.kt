@@ -13,8 +13,10 @@ data class AppConfig(
     val debug: DebugConfig,
 ) {
     companion object {
+        // Not default(): since Hoplite 3.0 that ranks every environment variable above these sources, so an
+        // exported DB_SCHEMA would beat an override. The environment reaches config only through ${...} substitution.
         fun load(overrides: Map<String, Any> = emptyMap()): AppConfig =
-            ConfigLoaderBuilder.default()
+            ConfigLoaderBuilder.defaultWithoutPropertySources()
                 .addDecoder(ConfigSecretDecoder())
                 .addDecoder(PositiveSecondsDecoder())
                 .apply { if (overrides.isNotEmpty()) addMapSource(overrides) }
@@ -58,8 +60,8 @@ data class CacheConfig(
 )
 
 /**
- * One cache per JVM, so each Cloud Run instance holds its own. A `live=true` report bypasses the
- * Postgres response cache, which makes this TTL the whole of how far live data can trail ESPN:
+ * One cache per JVM, so each Cloud Run instance holds its own. A `live=true` report during a
+ * tournament's live window bypasses the Postgres response cache, so this TTL is how far it can trail ESPN:
  * 60s by default, shared by the scoreboard and calendar caches.
  */
 data class EspnConfig(

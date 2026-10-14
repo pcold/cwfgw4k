@@ -317,14 +317,15 @@ Rules:
 
 #### HTTP boundary: errors and parameter parsing
 
-- **MUST** throw `DomainError.NotFound` / `Validation` / `Conflict` /
-  `BadGateway` / `Unauthorized` / `Forbidden`
-  (`com.cwfgw.http.DomainError`) from routes — never hand-write
-  `call.respond(HttpStatusCode.X)` for error cases. `installErrorHandling()`
-  is the canonical sink that maps each variant to its status plus a JSON
-  `ErrorBody`. The `exception<Throwable>` handler in `ErrorHandling.kt` is
-  the single documented place in the codebase where `Throwable` is caught —
-  do not replicate in business logic.
+- **MUST** throw a `com.cwfgw.http.DomainError` variant from routes — never
+  hand-write `call.respond(HttpStatusCode.X)` for error cases. A business-rule
+  refusal is `Refused` with a stable code, not `Conflict`, which is kept for a
+  write that collides with another row or another write, such as a duplicate
+  key. `installErrorHandling()` is the
+  canonical sink that maps each variant to its status plus a JSON
+  `ErrorBody`, or a `RefusalBody` for `Refused`. The `exception<Throwable>`
+  handler in `ErrorHandling.kt` is the single documented place in the
+  codebase where `Throwable` is caught — do not replicate in business logic.
 - **MUST NOT** push HTTP error semantics into the domain or service layer.
   Services return `T?` for "not found"; routes bridge with
   `?: throw DomainError.NotFound("<label> ${id.value} not found")`.

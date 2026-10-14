@@ -59,12 +59,15 @@ private suspend fun RoutingContext.importForTournament(service: EspnService) {
 private fun RoutingContext.tournamentId(): TournamentId =
     call.parameters["tournamentId"]?.toTournamentId() ?: throw DomainError.Validation("invalid tournament id")
 
-private fun parseLocalDate(raw: String): LocalDate? =
+/**
+ * Chained rather than logged: the exception quotes the caller's input, and a [DomainError.Validation] never reaches
+ * a log line.
+ */
+private fun parseLocalDate(raw: String): LocalDate =
     try {
         LocalDate.parse(raw)
     } catch (e: DateTimeParseException) {
-        log.warn(e) { "Failed to parse date query parameter '$raw'" }
-        null
+        throw DomainError.Validation("invalid query parameter date", cause = e)
     }
 
 private fun EspnError.toDomainError(): DomainError =
@@ -72,7 +75,10 @@ private fun EspnError.toDomainError(): DomainError =
         is EspnError.UpstreamUnavailable -> DomainError.BadGateway(failure.summary)
         is EspnError.TournamentNotFound -> DomainError.NotFound("tournament ${tournamentId.value} not found")
         is EspnError.TournamentNotLinked ->
-            DomainError.Conflict("tournament ${tournamentId.value} has no pga_tournament_id; link it before importing")
+            DomainError.Refused(
+                "tournament ${tournamentId.value} has no pga_tournament_id; link it before importing",
+                code = "tournament_not_linked",
+            )
         is EspnError.EventNotInScoreboard ->
             DomainError.NotFound("ESPN scoreboard does not contain event $espnEventId for the linked date")
     }

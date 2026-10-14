@@ -38,6 +38,7 @@ import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.CreateTournamentResultRequest
+import com.cwfgw.tournaments.ESPN_SCHEDULE_ZONE
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -804,7 +805,7 @@ class ReportRoutesSpec : FunSpec({
         }
     }
 
-    // ----- response caching: live requests bypass it, the rest are served from it -----
+    // ----- response caching: live requests in a tournament's window bypass it, the rest are served from it -----
 
     LIVE_CAPABLE_PATHS.forEach { (label, path) ->
         val url = "/api/v1/seasons/${SEASON_ID.value}/$path"
@@ -819,6 +820,19 @@ class ReportRoutesSpec : FunSpec({
                 repeat(2) { client.get("$url?live=true").status shouldBe HttpStatusCode.OK }
                 reportTx.reads shouldBe 2
                 espn.fetchCalls shouldContainExactly listOf(masters.startDate, masters.startDate)
+            }
+        }
+
+        test("GET /api/v1/seasons/{id}/$label?live=true is served from the response cache between events") {
+            val reportTx = ReadCountingTransactor()
+            val finished = tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
+            val beyondLookahead =
+                tournamentRow(SONY_ID, "Sony Open", LocalDate.now(ESPN_SCHEDULE_ZONE).plusWeeks(2).toString())
+                    .copy(status = TournamentStatus.Upcoming)
+            val configure = reportFixture(initialTournaments = listOf(finished, beyondLookahead), reportTx = reportTx)
+            apiTest(configure) { client ->
+                repeat(2) { client.get("$url?live=true").status shouldBe HttpStatusCode.OK }
+                reportTx.reads shouldBe 1
             }
         }
 

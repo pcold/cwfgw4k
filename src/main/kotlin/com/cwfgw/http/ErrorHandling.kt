@@ -1,6 +1,7 @@
 package com.cwfgw.http
 
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.ContentConvertException
 import io.ktor.server.application.Application
@@ -13,15 +14,22 @@ import io.ktor.server.plugins.statuspages.StatusPagesConfig
 import io.ktor.server.request.contentType
 import io.ktor.server.request.httpMethod
 import io.ktor.server.request.path
+import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
+import java.time.Duration
 
-/**
- * Wire-level error payload returned by every mapped HTTP error response.
- */
+/** Every mapped HTTP error response but a [RefusalBody] carries this. */
 @Serializable
 data class ErrorBody(val error: String)
+
+/**
+ * [refusal] is the code a client branches on; [error] keeps every body's key so a client reading only
+ * that still shows a sentence. A plain string: the throwers depend on this package, not the reverse.
+ */
+@Serializable
+data class RefusalBody(val refusal: String, val error: String)
 
 /**
  * Thrown at the route boundary only, where [installErrorHandling] maps each
@@ -29,11 +37,34 @@ data class ErrorBody(val error: String)
  * sealed error and the route bridges it: `src/CLAUDE.md` → Error Handling.
  */
 sealed class DomainError(message: String, cause: Throwable? = null) : RuntimeException(message, cause) {
+    /** Maps to 404. */
     class NotFound(message: String, cause: Throwable? = null) : DomainError(message, cause)
 
+    /** Maps to 400: a malformed field. */
     class Validation(message: String, cause: Throwable? = null) : DomainError(message, cause)
 
+    /** Maps to 422: each part is valid, but the pairing is one the resource cannot take. */
+    class Unprocessable(message: String, cause: Throwable? = null) : DomainError(message, cause)
+
+    /** Maps to 409: the write collides with another row or another write, such as a duplicate key. */
     class Conflict(message: String, cause: Throwable? = null) : DomainError(message, cause)
+
+    /**
+     * Maps to 409 with a [RefusalBody]: a business rule declines the request in the resource's present
+     * lifecycle state, such as a write to a finalized tournament. Not [Conflict], which nothing collided to cause.
+     */
+    class Refused(
+        message: String,
+        val code: String,
+        cause: Throwable? = null,
+    ) : DomainError(message, cause)
+
+    /** Maps to 429 with a `Retry-After` header built from [retryAfter]. */
+    class TooManyRequests(
+        message: String,
+        val retryAfter: Duration,
+        cause: Throwable? = null,
+    ) : DomainError(message, cause)
 
     /** An upstream service we depend on (e.g. ESPN) returned an error or did not respond. Maps to 502 Bad Gateway. */
     class BadGateway(message: String, cause: Throwable? = null) : DomainError(message, cause)
@@ -43,7 +74,7 @@ sealed class DomainError(message: String, cause: Throwable? = null) : RuntimeExc
 
     /**
      * Authenticated but lacking the required role — e.g. a non-admin hitting
-     * an admin-gated endpoint. Maps to 403 Forbidden.
+     * an admin-gated endpoint. Maps to 403 Forbidden, logged at WARN as a denial.
      */
     class Forbidden(message: String, cause: Throwable? = null) : DomainError(message, cause)
 }
@@ -68,8 +99,17 @@ internal fun Application.installErrorHandling() {
         exception<DomainError.Validation> { call, cause ->
             call.respond(HttpStatusCode.BadRequest, ErrorBody(cause.message ?: "invalid request"))
         }
+        exception<DomainError.Unprocessable> { call, cause ->
+            call.respond(HttpStatusCode.UnprocessableEntity, ErrorBody(cause.message ?: "unprocessable request"))
+        }
         exception<DomainError.Conflict> { call, cause ->
             call.respond(HttpStatusCode.Conflict, ErrorBody(cause.message ?: "conflict"))
+        }
+        exception<DomainError.Refused> { call, cause ->
+            call.respond(
+                HttpStatusCode.Conflict,
+                RefusalBody(refusal = cause.code, error = cause.message ?: "conflict"),
+            )
         }
         exception<DomainError.BadGateway> { call, cause ->
             call.respond(HttpStatusCode.BadGateway, ErrorBody(cause.message ?: "upstream unavailable"))
@@ -78,7 +118,13 @@ internal fun Application.installErrorHandling() {
             call.respond(HttpStatusCode.Unauthorized, ErrorBody(cause.message ?: "unauthorized"))
         }
         exception<DomainError.Forbidden> { call, cause ->
-            call.respond(HttpStatusCode.Forbidden, ErrorBody(cause.message ?: "forbidden"))
+            val reason = cause.message ?: "forbidden"
+            call.logDeniedAuthorization(reason)
+            call.respond(HttpStatusCode.Forbidden, ErrorBody(reason))
+        }
+        exception<DomainError.TooManyRequests> { call, cause ->
+            call.response.header(HttpHeaders.RetryAfter, cause.retryAfter.toRetryAfterSeconds().toString())
+            call.respond(HttpStatusCode.TooManyRequests, ErrorBody(cause.message ?: "too many requests"))
         }
         mapReceiveFailures()
         exception<Throwable> { call, cause -> call.respondUnhandled(cause) }
@@ -88,6 +134,28 @@ internal fun Application.installErrorHandling() {
 private suspend fun ApplicationCall.respondUnhandled(cause: Throwable) {
     logger.error("Unhandled error on {} {}", request.httpMethod.value, request.path(), cause)
     respond(HttpStatusCode.InternalServerError, ErrorBody("Internal server error"))
+}
+
+/**
+ * Rounding down hands back a deadline that has not arrived, so a client
+ * obeying it exactly earns a second 429.
+ */
+private fun Duration.toRetryAfterSeconds(): Long {
+    val partialSecond = if (nano > 0 && seconds < Long.MAX_VALUE) 1L else 0L
+    return (seconds + partialSecond).coerceAtLeast(1L)
+}
+
+/**
+ * Of the 4xx, only 403 adds a line beyond the request log: scan traffic produces 401 and 404 in volume.
+ * Never log the body or a header; neither is vetted for PII.
+ */
+private fun ApplicationCall.logDeniedAuthorization(reason: String) {
+    logger.warn(
+        "cwfgw4k.forbidden method={} route={} reason=\"{}\"",
+        request.httpMethod.value,
+        normalizeRoute(request.path()),
+        reason,
+    )
 }
 
 /**

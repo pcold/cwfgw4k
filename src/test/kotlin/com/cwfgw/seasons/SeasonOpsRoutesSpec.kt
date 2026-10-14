@@ -10,6 +10,7 @@ import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.shouldBeRefused
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -100,20 +101,20 @@ class SeasonOpsRoutesSpec : FunSpec({
         }
     }
 
-    test("POST /api/v1/seasons/{sid}/finalize returns 409 when any tournament is not completed") {
+    test("POST /api/v1/seasons/{sid}/finalize is refused when any tournament is not completed") {
         val sony = tournament(SONY_ID, "Sony Open", "2026-01-15", status = TournamentStatus.Completed)
         val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.Upcoming)
         authenticatedApiTest(opsFixture(initialTournaments = listOf(sony, masters))) { client ->
             val response = client.post("/api/v1/seasons/${SEASON_ID.value}/finalize")
-            response.status shouldBe HttpStatusCode.Conflict
+            response.shouldBeRefused("season_has_incomplete_tournaments")
             response.bodyAsText().shouldContain("The Masters")
         }
     }
 
-    test("POST /api/v1/seasons/{sid}/finalize returns 409 when the season has no tournaments") {
+    test("POST /api/v1/seasons/{sid}/finalize is refused when the season has no tournaments") {
         authenticatedApiTest(opsFixture()) { client ->
             val response = client.post("/api/v1/seasons/${SEASON_ID.value}/finalize")
-            response.status shouldBe HttpStatusCode.Conflict
+            response.shouldBeRefused("season_has_no_tournaments")
             response.bodyAsText().shouldContain("no tournaments")
         }
     }

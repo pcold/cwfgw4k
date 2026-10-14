@@ -1,5 +1,6 @@
 package com.cwfgw.espn
 
+import ch.qos.logback.classic.spi.ThrowableProxyUtil
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.seasons.SeasonId
@@ -9,7 +10,9 @@ import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.testing.captureLogs
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.shouldBeRefused
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
@@ -18,10 +21,13 @@ import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.runBlocking
 import java.time.LocalDate
@@ -29,6 +35,7 @@ import java.util.UUID
 
 private val SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000aaa"))
 private val START_DATE = LocalDate.parse("2026-04-15")
+private const val CLIENT_MARKER = "zq7-client-marker"
 
 private fun espnCompetitor(
     espnId: String,
@@ -127,6 +134,20 @@ class EspnRoutesSpec : FunSpec({
         }
     }
 
+    test("POST /espn/import?date=garbage echoes the rejected value into neither the response nor a log line") {
+        captureLogs { logs ->
+            authenticatedApiTest(withWiredService()) { client ->
+                val response = client.post("/api/v1/espn/import?date=$CLIENT_MARKER")
+
+                response.status shouldBe HttpStatusCode.BadRequest
+                response.bodyAsText() shouldNotContain CLIENT_MARKER
+            }
+
+            val logged = logs.events().map { it.formattedMessage + ThrowableProxyUtil.asString(it.throwableProxy) }
+            logged.filter { CLIENT_MARKER in it }.shouldBeEmpty()
+        }
+    }
+
     test("POST /espn/import returns 502 when ESPN responds with an upstream error") {
         authenticatedApiTest(
             withWiredService(upstreamError = EspnUpstreamException(503, "Service Unavailable")),
@@ -189,7 +210,7 @@ class EspnRoutesSpec : FunSpec({
         }
     }
 
-    test("POST /espn/import/tournament/{unlinked} returns 409 when the tournament has no pga_tournament_id") {
+    test("POST /espn/import/tournament/{unlinked} is refused when the tournament has no pga_tournament_id") {
         val seed =
             CreateTournamentRequest(
                 name = "Unlinked",
@@ -208,8 +229,7 @@ class EspnRoutesSpec : FunSpec({
                 client.get("/api/v1/tournaments").body<List<com.cwfgw.tournaments.Tournament>>()
             val seededId = tournamentsList.single().id
 
-            client.post("/api/v1/espn/import/tournament/${seededId.value}")
-                .status shouldBe HttpStatusCode.Conflict
+            client.post("/api/v1/espn/import/tournament/${seededId.value}").shouldBeRefused("tournament_not_linked")
         }
     }
 

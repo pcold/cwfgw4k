@@ -26,8 +26,8 @@ value class ConfigSecret(val cleartext: String) {
 private const val MASK = "****"
 
 /**
- * Without it, Hoplite's inline-class fallback reports a nested node under a secret key with the node's
- * contents printed. Takes every primitive, not only strings, because `DecodeError` prints a refused one.
+ * Without it, a nested node under a secret key boots: Hoplite's fallback drops it for the yaml's value.
+ * Takes every primitive, not only strings, because `DecodeError` prints a refused one.
  * A blank string stays a blank secret, never a failure or null: what blank means belongs to each setting's reader.
  */
 internal class ConfigSecretDecoder : NullHandlingDecoder<ConfigSecret> {
