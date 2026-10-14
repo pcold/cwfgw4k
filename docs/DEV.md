@@ -27,6 +27,8 @@ docker compose up -d postgres
 
 Postgres 18 listens on `localhost:5432` with user/db/password all set to `cwfgw4k` (matches the defaults in `application.yaml`). Flyway migrations run automatically the first time the app boots against an empty database.
 
+[`db/schema.sql`](../db/schema.sql) is the schema those migrations add up to: `pg_dump --schema-only`, run inside a throwaway Postgres the chain has migrated. It is generated, never edited; a correction goes in the next migration. After adding a migration, run `./gradlew updateSchemaDump` and commit the result. `check` runs `checkSchemaDump`, which fails when the two disagree.
+
 ## Populate seed data
 
 ```sh
@@ -77,6 +79,7 @@ GitHub Actions runs the same gate on every pull request and on `main` after a me
 | `./gradlew uiTest` | Run UI unit tests with coverage. |
 | `./gradlew buildFatJar` | Build the deployable fatJar (`build/libs/cwfgw4k-all.jar`). |
 | `./gradlew generateJooq` | Regenerate jOOQ classes against a throwaway Postgres migrated by Flyway. |
+| `./gradlew updateSchemaDump` | Regenerate the tracked `db/schema.sql` from the migrations. |
 
 ## Deploying
 
