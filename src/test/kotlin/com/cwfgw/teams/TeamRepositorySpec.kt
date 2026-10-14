@@ -1,9 +1,10 @@
 package com.cwfgw.teams
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
-import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferRepository
+import com.cwfgw.jooq.tables.references.TEAM_ROSTERS
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.seasons.CreateSeasonRequest
@@ -11,14 +12,11 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.booleans.shouldBeFalse
-import io.kotest.matchers.booleans.shouldBeTrue
-import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import java.math.BigDecimal
+import java.time.OffsetDateTime
 import java.util.UUID
 
 class TeamRepositorySpec : FunSpec({
@@ -48,7 +46,7 @@ class TeamRepositorySpec : FunSpec({
             created.seasonId shouldBe seasonId
             created.ownerName shouldBe "Alice"
             created.teamName shouldBe "Eagles"
-            repository.findById(created.id).shouldNotBeNull()
+            repository.findBySeason(seasonId).map { it.id } shouldContainExactly listOf(created.id)
         }
     }
 
@@ -63,19 +61,6 @@ class TeamRepositorySpec : FunSpec({
 
             result.map { it.id } shouldContainExactly
                 listOf(numbered1.id, numbered2.id, unnumberedEarly.id, unnumberedLater.id)
-        }
-    }
-
-    test("update applies only supplied fields and bumps updated_at") {
-        tx.update {
-            val created = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
-
-            val updated = repository.update(created.id, UpdateTeamRequest(teamName = "Falcons"))
-
-            updated.shouldNotBeNull()
-            updated.teamName shouldBe "Falcons"
-            updated.ownerName shouldBe "Alice"
-            (updated.updatedAt >= created.updatedAt) shouldBe true
         }
     }
 
@@ -95,7 +80,7 @@ class TeamRepositorySpec : FunSpec({
         }
     }
 
-    test("getRoster returns only active entries ordered by draft_round asc nulls last") {
+    test("findRostersBySeason orders a team's entries by draft_round asc nulls last") {
         tx.update {
             val team = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
             val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
@@ -114,29 +99,9 @@ class TeamRepositorySpec : FunSpec({
                 )
             val unrounded = repository.addToRoster(team.id, AddToRosterRequest(golferId = phil.id))
 
-            val roster = repository.getRoster(team.id)
+            val roster = repository.findRostersBySeason(seasonId)
 
             roster.map { it.id } shouldContainExactly listOf(roundedScottie.id, roundedRory.id, unrounded.id)
-        }
-    }
-
-    test("dropFromRoster soft-deletes and hides the entry from getRoster") {
-        tx.update {
-            val team = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
-            val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
-            repository.addToRoster(team.id, AddToRosterRequest(golferId = rory.id))
-
-            repository.dropFromRoster(team.id, rory.id).shouldBeTrue()
-
-            repository.getRoster(team.id).shouldBeEmpty()
-        }
-    }
-
-    test("dropFromRoster returns false when the golfer is not on the team's active roster") {
-        tx.update {
-            val team = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
-
-            repository.dropFromRoster(team.id, GolferId(UUID.randomUUID())).shouldBeFalse()
         }
     }
 
@@ -151,7 +116,7 @@ class TeamRepositorySpec : FunSpec({
             repository.addToRoster(alice.id, AddToRosterRequest(golferId = rory.id, draftRound = 1))
             repository.addToRoster(alice.id, AddToRosterRequest(golferId = scottie.id, draftRound = 2))
             val dropped = repository.addToRoster(bob.id, AddToRosterRequest(golferId = phil.id, draftRound = 1))
-            repository.dropFromRoster(bob.id, phil.id)
+            markDropped(dropped.id)
 
             val rosters = repository.findRostersBySeason(seasonId)
 
@@ -239,3 +204,12 @@ class TeamRepositorySpec : FunSpec({
         }
     }
 })
+
+/** Nothing in production drops a roster entry, so the spec sets `dropped_at` itself to prove the filter. */
+context(ctx: TransactionContext)
+private fun markDropped(entryId: RosterEntryId) {
+    ctx.dsl.update(TEAM_ROSTERS)
+        .set(TEAM_ROSTERS.DROPPED_AT, OffsetDateTime.now())
+        .where(TEAM_ROSTERS.ID.eq(entryId.value))
+        .execute()
+}
