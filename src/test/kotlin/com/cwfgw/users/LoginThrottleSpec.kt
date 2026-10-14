@@ -4,6 +4,10 @@ import com.cwfgw.result.Result
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -126,24 +130,54 @@ class LoginThrottleSpec : FunSpec({
         throttle.retryAfter(attempt(username = "alice")) shouldBe WINDOW
     }
 
-    test("a flood of one-off keys evicts the coldest rather than growing without bound") {
+    test("concurrent attempts are counted on admission, so no more than the limit reach the password check") {
+        val throttle = throttle()
+        val gate = CompletableDeferred<Unit>()
+        var verifications = 0
+
+        val outcomes =
+            (1..MAX_FAILURES + 2).map {
+                async(start = CoroutineStart.UNDISPATCHED) {
+                    throttle.guard(attempt()) {
+                        verifications += 1
+                        gate.await()
+                        Result.Err(AuthError.InvalidCredentials)
+                    }
+                }
+            }
+        gate.complete(Unit)
+
+        verifications shouldBe MAX_FAILURES
+        outcomes.awaitAll().count { it == Result.Err(AuthError.InvalidCredentials) } shouldBe MAX_FAILURES
+    }
+
+    test("a flood of one-off keys evicts the coldest unlocked ones rather than growing without bound") {
+        val throttle = throttle(maxTrackedKeys = 4)
+        val coldest = attempt(username = "throwaway-1", clientAddress = "flood-1")
+        throttle.fail(coldest, times = MAX_FAILURES - 1)
+
+        (2..3).forEach { n -> throttle.fail(attempt(username = "throwaway-$n", clientAddress = "flood-$n")) }
+        throttle.fail(coldest)
+
+        throttle.succeed(coldest) shouldBe Result.Ok(ALICE)
+    }
+
+    test("a locked username survives a flood that never touches it") {
         val throttle = throttle(maxTrackedKeys = 4)
         throttle.fail(attempt(), times = MAX_FAILURES)
 
         (1..3).forEach { n -> throttle.fail(attempt(username = "throwaway-$n", clientAddress = "flood-$n")) }
 
-        throttle.succeed(attempt(clientAddress = "fresh")) shouldBe Result.Ok(ALICE)
+        throttle.retryAfter(attempt(clientAddress = "fresh")) shouldBe WINDOW
     }
 
-    test("a username still under attack survives a flood, because checking it keeps it warm") {
-        val throttle = throttle(maxTrackedKeys = 4)
+    test("when every other tracked key is locked, a new attempt is still counted") {
+        val throttle = throttle(maxTrackedKeys = 2)
         throttle.fail(attempt(), times = MAX_FAILURES)
+        val newcomer = attempt(username = "bob", clientAddress = "198.51.100.1")
 
-        (1..3).forEach { n ->
-            throttle.succeed(attempt(clientAddress = "probe-$n"))
-            throttle.fail(attempt(username = "throwaway-$n", clientAddress = "flood-$n"))
-        }
+        throttle.fail(newcomer, times = MAX_FAILURES)
 
-        throttle.retryAfter(attempt(clientAddress = "fresh")) shouldBe WINDOW
+        throttle.retryAfter(newcomer) shouldBe WINDOW
     }
 })
