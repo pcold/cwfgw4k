@@ -27,8 +27,7 @@ private val log = KotlinLogging.logger {}
  * and write all happen inside the same transaction. Calling another
  * service mid-flow would open a fresh transaction on a different
  * connection and split the operation across multiple commit boundaries
- * — the [com.cwfgw.admin.AdminService.confirmRoster] reference shape
- * documents the pattern in `src/CLAUDE.md`.
+ * — `src/CLAUDE.md` → Cross-repo flows documents the pattern.
  */
 class SeasonOpsService(
     private val seasonRepository: SeasonRepository,
