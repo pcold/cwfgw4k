@@ -8,6 +8,7 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
 import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.plugins.CannotTransformContentToTypeException
 import io.ktor.server.plugins.UnsupportedMediaTypeException
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.plugins.statuspages.StatusPagesConfig
@@ -159,13 +160,14 @@ private fun ApplicationCall.logDeniedAuthorization(reason: String) {
 }
 
 /**
- * [UnsupportedMediaTypeException] is mapped as a leaf: `PayloadTooLargeException` shares its base. A typed
- * receive's mismatch never arrives as an exception — Ktor 3.2's engine answers it a bare 415, which the status
- * handler fills.
+ * Each 415 exception is mapped as a leaf: `PayloadTooLargeException` shares their base. A typed receive's
+ * mismatch arrives as [CannotTransformContentToTypeException]; an empty JSON body still arrives as a bare 415,
+ * which the status handler fills.
  */
 private fun StatusPagesConfig.mapReceiveFailures() {
     exception<BadRequestException> { call, cause -> call.respondToBadRequest(cause) }
     exception<UnsupportedMediaTypeException> { call, _ -> call.respondUnsupportedMediaType() }
+    exception<CannotTransformContentToTypeException> { call, _ -> call.respondUnsupportedMediaType() }
     status(HttpStatusCode.UnsupportedMediaType) { call, _ -> call.respondToBareUnsupportedMediaType() }
 }
 
