@@ -28,8 +28,8 @@ class ScoringService(
     private val teamRepository: TeamRepository,
 ) {
     /**
-     * Takes the caller's transaction rather than opening one, so finalize and reset commit or roll back
-     * these writes together with the rest of their flow.
+     * Takes the caller's transaction rather than opening one, so these writes commit or roll back with the
+     * rest of the tournament-ops flow that called it.
      */
     context(ctx: TransactionContext)
     internal fun calculateScoresIn(

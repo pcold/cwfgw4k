@@ -316,19 +316,6 @@ data class Tournament(
     val isTeamEvent: Boolean,     // true for Zurich Classic; halves per-partner payout
     val createdAt: Instant,
 )
-
-data class TournamentResult(
-    val id: TournamentResultId,
-    val tournamentId: TournamentId,
-    val golferId: GolferId,
-    val position: Int?,
-    val scoreToPar: Int?,
-    val totalStrokes: Int?,
-    val earnings: Long?,
-    val round1: Int?, val round2: Int?, val round3: Int?, val round4: Int?,
-    val madeCut: Boolean,
-    val pairKey: String?,         // synthetic team-event partner key, e.g. "team:t1"
-)
 ```
 
 ### Season + Rules
