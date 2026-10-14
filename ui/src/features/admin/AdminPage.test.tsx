@@ -182,10 +182,24 @@ describe('AdminPage', () => {
       await screen.findByRole('heading', { name: 'Admin' });
     }
 
-    function reportExpiry(): void {
+    function reportExpiry(times = 1): void {
       act(() => {
-        notifySessionExpired();
+        for (let report = 0; report < times; report += 1) notifySessionExpired();
       });
+    }
+
+    function holdTheReask(): (answer: Awaited<ReturnType<typeof api.authMe>>) => void {
+      let answerReask: (answer: Awaited<ReturnType<typeof api.authMe>>) => void = () => undefined;
+      authMeMock.mockReturnValue(
+        new Promise((resolve) => {
+          answerReask = resolve;
+        }),
+      );
+      return (answer) => {
+        act(() => {
+          answerReask(answer);
+        });
+      };
     }
 
     it('returns the admin to the login modal instead of leaving refused sections on screen', async () => {
@@ -201,11 +215,11 @@ describe('AdminPage', () => {
     it('asks the server once for a burst of refused requests', async () => {
       await renderSignedIn();
 
-      authMeMock.mockResolvedValue(null);
-      reportExpiry();
+      const answerReask = holdTheReask();
+      reportExpiry(3);
+      answerReask(null);
       await screen.findByRole('dialog', { name: /Admin Login/i });
-      reportExpiry();
-      reportExpiry();
+      reportExpiry(2);
 
       expect(screen.getByRole('dialog', { name: /Admin Login/i })).toBeInTheDocument();
       expect(authMeMock).toHaveBeenCalledTimes(2);
@@ -214,12 +228,18 @@ describe('AdminPage', () => {
     it('keeps a session the server still honours, as after a fresh login', async () => {
       await renderSignedIn();
 
+      const answerReask = holdTheReask();
       reportExpiry();
 
+      expect(authMeMock).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole('heading', { name: 'Admin' })).toBeInTheDocument();
+      expect(screen.queryByText('Checking session…')).not.toBeInTheDocument();
+
+      answerReask(adminUser);
+
       await waitFor(() => {
-        expect(authMeMock).toHaveBeenCalledTimes(2);
+        expect(screen.getByRole('heading', { name: 'Admin' })).toBeInTheDocument();
       });
-      expect(await screen.findByRole('heading', { name: 'Admin' })).toBeInTheDocument();
       expect(screen.queryByRole('dialog', { name: /Admin Login/i })).not.toBeInTheDocument();
     });
   });

@@ -65,6 +65,31 @@ describe('decoding a refused request', () => {
   });
 });
 
+describe('decoding an empty body', () => {
+  let fetchMock: Mock<typeof fetch>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('refuses a read that answers with nothing, rather than handing its caller null', async () => {
+    fetchMock.mockResolvedValueOnce(new Response('', { status: 200 }));
+
+    await expect(getJson('/leagues')).rejects.toThrow(SyntaxError);
+  });
+
+  it('resolves a write that answers with nothing to null', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    await expect(postJson('/tournaments/tn-1/reset')).resolves.toBeNull();
+  });
+});
+
 describe('reporting an expired session', () => {
   const sessionExpired = vi.fn();
   let fetchMock: Mock<typeof fetch>;

@@ -20,12 +20,13 @@ interface AuthValue {
 const AuthContext = createContext<AuthValue | null>(null);
 
 /**
- * Reset rather than set to null, so `me` confirms the expiry: a 401 from a request sent before a
- * fresh login must not sign the new session out. The signed-in check collapses a burst to one re-ask.
+ * Re-ask `me` rather than set it to null: a 401 from a request sent before a fresh login must not
+ * sign the new session out. Not a reset, which would unmount the page (and its unsaved input) while
+ * `me` answers; `cancelRefetch: false` joins a burst of reports to the one re-ask in flight.
  */
 function expireSession(queryClient: QueryClient): void {
   if (!queryClient.getQueryData<User | null>(queryKeys.auth.me())) return;
-  void queryClient.resetQueries({ queryKey: queryKeys.auth.me() });
+  void queryClient.refetchQueries({ queryKey: queryKeys.auth.me() }, { cancelRefetch: false });
 }
 
 export function AuthProvider({ children }: { children: ReactNode }): ReactNode {

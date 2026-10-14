@@ -75,15 +75,24 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
   throw await requestError(resp);
 }
 
-async function readJson<T>(resp: Response): Promise<T> {
-  const text = await resp.text();
-  const parsed: unknown = text ? JSON.parse(text) : null;
+function decodeJson<T>(parsed: unknown): T {
   return camelizeKeys(parsed) as T;
 }
 
-/** `path` is relative to `/api/v1`, as it is for every helper in this file. */
+// Only a write may answer with an empty body, which resolves to null.
+async function readJson<T>(resp: Response): Promise<T> {
+  const text = await resp.text();
+  return decodeJson<T>(text ? JSON.parse(text) : null);
+}
+
+/**
+ * `path` is relative to `/api/v1`, as it is for every helper in this file. An empty body throws
+ * rather than reaching a reader as a null `T`.
+ */
 export async function getJson<T>(path: string): Promise<T> {
-  return readJson<T>(await request(path));
+  const resp = await request(path);
+  const parsed: unknown = await resp.json();
+  return decodeJson<T>(parsed);
 }
 
 export async function postJson<T>(path: string, payload?: unknown): Promise<T> {
