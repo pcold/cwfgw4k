@@ -78,6 +78,8 @@ style:
         reason: 'Transactions are opened only by com.cwfgw.db.Transactor, on its pool-sized dispatcher (src/CLAUDE.md → jOOQ).'
       - value: 'org.jooq.DSLContext.transactionPublisher'
         reason: 'Transactions are opened only by com.cwfgw.db.Transactor, on its pool-sized dispatcher (src/CLAUDE.md → jOOQ).'
+      - value: 'org.jooq.DSLContext.startTransaction'
+        reason: 'Transactions are opened only by com.cwfgw.db.Transactor, on its pool-sized dispatcher (src/CLAUDE.md → jOOQ).'
       - value: 'kotlin.collections.single'
         reason: 'Take the one element only from a collection whose size the reader can see proven; suppress at the declaration where it is, use singleOrNull where it is not (src/CLAUDE.md → Collections).'
       - value: 'kotlin.collections.first'
