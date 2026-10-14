@@ -34,7 +34,13 @@ data class DbConfig(
     val password: ConfigSecret,
     val schema: String,
     val maxPoolSize: Int,
-)
+) {
+    /**
+     * Log this, never [jdbcUrl]: pgjdbc accepts `password=` and `sslpassword=` as query parameters, and
+     * the query string is dropped whole so a credential parameter added later can't slip through.
+     */
+    val jdbcUrlWithoutQuery: String get() = jdbcUrl.substringBefore('?')
+}
 
 data class AuthConfig(
     val sessionSecret: ConfigSecret,
