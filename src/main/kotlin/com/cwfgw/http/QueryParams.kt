@@ -14,5 +14,6 @@ internal fun <T : Any> RoutingContext.optionalQueryParam(
     parser: (String) -> T?,
 ): T? =
     call.request.queryParameters[name]?.let { raw ->
-        parser(raw) ?: throw DomainError.Validation("invalid query parameter $name: $raw")
+        // Never interpolate [raw]: it is unbounded caller input, and the caller already holds it.
+        parser(raw) ?: throw DomainError.Validation("invalid query parameter $name")
     }

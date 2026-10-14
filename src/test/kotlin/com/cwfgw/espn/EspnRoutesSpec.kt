@@ -9,6 +9,7 @@ import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.testing.captureLogs
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.testing.shouldBeRefused
 import com.cwfgw.testing.testEspnService
@@ -19,10 +20,13 @@ import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldNotContain
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.runBlocking
 import java.time.LocalDate
@@ -30,6 +34,7 @@ import java.util.UUID
 
 private val SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000aaa"))
 private val START_DATE = LocalDate.parse("2026-04-15")
+private const val CLIENT_MARKER = "zq7-client-marker"
 
 private fun espnCompetitor(
     espnId: String,
@@ -125,6 +130,19 @@ class EspnRoutesSpec : FunSpec({
     test("POST /espn/import?date=garbage returns 400 for a malformed date") {
         authenticatedApiTest(withWiredService()) { client ->
             client.post("/api/v1/espn/import?date=not-a-date").status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    test("POST /espn/import?date=garbage echoes the rejected value into neither the response nor a log line") {
+        captureLogs { logs ->
+            authenticatedApiTest(withWiredService()) { client ->
+                val response = client.post("/api/v1/espn/import?date=$CLIENT_MARKER")
+
+                response.status shouldBe HttpStatusCode.BadRequest
+                response.bodyAsText() shouldNotContain CLIENT_MARKER
+            }
+
+            logs.messages().filter { CLIENT_MARKER in it }.shouldBeEmpty()
         }
     }
 
