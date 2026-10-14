@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { nth } from '@/shared/test/nth';
-import { ApiError, api, camelizeKeys, snakeifyKeys } from './client';
+import { ApiError, api, camelizeKeys, snakeifyKeys } from './index';
 
 type FetchMock = Mock<typeof fetch>;
 
