@@ -302,8 +302,9 @@ What stays in the UI:
   `<Button>` shouldn't exist until there's a real third caller.
 - **MUST** keep palette and spacing consistent. A colour is named by its
   role token from the `@theme` block in `src/index.css` — `text-ink-muted`,
-  `text-semantic-danger` — never by a shade such as `text-gray-400`;
-  `PALETTE_RESTRICTIONS` in `eslint.config.js` fails the lint on one. A role
+  `text-semantic-danger` — never by a shade such as `text-gray-400`, a hex,
+  or a ramp variable; `PALETTE_RESTRICTIONS` in `eslint.config.js` fails
+  the lint on each. A role
   no token names gets a token there first, under benrollio's DESIGN.md
   `colors:` key where that role has one, plus a row in the contrast table of
   `src/index.css.test.ts` when it colours text.
