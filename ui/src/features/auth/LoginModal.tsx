@@ -12,12 +12,12 @@ function LoginModal({ onClose }: Props): ReactNode {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
+  // Success is not a close: the parent unmounts this modal once authenticated, and its onClose is the
+  // cancel path, which on AdminPage leaves for the home page.
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
       await login(username, password);
-      setPassword('');
-      onClose();
     } catch {
       // error surfaced via loginError
     }
