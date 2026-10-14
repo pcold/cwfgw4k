@@ -1,5 +1,7 @@
 package com.cwfgw.tournaments
 
+import com.cwfgw.espn.EspnCompetitor
+import com.cwfgw.espn.EspnStatus
 import com.cwfgw.espn.EspnTournament
 import com.cwfgw.espn.EspnUpstreamException
 import com.cwfgw.espn.EspnUpstreamFailure
@@ -39,6 +41,7 @@ private val LEAGUE_ID = LeagueId(UUID.fromString("00000000-0000-0000-0000-000000
 private val SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000aaa"))
 private val SONY_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b02"))
 private val MASTERS_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b01"))
+private val PGA_CHAMPIONSHIP_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b03"))
 
 private fun tournament(
     id: TournamentId,
@@ -66,13 +69,35 @@ private fun tournament(
 private fun emptyEspnEvent(
     espnId: String,
     name: String,
+): EspnTournament = espnEvent(espnId, name, competitors = emptyList())
+
+private fun espnEvent(
+    espnId: String,
+    name: String,
+    competitors: List<EspnCompetitor>,
+    completed: Boolean = true,
 ): EspnTournament =
     EspnTournament(
         espnId = espnId,
         name = name,
-        completed = true,
-        competitors = emptyList(),
+        completed = completed,
+        competitors = competitors,
         isTeamEvent = false,
+    )
+
+private fun espnLeader(espnId: String): EspnCompetitor =
+    EspnCompetitor(
+        espnId = espnId,
+        name = "Scottie Scheffler",
+        order = 1,
+        scoreStr = "-10",
+        scoreToPar = -10,
+        totalStrokes = 270,
+        roundScores = listOf(68, 67, 68, 67),
+        position = 1,
+        status = EspnStatus.Active,
+        isTeamPartner = false,
+        pairKey = null,
     )
 
 @Suppress("LongParameterList")
@@ -220,6 +245,37 @@ class TournamentOpsServiceSpec : FunSpec({
 
         val finalized = fixture.service.finalizeTournament(MASTERS_ID).orFail()
         finalized.status shouldBe TournamentStatus.Completed
+    }
+
+    test("finalizeTournament of an unlinked tournament imports only the completed events linked elsewhere") {
+        val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", pgaTournamentId = null)
+        val sony = tournament(SONY_ID, "Sony Open", "2026-05-01")
+        val pgaChampionship = tournament(PGA_CHAMPIONSHIP_ID, "PGA Championship", "2026-05-14")
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(masters, sony, pgaChampionship),
+                espnByDate =
+                    mapOf(
+                        LocalDate.parse("2026-04-09") to
+                            listOf(
+                                espnEvent("espn-${SONY_ID.value}", "Sony Open", listOf(espnLeader("e1"))),
+                                espnEvent(
+                                    "espn-${PGA_CHAMPIONSHIP_ID.value}",
+                                    "PGA Championship",
+                                    listOf(espnLeader("e2")),
+                                    completed = false,
+                                ),
+                            ),
+                    ),
+            )
+
+        fixture.service.finalizeTournament(MASTERS_ID).orFail()
+
+        with(noopTransactionContext) {
+            fixture.tournamentRepo.getResults(SONY_ID).map { it.position } shouldContainExactly listOf(1)
+            fixture.tournamentRepo.getResults(PGA_CHAMPIONSHIP_ID).shouldBeEmpty()
+            fixture.tournamentRepo.getResults(MASTERS_ID).shouldBeEmpty()
+        }
     }
 
     test("finalizeTournament surfaces UpstreamUnavailable when ESPN is down") {
