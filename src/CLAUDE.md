@@ -63,12 +63,12 @@ Policy, in order of preference:
    lookups.
 2. **`com.cwfgw.result.Result<T, E>` with a domain-specific sealed error
    hierarchy** when a function has multiple distinct failure modes that need
-   to drive different caller behavior (e.g., state-machine transitions where
-   "not found," "wrong status," "already completed," and "not your turn" must
-   each produce a different HTTP status). The error type lives in the domain
-   package and stays free of HTTP imports; routes map it to `DomainError`
-   via a tiny `.orThrow()` extension. The `DraftService` / `DraftRoutes`
-   pair is the reference shape.
+   to drive different caller behavior (e.g., a finalize where "not found,"
+   "out of order," and "upstream unavailable" must each produce a different
+   HTTP status). The error type lives in the domain package and stays free of
+   HTTP imports; routes map it to `DomainError` via a tiny `.orThrow()`
+   extension. The `TournamentOpsService` / `TournamentOpsRoutes` pair is the
+   reference shape.
 3. **Exceptions** for truly exceptional conditions: programmer errors
    (`IllegalArgumentException`, `IllegalStateException`), infrastructure
    failures, and at HTTP/framework boundaries — specifically `DomainError`
@@ -83,8 +83,8 @@ Rules:
 - **MUST NOT** mix error-handling conventions for the same conceptual
   operation. A single function signature uses one pattern. Across a module,
   different operations can use different patterns (e.g., `get()` returning
-  `T?` alongside `makePick()` returning `Result<T, E>` is fine — they have
-  different failure-mode counts).
+  `T?` alongside `finalizeTournament()` returning `Result<T, E>` is fine —
+  they have different failure-mode counts).
 - **MUST** use sealed error hierarchies when returning `Result<T, E>`.
   `String` or `Throwable` as the error type is forbidden — the error must
   be an exhaustive sealed hierarchy so mapping at the boundary stays
@@ -569,7 +569,7 @@ mean."
 ## Code Organization
 
 - **MUST** organize by feature/domain, not by technical layer.
-  `com.cwfgw.golfers`, `com.cwfgw.scoring`, `com.cwfgw.drafts` — each
+  `com.cwfgw.golfers`, `com.cwfgw.scoring`, `com.cwfgw.teams` — each
   containing its own types, routes, services, and repositories.
 - **MUST NOT** create subpackages within a domain (`teams/routes/`,
   `teams/services/`, `teams/repos/`). The layout is flat by domain.
