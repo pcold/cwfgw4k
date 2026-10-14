@@ -8,9 +8,9 @@ import java.io.File
 import java.nio.file.Path
 
 /**
- * Real Temporal and kotlin-logging jars, not stubs of them: the rule matches resolved
+ * The real kotlin-logging jar, not a stub of it: the rule matches resolved
  * callable ids and an argument position, both of which a hand-written stub would keep
- * satisfying after the libraries had moved.
+ * satisfying after the library had moved.
  */
 internal val messageEnvironment: KotlinEnvironmentContainer by lazy {
     val classpath =
@@ -29,7 +29,6 @@ internal val FIXTURE_PRELUDE: String =
     package fixture
 
     import io.github.oshai.kotlinlogging.KotlinLogging
-    import io.temporal.failure.ApplicationFailure
     import java.time.Instant
     import java.time.LocalDate
     import java.util.UUID

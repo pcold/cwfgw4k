@@ -51,12 +51,10 @@ dependencies {
     testImplementation(libs.detekt.test)
     testImplementation(libs.bundles.kotest)
 
-    // Not testImplementation: these are not on the spec's own classpath, they are the
-    // classpath the spec hands the Analysis API to compile its fixtures against. The rule
-    // matches Temporal's and kotlin-logging's real signatures, so a stub of either would
-    // let the spec keep passing after the argument order it resolves against had moved.
+    // Not testImplementation: the spec hands this classpath to the Analysis API to compile its
+    // fixtures against. A stub of kotlin-logging would keep passing after the argument order
+    // the rule resolves against had moved.
     ruleFixtures(libs.kotlin.logging)
-    ruleFixtures(libs.temporal.sdk)
 
     // This module shares the root `detekt.yml`, and detekt fails a run whose config names a
     // ruleset it did not load — so without loading its own output here, `:detekt-rules:detekt`

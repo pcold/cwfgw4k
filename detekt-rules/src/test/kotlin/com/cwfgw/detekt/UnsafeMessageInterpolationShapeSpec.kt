@@ -20,8 +20,6 @@ class UnsafeMessageInterpolationShapeSpec :
                 "a log behind a throwable" to
                     """logger.error(IllegalStateException("x")) { "value ${'$'}member" }""",
                 "an event-builder log" to """logger.atInfo { message = "value ${'$'}member" }""",
-                "ApplicationFailure" to
-                    """ApplicationFailure.newNonRetryableFailure("value ${'$'}member", "type")""",
             ).forEach { (label, call) ->
                 test(label) {
                     messagesFor("fun probe() {\n$MEMBER\n    $call\n}")
@@ -112,7 +110,6 @@ class UnsafeMessageInterpolationShapeSpec :
                     val id = EmployeeId(UUID.randomUUID())
                     logger.info { "settled ${'$'}id" }
                     require(FIXED_REASON.isEmpty()) { "settled ${'$'}id" }
-                    ApplicationFailure.newNonRetryableFailure("settled ${'$'}id", "type")
                 }
                 """,
             ).shouldBeEmpty()

@@ -100,8 +100,6 @@ public class UnsafeMessageInterpolation(
     }
 }
 
-private const val APPLICATION_FAILURE = "io.temporal.failure.ApplicationFailure"
-
 private const val KLOGGER = "io.github.oshai.kotlinlogging.KLogger"
 
 private val CONTRACT_CHECKS =
@@ -131,9 +129,6 @@ private fun KtExpression.unwrapLambdaBody(): KtExpression =
 private fun messageArgumentIndex(callable: String, argumentCount: Int): Int? =
     when {
         callable == "kotlin.error" -> 0
-        // Temporal's factories are Java, so their parameter names are not in the jar to
-        // resolve against; `message` is first in every `ApplicationFailure.new*` overload.
-        callable.startsWith("$APPLICATION_FAILURE.new") -> 0
         callable in CONTRACT_CHECKS -> if (argumentCount >= 2) 1 else null
         callable in LOGGER_LEVELS -> if (argumentCount >= 1) argumentCount - 1 else null
         else -> null

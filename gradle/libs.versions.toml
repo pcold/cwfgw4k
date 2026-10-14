@@ -22,9 +22,6 @@ kover = "0.9.11"
 node-gradle = "7.1.0"
 cloud-sql-postgres = "1.30.0"
 caffeine = "3.3.0"
-# Only ever a classpath :detekt-rules hands its spec fixtures, so the rule resolves Temporal's real
-# signatures; nothing here runs on Temporal.
-temporal = "1.40.0"
 
 [libraries]
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
@@ -79,7 +76,6 @@ docker-java-transport-zerodep = { module = "com.github.docker-java:docker-java-t
 detekt-api = { module = "dev.detekt:detekt-api", version.ref = "detekt" }
 detekt-kotlin-analysis-api = { module = "dev.detekt:detekt-kotlin-analysis-api", version.ref = "detekt" }
 detekt-test = { module = "dev.detekt:detekt-test", version.ref = "detekt" }
-temporal-sdk = { module = "io.temporal:temporal-sdk", version.ref = "temporal" }
 
 [bundles]
 ktor-server = [
