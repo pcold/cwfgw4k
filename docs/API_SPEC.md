@@ -381,7 +381,7 @@ data class WeeklyReport(
     val sideBetDetail: List<ReportSideBetRound>,     // one per round in sideBetRules.rounds, same order
     val standingsOrder: List<StandingsEntry>,
     val live: Boolean? = null,                       // populated only by live overlay
-    val liveLeaderboard: List<LiveLeaderboardEntry> = emptyList(), // sorted by position; persisted rows unless live
+    val liveLeaderboard: List<LiveLeaderboardEntry> = emptyList(), // sorted by position; ESPN's field when live and ESPN lists one, else persisted rows
 ) {
     val cashTotals: WonLostTotals                    // over teams[].totalCash; derived, so a copy recomputes it
     val sideBetTotals: WonLostTotals                 // over teams[].sideBets, likewise
