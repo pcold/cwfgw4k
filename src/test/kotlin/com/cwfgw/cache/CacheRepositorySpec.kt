@@ -68,4 +68,17 @@ class CacheRepositorySpec : FunSpec({
         deleted shouldBe 2
         tx.read { repository.get("/api/v1/fresh") } shouldBe "\"ok\""
     }
+
+    test("deleteAll removes live and expired rows of every revision") {
+        val now = Instant.now()
+        tx.update {
+            repository.put(key = "rev-a /api/v1/live", value = "\"ok\"", expiresAt = now.plusSeconds(60))
+            repository.put(key = "rev-b /api/v1/live", value = "\"ok\"", expiresAt = now.plusSeconds(60))
+            repository.put(key = "rev-a /api/v1/stale", value = "\"old\"", expiresAt = now.minusSeconds(1))
+        }
+
+        tx.update { repository.deleteAll() } shouldBe 3
+        tx.read { repository.get("rev-a /api/v1/live") }.shouldBeNull()
+        tx.read { repository.get("rev-b /api/v1/live") }.shouldBeNull()
+    }
 })

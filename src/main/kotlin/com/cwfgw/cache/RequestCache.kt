@@ -16,6 +16,7 @@ import org.jooq.exception.DataAccessException
 import java.time.Clock
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 private val log = KotlinLogging.logger {}
 
@@ -26,12 +27,14 @@ private val log = KotlinLogging.logger {}
  * delegates to the handler — serializing and storing the result before
  * sending it.
  *
- * Pure-TTL semantics: the underlying [CacheRepository.get] only returns
- * non-expired rows. [deleteExpired] is the periodic sweep that keeps the
- * table small; it's invoked from a background coroutine launched at boot
- * (see App.kt), not on every read. Mutations (POST / PUT / DELETE) do not
- * invalidate cache entries — the [defaultTtl] window is the maximum
- * staleness consumers can see.
+ * The underlying [CacheRepository.get] only returns non-expired rows.
+ * [deleteExpired] is the periodic sweep that keeps the table small; it's
+ * invoked from a background coroutine launched at boot (see App.kt), not on
+ * every read.
+ *
+ * A write invalidates: [clearResponseCacheOnWrite] runs [clear] before any
+ * successful authenticated write under `/api/v1` answers. One instance's clear
+ * can't stop a fill already running on another, so [defaultTtl] still bounds that.
  *
  * A deploy does invalidate: [revision] prefixes every stored key, so a body
  * one revision encoded is never served by another. Not a table clear at
@@ -59,7 +62,10 @@ class RequestCache(
      * coalesce onto a single [fetch] call. Bounded by request concurrency
      * (entries are removed in the loader's finally block); not a leak.
      */
-    private val inFlight = ConcurrentHashMap<String, CompletableDeferred<String>>()
+    private val inFlight = ConcurrentHashMap<InFlightKey, CompletableDeferred<String>>()
+
+    /** Bumped by [clear], so a fill whose fetch began before it neither stores nor gains post-clear waiters. */
+    private val generation = AtomicLong()
 
     /**
      * Cache-aside fetch keyed by [revision] and [key] — joined here, the only
@@ -99,8 +105,10 @@ class RequestCache(
             return hit
         }
 
+        val loadGeneration = generation.get()
+        val flightKey = InFlightKey(loadGeneration, storedKey)
         val ours = CompletableDeferred<String>()
-        val existing = inFlight.putIfAbsent(storedKey, ours)
+        val existing = inFlight.putIfAbsent(flightKey, ours)
         if (existing != null) {
             log.info { "cwfgw4k.cache event=coalesced route=$routeTemplate" }
             return existing.await()
@@ -126,7 +134,11 @@ class RequestCache(
                 "cwfgw4k.cache event=fetch-exit route=$routeTemplate " +
                     "duration_ms=${System.currentTimeMillis() - fetchStarted}"
             }
-            store(storedKey, fresh, routeTemplate, ttl)
+            if (generation.get() == loadGeneration) {
+                store(storedKey, fresh, routeTemplate, ttl)
+            } else {
+                log.info { "cwfgw4k.cache event=discarded route=$routeTemplate" }
+            }
             ours.complete(fresh)
             return fresh
         } catch (t: Throwable) {
@@ -141,7 +153,7 @@ class RequestCache(
             // Atomic remove only if our deferred is still the registered one,
             // so a same-key request that arrives after we complete but before
             // we clean up doesn't get a stale stub.
-            inFlight.remove(storedKey, ours)
+            inFlight.remove(flightKey, ours)
         }
     }
 
@@ -175,7 +187,23 @@ class RequestCache(
         log.info { "cwfgw4k.cache event=sweep deleted=$deleted" }
         return deleted
     }
+
+    /**
+     * Every revision's rows go, not just this one's. A fill that checked [generation] before the bump and
+     * puts after the delete still stores its body; that window is the put's own round trip.
+     */
+    suspend fun clear(): Int {
+        generation.incrementAndGet()
+        val deleted = tx.update { repository.deleteAll() }
+        log.info { "cwfgw4k.cache event=clear deleted=$deleted" }
+        return deleted
+    }
 }
+
+private data class InFlightKey(
+    val generation: Long,
+    val storedKey: String,
+)
 
 /**
  * Route-handler helper: caches the JSON response body keyed by [cache]'s

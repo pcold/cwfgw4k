@@ -37,6 +37,15 @@ class FakeCacheRepository(
         expired.forEach { store.remove(it.key) }
         return expired.size
     }
+
+    context(ctx: TransactionContext)
+    override fun deleteAll(): Int {
+        val deleted = store.size
+        store.clear()
+        return deleted
+    }
+
+    fun storedKeys(): Set<String> = store.keys.toSet()
 }
 
 data class FakeEntry(

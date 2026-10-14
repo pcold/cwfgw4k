@@ -13,7 +13,7 @@ import java.time.ZoneOffset
  * intended use is HTTP GET response caching keyed by the serving revision
  * and the full request URI, and valued by the JSON-serialized response body.
  *
- * Pure-TTL semantics: [get] only returns rows whose `expires_at > now()`,
+ * TTL semantics: [get] only returns rows whose `expires_at > now()`,
  * so consumers always see fresh-or-nothing. [deleteExpired] is a periodic
  * background sweep — without it the table would grow indefinitely.
  *
@@ -43,6 +43,10 @@ interface CacheRepository {
     /** Delete every row whose [Instant] expiry has already passed. Returns the row count for logging. */
     context(ctx: TransactionContext)
     fun deleteExpired(): Int
+
+    /** Unlike [deleteExpired], takes live rows and every revision's. Returns the row count for logging. */
+    context(ctx: TransactionContext)
+    fun deleteAll(): Int
 }
 
 fun CacheRepository(): CacheRepository = JooqCacheRepository()
@@ -81,4 +85,7 @@ private class JooqCacheRepository : CacheRepository {
         ctx.dsl.deleteFrom(CACHE)
             .where(CACHE.EXPIRES_AT.lessOrEqual(DSL.currentOffsetDateTime()))
             .execute()
+
+    context(ctx: TransactionContext)
+    override fun deleteAll(): Int = ctx.dsl.deleteFrom(CACHE).execute()
 }

@@ -20,6 +20,7 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
 import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -70,6 +71,9 @@ private class FailingPutRepository(private val sqlState: String) : CacheReposito
 
     context(ctx: TransactionContext)
     override fun deleteExpired(): Int = 0
+
+    context(ctx: TransactionContext)
+    override fun deleteAll(): Int = 0
 }
 
 class RequestCacheSpec : FunSpec({
@@ -216,5 +220,67 @@ class RequestCacheSpec : FunSpec({
         shouldThrow<DataAccessException> {
             cache.cachedJsonGet(TEST_KEY, TEST_ROUTE) { "[\"fresh\"]" }
         }
+    }
+
+    test("clear drops every stored body, so the next read fetches again") {
+        val cache =
+            RequestCache(FakeCacheRepository(), FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
+        val calls = AtomicInteger(0)
+        val fetch: suspend () -> String = { "[\"${calls.incrementAndGet()}\"]" }
+
+        cache.cachedJsonGet(TEST_KEY, TEST_ROUTE, fetch = fetch) shouldBe "[\"1\"]"
+        cache.clear() shouldBe 1
+        cache.cachedJsonGet(TEST_KEY, TEST_ROUTE, fetch = fetch) shouldBe "[\"2\"]"
+    }
+
+    test("a fill whose fetch straddles a clear answers its caller but stores nothing") {
+        val rows = FakeCacheRepository()
+        val cache = RequestCache(rows, FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
+        val fetchStarted = CompletableDeferred<Unit>()
+        val gate = CompletableDeferred<String>()
+
+        coroutineScope {
+            val straddling =
+                async {
+                    cache.cachedJsonGet(TEST_KEY, TEST_ROUTE) {
+                        fetchStarted.complete(Unit)
+                        gate.await()
+                    }
+                }
+            fetchStarted.await()
+            cache.clear()
+            gate.complete("[\"pre-write\"]")
+
+            straddling.await() shouldBe "[\"pre-write\"]"
+        }
+        rows.storedKeys().shouldBeEmpty()
+    }
+
+    test("a read after a clear fetches for itself instead of joining a fill that began before it") {
+        val cache =
+            RequestCache(FakeCacheRepository(), FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
+        val fetchStarted = CompletableDeferred<Unit>()
+        val gate = CompletableDeferred<String>()
+
+        coroutineScope {
+            val straddling =
+                async {
+                    cache.cachedJsonGet(TEST_KEY, TEST_ROUTE) {
+                        fetchStarted.complete(Unit)
+                        gate.await()
+                    }
+                }
+            fetchStarted.await()
+            cache.clear()
+            val afterClear =
+                async(start = CoroutineStart.UNDISPATCHED) {
+                    cache.cachedJsonGet(TEST_KEY, TEST_ROUTE) { "[\"post-write\"]" }
+                }
+            gate.complete("[\"pre-write\"]")
+
+            afterClear.await() shouldBe "[\"post-write\"]"
+            straddling.await() shouldBe "[\"pre-write\"]"
+        }
+        cache.cachedJsonGet(TEST_KEY, TEST_ROUTE) { "[\"refetched\"]" } shouldBe "[\"post-write\"]"
     }
 })
