@@ -11,6 +11,7 @@ import type {
   SeasonSchedulePreviewResult,
   Tournament,
 } from '@/shared/api/types';
+import { DateField, FIELD_CLASS, FieldShell, SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
 
@@ -97,10 +98,7 @@ function UploadScheduleSection(): ReactNode {
       </p>
 
       <div className="flex flex-wrap gap-4 mb-4">
-        <div>
-          <label className="block text-xs text-gray-400 mb-1" htmlFor="schedule-league">
-            League
-          </label>
+        <FieldShell id="schedule-league" label="League" error={undefined} width="sm:w-64">
           <select
             id="schedule-league"
             value={leagueId}
@@ -108,7 +106,7 @@ function UploadScheduleSection(): ReactNode {
               setUserLeagueId(e.target.value);
               setSeasonId('');
             }}
-            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full sm:w-64"
+            className={FIELD_CLASS}
           >
             {(leaguesQuery.data ?? []).map((lg) => (
               <option key={lg.id} value={lg.id}>
@@ -116,51 +114,19 @@ function UploadScheduleSection(): ReactNode {
               </option>
             ))}
           </select>
-        </div>
-        <div>
-          <label className="block text-xs text-gray-400 mb-1" htmlFor="schedule-season">
-            Season
-          </label>
-          <select
-            id="schedule-season"
-            value={seasonId}
-            onChange={(e) => setSeasonId(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full sm:w-64"
-          >
-            <option value="" disabled>
-              Select a season
-            </option>
-            {(seasonsQuery.data ?? []).map((s) => (
-              <option key={s.id} value={s.id}>
-                {seasonLabel(s)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs text-gray-400 mb-1" htmlFor="schedule-start">
-            Start date
-          </label>
-          <input
-            id="schedule-start"
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-gray-400 mb-1" htmlFor="schedule-end">
-            End date
-          </label>
-          <input
-            id="schedule-end"
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm"
-          />
-        </div>
+        </FieldShell>
+        <SelectField
+          id="schedule-season"
+          label="Season"
+          value={seasonId}
+          error={undefined}
+          placeholder="Select a season"
+          options={(seasonsQuery.data ?? []).map((s) => ({ value: s.id, label: seasonLabel(s) }))}
+          width="sm:w-64"
+          onChange={setSeasonId}
+        />
+        <DateField id="schedule-start" label="Start date" value={startDate} error={undefined} onChange={setStartDate} />
+        <DateField id="schedule-end" label="End date" value={endDate} error={undefined} onChange={setEndDate} />
       </div>
 
       <div className="flex items-center gap-4">
@@ -387,6 +353,8 @@ function TournamentRow({ tournament, onSaved }: TournamentRowProps) {
     Number.isFinite(draftValue) &&
     draftValue !== tournament.payoutMultiplier;
   const invalid = draftMultiplier.trim() !== '' && (!Number.isFinite(draftValue) || draftValue <= 0);
+  const multiplierError = invalid ? 'Enter a number greater than 0' : undefined;
+  const multiplierId = `multiplier-${tournament.id}`;
   const errorMessage = mutationError(updateMutation.error);
 
   return (
@@ -397,15 +365,24 @@ function TournamentRow({ tournament, onSaved }: TournamentRowProps) {
         {tournament.startDate} to {tournament.endDate}
       </td>
       <td className="px-3 py-2 text-center">
-        <input
-          type="number"
-          min="0.5"
-          step="0.5"
-          value={draftMultiplier}
-          onChange={(e) => setDraftMultiplier(e.target.value)}
-          aria-label={`Payout multiplier for ${tournament.name}`}
-          className={`bg-gray-700 border ${invalid ? 'border-red-500' : 'border-gray-600'} rounded px-2 py-1 text-sm w-20 text-right`}
-        />
+        <FieldShell
+          id={multiplierId}
+          label={`Payout multiplier for ${tournament.name}`}
+          error={multiplierError}
+          hideLabel
+        >
+          <input
+            id={multiplierId}
+            type="number"
+            min="0.5"
+            step="0.5"
+            value={draftMultiplier}
+            onChange={(e) => setDraftMultiplier(e.target.value)}
+            aria-invalid={multiplierError !== undefined}
+            aria-describedby={multiplierError !== undefined ? `${multiplierId}-error` : undefined}
+            className={`bg-gray-700 border ${invalid ? 'border-red-500' : 'border-gray-600'} rounded px-2 py-1 text-sm w-20 text-right`}
+          />
+        </FieldShell>
       </td>
       <td className="px-3 py-2 text-xs">
         <div className="flex items-center gap-2">

@@ -11,6 +11,7 @@ import type {
   RosterPreviewPick,
   Season,
 } from '@/shared/api/types';
+import { FIELD_CLASS, FieldShell, SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
 
@@ -202,15 +203,12 @@ function RosterInputStep({
   return (
     <div>
       <div className="flex flex-wrap gap-4 mb-4">
-        <div>
-          <label className="block text-xs text-gray-400 mb-1" htmlFor="roster-league">
-            League
-          </label>
+        <FieldShell id="roster-league" label="League" error={undefined} width="sm:w-64">
           <select
             id="roster-league"
             value={leagueId}
             onChange={(e) => onLeagueChange(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full sm:w-64"
+            className={FIELD_CLASS}
           >
             {leagues.map((lg) => (
               <option key={lg.id} value={lg.id}>
@@ -218,44 +216,37 @@ function RosterInputStep({
               </option>
             ))}
           </select>
-        </div>
-        <div>
-          <label className="block text-xs text-gray-400 mb-1" htmlFor="roster-season">
-            Season
-          </label>
-          <select
-            id="roster-season"
-            value={seasonId}
-            onChange={(e) => onSeasonChange(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full sm:w-64"
-          >
-            <option value="" disabled>
-              Select a season
-            </option>
-            {seasons.map((s) => (
-              <option key={s.id} value={s.id}>
-                {seasonLabel(s)}
-              </option>
-            ))}
-          </select>
-        </div>
+        </FieldShell>
+        <SelectField
+          id="roster-season"
+          label="Season"
+          value={seasonId}
+          error={undefined}
+          placeholder="Select a season"
+          options={seasons.map((s) => ({ value: s.id, label: seasonLabel(s) }))}
+          width="sm:w-64"
+          onChange={onSeasonChange}
+        />
       </div>
 
       <div className="mb-4">
-        <label className="block text-xs text-gray-400 mb-1" htmlFor="roster-file">
-          Roster file (.tsv or .csv with the header row team_number,team_name,round,player_name,ownership_pct)
-        </label>
-        <input
+        <FieldShell
           id="roster-file"
-          type="file"
-          accept=".tsv,.csv,text/tab-separated-values,text/csv,text/plain"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            void file.text().then(onRosterChange);
-          }}
-          className={ROSTER_FILE_INPUT_CLASS}
-        />
+          label="Roster file (.tsv or .csv with the header row team_number,team_name,round,player_name,ownership_pct)"
+          error={undefined}
+        >
+          <input
+            id="roster-file"
+            type="file"
+            accept=".tsv,.csv,text/tab-separated-values,text/csv,text/plain"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              void file.text().then(onRosterChange);
+            }}
+            className={ROSTER_FILE_INPUT_CLASS}
+          />
+        </FieldShell>
         {rosterText ? (
           <p className="mt-2 text-xs text-gray-400">
             Loaded {rosterText.split('\n').filter((line) => line.trim().length > 0).length} non-empty lines.

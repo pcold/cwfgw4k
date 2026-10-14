@@ -167,6 +167,33 @@ describe('UploadScheduleSection', () => {
     });
   });
 
+  it('announces a multiplier that is not above zero as an error on its input', async () => {
+    previewSeasonScheduleMock.mockResolvedValue({
+      entries: [buildPreviewEntry({ espnEventId: 'e-1', name: 'The Masters', week: '15' })],
+      skipped: [],
+    });
+    confirmSeasonScheduleMock.mockResolvedValue({
+      created: [buildTournament({ id: 't-2', name: 'The Masters', week: '15' })],
+      skipped: [],
+    });
+
+    const user = userEvent.setup();
+    await previewSchedule(user);
+    await user.click(await screen.findByRole('button', { name: /Confirm Import/i }));
+
+    const multiplierInput = await screen.findByLabelText('Payout multiplier for The Masters');
+    expect(multiplierInput).toHaveAttribute('aria-invalid', 'false');
+    expect(multiplierInput).not.toHaveAttribute('aria-describedby');
+
+    await user.clear(multiplierInput);
+    await user.type(multiplierInput, '0');
+
+    expect(multiplierInput).toHaveAttribute('aria-invalid', 'true');
+    expect(multiplierInput).toHaveAccessibleDescription('Enter a number greater than 0');
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a number greater than 0');
+    expect(screen.getByRole('button', { name: /Save/i })).toBeDisabled();
+  });
+
   it('disables the preview button until a season + start date + end date are picked', async () => {
     renderWithProviders(<UploadScheduleSection />, { withLeagueSeasonProvider: false });
     await waitFor(() => {
