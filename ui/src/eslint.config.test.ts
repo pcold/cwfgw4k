@@ -26,7 +26,11 @@ const GOVERNED_FILES: readonly string[] = [PRODUCTION_FILE, TEST_FILE, CLIENT_FI
 const BANNED_IMPORT_LINES: readonly string[] = [
   "import { debounce } from 'lodash';",
   "import { fireEvent } from '@testing-library/react';",
+  "import { css } from '@emotion/css';",
+  "import styles from './App.module.css';",
 ];
+
+const ANGLE_BRACKET_CAST_LINE = "export const count = <number>JSON.parse('1');";
 
 const PLAIN_CAST_LINE = "export const count = JSON.parse('1') as number;";
 const DOM_NARROWING_LINE = "export const found = document.querySelector('input') as HTMLInputElement;";
@@ -85,6 +89,14 @@ describe('the `as` ban in eslint.config.js', () => {
     const messages = await lintFixture(CAST_LINES, hostFile);
 
     expect(reportedLines(messages, 'no-restricted-syntax', CAST_LINES)).toEqual(CAST_LINES);
+  });
+
+  // A `.tsx` file cannot parse the angle-bracket form, so only the client hosts it.
+  it('turns an angle-bracket assertion into the `as` the ban sees', async () => {
+    const messages = await lintFixture([ANGLE_BRACKET_CAST_LINE], CLIENT_FILE);
+
+    expect(reportedLines(messages, '@typescript-eslint/consistent-type-assertions', [ANGLE_BRACKET_CAST_LINE]))
+      .toEqual([ANGLE_BRACKET_CAST_LINE]);
   });
 
   it('grants a test file DOM narrowing and nothing else', async () => {

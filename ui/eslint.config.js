@@ -35,8 +35,8 @@ const BANNED_IMPORT_PATTERNS = [
   'formik',
   'react-hook-form',
   'styled-components',
-  '@emotion/react',
-  '@emotion/styled',
+  '@emotion/*',
+  '*.module.css',
 ];
 
 // `satisfies` is a different node, so it never matches.
@@ -113,6 +113,9 @@ export default tseslint.config(
       '@typescript-eslint/explicit-module-boundary-types': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-non-null-assertion': 'error',
+      // The `as` ban below matches `as` only; this turns an angle-bracket assertion into one it sees.
+      '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'as' }],
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-unnecessary-condition': 'error',
       eqeqeq: ['error', 'always'],

@@ -110,7 +110,6 @@ function buildReport(): WeeklyReport {
 
 // The body a report cached before the server sent rules, team names and outcomes still serves.
 function buildReportWithoutSideBetFacts(): unknown {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructured only to omit it from the stale body.
   const { sideBetRules: _rules, sideBetDetail, ...rest } = buildReport();
   return {
     ...rest,
