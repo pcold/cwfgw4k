@@ -1149,8 +1149,8 @@ private const val NEVER_PAID_POSITION = 99
  * multiple teams (rare but legal — drafted across multiple fantasy
  * teams), the LAST team encountered wins. Order is whatever the
  * caller produces; in practice [WeeklyReportService.getPlayerRankings]
- * passes them in `teamRepository.findBySeason` order which is stable
- * across requests.
+ * passes them in `teamRepository.findRostersBySeason` order —
+ * `(team_id, draft_round, acquired_at)` — which is stable across requests.
  */
 internal data class PlayerRosterInfo(
     val teamName: String,
