@@ -9,7 +9,6 @@ import com.cwfgw.jooq.tables.references.GOLFERS
 import com.cwfgw.jooq.tables.references.TEAMS
 import com.cwfgw.jooq.tables.references.TEAM_ROSTERS
 import com.cwfgw.seasons.SeasonId
-import org.jooq.Field
 import org.jooq.impl.DSL
 import java.math.BigDecimal
 
@@ -18,29 +17,14 @@ interface TeamRepository {
     fun findBySeason(seasonId: SeasonId): List<Team>
 
     context(ctx: TransactionContext)
-    fun findById(id: TeamId): Team?
-
-    context(ctx: TransactionContext)
     fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
     ): Team
 
-    context(ctx: TransactionContext)
-    fun update(
-        id: TeamId,
-        request: UpdateTeamRequest,
-    ): Team?
-
-    context(ctx: TransactionContext)
-    fun getRoster(teamId: TeamId): List<RosterEntry>
-
     /**
-     * Single-query alternative to `findBySeason(seasonId).flatMap { getRoster(it.id) }`.
-     * Returns every active (non-dropped) roster entry across every team in the
-     * season, ordered by `(team_id, draft_round, acquired_at)` for deterministic
-     * grouping at the call site. Replaces the N+1 pattern in `WeeklyReportService`,
-     * `ScoringService`, and `EspnService`.
+     * Active (non-dropped) entries only, ordered by `(team_id, draft_round, acquired_at)` so callers can
+     * group by team deterministically.
      */
     context(ctx: TransactionContext)
     fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry>
@@ -50,12 +34,6 @@ interface TeamRepository {
         teamId: TeamId,
         request: AddToRosterRequest,
     ): RosterEntry
-
-    context(ctx: TransactionContext)
-    fun dropFromRoster(
-        teamId: TeamId,
-        golferId: GolferId,
-    ): Boolean
 
     context(ctx: TransactionContext)
     fun getRosterView(seasonId: SeasonId): List<RosterViewTeam>
@@ -86,13 +64,6 @@ private class JooqTeamRepository : TeamRepository {
             .fetch(::toTeam)
 
     context(ctx: TransactionContext)
-    override fun findById(id: TeamId): Team? =
-        ctx.dsl.selectFrom(TEAMS)
-            .where(TEAMS.ID.eq(id.value))
-            .fetchOne()
-            ?.let(::toTeam)
-
-    context(ctx: TransactionContext)
     override fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
@@ -107,35 +78,6 @@ private class JooqTeamRepository : TeamRepository {
                 .fetchSingle()
         return toTeam(inserted)
     }
-
-    context(ctx: TransactionContext)
-    override fun update(
-        id: TeamId,
-        request: UpdateTeamRequest,
-    ): Team? {
-        val changes = updateAssignments(request)
-        return if (changes.isEmpty()) {
-            ctx.dsl.selectFrom(TEAMS)
-                .where(TEAMS.ID.eq(id.value))
-                .fetchOne()
-                ?.let(::toTeam)
-        } else {
-            ctx.dsl.update(TEAMS)
-                .set(changes + (TEAMS.UPDATED_AT to DSL.currentOffsetDateTime()))
-                .where(TEAMS.ID.eq(id.value))
-                .returning()
-                .fetchOne()
-                ?.let(::toTeam)
-        }
-    }
-
-    context(ctx: TransactionContext)
-    override fun getRoster(teamId: TeamId): List<RosterEntry> =
-        ctx.dsl.selectFrom(TEAM_ROSTERS)
-            .where(TEAM_ROSTERS.TEAM_ID.eq(teamId.value))
-            .and(TEAM_ROSTERS.DROPPED_AT.isNull)
-            .orderBy(TEAM_ROSTERS.DRAFT_ROUND.asc().nullsLast(), TEAM_ROSTERS.ACQUIRED_AT.asc())
-            .fetch(::toRosterEntry)
 
     context(ctx: TransactionContext)
     override fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry> =
@@ -168,22 +110,6 @@ private class JooqTeamRepository : TeamRepository {
                 .returning()
                 .fetchSingle()
         return toRosterEntry(inserted)
-    }
-
-    context(ctx: TransactionContext)
-    override fun dropFromRoster(
-        teamId: TeamId,
-        golferId: GolferId,
-    ): Boolean {
-        val affected =
-            ctx.dsl.update(TEAM_ROSTERS)
-                .set(TEAM_ROSTERS.DROPPED_AT, DSL.currentOffsetDateTime())
-                .set(TEAM_ROSTERS.IS_ACTIVE, false)
-                .where(TEAM_ROSTERS.TEAM_ID.eq(teamId.value))
-                .and(TEAM_ROSTERS.GOLFER_ID.eq(golferId.value))
-                .and(TEAM_ROSTERS.DROPPED_AT.isNull)
-                .execute()
-        return affected > 0
     }
 
     context(ctx: TransactionContext)
@@ -242,12 +168,6 @@ private class JooqTeamRepository : TeamRepository {
             ownershipPct = row.ownershipPct,
             golferId = row.golferId,
         )
-
-    private fun updateAssignments(request: UpdateTeamRequest): Map<Field<*>, Any?> =
-        buildMap {
-            request.ownerName?.let { put(TEAMS.OWNER_NAME, it) }
-            request.teamName?.let { put(TEAMS.TEAM_NAME, it) }
-        }
 
     private fun toTeam(record: TeamsRecord): Team =
         Team(

@@ -1,8 +1,6 @@
 package com.cwfgw.seasons
 
 import com.cwfgw.http.DomainError
-import com.cwfgw.result.Result
-import com.cwfgw.tournaments.Tournament
 import com.cwfgw.users.SESSION_AUTH_NAME
 import com.cwfgw.users.requireAdmin
 import io.ktor.server.auth.authenticate
@@ -10,53 +8,23 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.post
-import io.ktor.server.routing.route
 
 /**
- * Season-scope state-transition routes (finalize, clean-results). Lives
- * separately from [seasonRoutes] because the ops service composes
- * scoring + tournament services and shouldn't be mixed into the basic
- * season CRUD wiring.
+ * Kept apart from [seasonRoutes] because [SeasonOpsService] reaches into the scoring and tournament
+ * repositories, which the season CRUD wiring does not.
  */
 fun Route.seasonOpsRoutes(service: SeasonOpsService) {
     authenticate(SESSION_AUTH_NAME) {
-        route("/seasons/{sid}") {
-            post("/finalize") { finalizeSeason(service) }
-            post("/clean-results") { cleanSeasonResults(service) }
-        }
+        post("/seasons/{sid}/clean-results") { cleanSeasonResults(service) }
     }
 }
 
 private fun RoutingContext.seasonId(): SeasonId =
     call.parameters["sid"]?.toSeasonId() ?: throw DomainError.Validation("invalid season id")
 
-private suspend fun RoutingContext.finalizeSeason(service: SeasonOpsService) {
-    requireAdmin()
-    call.respond(service.finalizeSeason(seasonId()).orThrow())
-}
-
 private suspend fun RoutingContext.cleanSeasonResults(service: SeasonOpsService) {
     requireAdmin()
-    call.respond(service.cleanSeasonResults(seasonId()).orThrow())
+    val id = seasonId()
+    val cleaned = service.cleanSeasonResults(id) ?: throw DomainError.NotFound("season ${id.value} not found")
+    call.respond(cleaned)
 }
-
-private fun SeasonOpsError.toDomainError(): DomainError =
-    when (this) {
-        is SeasonOpsError.SeasonNotFound -> DomainError.NotFound("season ${id.value} not found")
-        SeasonOpsError.SeasonHasNoTournaments ->
-            DomainError.Refused("season has no tournaments to finalize", code = "season_has_no_tournaments")
-        is SeasonOpsError.IncompleteTournaments ->
-            DomainError.Refused(
-                "cannot finalize season — incomplete tournaments: " + incomplete.formatNames(),
-                code = "season_has_incomplete_tournaments",
-            )
-    }
-
-private fun List<Tournament>.formatNames(): String =
-    joinToString(", ") { tournament -> "'${tournament.name}' (${tournament.startDate})" }
-
-private fun <T> Result<T, SeasonOpsError>.orThrow(): T =
-    when (this) {
-        is Result.Ok -> value
-        is Result.Err -> throw error.toDomainError()
-    }

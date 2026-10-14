@@ -139,7 +139,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
         val team = body.teams.single()
         team.teamName shouldBe "BROWN"
 
-        val roster = runBlocking { tx.read { teamRepo().getRoster(team.id) } }
+        val roster = runBlocking { tx.read { teamRepo().findRostersBySeason(sid) } }.filter { it.teamId == team.id }
         roster shouldHaveSize 2
         roster.map { it.golferId } shouldContainExactly listOf(scottie.id, rory.id)
     }
@@ -178,8 +178,8 @@ class AdminServiceConfirmRosterSpec : FunSpec({
         val created =
             runBlocking { tx.read { golferRepo.findAll(activeOnly = false, search = null) } }
                 .single { it.firstName == "Scottie" && it.lastName == "Scheffler" }
-        runBlocking { tx.read { teamRepo().getRoster(body.teams.single().id) } }
-            .single()
+        runBlocking { tx.read { teamRepo().findRostersBySeason(sid) } }
+            .single { it.teamId == body.teams.single().id }
             .golferId shouldBe created.id
     }
 

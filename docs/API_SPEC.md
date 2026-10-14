@@ -65,8 +65,6 @@ Refusal codes on the wire today:
 | `tournament_not_linked`             | `GET /api/v1/admin/tournaments/{id}/competitors` |
 | `tournament_finalized`              | `POST /api/v1/admin/tournaments/{id}/player-overrides`, `DELETE /api/v1/admin/tournaments/{id}/player-overrides/{espnCompetitorId}` |
 | `tournament_out_of_order`           | `POST /api/v1/tournaments/{id}/finalize`, `POST /api/v1/tournaments/{id}/reset` |
-| `season_has_no_tournaments`         | `POST /api/v1/seasons/{sid}/finalize` |
-| `season_has_incomplete_tournaments` | `POST /api/v1/seasons/{sid}/finalize` |
 
 Service-layer typed errors (e.g. `TournamentOpsError`, `DraftError`) are
 mapped to `DomainError` at the route boundary.
@@ -89,8 +87,8 @@ Variant names are SerialName-tagged; e.g. `PickMatch.Matched` serializes as
 ### Typed IDs
 
 Every domain ID on the wire — `LeagueId`, `SeasonId`, `TeamId`,
-`TournamentId`, `GolferId`, `RosterEntryId`, `DraftId`, `DraftPickId`,
-`UserId` — is a value class wrapping a `UUID`, sent as the raw UUID string.
+`TournamentId`, `GolferId`, `DraftId`, `DraftPickId`, `UserId` — is a
+value class wrapping a `UUID`, sent as the raw UUID string.
 Path-parameter parse failures return 400 with `"invalid <name> id"`.
 
 ### Query parameter parsing
@@ -138,7 +136,6 @@ Body shape: `{ "status": "ok" | "degraded", "service": "cwfgw", "database": "con
 | Method | Path                   | Auth | Description       |
 |--------|------------------------|------|-------------------|
 | GET    | `/api/v1/leagues`      | No   | List all leagues  |
-| GET    | `/api/v1/leagues/{id}` | No   | Get one league    |
 | POST   | `/api/v1/leagues`      | Yes  | Create a league   |
 
 ### Seasons
@@ -146,11 +143,9 @@ Body shape: `{ "status": "ok" | "degraded", "service": "cwfgw", "database": "con
 | Method | Path                                  | Auth | Description                                                                        |
 |--------|---------------------------------------|------|------------------------------------------------------------------------------------|
 | GET    | `/api/v1/seasons?league_id=&year=`    | No   | List seasons; filters are optional UUIDs / ints                                    |
-| GET    | `/api/v1/seasons/{id}`                | No   | Get one season                                                                     |
 | GET    | `/api/v1/seasons/{id}/rules`          | No   | Get the season's `SeasonRules` (payouts, tie floor, side bet rounds + amount)      |
 | POST   | `/api/v1/seasons`                     | Yes  | Create a season. Body accepts an optional `rules: SeasonRules` — when supplied, the side tables for payouts + side-bet rounds are populated atomically with the seasons row, and the rules' `tie_floor`/`side_bet_amount` override the top-level fields |
-| PUT    | `/api/v1/seasons/{id}`                | Yes  | Partial update (`status`, `name`, `max_teams`, `tie_floor`, `side_bet_amount`)     |
-| POST   | `/api/v1/seasons/{sid}/finalize`      | Yes  | Lock the season as completed (every tournament must already be `completed`)        |
+| DELETE | `/api/v1/seasons/{id}`                | Yes  | Delete the season; its teams, rosters, tournaments and draft cascade with it. 204, or 404 for an unknown id |
 | POST   | `/api/v1/seasons/{sid}/clean-results` | Yes  | Destructive: wipe all scores/results/standings + revert every tournament to upcoming. Returns deletion counts. |
 
 ### Golfers
@@ -158,24 +153,13 @@ Body shape: `{ "status": "ok" | "degraded", "service": "cwfgw", "database": "con
 | Method | Path                                | Auth | Description                                                                |
 |--------|-------------------------------------|------|----------------------------------------------------------------------------|
 | GET    | `/api/v1/golfers?active=&search=`   | No   | List golfers (default `active=true`); `search` matches first or last name |
-| GET    | `/api/v1/golfers/{id}`              | No   | Get one golfer                                                             |
 | POST   | `/api/v1/golfers`                   | Yes  | Create a golfer                                                            |
-| PUT    | `/api/v1/golfers/{id}`              | Yes  | Partial update                                                             |
 
-### Teams + Rosters
+### Rosters
 
-Routes nested under `/api/v1/seasons/{seasonId}/`.
-
-| Method | Path                                                          | Auth | Description                                                |
-|--------|---------------------------------------------------------------|------|------------------------------------------------------------|
-| GET    | `/api/v1/seasons/{sid}/teams`                                 | No   | List teams in the season                                   |
-| GET    | `/api/v1/seasons/{sid}/teams/{teamId}`                        | No   | Get one team                                               |
-| GET    | `/api/v1/seasons/{sid}/teams/{teamId}/roster`                 | No   | Get the team's roster (active + dropped)                   |
-| GET    | `/api/v1/seasons/{sid}/rosters`                               | No   | Display-shaped view: every team in the season + their picks |
-| POST   | `/api/v1/seasons/{sid}/teams`                                 | Yes  | Create a team in the season                                |
-| PUT    | `/api/v1/seasons/{sid}/teams/{teamId}`                        | Yes  | Partial update                                             |
-| POST   | `/api/v1/seasons/{sid}/teams/{teamId}/roster`                 | Yes  | Add a golfer to the roster                                 |
-| DELETE | `/api/v1/seasons/{sid}/teams/{teamId}/roster/{golferId}`      | Yes  | Drop a golfer from the roster                              |
+| Method | Path                             | Auth | Description                                                 |
+|--------|----------------------------------|------|-------------------------------------------------------------|
+| GET    | `/api/v1/seasons/{sid}/rosters`  | No   | Display-shaped view: every team in the season + their picks |
 
 ### Drafts
 
@@ -548,11 +532,10 @@ data class CleanSeasonResult(
 )
 ```
 
-`finalizeTournament` and `resetTournament` return the affected `Tournament`;
-`finalizeSeason` returns the affected `Season`. State-machine violations
-(`OutOfOrder`, `IncompleteTournaments`, `SeasonHasNoTournaments`) map to a
-409 refusal whose code is in the table under Error responses, and whose
-`error` names the blocking tournaments.
+`finalizeTournament` and `resetTournament` return the affected `Tournament`.
+An `OutOfOrder` violation maps to a 409 refusal whose code is in the table
+under Error responses, and whose `error` names the blocking tournaments.
+`cleanSeasonResults` answers 404 for an unknown season.
 
 ---
 

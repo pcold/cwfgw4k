@@ -10,7 +10,6 @@ import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.noopTransactionContext
-import com.cwfgw.testing.shouldBeRefused
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -30,7 +29,6 @@ import java.util.UUID
 
 private val LEAGUE_ID = LeagueId(UUID.fromString("00000000-0000-0000-0000-000000000111"))
 private val SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000aaa"))
-private val SONY_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b02"))
 private val MASTERS_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b01"))
 
 private fun tournament(
@@ -84,48 +82,6 @@ private fun opsFixture(initialTournaments: List<Tournament> = emptyList()): ApiF
 
 class SeasonOpsRoutesSpec : FunSpec({
 
-    test("POST /api/v1/seasons/{sid}/finalize returns 401 without an authenticated session") {
-        apiTest(opsFixture()) { client ->
-            val response = client.post("/api/v1/seasons/${SEASON_ID.value}/finalize")
-            response.status shouldBe HttpStatusCode.Unauthorized
-        }
-    }
-
-    test("POST /api/v1/seasons/{sid}/finalize returns 200 + completed status when every tournament is done") {
-        val sony = tournament(SONY_ID, "Sony Open", "2026-01-15", status = TournamentStatus.Completed)
-        val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.Completed)
-        authenticatedApiTest(opsFixture(initialTournaments = listOf(sony, masters))) { client ->
-            val response = client.post("/api/v1/seasons/${SEASON_ID.value}/finalize")
-            response.status shouldBe HttpStatusCode.OK
-            response.bodyAsText().shouldContain("\"status\":\"completed\"")
-        }
-    }
-
-    test("POST /api/v1/seasons/{sid}/finalize is refused when any tournament is not completed") {
-        val sony = tournament(SONY_ID, "Sony Open", "2026-01-15", status = TournamentStatus.Completed)
-        val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.Upcoming)
-        authenticatedApiTest(opsFixture(initialTournaments = listOf(sony, masters))) { client ->
-            val response = client.post("/api/v1/seasons/${SEASON_ID.value}/finalize")
-            response.shouldBeRefused("season_has_incomplete_tournaments")
-            response.bodyAsText().shouldContain("The Masters")
-        }
-    }
-
-    test("POST /api/v1/seasons/{sid}/finalize is refused when the season has no tournaments") {
-        authenticatedApiTest(opsFixture()) { client ->
-            val response = client.post("/api/v1/seasons/${SEASON_ID.value}/finalize")
-            response.shouldBeRefused("season_has_no_tournaments")
-            response.bodyAsText().shouldContain("no tournaments")
-        }
-    }
-
-    test("POST /api/v1/seasons/{non-uuid}/finalize returns 400") {
-        authenticatedApiTest(opsFixture()) { client ->
-            val response = client.post("/api/v1/seasons/not-a-uuid/finalize")
-            response.status shouldBe HttpStatusCode.BadRequest
-        }
-    }
-
     test("POST /api/v1/seasons/{sid}/clean-results returns 401 without an authenticated session") {
         apiTest(opsFixture()) { client ->
             val response = client.post("/api/v1/seasons/${SEASON_ID.value}/clean-results")
@@ -140,6 +96,22 @@ class SeasonOpsRoutesSpec : FunSpec({
             response.status shouldBe HttpStatusCode.OK
             val body: CleanSeasonResult = response.body()
             body.tournamentsReset shouldBe 1
+        }
+    }
+
+    test("POST /api/v1/seasons/{unknown-uuid}/clean-results returns 404 naming the season") {
+        val unknown = UUID.fromString("00000000-0000-0000-0000-000000000fff")
+        authenticatedApiTest(opsFixture()) { client ->
+            val response = client.post("/api/v1/seasons/$unknown/clean-results")
+            response.status shouldBe HttpStatusCode.NotFound
+            response.bodyAsText().shouldContain("season $unknown not found")
+        }
+    }
+
+    test("POST /api/v1/seasons/{non-uuid}/clean-results returns 400") {
+        authenticatedApiTest(opsFixture()) { client ->
+            val response = client.post("/api/v1/seasons/not-a-uuid/clean-results")
+            response.status shouldBe HttpStatusCode.BadRequest
         }
     }
 })

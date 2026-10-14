@@ -3,7 +3,6 @@ package com.cwfgw.drafts
 import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.golfers.UpdateGolferRequest
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.seasons.CreateSeasonRequest
@@ -12,6 +11,7 @@ import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.teams.CreateTeamRequest
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamRepository
+import com.cwfgw.testing.deactivateGolfer
 import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
@@ -152,7 +152,7 @@ class DraftRepositorySpec : FunSpec({
                 val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")).id
                 val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")).id
                 val tiger = golferRepo.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods")).id
-                golferRepo.update(tiger, UpdateGolferRequest(active = false))
+                deactivateGolfer(tiger)
                 repository.makePick(draft.id, pickNum = 1, golferId = rory)
                 draft.id to scottie
             }

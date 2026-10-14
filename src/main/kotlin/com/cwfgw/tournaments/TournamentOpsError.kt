@@ -8,10 +8,6 @@ import com.cwfgw.espn.EspnUpstreamFailure
  * [com.cwfgw.http.DomainError] at the boundary. The chronological-order
  * checks (`OutOfOrder`) are 409 refusals; the not-found variant is 404;
  * upstream/import failures are 502 (carried through from EspnError).
- *
- * Season-scope ops have their own [com.cwfgw.seasons.SeasonOpsError]
- * since the lifecycle state machine and the error variants are
- * conceptually distinct.
  */
 sealed interface TournamentOpsError {
     data class TournamentNotFound(val id: TournamentId) : TournamentOpsError

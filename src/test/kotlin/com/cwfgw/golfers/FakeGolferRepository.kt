@@ -55,27 +55,6 @@ class FakeGolferRepository(
         return golfer
     }
 
-    context(ctx: TransactionContext)
-    override fun update(
-        id: GolferId,
-        request: UpdateGolferRequest,
-    ): Golfer? {
-        val current = store[id] ?: return null
-        val touched = request.hasAnyChange()
-        val updated =
-            current.copy(
-                pgaPlayerId = request.pgaPlayerId ?: current.pgaPlayerId,
-                firstName = request.firstName ?: current.firstName,
-                lastName = request.lastName ?: current.lastName,
-                country = request.country ?: current.country,
-                worldRanking = request.worldRanking ?: current.worldRanking,
-                active = request.active ?: current.active,
-                updatedAt = if (touched) clock() else current.updatedAt,
-            )
-        store[id] = updated
-        return updated
-    }
-
     private fun Golfer.matchesFilter(
         activeOnly: Boolean,
         term: String?,
@@ -84,12 +63,4 @@ class FakeGolferRepository(
         if (term == null) return true
         return firstName.lowercase().contains(term) || lastName.lowercase().contains(term)
     }
-
-    private fun UpdateGolferRequest.hasAnyChange(): Boolean =
-        pgaPlayerId != null ||
-            firstName != null ||
-            lastName != null ||
-            country != null ||
-            worldRanking != null ||
-            active != null
 }

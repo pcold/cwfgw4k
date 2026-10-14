@@ -1,6 +1,7 @@
 package com.cwfgw.golfers
 
 import com.cwfgw.db.Transactor
+import com.cwfgw.testing.deactivateGolfer
 import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -41,7 +42,7 @@ class GolferRepositorySpec : FunSpec({
             tx.update { repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }
         val inactive =
             tx.update { repository.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods")) }
-        tx.update { repository.update(inactive.id, UpdateGolferRequest(active = false)) }
+        tx.update { deactivateGolfer(inactive.id) }
 
         val result = tx.read { repository.findAll(activeOnly = true, search = null) }
 
@@ -57,7 +58,7 @@ class GolferRepositorySpec : FunSpec({
             tx.update {
                 repository.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods", worldRanking = 1))
             }
-        tx.update { repository.update(b.id, UpdateGolferRequest(active = false)) }
+        tx.update { deactivateGolfer(b.id) }
 
         val result = tx.read { repository.findAll(activeOnly = false, search = null) }
 
@@ -117,39 +118,6 @@ class GolferRepositorySpec : FunSpec({
         tx.update { repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }
 
         tx.read { repository.findByPgaPlayerId("missing") }.shouldBeNull()
-    }
-
-    test("update applies only the supplied fields and bumps updated_at") {
-        val created =
-            tx.update {
-                repository.create(
-                    CreateGolferRequest(firstName = "Rory", lastName = "McIlroy", country = "NIR", worldRanking = 3),
-                )
-            }
-
-        val updated =
-            tx.update { repository.update(created.id, UpdateGolferRequest(worldRanking = 2, active = false)) }
-
-        updated.shouldNotBeNull()
-        updated.firstName shouldBe "Rory"
-        updated.country shouldBe "NIR"
-        updated.worldRanking shouldBe 2
-        updated.active shouldBe false
-        (updated.updatedAt >= created.updatedAt) shouldBe true
-    }
-
-    test("update with no fields returns the existing row unchanged") {
-        val created = tx.update { repository.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")) }
-
-        val result = tx.update { repository.update(created.id, UpdateGolferRequest()) }
-
-        result shouldBe created
-    }
-
-    test("update returns null for unknown id") {
-        tx.update {
-            repository.update(GolferId(UUID.randomUUID()), UpdateGolferRequest(firstName = "Ghost"))
-        }.shouldBeNull()
     }
 
     test("empty table returns an empty list") {

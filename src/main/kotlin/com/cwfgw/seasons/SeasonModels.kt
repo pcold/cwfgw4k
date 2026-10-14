@@ -58,15 +58,6 @@ data class CreateSeasonRequest(
 )
 
 @Serializable
-data class UpdateSeasonRequest(
-    val name: String? = null,
-    val status: String? = null,
-    val maxTeams: Int? = null,
-    @Serializable(with = BigDecimalSerializer::class) val tieFloor: BigDecimal? = null,
-    @Serializable(with = BigDecimalSerializer::class) val sideBetAmount: BigDecimal? = null,
-)
-
-@Serializable
 data class SeasonRules(
     val payouts: List<
         @Serializable(with = BigDecimalSerializer::class)

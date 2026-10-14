@@ -260,10 +260,10 @@ Rules:
 - **MUST NOT** thread raw `UUID` across service / repository / route
   boundaries. The boundary is where `UUID` becomes `TeamId` (and vice
   versa), and only at the boundary.
-- **MUST** provide `String.toTeamId(): TeamId?` extension functions
-  for parsing path parameters and query parameters. The extension must not
-  throw — return `null` on parse failure and let the route boundary turn
-  that into `DomainError.Validation`.
+- **MUST** provide a `String.toXId(): XId?` extension function (e.g.
+  `String.toTournamentId(): TournamentId?`) for every ID parsed from a path
+  or query parameter. The extension must not throw — return `null` on parse
+  failure and let the route boundary turn that into `DomainError.Validation`.
 
 ### Miscellaneous
 
@@ -340,8 +340,8 @@ Rules:
   helper that parses a path parameter or throws `DomainError.Validation`:
 
   ```kotlin
-  private fun RoutingContext.teamId(): TeamId =
-      call.parameters["teamId"]?.toTeamId() ?: throw DomainError.Validation("invalid team id")
+  private fun RoutingContext.tournamentId(): TournamentId =
+      call.parameters["tournamentId"]?.toTournamentId() ?: throw DomainError.Validation("invalid tournament id")
   ```
 
   Error messages: `"invalid <thing> id"` for Validation; `"<thing> ${id.value}
@@ -355,8 +355,7 @@ Rules:
   test points at the right function; and detekt's `ThrowsCount` rule (max
   2 per function) counts throws in nested lambdas as part of the outer
   function, so aggregating parse-or-throw handlers in one fun hits the
-  limit fast. `TeamRoutes.kt` and `TournamentRoutes.kt` are the reference
-  shape.
+  limit fast. `TournamentRoutes.kt` is the reference shape.
 - **MUST** use `installRequestLogging()` (not bare `install(CallLogging)`).
   Its format — `cwfgw4k.request method=X route=Y status=Z duration_ms=N` with
   path normalization (UUIDs → `:id`, numerics → `:n`, `/assets/*` bucketed)
@@ -493,7 +492,7 @@ belongs in the application layer.**
   and returns the assembled bundle; the jOOQ stays in the repository.
   `TeamRepository.getRosterView` is the reference shape — one join over
   `team_rosters`, `teams` and `golfers` returning `List<RosterViewTeam>`,
-  instead of `findBySeason` then a per-team `getRoster` and a per-pick
+  instead of `findBySeason` then a per-team roster read and a per-pick
   golfer lookup.
 - **MUST NOT** push a *business decision* into SQL merely because it could
   be expressed there. A rule that classifies or annotates rows — "what does

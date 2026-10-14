@@ -1,7 +1,6 @@
 package com.cwfgw.teams
 
 import com.cwfgw.db.TransactionContext
-import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
 import java.math.BigDecimal
 import java.time.Instant
@@ -41,9 +40,6 @@ class FakeTeamRepository(
             .sortedWith(teamOrdering)
 
     context(ctx: TransactionContext)
-    override fun findById(id: TeamId): Team? = teams[id]
-
-    context(ctx: TransactionContext)
     override fun create(
         seasonId: SeasonId,
         request: CreateTeamRequest,
@@ -62,29 +58,6 @@ class FakeTeamRepository(
         teams[team.id] = team
         return team
     }
-
-    context(ctx: TransactionContext)
-    override fun update(
-        id: TeamId,
-        request: UpdateTeamRequest,
-    ): Team? {
-        val current = teams[id] ?: return null
-        val touched = request.ownerName != null || request.teamName != null
-        val updated =
-            current.copy(
-                ownerName = request.ownerName ?: current.ownerName,
-                teamName = request.teamName ?: current.teamName,
-                updatedAt = if (touched) clock() else current.updatedAt,
-            )
-        teams[id] = updated
-        return updated
-    }
-
-    context(ctx: TransactionContext)
-    override fun getRoster(teamId: TeamId): List<RosterEntry> =
-        rosters.values
-            .filter { it.teamId == teamId && it.droppedAt == null }
-            .sortedWith(rosterOrdering)
 
     context(ctx: TransactionContext)
     override fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry> {
@@ -113,19 +86,6 @@ class FakeTeamRepository(
             )
         rosters[entry.id] = entry
         return entry
-    }
-
-    context(ctx: TransactionContext)
-    override fun dropFromRoster(
-        teamId: TeamId,
-        golferId: GolferId,
-    ): Boolean {
-        val target =
-            rosters.values.firstOrNull { entry ->
-                entry.teamId == teamId && entry.golferId == golferId && entry.droppedAt == null
-            } ?: return false
-        rosters[target.id] = target.copy(droppedAt = clock(), isActive = false)
-        return true
     }
 
     context(ctx: TransactionContext)

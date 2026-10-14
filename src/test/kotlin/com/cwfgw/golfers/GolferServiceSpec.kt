@@ -67,20 +67,4 @@ class GolferServiceSpec : FunSpec({
         created.updatedAt shouldBe newTime
         service.get(newId) shouldBe created
     }
-
-    test("update merges only the supplied fields and returns null for unknown id") {
-        val rory = golfer(firstName = "Rory", lastName = "McIlroy", worldRanking = 3)
-        val fake =
-            FakeGolferRepository(
-                initial = listOf(rory),
-                clock = { Instant.parse("2026-03-15T12:00:00Z") },
-            )
-        val service = GolferService(fake, FakeTransactor())
-
-        val updated = service.update(rory.id, UpdateGolferRequest(worldRanking = 1))
-        updated?.worldRanking shouldBe 1
-        updated?.firstName shouldBe "Rory"
-
-        service.update(GolferId(UUID.randomUUID()), UpdateGolferRequest(firstName = "Nobody")).shouldBeNull()
-    }
 })
