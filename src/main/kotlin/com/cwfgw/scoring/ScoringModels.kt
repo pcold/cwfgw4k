@@ -2,7 +2,6 @@ package com.cwfgw.scoring
 
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
-import com.cwfgw.serialization.toUUIDOrNull
 import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.TournamentId
 import java.math.BigDecimal
@@ -18,10 +17,6 @@ value class FantasyScoreId(
 value class SeasonStandingId(
     val value: UUID,
 )
-
-fun String.toFantasyScoreId(): FantasyScoreId? = toUUIDOrNull()?.let(::FantasyScoreId)
-
-fun String.toSeasonStandingId(): SeasonStandingId? = toUUIDOrNull()?.let(::SeasonStandingId)
 
 /**
  * Persisted record of a golfer's payout for one team in one tournament. The
