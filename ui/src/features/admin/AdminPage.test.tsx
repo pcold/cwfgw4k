@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Route, Routes } from 'react-router-dom';
 import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { ApiError } from '@/shared/api/client';
@@ -95,6 +96,42 @@ describe('AdminPage', () => {
     expect(loginMock).toHaveBeenCalledWith('admin', 'hunter2');
     expect(await screen.findByRole('heading', { name: 'Admin' })).toBeInTheDocument();
     expect(screen.getByText(/Signed in as admin/i)).toBeInTheDocument();
+  });
+
+  describe('routed at /admin', () => {
+    function renderRouted(): void {
+      renderWithProviders(
+        <Routes>
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/" element={<p>Home page</p>} />
+        </Routes>,
+        { initialPath: '/admin', withAuthProvider: true, withLeagueSeasonProvider: false },
+      );
+    }
+
+    it('stays on the admin page after a successful login', async () => {
+      authMeMock.mockResolvedValue(null);
+      loginMock.mockResolvedValue(adminUser);
+      const user = userEvent.setup();
+      renderRouted();
+
+      await user.type(await screen.findByLabelText(/Username/i), 'admin');
+      await user.type(screen.getByLabelText(/Password/i), 'hunter2');
+      await user.click(screen.getByRole('button', { name: /Log In/i }));
+
+      expect(await screen.findByRole('heading', { name: 'Admin' })).toBeInTheDocument();
+      expect(screen.queryByText('Home page')).not.toBeInTheDocument();
+    });
+
+    it('leaves for the home page when the login is cancelled', async () => {
+      authMeMock.mockResolvedValue(null);
+      const user = userEvent.setup();
+      renderRouted();
+
+      await user.click(await screen.findByRole('button', { name: 'Cancel' }));
+
+      expect(await screen.findByText('Home page')).toBeInTheDocument();
+    });
   });
 
   it('surfaces an invalid-credentials error on 401', async () => {

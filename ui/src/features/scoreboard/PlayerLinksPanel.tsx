@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreOwnerChange, queryKeys } from '@/shared/api/queryKeys';
+import ModalShell from '@/shared/components/ModalShell';
 import { QueryState } from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
 import type {
@@ -28,41 +29,24 @@ function PlayerLinksPanel({ tournamentId, seasonId, onClose }: PlayerLinksPanelP
   });
 
   return (
-    <div
-      role="dialog"
-      aria-label="Manage player links"
-      className="fixed inset-0 z-40 flex items-start justify-center bg-black/60 p-4 overflow-y-auto"
-    >
-      <div className="bg-gray-900 border border-gray-700 rounded-lg shadow-xl max-w-3xl w-full my-8">
-        <header className="flex items-center justify-between border-b border-gray-700 px-4 py-3">
-          <h2 className="text-lg font-semibold text-white">Manage player links</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-sm"
-            aria-label="Close panel"
-          >
-            Close
-          </button>
-        </header>
-        <div className="p-4 space-y-4">
-          <QueryState query={competitorsQuery} label="competitors">
-            {(listing) => (
-              <QueryState query={golfersQuery} label="golfers">
-                {(golfers) => (
-                  <PlayerLinksBody
-                    listing={listing}
-                    golfers={golfers}
-                    tournamentId={tournamentId}
-                    seasonId={seasonId}
-                  />
-                )}
-              </QueryState>
-            )}
-          </QueryState>
-        </div>
+    <ModalShell title="Manage player links" onClose={onClose} width="wide">
+      <div className="space-y-4">
+        <QueryState query={competitorsQuery} label="competitors">
+          {(listing) => (
+            <QueryState query={golfersQuery} label="golfers">
+              {(golfers) => (
+                <PlayerLinksBody
+                  listing={listing}
+                  golfers={golfers}
+                  tournamentId={tournamentId}
+                  seasonId={seasonId}
+                />
+              )}
+            </QueryState>
+          )}
+        </QueryState>
       </div>
-    </div>
+    </ModalShell>
   );
 }
 
@@ -217,7 +201,7 @@ function CompetitorRow({
           value={draftGolferId}
           disabled={disabled || pending}
           onChange={(e) => setDraftGolferId(e.target.value)}
-          className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm w-full max-w-sm disabled:opacity-50"
+          className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm w-full max-w-sm disabled:opacity-50"
         >
           <option value="">— unlinked —</option>
           {sortedGolfers.map((golfer) => (
@@ -295,7 +279,7 @@ function NewGolferInlineForm({
   const valid = firstName.trim().length > 0 && lastName.trim().length > 0;
 
   return (
-    <div className="border border-gray-700 rounded p-2 space-y-2 bg-gray-800/50">
+    <div className="border border-gray-700 rounded p-2 space-y-2 bg-gray-700/50">
       <p className="text-xs text-gray-400">
         Creates a new golfer with no ESPN id and pins this competitor to them.
       </p>
@@ -307,7 +291,7 @@ function NewGolferInlineForm({
             value={firstName}
             disabled={pending}
             onChange={(e) => setFirstName(e.target.value)}
-            className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white disabled:opacity-50"
+            className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white disabled:opacity-50"
           />
         </label>
         <label className="text-xs text-gray-400 flex flex-col">
@@ -317,7 +301,7 @@ function NewGolferInlineForm({
             value={lastName}
             disabled={pending}
             onChange={(e) => setLastName(e.target.value)}
-            className="bg-gray-800 border border-gray-600 rounded px-2 py-1 text-sm text-white disabled:opacity-50"
+            className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white disabled:opacity-50"
           />
         </label>
       </div>
