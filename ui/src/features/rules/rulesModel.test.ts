@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_RULES, ordinal } from './rulesModel';
+import { ordinal } from './rulesModel';
 
 describe('ordinal', () => {
   it('handles the regular suffixes', () => {
@@ -20,14 +20,5 @@ describe('ordinal', () => {
     expect(ordinal(21)).toBe('21st');
     expect(ordinal(22)).toBe('22nd');
     expect(ordinal(103)).toBe('103rd');
-  });
-});
-
-describe('DEFAULT_RULES', () => {
-  it('matches the Alpine hardcoded fallback values', () => {
-    expect(DEFAULT_RULES.payouts).toEqual([18, 12, 10, 8, 7, 6, 5, 4, 3, 2]);
-    expect(DEFAULT_RULES.tieFloor).toBe(1);
-    expect(DEFAULT_RULES.sideBetRounds).toEqual([5, 6, 7, 8]);
-    expect(DEFAULT_RULES.sideBetAmount).toBe(15);
   });
 });

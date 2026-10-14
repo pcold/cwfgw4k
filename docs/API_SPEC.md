@@ -149,6 +149,14 @@ Body shape: `{ "status": "ok" | "degraded", "service": "cwfgw", "database": "con
 | DELETE | `/api/v1/seasons/{id}`                | Yes  | Delete the season; its teams, rosters, tournaments and draft cascade with it. 204, or 404 for an unknown id |
 | POST   | `/api/v1/seasons/{sid}/clean-results` | Yes  | Destructive: wipe all scores/results + revert every tournament to upcoming. Returns deletion counts. |
 
+### Season rule defaults
+
+| Method | Path                            | Auth        | Description                                                                                      |
+|--------|---------------------------------|-------------|--------------------------------------------------------------------------------------------------|
+| GET    | `/api/v1/seasons/default-rules` | Yes (admin) | `SeasonRules.defaults()`, which the create-season form pre-fills from. 403 for a non-admin user |
+
+`POST /api/v1/seasons` answers 400 with an `ErrorBody` when `rules` lists no payout place, no side-bet round, or a side-bet round twice.
+
 ### Golfers
 
 | Method | Path                                | Auth | Description                                                                |

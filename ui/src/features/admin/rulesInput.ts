@@ -1,9 +1,8 @@
 import type { SeasonRules } from '@/shared/api/types';
 
-export const DEFAULT_PAYOUTS: number[] = [18, 12, 10, 8, 7, 6, 5, 4, 3, 2];
-export const DEFAULT_TIE_FLOOR = 1;
-export const DEFAULT_SIDE_BET_ROUNDS_STR = '5,6,7,8';
-export const DEFAULT_SIDE_BET_AMOUNT = 15;
+export function formatSideBetRounds(rounds: readonly number[]): string {
+  return rounds.join(',');
+}
 
 export function parseSideBetRounds(input: string): number[] {
   return input
@@ -13,7 +12,7 @@ export function parseSideBetRounds(input: string): number[] {
 }
 
 export function buildRules(input: {
-  payouts: number[];
+  payouts: readonly number[];
   tieFloor: number;
   sideBetRoundsStr: string;
   sideBetAmount: number;

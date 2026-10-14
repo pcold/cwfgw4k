@@ -292,6 +292,12 @@ describe('api client', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/seasons/sn-1/rules');
   });
 
+  it('defaultSeasonRules() fetches the default-rules endpoint', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({}));
+    await api.defaultSeasonRules();
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/seasons/default-rules');
+  });
+
   it('tournaments() url-encodes the season id', async () => {
     fetchMock.mockResolvedValueOnce(mockJson([]));
     await api.tournaments('sn/1 a');

@@ -156,6 +156,8 @@ export const api = {
     getJson<Season[]>(`/api/v1/seasons?league_id=${encodeURIComponent(leagueId)}`),
   seasonRules: (seasonId: string): Promise<SeasonRules> =>
     getJson<SeasonRules>(`/api/v1/seasons/${seasonId}/rules`),
+  defaultSeasonRules: (): Promise<SeasonRules> =>
+    getJson<SeasonRules>('/api/v1/seasons/default-rules'),
   seasonReport: (seasonId: string, live: boolean): Promise<WeeklyReport> =>
     getJson<WeeklyReport>(`/api/v1/seasons/${seasonId}/report${live ? '?live=true' : ''}`),
   rankings: (seasonId: string, live: boolean, throughTournamentId?: string): Promise<Rankings> => {
