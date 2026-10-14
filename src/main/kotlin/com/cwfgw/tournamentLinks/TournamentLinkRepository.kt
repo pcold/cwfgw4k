@@ -10,6 +10,10 @@ interface TournamentLinkRepository {
     context(ctx: TransactionContext)
     fun listByTournament(tournamentId: TournamentId): List<TournamentPlayerOverride>
 
+    /** Empty [ids] returns empty without a query. Rows come in competitor order, not grouped by tournament. */
+    context(ctx: TransactionContext)
+    fun listByTournaments(ids: Collection<TournamentId>): List<TournamentPlayerOverride>
+
     context(ctx: TransactionContext)
     fun upsert(
         tournamentId: TournamentId,
@@ -30,15 +34,21 @@ fun TournamentLinkRepository(): TournamentLinkRepository = JooqTournamentLinkRep
 private class JooqTournamentLinkRepository : TournamentLinkRepository {
     context(ctx: TransactionContext)
     override fun listByTournament(tournamentId: TournamentId): List<TournamentPlayerOverride> =
-        ctx.dsl.select(
+        listByTournaments(listOf(tournamentId))
+
+    context(ctx: TransactionContext)
+    override fun listByTournaments(ids: Collection<TournamentId>): List<TournamentPlayerOverride> {
+        if (ids.isEmpty()) return emptyList()
+        return ctx.dsl.select(
             TOURNAMENT_PLAYER_OVERRIDES.TOURNAMENT_ID,
             TOURNAMENT_PLAYER_OVERRIDES.ESPN_COMPETITOR_ID,
             TOURNAMENT_PLAYER_OVERRIDES.GOLFER_ID,
         )
             .from(TOURNAMENT_PLAYER_OVERRIDES)
-            .where(TOURNAMENT_PLAYER_OVERRIDES.TOURNAMENT_ID.eq(tournamentId.value))
+            .where(TOURNAMENT_PLAYER_OVERRIDES.TOURNAMENT_ID.`in`(ids.map { it.value }))
             .orderBy(TOURNAMENT_PLAYER_OVERRIDES.ESPN_COMPETITOR_ID)
             .fetch { row -> toOverride(row.into(TOURNAMENT_PLAYER_OVERRIDES)) }
+    }
 
     context(ctx: TransactionContext)
     override fun upsert(
