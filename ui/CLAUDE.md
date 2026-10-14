@@ -79,10 +79,11 @@ What stays in the UI:
     `unknown` from `JSON.parse` flows into `as T` once at the public
     function boundary. The API contract IS the type. Adopt runtime
     validation (e.g. Zod) before this surface gets larger.
-  - **Testing-only DOM narrowing**: `getByLabelText(...) as
-    HTMLInputElement` and `container.querySelector(...) as
-    HTMLElement` are the conventional Testing Library shape; there
-    isn't a cleaner form. Test files only.
+  - **Testing-only DOM narrowing**: `container.querySelector(...) as
+    HTMLElement` is the conventional Testing Library shape. A query
+    that takes a type argument takes it instead —
+    `getByLabelText<HTMLInputElement>(...)` — because lint rejects the
+    cast there as unnecessary. Test files only.
 - **MUST NOT** use `!` (the non-null assertion operator). Use a guard, an
   early return, or restructure to remove the nullable. Same rationale as
   Kotlin's `!!` rule.
