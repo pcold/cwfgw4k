@@ -87,4 +87,9 @@ describe('DeleteSeasonSection', () => {
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/Season not found/);
   });
+
+  it('names the season picker with a visible label', () => {
+    renderWithProviders(<DeleteSeasonSection />, { withLeagueSeasonProvider: false });
+    expect(screen.getByText('Season to delete')).toBeInTheDocument();
+  });
 });

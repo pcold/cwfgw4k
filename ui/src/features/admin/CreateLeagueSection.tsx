@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type { League } from '@/shared/api/types';
+import { TextField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 
 function CreateLeagueSection(): ReactNode {
@@ -27,17 +28,18 @@ function CreateLeagueSection(): ReactNode {
       <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
         Create League
       </h3>
-      <div className="flex flex-wrap items-center gap-4">
-        <input
-          type="text"
-          aria-label="New league name"
+      <div className="flex flex-wrap items-end gap-4">
+        <TextField
+          id="new-league-name"
+          label="New league name"
           value={name}
-          onChange={(e) => {
-            setName(e.target.value);
+          error={undefined}
+          placeholder="e.g. Castlewood Fantasy Golf"
+          width="w-full sm:w-72"
+          onChange={(value) => {
+            setName(value);
             setSuccess(null);
           }}
-          placeholder="e.g. Castlewood Fantasy Golf"
-          className="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full sm:w-72"
         />
         <button
           type="button"

@@ -59,4 +59,9 @@ describe('CreateLeagueSection', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/Name already exists/i);
   });
+
+  it('names the league field with a visible label', () => {
+    renderWithProviders(<CreateLeagueSection />, { withLeagueSeasonProvider: false });
+    expect(screen.getByText('New league name')).toBeInTheDocument();
+  });
 });

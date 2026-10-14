@@ -161,4 +161,10 @@ describe('ResetTournamentSection', () => {
 
     expect(resetTournamentMock).not.toHaveBeenCalled();
   });
+
+  it('names both pickers with visible labels', () => {
+    renderWithProviders(<ResetTournamentSection />, { withLeagueSeasonProvider: false });
+    expect(screen.getByText('Season')).toBeInTheDocument();
+    expect(screen.getByText('Completed tournament')).toBeInTheDocument();
+  });
 });
