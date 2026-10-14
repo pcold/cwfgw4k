@@ -364,8 +364,8 @@ describe('ScoreboardView', () => {
     });
     render(<ScoreboardView report={report({ liveLeaderboard: [tiger, undraftedPair] })} />);
 
-    expect(screen.getByText('Tiger').closest('tr')).toHaveClass('bg-green-900/10');
-    expect(screen.getByText('undrafted / undrafted')).toHaveClass('text-gray-600');
-    expect(screen.getByText('undrafted / undrafted').closest('tr')).not.toHaveClass('bg-green-900/10');
+    expect(screen.getByText('Tiger').closest('tr')).toHaveClass('bg-semantic-success-tint/10');
+    expect(screen.getByText('undrafted / undrafted')).toHaveClass('text-ink-faint');
+    expect(screen.getByText('undrafted / undrafted').closest('tr')).not.toHaveClass('bg-semantic-success-tint/10');
   });
 });

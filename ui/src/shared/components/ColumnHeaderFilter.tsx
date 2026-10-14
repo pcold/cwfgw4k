@@ -18,8 +18,8 @@ interface Props {
 // component just renders the control consistently across tables.
 function ColumnHeaderFilter({ ariaLabel, value, onChange, options, className }: Props): ReactNode {
   const base =
-    'bg-transparent text-xs uppercase tracking-wider text-inherit hover:text-gray-300 ' +
-    'focus:text-gray-300 focus:outline-none cursor-pointer -ml-1 pr-1';
+    'bg-transparent text-xs uppercase tracking-wider text-inherit hover:text-ink-label ' +
+    'focus:text-ink-label focus:outline-none cursor-pointer -ml-1 pr-1';
   return (
     <select
       aria-label={ariaLabel}

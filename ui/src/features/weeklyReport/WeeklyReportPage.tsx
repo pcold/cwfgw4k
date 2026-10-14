@@ -17,7 +17,7 @@ function downloadPdf(report: WeeklyReport, season: Season | null): Promise<void>
 const ALL_TOURNAMENTS = '';
 
 const DOWNLOAD_BUTTON_CLASS =
-  'bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm hover:bg-gray-700 ' +
+  'bg-surface-card border border-control-border rounded px-3 py-2 text-sm hover:bg-surface-raised ' +
   'disabled:opacity-50 disabled:cursor-not-allowed';
 
 function WeeklyReportPage(): ReactNode {
@@ -60,13 +60,13 @@ function WeeklyReportPage(): ReactNode {
       <div className="flex items-center gap-3">
         <label
           htmlFor="weekly-report-tournament"
-          className="text-xs text-gray-400 uppercase tracking-wider"
+          className="text-xs text-ink-muted uppercase tracking-wider"
         >
           Tournament
         </label>
         <select
           id="weekly-report-tournament"
-          className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"
+          className="bg-surface-card border border-control-border rounded px-3 py-2 text-sm"
           value={effectiveId}
           onChange={(e) => setUserTournamentId(e.target.value)}
         >
@@ -86,7 +86,7 @@ function WeeklyReportPage(): ReactNode {
           Download PDF
         </button>
         {pdfMutation.isError ? (
-          <span role="alert" className="text-red-400 text-sm">
+          <span role="alert" className="text-semantic-danger text-sm">
             Failed to generate PDF: {String(pdfMutation.error)}
           </span>
         ) : null}

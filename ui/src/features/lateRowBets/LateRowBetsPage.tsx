@@ -44,13 +44,13 @@ function LateRowBetsPage(): ReactNode {
         <div className="flex items-center gap-3">
           <label
             htmlFor="late-row-bets-through"
-            className="text-xs text-gray-400 uppercase tracking-wider"
+            className="text-xs text-ink-muted uppercase tracking-wider"
           >
             Through
           </label>
           <select
             id="late-row-bets-through"
-            className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"
+            className="bg-surface-card border border-control-border rounded px-3 py-2 text-sm"
             value={effectiveId}
             onChange={(e) => setUserTournamentId(e.target.value)}
           >

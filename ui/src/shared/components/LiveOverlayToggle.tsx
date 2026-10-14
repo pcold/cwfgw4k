@@ -72,14 +72,14 @@ export function LiveOverlayCheckbox({ state, id }: LiveOverlayCheckboxProps): Re
   return (
     <label
       htmlFor={id}
-      className="flex items-center gap-2 cursor-pointer text-xs text-gray-400"
+      className="flex items-center gap-2 cursor-pointer text-xs text-ink-muted"
     >
       <input
         id={id}
         type="checkbox"
         checked={state.liveChecked}
         onChange={(e) => state.toggleLive(e.target.checked)}
-        className="accent-green-500 w-4 h-4"
+        className="accent-primary-control w-4 h-4"
       />
       <span>Live overlay</span>
     </label>

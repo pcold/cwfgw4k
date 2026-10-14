@@ -15,7 +15,7 @@ const FOCUSABLE_SELECTOR = [
 /** `wide` is for a list of editable rows, whose controls sit beside each row's label. */
 export type ModalWidth = 'form' | 'detail' | 'wide';
 
-const PANEL_GEOMETRY = 'bg-gray-800 rounded-lg shadow-xl max-h-[90dvh] overflow-y-auto border border-gray-600';
+const PANEL_GEOMETRY = 'bg-surface-card rounded-lg shadow-xl max-h-[90dvh] overflow-y-auto border border-hairline-strong';
 
 const PANEL_WIDTH: Record<ModalWidth, string> = {
   form: 'w-[min(92vw,22rem)]',
@@ -128,7 +128,7 @@ export default function ModalShell({
     /* eslint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions --
        a backdrop click is a mouse shortcut; Escape and the Close button are the keyboard paths. */
     <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4"
+      className="fixed inset-0 bg-overlay/60 flex items-center justify-center z-50 p-3 sm:p-4"
       onClick={(event) => {
         if (dismissOnBackdrop && event.target === event.currentTarget) {
           onClose();
@@ -144,7 +144,7 @@ export default function ModalShell({
         tabIndex={-1}
         className={`${PANEL_GEOMETRY} ${PANEL_WIDTH[width]}`}
       >
-        <div className="px-5 py-4 border-b border-gray-700 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-hairline flex items-center justify-between">
           <h2 id={titleId} className="text-lg font-bold">
             {title}
           </h2>
@@ -152,7 +152,7 @@ export default function ModalShell({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="text-gray-400 hover:text-white text-xl leading-none px-2"
+            className="text-ink-muted hover:text-ink-strong text-xl leading-none px-2"
           >
             ×
           </button>

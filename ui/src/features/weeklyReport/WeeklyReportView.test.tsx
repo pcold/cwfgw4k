@@ -162,11 +162,11 @@ describe('WeeklyReportView', () => {
     render(<WeeklyReportView report={tiedRoundTwo} />);
 
     const [, acesTwo, birdiesTwo] = within(roundRow(2)).getAllByRole('cell');
-    expect(acesTwo).toHaveClass('bg-red-800');
-    expect(birdiesTwo).toHaveClass('bg-red-800');
+    expect(acesTwo).toHaveClass('bg-side-bet-winner');
+    expect(birdiesTwo).toHaveClass('bg-side-bet-winner');
     const [, acesThree, birdiesThree] = within(roundRow(3)).getAllByRole('cell');
-    expect(acesThree).toHaveClass('bg-red-800');
-    expect(birdiesThree).not.toHaveClass('bg-red-800');
+    expect(acesThree).toHaveClass('bg-side-bet-winner');
+    expect(birdiesThree).not.toHaveClass('bg-side-bet-winner');
   });
 
   it('flips the header row label when rendering the season total', () => {

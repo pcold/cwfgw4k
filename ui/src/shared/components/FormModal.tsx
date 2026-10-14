@@ -28,7 +28,7 @@ export default function FormModal({
         {children}
 
         {serverError !== undefined && (
-          <p role="alert" className="text-red-400 text-xs">
+          <p role="alert" className="text-semantic-danger text-xs">
             {serverError}
           </p>
         )}
@@ -37,14 +37,14 @@ export default function FormModal({
           <button
             type="submit"
             disabled={isPending}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium flex-1"
+            className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium flex-1"
           >
             {submitLabel}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded text-sm font-medium"
+            className="bg-secondary hover:bg-secondary-hover text-on-fill px-4 py-2 rounded text-sm font-medium"
           >
             Cancel
           </button>

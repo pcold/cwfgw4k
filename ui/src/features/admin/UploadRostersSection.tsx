@@ -24,8 +24,12 @@ function pickKey(teamNumber: number, pick: RosterPreviewPick): string {
 const CREATE_NEW = 'none';
 
 const ROSTER_FILE_INPUT_CLASS =
-  'block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 ' +
-  'file:bg-gray-700 file:text-gray-100 hover:file:bg-gray-600';
+  'block w-full text-sm text-ink-secondary file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 ' +
+  'file:bg-surface-raised file:text-ink hover:file:bg-surface-raised-hover';
+
+const PREVIEW_BUTTON_CLASS =
+  'bg-semantic-info-fill hover:bg-semantic-info-fill-hover disabled:bg-disabled text-on-fill ' +
+  'px-4 py-2 rounded text-sm font-medium';
 
 function initialSelections(preview: RosterPreview): Record<string, string> {
   const out: Record<string, string> = {};
@@ -127,8 +131,8 @@ function UploadRostersSection(): ReactNode {
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+    <div className="bg-surface-card rounded-lg p-6">
+      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
         Upload Team Rosters
       </h3>
 
@@ -248,7 +252,7 @@ function RosterInputStep({
           />
         </FieldShell>
         {rosterText ? (
-          <p className="mt-2 text-xs text-gray-400">
+          <p className="mt-2 text-xs text-ink-muted">
             Loaded {rosterText.split('\n').filter((line) => line.trim().length > 0).length} non-empty lines.
           </p>
         ) : null}
@@ -259,12 +263,12 @@ function RosterInputStep({
           type="button"
           onClick={onSubmit}
           disabled={disabled}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+          className={PREVIEW_BUTTON_CLASS}
         >
           {submitting ? 'Matching...' : 'Match Players with ESPN'}
         </button>
         {errorMessage ? (
-          <span role="alert" className="text-red-400 text-sm">
+          <span role="alert" className="text-semantic-danger text-sm">
             {errorMessage}
           </span>
         ) : null}
@@ -294,13 +298,13 @@ function RosterReviewStep({
 }: ReviewStepProps) {
   const summary = useMemo(
     () => [
-      { label: 'Total Picks', value: preview.totalPicks, color: 'text-white' },
-      { label: 'Exact Matches', value: preview.matchedCount, color: 'text-green-400' },
+      { label: 'Total Picks', value: preview.totalPicks, color: 'text-ink-strong' },
+      { label: 'Exact Matches', value: preview.matchedCount, color: 'text-semantic-success' },
       preview.ambiguousCount > 0
-        ? { label: 'Ambiguous', value: preview.ambiguousCount, color: 'text-yellow-400' }
+        ? { label: 'Ambiguous', value: preview.ambiguousCount, color: 'text-semantic-warning' }
         : null,
       preview.unmatchedCount > 0
-        ? { label: 'No Match', value: preview.unmatchedCount, color: 'text-red-400' }
+        ? { label: 'No Match', value: preview.unmatchedCount, color: 'text-semantic-danger' }
         : null,
     ],
     [preview],
@@ -313,7 +317,7 @@ function RosterReviewStep({
           .filter((s): s is { label: string; value: number; color: string } => s !== null)
           .map((s) => (
             <div key={s.label}>
-              <span className="text-gray-400">{s.label}:</span>
+              <span className="text-ink-muted">{s.label}:</span>
               <span className={`${s.color} font-bold ml-1`}>{s.value}</span>
             </div>
           ))}
@@ -321,8 +325,8 @@ function RosterReviewStep({
 
       {preview.teams.map((team) => (
         <div key={`${team.teamNumber}-${team.teamName}`} className="mb-4">
-          <div className="text-sm font-bold text-gray-200 mb-1">
-            <span className="text-gray-400">#{team.teamNumber}</span>
+          <div className="text-sm font-bold text-ink-body mb-1">
+            <span className="text-ink-muted">#{team.teamNumber}</span>
             <span className="ml-1 uppercase">{team.teamName}</span>
           </div>
           <table className="w-full text-xs">
@@ -331,32 +335,32 @@ function RosterReviewStep({
                 const key = pickKey(team.teamNumber, pick);
                 const match = pick.match;
                 return (
-                  <tr key={key} className="border-t border-gray-700">
-                    <td className="px-2 py-1.5 text-gray-400 w-8">R{pick.round}</td>
+                  <tr key={key} className="border-t border-hairline">
+                    <td className="px-2 py-1.5 text-ink-muted w-8">R{pick.round}</td>
                     <td className="px-2 py-1.5 font-mono">{pick.playerName}</td>
                     <td className="px-2 py-1.5 text-center w-10">
                       {pick.ownershipPct < 100 ? `${pick.ownershipPct}%` : null}
                     </td>
                     <td className="px-2 py-1.5 w-6 text-center">
                       {match.type === 'matched' ? (
-                        <span className="text-green-400" aria-label="exact match">
+                        <span className="text-semantic-success" aria-label="exact match">
                           ✓
                         </span>
                       ) : null}
                       {match.type === 'ambiguous' ? (
-                        <span className="text-yellow-400" aria-label="ambiguous match">
+                        <span className="text-semantic-warning" aria-label="ambiguous match">
                           ?
                         </span>
                       ) : null}
                       {match.type === 'no_match' ? (
-                        <span className="text-red-400" aria-label="no match">
+                        <span className="text-semantic-danger" aria-label="no match">
                           ✗
                         </span>
                       ) : null}
                     </td>
                     <td className="px-2 py-1.5">
                       {match.type === 'matched' ? (
-                        <span className="text-green-400">{match.golferName}</span>
+                        <span className="text-semantic-success">{match.golferName}</span>
                       ) : null}
                       {match.type === 'ambiguous' ? (
                         <select
@@ -365,7 +369,7 @@ function RosterReviewStep({
                           onChange={(e) =>
                             onSelectionChange(team.teamNumber, pick, e.target.value)
                           }
-                          className="bg-gray-700 border border-yellow-600 rounded px-2 py-1 text-xs"
+                          className="bg-surface-raised border border-semantic-warning-border rounded px-2 py-1 text-xs"
                         >
                           <option value="">-- select player --</option>
                           {match.candidates.map((c) => (
@@ -377,7 +381,7 @@ function RosterReviewStep({
                         </select>
                       ) : null}
                       {match.type === 'no_match' ? (
-                        <span className="text-red-400 text-xs">Will create new golfer</span>
+                        <span className="text-semantic-danger text-xs">Will create new golfer</span>
                       ) : null}
                     </td>
                   </tr>
@@ -393,19 +397,19 @@ function RosterReviewStep({
           type="button"
           onClick={onConfirm}
           disabled={confirming}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+          className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium"
         >
           {confirming ? 'Creating...' : 'Confirm & Create Teams'}
         </button>
         <button
           type="button"
           onClick={onBack}
-          className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded text-sm font-medium"
+          className="bg-secondary hover:bg-secondary-hover text-on-fill px-4 py-2 rounded text-sm font-medium"
         >
           Back
         </button>
         {errorMessage ? (
-          <span role="alert" className="text-red-400 text-sm">
+          <span role="alert" className="text-semantic-danger text-sm">
             {errorMessage}
           </span>
         ) : null}
@@ -416,24 +420,24 @@ function RosterReviewStep({
 
 function RosterResultView({ result }: { result: RosterConfirmResult }) {
   return (
-    <div className="mt-6 pt-4 border-t border-gray-700">
-      <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+    <div className="mt-6 pt-4 border-t border-hairline">
+      <h4 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
         Rosters Created
       </h4>
       <div className="flex gap-6 mb-4 text-sm">
         <div>
-          <span className="text-gray-400">Teams:</span>
-          <span className="text-green-400 font-bold ml-1">{result.teamsCreated}</span>
+          <span className="text-ink-muted">Teams:</span>
+          <span className="text-semantic-success font-bold ml-1">{result.teamsCreated}</span>
         </div>
         <div>
-          <span className="text-gray-400">New Golfers:</span>
-          <span className="text-blue-400 font-bold ml-1">{result.golfersCreated}</span>
+          <span className="text-ink-muted">New Golfers:</span>
+          <span className="text-semantic-info font-bold ml-1">{result.golfersCreated}</span>
         </div>
       </div>
       <div className="flex flex-wrap gap-2 text-xs">
         {result.teams.map((team) => (
-          <span key={team.id} className="bg-gray-700 px-2 py-1 rounded">
-            <span className="text-gray-400">#{team.teamNumber}</span>
+          <span key={team.id} className="bg-surface-raised px-2 py-1 rounded">
+            <span className="text-ink-muted">#{team.teamNumber}</span>
             <span className="ml-1 uppercase">{team.teamName}</span>
           </span>
         ))}

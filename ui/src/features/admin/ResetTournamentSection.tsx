@@ -6,6 +6,10 @@ import type { League, Season, Tournament } from '@/shared/api/types';
 import { SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 
+const RESET_BUTTON_CLASS =
+  'bg-semantic-danger-fill hover:bg-semantic-danger-fill-hover disabled:bg-disabled text-on-fill ' +
+  'px-4 py-2 rounded text-sm font-medium';
+
 function ResetTournamentSection(): ReactNode {
   const queryClient = useQueryClient();
 
@@ -54,11 +58,11 @@ function ResetTournamentSection(): ReactNode {
   const errorMessage = mutationError(resetMutation.error);
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+    <div className="bg-surface-card rounded-lg p-6">
+      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
         Reset Tournament Results
       </h3>
-      <p className="text-xs text-gray-400 mb-4">
+      <p className="text-xs text-ink-muted mb-4">
         Delete all scores and results for a finalized tournament, resetting it back to upcoming
         status.
       </p>
@@ -91,18 +95,18 @@ function ResetTournamentSection(): ReactNode {
           type="button"
           onClick={onReset}
           disabled={resetMutation.isPending || !tournamentId}
-          className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+          className={RESET_BUTTON_CLASS}
         >
           {resetMutation.isPending ? 'Resetting...' : 'Reset Results'}
         </button>
       </div>
       {resetMutation.data ? (
-        <span className="block mt-3 text-sm text-green-400">
+        <span className="block mt-3 text-sm text-semantic-success">
           Reset "{resetMutation.data.name}" to {resetMutation.data.status}.
         </span>
       ) : null}
       {errorMessage ? (
-        <span role="alert" className="block mt-3 text-sm text-red-400">
+        <span role="alert" className="block mt-3 text-sm text-semantic-danger">
           {errorMessage}
         </span>
       ) : null}

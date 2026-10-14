@@ -168,22 +168,22 @@ describe('teamCellsByRound', () => {
 
 describe('signTextClass', () => {
   it('returns the green class for positive amounts', () => {
-    expect(signTextClass(100)).toBe('text-green-400');
+    expect(signTextClass(100)).toBe('text-semantic-success');
   });
   it('returns the red class for negative amounts', () => {
-    expect(signTextClass(-1)).toBe('text-red-400');
+    expect(signTextClass(-1)).toBe('text-semantic-danger');
   });
   it('returns the muted class for zero', () => {
-    expect(signTextClass(0)).toBe('text-gray-500');
+    expect(signTextClass(0)).toBe('text-ink-soft');
   });
 });
 
 describe('roundCellBg', () => {
   it('prefers the side-bet winner background over earnings', () => {
-    expect(roundCellBg(true, true)).toBe('bg-red-800');
+    expect(roundCellBg(true, true)).toBe('bg-side-bet-winner');
   });
   it('uses the earnings background when only earnings are present', () => {
-    expect(roundCellBg(true, false)).toBe('bg-yellow-300');
+    expect(roundCellBg(true, false)).toBe('bg-gold-bright');
   });
   it('returns no background when neither applies', () => {
     expect(roundCellBg(false, false)).toBe('');
@@ -192,8 +192,8 @@ describe('roundCellBg', () => {
 
 describe('roundTextColor', () => {
   it('uses dark text only when earnings are present without a side-bet win', () => {
-    expect(roundTextColor(true, false)).toBe('text-black');
-    expect(roundTextColor(true, true)).toBe('text-gray-200');
-    expect(roundTextColor(false, false)).toBe('text-gray-200');
+    expect(roundTextColor(true, false)).toBe('text-on-gold');
+    expect(roundTextColor(true, true)).toBe('text-ink-body');
+    expect(roundTextColor(false, false)).toBe('text-ink-body');
   });
 });

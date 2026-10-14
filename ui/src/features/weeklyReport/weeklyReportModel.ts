@@ -15,19 +15,19 @@ export function teamCellsByRound(team: ReportTeamColumn): Map<number, ReportCell
 }
 
 export function signTextClass(value: number): string {
-  if (value > 0) return 'text-green-400';
-  if (value < 0) return 'text-red-400';
-  return 'text-gray-500';
+  if (value > 0) return 'text-semantic-success';
+  if (value < 0) return 'text-semantic-danger';
+  return 'text-ink-soft';
 }
 
 export function roundCellBg(hasEarnings: boolean, isSideBetWinner: boolean): string {
-  if (isSideBetWinner) return 'bg-red-800';
-  if (hasEarnings) return 'bg-yellow-300';
+  if (isSideBetWinner) return 'bg-side-bet-winner';
+  if (hasEarnings) return 'bg-gold-bright';
   return '';
 }
 
 export function roundTextColor(hasEarnings: boolean, isSideBetWinner: boolean): string {
-  return hasEarnings && !isSideBetWinner ? 'text-black' : 'text-gray-200';
+  return hasEarnings && !isSideBetWinner ? 'text-on-gold' : 'text-ink-body';
 }
 
 // Map of side-bet round -> set of team ids that won that round's side bet.

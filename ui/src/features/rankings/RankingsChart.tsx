@@ -52,16 +52,16 @@ function RankingsChart({ rankings }: Props): ReactNode {
 
   return (
     <div
-      className="bg-gray-800 rounded-lg p-4"
+      className="bg-surface-card rounded-lg p-4"
       aria-label="Cumulative Totals by Week"
       role="figure"
     >
-      <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
+      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
         Cumulative Totals by Week
       </h3>
 
       {!layout ? (
-        <p className="text-gray-500 text-sm">No ranking history yet.</p>
+        <p className="text-ink-soft text-sm">No ranking history yet.</p>
       ) : (
         <>
           <div className="w-full">
@@ -128,7 +128,7 @@ function RankingsChart({ rankings }: Props): ReactNode {
             </svg>
           </div>
 
-          <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+          <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
             {layout.lines.map((line) => (
               <li key={`legend-${line.teamId}`} className="flex items-center gap-1.5 uppercase">
                 <svg width={12} height={2} aria-hidden="true">
