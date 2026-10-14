@@ -40,7 +40,7 @@ jobs:
           # workspace HEAD, and the action then checks out the PR head. A mismatch
           # makes the graph tools report a stale graph for the whole review.
           ref: ${{ github.event.pull_request.head.sha }}
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.0
       # Fresh build every run — .code-review-graph/ is gitignored and a full
       # build takes about two seconds locally, so per-PR caching isn't worth
       # the complexity.

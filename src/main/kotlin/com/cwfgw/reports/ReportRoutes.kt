@@ -44,7 +44,7 @@ private suspend fun RoutingContext.getSeasonReport(
     cache: RequestCache,
 ) {
     val sid = seasonId()
-    respondReport(cache) { live -> service.getSeasonReport(sid, live = live).orThrow() }
+    respondReport(service, sid, cache) { live -> service.getSeasonReport(sid, live = live).orThrow() }
 }
 
 private suspend fun RoutingContext.getReport(
@@ -53,7 +53,7 @@ private suspend fun RoutingContext.getReport(
 ) {
     val sid = seasonId()
     val tid = tournamentId()
-    respondReport(cache) { live -> service.getReport(sid, tid, live = live).orThrow() }
+    respondReport(service, sid, cache) { live -> service.getReport(sid, tid, live = live).orThrow() }
 }
 
 private suspend fun RoutingContext.getRankings(
@@ -62,7 +62,7 @@ private suspend fun RoutingContext.getRankings(
 ) {
     val sid = seasonId()
     val through = optionalQueryParam("through", String::toTournamentId)
-    respondReport(cache) { live ->
+    respondReport(service, sid, cache) { live ->
         service.getRankings(sid, throughTournamentId = through, live = live).orThrow()
     }
 }
@@ -73,7 +73,7 @@ private suspend fun RoutingContext.getPlayerRankings(
 ) {
     val sid = seasonId()
     val through = optionalQueryParam("through", String::toTournamentId)
-    respondReport(cache) { live ->
+    respondReport(service, sid, cache) { live ->
         service.getPlayerRankings(sid, throughTournamentId = through, live = live).orThrow()
     }
 }
@@ -87,14 +87,18 @@ private suspend fun RoutingContext.getGolferHistory(
     cachedRespond(cache) { service.getGolferHistory(sid, gid).orThrow() }
 }
 
-// A live body must never sit in the response cache: its TTL would stack on the ESPN cache's, and a
-// fallback built while ESPN was failing would be replayed after ESPN recovered.
+// A live body must never sit in the response cache: its TTL would stack on the ESPN cache's, and a fallback
+// built while ESPN was failing would be replayed after ESPN recovered. Off-window nothing is overlaid, so it
+// caches — under its own URI, since sharing the non-live entry would assume the service builds both alike.
 private suspend inline fun <reified T : Any> RoutingContext.respondReport(
+    service: WeeklyReportService,
+    seasonId: SeasonId,
     cache: RequestCache,
     crossinline build: suspend (live: Boolean) -> T,
 ) {
     val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
-    if (live) call.respond(build(live)) else cachedRespond(cache) { build(live) }
+    val mayOverlay = live && service.hasLiveCandidate(seasonId)
+    if (mayOverlay) call.respond(build(live)) else cachedRespond(cache) { build(live) }
 }
 
 private fun ReportError.toDomainError(): DomainError =

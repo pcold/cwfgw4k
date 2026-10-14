@@ -33,7 +33,7 @@ import java.time.LocalDate
  * snapshots whatever's currently in the DB; the live overlay merges
  * in-progress ESPN scoreboard data on top.
  *
- * Each public read method pre-loads its inputs inside one
+ * Each public report method pre-loads its inputs inside one
  * `tx.read { … }` block before running the pure assembly + optional live
  * overlay. That's a deliberate departure from the usual "compose
  * services" shape — calling another service mid-gather would let each
@@ -55,6 +55,16 @@ class WeeklyReportService(
     private val tx: Transactor,
 ) {
     /**
+     * False lets the route cache a `live` read of [seasonId] as a non-live one. A tournament from another season
+     * escapes it, since [getReport] and the rankings' `through` don't check one against [seasonId].
+     */
+    suspend fun hasLiveCandidate(seasonId: SeasonId): Boolean {
+        val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
+        val allTournaments = tx.get { tournamentRepository.findAll(seasonId = seasonId, status = null) }
+        return liveOverlayCandidates(allTournaments, today).isNotEmpty()
+    }
+
+    /**
      * Render the report as of one specific tournament. Loads everything the
      * pure assembly needs in one pass and hands it to [assembleWeeklyReport].
      * Cross-season tournament references would be a programmer error in the
@@ -71,10 +81,8 @@ class WeeklyReportService(
         if (!live || !prepared.tournament.isLiveOverlayCandidate(today)) return Result.Ok(prepared.baseReport)
 
         val priorNonCompleted =
-            prepared.allTournaments.filter { candidate ->
-                candidate.isLiveOverlayCandidate(today) &&
-                    candidate.id != tournamentId &&
-                    isBefore(candidate, prepared.tournament)
+            liveOverlayCandidates(prepared.allTournaments, today).filter { candidate ->
+                candidate.id != tournamentId && isBefore(candidate, prepared.tournament)
             }
         return Result.Ok(
             liveOverlayService.overlayReport(
@@ -175,7 +183,7 @@ class WeeklyReportService(
         val prepared = gathered.getOrElse { return Result.Err(it) }
         if (!live) return Result.Ok(prepared.baseReport)
 
-        val nonCompleted = prepared.allTournaments.filter { it.isLiveOverlayCandidate(today) }
+        val nonCompleted = liveOverlayCandidates(prepared.allTournaments, today)
         return Result.Ok(
             liveOverlayService.overlaySeasonReport(seasonId, prepared.baseReport, prepared.rules, nonCompleted),
         )
@@ -357,6 +365,13 @@ class WeeklyReportService(
             )
         }
 
+    // [hasLiveCandidate] filters with this too, so the route's cache bypass applies the overlays' own rule: a
+    // second copy of the filter could drift and cache a live body.
+    private fun liveOverlayCandidates(
+        allTournaments: List<Tournament>,
+        today: LocalDate,
+    ): List<Tournament> = allTournaments.filter { it.isLiveOverlayCandidate(today) }
+
     /**
      * Live candidates for a rankings overlay: every non-completed
      * tournament strictly before the cutoff, plus the cutoff itself if
@@ -370,7 +385,7 @@ class WeeklyReportService(
         today: LocalDate,
         through: Tournament?,
     ): List<Tournament> {
-        val liveCandidates = allTournaments.filter { it.isLiveOverlayCandidate(today) }
+        val liveCandidates = liveOverlayCandidates(allTournaments, today)
         val candidates =
             if (through == null) {
                 liveCandidates
