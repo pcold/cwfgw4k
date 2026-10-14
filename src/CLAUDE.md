@@ -474,10 +474,10 @@ Two rules follow from that:
   clean error return when the entity is missing. The window only matters
   when the gathered data branches into a *write*.
 
-`AdminService.confirmRoster` is the reference shape: take the relevant
-repositories as constructor parameters alongside any services used for
-non-transactional work, and run the whole gather + write sequence inside one
-`tx.update`.
+`TournamentOpsService.resetTournament` is the reference shape: take the
+relevant repositories as constructor parameters alongside any services used
+for non-transactional work, and run the whole gather + write sequence inside
+one `tx.update`.
 
 #### Combining data across repositories (reads)
 
