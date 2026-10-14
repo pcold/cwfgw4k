@@ -1,6 +1,5 @@
 package com.cwfgw.golfers
 
-import com.cwfgw.http.optionalQueryParam
 import com.cwfgw.users.SESSION_AUTH_NAME
 import com.cwfgw.users.requireAdmin
 import io.ktor.http.HttpStatusCode
@@ -23,9 +22,8 @@ fun Route.golferRoutes(service: GolferService) {
 }
 
 private suspend fun RoutingContext.listGolfers(service: GolferService) {
-    val activeOnly = optionalQueryParam("active", String::toBooleanStrictOrNull) ?: true
     val search = call.request.queryParameters["search"]?.takeIf { it.isNotBlank() }
-    call.respond(service.list(activeOnly = activeOnly, search = search))
+    call.respond(service.list(search = search))
 }
 
 private suspend fun RoutingContext.createGolfer(service: GolferService) {

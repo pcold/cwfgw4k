@@ -55,7 +55,6 @@ private fun golfer(
         lastName = lastName,
         country = null,
         worldRanking = null,
-        active = true,
         updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
     )
 
@@ -490,23 +489,6 @@ class AdminServiceSpec : FunSpec({
         rows.single().message.shouldContain("invalid round")
     }
 
-    test("previewRoster matches inactive golfers — operator's TSV may pick a deactivated player") {
-        val deactivated = golfer("201", "Scottie", "Scheffler").copy(active = false)
-        val fixture = Fixture(seedGolfers = listOf(deactivated))
-
-        val tsv =
-            """
-            $ROSTER_HEADER
-            1	BROWN	1	Scottie Scheffler	75
-            """.trimIndent()
-
-        val result = fixture.service.previewRoster(tsv).orFail()
-
-        result.matchedCount shouldBe 1
-        result.teams.single().picks.single().match shouldBe
-            PickMatch.Matched(golferId = deactivated.id, golferName = "Scottie Scheffler")
-    }
-
     test("PreviewPick carries init-capped name plus round and ownership through unchanged") {
         val scottie = golfer("201", "Scottie", "Scheffler")
         val fixture = Fixture(seedGolfers = listOf(scottie))
@@ -584,7 +566,7 @@ class AdminServiceSpec : FunSpec({
         fixture.service.confirmRoster(request) shouldBe Result.Err(AdminError.SeasonNotFound(SEASON_ID))
         with(noopTransactionContext) { fixture.teamRepo.findBySeason(SEASON_ID) }.shouldBeEmpty()
         with(noopTransactionContext) {
-            fixture.golferRepo.findAll(activeOnly = false, search = null) shouldHaveSize 1
+            fixture.golferRepo.findAll(search = null) shouldHaveSize 1
         }
     }
 

@@ -193,7 +193,6 @@ private class JooqSeasonRepository : SeasonRepository {
             name = record.name,
             seasonYear = record.seasonYear,
             seasonNumber = record.seasonNumber,
-            status = record.required(SEASONS.STATUS),
             tieFloor = record.required(SEASONS.TIE_FLOOR),
             sideBetAmount = record.required(SEASONS.SIDE_BET_AMOUNT),
             maxTeams = record.required(SEASONS.MAX_TEAMS),

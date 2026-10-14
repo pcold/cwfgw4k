@@ -110,7 +110,7 @@ class EspnService(
     ): LivePreviewContext =
         tx.read {
             LivePreviewContext.from(
-                allGolfers = golferRepository.findAll(activeOnly = false, search = null),
+                allGolfers = golferRepository.findAll(search = null),
                 teams = teamRepository.findBySeason(seasonId),
                 rosters = teamRepository.findRostersBySeason(seasonId),
                 rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults(),
@@ -221,7 +221,7 @@ class EspnService(
         seasonId: SeasonId,
         tournamentId: TournamentId,
     ): MatchingContext {
-        val golfers = golferRepository.findAll(activeOnly = false, search = null)
+        val golfers = golferRepository.findAll(search = null)
         val rosterIds =
             teamRepository.getRosterView(seasonId)
                 .flatMap { it.picks }

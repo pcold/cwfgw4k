@@ -109,7 +109,7 @@ class WeeklyReportService(
             val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
             val teams = teamRepository.findBySeason(seasonId)
             val results = tournamentRepository.getResults(tournamentId)
-            val allGolfers = golferRepository.findAll(activeOnly = false, search = null)
+            val allGolfers = golferRepository.findAll(search = null)
             val scores = scoringRepository.getScores(seasonId, tournamentId)
             val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
             val allCompletedTournaments = allTournaments.filter { it.status == TournamentStatus.Completed }
@@ -155,7 +155,7 @@ class WeeklyReportService(
                     ?: return@read Result.Err(ReportError.SeasonNotFound(seasonId))
                 val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
                 val teams = teamRepository.findBySeason(seasonId)
-                val allGolfers = golferRepository.findAll(activeOnly = false, search = null)
+                val allGolfers = golferRepository.findAll(search = null)
                 val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
                 val completed = allTournaments.filter { it.status == TournamentStatus.Completed }
                 val completedIds = completed.map { it.id }
@@ -334,7 +334,7 @@ class WeeklyReportService(
                 }
             val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
             val teams = teamRepository.findBySeason(seasonId)
-            val allGolfers = golferRepository.findAll(activeOnly = false, search = null)
+            val allGolfers = golferRepository.findAll(search = null)
             val golferMap = allGolfers.associateBy { it.id }
             val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
             val completed = allTournaments.filter { it.status == TournamentStatus.Completed }

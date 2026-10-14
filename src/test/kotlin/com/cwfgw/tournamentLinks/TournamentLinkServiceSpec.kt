@@ -55,7 +55,6 @@ private fun golfer(
         lastName = lastName,
         country = null,
         worldRanking = null,
-        active = true,
         updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
     )
 

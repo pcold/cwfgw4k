@@ -26,13 +26,7 @@ const leagues: League[] = [
 ];
 const seasonsForLg1: Season[] = [
   makeSeason({ id: 'sn-1', leagueId: 'lg-1', name: 'Spring', seasonYear: 2026 }),
-  makeSeason({
-    id: 'sn-0',
-    leagueId: 'lg-1',
-    name: 'Fall',
-    seasonYear: 2025,
-    status: 'completed',
-  }),
+  makeSeason({ id: 'sn-0', leagueId: 'lg-1', name: 'Fall', seasonYear: 2025 }),
 ];
 const seasonsForLg2: Season[] = [
   makeSeason({ id: 'sn-2', leagueId: 'lg-2', name: 'Shadow', seasonYear: 2026 }),

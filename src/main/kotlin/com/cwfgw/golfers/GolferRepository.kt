@@ -9,10 +9,7 @@ import org.jooq.impl.DSL
 
 interface GolferRepository {
     context(ctx: TransactionContext)
-    fun findAll(
-        activeOnly: Boolean,
-        search: String?,
-    ): List<Golfer>
+    fun findAll(search: String?): List<Golfer>
 
     context(ctx: TransactionContext)
     fun findById(id: GolferId): Golfer?
@@ -28,12 +25,9 @@ fun GolferRepository(): GolferRepository = JooqGolferRepository()
 
 private class JooqGolferRepository : GolferRepository {
     context(ctx: TransactionContext)
-    override fun findAll(
-        activeOnly: Boolean,
-        search: String?,
-    ): List<Golfer> =
+    override fun findAll(search: String?): List<Golfer> =
         ctx.dsl.selectFrom(GOLFERS)
-            .where(filterConditions(activeOnly, search))
+            .where(searchCondition(search))
             .orderBy(
                 GOLFERS.WORLD_RANKING.asc().nullsLast(),
                 GOLFERS.LAST_NAME.asc(),
@@ -68,19 +62,10 @@ private class JooqGolferRepository : GolferRepository {
         return toGolfer(inserted)
     }
 
-    private fun filterConditions(
-        activeOnly: Boolean,
-        search: String?,
-    ): Condition {
-        val conditions =
-            buildList {
-                if (activeOnly) add(GOLFERS.ACTIVE.eq(true))
-                search?.let { term ->
-                    val pattern = "%$term%"
-                    add(GOLFERS.FIRST_NAME.likeIgnoreCase(pattern).or(GOLFERS.LAST_NAME.likeIgnoreCase(pattern)))
-                }
-            }
-        return conditions.reduceOrNull(Condition::and) ?: DSL.noCondition()
+    private fun searchCondition(search: String?): Condition {
+        if (search == null) return DSL.noCondition()
+        val pattern = "%$search%"
+        return GOLFERS.FIRST_NAME.likeIgnoreCase(pattern).or(GOLFERS.LAST_NAME.likeIgnoreCase(pattern))
     }
 
     private fun toGolfer(record: GolfersRecord): Golfer =
@@ -91,7 +76,6 @@ private class JooqGolferRepository : GolferRepository {
             lastName = record.lastName,
             country = record.country,
             worldRanking = record.worldRanking,
-            active = record.required(GOLFERS.ACTIVE),
             updatedAt = record.required(GOLFERS.UPDATED_AT).toInstant(),
         )
 }

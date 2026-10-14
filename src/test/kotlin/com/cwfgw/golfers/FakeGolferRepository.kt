@@ -21,13 +21,10 @@ class FakeGolferRepository(
     }
 
     context(ctx: TransactionContext)
-    override fun findAll(
-        activeOnly: Boolean,
-        search: String?,
-    ): List<Golfer> {
+    override fun findAll(search: String?): List<Golfer> {
         val term = search?.lowercase()
         return store.values
-            .filter { golfer -> golfer.matchesFilter(activeOnly, term) }
+            .filter { golfer -> golfer.matchesSearch(term) }
             .sortedWith(golferOrdering)
     }
 
@@ -48,18 +45,13 @@ class FakeGolferRepository(
                 lastName = request.lastName,
                 country = request.country,
                 worldRanking = request.worldRanking,
-                active = true,
                 updatedAt = clock(),
             )
         store[golfer.id] = golfer
         return golfer
     }
 
-    private fun Golfer.matchesFilter(
-        activeOnly: Boolean,
-        term: String?,
-    ): Boolean {
-        if (activeOnly && !active) return false
+    private fun Golfer.matchesSearch(term: String?): Boolean {
         if (term == null) return true
         return firstName.lowercase().contains(term) || lastName.lowercase().contains(term)
     }

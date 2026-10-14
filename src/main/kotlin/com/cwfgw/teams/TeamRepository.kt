@@ -22,10 +22,7 @@ interface TeamRepository {
         request: CreateTeamRequest,
     ): Team
 
-    /**
-     * Active (non-dropped) entries only, ordered by `(team_id, draft_round, acquired_at)` so callers can
-     * group by team deterministically.
-     */
+    /** Ordered by `(team_id, draft_round, acquired_at)` so callers can group by team deterministically. */
     context(ctx: TransactionContext)
     fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry>
 
@@ -87,7 +84,6 @@ private class JooqTeamRepository : TeamRepository {
                     DSL.select(TEAMS.ID).from(TEAMS).where(TEAMS.SEASON_ID.eq(seasonId.value)),
                 ),
             )
-            .and(TEAM_ROSTERS.DROPPED_AT.isNull)
             .orderBy(
                 TEAM_ROSTERS.TEAM_ID.asc(),
                 TEAM_ROSTERS.DRAFT_ROUND.asc().nullsLast(),
@@ -142,7 +138,6 @@ private class JooqTeamRepository : TeamRepository {
             .join(TEAMS).on(TEAM_ROSTERS.TEAM_ID.eq(TEAMS.ID))
             .join(GOLFERS).on(TEAM_ROSTERS.GOLFER_ID.eq(GOLFERS.ID))
             .where(TEAMS.SEASON_ID.eq(seasonId.value))
-            .and(TEAM_ROSTERS.DROPPED_AT.isNull)
             .orderBy(
                 TEAMS.TEAM_NUMBER.asc().nullsLast(),
                 TEAMS.TEAM_NAME.asc(),
@@ -189,7 +184,6 @@ private class JooqTeamRepository : TeamRepository {
             draftRound = record.draftRound,
             ownershipPct = record.required(TEAM_ROSTERS.OWNERSHIP_PCT),
             acquiredAt = record.required(TEAM_ROSTERS.ACQUIRED_AT).toInstant(),
-            droppedAt = record.droppedAt?.toInstant(),
             isActive = record.required(TEAM_ROSTERS.IS_ACTIVE),
         )
 }

@@ -13,7 +13,6 @@ private fun golfer(
     firstName: String,
     lastName: String,
     worldRanking: Int? = null,
-    active: Boolean = true,
 ): Golfer =
     Golfer(
         id = id,
@@ -22,25 +21,21 @@ private fun golfer(
         lastName = lastName,
         country = null,
         worldRanking = worldRanking,
-        active = active,
         updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
     )
 
 class GolferServiceSpec : FunSpec({
 
-    test("list passes activeOnly and search to the repository") {
-        val active = golfer(firstName = "Rory", lastName = "McIlroy", worldRanking = 2)
-        val inactive = golfer(firstName = "Tiger", lastName = "Woods", worldRanking = 1, active = false)
-        val service = GolferService(FakeGolferRepository(initial = listOf(active, inactive)), FakeTransactor())
+    test("list passes search to the repository") {
+        val rory = golfer(firstName = "Rory", lastName = "McIlroy", worldRanking = 2)
+        val tiger = golfer(firstName = "Tiger", lastName = "Woods", worldRanking = 1)
+        val service = GolferService(FakeGolferRepository(initial = listOf(rory, tiger)), FakeTransactor())
 
-        val activeOnly = service.list(activeOnly = true, search = null).map { it.id }
-        activeOnly shouldContainExactly listOf(active.id)
+        val all = service.list(search = null).map { it.id }
+        all shouldContainExactly listOf(tiger.id, rory.id)
 
-        val all = service.list(activeOnly = false, search = null).map { it.id }
-        all shouldContainExactly listOf(inactive.id, active.id)
-
-        val woodSearch = service.list(activeOnly = false, search = "wood").map { it.id }
-        woodSearch shouldContainExactly listOf(inactive.id)
+        val woodSearch = service.list(search = "wood").map { it.id }
+        woodSearch shouldContainExactly listOf(tiger.id)
     }
 
     test("get returns the golfer when present and null otherwise") {
@@ -51,7 +46,7 @@ class GolferServiceSpec : FunSpec({
         service.get(GolferId(UUID.randomUUID())).shouldBeNull()
     }
 
-    test("create defaults to active=true and delegates to the repo") {
+    test("create delegates to the repo") {
         val newId = GolferId(UUID.fromString("00000000-0000-0000-0000-0000000000aa"))
         val newTime = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeGolferRepository(idFactory = { newId }, clock = { newTime })
@@ -63,7 +58,6 @@ class GolferServiceSpec : FunSpec({
             )
 
         created.id shouldBe newId
-        created.active shouldBe true
         created.updatedAt shouldBe newTime
         service.get(newId) shouldBe created
     }

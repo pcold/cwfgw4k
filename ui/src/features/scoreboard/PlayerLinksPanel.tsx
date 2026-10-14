@@ -207,7 +207,6 @@ function CompetitorRow({
           {sortedGolfers.map((golfer) => (
             <option key={golfer.id} value={golfer.id}>
               {golfer.lastName}, {golfer.firstName}
-              {golfer.active ? '' : ' (inactive)'}
             </option>
           ))}
         </select>

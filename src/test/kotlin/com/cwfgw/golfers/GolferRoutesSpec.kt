@@ -25,7 +25,6 @@ private val RORY =
         lastName = "McIlroy",
         country = "NIR",
         worldRanking = 2,
-        active = true,
         updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
     )
 
@@ -37,7 +36,6 @@ private val TIGER =
         lastName = "Woods",
         country = "USA",
         worldRanking = null,
-        active = false,
         updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
     )
 
@@ -48,19 +46,9 @@ private fun golfers(vararg seeded: Golfer): ApiFixture.() -> Unit =
 
 class GolferRoutesSpec : FunSpec({
 
-    test("GET /api/v1/golfers defaults to active=true") {
+    test("GET /api/v1/golfers returns every golfer") {
         apiTest(golfers(RORY, TIGER)) { client ->
             val response = client.get("/api/v1/golfers")
-
-            response.status shouldBe HttpStatusCode.OK
-            val golfers: List<Golfer> = response.body()
-            golfers.map { it.id } shouldContainExactly listOf(RORY.id)
-        }
-    }
-
-    test("GET /api/v1/golfers?active=false returns every golfer") {
-        apiTest(golfers(RORY, TIGER)) { client ->
-            val response = client.get("/api/v1/golfers?active=false")
 
             response.status shouldBe HttpStatusCode.OK
             val golfers: List<Golfer> = response.body()
@@ -70,18 +58,11 @@ class GolferRoutesSpec : FunSpec({
 
     test("GET /api/v1/golfers?search=wood matches Woods case-insensitively") {
         apiTest(golfers(RORY, TIGER)) { client ->
-            val response = client.get("/api/v1/golfers?active=false&search=wood")
+            val response = client.get("/api/v1/golfers?search=wood")
 
             response.status shouldBe HttpStatusCode.OK
             val golfers: List<Golfer> = response.body()
             golfers.map { it.id } shouldContainExactly listOf(TIGER.id)
-        }
-    }
-
-    test("GET /api/v1/golfers?active={non-bool} returns 400 instead of silently defaulting to true") {
-        apiTest { client ->
-            val response = client.get("/api/v1/golfers?active=maybe")
-            response.status shouldBe HttpStatusCode.BadRequest
         }
     }
 
@@ -101,7 +82,6 @@ class GolferRoutesSpec : FunSpec({
             val created: Golfer = response.body()
             created.id shouldBe newId
             created.firstName shouldBe "Scottie"
-            created.active shouldBe true
             created.updatedAt shouldBe newTime
         }
     }

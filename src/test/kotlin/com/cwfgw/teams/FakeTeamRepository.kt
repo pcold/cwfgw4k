@@ -63,7 +63,7 @@ class FakeTeamRepository(
     override fun findRostersBySeason(seasonId: SeasonId): List<RosterEntry> {
         val teamIdsInSeason = teams.values.filter { it.seasonId == seasonId }.map { it.id }.toSet()
         return rosters.values
-            .filter { it.teamId in teamIdsInSeason && it.droppedAt == null }
+            .filter { it.teamId in teamIdsInSeason }
             .sortedWith(compareBy<RosterEntry> { it.teamId.value }.then(rosterOrdering))
     }
 
@@ -81,7 +81,6 @@ class FakeTeamRepository(
                 draftRound = request.draftRound,
                 ownershipPct = request.ownershipPct ?: BigDecimal("100.00"),
                 acquiredAt = clock(),
-                droppedAt = null,
                 isActive = true,
             )
         rosters[entry.id] = entry

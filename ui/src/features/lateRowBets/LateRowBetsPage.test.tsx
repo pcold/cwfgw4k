@@ -34,7 +34,6 @@ const season: Season = {
   name: 'Season 1',
   seasonYear: 2026,
   seasonNumber: 1,
-  status: 'active',
   tieFloor: 1,
   sideBetAmount: 15,
   maxTeams: 13,

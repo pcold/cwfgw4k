@@ -8,10 +8,10 @@ import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.testing.markDropped
 import com.cwfgw.testing.postgresHarness
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import java.math.BigDecimal
@@ -74,7 +74,6 @@ class TeamRepositorySpec : FunSpec({
             entry.acquiredVia shouldBe "free_agent"
             entry.ownershipPct.compareTo(BigDecimal("100")) shouldBe 0
             entry.isActive shouldBe true
-            entry.droppedAt shouldBe null
         }
     }
 
@@ -103,7 +102,7 @@ class TeamRepositorySpec : FunSpec({
         }
     }
 
-    test("findRostersBySeason returns active entries across every team in the season") {
+    test("findRostersBySeason returns entries across every team in the season") {
         tx.update {
             val alice = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
             val bob = repository.create(seasonId, CreateTeamRequest("Bob", "Hawks"))
@@ -113,14 +112,11 @@ class TeamRepositorySpec : FunSpec({
 
             repository.addToRoster(alice.id, AddToRosterRequest(golferId = rory.id, draftRound = 1))
             repository.addToRoster(alice.id, AddToRosterRequest(golferId = scottie.id, draftRound = 2))
-            val dropped = repository.addToRoster(bob.id, AddToRosterRequest(golferId = phil.id, draftRound = 1))
-            markDropped(dropped.id)
+            repository.addToRoster(bob.id, AddToRosterRequest(golferId = phil.id, draftRound = 1))
 
             val rosters = repository.findRostersBySeason(seasonId)
 
-            rosters shouldHaveSize 2
-            rosters.map { it.golferId } shouldContainExactly listOf(rory.id, scottie.id)
-            rosters.none { it.id == dropped.id } shouldBe true
+            rosters.map { it.golferId } shouldContainExactlyInAnyOrder listOf(rory.id, scottie.id, phil.id)
         }
     }
 

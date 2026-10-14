@@ -120,7 +120,6 @@ CREATE TABLE cwfgw4k.golfers (
     last_name text NOT NULL,
     country text,
     world_ranking integer,
-    active boolean DEFAULT true NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -183,7 +182,6 @@ CREATE TABLE cwfgw4k.seasons (
     name text NOT NULL,
     season_year integer NOT NULL,
     season_number integer NOT NULL,
-    status text DEFAULT 'draft'::text NOT NULL,
     tie_floor numeric(10,4) DEFAULT 1 NOT NULL,
     side_bet_amount numeric(10,4) DEFAULT 15 NOT NULL,
     max_teams integer DEFAULT 10 NOT NULL,
@@ -204,7 +202,6 @@ CREATE TABLE cwfgw4k.team_rosters (
     draft_round integer,
     ownership_pct numeric(5,2) DEFAULT 100.00 NOT NULL,
     acquired_at timestamp with time zone DEFAULT now() NOT NULL,
-    dropped_at timestamp with time zone,
     is_active boolean DEFAULT true NOT NULL
 );
 
@@ -580,17 +577,10 @@ CREATE INDEX idx_results_tournament ON cwfgw4k.tournament_results USING btree (t
 
 
 --
--- Name: idx_roster_golfer_active; Type: INDEX; Schema: cwfgw4k; Owner: -
+-- Name: idx_roster_golfer; Type: INDEX; Schema: cwfgw4k; Owner: -
 --
 
-CREATE INDEX idx_roster_golfer_active ON cwfgw4k.team_rosters USING btree (golfer_id) WHERE (dropped_at IS NULL);
-
-
---
--- Name: idx_roster_team_active; Type: INDEX; Schema: cwfgw4k; Owner: -
---
-
-CREATE INDEX idx_roster_team_active ON cwfgw4k.team_rosters USING btree (team_id) WHERE (dropped_at IS NULL);
+CREATE INDEX idx_roster_golfer ON cwfgw4k.team_rosters USING btree (golfer_id);
 
 
 --

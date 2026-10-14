@@ -44,7 +44,6 @@ private fun mkSeason(): Season =
         name = "2026",
         seasonYear = 2026,
         seasonNumber = 1,
-        status = "active",
         tieFloor = SeasonRules.DEFAULT_TIE_FLOOR,
         sideBetAmount = SeasonRules.DEFAULT_SIDE_BET_AMOUNT,
         maxTeams = 10,
@@ -96,7 +95,6 @@ private fun mkRoster(
         draftRound = null,
         ownershipPct = ownership,
         acquiredAt = Instant.EPOCH,
-        droppedAt = null,
         isActive = true,
     )
 

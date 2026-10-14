@@ -164,7 +164,6 @@ describe('api client', () => {
         name: 'Spring',
         season_year: 2026,
         season_number: 1,
-        status: 'active',
       }),
     );
     const result = await api.createSeason({
@@ -499,16 +498,14 @@ describe('api client', () => {
     expect(apiError(err).message).toBe('500 Boom');
   });
 
-  it('golfers() requests inactive too and adds the search filter when present', async () => {
+  it('golfers() adds the trimmed search filter only when one is present', async () => {
     fetchMock.mockImplementation(() => Promise.resolve(mockJson([])));
     await api.golfers();
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/golfers?active=false');
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/golfers');
     await api.golfers('  fitz  ');
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      '/api/v1/golfers?active=false&search=fitz',
-    );
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/golfers?search=fitz');
     await api.golfers('   ');
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/golfers?active=false');
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/golfers');
   });
 
   it('tournamentCompetitors() fetches the admin competitors endpoint and camelizes the body', async () => {

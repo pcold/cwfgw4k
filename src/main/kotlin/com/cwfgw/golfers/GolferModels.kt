@@ -25,7 +25,6 @@ data class Golfer(
     val lastName: String,
     val country: String?,
     val worldRanking: Int?,
-    val active: Boolean,
     @Serializable(with = InstantSerializer::class) val updatedAt: Instant,
 )
 
