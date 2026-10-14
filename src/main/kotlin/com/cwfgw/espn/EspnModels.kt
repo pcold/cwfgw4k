@@ -92,10 +92,10 @@ data class EspnAthlete(
  * with ESPN's current leaderboard. Consumed by the live overlay to merge
  * in-progress data onto reports + rankings; no route returns it.
  *
- * `payoutMultiplier` and `isTeamEvent` come from the matched DB
+ * `payoutMultiplier` and `isTeamEvent` come from the previewed DB
  * tournament (see [buildLivePreviewForEvent]) so the per-team
- * dollar figures honor any overrides operators set up-front; a missing
- * match defaults to multiplier 1.0 and not a team event.
+ * dollar figures honor any overrides operators set up-front, however
+ * the ESPN event was matched; ESPN can also raise `isTeamEvent`.
  */
 data class EspnLivePreview(
     val espnName: String,
