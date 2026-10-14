@@ -184,6 +184,88 @@ val generateJooq by tasks.registering(JavaExec::class) {
     outputs.cacheIf { true }
 }
 
+// The migration chain records what each step changed; nothing records what the steps add up to.
+// This renders the result, so a migration's effect is reviewable beside the SQL that caused it.
+val trackedSchemaDump: File = layout.projectDirectory.file("db/schema.sql").asFile
+val regeneratedSchemaDump: File = layout.buildDirectory.file("schema/schema.sql").get().asFile
+
+val generateSchemaDump by tasks.registering(JavaExec::class) {
+    group = "build"
+    description = "Dump the fully-migrated schema to build/schema/schema.sql."
+    classpath = sourceSets["jooqCodegen"].runtimeClasspath
+    mainClass.set("com.cwfgw.jooqcodegen.SchemaDumpKt")
+    workingDir(projectRoot)
+    args(
+        migrationsDir.relativeTo(projectRoot).path,
+        regeneratedSchemaDump.relativeTo(projectRoot).path,
+    )
+    applyMacDockerWorkaround()
+    inputs.dir(migrationsDir).withPropertyName("migrations").withPathSensitivity(PathSensitivity.RELATIVE)
+    // An input for the same reason generateJooq declares it.
+    inputs.dir(codegenSourceDir).withPropertyName("generator").withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.file(regeneratedSchemaDump).withPropertyName("schemaDump")
+    outputs.cacheIf { true }
+}
+
+val updateSchemaDump by tasks.registering(Copy::class) {
+    group = "build"
+    description = "Refresh the tracked db/schema.sql from the current migration chain."
+    from(generateSchemaDump)
+    into(trackedSchemaDump.parentFile)
+}
+
+val checkSchemaDump by tasks.registering {
+    group = "verification"
+    description = "Fail when db/schema.sql no longer matches the migration chain."
+    dependsOn(generateSchemaDump)
+    inputs.file(trackedSchemaDump)
+    inputs.file(regeneratedSchemaDump)
+    // A verification task with no output always re-runs, which here means a container start on
+    // every `check`.
+    val stamp = layout.buildDirectory.file("schema/up-to-date").get().asFile
+    outputs.file(stamp)
+    // Locals, not the script properties above: a doLast that reads a script property captures the
+    // whole build script, which the configuration cache cannot serialize.
+    val tracked = trackedSchemaDump
+    val regenerated = regeneratedSchemaDump
+    val deltaLimit = 120
+    doLast {
+        val before = tracked.readLines()
+        val after = regenerated.readLines()
+        if (before == after) {
+            stamp.writeText("")
+        } else {
+            // Lines unique to one side rather than a positional diff: a dump's statements are
+            // distinct, so this names the column or constraint that moved, where a positional diff
+            // of a file whose middle grew reports every line after the insertion.
+            val withoutSeparators = { lines: List<String> -> lines.filter { it.isNotBlank() && it != "--" } }
+            val removed = withoutSeparators(before) - withoutSeparators(after).toSet()
+            val added = withoutSeparators(after) - withoutSeparators(before).toSet()
+            val shown = removed.take(deltaLimit).map { "-$it" } + added.take(deltaLimit).map { "+$it" }
+            val hidden =
+                (removed.size - deltaLimit).coerceAtLeast(0) + (added.size - deltaLimit).coerceAtLeast(0)
+            val delta =
+                when {
+                    shown.isEmpty() -> listOf("(the same lines, reordered)")
+                    hidden == 0 -> shown
+                    else -> shown + "… and $hidden further differing lines."
+                }
+            val preamble =
+                listOf(
+                    "db/schema.sql no longer matches src/main/resources/db/migration.",
+                    "Run `./gradlew updateSchemaDump` and commit the result.",
+                    "",
+                    "- is a line only in db/schema.sql, + only in the regenerated schema:",
+                )
+            throw GradleException((preamble + delta).joinToString("\n"))
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn(checkSchemaDump)
+}
+
 sourceSets.main {
     kotlin.srcDir(jooqGenDir)
 }
