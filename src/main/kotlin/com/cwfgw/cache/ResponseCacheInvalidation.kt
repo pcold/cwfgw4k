@@ -1,13 +1,12 @@
 package com.cwfgw.cache
 
 import com.cwfgw.users.UserPrincipal
+import com.cwfgw.users.UserRole
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.http.HttpMethod
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.content.OutgoingContent
-import io.ktor.http.isSuccess
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.createRouteScopedPlugin
+import io.ktor.server.application.hooks.CallFailed
 import io.ktor.server.application.hooks.ResponseBodyReadyForSend
 import io.ktor.server.auth.principal
 import io.ktor.server.request.httpMethod
@@ -19,26 +18,24 @@ private val log = KotlinLogging.logger {}
 private val READ_METHODS: Set<HttpMethod> = setOf(HttpMethod.Get, HttpMethod.Head, HttpMethod.Options)
 
 /**
- * Empties [cache] when a write anywhere under this route succeeds. On the body, not after the send, so the refetch
- * a client makes on reading the answer can't overtake the clear; the write has committed by then, because a `tx`
- * block cannot suspend and responding does.
+ * Empties [cache] when an admin writes anywhere under this route. Before the answer goes out, not after, so the
+ * refetch a client makes on reading it can't overtake the clear; the write has committed by then, because a `tx` block
+ * cannot suspend and responding does.
  */
 fun Route.clearResponseCacheOnWrite(cache: RequestCache) {
     install(
         createRouteScopedPlugin(name = "ResponseCacheInvalidation") {
-            on(ResponseBodyReadyForSend) { call, content ->
-                if (call.isSuccessfulAuthenticatedWrite(content)) clearAfterCommit(cache)
-            }
+            on(ResponseBodyReadyForSend) { call, _ -> if (call.isAdminWrite()) clearAfterCommit(cache) }
+            // StatusPages answers a thrown error outside this route's pipeline, where the hook above never runs.
+            on(CallFailed) { call, _ -> if (call.isAdminWrite()) clearAfterCommit(cache) }
         },
     )
 }
 
-// Anonymous calls never clear: `POST /auth/logout` answers 204 to anyone, so any client could empty the cache.
-// The status resolves as the engine's commit does; a bare `respond(body)` has set neither yet.
-private fun ApplicationCall.isSuccessfulAuthenticatedWrite(content: OutgoingContent): Boolean {
-    val status = content.status ?: response.status() ?: HttpStatusCode.OK
-    return request.httpMethod !in READ_METHODS && status.isSuccess() && principal<UserPrincipal>() != null
-}
+// Whatever the status: an error can follow a commit, as when `confirmSeasonSchedule` fails on its Nth tournament.
+// Admins only, or any signed-in user could empty the cache with a write `requireAdmin` refuses.
+private fun ApplicationCall.isAdminWrite(): Boolean =
+    request.httpMethod !in READ_METHODS && principal<UserPrincipal>()?.user?.role == UserRole.Admin
 
 // The write has committed, so a failed clear must not turn its answer into a 500 the client would retry.
 private suspend fun clearAfterCommit(cache: RequestCache) {

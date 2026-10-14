@@ -152,6 +152,15 @@ class ResponseCacheInvalidationSpec : FunSpec({
         }
     }
 
+    test("an admin write answered with an error still empties the cache, since an error can follow a commit") {
+        val rows = seededRows()
+        authenticatedApiTest(configure = { cacheOver(rows) }) { client ->
+            client.delete("/api/v1/seasons/${UUID.randomUUID()}").status shouldBe HttpStatusCode.NotFound
+
+            rows.storedKeys().shouldBeEmpty()
+        }
+    }
+
     test("a write refused to a non-admin leaves the cache alone") {
         val rows = seededRows()
         regularUserApiTest(configure = { cacheOver(rows) }) { client ->

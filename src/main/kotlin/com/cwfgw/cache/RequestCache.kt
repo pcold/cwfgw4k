@@ -33,8 +33,8 @@ private val log = KotlinLogging.logger {}
  * every read.
  *
  * A write invalidates: [clearResponseCacheOnWrite] runs [clear] before any
- * successful authenticated write under `/api/v1` answers. One instance's clear
- * can't stop a fill already running on another, so [defaultTtl] still bounds that.
+ * admin write under `/api/v1` answers. One instance's clear can't stop a fill
+ * already running on another, so [defaultTtl] still bounds that.
  *
  * A deploy does invalidate: [revision] prefixes every stored key, so a body
  * one revision encoded is never served by another. Not a table clear at
