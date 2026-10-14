@@ -3,6 +3,7 @@ package com.cwfgw.tournamentLinks
 import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
+import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.seedTournament
 import com.cwfgw.tournaments.TournamentId
@@ -79,5 +80,28 @@ class TournamentLinkRepositorySpec : FunSpec({
 
     test("listByTournament returns an empty list for an unknown tournament") {
         tx.read { repository.listByTournament(TournamentId(UUID.randomUUID())) }.shouldBeEmpty()
+    }
+
+    test("listByTournaments returns every requested tournament's overrides and skips one with none") {
+        val (withTwo, withOne) = tx.update { seedTournament() to seedTournament() }
+        val (withNone, unrequested) = tx.update { seedTournament() to seedTournament() }
+        val golfer = tx.update { golferRepo.create(CreateGolferRequest(firstName = "Matt", lastName = "Fitzpatrick")) }
+        tx.update {
+            repository.upsert(withTwo, "def-456", golfer.id)
+            repository.upsert(withTwo, "abc-123", golfer.id)
+            repository.upsert(withOne, "xyz-789", golfer.id)
+            repository.upsert(unrequested, "uvw-000", golfer.id)
+        }
+
+        val competitorsByTournament =
+            tx.read { repository.listByTournaments(listOf(withTwo, withOne, withNone)) }
+                .groupBy({ it.tournamentId }, { it.espnCompetitorId })
+
+        competitorsByTournament shouldBe mapOf(withTwo to listOf("abc-123", "def-456"), withOne to listOf("xyz-789"))
+    }
+
+    test("listByTournaments returns empty for no ids without issuing a query") {
+        // A connectionless DSL: any statement executed through it throws.
+        with(noopTransactionContext) { repository.listByTournaments(emptyList()) }.shouldBeEmpty()
     }
 })
