@@ -139,7 +139,10 @@ What stays in the UI:
 
 ## React Rules
 
-- **MUST** use function components. No class components, ever.
+- **MUST** use function components. The sole exception is
+  `shared/components/ErrorBoundary.tsx`: React catches render errors only
+  through `getDerivedStateFromError` / `componentDidCatch`, which have no hook
+  equivalent. A second class needs a reason of the same kind.
 - **MUST NOT** use `React.FC` / `React.FunctionComponent`. Type the props
   inline: `function MyThing(props: MyThingProps) { ... }`. `React.FC`
   forces an implicit `children` prop and has historical baggage.
@@ -396,7 +399,8 @@ Conscious exclusions. Do not introduce without discussion:
 - **Lodash / Underscore / Ramda** — the JS standard library plus a small
   inline helper covers the use cases. If a single utility is genuinely
   needed, copy or write it; do not import the package.
-- **Class components and HOCs** — function components and hooks only.
+- **Class components and HOCs** — function components and hooks only, except
+  the error boundary React gives no hook for (see React Rules).
 - **Moment.js** — use `Intl` and the date primitives, or
   `date-fns` if a real need shows up.
 - **`React.FC`** — see React rules; type props inline instead.
