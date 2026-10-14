@@ -61,7 +61,7 @@ Refusal codes on the wire today:
 
 | `refusal`                           | Raised by |
 |-------------------------------------|-----------|
-| `tournament_not_linked`             | `POST /api/v1/espn/import/tournament/{tournamentId}`, `GET /api/v1/admin/tournaments/{id}/competitors` |
+| `tournament_not_linked`             | `GET /api/v1/admin/tournaments/{id}/competitors` |
 | `tournament_finalized`              | `POST /api/v1/admin/tournaments/{id}/player-overrides`, `DELETE /api/v1/admin/tournaments/{id}/player-overrides/{espnCompetitorId}` |
 | `tournament_out_of_order`           | `POST /api/v1/tournaments/{id}/finalize`, `POST /api/v1/tournaments/{id}/reset` |
 | `season_has_no_tournaments`         | `POST /api/v1/seasons/{sid}/finalize` |
@@ -194,22 +194,9 @@ Routes nested under `/api/v1/seasons/{seasonId}/`.
 | Method | Path                                              | Auth | Description                                                                                    |
 |--------|---------------------------------------------------|------|------------------------------------------------------------------------------------------------|
 | GET    | `/api/v1/tournaments?season_id=&status=`          | No   | List tournaments. `status` is one of `upcoming`/`in_progress`/`completed`. Unknown values → 400 |
-| GET    | `/api/v1/tournaments/{id}`                        | No   | Get one tournament                                                                             |
-| GET    | `/api/v1/tournaments/{id}/results`                | No   | Get the leaderboard rows                                                                       |
-| POST   | `/api/v1/tournaments`                             | Yes  | Create a tournament                                                                            |
 | PUT    | `/api/v1/tournaments/{id}`                        | Yes  | Partial update (incl. `status`, `is_team_event`)                                               |
-| POST   | `/api/v1/tournaments/{id}/results`                | Yes  | Batch-upsert leaderboard rows                                                                  |
 | POST   | `/api/v1/tournaments/{id}/finalize`               | Yes  | Compose ESPN import → score calculation → standings refresh. Refuses out-of-order with 409 `tournament_out_of_order`. |
 | POST   | `/api/v1/tournaments/{id}/reset`                  | Yes  | Wipe scores + results, revert status to `upcoming`. Refuses when later tournaments are completed (409 `tournament_out_of_order`). |
-
-### Scoring
-
-| Method | Path                                                          | Auth | Description                                          |
-|--------|---------------------------------------------------------------|------|------------------------------------------------------|
-| GET    | `/api/v1/seasons/{sid}/standings`                             | No   | Cumulative season standings                          |
-| GET    | `/api/v1/seasons/{sid}/scoring/{tid}`                         | No   | Per-team score rows for one tournament               |
-| POST   | `/api/v1/seasons/{sid}/scoring/calculate/{tid}`               | Yes  | Recompute and upsert scores for one tournament       |
-| POST   | `/api/v1/seasons/{sid}/scoring/refresh-standings`             | Yes  | Recompute and upsert season standings                |
 
 ### Reports
 
@@ -269,14 +256,6 @@ each carries `won` (the sum of the positive amounts), `lost` (the sum of
 the negative ones, so zero or negative) and `net` (`won` plus `lost`). A
 client displays them and never sums `total_cash` or `side_bets` itself. A
 live overlay's totals are those of its overlaid teams.
-
-### ESPN
-
-| Method | Path                                                     | Auth | Description                                                                            |
-|--------|----------------------------------------------------------|------|----------------------------------------------------------------------------------------|
-| GET    | `/api/v1/espn/calendar`                                  | No   | Read ESPN's PGA season schedule (`EspnCalendarEntry[]`). Used by admin previewSeasonSchedule |
-| POST   | `/api/v1/espn/import?date=YYYY-MM-DD`                    | Yes  | Import every completed event for the given date; results auto-link to existing tournaments by `pga_tournament_id` |
-| POST   | `/api/v1/espn/import/tournament/{tournamentId}`          | Yes  | Import results for one specific (already-linked) tournament                             |
 
 ### Admin
 

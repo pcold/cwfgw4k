@@ -5,6 +5,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.ktor.client.request.delete
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -17,7 +18,7 @@ import java.util.UUID
  * file's own spec; this spec exists so a regression that drops [requireAdmin]
  * from a route file fails one obvious test instead of silently passing.
  *
- * Each test hits one representative POST/DELETE per route file. Bodies are
+ * Each test hits one representative POST/PUT/DELETE per route file. Bodies are
  * minimal because the gate runs before [io.ktor.server.request.receive], so
  * a 403 response is independent of payload shape.
  */
@@ -81,17 +82,10 @@ class AdminGateSpec : FunSpec({
         }
     }
 
-    test("ScoringRoutes: POST /api/v1/seasons/{sid}/scoring/refresh-standings rejects a regular user with 403") {
-        regularUserApiTest { client ->
-            val response = client.post("/api/v1/seasons/$anySeasonId/scoring/refresh-standings")
-            response.status shouldBe HttpStatusCode.Forbidden
-        }
-    }
-
-    test("TournamentRoutes: POST /api/v1/tournaments rejects a regular user with 403") {
+    test("TournamentRoutes: PUT /api/v1/tournaments/{id} rejects a regular user with 403") {
         regularUserApiTest { client ->
             val response =
-                client.post("/api/v1/tournaments") {
+                client.put("/api/v1/tournaments/$anyTournamentId") {
                     contentType(ContentType.Application.Json)
                     setBody("{}")
                 }
@@ -102,13 +96,6 @@ class AdminGateSpec : FunSpec({
     test("TournamentOpsRoutes: POST /api/v1/tournaments/{id}/finalize rejects a regular user with 403") {
         regularUserApiTest { client ->
             val response = client.post("/api/v1/tournaments/$anyTournamentId/finalize")
-            response.status shouldBe HttpStatusCode.Forbidden
-        }
-    }
-
-    test("EspnRoutes: POST /api/v1/espn/import rejects a regular user with 403") {
-        regularUserApiTest { client ->
-            val response = client.post("/api/v1/espn/import?date=2026-01-01")
             response.status shouldBe HttpStatusCode.Forbidden
         }
     }

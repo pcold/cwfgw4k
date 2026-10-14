@@ -175,9 +175,8 @@ if [[ -z "$SEASON_ID" || -z "$TOURNAMENT_ID" ]]; then
   #                    its per-tournament endpoints accept "the active one"
   #                    as input.
   #   - TOURNAMENT_ID: most recently completed (latest start_date among
-  #                    completed). This is what run.sh's /scoring/<tid>,
-  #                    /report/<tid>, and /tournaments/<tid>/results
-  #                    endpoints get — exercising the cache+scoring path
+  #                    completed). This is what run.sh's /report/<tid>
+  #                    endpoint gets — exercising the cache+scoring path
   #                    against real data instead of an empty upcoming row.
   # Falls back to ACTIVE_TID if the season has no completed tournaments
   # (fresh league); accepts -T <uuid> to override.

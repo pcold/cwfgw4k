@@ -19,10 +19,10 @@
 #   $1  — base URL (no trailing slash)
 #   $2  — season UUID for the cached season-scoped endpoints
 #   $3  — tournament UUID (optional; only used for the per-tournament
-#         report / scoring / results routes — skipped if absent).
+#         report route — skipped if absent).
 #         Prefer a *completed* tournament here: upcoming/in-progress ones
-#         can have empty result/scoring rows, which makes the per-tournament
-#         endpoints return `[]` and stops exercising the cache+scoring path
+#         can have empty result/scoring rows, which leaves the per-tournament
+#         report empty and stops exercising the cache+scoring path
 #         under realistic data. spin-staging.sh picks the most recently
 #         completed tournament for this argument by default.
 #
@@ -32,13 +32,10 @@
 #   -t S    per-request timeout in seconds (default 30)
 #
 # What it tests:
-#   /api/v1/seasons/<sid>/standings              cached
 #   /api/v1/seasons/<sid>/rankings               cached
 #   /api/v1/seasons/<sid>/rankings?live=true     uncached, ESPN
 #   /api/v1/seasons/<sid>/report                 cached, multi-service
-#   /api/v1/seasons/<sid>/scoring/<tid>          cached, per-tournament (if tid)
 #   /api/v1/seasons/<sid>/report/<tid>           cached (if tid)
-#   /api/v1/tournaments/<tid>/results            cached (if tid)
 #   /api/v1/tournaments                          uncached, baseline
 #
 # Run order: walks each endpoint sequentially so per-endpoint p95 isn't
@@ -95,9 +92,6 @@ run_endpoint() {
 echo "Warm-up burst (10 reqs, 5 concurrency)..."
 hey -n 10 -c 5 -t "${TIMEOUT}" "${BASE_URL}/api/v1/health" > /dev/null
 
-run_endpoint "Standings (cached)" \
-  "/api/v1/seasons/${SEASON_ID}/standings"
-
 run_endpoint "Rankings (cached)" \
   "/api/v1/seasons/${SEASON_ID}/rankings"
 
@@ -108,12 +102,8 @@ run_endpoint "Season report (cached, multi-service aggregate)" \
   "/api/v1/seasons/${SEASON_ID}/report"
 
 if [[ -n $TOURNAMENT_ID ]]; then
-  run_endpoint "Tournament scoring (cached, per-tournament)" \
-    "/api/v1/seasons/${SEASON_ID}/scoring/${TOURNAMENT_ID}"
   run_endpoint "Tournament report (cached)" \
     "/api/v1/seasons/${SEASON_ID}/report/${TOURNAMENT_ID}"
-  run_endpoint "Tournament results (cached)" \
-    "/api/v1/tournaments/${TOURNAMENT_ID}/results"
 fi
 
 run_endpoint "Tournaments list (uncached, baseline)" \

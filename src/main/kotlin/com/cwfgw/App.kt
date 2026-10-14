@@ -6,7 +6,6 @@ import com.cwfgw.db.PoolMetrics
 import com.cwfgw.debug.buildDebugDump
 import com.cwfgw.debug.debugRoutes
 import com.cwfgw.drafts.draftRoutes
-import com.cwfgw.espn.espnRoutes
 import com.cwfgw.golfers.golferRoutes
 import com.cwfgw.health.healthRoutes
 import com.cwfgw.http.appJson
@@ -16,7 +15,6 @@ import com.cwfgw.http.spaFallback
 import com.cwfgw.http.staticRoutes
 import com.cwfgw.leagues.leagueRoutes
 import com.cwfgw.reports.reportRoutes
-import com.cwfgw.scoring.scoringRoutes
 import com.cwfgw.seasons.seasonOpsRoutes
 import com.cwfgw.seasons.seasonRoutes
 import com.cwfgw.teams.teamRoutes
@@ -138,12 +136,10 @@ private fun Routing.apiRoutes(services: AppServices) {
         golferRoutes(services.golferService)
         seasonRoutes(services.seasonService)
         teamRoutes(services.teamService)
-        tournamentRoutes(services.tournamentService, services.requestCache)
+        tournamentRoutes(services.tournamentService)
         tournamentOpsRoutes(services.tournamentOpsService)
         seasonOpsRoutes(services.seasonOpsService)
         draftRoutes(services.draftService)
-        scoringRoutes(services.scoringService, services.requestCache)
-        espnRoutes(services.espnService)
         adminRoutes(services.adminService)
         tournamentLinkRoutes(services.espnService, services.tournamentLinkService)
         reportRoutes(services.weeklyReportService, services.requestCache)
