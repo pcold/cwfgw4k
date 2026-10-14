@@ -1,6 +1,5 @@
 package com.cwfgw.seasons
 
-import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
 import com.cwfgw.drafts.CreateDraftRequest
 import com.cwfgw.drafts.DraftRepository
@@ -8,8 +7,6 @@ import com.cwfgw.drafts.PickSlot
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.jooq.tables.references.DRAFT_PICKS
-import com.cwfgw.jooq.tables.references.SEASON_RULE_PAYOUTS
-import com.cwfgw.jooq.tables.references.SEASON_RULE_SIDE_BET_ROUNDS
 import com.cwfgw.jooq.tables.references.TEAM_ROSTERS
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueId
@@ -18,6 +15,7 @@ import com.cwfgw.teams.AddToRosterRequest
 import com.cwfgw.teams.CreateTeamRequest
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.postgresHarness
+import com.cwfgw.testing.seedSeasonRules
 import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.TournamentRepository
 import io.kotest.core.spec.style.FunSpec
@@ -192,7 +190,7 @@ class SeasonRepositorySpec : FunSpec({
         tx.update {
             val created =
                 repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "2026", seasonYear = 2026))
-            seedCustomPayouts(
+            seedSeasonRules(
                 created.id,
                 payouts = listOf(1 to BigDecimal("50"), 2 to BigDecimal("25"), 3 to BigDecimal("10")),
                 sideBetRounds = listOf(3, 4),
@@ -320,24 +318,3 @@ class SeasonRepositorySpec : FunSpec({
         tx.update { repository.delete(SeasonId(UUID.randomUUID())) }.shouldBeFalse()
     }
 })
-
-context(ctx: TransactionContext)
-private fun seedCustomPayouts(
-    seasonId: SeasonId,
-    payouts: List<Pair<Int, BigDecimal>>,
-    sideBetRounds: List<Int>,
-) {
-    payouts.forEach { (pos, amt) ->
-        ctx.dsl.insertInto(SEASON_RULE_PAYOUTS)
-            .set(SEASON_RULE_PAYOUTS.SEASON_ID, seasonId.value)
-            .set(SEASON_RULE_PAYOUTS.POSITION, pos)
-            .set(SEASON_RULE_PAYOUTS.AMOUNT, amt)
-            .execute()
-    }
-    sideBetRounds.forEach { round ->
-        ctx.dsl.insertInto(SEASON_RULE_SIDE_BET_ROUNDS)
-            .set(SEASON_RULE_SIDE_BET_ROUNDS.SEASON_ID, seasonId.value)
-            .set(SEASON_RULE_SIDE_BET_ROUNDS.ROUND, round)
-            .execute()
-    }
-}
