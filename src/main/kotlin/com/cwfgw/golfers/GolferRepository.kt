@@ -5,7 +5,6 @@ import com.cwfgw.db.required
 import com.cwfgw.jooq.tables.records.GolfersRecord
 import com.cwfgw.jooq.tables.references.GOLFERS
 import org.jooq.Condition
-import org.jooq.Field
 import org.jooq.impl.DSL
 
 interface GolferRepository {
@@ -23,12 +22,6 @@ interface GolferRepository {
 
     context(ctx: TransactionContext)
     fun create(request: CreateGolferRequest): Golfer
-
-    context(ctx: TransactionContext)
-    fun update(
-        id: GolferId,
-        request: UpdateGolferRequest,
-    ): Golfer?
 }
 
 fun GolferRepository(): GolferRepository = JooqGolferRepository()
@@ -75,27 +68,6 @@ private class JooqGolferRepository : GolferRepository {
         return toGolfer(inserted)
     }
 
-    context(ctx: TransactionContext)
-    override fun update(
-        id: GolferId,
-        request: UpdateGolferRequest,
-    ): Golfer? {
-        val changes = updateAssignments(request)
-        return if (changes.isEmpty()) {
-            ctx.dsl.selectFrom(GOLFERS)
-                .where(GOLFERS.ID.eq(id.value))
-                .fetchOne()
-                ?.let(::toGolfer)
-        } else {
-            ctx.dsl.update(GOLFERS)
-                .set(changes + (GOLFERS.UPDATED_AT to DSL.currentOffsetDateTime()))
-                .where(GOLFERS.ID.eq(id.value))
-                .returning()
-                .fetchOne()
-                ?.let(::toGolfer)
-        }
-    }
-
     private fun filterConditions(
         activeOnly: Boolean,
         search: String?,
@@ -110,16 +82,6 @@ private class JooqGolferRepository : GolferRepository {
             }
         return conditions.reduceOrNull(Condition::and) ?: DSL.noCondition()
     }
-
-    private fun updateAssignments(request: UpdateGolferRequest): Map<Field<*>, Any?> =
-        buildMap {
-            request.pgaPlayerId?.let { put(GOLFERS.PGA_PLAYER_ID, it) }
-            request.firstName?.let { put(GOLFERS.FIRST_NAME, it) }
-            request.lastName?.let { put(GOLFERS.LAST_NAME, it) }
-            request.country?.let { put(GOLFERS.COUNTRY, it) }
-            request.worldRanking?.let { put(GOLFERS.WORLD_RANKING, it) }
-            request.active?.let { put(GOLFERS.ACTIVE, it) }
-        }
 
     private fun toGolfer(record: GolfersRecord): Golfer =
         Golfer(

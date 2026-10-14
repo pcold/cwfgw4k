@@ -3,7 +3,7 @@ package com.cwfgw.drafts
 import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.golfers.UpdateGolferRequest
+import com.cwfgw.golfers.deactivateGolfer
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.seasons.CreateSeasonRequest
@@ -152,7 +152,7 @@ class DraftRepositorySpec : FunSpec({
                 val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy")).id
                 val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler")).id
                 val tiger = golferRepo.create(CreateGolferRequest(firstName = "Tiger", lastName = "Woods")).id
-                golferRepo.update(tiger, UpdateGolferRequest(active = false))
+                deactivateGolfer(tiger)
                 repository.makePick(draft.id, pickNum = 1, golferId = rory)
                 draft.id to scottie
             }
