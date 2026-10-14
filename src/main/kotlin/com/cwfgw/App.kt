@@ -2,6 +2,7 @@ package com.cwfgw
 
 import com.cwfgw.admin.adminRoutes
 import com.cwfgw.cache.RequestCache
+import com.cwfgw.cache.clearResponseCacheOnWrite
 import com.cwfgw.db.PoolMetrics
 import com.cwfgw.debug.buildDebugDump
 import com.cwfgw.debug.debugRoutes
@@ -131,6 +132,7 @@ private const val DEBUG_PROBE_INTERVAL_SECONDS: Long = 10
 
 private fun Routing.apiRoutes(services: AppServices) {
     route("/api/v1") {
+        clearResponseCacheOnWrite(services.requestCache)
         healthRoutes(services.healthProbe)
         leagueRoutes(services.leagueService)
         golferRoutes(services.golferService)
