@@ -12,6 +12,8 @@ function CreateSeasonSection(): ReactNode {
   const defaultsQuery = useQuery({
     queryKey: queryKeys.defaultSeasonRules.root,
     queryFn: api.defaultSeasonRules,
+    // Never refetched: a failed background refetch would swap the form for an error and drop the edits.
+    staleTime: Infinity,
   });
 
   return (

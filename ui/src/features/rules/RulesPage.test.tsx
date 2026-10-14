@@ -78,8 +78,8 @@ describe('RulesPage', () => {
     expect(
       await screen.findByRole('heading', { name: /Season Rules/i }),
     ).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { name: /The Draft/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /Weekly Payouts/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Weekly Payouts/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /The Draft/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Zero-Sum Scoring/i })).toBeInTheDocument();
 
     // First place payout from the API rules
@@ -194,14 +194,25 @@ describe('RulesPage', () => {
     expect(screen.getByText('$15')).toBeInTheDocument();
   });
 
-  it('shows the rules failure instead of payouts it cannot know', async () => {
+  it('shows the rules failure instead of payouts it cannot know, and keeps the schedule', async () => {
     seasonRulesMock.mockRejectedValue(new Error('network down'));
-    tournamentsMock.mockResolvedValue([]);
+    tournamentsMock.mockResolvedValue([tournament({ name: 'The Masters' })]);
 
     renderWithProviders(<RulesPage />);
 
     expect(await screen.findByText(/Failed to load season rules/i)).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(await screen.findByText('The Masters')).toBeInTheDocument();
+  });
+
+  it('shows a schedule failure rather than an empty schedule', async () => {
+    tournamentsMock.mockRejectedValue(new Error('network down'));
+
+    renderWithProviders(<RulesPage />);
+
+    expect(await screen.findByText(/Failed to load schedule/i)).toBeInTheDocument();
+    expect(screen.queryByText(/No tournaments scheduled/i)).not.toBeInTheDocument();
+    expect(await screen.findByRole('table')).toBeInTheDocument();
   });
 
   it('shows no payout table for a league without a season', async () => {

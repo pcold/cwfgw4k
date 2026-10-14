@@ -51,6 +51,11 @@ export const queryKeys = {
   },
 
   /** @see queryKeys */
+  defaultSeasonRules: {
+    root: ['defaultSeasonRules'] as const,
+  },
+
+  /** @see queryKeys */
   golfers: {
     root: ['golfers'] as const,
     list: (): QueryKey => [...queryKeys.golfers.root, 'all'],
@@ -122,11 +127,6 @@ export const queryKeys = {
       throughTournamentId: string | null,
       live: boolean,
     ): QueryKey => [...queryKeys.playerRankings.bySeason(seasonId), throughTournamentId, live],
-  },
-
-  /** @see queryKeys */
-  defaultSeasonRules: {
-    root: ['defaultSeasonRules'] as const,
   },
 };
 

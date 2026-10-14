@@ -24,35 +24,10 @@ function RulesPage(): ReactNode {
   if (leaguesError)
     return <p className="text-red-400">Failed to load leagues: {String(leaguesError)}</p>;
 
-  const schedule = [...(tournamentsQuery.data ?? [])].sort((a, b) =>
-    a.startDate.localeCompare(b.startDate),
-  );
-
   return (
     <section className="space-y-6">
       <h2 className="text-xl font-bold">Season Rules</h2>
-      <QueryState query={rulesQuery} label="season rules">
-        {(rules) => (
-          <RulesView
-            rules={rules}
-            schedule={schedule}
-            scheduleLoading={tournamentsQuery.isLoading}
-          />
-        )}
-      </QueryState>
-    </section>
-  );
-}
 
-interface RulesViewProps {
-  rules: SeasonRules;
-  schedule: Tournament[];
-  scheduleLoading: boolean;
-}
-
-function RulesView({ rules, schedule, scheduleLoading }: RulesViewProps): ReactNode {
-  return (
-    <>
       <div className="bg-gray-800 rounded-lg p-6">
         <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
           The Draft
@@ -66,6 +41,33 @@ function RulesView({ rules, schedule, scheduleLoading }: RulesViewProps): ReactN
         </ul>
       </div>
 
+      <QueryState query={rulesQuery} label="season rules">
+        {(rules) => <RulesView rules={rules} />}
+      </QueryState>
+
+      <div className="bg-gray-800 rounded-lg p-6">
+        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
+          Season Schedule
+        </h3>
+        <p className="text-gray-300 text-sm mb-3">
+          Tournaments on the season calendar. A highlighted multiplier means payouts are
+          boosted for that week (e.g. 2x for majors).
+        </p>
+        <QueryState query={tournamentsQuery} label="schedule">
+          {(tournaments) => <ScheduleList tournaments={tournaments} />}
+        </QueryState>
+      </div>
+    </section>
+  );
+}
+
+interface RulesViewProps {
+  rules: SeasonRules;
+}
+
+function RulesView({ rules }: RulesViewProps): ReactNode {
+  return (
+    <>
       <div className="bg-gray-800 rounded-lg p-6">
         <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
           Weekly Payouts
@@ -91,37 +93,6 @@ function RulesView({ rules, schedule, scheduleLoading }: RulesViewProps): ReactN
             ))}
           </tbody>
         </table>
-      </div>
-
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
-          Season Schedule
-        </h3>
-        <p className="text-gray-300 text-sm mb-3">
-          Tournaments on the season calendar. A highlighted multiplier means payouts are
-          boosted for that week (e.g. 2x for majors).
-        </p>
-        {scheduleLoading ? (
-          <p className="text-gray-500 text-sm">Loading schedule…</p>
-        ) : schedule.length > 0 ? (
-          <ul className="text-gray-300 text-sm space-y-0.5">
-            {schedule.map((t) => (
-              <li key={t.id} className="flex items-baseline gap-2">
-                <span className="text-gray-500 tabular-nums w-16 shrink-0">
-                  {t.week ? `Wk ${t.week}` : ''}
-                </span>
-                <span className="flex-1">{t.name}</span>
-                {t.payoutMultiplier !== 1 ? (
-                  <span className="text-yellow-400 font-semibold tabular-nums">
-                    {t.payoutMultiplier}x
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-gray-500 text-sm">No tournaments scheduled for this season.</p>
-        )}
       </div>
 
       <div className="bg-gray-800 rounded-lg p-6">
@@ -184,6 +155,34 @@ function RulesView({ rules, schedule, scheduleLoading }: RulesViewProps): ReactN
         </div>
       ) : null}
     </>
+  );
+}
+
+interface ScheduleListProps {
+  tournaments: Tournament[];
+}
+
+function ScheduleList({ tournaments }: ScheduleListProps): ReactNode {
+  if (tournaments.length === 0) {
+    return <p className="text-gray-500 text-sm">No tournaments scheduled for this season.</p>;
+  }
+  const schedule = [...tournaments].sort((a, b) => a.startDate.localeCompare(b.startDate));
+  return (
+    <ul className="text-gray-300 text-sm space-y-0.5">
+      {schedule.map((t) => (
+        <li key={t.id} className="flex items-baseline gap-2">
+          <span className="text-gray-500 tabular-nums w-16 shrink-0">
+            {t.week ? `Wk ${t.week}` : ''}
+          </span>
+          <span className="flex-1">{t.name}</span>
+          {t.payoutMultiplier !== 1 ? (
+            <span className="text-yellow-400 font-semibold tabular-nums">
+              {t.payoutMultiplier}x
+            </span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
   );
 }
 

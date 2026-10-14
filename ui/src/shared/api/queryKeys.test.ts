@@ -21,6 +21,7 @@ const KEY_CHAINS: Record<keyof typeof queryKeys, readonly QueryKey[]> = {
   ],
   rosters: [queryKeys.rosters.root, queryKeys.rosters.bySeason('sn-1')],
   seasonRules: [queryKeys.seasonRules.root, queryKeys.seasonRules.bySeason('sn-1')],
+  defaultSeasonRules: [queryKeys.defaultSeasonRules.root],
   golfers: [queryKeys.golfers.root, queryKeys.golfers.list()],
   golferHistory: [
     queryKeys.golferHistory.root,
@@ -47,7 +48,6 @@ const KEY_CHAINS: Record<keyof typeof queryKeys, readonly QueryKey[]> = {
     queryKeys.playerRankings.bySeason('sn-1'),
     queryKeys.playerRankings.detail('sn-1', null, true),
   ],
-  defaultSeasonRules: [queryKeys.defaultSeasonRules.root],
 };
 
 // The one place a root is spelled outside its factory. A page test cannot catch an edited root —
@@ -61,6 +61,7 @@ it('pins the value of every key, root first', () => {
     tournamentCompetitors: [['tournamentCompetitors'], ['tournamentCompetitors', 'tn-1']],
     rosters: [['rosters'], ['rosters', 'sn-1']],
     seasonRules: [['seasonRules'], ['seasonRules', 'sn-1']],
+    defaultSeasonRules: [['defaultSeasonRules']],
     golfers: [['golfers'], ['golfers', 'all']],
     golferHistory: [['golferHistory'], ['golferHistory', 'sn-1'], ['golferHistory', 'sn-1', 'g-1']],
     tournamentReport: [
@@ -75,7 +76,6 @@ it('pins the value of every key, root first', () => {
       ['player-rankings', 'sn-1'],
       ['player-rankings', 'sn-1', null, true],
     ],
-    defaultSeasonRules: [['defaultSeasonRules']],
   });
 });
 

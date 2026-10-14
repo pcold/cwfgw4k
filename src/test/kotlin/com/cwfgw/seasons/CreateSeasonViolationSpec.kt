@@ -19,28 +19,32 @@ import java.util.UUID
 
 private val LEAGUE = LeagueId(UUID.fromString("00000000-0000-0000-0000-000000000001"))
 
-private fun request(
-    name: String = "Spring",
-    rules: SeasonRules? = SeasonRules.defaults(),
-): CreateSeasonRequest = CreateSeasonRequest(leagueId = LEAGUE, name = name, seasonYear = 2026, rules = rules)
+private fun request(rules: SeasonRules?): CreateSeasonRequest =
+    CreateSeasonRequest(leagueId = LEAGUE, name = "Spring", seasonYear = 2026, rules = rules)
 
 class CreateSeasonViolationSpec : FunSpec({
 
-    test("a named season with at least one payout place has no violation") {
-        request().violation().shouldBeNull()
+    test("rules with payout places and distinct side-bet rounds have no violation") {
+        request(SeasonRules.defaults()).violation().shouldBeNull()
     }
 
     test("a season without rules has no violation, since the defaults then apply") {
         request(rules = null).violation().shouldBeNull()
     }
 
-    test("a whitespace-only name is BlankName") {
-        request(name = "  ").violation() shouldBe CreateSeasonViolation.BlankName
-    }
-
     test("rules with no payout places are NoPayoutPlaces") {
         val noPlaces = SeasonRules.defaults().copy(payouts = emptyList())
-        request(rules = noPlaces).violation() shouldBe CreateSeasonViolation.NoPayoutPlaces
+        request(noPlaces).violation() shouldBe CreateSeasonViolation.NoPayoutPlaces
+    }
+
+    test("rules with no side-bet rounds are NoSideBetRounds") {
+        val noRounds = SeasonRules.defaults().copy(sideBetRounds = emptyList())
+        request(noRounds).violation() shouldBe CreateSeasonViolation.NoSideBetRounds
+    }
+
+    test("a side-bet round listed twice is DuplicateSideBetRound") {
+        val repeated = SeasonRules.defaults().copy(sideBetRounds = listOf(5, 6, 5))
+        request(repeated).violation() shouldBe CreateSeasonViolation.DuplicateSideBetRound
     }
 
     test("POST /api/v1/seasons refuses a violation with 400, its message, and no season written") {
@@ -49,7 +53,7 @@ class CreateSeasonViolationSpec : FunSpec({
             val response =
                 client.post("/api/v1/seasons") {
                     contentType(ContentType.Application.Json)
-                    setBody(request(rules = SeasonRules.defaults().copy(payouts = emptyList())))
+                    setBody(request(SeasonRules.defaults().copy(payouts = emptyList())))
                 }
 
             response.status shouldBe HttpStatusCode.BadRequest
@@ -58,16 +62,29 @@ class CreateSeasonViolationSpec : FunSpec({
         }
     }
 
-    test("POST /api/v1/seasons refuses a blank name with 400 and its message") {
+    test("POST /api/v1/seasons refuses a repeated side-bet round with 400 and its message") {
         authenticatedApiTest { client ->
             val response =
                 client.post("/api/v1/seasons") {
                     contentType(ContentType.Application.Json)
-                    setBody(request(name = ""))
+                    setBody(request(SeasonRules.defaults().copy(sideBetRounds = listOf(5, 5))))
                 }
 
             response.status shouldBe HttpStatusCode.BadRequest
-            response.body<ErrorBody>().error shouldBe "season name must not be blank"
+            response.body<ErrorBody>().error shouldBe "side bet rounds must not repeat a round"
+        }
+    }
+
+    test("POST /api/v1/seasons refuses empty side-bet rounds with 400 and its message") {
+        authenticatedApiTest { client ->
+            val response =
+                client.post("/api/v1/seasons") {
+                    contentType(ContentType.Application.Json)
+                    setBody(request(SeasonRules.defaults().copy(sideBetRounds = emptyList())))
+                }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.body<ErrorBody>().error shouldBe "side bet rounds must list at least one round"
         }
     }
 })
