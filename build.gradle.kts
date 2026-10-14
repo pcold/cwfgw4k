@@ -60,6 +60,10 @@ dependencies {
     implementation(libs.kotlin.logging)
     implementation(libs.logback.classic)
 
+    // The message-safety rule resolves types, so it reports nothing — as a green build —
+    // without the compile classpath the `detekt` task below sets.
+    detektPlugins(project(":detekt-rules"))
+
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.bundles.kotest)
