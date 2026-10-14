@@ -1,23 +1,48 @@
 import type { ReactElement, ReactNode } from 'react';
 
-const FIELD_CLASS = 'bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full';
+/** @see SelectField */
+export interface SelectOption {
+  readonly value: string;
+  readonly label: string;
+}
+
+/**
+ * Its `w-full` fills the field's box, so size a field through `width` rather than appending a width
+ * here: two unprefixed widths on one control resolve by stylesheet order, not by class order.
+ */
+export const FIELD_CLASS = 'bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full';
 
 interface FieldShellProps {
   readonly id: string;
   readonly label: string;
   readonly error: string | undefined;
+  readonly optional?: boolean;
+  /** Sizes the box the label sits in too, and the control fills it; unset, the box fits its contents. */
+  readonly width?: string;
+  /** For a control a table column already heads; the label still names it for assistive tech. */
+  readonly hideLabel?: boolean;
   readonly children: ReactNode;
 }
 
 /**
- * The escape hatch for a control `TextField` can't render. The caller owns wiring the control to `id`
- * and `aria-invalid` / `aria-describedby` to `${id}-error`.
+ * The escape hatch for a control the three fields below can't render: a `type="number"`, a file input,
+ * or a select with no disabled placeholder. The caller owns wiring the control to `id` and
+ * `aria-invalid` / `aria-describedby` to `${id}-error`.
  */
-export function FieldShell({ id, label, error, children }: FieldShellProps): ReactElement {
+export function FieldShell({
+  id,
+  label,
+  error,
+  optional = false,
+  width,
+  hideLabel = false,
+  children,
+}: FieldShellProps): ReactElement {
   return (
-    <div>
-      <label htmlFor={id} className="block text-xs text-gray-400 mb-1">
+    <div className={width}>
+      <label htmlFor={id} className={hideLabel ? 'sr-only' : 'block text-xs text-gray-400 mb-1'}>
         {label}
+        {optional && ' (optional)'}
       </label>
       {children}
       {error !== undefined && (
@@ -36,6 +61,7 @@ interface TextFieldProps {
   readonly error: string | undefined;
   readonly type?: 'text' | 'password';
   readonly placeholder?: string;
+  readonly width?: string;
   /** For a modal's first field; `ModalShell` then leaves focus on it rather than on the panel. */
   readonly initialFocus?: boolean;
   readonly onChange: (value: string) => void;
@@ -49,11 +75,12 @@ export function TextField({
   error,
   type = 'text',
   placeholder,
+  width,
   initialFocus,
   onChange,
 }: TextFieldProps): ReactElement {
   return (
-    <FieldShell id={id} label={label} error={error}>
+    <FieldShell id={id} label={label} error={error} width={width}>
       <input
         id={id}
         type={type}
@@ -66,6 +93,106 @@ export function TextField({
         aria-describedby={error !== undefined ? `${id}-error` : undefined}
         className={FIELD_CLASS}
       />
+    </FieldShell>
+  );
+}
+
+interface DateFieldProps {
+  readonly id: string;
+  readonly label: string;
+  /** ISO `yyyy-MM-dd`, or `''` when unset — the native date input's own value format. */
+  readonly value: string;
+  readonly error: string | undefined;
+  readonly optional?: boolean;
+  /** Marks the control required for assistive tech. Validation stays with the caller's `error`. */
+  readonly required?: boolean;
+  readonly width?: string;
+  readonly onChange: (value: string) => void;
+  readonly onBlur?: () => void;
+}
+
+/**
+ * The native picker's only malformed value is empty, so the caller owns everything past the shape —
+ * required, and whether the day named is one their domain accepts.
+ */
+export function DateField({
+  id,
+  label,
+  value,
+  error,
+  optional,
+  required,
+  width,
+  onChange,
+  onBlur,
+}: DateFieldProps): ReactElement {
+  return (
+    <FieldShell id={id} label={label} error={error} optional={optional} width={width}>
+      <input
+        id={id}
+        type="date"
+        value={value}
+        required={required}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={onBlur}
+        aria-invalid={error !== undefined}
+        aria-describedby={error !== undefined ? `${id}-error` : undefined}
+        className={FIELD_CLASS}
+      />
+    </FieldShell>
+  );
+}
+
+interface SelectFieldProps {
+  readonly id: string;
+  readonly label: string;
+  readonly value: string;
+  readonly error: string | undefined;
+  readonly optional?: boolean;
+  /** Marks the control required for assistive tech. Validation stays with the caller's `error`. */
+  readonly required?: boolean;
+  readonly placeholder: string;
+  readonly options: readonly SelectOption[];
+  readonly width?: string;
+  readonly onChange: (value: string) => void;
+  readonly onBlur?: () => void;
+}
+
+/** The placeholder option is disabled, so it offers no way back to unset — see `FieldShell`. */
+export function SelectField({
+  id,
+  label,
+  value,
+  error,
+  optional,
+  required,
+  placeholder,
+  options,
+  width,
+  onChange,
+  onBlur,
+}: SelectFieldProps): ReactElement {
+  return (
+    <FieldShell id={id} label={label} error={error} optional={optional} width={width}>
+      <select
+        id={id}
+        value={value}
+        required={required}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={onBlur}
+        aria-invalid={error !== undefined}
+        aria-describedby={error !== undefined ? `${id}-error` : undefined}
+        className={FIELD_CLASS}
+      >
+        <option value="" disabled>
+          {placeholder}
+        </option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
     </FieldShell>
   );
 }
