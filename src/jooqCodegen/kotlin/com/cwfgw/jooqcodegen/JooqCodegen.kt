@@ -1,6 +1,5 @@
 package com.cwfgw.jooqcodegen
 
-import org.flywaydb.core.Flyway
 import org.jooq.codegen.GenerationTool
 import org.jooq.meta.jaxb.Configuration
 import org.jooq.meta.jaxb.Database
@@ -10,9 +9,6 @@ import org.jooq.meta.jaxb.Jdbc
 import org.jooq.meta.jaxb.Target
 import org.testcontainers.containers.PostgreSQLContainer
 
-private const val SCHEMA = "cwfgw4k"
-private const val POSTGRES_IMAGE = "postgres:18-alpine"
-
 fun main(args: Array<String>) {
     require(args.size == 3) {
         "Usage: JooqCodegen <migrations-dir> <output-dir> <package-name>"
@@ -21,24 +17,9 @@ fun main(args: Array<String>) {
     val outputDir = args[1]
     val packageName = args[2]
 
-    PostgreSQLContainer<Nothing>(POSTGRES_IMAGE).use { postgres ->
-        postgres.start()
-        runFlyway(postgres, migrationsDir)
+    withMigratedPostgres(migrationsDir) { postgres ->
         GenerationTool.generate(buildJooqConfig(postgres, outputDir, packageName))
     }
-}
-
-private fun runFlyway(
-    postgres: PostgreSQLContainer<Nothing>,
-    migrationsDir: String,
-) {
-    Flyway.configure()
-        .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-        .schemas(SCHEMA)
-        .createSchemas(true)
-        .locations("filesystem:$migrationsDir")
-        .load()
-        .migrate()
 }
 
 private fun buildJooqConfig(
