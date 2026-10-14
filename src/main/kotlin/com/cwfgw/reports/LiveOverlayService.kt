@@ -409,7 +409,12 @@ private fun livePayoutMap(liveData: EspnLivePreview): Map<Pair<TeamId, GolferId>
             (team.teamId to score.golferId) to
                 LiveCellInputs(
                     payout = score.payout,
-                    finish = finishAt(score.position, score.numTied, liveData.isTeamEvent),
+                    finish =
+                        finishAt(
+                            position = score.position,
+                            numTied = score.numTied,
+                            isTeamEvent = liveData.isTeamEvent,
+                        ),
                     scoreToPar = score.scoreToPar,
                 )
         }

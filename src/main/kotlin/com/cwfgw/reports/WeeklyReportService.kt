@@ -624,7 +624,9 @@ private fun deriveReportContext(inputs: WeeklyReportInputs): ReportContext {
         sideBetResults = aggregateSideBets(sideBetPerRound),
         finishByPosition =
             inputs.results.mapNotNull { it.position }.groupingBy { it }.eachCount()
-                .mapValues { (position, numTied) -> finishAt(position, numTied, inputs.tournament.isTeamEvent) },
+                .mapValues { (position, numTied) ->
+                    finishAt(position = position, numTied = numTied, isTeamEvent = inputs.tournament.isTeamEvent)
+                },
     )
 }
 

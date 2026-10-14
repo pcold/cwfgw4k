@@ -39,7 +39,11 @@ internal fun finishAt(
     position: Int,
     numTied: Int,
     isTeamEvent: Boolean,
-): ReportCellFinish = ReportCellFinish(position = position, tied = PayoutTable.tiedUnits(numTied, isTeamEvent) > 1)
+): ReportCellFinish =
+    ReportCellFinish(
+        position = position,
+        tied = PayoutTable.tiedUnits(numTied = numTied, isTeamEvent = isTeamEvent) > 1,
+    )
 
 /** The only place a finish becomes [ReportCell.positionStr], so the label cannot disagree with the typed fact. */
 internal fun ReportCellFinish.label(): String = if (tied) "T$position" else position.toString()

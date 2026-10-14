@@ -45,7 +45,7 @@ internal object PayoutTable {
         val payouts = rules.payouts
         val numPlaces = payouts.size
         if (position > numPlaces) return BigDecimal.ZERO
-        val tiedUnits = tiedUnits(numTied, isTeamEvent)
+        val tiedUnits = tiedUnits(numTied = numTied, isTeamEvent = isTeamEvent)
         val perTeamPayout =
             if (tiedUnits <= 1) {
                 payouts.getOrNull(position - 1)?.multiply(multiplier) ?: BigDecimal.ZERO
