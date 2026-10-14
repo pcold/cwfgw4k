@@ -44,7 +44,7 @@ sealed interface ConfigViolation {
         override val requirement: String = SECONDS_REQUIREMENT
     }
 
-    /** Zero would refuse every login, the first included. */
+    /** Mirrors [com.cwfgw.users.LoginThrottle]'s `require`, so a bad value names its key at load. */
     data object LoginThrottleMaxFailuresNotPositive : ConfigViolation {
         override val key: String = "loginThrottle.maxFailures"
         override val requirement: String = "must be at least 1"
