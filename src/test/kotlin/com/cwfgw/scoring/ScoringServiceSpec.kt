@@ -155,13 +155,13 @@ private class Fixture(
                 teamRepository = teamRepo,
             )
     }
-
-    fun calculateScores(): Result<WeeklyScoreResult, ScoringError> =
-        with(noopTransactionContext) { service.calculateScoresIn(SEASON_ID, TOURNAMENT_ID) }
-
-    fun refreshStandings(): Result<List<SeasonStanding>, ScoringError> =
-        with(noopTransactionContext) { service.refreshStandingsIn(SEASON_ID) }
 }
+
+private fun Fixture.calculateScores(): Result<WeeklyScoreResult, ScoringError> =
+    with(noopTransactionContext) { service.calculateScoresIn(SEASON_ID, TOURNAMENT_ID) }
+
+private fun Fixture.refreshStandings(): Result<List<SeasonStanding>, ScoringError> =
+    with(noopTransactionContext) { service.refreshStandingsIn(SEASON_ID) }
 
 class ScoringServiceSpec : FunSpec({
 

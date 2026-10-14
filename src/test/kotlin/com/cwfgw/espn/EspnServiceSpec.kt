@@ -136,14 +136,15 @@ private class Fixture(
             linkRepository = linkRepo,
             tx = transactor,
         )
-
-    fun persistImport(
-        event: EspnTournament,
-        target: Tournament = tournament(),
-    ) = with(noopTransactionContext) { service.persistImportIn(target, event) }
-
-    fun results(): List<TournamentResult> = with(noopTransactionContext) { tournamentRepo.getResults(TOURNAMENT_ID) }
 }
+
+private fun Fixture.persistImport(
+    event: EspnTournament,
+    target: Tournament = tournament(),
+) = with(noopTransactionContext) { service.persistImportIn(target, event) }
+
+private fun Fixture.results(): List<TournamentResult> =
+    with(noopTransactionContext) { tournamentRepo.getResults(TOURNAMENT_ID) }
 
 class EspnServiceSpec : FunSpec({
 
