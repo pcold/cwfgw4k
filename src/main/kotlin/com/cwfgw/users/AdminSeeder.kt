@@ -2,6 +2,8 @@ package com.cwfgw.users
 
 import com.cwfgw.config.AuthConfig
 import com.cwfgw.db.Transactor
+import com.cwfgw.db.updateOrOutraced
+import com.cwfgw.result.Result
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val log = KotlinLogging.logger {}
@@ -33,8 +35,12 @@ suspend fun seedAdminIfEmpty(
     }
 
     val hash = authService.hashPassword(password.cleartext)
-    tx.update {
-        userRepository.create(NewUser(username = username, passwordHash = hash, role = UserRole.Admin))
+    val seeded =
+        tx.updateOrOutraced(UNIQUE_USERNAME, outraced = { UserError.UsernameTaken }) {
+            Result.Ok(userRepository.create(NewUser(username = username, passwordHash = hash, role = UserRole.Admin)))
+        }
+    when (seeded) {
+        is Result.Ok -> log.info { "Seeded initial admin user '$username'" }
+        is Result.Err -> log.info { "Another instance seeded the initial admin user first" }
     }
-    log.info { "Seeded initial admin user '$username'" }
 }
