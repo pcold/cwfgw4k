@@ -20,7 +20,7 @@ interface Wash {
 
 type Backdrop = string | Wash;
 
-// WCAG 2.2 §1.4.3. The large-text carve-out (3:1) is not taken: the only large text is a page heading.
+// WCAG 2.2 §1.4.3. The large-text carve-out (3:1) is not taken: no more than a page heading could claim it.
 const AA_NORMAL_TEXT = 4.5;
 
 // Where each text token renders, from the call sites. Hover fills are listed because the label stays put;
@@ -74,7 +74,7 @@ const BELOW_AA_AT_INTRODUCTION: ReadonlySet<string> = new Set([
 ]);
 
 // Names alone cannot say which tokens are text: `semantic-danger` is, `semantic-danger-fill` is not.
-const componentSources = import.meta.glob<string>(['./**/*.{ts,tsx}', '!./**/*.test.{ts,tsx}'], {
+const productionSources = import.meta.glob<string>(['./**/*.{ts,tsx}', '!./**/*.test.{ts,tsx}'], {
   query: '?raw',
   import: 'default',
   eager: true,
@@ -180,7 +180,7 @@ const describeBackdrop = (backdrop: Backdrop): string =>
 
 // A disabled control's label is exempt (§1.4.3), so a token set only there needs no row.
 const textTokensInUse: ReadonlySet<string> = new Set(
-  Object.values(componentSources).flatMap((source) =>
+  Object.values(productionSources).flatMap((source) =>
     [...source.matchAll(TEXT_CLASS_PATTERN)]
       .filter((match) => !captured(match, 0).includes('disabled:'))
       .map((match) => captured(match, 2))
