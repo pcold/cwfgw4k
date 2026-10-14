@@ -225,21 +225,19 @@ describe('AdminPage', () => {
       expect(authMeMock).toHaveBeenCalledTimes(2);
     });
 
-    it('keeps a session the server still honours, as after a fresh login', async () => {
+    it('keeps a session the server still honours, and the input typed into it', async () => {
+      const user = userEvent.setup();
       await renderSignedIn();
+      await user.type(screen.getByLabelText('New league name'), 'Castlewood');
 
       const answerReask = holdTheReask();
       reportExpiry();
-
-      expect(authMeMock).toHaveBeenCalledTimes(2);
-      expect(screen.getByRole('heading', { name: 'Admin' })).toBeInTheDocument();
-      expect(screen.queryByText('Checking session…')).not.toBeInTheDocument();
-
+      await waitFor(() => {
+        expect(authMeMock).toHaveBeenCalledTimes(2);
+      });
       answerReask(adminUser);
 
-      await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Admin' })).toBeInTheDocument();
-      });
+      expect(await screen.findByLabelText('New league name')).toHaveValue('Castlewood');
       expect(screen.queryByRole('dialog', { name: /Admin Login/i })).not.toBeInTheDocument();
     });
   });
