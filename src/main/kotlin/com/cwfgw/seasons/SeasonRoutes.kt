@@ -49,15 +49,22 @@ private fun CreateSeasonViolation.toDomainError(): DomainError =
         CreateSeasonViolation.NoPayoutPlaces -> DomainError.Validation("payouts must list at least one place")
         CreateSeasonViolation.NoSideBetRounds -> DomainError.Validation("side bet rounds must list at least one round")
         CreateSeasonViolation.DuplicateSideBetRound -> DomainError.Validation("side bet rounds must not repeat a round")
-        CreateSeasonViolation.NegativeSideBetAmount -> DomainError.Validation("side bet amount must not be negative")
         CreateSeasonViolation.BlankName -> DomainError.Validation("season name must not be blank")
-        CreateSeasonViolation.NegativePayout -> DomainError.Validation("payouts must not be negative")
-        CreateSeasonViolation.NegativeTieFloor -> DomainError.Validation("tie floor must not be negative")
         CreateSeasonViolation.MaxTeamsBelowOne -> DomainError.Validation("max teams must be at least 1")
-        CreateSeasonViolation.PayoutTooLarge -> DomainError.Validation("payouts must be less than 1,000,000")
-        CreateSeasonViolation.TieFloorTooLarge -> DomainError.Validation("tie floor must be less than 1,000,000")
-        CreateSeasonViolation.SideBetAmountTooLarge ->
-            DomainError.Validation("side bet amount must be less than 1,000,000")
+        is CreateSeasonViolation.RuleAmount -> DomainError.Validation(message())
+    }
+
+private fun CreateSeasonViolation.RuleAmount.message(): String =
+    when (this) {
+        CreateSeasonViolation.NegativeSideBetAmount -> "side bet amount must not be negative"
+        CreateSeasonViolation.NegativePayout -> "payouts must not be negative"
+        CreateSeasonViolation.NegativeTieFloor -> "tie floor must not be negative"
+        CreateSeasonViolation.PayoutTooLarge -> "payouts must be less than 1,000,000"
+        CreateSeasonViolation.TieFloorTooLarge -> "tie floor must be less than 1,000,000"
+        CreateSeasonViolation.SideBetAmountTooLarge -> "side bet amount must be less than 1,000,000"
+        CreateSeasonViolation.PayoutTooManyDecimalPlaces -> "payouts must have at most 4 decimal places"
+        CreateSeasonViolation.TieFloorTooManyDecimalPlaces -> "tie floor must have at most 4 decimal places"
+        CreateSeasonViolation.SideBetAmountTooManyDecimalPlaces -> "side bet amount must have at most 4 decimal places"
     }
 
 private suspend fun RoutingContext.getRules(service: SeasonService) {

@@ -33,6 +33,16 @@ private fun overflowCases(amount: BigDecimal): List<Pair<CreateSeasonRequest, Cr
     )
 }
 
+private fun decimalPlacesCases(amount: BigDecimal): List<Pair<CreateSeasonRequest, CreateSeasonViolation>> {
+    val rules = SeasonRules.defaults()
+    return listOf(
+        request(rules.copy(payouts = listOf(BigDecimal(18), amount))) to
+            CreateSeasonViolation.PayoutTooManyDecimalPlaces,
+        request(rules.copy(tieFloor = amount)) to CreateSeasonViolation.TieFloorTooManyDecimalPlaces,
+        request(rules.copy(sideBetAmount = amount)) to CreateSeasonViolation.SideBetAmountTooManyDecimalPlaces,
+    )
+}
+
 private fun outOfRangeRefusals(): List<Pair<CreateSeasonRequest, String>> {
     val rules = SeasonRules.defaults()
     val overflow = BigDecimal("1e7")
@@ -119,6 +129,19 @@ class CreateSeasonViolationSpec : FunSpec({
 
     test("each rule amount at the largest NUMERIC(10,4) holds, 999999.9999, has no violation") {
         overflowCases(BigDecimal("999999.9999")).forEach { (largest, _) -> largest.violation().shouldBeNull() }
+    }
+
+    test("each rule amount past four decimal places, trailing zeros counted, is its TooManyDecimalPlaces variant") {
+        listOf("12.34565", "15.00000", "1e-20000", "0E-20000", "1." + "0".repeat(16384)).map(::BigDecimal)
+            .forEach { amount ->
+                decimalPlacesCases(amount).forEach { (tooFine, variant) -> tooFine.violation() shouldBe variant }
+            }
+    }
+
+    test("each rule amount at four places or fewer, a negative scale included, has no violation") {
+        listOf("12.3456", "1E+5", "0E+2000000000").map(::BigDecimal).forEach { amount ->
+            decimalPlacesCases(amount).forEach { (fineEnough, _) -> fineEnough.violation().shouldBeNull() }
+        }
     }
 
     test("POST /api/v1/seasons refuses a violation with 400, its message, and no season written") {
