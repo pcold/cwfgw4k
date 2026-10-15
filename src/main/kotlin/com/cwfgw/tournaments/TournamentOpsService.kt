@@ -99,15 +99,8 @@ class TournamentOpsService(
         }
 
     /**
-     * Persist whichever events apply for this finalize. Linked
-     * tournament: match the single event by `pga_tournament_id` and
-     * persist it; if ESPN doesn't have that event on the date, the
-     * import is a no-op (scoring still runs against whatever results
-     * are already in the DB). Unlinked tournament: iterate completed
-     * events and persist any that match a DB tournament by
-     * `pga_tournament_id` — the original tournament being finalized
-     * has no `pga_tournament_id` so it won't match, mirroring the
-     * pre-CWF-25 behavior.
+     * An unlinked tournament's matches are all locked before any import, so a reset of one waits for it. Their own
+     * seasons' order is never checked: a match may be completed while an earlier sibling of it is still upcoming.
      */
     context(ctx: WriteTransactionContext)
     private fun persistEspnEventsIn(

@@ -25,9 +25,9 @@ interface TournamentRepository {
     fun findById(id: TournamentId): Tournament?
 
     /**
-     * Locks the season row before the tournament, the order a season delete's cascade takes both. NO KEY UPDATE
-     * runs one caller per season at a time, as the ordering checks against siblings need; it leaves an FK insert's
-     * key-share on the season free.
+     * Locks the season row before the tournament, the order a season delete's cascade takes both. NO KEY UPDATE runs
+     * one finalize or reset per season at a time, so each sees the other's sibling writes. Admin edits and a season
+     * clean-results take no season lock, and an FK insert's key-share stays free.
      */
     context(ctx: WriteTransactionContext)
     fun findByIdForUpdate(id: TournamentId): Tournament?
@@ -36,8 +36,8 @@ interface TournamentRepository {
     fun findByPgaTournamentId(pgaTournamentId: String): Tournament?
 
     /**
-     * Key-shares their seasons, then locks the tournaments in id order: an id never changes, where a start date can
-     * between two lockers' reads. An id that matches no row is skipped.
+     * Locks in id order: an id never changes, where a start date can between two lockers' reads. Their seasons go
+     * unlocked, since a NO KEY UPDATE on them deadlocks two finalizes importing into each other's season.
      */
     context(ctx: WriteTransactionContext)
     fun findByPgaTournamentIdsForUpdate(pgaTournamentIds: Collection<String>): List<Tournament>
@@ -151,15 +151,8 @@ private class JooqTournamentRepository : TournamentRepository {
     context(ctx: WriteTransactionContext)
     override fun findByPgaTournamentIdsForUpdate(pgaTournamentIds: Collection<String>): List<Tournament> {
         if (pgaTournamentIds.isEmpty()) return emptyList()
-        val matching = TOURNAMENTS.PGA_TOURNAMENT_ID.`in`(pgaTournamentIds)
-        ctx.dsl.selectOne()
-            .from(SEASONS)
-            .where(SEASONS.ID.`in`(DSL.select(TOURNAMENTS.SEASON_ID).from(TOURNAMENTS).where(matching)))
-            .orderBy(SEASONS.ID.asc())
-            .forKeyShare()
-            .execute()
         return ctx.dsl.selectFrom(TOURNAMENTS)
-            .where(matching)
+            .where(TOURNAMENTS.PGA_TOURNAMENT_ID.`in`(pgaTournamentIds))
             .orderBy(TOURNAMENTS.ID.asc())
             .forUpdate()
             .fetch(::toTournament)
