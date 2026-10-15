@@ -2,11 +2,13 @@ package com.cwfgw.golfers
 
 /**
  * Both lookups key on the "first last" concatenation, never on the stored columns, so a row split at either
- * space (old ESPN imports cut at the first) is found the same way.
+ * space (old ESPN imports cut at the first) is found the same way. Neither finds a tombstoned row, but [golfers]
+ * keeps it: an ESPN id a tombstone holds is still held.
  */
 internal class GolferNameIndex(val golfers: List<Golfer>) {
-    private val byFullName: Map<String, List<Golfer>> = golfers.groupBy { normalizeName(fullName(it)) }
-    private val bySurname: Map<String, List<Golfer>> = golfers.groupBy { surnameKey(fullName(it)) }
+    private val matchable: List<Golfer> = golfers.filter { it.tombstonedAt == null }
+    private val byFullName: Map<String, List<Golfer>> = matchable.groupBy { normalizeName(fullName(it)) }
+    private val bySurname: Map<String, List<Golfer>> = matchable.groupBy { surnameKey(fullName(it)) }
 
     fun matchFullName(name: String): GolferNameMatch = lookUp(byFullName, normalizeName(name))
 

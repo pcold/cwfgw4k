@@ -4,6 +4,7 @@ import com.cwfgw.serialization.InstantSerializer
 import com.cwfgw.serialization.UUIDSerializer
 import com.cwfgw.serialization.toUUIDOrNull
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import java.time.Instant
 import java.util.UUID
 
@@ -26,6 +27,8 @@ data class Golfer(
     val country: String?,
     val worldRanking: Int?,
     @Serializable(with = InstantSerializer::class) val updatedAt: Instant,
+    /** Off the wire: only [GolferNameIndex] reads it, and a tombstoned row still answers every read by id. */
+    @Transient val tombstonedAt: Instant? = null,
 )
 
 @Serializable

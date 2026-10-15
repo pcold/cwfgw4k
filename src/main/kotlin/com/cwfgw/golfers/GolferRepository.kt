@@ -129,5 +129,6 @@ private class JooqGolferRepository : GolferRepository {
             country = record.country,
             worldRanking = record.worldRanking,
             updatedAt = record.required(GOLFERS.UPDATED_AT).toInstant(),
+            tombstonedAt = record.tombstonedAt?.toInstant(),
         )
 }
