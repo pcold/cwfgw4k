@@ -144,6 +144,18 @@ class SeasonRepositorySpec : FunSpec({
         created.sideBetAmount.signum() shouldBe 0
     }
 
+    test("create past the route guard is refused a blank name by the CHECK") {
+        val refusal =
+            shouldThrow<DataAccessException> {
+                tx.update {
+                    repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "   ", seasonYear = 2026))
+                }
+            }
+
+        refusal.message shouldContain "seasons_name_not_blank"
+        tx.read { repository.findAll(leagueId = castlewoodId, seasonYear = null) }.shouldBeEmpty()
+    }
+
     test("findAll orders by year desc, number desc, created_at desc") {
         tx.update {
             val older =
