@@ -4,6 +4,7 @@ import { api } from '@/shared/api/client';
 import { invalidateAfterScoreOwnerChange, queryKeys } from '@/shared/api/queryKeys';
 import type {
   GolferAssignment,
+  GolferCandidate,
   League,
   RosterConfirmResult,
   RosterConfirmTeamInput,
@@ -19,7 +20,7 @@ function pickKey(teamNumber: number, pick: RosterPreviewPick): string {
   return `${teamNumber}|${pick.round}|${pick.playerName}`;
 }
 
-// Selections value is either a golferId (existing pick) or '' / 'none' for
+// An ambiguous pick's selection is a candidateValue, or '' / 'none' for
 // "create new". Sentinels rather than null because <select> values are strings.
 const CREATE_NEW = 'none';
 
@@ -31,15 +32,13 @@ const PREVIEW_BUTTON_CLASS =
   'bg-semantic-info-fill hover:bg-semantic-info-fill-hover disabled:bg-disabled text-on-fill ' +
   'px-4 py-2 rounded text-sm font-medium';
 
-function initialSelections(preview: RosterPreview): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const team of preview.teams) {
-    for (const pick of team.picks) {
-      const key = pickKey(team.teamNumber, pick);
-      out[key] = pick.match.type === 'matched' ? pick.match.golferId : '';
-    }
-  }
-  return out;
+// Prefixed by source, since a golfer id and an ESPN id share no namespace.
+function candidateValue(candidate: GolferCandidate): string {
+  return candidate.type === 'existing' ? `existing:${candidate.golferId}` : `espn:${candidate.espnId}`;
+}
+
+function candidateLabel(candidate: GolferCandidate): string {
+  return candidate.type === 'existing' ? candidate.name : `${candidate.name} (new from ESPN)`;
 }
 
 export function buildConfirmTeams(
@@ -58,10 +57,31 @@ export function buildConfirmTeams(
 }
 
 function assignmentFor(pick: RosterPreviewPick, selected: string): GolferAssignment {
-  if (selected && selected !== CREATE_NEW) {
-    return { type: 'existing', golferId: selected };
+  const match = pick.match;
+  switch (match.type) {
+    case 'matched':
+      return { type: 'existing', golferId: match.golferId };
+    case 'matched_espn':
+      return { type: 'espn', espnId: match.espnId, name: match.golferName };
+    case 'ambiguous': {
+      const chosen = match.candidates.find((candidate) => candidateValue(candidate) === selected);
+      return chosen ? candidateAssignment(chosen) : newGolfer(pick.playerName);
+    }
+    case 'no_match':
+      return newGolfer(pick.playerName);
+    default:
+      return match satisfies never;
   }
-  const { firstName, lastName } = splitName(pick.playerName);
+}
+
+function candidateAssignment(candidate: GolferCandidate): GolferAssignment {
+  return candidate.type === 'existing'
+    ? { type: 'existing', golferId: candidate.golferId }
+    : { type: 'espn', espnId: candidate.espnId, name: candidate.name };
+}
+
+function newGolfer(playerName: string): GolferAssignment {
+  const { firstName, lastName } = splitName(playerName);
   return { type: 'new', firstName, lastName };
 }
 
@@ -100,7 +120,7 @@ function UploadRostersSection(): ReactNode {
     mutationFn: (roster: string) => api.previewRoster(roster),
     onSuccess: (data: RosterPreview) => {
       setPreview(data);
-      setSelections(initialSelections(data));
+      setSelections({});
       setResult(null);
     },
   });
@@ -342,7 +362,7 @@ function RosterReviewStep({
                       {pick.ownershipPct < 100 ? `${pick.ownershipPct}%` : null}
                     </td>
                     <td className="px-2 py-1.5 w-6 text-center">
-                      {match.type === 'matched' ? (
+                      {match.type === 'matched' || match.type === 'matched_espn' ? (
                         <span className="text-semantic-success" aria-label="exact match">
                           ✓
                         </span>
@@ -362,6 +382,12 @@ function RosterReviewStep({
                       {match.type === 'matched' ? (
                         <span className="text-semantic-success">{match.golferName}</span>
                       ) : null}
+                      {match.type === 'matched_espn' ? (
+                        <>
+                          <span className="text-semantic-success">{match.golferName}</span>
+                          <span className="ml-1 text-ink-muted">(new from ESPN)</span>
+                        </>
+                      ) : null}
                       {match.type === 'ambiguous' ? (
                         <select
                           aria-label={`Golfer match for ${pick.playerName}`}
@@ -373,8 +399,8 @@ function RosterReviewStep({
                         >
                           <option value="">-- select player --</option>
                           {match.candidates.map((c) => (
-                            <option key={c.golferId} value={c.golferId}>
-                              {c.name}
+                            <option key={candidateValue(c)} value={candidateValue(c)}>
+                              {candidateLabel(c)}
                             </option>
                           ))}
                           <option value={CREATE_NEW}>None of these (create new)</option>

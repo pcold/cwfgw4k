@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { QueryKey } from '@tanstack/react-query';
 import type { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
-import type { RosterPreview } from '@/shared/api/types';
+import type { PickMatch, RosterPreview } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
 import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
@@ -67,8 +67,8 @@ function samplePreview(): RosterPreview {
             match: {
               type: 'ambiguous',
               candidates: [
-                { golferId: 'g-100', name: 'Cameron Smith' },
-                { golferId: 'g-200', name: 'Jordan Smith' },
+                { type: 'existing', golferId: 'g-100', name: 'Cameron Smith' },
+                { type: 'existing', golferId: 'g-200', name: 'Jordan Smith' },
               ],
             },
           },
@@ -84,12 +84,27 @@ function samplePreview(): RosterPreview {
   };
 }
 
+function espnPreview(match: PickMatch): RosterPreview {
+  return {
+    totalPicks: 1,
+    matchedCount: match.type === 'matched_espn' ? 1 : 0,
+    ambiguousCount: match.type === 'ambiguous' ? 1 : 0,
+    unmatchedCount: 0,
+    teams: [
+      {
+        teamNumber: 1,
+        teamName: 'BROWN',
+        picks: [{ round: 1, playerName: 'Scottie Scheffler', ownershipPct: 100, match }],
+      },
+    ],
+  };
+}
+
 describe('buildConfirmTeams', () => {
   it('maps matched, ambiguous selection, and no_match picks correctly', () => {
     const preview = samplePreview();
     const selections: Record<string, string> = {
-      '1|1|Scottie Scheffler': 'g-9478',
-      '1|2|Cam Smith': 'g-100',
+      '1|2|Cam Smith': 'existing:g-100',
       '1|3|Brand New': '',
     };
     const teams = buildConfirmTeams(preview, selections);
@@ -121,13 +136,42 @@ describe('buildConfirmTeams', () => {
   it('treats a "none" selection as create-new with the input name split into first/last', () => {
     const preview = samplePreview();
     const selections: Record<string, string> = {
-      '1|1|Scottie Scheffler': 'g-9478',
       '1|2|Cam Smith': 'none',
       '1|3|Brand New': '',
     };
     const teams = buildConfirmTeams(preview, selections);
     expect(nth(teams, 0).picks[1]).toMatchObject({
       assignment: { type: 'new', firstName: 'Cam', lastName: 'Smith' },
+    });
+  });
+
+  it('sends a matched_espn pick as an espn assignment, whatever the selections hold', () => {
+    const preview = espnPreview({
+      type: 'matched_espn',
+      espnId: 'espn-9478',
+      golferName: 'Scottie Scheffler',
+    });
+    const teams = buildConfirmTeams(preview, {});
+    expect(nth(nth(teams, 0).picks, 0).assignment).toEqual({
+      type: 'espn',
+      espnId: 'espn-9478',
+      name: 'Scottie Scheffler',
+    });
+  });
+
+  it('sends an ambiguous pick resolved to an ESPN candidate as an espn assignment', () => {
+    const preview = espnPreview({
+      type: 'ambiguous',
+      candidates: [
+        { type: 'existing', golferId: 'g-100', name: 'Scottie Scheffler' },
+        { type: 'espn', espnId: 'espn-9478', name: 'Scottie Scheffler' },
+      ],
+    });
+    const teams = buildConfirmTeams(preview, { '1|1|Scottie Scheffler': 'espn:espn-9478' });
+    expect(nth(nth(teams, 0).picks, 0).assignment).toEqual({
+      type: 'espn',
+      espnId: 'espn-9478',
+      name: 'Scottie Scheffler',
     });
   });
 
@@ -200,7 +244,7 @@ describe('UploadRostersSection', () => {
     expect(screen.getAllByText('Scottie Scheffler').length).toBeGreaterThan(0);
 
     const dropdown = screen.getByLabelText(/Golfer match for Cam Smith/i);
-    await user.selectOptions(dropdown, 'g-100');
+    await user.selectOptions(dropdown, 'existing:g-100');
 
     await user.click(screen.getByRole('button', { name: /Confirm & Create Teams/i }));
 
@@ -219,6 +263,60 @@ describe('UploadRostersSection', () => {
     const resultRegion = screen.getByText('Rosters Created').parentElement;
     if (!resultRegion) throw new Error('the Rosters Created heading has no region around it');
     expect(within(resultRegion).getByText(/BROWN/)).toBeInTheDocument();
+  });
+
+  it('offers an ESPN athlete as a new golfer and confirms the chosen one as an espn assignment', async () => {
+    previewRosterMock.mockResolvedValue(
+      espnPreview({
+        type: 'ambiguous',
+        candidates: [
+          { type: 'existing', golferId: 'g-100', name: 'Scottie Scheffler' },
+          { type: 'espn', espnId: 'espn-9478', name: 'Scottie Scheffler' },
+        ],
+      }),
+    );
+    confirmRosterMock.mockResolvedValue({ teamsCreated: 1, golfersCreated: 1, teams: [] });
+
+    const user = userEvent.setup();
+    renderWithProviders(<UploadRostersSection />, { withLeagueSeasonProvider: false });
+
+    await waitFor(() => {
+      expect(screen.getByText('2026 Spring')).toBeInTheDocument();
+    });
+    await uploadRosterFile(user, 'TEAM 1 BROWN\n1 SCHEFFLER');
+    await user.click(screen.getByRole('button', { name: /Match Players with ESPN/i }));
+
+    const dropdown = await screen.findByLabelText(/Golfer match for Scottie Scheffler/i);
+    await user.selectOptions(dropdown, 'Scottie Scheffler (new from ESPN)');
+    await user.click(screen.getByRole('button', { name: /Confirm & Create Teams/i }));
+
+    await waitFor(() => {
+      expect(confirmRosterMock).toHaveBeenCalledTimes(1);
+    });
+    const [args] = nth(confirmRosterMock.mock.calls, 0);
+    expect(nth(nth(args.teams, 0).picks, 0).assignment).toEqual({
+      type: 'espn',
+      espnId: 'espn-9478',
+      name: 'Scottie Scheffler',
+    });
+  });
+
+  it('marks a pick only ESPN names as a new golfer from ESPN', async () => {
+    previewRosterMock.mockResolvedValue(
+      espnPreview({ type: 'matched_espn', espnId: 'espn-9478', golferName: 'Scottie Scheffler' }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<UploadRostersSection />, { withLeagueSeasonProvider: false });
+
+    await waitFor(() => {
+      expect(screen.getByText('2026 Spring')).toBeInTheDocument();
+    });
+    await uploadRosterFile(user, 'TEAM 1 BROWN\n1 SCHEFFLER');
+    await user.click(screen.getByRole('button', { name: /Match Players with ESPN/i }));
+
+    expect(await screen.findByText('(new from ESPN)')).toBeInTheDocument();
+    expect(screen.getByLabelText('exact match')).toBeInTheDocument();
   });
 
   it.each(OPEN_WHEN_AN_UPLOAD_LANDS)(

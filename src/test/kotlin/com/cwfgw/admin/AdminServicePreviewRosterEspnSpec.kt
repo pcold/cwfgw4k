@@ -36,12 +36,8 @@ import java.time.LocalDate
 import java.util.UUID
 
 /**
- * Focused coverage for the ESPN-fishing fallback in
- * [AdminService.previewRoster] — picks that don't match the local `golfers`
- * table trigger a pull from ESPN's recent-active player pool, persist any
- * newly-discovered athletes, and re-match. Lives in its own spec so the
- * core matching cases stay in [AdminServiceSpec] and detekt's LargeClass
- * threshold doesn't trip.
+ * The ESPN fallback in [AdminService.previewRoster], apart from [AdminServiceSpec] so detekt's LargeClass threshold
+ * doesn't trip. That nothing reaches Postgres is [AdminServiceRosterEspnPersistenceSpec]'s.
  */
 class AdminServicePreviewRosterEspnSpec : FunSpec({
 
@@ -104,7 +100,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         )
     }
 
-    test("fishes ESPN when picks are unmatched, persists new golfers, and rematches") {
+    test("fishes ESPN when picks are unmatched and offers the athlete for confirm to create") {
         val f =
             fixture(
                 calendar = listOf(recentCalendarEntry),
@@ -126,15 +122,9 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         val result = f.service.previewRoster(tsv).orFail()
 
         result.matchedCount shouldBe 1
-        val match = result.teams.single().picks.single().match.shouldBeInstanceOf<PickMatch.Matched>()
-        match.golferName shouldBe "Scottie Scheffler"
-
-        // The ESPN-fish persisted the golfer with its pga_player_id so the next preview hits DB directly.
-        val persisted =
-            with(noopTransactionContext) { f.golferRepo.findAll(search = null) }
-                .single { it.pgaPlayerId == "espn-9478" }
-        persisted.firstName shouldBe "Scottie"
-        persisted.lastName shouldBe "Scheffler"
+        result.teams.single().picks.single().match shouldBe
+            PickMatch.MatchedEspn(espnId = "espn-9478", golferName = "Scottie Scheffler")
+        with(noopTransactionContext) { f.golferRepo.findAll(search = null) }.shouldHaveSize(0)
     }
 
     test("skips the ESPN fetch entirely when every pick already matches in DB") {
@@ -188,7 +178,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         val result = f.service.previewRoster(tsv).orFail()
 
         result.matchedCount shouldBe 1
-        val match = result.teams.single().picks.single().match.shouldBeInstanceOf<PickMatch.Matched>()
+        val match = result.teams.single().picks.single().match.shouldBeInstanceOf<PickMatch.MatchedEspn>()
         match.golferName shouldBe "José Ballester"
     }
 
@@ -224,7 +214,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
 
         result.matchedCount shouldBe 3
         result.unmatchedCount shouldBe 0
-        result.teams.single().picks.map { (it.match as PickMatch.Matched).golferName } shouldBe
+        result.teams.single().picks.map { (it.match as PickMatch.MatchedEspn).golferName } shouldBe
             listOf("Niklas Nørgaard-Petersen", "Ludvig Åberg", "Rasmus Højgaard")
     }
 
@@ -282,13 +272,11 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         val result = f.service.previewRoster(tsv).orFail()
 
         result.matchedCount shouldBe 1
-        val match = result.teams.single().picks.single().match.shouldBeInstanceOf<PickMatch.Matched>()
+        val match = result.teams.single().picks.single().match.shouldBeInstanceOf<PickMatch.MatchedEspn>()
         match.golferName shouldBe "Byeong-Hun An"
     }
 
-    test("does not double-create a golfer when ESPN returns an athlete already in the table") {
-        // The unique constraint on golfers.pga_player_id would blow up if this filter
-        // regressed; assert via row count to catch the regression in the fake too.
+    test("offers an ESPN athlete already in the table as its row, not as a second candidate") {
         val seeded =
             Golfer(
                 id = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000c01")),
@@ -326,12 +314,88 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
             1	BROWN	2	Brand New	100
             """.trimIndent()
 
-        f.service.previewRoster(tsv).shouldBeInstanceOf<Result.Ok<RosterPreviewResult>>()
+        val result = f.service.previewRoster(tsv).orFail()
 
-        val golfers = with(noopTransactionContext) { f.golferRepo.findAll(search = null) }
-        golfers shouldHaveSize 2
-        golfers.count { it.pgaPlayerId == "espn-9478" } shouldBe 1
-        golfers.single { it.pgaPlayerId == "espn-9999" }.firstName shouldBe "Brand"
+        result.teams.single().picks.map { it.match } shouldBe
+            listOf(
+                PickMatch.Matched(golferId = seeded.id, golferName = "Scottie Scheffler"),
+                PickMatch.MatchedEspn(espnId = "espn-9999", golferName = "Brand New"),
+            )
+        with(noopTransactionContext) { f.golferRepo.findAll(search = null) } shouldBe listOf(seeded)
+    }
+
+    test("an ESPN athlete whose row is spelled otherwise matches that row rather than no golfer") {
+        val seeded =
+            Golfer(
+                id = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000c03")),
+                pgaPlayerId = "espn-7",
+                firstName = "Matt",
+                lastName = "Fitzpatrick",
+                country = null,
+                worldRanking = null,
+                updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
+            )
+        val athlete = espnPlayer("espn-7", "Matthew Fitzpatrick")
+        val f =
+            fixture(
+                seedGolfers = listOf(seeded),
+                calendar = listOf(recentCalendarEntry),
+                scoreboards = mapOf(recentDate to listOf(espnEvent(competitors = listOf(athlete)))),
+            )
+
+        val result = f.service.previewRoster("$rosterHeader\n1\tBROWN\t1\tMatthew Fitzpatrick\t100").orFail()
+
+        result.teams.single().picks.single().match shouldBe
+            PickMatch.Matched(golferId = seeded.id, golferName = "Matt Fitzpatrick")
+    }
+
+    test("a name both a row without a pga_player_id and an ESPN athlete carry is ambiguous between them") {
+        val twin =
+            Golfer(
+                id = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000c02")),
+                pgaPlayerId = null,
+                firstName = "Scottie",
+                lastName = "Scheffler",
+                country = null,
+                worldRanking = null,
+                updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
+            )
+        val f =
+            fixture(
+                seedGolfers = listOf(twin),
+                calendar = listOf(recentCalendarEntry),
+                scoreboards =
+                    mapOf(
+                        recentDate to
+                            listOf(
+                                espnEvent(
+                                    competitors =
+                                        listOf(
+                                            espnPlayer("espn-9478", "Scottie Scheffler"),
+                                            espnPlayer("espn-9999", "Brand New"),
+                                        ),
+                                ),
+                            ),
+                    ),
+            )
+
+        // Brand New is what makes the preview ask ESPN at all.
+        val tsv =
+            """
+            $rosterHeader
+            1	BROWN	1	Scottie Scheffler	100
+            1	BROWN	2	Brand New	100
+            """.trimIndent()
+
+        val result = f.service.previewRoster(tsv).orFail()
+
+        result.teams.single().picks.first().match shouldBe
+            PickMatch.Ambiguous(
+                listOf(
+                    GolferCandidate.Existing(golferId = twin.id, name = "Scottie Scheffler"),
+                    GolferCandidate.Espn(espnId = "espn-9478", name = "Scottie Scheffler"),
+                ),
+            )
     }
 
     test("preview survives ESPN being unavailable — picks stay no_match instead of failing") {

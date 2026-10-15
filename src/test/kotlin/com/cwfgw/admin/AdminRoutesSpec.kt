@@ -409,6 +409,25 @@ class AdminRoutesSpec : FunSpec({
         }
     }
 
+    test("POST /api/v1/admin/roster/confirm returns 400 naming an ESPN athlete one team lists twice") {
+        authenticatedApiTest(adminFixture()) { client ->
+            val tomKim = GolferAssignment.Espn(espnId = "espn-1", name = "Tom Kim")
+            val picks =
+                listOf(1, 2).map { round ->
+                    ConfirmedPick(round = round, ownershipPct = 100, assignment = tomKim)
+                }
+            val response =
+                client.post("/api/v1/admin/roster/confirm") {
+                    contentType(ContentType.Application.Json)
+                    val brown = ConfirmedTeam(teamNumber = 1, teamName = "BROWN", picks = picks)
+                    setBody(ConfirmRosterRequest(seasonId = SEASON_ID, teams = listOf(brown)))
+                }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.bodyAsString().shouldContain("team 'BROWN' lists ESPN athlete espn-1")
+        }
+    }
+
     test("POST /api/v1/admin/roster/confirm returns 400 naming a pick in a round outside the draft") {
         authenticatedApiTest(adminFixture()) { client ->
             val roundNine =

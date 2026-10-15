@@ -112,7 +112,7 @@ class AdminServiceRaceSpec : FunSpec({
             Result.Err(AdminError.TeamNameTaken(seasonId))
     }
 
-    test("a roster preview that loses the race persisting an ESPN athlete matches the winner's row") {
+    test("a roster preview that misses the row an ESPN athlete already holds writes no second one") {
         seedSeason()
         tx.update {
             GolferRepository().create(
@@ -130,6 +130,28 @@ class AdminServiceRaceSpec : FunSpec({
         preview.matchedCount shouldBe 1
         tx.read { GolferRepository().findAll(search = null) }.map { it.pgaPlayerId } shouldContainExactly
             listOf("espn-1")
+    }
+
+    test("a roster confirm that loses the race inserting an ESPN athlete binds the pick to the winner's row") {
+        val seasonId = seedSeason()
+        val winner =
+            tx.update {
+                GolferRepository().create(
+                    CreateGolferRequest(pgaPlayerId = "espn-1", firstName = "Scottie", lastName = "Scheffler"),
+                )
+            }
+        val scottie = GolferAssignment.Espn("espn-1", "Scottie Scheffler")
+        val brown =
+            fullTeam(number = 1, name = "BROWN", ConfirmedPick(round = 1, ownershipPct = 100, assignment = scottie))
+
+        service(golferRepository = OnceBlindPgaIdGolferRepository(GolferRepository()))
+            .confirmRoster(ConfirmRosterRequest(seasonId = seasonId, teams = listOf(brown)))
+            .orFail()
+
+        tx.read { GolferRepository().findAll(search = null) }.filter { it.pgaPlayerId == "espn-1" } shouldContainExactly
+            listOf(winner)
+        tx.read { TeamRepository().findRostersBySeason(seasonId) }.single { it.draftRound == 1 }.golferId shouldBe
+            winner.id
     }
 })
 
@@ -154,6 +176,18 @@ private class OnceBlindGolferRepository(
     context(ctx: TransactionContext)
     override fun findAll(search: String?): List<Golfer> =
         if (blind.getAndSet(false)) emptyList() else inner.findAll(search)
+}
+
+/** @see OnceBlindTournamentRepository */
+private class OnceBlindPgaIdGolferRepository(
+    delegate: GolferRepository,
+) : GolferRepository by delegate {
+    private val inner = delegate
+    private val blind = AtomicBoolean(true)
+
+    context(ctx: TransactionContext)
+    override fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
+        if (blind.getAndSet(false)) null else inner.findByPgaPlayerId(pgaPlayerId)
 }
 
 private fun espnPlayer(

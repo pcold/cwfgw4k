@@ -8,6 +8,7 @@ import com.cwfgw.admin.GolferAssignment
 import com.cwfgw.admin.PickMatch
 import com.cwfgw.admin.PreviewTeam
 import com.cwfgw.admin.RosterPreviewResult
+import com.cwfgw.admin.toAssignment
 import com.cwfgw.admin.toConfirmedEntry
 import com.cwfgw.buildHttpClient
 import com.cwfgw.buildServices
@@ -158,7 +159,8 @@ private fun pickAssignment(
 ): GolferAssignment =
     when (match) {
         is PickMatch.Matched -> GolferAssignment.Existing(match.golferId)
-        is PickMatch.Ambiguous -> GolferAssignment.Existing(match.candidates.first().golferId)
+        is PickMatch.MatchedEspn -> GolferAssignment.Espn(espnId = match.espnId, name = match.golferName)
+        is PickMatch.Ambiguous -> match.candidates.first().toAssignment()
         PickMatch.NoMatch -> {
             val name = GolferName.splitName(playerName) ?: error("RosterParser let a blank player name through")
             GolferAssignment.New(firstName = name.firstName, lastName = name.lastName)

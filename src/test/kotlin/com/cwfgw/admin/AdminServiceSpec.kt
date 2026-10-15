@@ -428,7 +428,8 @@ class AdminServiceSpec : FunSpec({
         result.ambiguousCount shouldBe 1
         result.matchedCount shouldBe 0
         val match = result.teams.single().picks.single().match.shouldBeInstanceOf<PickMatch.Ambiguous>()
-        match.candidates.map { it.golferId } shouldContainExactly listOf(younger.id, older.id)
+        match.candidates shouldContainExactly
+            listOf(younger, older).map { GolferCandidate.Existing(golferId = it.id, name = "Justin Thomas") }
     }
 
     test("previewRoster summary counts mix matched, ambiguous, and unmatched across multiple teams") {
