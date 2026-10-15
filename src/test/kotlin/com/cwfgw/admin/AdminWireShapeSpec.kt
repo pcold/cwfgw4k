@@ -12,7 +12,7 @@ import java.util.UUID
 private const val FLEETWOOD_UUID = "00000000-0000-0000-0000-000000000100"
 private val FLEETWOOD_ID = GolferId(UUID.fromString(FLEETWOOD_UUID))
 
-/** The UI switches on each sealed type's `type` tag, so a variant's tag and field names are the contract. */
+/** The UI reads the `type` tag of what it is sent and writes it on what it sends: tags and field names are contract. */
 class AdminWireShapeSpec : FunSpec({
 
     context("a pick match encodes under its type tag and decodes back") {
