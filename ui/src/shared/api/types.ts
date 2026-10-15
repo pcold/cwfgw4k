@@ -277,10 +277,12 @@ export type GolferCandidate =
 
 // Mirrors the backend's sealed PickMatch hierarchy
 // (com.cwfgw.admin.PickMatch). kotlinx.serialization emits a "type"
-// discriminator with @SerialName values matched/matched_espn/ambiguous/no_match.
+// discriminator with @SerialName values matched/matched_espn/matched_backfill/ambiguous/no_match.
+// A `matched_backfill` pick is an existing golfer without an ESPN id; confirming it as an `espn` assignment adds the id.
 export type PickMatch =
   | { type: 'matched'; golferId: string; golferName: string }
   | { type: 'matched_espn'; espnId: string; golferName: string }
+  | { type: 'matched_backfill'; espnId: string; golferName: string }
   | { type: 'ambiguous'; candidates: GolferCandidate[] }
   | { type: 'no_match' };
 

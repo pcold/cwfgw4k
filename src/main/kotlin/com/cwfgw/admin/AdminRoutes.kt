@@ -64,6 +64,11 @@ private fun AdminError.toDomainError(): DomainError =
             DomainError.Validation("golfer ids not found: ${ids.joinToString(", ") { it.value.toString() }}")
         is AdminError.TeamNameTaken ->
             DomainError.Conflict("a team name in this roster is already taken in season ${seasonId.value}")
+        is AdminError.UnresolvableEspnGolfers ->
+            DomainError.Conflict(
+                "ESPN athletes ${espnIds.joinToString(", ")} share a name with a golfer that has no ESPN id and with " +
+                    "another golfer; assign the existing golfer instead",
+            )
         is AdminError.InvalidConfirmedRoster ->
             DomainError.Validation("invalid roster: " + problems.joinToString("; ") { it.describe() })
     }

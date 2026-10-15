@@ -87,7 +87,7 @@ function samplePreview(): RosterPreview {
 function espnPreview(match: PickMatch): RosterPreview {
   return {
     totalPicks: 1,
-    matchedCount: match.type === 'matched_espn' ? 1 : 0,
+    matchedCount: match.type === 'matched_espn' || match.type === 'matched_backfill' ? 1 : 0,
     ambiguousCount: match.type === 'ambiguous' ? 1 : 0,
     unmatchedCount: 0,
     teams: [
@@ -148,6 +148,20 @@ describe('buildConfirmTeams', () => {
   it('sends a matched_espn pick as an espn assignment, whatever the selections hold', () => {
     const preview = espnPreview({
       type: 'matched_espn',
+      espnId: 'espn-9478',
+      golferName: 'Scottie Scheffler',
+    });
+    const teams = buildConfirmTeams(preview, {});
+    expect(nth(nth(teams, 0).picks, 0).assignment).toEqual({
+      type: 'espn',
+      espnId: 'espn-9478',
+      name: 'Scottie Scheffler',
+    });
+  });
+
+  it('sends a matched_backfill pick as an espn assignment, so confirm adds the id to the existing golfer', () => {
+    const preview = espnPreview({
+      type: 'matched_backfill',
       espnId: 'espn-9478',
       golferName: 'Scottie Scheffler',
     });
@@ -316,6 +330,25 @@ describe('UploadRostersSection', () => {
     await user.click(screen.getByRole('button', { name: /Match Players with ESPN/i }));
 
     expect(await screen.findByText('(new from ESPN)')).toBeInTheDocument();
+    expect(screen.getByLabelText('exact match')).toBeInTheDocument();
+  });
+
+  it('marks a pick an id-less golfer and ESPN share as that golfer, not a new one', async () => {
+    previewRosterMock.mockResolvedValue(
+      espnPreview({ type: 'matched_backfill', espnId: 'espn-9478', golferName: 'Scottie Scheffler' }),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<UploadRostersSection />, { withLeagueSeasonProvider: false });
+
+    await waitFor(() => {
+      expect(screen.getByText('2026 Spring')).toBeInTheDocument();
+    });
+    await uploadRosterFile(user, 'TEAM 1 BROWN\n1 SCHEFFLER');
+    await user.click(screen.getByRole('button', { name: /Match Players with ESPN/i }));
+
+    expect(await screen.findByText('(ESPN id added on confirm)')).toBeInTheDocument();
+    expect(screen.queryByText('(new from ESPN)')).not.toBeInTheDocument();
     expect(screen.getByLabelText('exact match')).toBeInTheDocument();
   });
 

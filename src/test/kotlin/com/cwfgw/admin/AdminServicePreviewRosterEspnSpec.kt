@@ -27,6 +27,7 @@ import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -99,6 +100,25 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
                 ),
         )
     }
+
+    fun scottieFixture(vararg seeded: Golfer): TestFixture =
+        fixture(
+            seedGolfers = seeded.toList(),
+            calendar = listOf(recentCalendarEntry),
+            scoreboards =
+                mapOf(
+                    recentDate to
+                        listOf(
+                            espnEvent(
+                                competitors =
+                                    listOf(
+                                        espnPlayer("espn-9478", "Scottie Scheffler"),
+                                        espnPlayer("espn-9999", "Brand New"),
+                                    ),
+                            ),
+                        ),
+                ),
+        )
 
     test("fishes ESPN when picks are unmatched and offers the athlete for confirm to create") {
         val f =
@@ -349,53 +369,43 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
             PickMatch.Matched(golferId = seeded.id, golferName = "Matt Fitzpatrick")
     }
 
-    test("a name both a row without a pga_player_id and an ESPN athlete carry is ambiguous between them") {
-        val twin =
-            Golfer(
-                id = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000c02")),
-                pgaPlayerId = null,
-                firstName = "Scottie",
-                lastName = "Scheffler",
-                country = null,
-                worldRanking = null,
-                updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
-            )
-        val f =
-            fixture(
-                seedGolfers = listOf(twin),
-                calendar = listOf(recentCalendarEntry),
-                scoreboards =
-                    mapOf(
-                        recentDate to
-                            listOf(
-                                espnEvent(
-                                    competitors =
-                                        listOf(
-                                            espnPlayer("espn-9478", "Scottie Scheffler"),
-                                            espnPlayer("espn-9999", "Brand New"),
-                                        ),
-                                ),
-                            ),
-                    ),
-            )
+    test("a name both another athlete's row and an ESPN athlete carry is ambiguous between them") {
+        val namesake = seededGolfer("00000000-0000-0000-0000-000000000c02", pgaPlayerId = "espn-1111")
+        val f = scottieFixture(namesake)
 
-        // Brand New is what makes the preview ask ESPN at all.
-        val tsv =
-            """
-            $rosterHeader
-            1	BROWN	1	Scottie Scheffler	100
-            1	BROWN	2	Brand New	100
-            """.trimIndent()
-
-        val result = f.service.previewRoster(tsv).orFail()
+        val result = f.service.previewRoster(SCOTTIE_AND_BRAND_NEW).orFail()
 
         result.teams.single().picks.first().match shouldBe
             PickMatch.Ambiguous(
                 listOf(
-                    GolferCandidate.Existing(golferId = twin.id, name = "Scottie Scheffler"),
+                    GolferCandidate.Existing(golferId = namesake.id, name = "Scottie Scheffler"),
                     GolferCandidate.Espn(espnId = "espn-9478", name = "Scottie Scheffler"),
                 ),
             )
+    }
+
+    test("a name an id-less row and an ESPN athlete carry alone matches the row, for confirm to give it the id") {
+        val idless = seededGolfer("00000000-0000-0000-0000-000000000c04", pgaPlayerId = null)
+        val f = scottieFixture(idless)
+
+        val result = f.service.previewRoster(SCOTTIE_AND_BRAND_NEW).orFail()
+
+        result.teams.single().picks.first().match shouldBe
+            PickMatch.MatchedBackfill(espnId = "espn-9478", golferName = "Scottie Scheffler")
+        result.matchedCount shouldBe 2
+        with(noopTransactionContext) { f.golferRepo.findAll(search = null) } shouldBe listOf(idless)
+    }
+
+    test("a name an id-less row shares with another row offers the rows alone, never the ESPN athlete") {
+        val idless = seededGolfer("00000000-0000-0000-0000-000000000c05", pgaPlayerId = null)
+        val namesake = seededGolfer("00000000-0000-0000-0000-000000000c06", pgaPlayerId = "espn-1111")
+        val f = scottieFixture(idless, namesake)
+
+        val result = f.service.previewRoster(SCOTTIE_AND_BRAND_NEW).orFail()
+
+        val match = result.teams.single().picks.first().match.shouldBeInstanceOf<PickMatch.Ambiguous>()
+        match.candidates.map { (it as GolferCandidate.Existing).golferId } shouldContainExactlyInAnyOrder
+            listOf(idless.id, namesake.id)
     }
 
     test("preview survives ESPN being unavailable — picks stay no_match instead of failing") {
@@ -419,6 +429,25 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         with(noopTransactionContext) { f.golferRepo.findAll(search = null) }.shouldHaveSize(0)
     }
 })
+
+// Brand New is what makes the preview ask ESPN at all.
+private const val SCOTTIE_AND_BRAND_NEW =
+    "team_number\tteam_name\tround\tplayer_name\townership_pct\n1\tBROWN\t1\tScottie Scheffler\t100\n" +
+        "1\tBROWN\t2\tBrand New\t100"
+
+private fun seededGolfer(
+    id: String,
+    pgaPlayerId: String?,
+): Golfer =
+    Golfer(
+        id = GolferId(UUID.fromString(id)),
+        pgaPlayerId = pgaPlayerId,
+        firstName = "Scottie",
+        lastName = "Scheffler",
+        country = null,
+        worldRanking = null,
+        updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
+    )
 
 private data class TestFixture(
     val service: AdminService,
