@@ -113,6 +113,7 @@ function buildReport(name: string): WeeklyReport {
     sideBetDetail: [],
     standingsOrder: [],
     live: false,
+    liveEligible: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
@@ -180,7 +181,9 @@ describe('ScoreboardPage', () => {
     tournamentsMock.mockResolvedValue([activeTournament, completedTournament]);
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
     tournamentReportMock.mockImplementation((_s, id) =>
-      Promise.resolve(buildReport(id === 'tn-active' ? 'Current Open' : 'Sample Open')),
+      Promise.resolve(
+        id === 'tn-active' ? { ...buildReport('Current Open'), liveEligible: true } : buildReport('Sample Open'),
+      ),
     );
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
@@ -223,7 +226,11 @@ describe('ScoreboardPage', () => {
     tournamentsMock.mockResolvedValue([activeTournament, nextWeek]);
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active-b' });
     tournamentReportMock.mockImplementation((_s, id) =>
-      Promise.resolve(buildReport(id === 'tn-active-b' ? 'Next Week Open' : 'Current Open')),
+      Promise.resolve(
+        id === 'tn-active-b'
+          ? { ...buildReport('Next Week Open'), liveEligible: true }
+          : buildReport('Current Open'),
+      ),
     );
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
@@ -299,13 +306,7 @@ describe('ScoreboardPage', () => {
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-completed', false);
   });
 
-  it('keeps the live overlay eligible for a second non-completed tournament in the same week', async () => {
-    // Two-tournament week: AdminService.assignWeeks suffixes the labels as
-    // "Na" / "Nb" when two events share an ISO week, so the earliest event
-    // and its opposite-field partner have *different* week strings (e.g.
-    // "10a" vs "10b") that share the same numeric prefix. The eligibility
-    // check must compare on the prefix, not on the full label, otherwise
-    // the opposite-field event silently drops the live overlay.
+  it('keeps the live overlay for a second tournament in the same week the server calls eligible', async () => {
     const truist: Tournament = { ...activeTournament, week: '10a' };
     const oneFlight: Tournament = {
       ...activeTournament,
@@ -318,9 +319,10 @@ describe('ScoreboardPage', () => {
     tournamentsMock.mockResolvedValue([truist, oneFlight]);
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
     tournamentReportMock.mockImplementation((_s, id) =>
-      Promise.resolve(
-        buildReport(id === 'tn-active' ? 'Current Open' : 'Opposite Field Open'),
-      ),
+      Promise.resolve({
+        ...buildReport(id === 'tn-active' ? 'Current Open' : 'Opposite Field Open'),
+        liveEligible: true,
+      }),
     );
 
     const user = userEvent.setup();
@@ -341,6 +343,38 @@ describe('ScoreboardPage', () => {
       expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-active-b', true);
     });
     expect(screen.getByRole('checkbox', { name: /Live overlay/i })).toBeInTheDocument();
+  });
+
+  it('follows the server on live eligibility, not the week or the current tournament', async () => {
+    const nextWeek: Tournament = {
+      ...activeTournament,
+      id: 'tn-next',
+      name: 'Next Week Open',
+      status: 'upcoming',
+      week: '11',
+    };
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament, nextWeek]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
+    tournamentReportMock.mockImplementation((_s, id) =>
+      Promise.resolve(
+        id === 'tn-next' ? { ...buildReport('Next Week Open'), liveEligible: true } : buildReport('Current Open'),
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    await screen.findByRole('heading', { name: /Current Open/i });
+    expect(screen.queryByRole('checkbox', { name: /Live overlay/i })).not.toBeInTheDocument();
+    expect(tournamentReportMock).not.toHaveBeenCalledWith('sn-1', 'tn-active', true);
+
+    await user.selectOptions(screen.getByLabelText(/Tournament/i), 'tn-next');
+
+    expect(await screen.findByRole('heading', { name: /Next Week Open/i })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /Live overlay/i })).toBeChecked();
+    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-next', true);
   });
 
   it('shows an empty state when the season has no tournaments', async () => {

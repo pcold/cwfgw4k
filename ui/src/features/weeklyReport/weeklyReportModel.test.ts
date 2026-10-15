@@ -36,6 +36,7 @@ function reportScoped(scope: ReportScope, status: string | null = null): WeeklyR
     sideBetDetail: [],
     standingsOrder: [],
     live: false,
+    liveEligible: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),

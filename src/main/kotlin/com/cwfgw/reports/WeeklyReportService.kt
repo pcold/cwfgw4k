@@ -80,7 +80,9 @@ class WeeklyReportService(
     ): Result<WeeklyReport, ReportError> {
         val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
         val prepared = gatherReport(seasonId, tournamentId).getOrElse { return Result.Err(it) }
-        if (!live || !prepared.tournament.isLiveOverlayCandidate(today)) return Result.Ok(prepared.baseReport)
+        val liveEligible = prepared.tournament.isLiveOverlayCandidate(today)
+        val baseReport = prepared.baseReport.copy(liveEligible = liveEligible)
+        if (!live || !liveEligible) return Result.Ok(baseReport)
 
         val priorNonCompleted =
             liveOverlayCandidates(prepared.allTournaments, today).filter { candidate ->
@@ -89,7 +91,7 @@ class WeeklyReportService(
         return Result.Ok(
             liveOverlayService.overlayReport(
                 seasonId = seasonId,
-                baseReport = prepared.baseReport,
+                baseReport = baseReport,
                 rules = prepared.rules,
                 priorNonCompleted = priorNonCompleted,
                 selectedTournament = prepared.tournament,
@@ -188,13 +190,14 @@ class WeeklyReportService(
         val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
         val prepared =
             gatherRankings(seasonId, throughTournamentId).getOrElse { return Result.Err(it) }
-        val liveThrough = prepared.through?.takeIf { live } ?: return Result.Ok(prepared.baseRankings)
+        val liveCandidates = liveCandidatesFor(prepared.allTournaments, today, prepared.through)
+        val baseRankings = prepared.baseRankings.copy(liveEligible = liveCandidates.isNotEmpty())
+        if (!live) return Result.Ok(baseRankings)
 
-        val liveCandidates = liveCandidatesFor(prepared.allTournaments, today, liveThrough)
         return Result.Ok(
             liveOverlayService.overlayRankings(
                 seasonId,
-                prepared.baseRankings,
+                baseRankings,
                 liveCandidates,
                 prepared.rankingsContext,
             ),
@@ -289,20 +292,26 @@ class WeeklyReportService(
         val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
         val prepared =
             gatherPlayerRankings(seasonId, throughTournamentId).getOrElse { return Result.Err(it) }
-        val liveThrough = prepared.through?.takeIf { live }
+        val liveCandidates = liveCandidatesFor(prepared.allTournaments, today, prepared.through)
         val finalAcc =
-            if (liveThrough == null) {
-                prepared.baseAcc
-            } else {
+            if (live) {
                 liveOverlayService.overlayPlayerRankings(
                     seasonId = seasonId,
                     base = prepared.baseAcc,
-                    candidates = liveCandidatesFor(prepared.allTournaments, today, liveThrough),
+                    candidates = liveCandidates,
                     rules = prepared.rules,
                 )
+            } else {
+                prepared.baseAcc
             }
-        val overlaid = liveThrough != null
-        return Result.Ok(composePlayerRankings(finalAcc, prepared.rosterIndex, prepared.golferMap, live = overlaid))
+        return Result.Ok(
+            composePlayerRankings(
+                finalAcc,
+                prepared.rosterIndex,
+                prepared.golferMap,
+                liveEligible = liveCandidates.isNotEmpty(),
+            ),
+        )
     }
 
     private suspend fun gatherPlayerRankings(
@@ -358,18 +367,16 @@ class WeeklyReportService(
     ): List<Tournament> = allTournaments.filter { it.isLiveOverlayCandidate(today) }
 
     /**
-     * Live candidates for a rankings overlay: every non-completed
-     * tournament strictly before the cutoff, plus the cutoff itself if
-     * it's also non-completed. Sorted chronologically so the overlay
-     * folds them in the order they'd actually play out. Pure — operates
-     * on the already-loaded tournament list inside the request, so it
-     * doesn't reopen a transaction.
+     * Every live-overlay candidate strictly before [through], plus [through] itself when it is one, in play order
+     * so the overlay folds them as they'd play out. None without a cutoff: the All Tournaments rollups count
+     * finalized results alone.
      */
     private fun liveCandidatesFor(
         allTournaments: List<Tournament>,
         today: LocalDate,
-        through: Tournament,
+        through: Tournament?,
     ): List<Tournament> {
+        if (through == null) return emptyList()
         val priorLiveCandidates = liveOverlayCandidates(allTournaments, today).filter { isBefore(it, through) }
         val selectedIfLive = if (through.isLiveOverlayCandidate(today)) listOf(through) else emptyList()
         return (priorLiveCandidates + selectedIfLive).sortedWith(tournamentOrdering)
@@ -1242,7 +1249,7 @@ internal fun composePlayerRankings(
     acc: PlayerRankingsAcc,
     rosterIndex: Map<GolferId, PlayerRosterInfo>,
     golferMap: Map<GolferId, Golfer>,
-    live: Boolean,
+    liveEligible: Boolean,
 ): PlayerRankings {
     val draftedRows =
         acc.drafted.entries.map { (golferId, agg) ->
@@ -1274,5 +1281,5 @@ internal fun composePlayerRankings(
                 .thenByDescending { it.topTens }
                 .thenBy { it.name },
         )
-    return PlayerRankings(players = sorted, live = live)
+    return PlayerRankings(players = sorted, live = acc.live, liveEligible = liveEligible)
 }

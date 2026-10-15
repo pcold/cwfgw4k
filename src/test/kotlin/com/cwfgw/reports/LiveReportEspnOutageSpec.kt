@@ -48,19 +48,13 @@ private val MASTERS_ID = OUTAGE_TOURNAMENT.id
 private data class LiveCapablePath(
     val label: String,
     val path: String = label,
-    val fallback: (base: String) -> String = { it },
 )
 
 private val LIVE_CAPABLE_PATHS =
     listOf(
         LiveCapablePath("report/{tid}", path = "report/${MASTERS_ID.value}"),
         LiveCapablePath("rankings?through={tid}", path = "rankings?through=${MASTERS_ID.value}"),
-        // Echoes the request's `live` flag whether or not ESPN answered, so its fallback differs in that field.
-        LiveCapablePath(
-            "player-rankings?through={tid}",
-            path = "player-rankings?through=${MASTERS_ID.value}",
-            fallback = { it.replace("\"live\":false", "\"live\":true") },
-        ),
+        LiveCapablePath("player-rankings?through={tid}", path = "player-rankings?through=${MASTERS_ID.value}"),
     )
 
 private fun withLive(url: String): String = if ('?' in url) "$url&live=true" else "$url?live=true"
@@ -175,7 +169,7 @@ class LiveReportEspnOutageSpec : FunSpec({
                     val live = client.get(withLive(url))
 
                     live.status shouldBe HttpStatusCode.OK
-                    live.bodyAsText() shouldBe report.fallback(client.get(url).bodyAsText())
+                    live.bodyAsText() shouldBe client.get(url).bodyAsText()
                     requests.get() shouldBeGreaterThan 0
                 }
             }
@@ -234,7 +228,7 @@ class LiveReportEspnOutageSpec : FunSpec({
                 val live = client.get(withLive(url))
 
                 live.status shouldBe HttpStatusCode.OK
-                live.bodyAsText() shouldBe report.fallback(client.get(url).bodyAsText())
+                live.bodyAsText() shouldBe client.get(url).bodyAsText()
                 requests.get() shouldBeGreaterThan 0
             }
         }

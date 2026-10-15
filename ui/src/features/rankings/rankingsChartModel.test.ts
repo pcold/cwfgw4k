@@ -32,6 +32,7 @@ function buildRankings(overrides: Partial<Rankings> = {}): Rankings {
     weeks: ['9', '10', '11'],
     tournamentNames: ['Sample Open', 'Major', 'Invitational'],
     live: false,
+    liveEligible: false,
     ...overrides,
   };
 }

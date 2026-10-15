@@ -14,9 +14,10 @@ import type {
   RosterPreviewTeam,
   Season,
 } from '@/shared/api/types';
-import { FIELD_CLASS, FieldShell, SelectField } from '@/shared/components/formFields';
+import { FieldShell, SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
+import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
 
 function pickKey(teamNumber: number, pick: RosterPreviewPick): string {
   return `${teamNumber}|${pick.round}|${pick.playerName}`;
@@ -107,10 +108,7 @@ function newGolfer(playerName: string): GolferAssignment {
 function UploadRostersSection(): ReactNode {
   const queryClient = useQueryClient();
 
-  const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
-  const [userLeagueId, setUserLeagueId] = useState<string>('');
-  // User's pick wins; otherwise default to the first loaded league.
-  const leagueId = userLeagueId || (leaguesQuery.data?.[0]?.id ?? '');
+  const { leagues, leagueId, setLeagueId } = useAdminLeague();
 
   const seasonsQuery = useQuery<Season[]>({
     queryKey: queryKeys.seasons.byLeague(leagueId),
@@ -118,7 +116,6 @@ function UploadRostersSection(): ReactNode {
   });
 
   const [userSeasonId, setUserSeasonId] = useState<string>('');
-  // Same shape: user's pick wins, otherwise default to the first loaded season.
   const seasonId = userSeasonId || (seasonsQuery.data?.[0]?.id ?? '');
   const [rosterText, setRosterText] = useState<string>('');
   const [preview, setPreview] = useState<RosterPreview | null>(null);
@@ -161,13 +158,13 @@ function UploadRostersSection(): ReactNode {
 
       {!preview && !result ? (
         <RosterInputStep
-          leagues={leaguesQuery.data ?? []}
+          leagues={leagues}
           seasons={seasonsQuery.data ?? []}
           leagueId={leagueId}
           seasonId={seasonId}
           rosterText={rosterText}
           onLeagueChange={(id) => {
-            setUserLeagueId(id);
+            setLeagueId(id);
             setUserSeasonId('');
           }}
           onSeasonChange={setUserSeasonId}
@@ -230,20 +227,7 @@ function RosterInputStep({
   return (
     <div>
       <div className="flex flex-wrap gap-4 mb-4">
-        <FieldShell id="roster-league" label="League" error={undefined} width="sm:w-64">
-          <select
-            id="roster-league"
-            value={leagueId}
-            onChange={(e) => onLeagueChange(e.target.value)}
-            className={FIELD_CLASS}
-          >
-            {leagues.map((lg) => (
-              <option key={lg.id} value={lg.id}>
-                {lg.name}
-              </option>
-            ))}
-          </select>
-        </FieldShell>
+        <AdminLeagueField id="roster-league" leagues={leagues} leagueId={leagueId} onChange={onLeagueChange} />
         <SelectField
           id="roster-season"
           label="Season"

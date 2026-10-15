@@ -2,10 +2,11 @@ import { useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
-import type { League, Season, SeasonRules } from '@/shared/api/types';
+import type { Season, SeasonRules } from '@/shared/api/types';
 import { FIELD_CLASS, FieldShell, TextField } from '@/shared/components/formFields';
 import { QueryState } from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
+import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
 import { buildRules, formatSideBetRounds, isReadableSideBetRounds } from './rulesInput';
 
 function CreateSeasonSection(): ReactNode {
@@ -35,11 +36,7 @@ interface CreateSeasonFormProps {
 function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
   const queryClient = useQueryClient();
 
-  const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
-
-  const [userLeagueId, setUserLeagueId] = useState<string>('');
-  // User's pick wins; otherwise default to the first loaded league.
-  const leagueId = userLeagueId || (leaguesQuery.data?.[0]?.id ?? '');
+  const { leagues, leagueId, setLeagueId } = useAdminLeague();
   const [seasonYear, setSeasonYear] = useState(String(new Date().getFullYear()));
   const [seasonName, setSeasonName] = useState('');
   // Null until edited, rather than seeded from `defaults`, so no prop is copied into state.
@@ -87,20 +84,7 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
   return (
     <>
       <div className="flex flex-wrap gap-4 mb-4">
-        <FieldShell id="season-league" label="League" error={undefined} width="sm:w-64">
-          <select
-            id="season-league"
-            value={leagueId}
-            onChange={(e) => setUserLeagueId(e.target.value)}
-            className={FIELD_CLASS}
-          >
-            {(leaguesQuery.data ?? []).map((lg) => (
-              <option key={lg.id} value={lg.id}>
-                {lg.name}
-              </option>
-            ))}
-          </select>
-        </FieldShell>
+        <AdminLeagueField id="season-league" leagues={leagues} leagueId={leagueId} onChange={setLeagueId} />
         <FieldShell id="season-year" label="Year" error={undefined} width="w-24">
           <input
             id="season-year"

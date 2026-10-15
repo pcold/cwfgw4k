@@ -75,6 +75,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     sideBetDetail: [],
     standingsOrder: [],
     live: false,
+    liveEligible: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),

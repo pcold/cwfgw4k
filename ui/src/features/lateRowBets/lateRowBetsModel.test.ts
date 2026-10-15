@@ -50,6 +50,7 @@ function baseReport(): WeeklyReport {
     sideBetDetail: [],
     standingsOrder: [],
     live: false,
+    liveEligible: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),

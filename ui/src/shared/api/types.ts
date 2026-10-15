@@ -122,6 +122,8 @@ export interface WeeklyReport {
   standingsOrder: StandingsEntry[];
   live: boolean | null;
   liveLeaderboard: LiveLeaderboardEntry[];
+  /** @see Rankings.liveEligible */
+  liveEligible: boolean;
   /** Over every team's `totalCash`. Display it; never re-sum `totalCash`. */
   cashTotals: WonLostTotals;
   /** Over every team's `sideBets`. @see WeeklyReport.cashTotals */
@@ -146,6 +148,8 @@ export interface Rankings {
   weeks: string[];
   tournamentNames: string[];
   live: boolean | null;
+  /** Whether a `live` request for this selection would overlay ESPN. Show the toggle on it; never re-derive it. */
+  liveEligible: boolean;
 }
 
 export interface PlayerRankingsRow {
@@ -161,6 +165,8 @@ export interface PlayerRankingsRow {
 export interface PlayerRankings {
   players: PlayerRankingsRow[];
   live: boolean;
+  /** @see Rankings.liveEligible */
+  liveEligible: boolean;
 }
 
 export interface RosterPick {
