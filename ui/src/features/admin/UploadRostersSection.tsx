@@ -46,8 +46,8 @@ function candidateLabel(candidate: GolferCandidate): string {
 }
 
 /**
- * Null while an ambiguous pick sits on the placeholder, never a default new golfer for it: that golfer has no ESPN
- * id, so imports never credit the pick.
+ * Null while an ambiguous pick sits on the placeholder, never a default new golfer for it: one with no ESPN id is
+ * credited by a name match, which its namesakes defeat.
  */
 export function buildConfirmTeams(
   preview: RosterPreview,
@@ -450,7 +450,7 @@ function RosterReviewStep({
           Back
         </button>
         {confirmTeams ? null : (
-          <span id={CONFIRM_BLOCKED_ID} className="text-semantic-warning text-sm">
+          <span id={CONFIRM_BLOCKED_ID} className="text-ink-muted text-xs">
             Select a player, or None of these, for each ambiguous pick to confirm.
           </span>
         )}
