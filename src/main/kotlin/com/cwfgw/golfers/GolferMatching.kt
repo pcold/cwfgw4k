@@ -47,22 +47,20 @@ private fun foldLetters(name: String): String {
 private fun collapseWhitespace(name: String): String = name.replace(WHITESPACE, " ").trim()
 
 /**
- * A full name cut at its last space: "Byeong Hun An" is ("Byeong Hun", "An"), and "Erik van Rooyen" is knowingly
- * ("Erik van", "Rooyen"). A single word is the first name, so `first_name` is never blank. Matching never reads
+ * Cut at the last space: "Byeong Hun An" is ("Byeong Hun", "An"), "Erik van Rooyen" knowingly ("Erik van", "Rooyen").
+ * A lone word is a surname (a team partner, roster "Scheffler"), as reports read `last_name`. Matching never reads
  * the split; it only decides the stored columns.
  */
 @ConsistentCopyVisibility
 internal data class GolferName private constructor(val firstName: String, val lastName: String) {
     companion object {
-        /** Null for a blank name, the one input with no first name to keep. */
+        /** Null for a blank name, the one input with no surname to keep. */
         fun splitName(fullName: String): GolferName? {
             val collapsed = collapseWhitespace(fullName)
             if (collapsed.isEmpty()) return null
-            val lastSpace = collapsed.lastIndexOf(' ')
-            if (lastSpace < 0) return GolferName(firstName = collapsed, lastName = "")
             return GolferName(
-                firstName = collapsed.substring(0, lastSpace),
-                lastName = collapsed.substring(lastSpace + 1),
+                firstName = collapsed.substringBeforeLast(' ', missingDelimiterValue = ""),
+                lastName = collapsed.substringAfterLast(' '),
             )
         }
     }

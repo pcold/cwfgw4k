@@ -197,12 +197,12 @@ class EspnNameMatchingSpec : FunSpec({
         fixture.allGolfers() shouldContainExactlyInAnyOrder listOf(olesen, namesake)
     }
 
-    test("a single-word partner name nobody matches is stored as a first name, never a blank one") {
+    test("a single-word partner name nobody matches is stored as a surname") {
         val fixture = ImportFixture(emptyList())
 
         fixture.import(event(competitor("team:t1:0", "Griffin", 1, isTeamPartner = true)))
 
-        fixture.allGolfers().map { it.firstName to it.lastName } shouldBe listOf("Griffin" to "")
+        fixture.allGolfers().map { it.firstName to it.lastName } shouldBe listOf("" to "Griffin")
     }
 
     test("import keeps a non-partner apart from a golfer whose hyphenated surname ends in his") {
@@ -216,10 +216,10 @@ class EspnNameMatchingSpec : FunSpec({
             listOf("Niklas" to "Nørgaard-Petersen", "Mark" to "Petersen")
     }
 
-    // A single-word partner is stored as ("Griffin", ""), whose full name is the partner's whole name.
+    // A single-word partner is stored as ("", "Griffin"), whose full name is the partner's whole name.
     test("import credits a partner to his rostered namesake, not to a phantom row named only his surname") {
         val ben = golfer("Ben", "Griffin")
-        val phantom = golfer("Griffin", "")
+        val phantom = golfer("", "Griffin")
         val fixture = ImportFixture(listOf(ben, phantom, golfer("Lucas", "Griffin")), rostered = listOf(ben))
 
         fixture.import(event(competitor("team:t1:0", "Griffin", 1, isTeamPartner = true))) shouldBe listOf(ben.id)
@@ -229,7 +229,7 @@ class EspnNameMatchingSpec : FunSpec({
         val preview =
             rosteredPreview(
                 rostered = listOf(golfer("Ben", "Griffin")),
-                unrostered = listOf(golfer("Griffin", ""), golfer("Lucas", "Griffin")),
+                unrostered = listOf(golfer("", "Griffin"), golfer("Lucas", "Griffin")),
                 event = event(competitor("team:t1:0", "Griffin", 1, isTeamPartner = true)),
             )
 

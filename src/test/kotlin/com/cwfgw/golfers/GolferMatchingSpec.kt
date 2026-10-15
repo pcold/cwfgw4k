@@ -2,6 +2,7 @@ package com.cwfgw.golfers
 
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.datatest.withData
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldNotBeBlank
@@ -64,13 +65,13 @@ class GolferMatchingSpec : FunSpec({
         checkAll(arbBmp()) { name -> normalizeName(normalizeName(name)) shouldBe normalizeName(name) }
     }
 
-    context("splitName cuts at the last space and keeps a single word as the first name") {
+    context("splitName cuts at the last space and keeps a single word as the surname") {
         withData(
             "Byeong Hun An" to ("Byeong Hun" to "An"),
             "Brandon Robinson Thompson" to ("Brandon Robinson" to "Thompson"),
             "Erik van Rooyen" to ("Erik van" to "Rooyen"),
             "  Min   Woo Lee " to ("Min Woo" to "Lee"),
-            "Griffin" to ("Griffin" to ""),
+            "Griffin" to ("" to "Griffin"),
         ) { (fullName, expected) ->
             GolferName.splitName(fullName)?.let { it.firstName to it.lastName } shouldBe expected
         }
@@ -80,10 +81,10 @@ class GolferMatchingSpec : FunSpec({
         GolferName.splitName(" \t ") shouldBe null
     }
 
-    test("splitName round-trips, never leaves a blank first name, and never changes what a name matches") {
+    test("splitName round-trips, never leaves a blank surname, and never changes what a name matches") {
         checkAll(arbNameLike()) { name ->
             val split = GolferName.splitName(name) ?: return@checkAll
-            split.firstName.shouldNotBeBlank()
+            split.lastName.shouldNotBeBlank()
             GolferName.splitName(split.joined()) shouldBe split
             normalizeName(split.joined()) shouldBe normalizeName(name)
         }
@@ -107,13 +108,22 @@ class GolferMatchingSpec : FunSpec({
 
     test("a surname finds a golfer whichever space his stored name was split at") {
         val firstSpaceSplit = golfer("Byeong", "Hun An")
-        val singleWord = golfer("Griffin", "")
+        val firstNameOnly = golfer("Griffin", "")
         val lastNameOnly = golfer("", "Novak")
-        val index = GolferNameIndex(listOf(firstSpaceSplit, singleWord, lastNameOnly))
+        val index = GolferNameIndex(listOf(firstSpaceSplit, firstNameOnly, lastNameOnly))
 
         index.matchSurname("An") shouldBe GolferNameMatch.Matched(firstSpaceSplit)
-        index.matchSurname("Griffin") shouldBe GolferNameMatch.Matched(singleWord)
+        index.matchSurname("Griffin") shouldBe GolferNameMatch.Matched(firstNameOnly)
         index.matchSurname("Novák") shouldBe GolferNameMatch.Matched(lastNameOnly)
+    }
+
+    test("a surname-only row is found by its bare surname, with no stray space from the blank first name") {
+        val griffin = golfer("", "Griffin")
+        val index = GolferNameIndex(listOf(griffin, golfer("Ben", "Griffin")))
+
+        index.matchFullName("Griffin") shouldBe GolferNameMatch.Matched(griffin)
+        index.matchFullName(" Griffin") shouldBe GolferNameMatch.Matched(griffin)
+        index.matchSurname("Griffin").shouldBeInstanceOf<GolferNameMatch.Ambiguous>().candidates shouldContain griffin
     }
 
     context("surnameKey keeps a hyphenated surname whole and looks past a generational suffix") {

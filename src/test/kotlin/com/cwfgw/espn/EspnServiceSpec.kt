@@ -452,7 +452,7 @@ class EspnServiceSpec : FunSpec({
 
         fixture.persistImport(event)
 
-        // The two existing Smiths plus a new auto-created one (first name "Smith", empty last name).
+        // The two existing Smiths plus a new auto-created one (last name "Smith", empty first name).
         with(noopTransactionContext) {
             fixture.golferRepo.findAll(search = "Smith")
         }.shouldHaveSize(3)
