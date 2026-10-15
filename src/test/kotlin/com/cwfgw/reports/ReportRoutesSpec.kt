@@ -211,7 +211,7 @@ private fun scoreRow(
  * services so the WeeklyReportService captured into [ApiFixture] sees
  * the seeded repos rather than the empty defaults.
  */
-@Suppress("LongParameterList", "LongMethod")
+@Suppress("LongMethod")
 private fun reportFixture(
     seedSeason: Boolean = true,
     initialTournaments: List<Tournament> = emptyList(),

@@ -121,7 +121,6 @@ private fun winningResult(
         pairKey = null,
     )
 
-@Suppress("LongParameterList")
 private fun fantasyScore(
     teamHex: String,
     tournamentId: TournamentId,
@@ -143,7 +142,6 @@ private fun fantasyScore(
         calculatedAt = Instant.parse("2026-04-12T20:00:00Z"),
     )
 
-@Suppress("LongParameterList")
 private class Fixture(
     seedSeason: Boolean = true,
     initialTournaments: List<Tournament> = emptyList(),

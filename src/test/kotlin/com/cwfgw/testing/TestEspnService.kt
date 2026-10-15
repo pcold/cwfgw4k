@@ -22,7 +22,6 @@ import com.cwfgw.tournaments.TournamentRepository
  * own repo instances so the gathers see the same state as the rest of
  * the fixture.
  */
-@Suppress("LongParameterList")
 internal fun testEspnService(
     client: EspnClient,
     seasonRepository: SeasonRepository = FakeSeasonRepository(),

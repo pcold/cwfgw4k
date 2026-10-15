@@ -91,7 +91,6 @@ class LiveOverlayService(private val espnService: EspnService) {
      * if the selected tournament is itself not yet completed, overlays
      * the projected ESPN leaderboard onto the report's cells.
      */
-    @Suppress("LongParameterList")
     suspend fun overlayReport(
         seasonId: SeasonId,
         baseReport: WeeklyReport,
@@ -489,7 +488,6 @@ internal fun buildUndraftedFromLeaderboard(
  * both the prior-overlay and the in-progress overlay share the same
  * winner-picking logic.
  */
-@Suppress("LongParameterList")
 internal fun updateSideBetDetailWith(
     sideBetDetail: List<ReportSideBetRound>,
     teams: List<ReportTeamColumn>,

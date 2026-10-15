@@ -180,7 +180,6 @@ private class StartDateMovingEspnClient(
     }
 }
 
-@Suppress("LongParameterList")
 private fun opsFixture(
     seedSeason: Boolean = true,
     initialTournaments: List<Tournament> = emptyList(),

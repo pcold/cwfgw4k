@@ -89,7 +89,6 @@ private fun golferFixture(
         updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
     )
 
-@Suppress("LongParameterList")
 private fun tournamentFixture(
     id: TournamentId,
     name: String,
@@ -130,7 +129,6 @@ private fun rosterEntry(
         acquiredAt = Instant.parse("2026-01-01T00:00:00Z"),
     )
 
-@Suppress("LongParameterList")
 private fun resultFixture(
     tournamentId: TournamentId,
     golferId: GolferId,
@@ -155,7 +153,6 @@ private fun resultFixture(
         pairKey = null,
     )
 
-@Suppress("LongParameterList")
 private fun scoreFixture(
     teamId: TeamId,
     tournamentId: TournamentId,
@@ -180,7 +177,6 @@ private fun scoreFixture(
         calculatedAt = Instant.parse("2026-04-12T20:00:00Z"),
     )
 
-@Suppress("LongParameterList")
 private class Fixture(
     seedSeason: Boolean = true,
     initialTournaments: List<Tournament> = emptyList(),
