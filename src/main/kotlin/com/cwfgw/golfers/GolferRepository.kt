@@ -21,6 +21,10 @@ interface GolferRepository {
     context(ctx: TransactionContext)
     fun findById(id: GolferId): Golfer?
 
+    /** Waits out an uncommitted tombstone that [findById] would read past. */
+    context(ctx: WriteTransactionContext)
+    fun findByIdForShare(id: GolferId): Golfer?
+
     context(ctx: TransactionContext)
     fun findByPgaPlayerId(pgaPlayerId: String): Golfer?
 
@@ -73,6 +77,14 @@ private class JooqGolferRepository : GolferRepository {
     override fun findById(id: GolferId): Golfer? =
         ctx.dsl.selectFrom(GOLFERS)
             .where(GOLFERS.ID.eq(id.value))
+            .fetchOne()
+            ?.let(::toGolfer)
+
+    context(ctx: WriteTransactionContext)
+    override fun findByIdForShare(id: GolferId): Golfer? =
+        ctx.dsl.selectFrom(GOLFERS)
+            .where(GOLFERS.ID.eq(id.value))
+            .forShare()
             .fetchOne()
             ?.let(::toGolfer)
 

@@ -6,6 +6,7 @@ import com.cwfgw.golfers.GolferId
 import com.cwfgw.testing.fakeTableOf
 import com.cwfgw.tournaments.TournamentId
 
+/** Lacks the schema's tombstoned-golfer trigger, having no golfers to read; the service's own refusal answers first. */
 class FakeTournamentLinkRepository(
     initial: List<TournamentPlayerOverride> = emptyList(),
 ) : TournamentLinkRepository {

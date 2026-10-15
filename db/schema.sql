@@ -36,7 +36,7 @@ CREATE FUNCTION cwfgw4k.refuse_override_to_tombstoned_golfer() RETURNS trigger
 DECLARE
     tombstoned TIMESTAMPTZ;
 BEGIN
-    -- Filtering on tombstoned_at in the WHERE would skip the lock on a row whose tombstone has not committed yet.
+    -- Not filtered on tombstoned_at: the snapshot reads an uncommitted tombstone as NULL, so the row would never be locked.
     SELECT tombstoned_at INTO tombstoned FROM golfers WHERE id = NEW.golfer_id FOR SHARE;
     IF tombstoned IS NOT NULL THEN
         RAISE EXCEPTION 'golfer % is tombstoned and cannot be linked', NEW.golfer_id

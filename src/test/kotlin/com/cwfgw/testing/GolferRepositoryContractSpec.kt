@@ -62,6 +62,7 @@ private val tombstoneContract: List<ContractCase<TombstoningGolfers>> =
             tx.get { repository.golfers.findAll(search = "scottie") }.map { it.id } shouldContainExactlyInAnyOrder
                 listOf(live.id, retired.id)
             tx.get { repository.golfers.findById(retired.id) }?.tombstonedAt.shouldNotBeNull()
+            tx.update { repository.golfers.findByIdForShare(retired.id) }?.tombstonedAt.shouldNotBeNull()
         },
     )
 
@@ -72,6 +73,7 @@ private val golferContract: List<ContractCase<GolferRepository>> =
 
             created.country shouldBe "USA"
             tx.get { repository.findById(created.id) } shouldBe created
+            tx.update { repository.findByIdForShare(created.id) } shouldBe created
             tx.get { repository.findByPgaPlayerId("pga-1") } shouldBe created
             tx.get { repository.findById(GolferId(UUID.randomUUID())) }.shouldBeNull()
             tx.get { repository.findByPgaPlayerId("pga-missing") }.shouldBeNull()

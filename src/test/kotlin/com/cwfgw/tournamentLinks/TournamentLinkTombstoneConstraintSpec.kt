@@ -13,6 +13,8 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import org.jooq.exception.DataAccessException
 
+private const val CHECK_VIOLATION = "23514"
+
 /** Written past the service, whose own refusal would otherwise answer first: what is under test is the schema's. */
 class TournamentLinkTombstoneConstraintSpec : FunSpec({
 
@@ -26,7 +28,7 @@ class TournamentLinkTombstoneConstraintSpec : FunSpec({
 
         shouldThrow<DataAccessException> {
             tx.update { links.upsert(tournamentId, "espn-1", tombstoned.id) }
-        }
+        }.sqlState() shouldBe CHECK_VIOLATION
 
         tx.read { links.listByTournament(tournamentId) }.shouldBeEmpty()
     }
@@ -39,7 +41,7 @@ class TournamentLinkTombstoneConstraintSpec : FunSpec({
 
         shouldThrow<DataAccessException> {
             tx.update { links.upsert(tournamentId, "espn-1", tombstoned.id) }
-        }
+        }.sqlState() shouldBe CHECK_VIOLATION
 
         tx.read { links.listByTournament(tournamentId) } shouldBe listOf(link)
     }

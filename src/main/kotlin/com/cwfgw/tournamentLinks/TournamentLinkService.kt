@@ -2,6 +2,7 @@ package com.cwfgw.tournamentLinks
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
+import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferName
@@ -45,7 +46,7 @@ class TournamentLinkService(
         tx.update {
             lockedTournamentError(tournamentId)?.let { return@update Result.Err(it) }
             val golfer =
-                golferRepository.findById(request.golferId)
+                golferRepository.findByIdForShare(request.golferId)
                     ?: return@update Result.Err(TournamentLinkError.GolferNotFound(request.golferId))
             if (golfer.tombstonedAt != null) {
                 return@update Result.Err(TournamentLinkError.GolferTombstoned(golfer.id))
@@ -77,10 +78,12 @@ class TournamentLinkService(
             Result.Ok(repository.delete(tournamentId, espnCompetitorId))
         }
 
-    context(ctx: TransactionContext)
+    /** Locked before the golfer, the season → tournament → golfer order finalize's backfill takes. */
+    context(ctx: WriteTransactionContext)
     private fun lockedTournamentError(tournamentId: TournamentId): TournamentLinkError? {
         val tournament =
-            tournamentRepository.findById(tournamentId) ?: return TournamentLinkError.TournamentNotFound(tournamentId)
+            tournamentRepository.findByIdForUpdate(tournamentId)
+                ?: return TournamentLinkError.TournamentNotFound(tournamentId)
         return TournamentLinkError.TournamentFinalized(tournamentId).takeIf {
             tournament.status == TournamentStatus.Completed
         }
