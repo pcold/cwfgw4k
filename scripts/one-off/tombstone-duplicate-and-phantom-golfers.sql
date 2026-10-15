@@ -7,9 +7,7 @@
 -- Left out on purpose:
 --   * Jordan Shipley (id-less, 2 rosters) needs Pete's decision first; likely a roster typo for Neal Shipley, 5209442.
 --   * Byeong Hun An is a real golfer missing his ESPN id, not a duplicate, so he is never tombstoned.
---     TODO: once his ESPN id is confirmed, backfill it in its own run:
---       UPDATE cwfgw4k.golfers SET pga_player_id = '<confirmed id>'
---        WHERE pga_player_id IS NULL AND first_name = 'Byeong Hun' AND last_name = 'An';
+--     When his ESPN id is confirmed, backfill it in its own one-off script.
 
 BEGIN;
 
