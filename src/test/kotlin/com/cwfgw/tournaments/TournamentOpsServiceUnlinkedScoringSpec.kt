@@ -11,8 +11,10 @@ import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.result.Result
+import com.cwfgw.scoring.FantasyScore
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
+import com.cwfgw.scoring.UpsertScore
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.teams.AddToRosterRequest
@@ -72,11 +74,18 @@ class TournamentOpsServiceUnlinkedScoringSpec : FunSpec({
     test("a scoring failure on the second match rolls back the whole unlinked finalize, the first's scores included") {
         val golfers = tx.update { seedGolfers() }
         val week = tx.update { seedWeek(golfers, UNLINKED_WEEK, UNLINKED_ESPN_IDS) }
-        val second = week.matches.last()
-        val ops = opsService(tx, scoringTournaments = HidingTournamentRepository(TournamentRepository(), second.id))
+        val (first, second) = week.matches
+        val upserts = RecordingScoringRepository(ScoringRepository())
+        val ops =
+            opsService(
+                tx,
+                scoringTournaments = HidingTournamentRepository(TournamentRepository(), second.id),
+                scores = upserts,
+            )
 
         ops.finalizeTournament(week.unlinked.id) shouldBe Result.Err(TournamentOpsError.TournamentNotFound(second.id))
 
+        upserts.scoredTournaments.toSet() shouldBe setOf(first.id)
         week.matches.forEach { match ->
             tx.get { TournamentRepository().findById(match.id) }?.status shouldBe TournamentStatus.Upcoming
             tx.get { TournamentRepository().getResults(match.id) }.shouldBeEmpty()
@@ -98,7 +107,7 @@ class TournamentOpsServiceUnlinkedScoringSpec : FunSpec({
     }
 })
 
-/** A fantasy score keyed by names rather than ids, so two seasons' scores compare. */
+/** Tournament and team by name, so two seasons' scores compare; the golfers are seeded once and shared by both. */
 private data class TeamPayout(
     val tournament: String,
     val team: String,
@@ -224,13 +233,14 @@ private fun finisher(
 private fun opsService(
     tx: Transactor,
     scoringTournaments: TournamentRepository = TournamentRepository(),
+    scores: ScoringRepository = ScoringRepository(),
 ): TournamentOpsService {
     val scoreboards = mapOf(UNLINKED_WEEK to scoreboard(UNLINKED_ESPN_IDS), LINKED_WEEK to scoreboard(LINKED_ESPN_IDS))
     return TournamentOpsService(
         tournamentRepository = TournamentRepository(),
         scoringService =
             ScoringService(
-                repository = ScoringRepository(),
+                repository = scores,
                 seasonRepository = SeasonRepository(),
                 tournamentRepository = scoringTournaments,
                 teamRepository = TeamRepository(),
@@ -257,4 +267,17 @@ private class HidingTournamentRepository(
 ) : TournamentRepository by delegate {
     context(ctx: TransactionContext)
     override fun findById(id: TournamentId): Tournament? = if (id == hidden) null else delegate.findById(id)
+}
+
+/** Shows a rolled-back finalize had written scores before it failed, which the committed rows no longer can. */
+private class RecordingScoringRepository(
+    private val delegate: ScoringRepository,
+) : ScoringRepository by delegate {
+    val scoredTournaments: MutableList<TournamentId> = mutableListOf()
+
+    context(ctx: WriteTransactionContext)
+    override fun upsertScore(record: UpsertScore): FantasyScore {
+        scoredTournaments += record.tournamentId
+        return delegate.upsertScore(record)
+    }
 }

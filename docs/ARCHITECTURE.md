@@ -290,9 +290,10 @@ by this status (see [Live overlay](#live-overlay)).
 4. The tournament becomes `completed` only if ESPN marks the event completed; the import also syncs
    `is_team_event` (`EspnService.syncTournamentFromEventIn`).
 5. Compute and upsert fantasy scores ([§7](#7-scoring-and-payouts)): first for each match an unlinked finalize
-   imported into, in start-date order, since the import completed it and its own finalize would now refuse; then
-   for the tournament itself, which no import writes results into when it is unlinked. Scoring takes no further
-   season or tournament lock, and an error scoring any of them rolls back the whole finalize.
+   imported into, since the import completed it and its own finalize would now refuse; then for the tournament
+   itself, which no import writes results into when it is unlinked. Scoring takes no further season or tournament
+   lock, and an error scoring any of them rolls back the whole finalize. Step 3's gates leave every match on the
+   unlinked tournament's start date, and no tournament's scores read another's, so the order among them is free.
 
 **Reset** refuses when a later tournament in the season is completed, so results are always unwound newest
 first. **Season clean-results** resets the whole season at once. Both take the same season lock first, as does an

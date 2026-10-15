@@ -75,7 +75,7 @@ class TournamentOpsService(
         val matches = persistEspnEventsIn(tournament, events)
         // The import completes each match, which its own finalize then refuses: a match not scored here stays
         // unscored until a reset.
-        (matches.sortedBy(Tournament::startDate) + tournament).forEach { scoreIn(it) }
+        (matches + tournament).forEach { scoreIn(it) }
         log.info { "Finalized '${tournament.name}'" }
         return Result.Ok(tournamentRepository.findById(tournamentId) ?: tournament)
     }
