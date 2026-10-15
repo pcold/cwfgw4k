@@ -46,7 +46,8 @@ private data class Roster(
 
 /**
  * "Hojgaard" against the rostered "Højgaard" is the Koivun signature: the matcher reads one surname, and an
- * unnormalized comparison would read two.
+ * unnormalized comparison would read two. Real Postgres, because the tripwire reads the season's roster view and
+ * the matcher's golfer read, which the fakes only imitate.
  */
 class TournamentFinalizeImportWarningsSpec : FunSpec({
 

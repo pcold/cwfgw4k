@@ -70,12 +70,29 @@ private fun golferRow(
         updatedAt = GOLFER_CLOCK,
     )
 
-private val NICOLAI_HOJGAARD = golferRow("00000000-0000-0000-0000-000000000c11", "4410", "Nicolai", "Højgaard")
+private val NICOLAI_HOJGAARD =
+    golferRow(
+        id = "00000000-0000-0000-0000-000000000c11",
+        pgaPlayerId = "4410",
+        firstName = "Nicolai",
+        lastName = "Højgaard",
+    )
 
 // Ranked so the fake lists them, and so the matcher names them, in this order.
-private val TOM_KIM = golferRow("00000000-0000-0000-0000-000000000c12", null, "Tom", "Kim").copy(worldRanking = 20)
+private val TOM_KIM =
+    golferRow(
+        id = "00000000-0000-0000-0000-000000000c12",
+        pgaPlayerId = null,
+        firstName = "Tom",
+        lastName = "Kim",
+    ).copy(worldRanking = 20)
 private val TOM_KIM_TWIN =
-    golferRow("00000000-0000-0000-0000-000000000c13", null, "Tom", "Kim").copy(worldRanking = 21)
+    golferRow(
+        id = "00000000-0000-0000-0000-000000000c13",
+        pgaPlayerId = null,
+        firstName = "Tom",
+        lastName = "Kim",
+    ).copy(worldRanking = 21)
 
 private fun rosterOf(golfers: List<Golfer>): List<RosterViewTeam> =
     listOf(
@@ -272,7 +289,13 @@ class TournamentOpsRoutesSpec : FunSpec({
                 espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(event)),
                 golfers = listOf(NICOLAI_HOJGAARD, TOM_KIM, TOM_KIM_TWIN),
             )
-        val created = golferRow(CREATED_GOLFER_ID.value.toString(), "9999", "Rasmus", "Hojgaard")
+        val created =
+            golferRow(
+                id = CREATED_GOLFER_ID.value.toString(),
+                pgaPlayerId = "9999",
+                firstName = "Rasmus",
+                lastName = "Hojgaard",
+            )
 
         authenticatedApiTest(configure) { client ->
             val response = client.post("/api/v1/tournaments/${MASTERS_ID.value}/finalize")
