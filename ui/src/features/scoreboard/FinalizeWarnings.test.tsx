@@ -79,12 +79,13 @@ describe('FinalizeWarnings', () => {
   });
 
   it('notes the golfers the import created, outside the alert', () => {
-    const created = [golfer('g-burns', 'Sam', 'Burns'), golfer('g-straka', 'Sepp', 'Straka')];
+    // A partner the import creates has a surname alone.
+    const created = [golfer('g-burns', 'Sam', 'Burns'), golfer('g-griffin', '', 'Griffin')];
     renderWithProviders(
       <FinalizeWarnings finalized={finalizedWith([warningsFor('Zurich Classic', { createdGolfers: created })])} />,
     );
 
-    expect(screen.getByText('New golfers created: Sam Burns, Sepp Straka')).toBeInTheDocument();
+    expect(screen.getByText(/^New golfers created:/).textContent).toBe('New golfers created: Sam Burns, Griffin');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 

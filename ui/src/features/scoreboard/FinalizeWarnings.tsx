@@ -18,7 +18,7 @@ interface FinalizeWarningsProps {
 }
 
 function golferName(golfer: Golfer): string {
-  return `${golfer.firstName} ${golfer.lastName}`;
+  return [golfer.firstName, golfer.lastName].filter((part) => part.trim() !== '').join(' ');
 }
 
 function espnLabel(name: string, espnCompetitorId: string): string {
