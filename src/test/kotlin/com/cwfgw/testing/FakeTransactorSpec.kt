@@ -1,5 +1,7 @@
 package com.cwfgw.testing
 
+import com.cwfgw.cache.CacheGeneration
+import com.cwfgw.cache.FakeCacheRepository
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.result.Result
@@ -82,6 +84,20 @@ class FakeTransactorSpec : FunSpec({
         }
 
         tx.get { tournaments.findById(masters.id) } shouldBe masters
+    }
+
+    test("a counter a thrown block advanced reads back at its value before the block") {
+        val cache = FakeCacheRepository()
+        tx.update { cache.clear() }
+
+        shouldThrow<BlockFailed> {
+            tx.update {
+                cache.clear()
+                throw BlockFailed()
+            }
+        }
+
+        tx.get { cache.generation() } shouldBe CacheGeneration(1)
     }
 
     test("a block returning Err keeps its writes, since Transactor commits on any return that is not a throw") {
