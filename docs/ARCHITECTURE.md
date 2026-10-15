@@ -417,7 +417,10 @@ credited only to an id-less row: a row holding another id is a namesake, so the 
 and the import logs `cwfgw4k.espn event=namesake-id-mismatch`. When several rows share the full name, the one id-less
 golfer rostered this season is credited; with none, matching falls through to the surname; with several, or when two
 competitors claim one id-less row, the competitor is scored to nobody and the import logs
-`cwfgw4k.espn event=namesake-withheld` rather than create a twin. Across the events of one import, two competitors
+`cwfgw4k.espn event=namesake-withheld` rather than create a twin. A full-named competitor's surname match is a guess:
+it yields an id-less row any other competitor of the import credits, backfills or contests under another ESPN id, so
+the guesser is a namesake and gets a golfer of its own, and two ids guessing one row are withheld; this holds across
+an import's events, in any order. Across the events of one import, two competitors
 still matching one id-less row under different ids are withheld the same way; one withheld in its own event is
 credited the row another event wrote its id onto, and adds no id to that contest. Only import and finalize write:
 they backfill the competitor's ESPN id onto an id-less row its full name matched (never one credited by override,
