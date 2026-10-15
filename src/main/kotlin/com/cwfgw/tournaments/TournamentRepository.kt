@@ -23,6 +23,10 @@ interface TournamentRepository {
     context(ctx: TransactionContext)
     fun findById(id: TournamentId): Tournament?
 
+    /** Holds the row until the transaction ends: a second locker, or a season delete cascading here, waits. */
+    context(ctx: WriteTransactionContext)
+    fun findByIdForUpdate(id: TournamentId): Tournament?
+
     context(ctx: TransactionContext)
     fun findByPgaTournamentId(pgaTournamentId: String): Tournament?
 
@@ -92,6 +96,14 @@ private class JooqTournamentRepository : TournamentRepository {
     override fun findById(id: TournamentId): Tournament? =
         ctx.dsl.selectFrom(TOURNAMENTS)
             .where(TOURNAMENTS.ID.eq(id.value))
+            .fetchOne()
+            ?.let(::toTournament)
+
+    context(ctx: WriteTransactionContext)
+    override fun findByIdForUpdate(id: TournamentId): Tournament? =
+        ctx.dsl.selectFrom(TOURNAMENTS)
+            .where(TOURNAMENTS.ID.eq(id.value))
+            .forUpdate()
             .fetchOne()
             ?.let(::toTournament)
 

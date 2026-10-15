@@ -51,6 +51,10 @@ class FakeTournamentRepository(
     context(ctx: TransactionContext)
     override fun findById(id: TournamentId): Tournament? = tournaments[id]
 
+    /** Locks nothing: a Fake transaction block is not `suspend`, so no other block can interleave with it. */
+    context(ctx: WriteTransactionContext)
+    override fun findByIdForUpdate(id: TournamentId): Tournament? = tournaments[id]
+
     context(ctx: TransactionContext)
     override fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
         tournaments.values.firstOrNull { it.pgaTournamentId == pgaTournamentId }
