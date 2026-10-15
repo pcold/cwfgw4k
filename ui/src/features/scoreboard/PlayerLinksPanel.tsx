@@ -11,6 +11,10 @@ import type {
   TournamentCompetitorView,
 } from '@/shared/api/types';
 
+const SAVE_LINK_BUTTON_CLASS =
+  'bg-semantic-info-fill hover:bg-semantic-info-fill-hover disabled:bg-disabled text-on-fill ' +
+  'text-xs px-3 py-1 rounded font-medium';
+
 interface PlayerLinksPanelProps {
   tournamentId: string;
   seasonId: string;
@@ -65,7 +69,7 @@ function PlayerLinksBody({
 }: PlayerLinksBodyProps) {
   if (listing.competitors.length === 0) {
     return (
-      <p className="text-gray-400 text-sm">
+      <p className="text-ink-muted text-sm">
         No ESPN competitors found for this tournament.
       </p>
     );
@@ -75,12 +79,12 @@ function PlayerLinksBody({
       {listing.isFinalized ? (
         <p
           role="status"
-          className="text-yellow-300 text-xs bg-yellow-900/30 border border-yellow-700 rounded px-3 py-2"
+          className="text-semantic-warning-ink text-xs bg-semantic-warning-tint/30 border border-semantic-warning-soft rounded px-3 py-2"
         >
           Links locked — tournament finalized.
         </p>
       ) : null}
-      <ul className="divide-y divide-gray-700">
+      <ul className="divide-y divide-hairline">
         {listing.competitors.map((competitor) => (
           <CompetitorRow
             key={competitor.espnCompetitorId}
@@ -180,20 +184,20 @@ function CompetitorRow({
     <li className="py-3 grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
       <div className="space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-white text-sm font-medium">{competitor.name}</span>
-          <span className="text-xs text-gray-400">pos {competitor.position}</span>
+          <span className="text-ink-strong text-sm font-medium">{competitor.name}</span>
+          <span className="text-xs text-ink-muted">pos {competitor.position}</span>
           {competitor.isTeamPartner ? (
-            <span className="text-xs uppercase tracking-wider bg-gray-700 text-gray-200 rounded px-1.5 py-0.5">
+            <span className="text-xs uppercase tracking-wider bg-surface-raised text-ink-body rounded px-1.5 py-0.5">
               partner
             </span>
           ) : null}
           {competitor.hasOverride ? (
-            <span className="text-xs uppercase tracking-wider bg-blue-700 text-blue-100 rounded px-1.5 py-0.5">
+            <span className="text-xs uppercase tracking-wider bg-semantic-info-soft text-semantic-info-ink rounded px-1.5 py-0.5">
               manual override
             </span>
           ) : null}
         </div>
-        <label htmlFor={selectId} className="block text-xs text-gray-400">
+        <label htmlFor={selectId} className="block text-xs text-ink-muted">
           Link to golfer
         </label>
         <select
@@ -201,7 +205,7 @@ function CompetitorRow({
           value={draftGolferId}
           disabled={disabled || pending}
           onChange={(e) => setDraftGolferId(e.target.value)}
-          className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm w-full max-w-sm disabled:opacity-50"
+          className="bg-surface-raised border border-control-border rounded px-2 py-1 text-sm w-full max-w-sm disabled:opacity-50"
         >
           <option value="">— unlinked —</option>
           {sortedGolfers.map((golfer) => (
@@ -211,7 +215,7 @@ function CompetitorRow({
           ))}
         </select>
         {errorMessage ? (
-          <p role="alert" className="text-red-300 text-xs">
+          <p role="alert" className="text-semantic-danger-strong text-xs">
             {errorMessage}
           </p>
         ) : null}
@@ -228,7 +232,7 @@ function CompetitorRow({
               type="button"
               disabled={pending}
               onClick={() => setCreating(true)}
-              className="text-blue-400 hover:text-blue-300 text-xs underline disabled:opacity-50"
+              className="text-semantic-info hover:text-semantic-info-hover text-xs underline disabled:opacity-50"
             >
               + Create new golfer & link
             </button>
@@ -240,7 +244,7 @@ function CompetitorRow({
           type="button"
           disabled={disabled || pending || !hasChange}
           onClick={() => saveMutation.mutate(draftGolferId)}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white text-xs px-3 py-1 rounded font-medium"
+          className={SAVE_LINK_BUTTON_CLASS}
         >
           {saveMutation.isPending ? 'Saving…' : 'Save link'}
         </button>
@@ -249,7 +253,7 @@ function CompetitorRow({
             type="button"
             disabled={disabled || pending}
             onClick={() => clearMutation.mutate()}
-            className="text-gray-400 hover:text-red-300 text-xs disabled:opacity-50"
+            className="text-ink-muted hover:text-semantic-danger-hover text-xs disabled:opacity-50"
           >
             {clearMutation.isPending ? 'Clearing…' : 'Clear override'}
           </button>
@@ -278,29 +282,29 @@ function NewGolferInlineForm({
   const valid = firstName.trim().length > 0 && lastName.trim().length > 0;
 
   return (
-    <div className="border border-gray-700 rounded p-2 space-y-2 bg-gray-700/50">
-      <p className="text-xs text-gray-400">
+    <div className="border border-hairline rounded p-2 space-y-2 bg-surface-raised/50">
+      <p className="text-xs text-ink-muted">
         Creates a new golfer with no ESPN id and pins this competitor to them.
       </p>
       <div className="flex gap-2 flex-wrap">
-        <label className="text-xs text-gray-400 flex flex-col">
+        <label className="text-xs text-ink-muted flex flex-col">
           First name
           <input
             type="text"
             value={firstName}
             disabled={pending}
             onChange={(e) => setFirstName(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white disabled:opacity-50"
+            className="bg-surface-raised border border-control-border rounded px-2 py-1 text-sm text-ink-strong disabled:opacity-50"
           />
         </label>
-        <label className="text-xs text-gray-400 flex flex-col">
+        <label className="text-xs text-ink-muted flex flex-col">
           Last name
           <input
             type="text"
             value={lastName}
             disabled={pending}
             onChange={(e) => setLastName(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm text-white disabled:opacity-50"
+            className="bg-surface-raised border border-control-border rounded px-2 py-1 text-sm text-ink-strong disabled:opacity-50"
           />
         </label>
       </div>
@@ -309,7 +313,7 @@ function NewGolferInlineForm({
           type="button"
           disabled={!valid || pending}
           onClick={() => onSubmit({ firstName: firstName.trim(), lastName: lastName.trim() })}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white text-xs px-3 py-1 rounded font-medium"
+          className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary text-xs px-3 py-1 rounded font-medium"
         >
           {pending ? 'Creating…' : 'Create & link'}
         </button>
@@ -317,7 +321,7 @@ function NewGolferInlineForm({
           type="button"
           disabled={pending}
           onClick={onCancel}
-          className="text-gray-400 hover:text-white text-xs disabled:opacity-50"
+          className="text-ink-muted hover:text-ink-strong text-xs disabled:opacity-50"
         >
           Cancel
         </button>

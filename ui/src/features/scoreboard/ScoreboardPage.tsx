@@ -14,7 +14,11 @@ import PlayerLinksPanel from './PlayerLinksPanel';
 import ScoreboardView from './ScoreboardView';
 
 const FINALIZE_BUTTON_CLASS =
-  'bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-3 py-1 rounded text-xs ' +
+  'bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-3 py-1 rounded text-xs ' +
+  'font-medium whitespace-nowrap';
+
+const LINKS_BUTTON_CLASS =
+  'bg-semantic-info-fill hover:bg-semantic-info-fill-hover text-on-fill px-3 py-1 rounded text-xs ' +
   'font-medium whitespace-nowrap';
 
 function ScoreboardPage(): ReactNode {
@@ -69,7 +73,7 @@ function ScoreboardPage(): ReactNode {
     return (
       <div className="flex items-center gap-3">
         {finalizeErr ? (
-          <span role="alert" className="text-red-300 text-xs">
+          <span role="alert" className="text-semantic-danger-strong text-xs">
             {finalizeErr}
           </span>
         ) : null}
@@ -77,7 +81,7 @@ function ScoreboardPage(): ReactNode {
           <button
             type="button"
             onClick={() => setLinksPanelOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-medium whitespace-nowrap"
+            className={LINKS_BUTTON_CLASS}
           >
             Manage player links
           </button>
@@ -102,20 +106,20 @@ function ScoreboardPage(): ReactNode {
     <QueryState query={tournamentsQuery} label="tournaments">
       {(loadedTournaments) => {
         if (loadedTournaments.length === 0) {
-          return <p className="text-gray-400">No tournaments scheduled for this season.</p>;
+          return <p className="text-ink-muted">No tournaments scheduled for this season.</p>;
         }
         return (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <label
                 htmlFor="tournament-select"
-                className="text-xs text-gray-400 uppercase tracking-wider"
+                className="text-xs text-ink-muted uppercase tracking-wider"
               >
                 Tournament
               </label>
               <select
                 id="tournament-select"
-                className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"
+                className="bg-surface-card border border-control-border rounded px-3 py-2 text-sm"
                 value={tournamentId ?? ''}
                 onChange={(e) => setUserTournamentId(e.target.value)}
               >

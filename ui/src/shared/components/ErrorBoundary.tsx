@@ -9,7 +9,7 @@ interface ErrorBoundaryState {
 }
 
 const RELOAD_BUTTON_CLASS =
-  'mt-6 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium';
+  'mt-6 bg-primary hover:bg-primary-hover text-on-primary px-4 py-2 rounded text-sm font-medium';
 
 /**
  * Render throws only; `QueryState` owns fetch failures. A class because error catching has no hook.
@@ -27,10 +27,10 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
       return this.props.children;
     }
     return (
-      <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center px-4">
-        <div role="alert" className="w-full max-w-md bg-gray-800 rounded-lg shadow-xl border border-gray-600 p-8 text-center">
+      <div className="min-h-screen bg-canvas text-ink flex items-center justify-center px-4">
+        <div role="alert" className="w-full max-w-md bg-surface-card rounded-lg shadow-xl border border-hairline-strong p-8 text-center">
           <h1 className="text-2xl font-bold">Something went wrong</h1>
-          <p className="mt-2 text-sm text-gray-400">
+          <p className="mt-2 text-sm text-ink-muted">
             CWFG hit an unexpected error and could not finish loading this screen. Reloading usually clears it.
           </p>
           <button type="button" className={RELOAD_BUTTON_CLASS} onClick={() => window.location.reload()}>
@@ -38,7 +38,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
           </button>
           {/* A plain anchor, not a router Link: the boundary sits outside the router. The way out when this URL
               crashes on every load. */}
-          <a href="/" className="mt-4 block text-sm text-gray-400 hover:text-white">
+          <a href="/" className="mt-4 block text-sm text-ink-muted hover:text-ink-strong">
             Back to the scoreboard
           </a>
         </div>

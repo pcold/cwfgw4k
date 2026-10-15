@@ -4,9 +4,9 @@ import { formatMoney } from '@/shared/util/money';
 import RankingsChart from './RankingsChart';
 
 function signColor(value: number): string {
-  if (value > 0) return 'text-green-400';
-  if (value < 0) return 'text-red-400';
-  return 'text-gray-400';
+  if (value > 0) return 'text-semantic-success';
+  if (value < 0) return 'text-semantic-danger';
+  return 'text-ink-muted';
 }
 
 interface Props {
@@ -26,9 +26,9 @@ function RankingsView({ rankings }: Props): ReactNode {
 
   return (
     <section className="space-y-6">
-      <header className="border-b border-gray-700 pb-3">
-        <h2 className="text-xl font-semibold text-green-400">Team Standings</h2>
-        <p className="text-xs text-gray-400">
+      <header className="border-b border-hairline pb-3">
+        <h2 className="text-xl font-semibold text-primary-ink">Team Standings</h2>
+        <p className="text-xs text-ink-muted">
           {rankings.weeks.length} weeks played
           {rankings.live ? ' · live overlay on' : ''}
         </p>
@@ -37,7 +37,7 @@ function RankingsView({ rankings }: Props): ReactNode {
       <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wider text-gray-500">
+            <tr className="text-left text-xs uppercase tracking-wider text-ink-soft">
               <th className="px-3 py-2 w-12">#</th>
               <th className="px-3 py-2">Team</th>
               <th className="px-3 py-2 text-right">Subtotal</th>
@@ -45,11 +45,11 @@ function RankingsView({ rankings }: Props): ReactNode {
               <th className="px-3 py-2 text-right">Total Cash</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800">
+          <tbody className="divide-y divide-hairline-soft">
             {sorted.map((team, index) => (
-              <tr key={team.teamId} className="hover:bg-gray-800/60">
-                <td className="px-3 py-2 text-gray-500">{index + 1}</td>
-                <td className="px-3 py-2 font-medium text-gray-100 uppercase">{team.teamName}</td>
+              <tr key={team.teamId} className="hover:bg-surface-card/60">
+                <td className="px-3 py-2 text-ink-soft">{index + 1}</td>
+                <td className="px-3 py-2 font-medium text-ink uppercase">{team.teamName}</td>
                 <td
                   className={`px-3 py-2 text-right tabular-nums ${signColor(team.subtotal)}`}
                 >
@@ -72,20 +72,20 @@ function RankingsView({ rankings }: Props): ReactNode {
       </div>
 
       <div className="flex flex-wrap gap-3 text-sm">
-        <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
-          <span className="text-gray-500">Won</span>
-          <span className="font-semibold text-green-400 tabular-nums">
+        <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
+          <span className="text-ink-soft">Won</span>
+          <span className="font-semibold text-semantic-success tabular-nums">
             {formatMoney(totalWon, 0)}
           </span>
         </div>
-        <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
-          <span className="text-gray-500">Lost</span>
-          <span className="font-semibold text-red-400 tabular-nums">
+        <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
+          <span className="text-ink-soft">Lost</span>
+          <span className="font-semibold text-semantic-danger tabular-nums">
             {formatMoney(totalLost, 0)}
           </span>
         </div>
-        <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
-          <span className="text-gray-500">Net</span>
+        <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
+          <span className="text-ink-soft">Net</span>
           <span className={`font-semibold tabular-nums ${signColor(net)}`}>
             {formatMoney(net, 0)}
           </span>

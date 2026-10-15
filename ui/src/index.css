@@ -1,5 +1,89 @@
 @import "tailwindcss";
 
+/* They spell banned shades to name or test the lint, and Tailwind would ship a rule for each. */
+@source not "../eslint.config.js";
+@source not "./eslint.config.test.ts";
+@source not "../CLAUDE.md";
+
+/*
+ * Names are benrollio DESIGN.md `colors:` keys wherever the role matches. Tokens sharing a ramp step hold
+ * different roles, so never merge them. index.css.test.ts resolves each ramp alias; a literal it cannot.
+ */
+@theme {
+  --color-canvas: var(--color-gray-900);
+  --color-surface-card: var(--color-gray-800);
+  --color-surface-raised: var(--color-gray-700);
+  --color-surface-raised-hover: var(--color-gray-600);
+  --color-overlay: var(--color-black);
+
+  --color-hairline-soft: var(--color-gray-800);
+  --color-hairline: var(--color-gray-700);
+  --color-hairline-strong: var(--color-gray-600);
+  --color-control-border: var(--color-gray-600);
+
+  /* On a dark canvas a lower ramp step is the higher-contrast ink, so `-strong` is the lighter one. */
+  --color-ink-strong: var(--color-white);
+  --color-ink: var(--color-gray-100);
+  --color-ink-body: var(--color-gray-200);
+  --color-ink-secondary: var(--color-gray-300);
+  --color-ink-label: var(--color-gray-300);
+  --color-ink-muted: var(--color-gray-400);
+  --color-ink-soft: var(--color-gray-500);
+  --color-ink-faint: var(--color-gray-600);
+
+  --color-primary: var(--color-green-600);
+  --color-primary-hover: var(--color-green-700);
+  --color-on-primary: var(--color-white);
+  --color-primary-ink: var(--color-green-400);
+  --color-primary-control: var(--color-green-500);
+
+  /* Text on the secondary and semantic fills; `on-primary` holds the same white for the primary one. */
+  --color-on-fill: var(--color-white);
+  --color-secondary: var(--color-gray-600);
+  --color-secondary-hover: var(--color-gray-500);
+  --color-disabled: var(--color-gray-600);
+
+  /*
+   * As in benrollio, the bare base is status text and `-ink` sits on the family's own wash. A dark
+   * canvas pulls that text off the button fill's step, so the fill takes `-fill` rather than the base.
+   */
+  --color-semantic-success-tint: var(--color-green-900);
+  --color-semantic-success-soft: var(--color-green-700);
+  --color-semantic-success: var(--color-green-400);
+  --color-semantic-success-ink: var(--color-green-300);
+
+  --color-semantic-warning-tint: var(--color-yellow-900);
+  --color-semantic-warning-soft: var(--color-yellow-700);
+  --color-semantic-warning: var(--color-yellow-400);
+  --color-semantic-warning-ink: var(--color-yellow-300);
+  --color-semantic-warning-border: var(--color-yellow-600);
+
+  --color-semantic-danger-tint: var(--color-red-900);
+  --color-semantic-danger: var(--color-red-400);
+  --color-semantic-danger-hover: var(--color-red-300);
+  --color-semantic-danger-strong: var(--color-red-300);
+  --color-semantic-danger-fill: var(--color-red-600);
+  --color-semantic-danger-fill-hover: var(--color-red-700);
+  --color-semantic-danger-border: var(--color-red-500);
+
+  --color-semantic-info-soft: var(--color-blue-700);
+  --color-semantic-info: var(--color-blue-400);
+  --color-semantic-info-hover: var(--color-blue-300);
+  --color-semantic-info-ink: var(--color-blue-100);
+  --color-semantic-info-fill: var(--color-blue-600);
+  --color-semantic-info-fill-hover: var(--color-blue-700);
+
+  /* The report grids' gold: header rows, the cash-total row, and a cell that earned a payout. */
+  --color-gold-tint: var(--color-yellow-900);
+  --color-gold-soft: var(--color-yellow-700);
+  --color-gold: var(--color-yellow-600);
+  --color-gold-bright: var(--color-yellow-300);
+  --color-on-gold: var(--color-black);
+  --color-on-gold-earnings: var(--color-green-700);
+
+  --color-side-bet-winner: var(--color-red-800);
+}
+
 html,
 body,
 #root {
@@ -8,8 +92,8 @@ body,
 
 body {
   margin: 0;
-  background-color: #111827;
-  color: #f3f4f6;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
   font-family:
     ui-sans-serif,
     system-ui,

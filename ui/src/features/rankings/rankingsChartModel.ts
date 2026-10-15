@@ -1,5 +1,7 @@
 import type { Rankings, TeamRanking } from '@/shared/api/types';
 
+/* eslint-disable no-restricted-syntax -- series identity, not a role a token names; the ramp steps
+   in today's Tailwind render these visibly differently, so they wait for a restyle to pick a chart palette. */
 export const CHART_COLORS = [
   '#ef4444',
   '#f97316',
@@ -15,6 +17,7 @@ export const CHART_COLORS = [
   '#06b6d4',
   '#8b5cf6',
 ] as const;
+/* eslint-enable no-restricted-syntax */
 
 export interface ChartDimensions {
   width: number;

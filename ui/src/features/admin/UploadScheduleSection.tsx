@@ -15,6 +15,14 @@ import { DateField, FIELD_CLASS, FieldShell, SelectField } from '@/shared/compon
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
 
+const SKIPPED_BANNER_CLASS =
+  'mb-4 px-3 py-2 bg-semantic-warning-tint/30 border border-semantic-warning-soft rounded ' +
+  'text-semantic-warning-ink text-xs';
+
+const SAVE_MULTIPLIER_BUTTON_CLASS =
+  'bg-primary hover:bg-primary-hover disabled:bg-surface-raised disabled:text-ink-soft text-on-primary ' +
+  'px-3 py-1 rounded';
+
 function toConfirmedEntry(entry: PreviewedTournament): ConfirmedTournamentEntry {
   return { espnEventId: entry.espnEventId, name: entry.name, startDate: entry.startDate, endDate: entry.endDate };
 }
@@ -83,11 +91,11 @@ function UploadScheduleSection(): ReactNode {
     );
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+    <div className="bg-surface-card rounded-lg p-6">
+      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
         Import Season Schedule from ESPN
       </h3>
-      <p className="text-xs text-gray-400 mb-4">
+      <p className="text-xs text-ink-muted mb-4">
         Pulls the PGA tour calendar from ESPN for the date range and previews a tournament for
         every event whose start date falls inside it — nothing is created yet. Remove any events
         that aren&apos;t part of this league&apos;s season (e.g. the Presidents Cup), then confirm.
@@ -134,12 +142,12 @@ function UploadScheduleSection(): ReactNode {
           type="button"
           onClick={() => previewMutation.mutate()}
           disabled={previewDisabled}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+          className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium"
         >
           {previewMutation.isPending ? 'Fetching…' : 'Preview Import'}
         </button>
         {previewErrorMessage ? (
-          <span role="alert" className="text-red-400 text-sm">
+          <span role="alert" className="text-semantic-danger text-sm">
             {previewErrorMessage}
           </span>
         ) : null}
@@ -189,13 +197,13 @@ function SchedulePreview({
   confirmErrorMessage,
 }: SchedulePreviewProps) {
   return (
-    <div className="mt-6 pt-4 border-t border-gray-700">
-      <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+    <div className="mt-6 pt-4 border-t border-hairline">
+      <h4 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
         Review Before Confirming
       </h4>
 
       {skipped.length > 0 ? (
-        <div className="mb-4 px-3 py-2 bg-yellow-900/30 border border-yellow-700 rounded text-yellow-300 text-xs">
+        <div className={SKIPPED_BANNER_CLASS}>
           <div className="font-semibold mb-1">Skipped ESPN entries:</div>
           <ul className="space-y-0.5">
             {skipped.map((s) => (
@@ -209,7 +217,7 @@ function SchedulePreview({
 
       {entries.length > 0 ? (
         <table className="w-full text-sm mb-4">
-          <thead className="bg-gray-700 text-gray-300 text-xs uppercase tracking-wider">
+          <thead className="bg-surface-raised text-ink-label text-xs uppercase tracking-wider">
             <tr>
               <th className="px-3 py-2 text-left">Wk</th>
               <th className="px-3 py-2 text-left">Tournament</th>
@@ -219,17 +227,17 @@ function SchedulePreview({
           </thead>
           <tbody>
             {entries.map((entry) => (
-              <tr key={entry.espnEventId} className="border-t border-gray-700">
-                <td className="px-3 py-2 text-gray-400 font-mono">{entry.week}</td>
+              <tr key={entry.espnEventId} className="border-t border-hairline">
+                <td className="px-3 py-2 text-ink-muted font-mono">{entry.week}</td>
                 <td className="px-3 py-2 font-medium">{entry.name}</td>
-                <td className="px-3 py-2 text-gray-400 text-xs">
+                <td className="px-3 py-2 text-ink-muted text-xs">
                   {entry.startDate} to {entry.endDate}
                 </td>
                 <td className="px-3 py-2 text-xs">
                   <button
                     type="button"
                     onClick={() => onRemove(entry.espnEventId)}
-                    className="text-red-400 hover:text-red-300"
+                    className="text-semantic-danger hover:text-semantic-danger-hover"
                   >
                     Remove
                   </button>
@@ -239,7 +247,7 @@ function SchedulePreview({
           </tbody>
         </table>
       ) : (
-        <p className="text-xs text-gray-400 mb-4">
+        <p className="text-xs text-ink-muted mb-4">
           Every candidate was removed — confirming now would create nothing.
         </p>
       )}
@@ -249,12 +257,12 @@ function SchedulePreview({
           type="button"
           onClick={onConfirm}
           disabled={confirmPending || entries.length === 0}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+          className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium"
         >
           {confirmPending ? 'Confirming…' : 'Confirm Import'}
         </button>
         {confirmErrorMessage ? (
-          <span role="alert" className="text-red-400 text-sm">
+          <span role="alert" className="text-semantic-danger text-sm">
             {confirmErrorMessage}
           </span>
         ) : null}
@@ -271,26 +279,26 @@ interface ImportResultProps {
 
 function ImportResult({ created, skipped, onRowSaved }: ImportResultProps) {
   return (
-    <div className="mt-6 pt-4 border-t border-gray-700">
-      <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+    <div className="mt-6 pt-4 border-t border-hairline">
+      <h4 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
         Confirm Imported Tournaments
       </h4>
 
       <div className="flex gap-6 mb-4 text-sm">
         <div>
-          <span className="text-gray-400">Created:</span>
-          <span className="text-green-400 font-bold ml-1">{created.length}</span>
+          <span className="text-ink-muted">Created:</span>
+          <span className="text-semantic-success font-bold ml-1">{created.length}</span>
         </div>
         {skipped.length > 0 ? (
           <div>
-            <span className="text-gray-400">Skipped:</span>
-            <span className="text-yellow-400 font-bold ml-1">{skipped.length}</span>
+            <span className="text-ink-muted">Skipped:</span>
+            <span className="text-semantic-warning font-bold ml-1">{skipped.length}</span>
           </div>
         ) : null}
       </div>
 
       {skipped.length > 0 ? (
-        <div className="mb-4 px-3 py-2 bg-yellow-900/30 border border-yellow-700 rounded text-yellow-300 text-xs">
+        <div className={SKIPPED_BANNER_CLASS}>
           <div className="font-semibold mb-1">Skipped ESPN entries:</div>
           <ul className="space-y-0.5">
             {skipped.map((s) => (
@@ -304,7 +312,7 @@ function ImportResult({ created, skipped, onRowSaved }: ImportResultProps) {
 
       {created.length > 0 ? (
         <table className="w-full text-sm">
-          <thead className="bg-gray-700 text-gray-300 text-xs uppercase tracking-wider">
+          <thead className="bg-surface-raised text-ink-label text-xs uppercase tracking-wider">
             <tr>
               <th className="px-3 py-2 text-left">Wk</th>
               <th className="px-3 py-2 text-left">Tournament</th>
@@ -354,14 +362,15 @@ function TournamentRow({ tournament, onSaved }: TournamentRowProps) {
     draftValue !== tournament.payoutMultiplier;
   const invalid = draftMultiplier.trim() !== '' && (!Number.isFinite(draftValue) || draftValue <= 0);
   const multiplierError = invalid ? 'Enter a number greater than 0' : undefined;
+  const multiplierBorder = invalid ? 'border-semantic-danger-border' : 'border-control-border';
   const multiplierId = `multiplier-${tournament.id}`;
   const errorMessage = mutationError(updateMutation.error);
 
   return (
-    <tr className="border-t border-gray-700">
-      <td className="px-3 py-2 text-gray-400 font-mono">{tournament.week ?? ''}</td>
+    <tr className="border-t border-hairline">
+      <td className="px-3 py-2 text-ink-muted font-mono">{tournament.week ?? ''}</td>
       <td className="px-3 py-2 font-medium">{tournament.name}</td>
-      <td className="px-3 py-2 text-gray-400 text-xs">
+      <td className="px-3 py-2 text-ink-muted text-xs">
         {tournament.startDate} to {tournament.endDate}
       </td>
       <td className="px-3 py-2 text-center">
@@ -380,7 +389,7 @@ function TournamentRow({ tournament, onSaved }: TournamentRowProps) {
             onChange={(e) => setDraftMultiplier(e.target.value)}
             aria-invalid={multiplierError !== undefined}
             aria-describedby={multiplierError !== undefined ? `${multiplierId}-error` : undefined}
-            className={`bg-gray-700 border ${invalid ? 'border-red-500' : 'border-gray-600'} rounded px-2 py-1 text-sm w-20 text-right`}
+            className={`bg-surface-raised border ${multiplierBorder} rounded px-2 py-1 text-sm w-20 text-right`}
           />
         </FieldShell>
       </td>
@@ -390,12 +399,12 @@ function TournamentRow({ tournament, onSaved }: TournamentRowProps) {
             type="button"
             onClick={() => updateMutation.mutate()}
             disabled={!dirty || invalid || updateMutation.isPending}
-            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 text-white px-3 py-1 rounded"
+            className={SAVE_MULTIPLIER_BUTTON_CLASS}
           >
             {updateMutation.isPending ? 'Saving…' : 'Save'}
           </button>
           {errorMessage ? (
-            <span role="alert" className="text-red-400">
+            <span role="alert" className="text-semantic-danger">
               {errorMessage}
             </span>
           ) : null}

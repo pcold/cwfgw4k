@@ -25,16 +25,16 @@ const NAV_ITEMS: Array<{ to: string; label: string }> = [
 
 const MENU_BUTTON_CLASS =
   'lg:hidden inline-flex items-center justify-center w-11 h-11 rounded ' +
-  'text-gray-300 hover:text-white hover:bg-gray-700';
+  'text-ink-secondary hover:text-ink-strong hover:bg-surface-raised';
 
 const desktopLinkClass = ({ isActive }: { isActive: boolean }): string =>
   `px-3 py-2 rounded text-sm font-medium transition ${
-    isActive ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'
+    isActive ? 'bg-surface-raised text-ink-strong' : 'text-ink-muted hover:text-ink-strong'
   }`;
 
 const mobileLinkClass = ({ isActive }: { isActive: boolean }): string =>
   `block px-4 py-3 rounded text-base font-medium transition ${
-    isActive ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-700/50 hover:text-white'
+    isActive ? 'bg-surface-raised text-ink-strong' : 'text-ink-secondary hover:bg-surface-raised/50 hover:text-ink-strong'
   }`;
 
 function App(): ReactNode {
@@ -50,10 +50,10 @@ function App(): ReactNode {
   return (
     <AuthProvider>
     <LeagueSeasonProvider>
-      <div className="min-h-screen bg-gray-900 text-gray-100">
-        <nav className="bg-gray-800 border-b border-gray-700">
+      <div className="min-h-screen bg-canvas text-ink">
+        <nav className="bg-surface-card border-b border-hairline">
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-            <h1 className="text-lg font-bold text-green-400 tracking-wide">CWFG</h1>
+            <h1 className="text-lg font-bold text-primary-ink tracking-wide">CWFG</h1>
 
             <div className="hidden lg:flex gap-1">
               {NAV_ITEMS.map((item) => (
@@ -92,7 +92,7 @@ function App(): ReactNode {
           {mobileNavOpen ? (
             <div
               id="mobile-nav"
-              className="lg:hidden border-t border-gray-700 bg-gray-800"
+              className="lg:hidden border-t border-hairline bg-surface-card"
             >
               <div className="max-w-6xl mx-auto px-2 py-2 flex flex-col gap-1">
                 {NAV_ITEMS.map((item) => (

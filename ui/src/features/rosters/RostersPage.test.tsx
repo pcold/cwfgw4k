@@ -72,7 +72,7 @@ describe('RostersPage', () => {
     await screen.findByText('Scottie Scheffler');
     await waitFor(() => {
       const roundRows = screen.getAllByRole('row').slice(1);
-      const setApart = roundRows.map((row) => row.classList.contains('bg-gray-800/70'));
+      const setApart = roundRows.map((row) => row.classList.contains('bg-surface-card/70'));
       expect(setApart).toEqual([false, true, true, false, false, false, false, false]);
     });
     expect(seasonRulesMock).toHaveBeenCalledWith('sn-1');

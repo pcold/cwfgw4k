@@ -7,6 +7,10 @@ import { SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
 
+const DELETE_BUTTON_CLASS =
+  'bg-semantic-danger-fill hover:bg-semantic-danger-fill-hover disabled:bg-disabled text-on-fill ' +
+  'px-4 py-2 rounded text-sm font-medium whitespace-nowrap';
+
 function DeleteSeasonSection(): ReactNode {
   const queryClient = useQueryClient();
 
@@ -47,11 +51,11 @@ function DeleteSeasonSection(): ReactNode {
   const errorMessage = mutationError(deleteMutation.error);
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+    <div className="bg-surface-card rounded-lg p-6">
+      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
         Delete Season
       </h3>
-      <p className="text-xs text-gray-400 mb-4">
+      <p className="text-xs text-ink-muted mb-4">
         Permanently delete a season along with its schedule, drafted teams, rosters, drafts,
         picks, scores, and standings. This cannot be undone.
       </p>
@@ -71,16 +75,16 @@ function DeleteSeasonSection(): ReactNode {
           type="button"
           onClick={onDelete}
           disabled={deleteMutation.isPending || !seasonId}
-          className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium whitespace-nowrap"
+          className={DELETE_BUTTON_CLASS}
         >
           {deleteMutation.isPending ? 'Deleting...' : 'Delete Season'}
         </button>
       </div>
       {deleteMutation.isSuccess ? (
-        <span className="block mt-3 text-sm text-green-400">Season deleted.</span>
+        <span className="block mt-3 text-sm text-semantic-success">Season deleted.</span>
       ) : null}
       {errorMessage ? (
-        <span role="alert" className="block mt-3 text-sm text-red-400">
+        <span role="alert" className="block mt-3 text-sm text-semantic-danger">
           {errorMessage}
         </span>
       ) : null}

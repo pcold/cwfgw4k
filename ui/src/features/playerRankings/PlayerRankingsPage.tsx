@@ -59,13 +59,13 @@ function PlayerRankingsPage(): ReactNode {
           <div className="flex items-center gap-3">
             <label
               htmlFor="player-rankings-through"
-              className="text-xs text-gray-400 uppercase tracking-wider"
+              className="text-xs text-ink-muted uppercase tracking-wider"
             >
               Through
             </label>
             <select
               id="player-rankings-through"
-              className="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm"
+              className="bg-surface-card border border-control-border rounded px-3 py-2 text-sm"
               value={throughTournamentId}
               onChange={(e) => setThroughOverride(e.target.value)}
             >
@@ -81,15 +81,15 @@ function PlayerRankingsPage(): ReactNode {
         </div>
 
         {tournamentsQuery.isError ? (
-          <p className="text-red-400">
+          <p className="text-semantic-danger">
             Failed to load tournaments: {String(tournamentsQuery.error)}
           </p>
         ) : playerRankingsQuery.isError ? (
-          <p className="text-red-400">
+          <p className="text-semantic-danger">
             Failed to load player rankings: {String(playerRankingsQuery.error)}
           </p>
         ) : tournamentsQuery.isLoading || playerRankingsQuery.isLoading ? (
-          <p className="text-gray-400">Loading player rankings…</p>
+          <p className="text-ink-muted">Loading player rankings…</p>
         ) : (
           <PlayerRankingsView
             players={playerRankingsQuery.data?.players ?? []}

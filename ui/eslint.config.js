@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import react from 'eslint-plugin-react';
@@ -75,6 +77,48 @@ const TESTID_MESSAGE =
   'Query by accessible role/label/text, not data-testid (ui/CLAUDE.md → Testing). ' +
   'If there is genuinely no accessible selector, add an eslint-disable with a one-line reason.';
 
+// The lookbehind guards the prefix position: it is what stops the `text-gray-500` inside `subtext-gray-500`.
+const COLOR_UTILITY_PREFIXES =
+  'bg|text|decoration|border(?:-[xytrbsel])?|divide|outline|ring(?:-offset)?|inset-ring|' +
+  'shadow|inset-shadow|drop-shadow|text-shadow|fill|stroke|accent|caret|placeholder|from|via|to';
+
+// Read from the theme that ships, so a ramp a Tailwind upgrade adds is banned with no edit here.
+const tailwindTheme = readFileSync(createRequire(import.meta.url).resolve('tailwindcss/theme.css'), 'utf8');
+const TAILWIND_COLOR_RAMPS = [...new Set([...tailwindTheme.matchAll(/--color-([a-z]+)-950:/g)].map(([, ramp]) => ramp))]
+  .join('|');
+
+const COLOR_SHADE = `(?:(?:${TAILWIND_COLOR_RAMPS})-(?:50|950|[1-9]00)|white|black)`;
+
+const RAW_COLOR_PATTERN = `(?<![\\w-])(?:${COLOR_UTILITY_PREFIXES})-${COLOR_SHADE}(?![\\w-])`;
+
+const COLOR_FUNCTION = '(?:rgba?|hsla?|hwb|oklch|oklab|lab|lch|color-mix|color)\\(';
+
+// An arbitrary-value utility (`bg-[#1f2937]`, `text-(--color-gray-400)`) or a ramp variable anywhere.
+const RAW_COLOR_VALUE_PATTERN =
+  `(?:(?<![\\w-])(?:${COLOR_UTILITY_PREFIXES})-[\\[(](?:#|${COLOR_FUNCTION}|color:|var\\(--color-|--color-)` +
+  `|--color-${COLOR_SHADE}(?![\\w-]))`;
+
+// Anchored to the whole string, so `'#root'` and prose that mentions `rgb(` stay out.
+const COLOR_LITERAL_PATTERN = `^\\s*(?:#[0-9a-fA-F]{3,8}|${COLOR_FUNCTION}.*)\\s*$`;
+
+const RAW_COLOR_MESSAGE =
+  "Name the colour with a token from src/index.css's `@theme` block (ui/CLAUDE.md → Styling): " +
+  '`text-ink-muted`, not `text-gray-400`. A shade no token names gets a token there first.';
+
+const RAW_COLOR_VALUE_MESSAGE =
+  "Name the colour with a token from src/index.css's `@theme` block (ui/CLAUDE.md → Styling): a utility " +
+  'such as `fill-ink-muted`, or `var(--color-ink-muted)` where only a value fits, never a hex or ramp variable.';
+
+// Every Literal and TemplateElement, not only `className`: hoisted class constants, the model helpers
+// that return a class name, and SVG paint attributes hold colours too. The anchoring keeps prose out.
+const PALETTE_RESTRICTIONS = [
+  { selector: `Literal[value=/${RAW_COLOR_PATTERN}/]`, message: RAW_COLOR_MESSAGE },
+  { selector: `TemplateElement[value.raw=/${RAW_COLOR_PATTERN}/]`, message: RAW_COLOR_MESSAGE },
+  { selector: `Literal[value=/${RAW_COLOR_VALUE_PATTERN}/]`, message: RAW_COLOR_VALUE_MESSAGE },
+  { selector: `TemplateElement[value.raw=/${RAW_COLOR_VALUE_PATTERN}/]`, message: RAW_COLOR_VALUE_MESSAGE },
+  { selector: `Literal[value=/${COLOR_LITERAL_PATTERN}/]`, message: RAW_COLOR_VALUE_MESSAGE },
+];
+
 export default tseslint.config(
   { ignores: ['dist', 'coverage', 'test-report', 'node_modules'] },
   js.configs.recommended,
@@ -132,12 +176,17 @@ export default tseslint.config(
       ],
       'import-x/no-duplicates': 'error',
       'no-restricted-imports': ['error', IMPORT_RESTRICTIONS],
-      'no-restricted-syntax': ['error', { selector: AS_CAST_SELECTOR, message: AS_CAST_MESSAGE }],
+      'no-restricted-syntax': [
+        'error',
+        { selector: AS_CAST_SELECTOR, message: AS_CAST_MESSAGE },
+        ...PALETTE_RESTRICTIONS,
+      ],
     },
   },
   {
-    // `no-restricted-syntax` replaces rather than merges across blocks, so the `as` ban is restated
-    // here or every test file loses it. `no-restricted-imports` is never restated, so it carries over.
+    // `no-restricted-syntax` replaces rather than merges across blocks, so the `as` ban and the
+    // palette are restated here or every test file loses them. `no-restricted-imports` is never
+    // restated, so it carries over.
     files: ['**/*.test.{ts,tsx}'],
     plugins: { vitest, 'testing-library': testingLibrary },
     rules: {
@@ -154,6 +203,7 @@ export default tseslint.config(
         },
         { selector: 'MemberExpression[property.name=/ByTestId$/]', message: TESTID_MESSAGE },
         { selector: 'CallExpression[callee.name=/ByTestId$/]', message: TESTID_MESSAGE },
+        ...PALETTE_RESTRICTIONS,
       ],
     },
   },
@@ -170,6 +220,7 @@ export default tseslint.config(
             'The only `as` this file may use is the `camelizeKeys(parsed) as T` JSON boundary ' +
             '(ui/CLAUDE.md). Any other cast belongs behind a type guard.',
         },
+        ...PALETTE_RESTRICTIONS,
       ],
     },
   },

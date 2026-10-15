@@ -7,6 +7,10 @@ import { SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
 
+const CLEAN_BUTTON_CLASS =
+  'bg-semantic-danger-fill hover:bg-semantic-danger-fill-hover disabled:bg-disabled text-on-fill ' +
+  'px-4 py-2 rounded text-sm font-medium whitespace-nowrap';
+
 function CleanSeasonSection(): ReactNode {
   const queryClient = useQueryClient();
 
@@ -46,11 +50,11 @@ function CleanSeasonSection(): ReactNode {
   const errorMessage = mutationError(cleanMutation.error);
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+    <div className="bg-surface-card rounded-lg p-6">
+      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
         Clean All Season Results
       </h3>
-      <p className="text-xs text-gray-400 mb-4">
+      <p className="text-xs text-ink-muted mb-4">
         Delete all scores, results, and standings for an entire season, resetting every
         tournament back to upcoming.
       </p>
@@ -70,20 +74,20 @@ function CleanSeasonSection(): ReactNode {
           type="button"
           onClick={onClean}
           disabled={cleanMutation.isPending || !seasonId}
-          className="bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium whitespace-nowrap"
+          className={CLEAN_BUTTON_CLASS}
         >
           {cleanMutation.isPending ? 'Cleaning...' : 'Clean Results'}
         </button>
       </div>
       {cleanMutation.data ? (
-        <span className="block mt-3 text-sm text-green-400">
+        <span className="block mt-3 text-sm text-semantic-success">
           Cleaned {cleanMutation.data.scoresDeleted} scores,{' '}
           {cleanMutation.data.resultsDeleted} results; reset{' '}
           {cleanMutation.data.tournamentsReset} tournaments.
         </span>
       ) : null}
       {errorMessage ? (
-        <span role="alert" className="block mt-3 text-sm text-red-400">
+        <span role="alert" className="block mt-3 text-sm text-semantic-danger">
           {errorMessage}
         </span>
       ) : null}

@@ -15,13 +15,13 @@ function AdminPage(): ReactNode {
   const navigate = useNavigate();
 
   if (loading) {
-    return <p className="text-gray-400">Checking session…</p>;
+    return <p className="text-ink-muted">Checking session…</p>;
   }
 
   if (!authenticated) {
     return (
       <>
-        <p className="text-gray-400">You must be logged in to access the admin page.</p>
+        <p className="text-ink-muted">You must be logged in to access the admin page.</p>
         <LoginModal onClose={() => void navigate('/')} />
       </>
     );
@@ -31,14 +31,14 @@ function AdminPage(): ReactNode {
     <section className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Admin</h2>
-        <div className="flex items-center gap-3 text-sm text-gray-400">
+        <div className="flex items-center gap-3 text-sm text-ink-muted">
           {username ? <span>Signed in as {username}</span> : null}
           <button
             type="button"
             onClick={() => {
               void logout();
             }}
-            className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-sm"
+            className="bg-surface-raised hover:bg-surface-raised-hover text-ink-strong px-3 py-1.5 rounded text-sm"
           >
             Log out
           </button>

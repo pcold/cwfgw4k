@@ -36,7 +36,7 @@ function computeSharedPlayers(teams: RosterTeam[]): SharedPlayer[] {
 function RostersView({ teams, sideBetRounds, onGolferClick }: Props): ReactNode {
   if (teams.length === 0) {
     return (
-      <p className="text-gray-400 text-center py-12">
+      <p className="text-ink-muted text-center py-12">
         No rosters uploaded yet. Use the Admin tab to upload team rosters.
       </p>
     );
@@ -46,21 +46,21 @@ function RostersView({ teams, sideBetRounds, onGolferClick }: Props): ReactNode 
 
   return (
     <section className="space-y-6">
-      <header className="border-b border-gray-700 pb-3">
-        <h2 className="text-xl font-semibold text-green-400">Team Rosters</h2>
+      <header className="border-b border-hairline pb-3">
+        <h2 className="text-xl font-semibold text-primary-ink">Team Rosters</h2>
       </header>
 
       <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="bg-yellow-600 text-black font-bold">
-              <th className="border border-gray-600 px-1 py-1.5 w-10 sm:w-12 text-center sticky left-0 z-20 bg-yellow-600">
+            <tr className="bg-gold text-on-gold font-bold">
+              <th className="border border-hairline-strong px-1 py-1.5 w-10 sm:w-12 text-center sticky left-0 z-20 bg-gold">
                 RD
               </th>
               {teams.map((team, i) => (
                 <th
                   key={team.teamId}
-                  className="border border-gray-600 px-1 py-1.5 text-center min-w-[100px]"
+                  className="border border-hairline-strong px-1 py-1.5 text-center min-w-[100px]"
                 >
                   <div>{team.teamNumber ?? i + 1}</div>
                   <div className="text-xs uppercase">{team.teamName}</div>
@@ -70,10 +70,10 @@ function RostersView({ teams, sideBetRounds, onGolferClick }: Props): ReactNode 
           </thead>
           <tbody>
             {ROUNDS.map((round) => {
-              const rowBg = sideBetRounds.includes(round) ? 'bg-gray-800/70' : 'bg-gray-800';
+              const rowBg = sideBetRounds.includes(round) ? 'bg-surface-card/70' : 'bg-surface-card';
               return (
               <tr key={round} className={rowBg}>
-                <td className="border border-gray-700 px-1 py-1.5 text-center font-bold text-gray-400 sticky left-0 z-10 bg-gray-800">
+                <td className="border border-hairline px-1 py-1.5 text-center font-bold text-ink-muted sticky left-0 z-10 bg-surface-card">
                   {round}
                 </td>
                 {teams.map((team) => {
@@ -81,7 +81,7 @@ function RostersView({ teams, sideBetRounds, onGolferClick }: Props): ReactNode 
                   return (
                     <td
                       key={`${team.teamId}-${round}`}
-                      className="border border-gray-700 px-2 py-1.5 text-center"
+                      className="border border-hairline px-2 py-1.5 text-center"
                     >
                       {pick ? (
                         <div>
@@ -89,21 +89,21 @@ function RostersView({ teams, sideBetRounds, onGolferClick }: Props): ReactNode 
                             <button
                               type="button"
                               onClick={() => onGolferClick(pick.golferId)}
-                              className="font-semibold text-gray-200 truncate bg-transparent border-0 p-0 hover:underline cursor-pointer"
+                              className="font-semibold text-ink-body truncate bg-transparent border-0 p-0 hover:underline cursor-pointer"
                             >
                               {pick.golferName}
                             </button>
                           ) : (
-                            <div className="font-semibold text-gray-200 truncate">
+                            <div className="font-semibold text-ink-body truncate">
                               {pick.golferName}
                             </div>
                           )}
                           {pick.ownershipPct < 100 ? (
-                            <div className="text-gray-500 text-xs">{pick.ownershipPct}%</div>
+                            <div className="text-ink-soft text-xs">{pick.ownershipPct}%</div>
                           ) : null}
                         </div>
                       ) : (
-                        <span className="text-gray-600">—</span>
+                        <span className="text-ink-faint">—</span>
                       )}
                     </td>
                   );
@@ -116,15 +116,15 @@ function RostersView({ teams, sideBetRounds, onGolferClick }: Props): ReactNode 
       </div>
 
       {sharedPlayers.length > 0 ? (
-        <div className="text-xs text-gray-400">
-          <span className="font-semibold text-gray-300">Shared Players:</span>
+        <div className="text-xs text-ink-muted">
+          <span className="font-semibold text-ink-secondary">Shared Players:</span>
           {sharedPlayers.map((sp) => (
             <span key={sp.name} className="ml-3">
-              <span className="text-gray-200">{sp.name}</span>
+              <span className="text-ink-body">{sp.name}</span>
               {sp.owners.map((owner, j) => (
                 <span key={owner.team}>
-                  {j > 0 ? <span className="text-gray-600"> / </span> : null}
-                  <span className="text-gray-400">
+                  {j > 0 ? <span className="text-ink-faint"> / </span> : null}
+                  <span className="text-ink-muted">
                     {' '}
                     <span className="uppercase">{owner.team}</span> {owner.pct}%
                   </span>

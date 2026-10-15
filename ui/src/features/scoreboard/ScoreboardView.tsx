@@ -23,15 +23,15 @@ function formatSigned(value: number): string {
 }
 
 function rowTint(weeklyTotal: number): string {
-  if (weeklyTotal > 0) return 'bg-green-900/10';
-  if (weeklyTotal < 0) return 'bg-red-900/10';
+  if (weeklyTotal > 0) return 'bg-semantic-success-tint/10';
+  if (weeklyTotal < 0) return 'bg-semantic-danger-tint/10';
   return '';
 }
 
 function signColor(value: number): string {
-  if (value > 0) return 'text-green-400';
-  if (value < 0) return 'text-red-400';
-  return 'text-gray-400';
+  if (value > 0) return 'text-semantic-success';
+  if (value < 0) return 'text-semantic-danger';
+  return 'text-ink-muted';
 }
 
 interface Props {
@@ -64,16 +64,16 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
     ? 'Results finalized'
     : 'Tournament in progress — scores are live estimates';
   const bannerClass = isCompleted
-    ? 'bg-green-900/30 border-green-700 text-green-300'
-    : 'bg-yellow-900/40 border-yellow-700 text-yellow-300';
+    ? 'bg-semantic-success-tint/30 border-semantic-success-soft text-semantic-success-ink'
+    : 'bg-semantic-warning-tint/40 border-semantic-warning-soft text-semantic-warning-ink';
 
   return (
     <section className="space-y-6">
-      <header className="border-b border-gray-700 pb-3">
-        <h2 className="text-xl font-semibold text-green-400">
+      <header className="border-b border-hairline pb-3">
+        <h2 className="text-xl font-semibold text-primary-ink">
           {tournament.name ?? 'Scoreboard'}
         </h2>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-ink-muted">
           Week {tournament.week ?? '?'}
           {tournament.payoutMultiplier !== 1 ? ` · ${tournament.payoutMultiplier}x payout` : ''}
         </p>
@@ -88,7 +88,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
 
       <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="w-full text-sm min-w-[500px]">
-          <thead className="bg-gray-800 text-gray-300 text-xs uppercase tracking-wider">
+          <thead className="bg-surface-card text-ink-label text-xs uppercase tracking-wider">
             <tr>
               <th className="px-4 py-3 text-left">#</th>
               <th className="px-4 py-3 text-left">Team</th>
@@ -97,12 +97,12 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
               <th className="px-4 py-3 text-left">Golfers in Top 10</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800">
+          <tbody className="divide-y divide-hairline-soft">
             {teams.map((team, i) => (
-              <tr key={team.teamId} className={`hover:bg-gray-800/60 ${rowTint(team.weeklyTotal)}`}>
-                <td className="px-4 py-3 text-gray-500">{i + 1}</td>
-                <td className="px-4 py-3 font-medium text-gray-100 uppercase">{team.teamName}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-gray-300">
+              <tr key={team.teamId} className={`hover:bg-surface-card/60 ${rowTint(team.weeklyTotal)}`}>
+                <td className="px-4 py-3 text-ink-soft">{i + 1}</td>
+                <td className="px-4 py-3 font-medium text-ink uppercase">{team.teamName}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-ink-secondary">
                   {formatMoney(team.topTenEarnings)}
                 </td>
                 <td
@@ -112,7 +112,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
                 </td>
                 <td className="px-4 py-3">
                   {team.golferScores.length === 0 ? (
-                    <span className="text-gray-600">—</span>
+                    <span className="text-ink-faint">—</span>
                   ) : (
                     team.golferScores.map((g) => {
                       const golferId = g.golferId;
@@ -122,18 +122,18 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
                           <button
                             type="button"
                             onClick={() => onGolferClick(golferId)}
-                            className="text-gray-300 hover:underline cursor-pointer bg-transparent border-0 p-0"
+                            className="text-ink-secondary hover:underline cursor-pointer bg-transparent border-0 p-0"
                           >
                             {g.golferName}
                           </button>
                         ) : (
-                          <span className="text-gray-300">{g.golferName}</span>
+                          <span className="text-ink-secondary">{g.golferName}</span>
                         )}{' '}
-                        {g.tied ? <span className="text-gray-500">T</span> : null}
-                        <span className="text-gray-400">{g.position ?? '?'}</span>{' '}
-                        <span className="text-green-400 tabular-nums">{formatMoney(g.payout)}</span>
+                        {g.tied ? <span className="text-ink-soft">T</span> : null}
+                        <span className="text-ink-muted">{g.position ?? '?'}</span>{' '}
+                        <span className="text-semantic-success tabular-nums">{formatMoney(g.payout)}</span>
                         {g.ownershipPct < 100 ? (
-                          <span className="text-gray-500"> ({g.ownershipPct}%)</span>
+                          <span className="text-ink-soft"> ({g.ownershipPct}%)</span>
                         ) : null}
                       </span>
                       );
@@ -147,20 +147,20 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
       </div>
 
       <div className="flex flex-wrap gap-3 text-sm">
-        <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
-          <span className="text-gray-500">Won</span>
-          <span className="font-semibold text-green-400 tabular-nums">
+        <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
+          <span className="text-ink-soft">Won</span>
+          <span className="font-semibold text-semantic-success tabular-nums">
             {formatMoney(weeklyTotals.won)}
           </span>
         </div>
-        <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
-          <span className="text-gray-500">Lost</span>
-          <span className="font-semibold text-red-400 tabular-nums">
+        <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
+          <span className="text-ink-soft">Lost</span>
+          <span className="font-semibold text-semantic-danger tabular-nums">
             {formatMoney(weeklyTotals.lost)}
           </span>
         </div>
-        <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
-          <span className="text-gray-500">Net</span>
+        <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
+          <span className="text-ink-soft">Net</span>
           <span className={`font-semibold tabular-nums ${signColor(weeklyTotals.net)}`}>
             {formatMoney(weeklyTotals.net)}
           </span>
@@ -169,12 +169,12 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
 
       {leaderboard.length > 0 ? (
         <div>
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+          <h3 className="text-xs font-semibold text-ink-soft uppercase tracking-wider mb-2">
             Leaderboard
           </h3>
           <div className="overflow-x-auto -mx-3 sm:mx-0">
             <table className="w-full text-sm min-w-[640px]">
-              <thead className="bg-gray-800 text-gray-300 text-xs uppercase tracking-wider">
+              <thead className="bg-surface-card text-ink-label text-xs uppercase tracking-wider">
                 <tr>
                   <th className="px-3 py-2 text-left">Pos</th>
                   <th className="px-3 py-2 text-left">Player</th>
@@ -194,10 +194,10 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
                   <th className="px-3 py-2 text-right">Tot</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-hairline-soft">
                 {filteredLeaderboard.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-3 py-6 text-center text-gray-500 italic">
+                    <td colSpan={9} className="px-3 py-6 text-center text-ink-soft italic">
                       No players match this filter.
                     </td>
                   </tr>
@@ -205,12 +205,12 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
                   filteredLeaderboard.map((entry) => (
                     <tr
                       key={playerNames(entry)}
-                      className={entry.rostered ? 'bg-green-900/10' : ''}
+                      className={entry.rostered ? 'bg-semantic-success-tint/10' : ''}
                     >
-                      <td className="px-3 py-2 text-gray-400">{entry.position}</td>
-                      <td className="px-3 py-2 text-gray-100">{playerNames(entry)}</td>
+                      <td className="px-3 py-2 text-ink-muted">{entry.position}</td>
+                      <td className="px-3 py-2 text-ink">{playerNames(entry)}</td>
                       <td
-                        className={`px-3 py-2 text-xs ${entry.rostered ? 'text-green-400 uppercase' : 'text-gray-600'}`}
+                        className={`px-3 py-2 text-xs ${entry.rostered ? 'text-semantic-success uppercase' : 'text-ink-faint'}`}
                       >
                         {teamLabel(entry)}
                       </td>
@@ -218,7 +218,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
                         {formatScoreToPar(entry.scoreToPar)}
                       </td>
                       {[0, 1, 2, 3].map((idx) => (
-                        <td key={idx} className="px-3 py-2 text-right tabular-nums text-gray-400">
+                        <td key={idx} className="px-3 py-2 text-right tabular-nums text-ink-muted">
                           {entry.roundScores[idx] ?? '—'}
                         </td>
                       ))}

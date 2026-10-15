@@ -36,24 +36,24 @@ function GolferHistoryModal({ seasonId, golferId, onClose }: Props): ReactNode {
       dismissOnBackdrop
     >
       {loading ? (
-        <div className="text-center text-gray-500 py-4">Loading…</div>
+        <div className="text-center text-ink-soft py-4">Loading…</div>
       ) : error ? (
-        <div role="alert" className="text-center text-red-400 py-4">
+        <div role="alert" className="text-center text-semantic-danger py-4">
           Failed to load golfer history
         </div>
       ) : history ? (
         <div>
-          <div className="flex justify-between text-sm text-gray-400 mb-3">
+          <div className="flex justify-between text-sm text-ink-muted mb-3">
             <span>
               {history.topTens} top 10{history.topTens !== 1 ? 's' : ''}
             </span>
-            <span className="text-green-400 font-mono font-bold">
+            <span className="text-semantic-success font-mono font-bold">
               {formatMoney(history.totalEarnings)}
             </span>
           </div>
           {history.results.length > 0 ? (
             <table className="w-full text-sm">
-              <thead className="text-gray-400 text-xs uppercase">
+              <thead className="text-ink-muted text-xs uppercase">
                 <tr>
                   <th className="text-left px-2 py-1">Tournament</th>
                   <th className="text-right px-2 py-1">Place</th>
@@ -62,10 +62,10 @@ function GolferHistoryModal({ seasonId, golferId, onClose }: Props): ReactNode {
               </thead>
               <tbody>
                 {history.results.map((r) => (
-                  <tr key={r.tournament} className="border-t border-gray-700">
+                  <tr key={r.tournament} className="border-t border-hairline">
                     <td className="px-2 py-1.5">{r.tournament}</td>
                     <td className="px-2 py-1.5 text-right font-mono">{r.position}</td>
-                    <td className="px-2 py-1.5 text-right font-mono text-green-400">
+                    <td className="px-2 py-1.5 text-right font-mono text-semantic-success">
                       {formatMoney(r.earnings)}
                     </td>
                   </tr>
@@ -73,9 +73,9 @@ function GolferHistoryModal({ seasonId, golferId, onClose }: Props): ReactNode {
               </tbody>
             </table>
           ) : (
-            <p className="text-gray-500 text-center py-4">No top 10 finishes this season</p>
+            <p className="text-ink-soft text-center py-4">No top 10 finishes this season</p>
           )}
-          <p className="text-gray-500 text-xs italic mt-3">
+          <p className="text-ink-soft text-xs italic mt-3">
             Finalized results only. Does not include live projections or shared ownership splits.
           </p>
         </div>

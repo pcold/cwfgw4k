@@ -24,8 +24,8 @@ function CreateLeagueSection(): ReactNode {
   const errorMessage = mutationError(createMutation.error);
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+    <div className="bg-surface-card rounded-lg p-6">
+      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
         Create League
       </h3>
       <div className="flex flex-wrap items-end gap-4">
@@ -45,16 +45,16 @@ function CreateLeagueSection(): ReactNode {
           type="button"
           onClick={() => createMutation.mutate(name.trim())}
           disabled={disabled}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+          className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium"
         >
           {createMutation.isPending ? 'Creating...' : 'Create League'}
         </button>
         {errorMessage ? (
-          <span role="alert" className="text-red-400 text-sm">
+          <span role="alert" className="text-semantic-danger text-sm">
             {errorMessage}
           </span>
         ) : null}
-        {success ? <span className="text-green-400 text-sm">{success}</span> : null}
+        {success ? <span className="text-semantic-success text-sm">{success}</span> : null}
       </div>
     </div>
   );

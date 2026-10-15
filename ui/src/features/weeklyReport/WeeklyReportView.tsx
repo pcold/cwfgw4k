@@ -23,8 +23,8 @@ interface RoundCellProps {
 function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick }: RoundCellProps) {
   if (!cell || !cell.golferName) {
     return (
-      <td className="border border-gray-700 px-1.5 py-1 text-center align-top">
-        <span className="text-gray-600">—</span>
+      <td className="border border-hairline px-1.5 py-1 text-center align-top">
+        <span className="text-ink-faint">—</span>
       </td>
     );
   }
@@ -34,9 +34,9 @@ function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick }: R
   const text = roundTextColor(hasEarnings, isSideBetWinner);
   const earningsColor = hasEarnings
     ? isSideBetWinner
-      ? 'text-green-400'
-      : 'text-green-700'
-    : 'text-gray-500';
+      ? 'text-semantic-success'
+      : 'text-on-gold-earnings'
+    : 'text-ink-soft';
   const ownership = cell.ownershipPct < 100 ? ` (${cell.ownershipPct}%)` : '';
   const earningsLabel = hasEarnings
     ? `${cell.positionStr ?? ''} - ${formatMoney(cell.earnings)}`
@@ -65,7 +65,7 @@ function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick }: R
     );
 
   return (
-    <td className={`border border-gray-700 px-1.5 py-1 text-center align-top ${bg}`}>
+    <td className={`border border-hairline px-1.5 py-1 text-center align-top ${bg}`}>
       {nameContent}
       <div className={`font-mono ${earningsColor}`}>{earningsLabel}</div>
       {showSeasonFooter ? (
@@ -119,8 +119,8 @@ function SummaryRow({
 
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="bg-gray-800 rounded px-3 py-2 flex items-center gap-2">
-      <span className="text-gray-500">{label}</span>
+    <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
+      <span className="text-ink-soft">{label}</span>
       <span className={`font-semibold tabular-nums ${color}`}>{formatMoney(value)}</span>
     </div>
   );
@@ -139,19 +139,19 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
   const sideBetAmounts = sideBetAmountByRound(report.sideBetRules);
   const teamsByRound = teams.map((t) => ({ team: t, cells: teamCellsByRound(t) }));
 
-  const highlightRow = 'bg-gray-700 font-bold';
-  const subRow = 'bg-gray-800';
-  const highlightBorder = 'border border-gray-600';
-  const subBorder = 'border border-gray-700';
+  const highlightRow = 'bg-surface-raised font-bold';
+  const subRow = 'bg-surface-card';
+  const highlightBorder = 'border border-hairline-strong';
+  const subBorder = 'border border-hairline';
 
   return (
     <section className="space-y-4">
-      <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-gray-700 pb-3">
+      <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-hairline pb-3">
         <div>
-          <h2 className="text-xl font-semibold text-green-400">
+          <h2 className="text-xl font-semibold text-primary-ink">
             {tournament.name ?? 'Weekly Report'}
           </h2>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-ink-muted">
             {seasonMode
               ? 'Season totals'
               : `${tournament.startDate ?? ''}${tournament.endDate ? ` – ${tournament.endDate}` : ''}`}
@@ -160,7 +160,7 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
           </p>
         </div>
         {report.live ? (
-          <span className="text-xs bg-yellow-700/50 text-yellow-300 px-2 py-0.5 rounded">
+          <span className="text-xs bg-semantic-warning-soft/50 text-semantic-warning-ink px-2 py-0.5 rounded">
             LIVE — projected standings
           </span>
         ) : null}
@@ -169,14 +169,14 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
       <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="bg-yellow-600 text-black font-bold">
-              <th className="border border-gray-600 px-1 py-1.5 w-12 sm:w-16 text-center sticky left-0 z-20 bg-yellow-600">
+            <tr className="bg-gold text-on-gold font-bold">
+              <th className="border border-hairline-strong px-1 py-1.5 w-12 sm:w-16 text-center sticky left-0 z-20 bg-gold">
                 TEAM #
               </th>
               {teams.map((team, i) => (
                 <th
                   key={team.teamId}
-                  className="border border-gray-600 px-1 py-1.5 text-center min-w-[90px]"
+                  className="border border-hairline-strong px-1 py-1.5 text-center min-w-[90px]"
                 >
                   <div>{i + 1}</div>
                   <div className="text-xs uppercase">{team.teamName}</div>
@@ -189,8 +189,8 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
               const winners = winnersByRound.get(round) ?? new Set<string>();
               const sideBetAmount = sideBetAmounts.get(round);
               return (
-                <tr key={round} className="bg-gray-800 hover:bg-gray-800/80">
-                  <td className="border border-gray-700 px-1 py-1 text-center font-bold text-gray-400 sticky left-0 z-10 bg-gray-800">
+                <tr key={round} className="bg-surface-card hover:bg-surface-card/80">
+                  <td className="border border-hairline px-1 py-1 text-center font-bold text-ink-muted sticky left-0 z-10 bg-surface-card">
                     <div>{round}</div>
                     {sideBetAmount === undefined ? null : (
                       <div className="text-xs font-normal">({formatMoney(sideBetAmount)})</div>
@@ -210,7 +210,7 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
             })}
 
             <tr>
-              <td colSpan={teams.length + 1} className="h-1 bg-gray-900" />
+              <td colSpan={teams.length + 1} className="h-1 bg-canvas" />
             </tr>
 
             <SummaryRow
@@ -218,8 +218,8 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
               label="TOP TENS"
               rowClass={highlightRow}
               borderClass={highlightBorder}
-              labelBgClass="bg-gray-700"
-              cellClass={(t) => (t.topTenEarnings > 0 ? 'text-green-400' : 'text-gray-500')}
+              labelBgClass="bg-surface-raised"
+              cellClass={(t) => (t.topTenEarnings > 0 ? 'text-semantic-success' : 'text-ink-soft')}
               cellContent={(t) => formatMoney(t.topTenEarnings)}
             />
 
@@ -228,7 +228,7 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
               label={seasonMode ? '**SEASON' : '**WEEKLY'}
               rowClass={highlightRow}
               borderClass={highlightBorder}
-              labelBgClass="bg-gray-700"
+              labelBgClass="bg-surface-raised"
               cellClass={(t) => signTextClass(t.weeklyTotal)}
               cellContent={(t) => formatMoney(t.weeklyTotal)}
             />
@@ -238,9 +238,9 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
               label="PREVIOUS"
               rowClass={subRow}
               borderClass={subBorder}
-              labelBgClass="bg-gray-800"
-              labelClass="text-gray-400"
-              cellClass={() => 'text-gray-400 text-xs italic'}
+              labelBgClass="bg-surface-card"
+              labelClass="text-ink-muted"
+              cellClass={() => 'text-ink-muted text-xs italic'}
               cellContent={(t) => formatMoney(t.previous)}
             />
 
@@ -249,12 +249,12 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
               label="SUBTOTAL"
               rowClass={highlightRow}
               borderClass={highlightBorder}
-              labelBgClass="bg-gray-700"
+              labelBgClass="bg-surface-raised"
               cellClass={(t) => signTextClass(t.subtotal)}
               cellContent={(t) => (
                 <>
                   <div>{formatMoney(t.subtotal)}</div>
-                  <div className="text-gray-500 text-xs font-normal">
+                  <div className="text-ink-soft text-xs font-normal">
                     {formatMoney(t.topTenMoney)} ({t.topTenCount})
                   </div>
                 </>
@@ -266,14 +266,14 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
               label={sideBetRowLabel(report.sideBetRules)}
               rowClass={subRow}
               borderClass={subBorder}
-              labelBgClass="bg-gray-800"
-              labelClass="text-gray-400"
+              labelBgClass="bg-surface-card"
+              labelClass="text-ink-muted"
               cellClass={(t) => signTextClass(t.sideBets)}
               cellContent={(t) => formatMoney(t.sideBets)}
             />
 
             <tr>
-              <td colSpan={teams.length + 1} className="h-1 bg-gray-900" />
+              <td colSpan={teams.length + 1} className="h-1 bg-canvas" />
             </tr>
 
             <SummaryRow
@@ -285,9 +285,9 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
                   CASH
                 </>
               }
-              rowClass="bg-yellow-700/30 font-bold text-sm"
-              borderClass="border border-yellow-600/50"
-              labelBgClass="bg-yellow-900"
+              rowClass="bg-gold-soft/30 font-bold text-sm"
+              borderClass="border border-gold/50"
+              labelBgClass="bg-gold-tint"
               py="py-2"
               cellClass={(t) => signTextClass(t.totalCash)}
               cellContent={(t) => formatMoney(t.totalCash)}
@@ -297,7 +297,7 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
       </div>
 
       {undraftedTopTens.length > 0 ? (
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-ink-soft">
           <span className="font-semibold">UNDRAFTED TOP TENS:</span>
           {undraftedTopTens.map((u) => (
             <span key={u.name} className="ml-2">
@@ -309,8 +309,8 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
 
       {teams.length > 0 ? (
         <div className="flex flex-wrap gap-3 text-sm">
-          <StatCard label="Won" value={cashTotals.won} color="text-green-400" />
-          <StatCard label="Lost" value={cashTotals.lost} color="text-red-400" />
+          <StatCard label="Won" value={cashTotals.won} color="text-semantic-success" />
+          <StatCard label="Lost" value={cashTotals.lost} color="text-semantic-danger" />
           <StatCard label="Net" value={cashTotals.net} color={signTextClass(cashTotals.net)} />
         </div>
       ) : null}

@@ -70,7 +70,7 @@ describe('RostersView', () => {
   it("sets apart the rows of the season's side-bet rounds and of no other round", () => {
     render(<RostersView teams={[aces]} sideBetRounds={[2, 3]} />);
     const roundRows = screen.getAllByRole('row').slice(1);
-    const setApart = roundRows.map((row) => row.classList.contains('bg-gray-800/70'));
+    const setApart = roundRows.map((row) => row.classList.contains('bg-surface-card/70'));
     expect(setApart).toEqual([false, true, true, false, false, false, false, false]);
   });
 

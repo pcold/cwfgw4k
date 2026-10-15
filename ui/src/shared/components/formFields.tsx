@@ -10,7 +10,7 @@ export interface SelectOption {
  * Its `w-full` fills the field's box, so size a field through `width` rather than appending a width
  * here: two unprefixed widths on one control resolve by stylesheet order, not by class order.
  */
-export const FIELD_CLASS = 'bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm w-full';
+export const FIELD_CLASS = 'bg-surface-raised border border-control-border rounded px-3 py-2 text-sm w-full';
 
 interface FieldShellProps {
   readonly id: string;
@@ -43,13 +43,13 @@ export function FieldShell({
 }: FieldShellProps): ReactElement {
   return (
     <div className={width}>
-      <label htmlFor={id} className={hideLabel ? 'sr-only' : 'block text-xs text-gray-400 mb-1'}>
+      <label htmlFor={id} className={hideLabel ? 'sr-only' : 'block text-xs text-ink-muted mb-1'}>
         {label}
         {optional && ' (optional)'}
       </label>
       {children}
       {error !== undefined && (
-        <p id={`${id}-error`} role="alert" className="mt-1 text-red-400 text-xs">
+        <p id={`${id}-error`} role="alert" className="mt-1 text-semantic-danger text-xs">
           {error}
         </p>
       )}

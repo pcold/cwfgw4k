@@ -20,19 +20,19 @@ function RulesPage(): ReactNode {
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
 
-  if (leaguesLoading) return <p className="text-gray-400">Loading leagues…</p>;
+  if (leaguesLoading) return <p className="text-ink-muted">Loading leagues…</p>;
   if (leaguesError)
-    return <p className="text-red-400">Failed to load leagues: {String(leaguesError)}</p>;
+    return <p className="text-semantic-danger">Failed to load leagues: {String(leaguesError)}</p>;
 
   return (
     <section className="space-y-6">
       <h2 className="text-xl font-bold">Season Rules</h2>
 
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
+      <div className="bg-surface-card rounded-lg p-6">
+        <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
           The Draft
         </h3>
-        <ul className="text-gray-300 space-y-1 text-sm list-disc list-inside">
+        <ul className="text-ink-secondary space-y-1 text-sm list-disc list-inside">
           <li>Snake draft, each team drafts PGA Tour players</li>
           <li>
             Players can be split between teams with ownership percentages (earnings divided
@@ -45,11 +45,11 @@ function RulesPage(): ReactNode {
         {(rules) => <RulesView rules={rules} />}
       </QueryState>
 
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
+      <div className="bg-surface-card rounded-lg p-6">
+        <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
           Season Schedule
         </h3>
-        <p className="text-gray-300 text-sm mb-3">
+        <p className="text-ink-secondary text-sm mb-3">
           Tournaments on the season calendar. A highlighted multiplier means payouts are
           boosted for that week (e.g. 2x for majors).
         </p>
@@ -68,22 +68,22 @@ interface RulesViewProps {
 function RulesView({ rules }: RulesViewProps): ReactNode {
   return (
     <>
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
+      <div className="bg-surface-card rounded-lg p-6">
+        <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
           Weekly Payouts
         </h3>
-        <p className="text-gray-400 text-sm mb-3">
+        <p className="text-ink-muted text-sm mb-3">
           Each PGA tournament, the top {rules.payouts.length} finishers among all drafted
           players earn payouts:
         </p>
         <table className="w-full max-w-xs text-sm">
           <thead>
-            <tr className="text-gray-400 border-b border-gray-700">
+            <tr className="text-ink-muted border-b border-hairline">
               <th className="text-left py-1">Position</th>
               <th className="text-right py-1">Payout</th>
             </tr>
           </thead>
-          <tbody className="text-gray-300">
+          <tbody className="text-ink-secondary">
             {rules.payouts.map((amount, i) => (
               // eslint-disable-next-line react/no-array-index-key -- a payout row is its finishing position.
               <tr key={i}>
@@ -95,29 +95,29 @@ function RulesView({ rules }: RulesViewProps): ReactNode {
         </table>
       </div>
 
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
+      <div className="bg-surface-card rounded-lg p-6">
+        <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
           Tie Handling
         </h3>
-        <ul className="text-gray-300 space-y-1 text-sm list-disc list-inside">
+        <ul className="text-ink-secondary space-y-1 text-sm list-disc list-inside">
           <li>Tied positions average the payouts across all tied slots</li>
           <li>
             Minimum payout of{' '}
-            <span className="text-green-400 font-semibold">${rules.tieFloor}</span> per player
+            <span className="text-semantic-success font-semibold">${rules.tieFloor}</span> per player
             for any tie that overlaps the payout zone
           </li>
         </ul>
       </div>
 
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
+      <div className="bg-surface-card rounded-lg p-6">
+        <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
           Zero-Sum Scoring
         </h3>
-        <ul className="text-gray-300 space-y-1 text-sm list-disc list-inside">
+        <ul className="text-ink-secondary space-y-1 text-sm list-disc list-inside">
           <li>Each top-N finish earns that payout from every other team</li>
           <li>
             Formula:{' '}
-            <code className="bg-gray-700 px-1 rounded">
+            <code className="bg-surface-raised px-1 rounded">
               weekly +/- = (your earnings × num_teams) − total pot
             </code>
           </li>
@@ -132,11 +132,11 @@ function RulesView({ rules }: RulesViewProps): ReactNode {
       </div>
 
       {rules.sideBetRounds.length > 0 ? (
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
+        <div className="bg-surface-card rounded-lg p-6">
+          <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
             Side Bets (Rounds {rules.sideBetRounds.join(', ')})
           </h3>
-          <ul className="text-gray-300 space-y-1 text-sm list-disc list-inside">
+          <ul className="text-ink-secondary space-y-1 text-sm list-disc list-inside">
             <li>
               {rules.sideBetRounds.length} separate season-long races — one for each draft
               round
@@ -147,7 +147,7 @@ function RulesView({ rules }: RulesViewProps): ReactNode {
             </li>
             <li>
               Winner collects{' '}
-              <span className="text-green-400 font-semibold">${rules.sideBetAmount}</span>{' '}
+              <span className="text-semantic-success font-semibold">${rules.sideBetAmount}</span>{' '}
               from every other team
             </li>
             <li>Side bet is not active if all entries are at $0</li>
@@ -164,19 +164,19 @@ interface ScheduleListProps {
 
 function ScheduleList({ tournaments }: ScheduleListProps): ReactNode {
   if (tournaments.length === 0) {
-    return <p className="text-gray-500 text-sm">No tournaments scheduled for this season.</p>;
+    return <p className="text-ink-soft text-sm">No tournaments scheduled for this season.</p>;
   }
   const schedule = [...tournaments].sort((a, b) => a.startDate.localeCompare(b.startDate));
   return (
-    <ul className="text-gray-300 text-sm space-y-0.5">
+    <ul className="text-ink-secondary text-sm space-y-0.5">
       {schedule.map((t) => (
         <li key={t.id} className="flex items-baseline gap-2">
-          <span className="text-gray-500 tabular-nums w-16 shrink-0">
+          <span className="text-ink-soft tabular-nums w-16 shrink-0">
             {t.week ? `Wk ${t.week}` : ''}
           </span>
           <span className="flex-1">{t.name}</span>
           {t.payoutMultiplier !== 1 ? (
-            <span className="text-yellow-400 font-semibold tabular-nums">
+            <span className="text-semantic-warning font-semibold tabular-nums">
               {t.payoutMultiplier}x
             </span>
           ) : null}

@@ -17,8 +17,8 @@ function CreateSeasonSection(): ReactNode {
   });
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+    <div className="bg-surface-card rounded-lg p-6">
+      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
         Create Season
       </h3>
       <QueryState query={defaultsQuery} label="default season rules">
@@ -113,21 +113,21 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
       </div>
 
       <div className="mb-4">
-        <h4 className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-2">
+        <h4 className="text-xs text-ink-muted font-semibold uppercase tracking-wider mb-2">
           Payout Rules
         </h4>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
           {payouts.map((amt, i) => (
             // eslint-disable-next-line react/no-array-index-key -- a payout row is its finishing position; rows only append or pop.
             <div key={i} className="flex items-center gap-1">
-              <span className="text-xs text-gray-500 w-6">{i + 1}.</span>
-              <span className="text-xs text-gray-500">$</span>
+              <span className="text-xs text-ink-soft w-6">{i + 1}.</span>
+              <span className="text-xs text-ink-soft">$</span>
               <input
                 type="number"
                 aria-label={`Payout ${i + 1}`}
                 value={amt}
                 onChange={(e) => updatePayout(i, Number(e.target.value))}
-                className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm w-16"
+                className="bg-surface-raised border border-control-border rounded px-2 py-1 text-sm w-16"
               />
             </div>
           ))}
@@ -137,14 +137,14 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
             <button
               type="button"
               onClick={() => setEditedPayouts([...payouts, 0])}
-              className="text-xs text-blue-400 hover:text-blue-300"
+              className="text-xs text-semantic-info hover:text-semantic-info-hover"
             >
               + Add place
             </button>
             <button
               type="button"
               onClick={() => setEditedPayouts(payouts.length > 1 ? payouts.slice(0, -1) : payouts)}
-              className="text-xs text-red-400 hover:text-red-300 ml-2"
+              className="text-xs text-semantic-danger hover:text-semantic-danger-hover ml-2"
             >
               - Remove last
             </button>
@@ -161,7 +161,7 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
           </FieldShell>
         </div>
 
-        <h4 className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-2 mt-4">
+        <h4 className="text-xs text-ink-muted font-semibold uppercase tracking-wider mb-2 mt-4">
           Side Bets
         </h4>
         <div className="flex flex-wrap gap-4 items-end">
@@ -190,13 +190,13 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
           type="button"
           onClick={() => createMutation.mutate()}
           disabled={disabled}
-          className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded text-sm font-medium"
+          className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium"
         >
           {createMutation.isPending ? 'Creating...' : 'Create Season'}
         </button>
-        {success ? <span className="text-green-400 text-sm">{success}</span> : null}
+        {success ? <span className="text-semantic-success text-sm">{success}</span> : null}
         {errorMessage ? (
-          <span role="alert" className="text-red-400 text-sm">
+          <span role="alert" className="text-semantic-danger text-sm">
             {errorMessage}
           </span>
         ) : null}
