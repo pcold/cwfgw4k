@@ -428,19 +428,25 @@ or on a tie, for a partner only, the rostered golfer among the candidates. A ful
 credited only to an id-less row: a row holding another id is a namesake, so the competitor gets a golfer of its own
 and the import logs `cwfgw4k.espn event=namesake-id-mismatch`. When several rows share the full name, the one id-less
 golfer rostered this season is credited; with none, matching falls through to the surname; with several, or when two
-competitors claim one id-less row, the competitor is scored to nobody and the import logs
+competitors claim one id-less row under different ESPN ids, the competitor is scored to nobody and the import logs
 `cwfgw4k.espn event=namesake-withheld` rather than create a twin. A full-named competitor's surname match is a guess:
 it yields an id-less row any other competitor of the import credits, backfills or contests under another ESPN id, so
 the guesser is a namesake and gets a golfer of its own, and two ids guessing one row are withheld; this holds across
 an import's events, in any order. Across the events of one import, two competitors
 still matching one id-less row under different ids are withheld the same way; one withheld in its own event is
-credited the row another event wrote its id onto, and adds no id to that contest. Only import and finalize write:
+credited the row another event wrote its id onto, and adds no id to that contest. One id ESPN lists twice, in one
+event or two, is one athlete and no contest. The link editor and the live preview settle a tournament's event with
+the same-day events an unlinked finalize would import beside it (each linked to another unfinalized tournament of the
+season starting that day), through the same function finalize uses. Only import and finalize write:
 they backfill the competitor's ESPN id onto an id-less row its full name matched (never one credited by override,
 surname or partner) and create a golfer for a competitor that matches nothing. Every event of an import is matched
 first, then all their backfills and creates go through `findOrCreateAll` (`golfers/PgaPlayerIdClaim.kt`), one write
-per ESPN id in ESPN-id order, which a roster confirm writes through too. Neither a result or roster row's key-share
-lock on a golfer nor the row lock two ids' backfills of one row share is ordered by ESPN id, so that pass can still
-deadlock a confirm. Names are compared normalized for case, accents and hyphens, on the "first last"
+per ESPN id in ESPN-id order, which a roster confirm writes through too. Before the first write it locks, in
+golfer-id order, each backfilled row as its UPDATE will and each existing row the caller's result or roster rows
+will reference, so neither those key-share locks nor two ids' backfills of one row can deadlock an import against a
+confirm. A backfill that meets an uncommitted insert of its id waits for it, and on its commit falls back to that
+holder under a savepoint (`writeOrOutraced` in `db/OutracedWrites.kt`) instead of failing on the 23505. Names are
+compared normalized for case, accents and hyphens, on the "first last"
 concatenation rather than the stored columns; the surname is its last word, kept whole if hyphenated and past a
 "Jr"/"III" suffix (`golfers/GolferMatching.kt`, which roster upload shares). A new golfer's name is split at its
 last space, and a single word is stored as the last name. Overrides are managed per tournament through the tournament-link routes and are refused once the
@@ -459,7 +465,8 @@ leaderboard, scores it with the same payout rules, and overlays the result on th
 writing anything. A candidate previews only the ESPN event whose id is its `pga_tournament_id`, the rule finalize
 imports by (`findLinkedEvent` in `espn/EspnService.kt`), so an unlinked or stale-id tournament previews nothing
 until it is linked. The preview pays a team event by ESPN's flag, which finalize's import writes over the row.
-Only a view of one tournament is overlaid: its weekly report, or rankings and player rankings `through` it.
+It matches the event's competitors beside its same-day siblings (see [Golfer matching](#golfer-matching)), so a
+guess a sibling's full name claims is paid to nobody, as an unlinked finalize importing both scores it. Only a view of one tournament is overlaid: its weekly report, or rankings and player rankings `through` it.
 Rankings gain a column per live candidate up to that tournament; player rankings fold in the live payouts. The
 All Tournaments rollups (the season report, and rankings without a `through`) count finalized results alone and
 never ask ESPN (CWF-215). A completed tournament selected in the weekly report is never overlaid.
