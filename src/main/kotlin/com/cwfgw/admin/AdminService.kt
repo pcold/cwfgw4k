@@ -3,7 +3,6 @@ package com.cwfgw.admin
 import com.cwfgw.db.Transactor
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.db.updateOrOutraced
-import com.cwfgw.espn.EspnAthlete
 import com.cwfgw.espn.EspnCalendarEntry
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnUpstreamException
@@ -172,8 +171,8 @@ class AdminService(
         get(WeekFields.ISO.weekBasedYear()) to get(WeekFields.ISO.weekOfWeekBasedYear())
 
     /**
-     * Writes nothing: a pick only ESPN's recent-active pool names comes back [PickMatch.MatchedEspn] for [confirmRoster]
-     * to insert. ESPN is asked only when some pick matches no row, and an ESPN outage reads as no match.
+     * Writes nothing: a pick only an unpersisted ESPN athlete names comes back [PickMatch.MatchedEspn] for
+     * [confirmRoster] to insert. ESPN is asked only when some pick matches no row; an outage reads as no match.
      */
     suspend fun previewRoster(rosterText: String): Result<RosterPreviewResult, AdminError> {
         val parsed =
@@ -187,16 +186,11 @@ class AdminService(
             parsed.flatMap { it.picks }.any { pick ->
                 golfers.matchFullName(pick.playerName) == GolferNameMatch.NoMatch
             }
-        val athletes = if (anyUnmatched) unpersistedAthletes(golfers) else emptyList()
+        val athletes = if (anyUnmatched) espnService.fetchActivePlayers() else emptyList()
         val nameIndex = RosterNameIndex(golfers, athletes)
 
         val previewTeams = parsed.map { team -> previewTeam(team, nameIndex) }
         return Result.Ok(summarize(previewTeams))
-    }
-
-    private suspend fun unpersistedAthletes(golfers: GolferNameIndex): List<EspnAthlete> {
-        val persistedIds = golfers.golfers.mapNotNull { it.pgaPlayerId }.toSet()
-        return espnService.fetchActivePlayers().filter { it.espnId !in persistedIds }
     }
 
     private fun previewTeam(
@@ -219,22 +213,12 @@ class AdminService(
 
     private fun summarize(teams: List<PreviewTeam>): RosterPreviewResult {
         val allPicks = teams.flatMap { it.picks }
-        var matched = 0
-        var ambiguous = 0
-        var unmatched = 0
-        for (pick in allPicks) {
-            when (pick.match) {
-                is PickMatch.Matched, is PickMatch.MatchedEspn -> matched++
-                is PickMatch.Ambiguous -> ambiguous++
-                PickMatch.NoMatch -> unmatched++
-            }
-        }
         return RosterPreviewResult(
             teams = teams,
             totalPicks = allPicks.size,
-            matchedCount = matched,
-            ambiguousCount = ambiguous,
-            unmatchedCount = unmatched,
+            matchedCount = allPicks.count { it.match is PickMatch.Matched || it.match is PickMatch.MatchedEspn },
+            ambiguousCount = allPicks.count { it.match is PickMatch.Ambiguous },
+            unmatchedCount = allPicks.count { it.match == PickMatch.NoMatch },
         )
     }
 
@@ -258,18 +242,13 @@ class AdminService(
             outraced = { AdminError.TeamNameTaken(request.seasonId) },
         ) {
             val espnGolfers = resolveEspnGolfers(request.teams)
-            var golfersCreated = espnGolfers.insertedCount
-            val createdTeams = mutableListOf<Team>()
-            for (team in request.teams) {
-                val (createdTeam, newGolfers) = persistConfirmedTeam(request.seasonId, team, espnGolfers.golferIds)
-                createdTeams += createdTeam
-                golfersCreated += newGolfers
-            }
+            val builtTeams =
+                request.teams.map { team -> persistConfirmedTeam(request.seasonId, team, espnGolfers.golferIds) }
             Result.Ok(
                 RosterUploadResult(
-                    teamsCreated = createdTeams.size,
-                    golfersCreated = golfersCreated,
-                    teams = createdTeams,
+                    teamsCreated = builtTeams.size,
+                    golfersCreated = espnGolfers.insertedCount + builtTeams.sumOf { (_, newGolfers) -> newGolfers },
+                    teams = builtTeams.map { (createdTeam, _) -> createdTeam },
                 ),
             )
         }
@@ -286,6 +265,9 @@ class AdminService(
                 .map(ConfirmedPick::assignment)
                 .filterIsInstance<GolferAssignment.Espn>()
                 .distinctBy(GolferAssignment.Espn::espnId)
+                // A conflicting insert waits on the other transaction's row, so roster order would let two confirms
+                // that share athletes deadlock.
+                .sortedBy(GolferAssignment.Espn::espnId)
         val persisted =
             athletes.mapNotNull { athlete ->
                 golferRepository.findByPgaPlayerId(athlete.espnId)?.let { golfer -> athlete.espnId to golfer.id }

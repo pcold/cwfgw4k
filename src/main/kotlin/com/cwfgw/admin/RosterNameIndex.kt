@@ -17,13 +17,20 @@ internal class RosterNameIndex(
     private val athletesByName: Map<String, List<EspnAthlete>> =
         athletes.groupBy { normalizeName(it.name) }.filterKeys { it.isNotEmpty() }
 
+    private val golfersByEspnId: Map<String, Golfer> =
+        golfers.golfers.mapNotNull { golfer -> golfer.pgaPlayerId?.let { it to golfer } }.toMap()
+
     fun match(playerName: String): PickMatch {
-        val persisted = golfers.matchFullName(playerName).golfers().map(::existingCandidate)
+        val byName = golfers.matchFullName(playerName).golfers()
+        val athletes = athletesByName[normalizeName(playerName)].orEmpty()
+        // An athlete whose row is spelled otherwise ("Matt" for ESPN's "Matthew") binds to that row; offering it as
+        // new would have confirm insert a second golfer that imports never credit.
+        val heldRows = athletes.mapNotNull { golfersByEspnId[it.espnId] }
         val unpersisted =
-            athletesByName[normalizeName(playerName)].orEmpty().map { athlete ->
+            athletes.filterNot { it.espnId in golfersByEspnId }.map { athlete ->
                 GolferCandidate.Espn(espnId = athlete.espnId, name = athlete.name)
             }
-        return pickMatchAmong(persisted + unpersisted)
+        return pickMatchAmong((byName + heldRows).distinctBy(Golfer::id).map(::existingCandidate) + unpersisted)
     }
 }
 

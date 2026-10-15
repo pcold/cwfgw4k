@@ -324,6 +324,31 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         with(noopTransactionContext) { f.golferRepo.findAll(search = null) } shouldBe listOf(seeded)
     }
 
+    test("an ESPN athlete whose row is spelled otherwise matches that row rather than no golfer") {
+        val seeded =
+            Golfer(
+                id = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000c03")),
+                pgaPlayerId = "espn-7",
+                firstName = "Matt",
+                lastName = "Fitzpatrick",
+                country = null,
+                worldRanking = null,
+                updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
+            )
+        val athlete = espnPlayer("espn-7", "Matthew Fitzpatrick")
+        val f =
+            fixture(
+                seedGolfers = listOf(seeded),
+                calendar = listOf(recentCalendarEntry),
+                scoreboards = mapOf(recentDate to listOf(espnEvent(competitors = listOf(athlete)))),
+            )
+
+        val result = f.service.previewRoster("$rosterHeader\n1\tBROWN\t1\tMatthew Fitzpatrick\t100").orFail()
+
+        result.teams.single().picks.single().match shouldBe
+            PickMatch.Matched(golferId = seeded.id, golferName = "Matt Fitzpatrick")
+    }
+
     test("a name both a row without a pga_player_id and an ESPN athlete carry is ambiguous between them") {
         val twin =
             Golfer(
