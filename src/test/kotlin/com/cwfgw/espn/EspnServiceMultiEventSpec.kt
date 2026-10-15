@@ -101,6 +101,21 @@ class EspnServiceMultiEventSpec : FunSpec({
         import.resultGolferIds("evt-a") shouldContainExactly listOf(fleetwood.id)
         import.resultGolferIds("evt-b") shouldContainExactly listOf(fleetwood.id)
     }
+
+    test("an id one event backfills and another names against a namesake is written once, as the backfill") {
+        val fleetwood = idlessGolfer("Tommy", "Fleetwood")
+        val namesake = idlessGolfer("Tom", "Fleetwood").copy(pgaPlayerId = "999")
+        val import = MultiEventImport(listOf(fleetwood, namesake))
+
+        import.persist(
+            event("evt-a", competitor("100", "Tommy Fleetwood")),
+            event("evt-b", competitor("100", "Tom Fleetwood")),
+        )
+
+        import.golfers.writes shouldContainExactly listOf("backfill 100")
+        import.resultGolferIds("evt-a") shouldContainExactly listOf(fleetwood.id)
+        import.resultGolferIds("evt-b") shouldContainExactly listOf(fleetwood.id)
+    }
 })
 
 private class MultiEventImport(initialGolfers: List<Golfer> = emptyList()) {

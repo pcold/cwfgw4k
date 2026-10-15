@@ -30,7 +30,8 @@ internal sealed interface PgaPlayerIdClaim {
 /**
  * Writes in [PgaPlayerIdClaim.pgaPlayerId] order, one write per id and a backfill over a create, so two transactions
  * sharing athletes take their id locks in one order. An extension, so no implementation or decorator can reorder it.
- * A result or roster row's key-share lock on the golfer it names is not ordered by this.
+ * Neither a result or roster row's key-share lock on the golfer it names, nor the row lock two ids' backfills of one
+ * row share, is ordered by this.
  */
 context(ctx: WriteTransactionContext)
 internal fun GolferRepository.findOrCreateAll(claims: List<PgaPlayerIdClaim>): Map<String, Golfer> =

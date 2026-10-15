@@ -3,6 +3,7 @@ package com.cwfgw.tournaments
 import com.cwfgw.admin.AdminService
 import com.cwfgw.admin.ConfirmRosterRequest
 import com.cwfgw.admin.ConfirmedPick
+import com.cwfgw.admin.DRAFT_ROUNDS
 import com.cwfgw.admin.GolferAssignment
 import com.cwfgw.admin.fullTeam
 import com.cwfgw.db.LOCK_TIMEOUT_MS
@@ -70,12 +71,17 @@ class TournamentImportConfirmRaceSpec : FunSpec({
         val hold = WriteHold(postgres)
         val confirm = rosterConfirm(seeded.confirmSeason, ConfirmPicks.FLEETWOOD_AND_ABERG)
 
-        coroutineScope {
-            val finalize = async { opsService(tx, hold.pausing()).finalizeTournament(seeded.unlinked.id) }
-            val confirmed = hold.whileHeld { async { adminService(tx).confirmRoster(confirm) } }
-            finalize.await().orFail()
-            confirmed.await().orFail()
-        }
+        val confirmed =
+            coroutineScope {
+                val finalize = async { opsService(tx, hold.pausing()).finalizeTournament(seeded.unlinked.id) }
+                val confirming = hold.whileHeld { async { adminService(tx).confirmRoster(confirm) } }
+                finalize.await().orFail()
+                confirming.await().orFail()
+            }
+
+        // "100"'s backfill lost to the import's on its own row, so beside the fillers only "300"'s create counts.
+        val fillers = DRAFT_ROUNDS.count() - ConfirmPicks.FLEETWOOD_AND_ABERG.size
+        confirmed.golfersCreated shouldBe fillers + 1
 
         val espnRows = tx.get { GolferRepository().findAll(search = null) }.filter { it.pgaPlayerId != null }
         espnRows.map { it.pgaPlayerId } shouldContainExactlyInAnyOrder listOf("100", "300")

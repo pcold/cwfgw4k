@@ -253,7 +253,7 @@ class EspnService(
         match: CompetitorMatch,
         written: Map<String, Golfer>,
     ): GolferId? {
-        val writtenId = written[competitor.espnId]?.id?.takeUnless { competitor.isTeamPartner }
+        val writtenId = written[competitor.espnId]?.id
         return when (match) {
             is CompetitorMatch.Credited -> match.golfer.id
             is CompetitorMatch.Idless -> writtenId
@@ -265,13 +265,14 @@ class EspnService(
                 }
                 writtenId
             }
-            is CompetitorMatch.Withheld ->
-                writtenId ?: run {
+            is CompetitorMatch.Withheld -> {
+                if (writtenId == null) {
                     val espnId = LoggedEspnId(competitor.espnId)
                     val golferIds = match.candidates.map { it.id.value }
                     log.warn { "cwfgw4k.espn event=namesake-withheld espn_id=$espnId golfer_ids=$golferIds" }
-                    null
                 }
+                writtenId
+            }
         }
     }
 

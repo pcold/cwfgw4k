@@ -282,7 +282,8 @@ class AdminService(
         val claims = unpersisted.associateWith { athlete -> athlete.toClaim(targets.getValue(athlete.espnId)) }
         val unresolvable = claims.filterValues { it == null }.keys
         if (unresolvable.isNotEmpty()) {
-            return Result.Err(AdminError.UnresolvableEspnGolfers(unresolvable.map(GolferAssignment.Espn::espnId)))
+            val refusedIds = unresolvable.map(GolferAssignment.Espn::espnId).sorted()
+            return Result.Err(AdminError.UnresolvableEspnGolfers(refusedIds))
         }
         val writes = claims.values.filterNotNull()
         val written = golferRepository.findOrCreateAll(writes)
@@ -483,7 +484,7 @@ private fun GolferAssignment.Espn.toClaim(target: EspnTarget): PgaPlayerIdClaim?
     }
 }
 
-/** A lost backfill counts: its fallback may have inserted the row it returns. */
+/** A lost backfill counts unless it found its own row: its fallback may have inserted the row it returns. */
 private fun PgaPlayerIdClaim.insertedInto(written: Map<String, Golfer>): Boolean =
     this !is PgaPlayerIdClaim.Backfill || written.getValue(pgaPlayerId).id != golferId
 
