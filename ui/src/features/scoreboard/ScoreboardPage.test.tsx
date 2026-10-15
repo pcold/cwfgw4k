@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
@@ -255,6 +255,26 @@ describe('ScoreboardPage', () => {
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
     expect(await screen.findByText(/Loading current tournament/i)).toBeInTheDocument();
+    expect(tournamentReportMock).not.toHaveBeenCalled();
+  });
+
+  it('selects nothing, and fetches nothing, when the answer names a tournament the list lacks', async () => {
+    const answer = { release: (): void => {} };
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockReturnValue(
+      new Promise((resolve) => {
+        answer.release = () => resolve({ type: 'unfinalized', tournamentId: 'tn-not-listed' });
+      }),
+    );
+
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    const loading = await screen.findByText(/Loading current tournament/i);
+    answer.release();
+    await waitForElementToBeRemoved(loading);
+    expect(screen.queryByLabelText(/Tournament/i)).not.toBeInTheDocument();
     expect(tournamentReportMock).not.toHaveBeenCalled();
   });
 

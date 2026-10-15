@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, waitForElementToBeRemoved, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
+import { queryKeys } from '@/shared/api/queryKeys';
+import QueryAnswered from '@/shared/test/QueryAnswered';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import type { League, Rankings, Season, Tournament } from '@/shared/api/types';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
@@ -213,6 +215,49 @@ describe('RankingsPage', () => {
     renderWithProviders(<RankingsPage />);
 
     expect(await screen.findByText(/Loading current tournament/i)).toBeInTheDocument();
+    expect(rankingsMock).not.toHaveBeenCalled();
+  });
+
+  it('shows no selector, and fetches nothing, while the tournament list trails the answer', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockReturnValue(new Promise(() => {}));
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-7' });
+    rankingsMock.mockResolvedValue(rankings);
+
+    renderWithProviders(
+      <>
+        <RankingsPage />
+        <QueryAnswered
+          queryKey={queryKeys.tournaments.current('sn-1')}
+          fetcher={() => currentTournamentMock('sn-1')}
+        />
+      </>,
+    );
+
+    expect(await screen.findByText(/Loading tournaments/i)).toBeInTheDocument();
+    expect(await screen.findByText('answered')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Through/i)).not.toBeInTheDocument();
+    expect(rankingsMock).not.toHaveBeenCalled();
+  });
+
+  it('selects nothing, and fetches nothing, when the answer names a tournament the list lacks', async () => {
+    const answer = { release: (): void => {} };
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([tournament]);
+    currentTournamentMock.mockReturnValue(
+      new Promise((resolve) => {
+        answer.release = () => resolve({ type: 'unfinalized', tournamentId: 'tn-not-listed' });
+      }),
+    );
+
+    renderWithProviders(<RankingsPage />);
+
+    const loading = await screen.findByText(/Loading current tournament/i);
+    answer.release();
+    await waitForElementToBeRemoved(loading);
+    expect(screen.queryByLabelText(/^Through$/i)).not.toBeInTheDocument();
     expect(rankingsMock).not.toHaveBeenCalled();
   });
 

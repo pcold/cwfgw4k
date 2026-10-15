@@ -46,7 +46,8 @@ function ScoreboardPage(): ReactNode {
   const tournaments = tournamentsQuery.data ?? [];
 
   const tournamentId =
-    pickInSeason(userTournamentId, tournaments) ?? defaultScoreboardSelection(currentQuery.data);
+    pickInSeason(userTournamentId, tournaments) ??
+    pickInSeason(defaultScoreboardSelection(currentQuery.data), tournaments);
 
   const liveOverlay = useLiveOverlay(tournaments, currentQuery.data, tournamentId);
 

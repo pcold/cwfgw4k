@@ -26,9 +26,12 @@ function LateRowBetsPage(): ReactNode {
     queryFn: seasonId === null ? skipToken : () => api.currentTournament(seasonId),
   });
 
-  const tournaments = tournamentsQuery.data ?? [];
+  const tournaments = tournamentsQuery.data;
   const effectiveId =
-    pickInSeason(userTournamentId, tournaments) ?? defaultReportSelection(currentQuery.data);
+    tournaments === undefined
+      ? null
+      : (pickInSeason(userTournamentId, tournaments) ??
+        pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
 
   const reportQuery = useQuery({
     queryKey: queryKeys.report.detail(seasonId, effectiveId, live),
@@ -42,8 +45,16 @@ function LateRowBetsPage(): ReactNode {
   });
 
   if (leaguesGate) return leaguesGate;
-  if (effectiveId === null) {
-    return <QueryState query={currentQuery} label="current tournament">{() => null}</QueryState>;
+  if (tournaments === undefined || effectiveId === null) {
+    return (
+      <QueryState query={tournamentsQuery} label="tournaments">
+        {() => (
+          <QueryState query={currentQuery} label="current tournament">
+            {() => null}
+          </QueryState>
+        )}
+      </QueryState>
+    );
   }
 
   return (

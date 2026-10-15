@@ -29,10 +29,17 @@ function PlayerRankingsPage(): ReactNode {
     queryFn: seasonId === null ? skipToken : () => api.currentTournament(seasonId),
   });
 
-  const tournaments = tournamentsQuery.data ?? [];
+  const tournaments = tournamentsQuery.data;
   const throughTournamentId =
-    pickInSeason(throughOverride, tournaments) ?? defaultReportSelection(currentQuery.data);
-  const liveOverlay = useLiveOverlay(tournaments, currentQuery.data, throughTournamentId || null);
+    tournaments === undefined
+      ? null
+      : (pickInSeason(throughOverride, tournaments) ??
+        pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
+  const liveOverlay = useLiveOverlay(
+    tournaments ?? [],
+    currentQuery.data,
+    throughTournamentId || null,
+  );
 
   const playerRankingsQuery = useQuery({
     queryKey: queryKeys.playerRankings.detail(
@@ -52,8 +59,16 @@ function PlayerRankingsPage(): ReactNode {
   });
 
   if (leaguesGate) return leaguesGate;
-  if (throughTournamentId === null) {
-    return <QueryState query={currentQuery} label="current tournament">{() => null}</QueryState>;
+  if (tournaments === undefined || throughTournamentId === null) {
+    return (
+      <QueryState query={tournamentsQuery} label="tournaments">
+        {() => (
+          <QueryState query={currentQuery} label="current tournament">
+            {() => null}
+          </QueryState>
+        )}
+      </QueryState>
+    );
   }
 
   return (
@@ -93,7 +108,7 @@ function PlayerRankingsPage(): ReactNode {
           <p className="text-semantic-danger">
             Failed to load player rankings: {String(playerRankingsQuery.error)}
           </p>
-        ) : tournamentsQuery.isLoading || playerRankingsQuery.isLoading ? (
+        ) : playerRankingsQuery.isLoading ? (
           <p className="text-ink-muted">Loading player rankings…</p>
         ) : (
           <PlayerRankingsView

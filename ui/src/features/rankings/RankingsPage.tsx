@@ -27,11 +27,18 @@ function RankingsPage(): ReactNode {
     queryFn: seasonId === null ? skipToken : () => api.currentTournament(seasonId),
   });
 
-  const tournaments = tournamentsQuery.data ?? [];
+  const tournaments = tournamentsQuery.data;
   const throughTournamentId =
-    pickInSeason(throughOverride, tournaments) ?? defaultReportSelection(currentQuery.data);
+    tournaments === undefined
+      ? null
+      : (pickInSeason(throughOverride, tournaments) ??
+        pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
 
-  const liveOverlay = useLiveOverlay(tournaments, currentQuery.data, throughTournamentId || null);
+  const liveOverlay = useLiveOverlay(
+    tournaments ?? [],
+    currentQuery.data,
+    throughTournamentId || null,
+  );
 
   const rankingsQuery = useQuery({
     queryKey: queryKeys.rankings.detail(seasonId, liveOverlay.effectiveLive, throughTournamentId),
@@ -43,8 +50,16 @@ function RankingsPage(): ReactNode {
   });
 
   if (leaguesGate) return leaguesGate;
-  if (throughTournamentId === null) {
-    return <QueryState query={currentQuery} label="current tournament">{() => null}</QueryState>;
+  if (tournaments === undefined || throughTournamentId === null) {
+    return (
+      <QueryState query={tournamentsQuery} label="tournaments">
+        {() => (
+          <QueryState query={currentQuery} label="current tournament">
+            {() => null}
+          </QueryState>
+        )}
+      </QueryState>
+    );
   }
 
   return (
