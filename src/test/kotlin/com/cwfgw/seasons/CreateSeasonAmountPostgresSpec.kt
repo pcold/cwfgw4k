@@ -22,6 +22,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
+import kotlinx.serialization.serializer
 import java.math.BigDecimal
 import java.util.UUID
 
@@ -61,7 +62,7 @@ private suspend fun HttpClient.createSeason(
     rawAmount: String,
 ): HttpResponse {
     val request = CreateSeasonRequest(leagueId, name = "Spring", seasonYear = 2026, rules = field.holding(PLACEHOLDER))
-    val json = appJson.encodeToString(CreateSeasonRequest.serializer(), request)
+    val json = appJson.encodeToString(serializer<CreateSeasonRequest>(), request)
     return post("/api/v1/seasons") {
         setBody(TextContent(json.replace(PLACEHOLDER.toPlainString(), rawAmount), ContentType.Application.Json))
     }
@@ -83,7 +84,7 @@ private fun refusesEveryField(
         }
     val refused =
         cases.associate { (field, rawAmount) ->
-            val refusal = appJson.encodeToString(ErrorBody.serializer(), ErrorBody(message(field.label)))
+            val refusal = appJson.encodeToString(serializer<ErrorBody>(), ErrorBody(message(field.label)))
             "${field.label} ${rawAmount.take(12)}" to "${HttpStatusCode.BadRequest.value} $refusal"
         }
     answered shouldBe refused
