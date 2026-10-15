@@ -68,6 +68,18 @@ class CreateSeasonViolationSpec : FunSpec({
         request(rules = null).copy(sideBetAmount = BigDecimal.ZERO).violation().shouldBeNull()
     }
 
+    test("an empty name, or one of nothing but ASCII whitespace, is BlankName") {
+        listOf("", "   ", "\t", "\n", " \t\n\r\u000B\u000C ").forEach { blank ->
+            request(rules = null).copy(name = blank).violation() shouldBe CreateSeasonViolation.BlankName
+        }
+    }
+
+    test("a padded name, a lone v, and a no-break space have no violation, matching the CHECK") {
+        listOf("\tSpring \n", "v", " ").forEach { name ->
+            request(rules = null).copy(name = name).violation().shouldBeNull()
+        }
+    }
+
     test("POST /api/v1/seasons refuses a violation with 400, its message, and no season written") {
         val fake = FakeSeasonRepository()
         authenticatedApiTest({ seasonService = SeasonService(fake, FakeTransactor()) }) { client ->
@@ -133,6 +145,20 @@ class CreateSeasonViolationSpec : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.body<ErrorBody>().error shouldBe "side bet amount must not be negative"
+        }
+    }
+
+    test("POST /api/v1/seasons refuses a blank name with 400, its message, and no season written") {
+        authenticatedApiTest { client ->
+            val response =
+                client.post("/api/v1/seasons") {
+                    contentType(ContentType.Application.Json)
+                    setBody(request(rules = null).copy(name = "   "))
+                }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.body<ErrorBody>().error shouldBe "season name must not be blank"
+            client.get("/api/v1/seasons").body<List<Season>>().shouldBeEmpty()
         }
     }
 })

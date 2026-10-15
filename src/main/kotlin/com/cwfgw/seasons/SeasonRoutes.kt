@@ -50,6 +50,7 @@ private fun CreateSeasonViolation.toDomainError(): DomainError =
         CreateSeasonViolation.NoSideBetRounds -> DomainError.Validation("side bet rounds must list at least one round")
         CreateSeasonViolation.DuplicateSideBetRound -> DomainError.Validation("side bet rounds must not repeat a round")
         CreateSeasonViolation.NegativeSideBetAmount -> DomainError.Validation("side bet amount must not be negative")
+        CreateSeasonViolation.BlankName -> DomainError.Validation("season name must not be blank")
     }
 
 private suspend fun RoutingContext.getRules(service: SeasonService) {
