@@ -230,8 +230,9 @@ Report routes skip the cache only when the request asks for `live=true` and the 
 
 Each of these runs in exactly one `tx.update`, so it lands whole or not at all:
 
-- **Season create** writes the season row and, when the request carries rules, both rules tables
-  (`SeasonRepository.kt`). A season created without rules reads back the defaults.
+- **Season create** writes the season row, its side-bet rounds (rounds 5–8 when the request carries no rules), and
+  its payouts when the request carries rules (`SeasonRepository.kt`). A season created without rules reads back the
+  defaults.
 - **Finalize** checks ordering, imports ESPN results and computes every fantasy score. A scoring failure throws and
   rolls back the import with it (`TournamentOpsServiceFinalizeRollbackSpec`). The ESPN fetch happens *before* the
   transaction, so no connection is held across the network call.
