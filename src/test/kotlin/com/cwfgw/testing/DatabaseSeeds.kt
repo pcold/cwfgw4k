@@ -42,22 +42,27 @@ fun seedSeasonRules(
     }
 }
 
+/** Seeds a fresh league on every call, so two seeded seasons never share one. */
+context(ctx: WriteTransactionContext)
+fun seedSeason(): SeasonId {
+    val league = LeagueRepository().create(CreateLeagueRequest(name = "Castlewood Fantasy Golf"))
+    return SeasonRepository()
+        .create(CreateSeasonRequest(leagueId = league.id, name = "2026 Season", seasonYear = 2026))
+        .id
+}
+
 /** Seeds a fresh league and season on every call, so two seeded tournaments never share a season. */
 context(ctx: WriteTransactionContext)
-fun seedTournament(pgaTournamentId: String? = null): TournamentId {
-    val league = LeagueRepository().create(CreateLeagueRequest(name = "Castlewood Fantasy Golf"))
-    val season =
-        SeasonRepository().create(CreateSeasonRequest(leagueId = league.id, name = "2026 Season", seasonYear = 2026))
-    return TournamentRepository().create(
+fun seedTournament(pgaTournamentId: String? = null): TournamentId =
+    TournamentRepository().create(
         CreateTournamentRequest(
             name = "Zurich Classic",
-            seasonId = season.id,
+            seasonId = seedSeason(),
             startDate = LocalDate.parse("2026-04-23"),
             endDate = LocalDate.parse("2026-04-26"),
             pgaTournamentId = pgaTournamentId,
         ),
     ).id
-}
 
 /** @see seedSeasonRules */
 context(ctx: WriteTransactionContext)

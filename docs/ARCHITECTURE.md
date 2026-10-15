@@ -289,7 +289,10 @@ by this status (see [Live overlay](#live-overlay)).
    too. Every skip logs a WARN `cwfgw4k.finalize event=match-skipped`.
 4. The tournament becomes `completed` only if ESPN marks the event completed; the import also syncs
    `is_team_event` (`EspnService.syncTournamentFromEventIn`).
-5. Compute and upsert fantasy scores ([§7](#7-scoring-and-payouts)).
+5. Compute and upsert fantasy scores ([§7](#7-scoring-and-payouts)): first for each match an unlinked finalize
+   imported into, in start-date order, since the import completed it and its own finalize would now refuse; then
+   for the tournament itself, which no import writes results into when it is unlinked. Scoring takes no further season or
+   tournament lock, and an error scoring any of them rolls back the whole finalize.
 
 **Reset** refuses when a later tournament in the season is completed, so results are always unwound newest
 first. **Season clean-results** resets the whole season at once. Both take the same season lock first, as does an
@@ -297,7 +300,7 @@ admin `PUT` that changes a tournament's status or start date, so none of them la
 check and its commit.
 
 Pinned by `TournamentOpsServiceSpec`, `TournamentOpsServiceFinalizeRollbackSpec`,
-`TournamentOpsServiceResetSpec`, `TournamentFinalizeRaceSpec`, `TournamentSiblingRaceSpec` and
+`TournamentOpsServiceUnlinkedScoringSpec`, `TournamentOpsServiceResetSpec`, `TournamentFinalizeRaceSpec`, `TournamentSiblingRaceSpec` and
 `TournamentSeasonLockRaceSpec`.
 
 ## 7. Scoring and Payouts
