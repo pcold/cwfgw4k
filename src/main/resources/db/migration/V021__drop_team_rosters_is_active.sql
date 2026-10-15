@@ -1,6 +1,6 @@
--- The drop path #101 removed was the only writer of is_active = false, and V014 took dropped_at, so a row
--- deactivated before then carries its last mark here; dropping the column would silently return it to its
--- team. The guard refuses to lose that.
+-- The drop path #101 removed was the only writer of is_active = false, and V014 took dropped_at with it, so the
+-- flag is the last record that a row left its team. No read filters on it: dropping it would silently rejoin
+-- such a row to its roster for good, and the guard refuses to lose that.
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM team_rosters WHERE is_active = false) THEN
