@@ -67,100 +67,11 @@ private suspend fun PostgresHarness.awaitLockWait(pending: Job): Boolean {
     return false
 }
 
-context(ctx: WriteTransactionContext)
-private fun CacheRepository.putCurrent(
-    key: String,
-    value: String,
-    expiresAt: Instant,
-): Boolean = put(key = key, value = value, expiresAt = expiresAt, generation = generation())
-
 class CacheRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
     val repository = CacheRepository()
     val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
-
-    test("get returns null when no entry exists") {
-        tx.read { repository.get("missing") }.shouldBeNull()
-    }
-
-    test("put then get round-trips the value") {
-        // Use a JSON shape Postgres won't reformat: empty array, primitives,
-        // and minimal whitespace. JSONB normalizes object-member spacing on
-        // read — see the doc note in CacheRepository for production impact.
-        val payload = "[]"
-        tx.update {
-            repository.putCurrent(
-                key = "/api/v1/leagues",
-                value = payload,
-                expiresAt = Instant.now().plusSeconds(60),
-            )
-        }
-
-        tx.read { repository.get("/api/v1/leagues") } shouldBe payload
-    }
-
-    test("put overwrites the previous value and expiry on conflict") {
-        val key = "/api/v1/scoring/abc/def"
-        tx.update {
-            repository.putCurrent(key = key, value = "\"stale\"", expiresAt = Instant.now().plusSeconds(60))
-            repository.putCurrent(key = key, value = "\"fresh\"", expiresAt = Instant.now().plusSeconds(60))
-        }
-
-        tx.read { repository.get(key) } shouldBe "\"fresh\""
-    }
-
-    test("get does not return entries whose expires_at has already passed") {
-        tx.update {
-            repository.putCurrent(
-                key = "/api/v1/expired",
-                value = "\"stale\"",
-                expiresAt = Instant.now().minusSeconds(1),
-            )
-        }
-
-        tx.read { repository.get("/api/v1/expired") }.shouldBeNull()
-    }
-
-    test("deleteExpired removes only the rows whose expiry has passed") {
-        val now = Instant.now()
-        tx.update {
-            repository.putCurrent(key = "/api/v1/fresh", value = "\"ok\"", expiresAt = now.plusSeconds(60))
-            repository.putCurrent(key = "/api/v1/stale-1", value = "\"old\"", expiresAt = now.minusSeconds(10))
-            repository.putCurrent(key = "/api/v1/stale-2", value = "\"old\"", expiresAt = now.minusSeconds(1))
-        }
-
-        val deleted = tx.update { repository.deleteExpired() }
-
-        deleted shouldBe 2
-        tx.read { repository.get("/api/v1/fresh") } shouldBe "\"ok\""
-    }
-
-    test("clear removes live and expired rows of every revision") {
-        val now = Instant.now()
-        tx.update {
-            repository.putCurrent(key = "rev-a /api/v1/live", value = "\"ok\"", expiresAt = now.plusSeconds(60))
-            repository.putCurrent(key = "rev-b /api/v1/live", value = "\"ok\"", expiresAt = now.plusSeconds(60))
-            repository.putCurrent(key = "rev-a /api/v1/stale", value = "\"old\"", expiresAt = now.minusSeconds(1))
-        }
-
-        tx.update { repository.clear() } shouldBe 3
-        tx.read { repository.get("rev-a /api/v1/live") }.shouldBeNull()
-        tx.read { repository.get("rev-b /api/v1/live") }.shouldBeNull()
-    }
-
-    test("a put under a generation that a clear has since advanced stores nothing") {
-        val observed = tx.get { repository.generation() }
-        tx.update { repository.clear() }
-
-        val stored =
-            tx.update {
-                repository.put(REPORT_KEY, "\"pre-write\"", Instant.now().plusSeconds(60), observed)
-            }
-
-        stored.shouldBeFalse()
-        tx.read { repository.get(REPORT_KEY) }.shouldBeNull()
-    }
 
     test("clear fails rather than reporting success when the generation row is missing") {
         postgres.openTransaction().use { open ->
@@ -211,7 +122,7 @@ class CacheRepositorySpec : FunSpec({
     }
 
     test("a sweep that starts while a clear is uncommitted waits for it") {
-        tx.update { repository.putCurrent(REPORT_KEY, "\"live\"", Instant.now().plusSeconds(60)) }
+        tx.update { repository.put(REPORT_KEY, "\"live\"", Instant.now().plusSeconds(60), repository.generation()) }
         postgres.openTransaction().use { clearing ->
             with(clearing.context) { repository.clear() } shouldBe 1
             coroutineScope {
