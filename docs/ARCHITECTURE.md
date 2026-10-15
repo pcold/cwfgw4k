@@ -351,9 +351,10 @@ team pays every other team's winnings, so
 where `totalPot` is all teams' payouts summed. Finalize computes this (`ScoringService.buildWeeklyResult`;
 `ScoringServiceSpec` zero-sum example), but the ledger the report shows is recomputed from persisted scores
 (`WeeklyReportService.buildReportTeamColumn`). There `topTens` sums the eight draft-round cells, one pick per
-round, while `totalPot` sums every score, so a pick outside rounds 1–8, or a second pick in one round, is paid into
-the pot but not shown, and the report stops being zero-sum. Roster upload accepts any round number. Standings rank
-teams by their season total with sequential ranks; equal totals still get distinct ranks (`ReportHelpersSpec`).
+round, while `totalPot` sums every score, so the two agree only while each team has exactly one pick in each of
+rounds 1–8. Roster confirm refuses any other roster (`AdminService.findRosterProblems`;
+`AdminServiceConfirmRosterRoundsSpec`). Standings rank teams by their season total with sequential ranks; equal
+totals still get distinct ranks (`ReportHelpersSpec`).
 
 ### Late-row side bets
 
@@ -536,8 +537,6 @@ shared code in `shared/`.
   live overlay instead races it at $0 and charges it, so the two views disagree.
 - **A season with no side-bet rounds (CWF-186).** Create refuses an empty round list, and an empty rules table
   reads back as the default rounds, so a side-bet amount of 0 is the only way to turn the bets off.
-- **A pick outside rounds 1–8, or a second pick in one round (CWF-195).** Upload accepts it, and the report's
-  ledger then stops being zero-sum (see Weekly ledger).
 - **A shared ESPN-event resolver (CWF-179).** The live preview and the competitors route resolve a tournament's
   ESPN event through `findLinkedEvent` (`espn/EspnService.kt`); finalize applies the same exact-id rule inline
   and does not call it yet.
