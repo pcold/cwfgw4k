@@ -8,29 +8,20 @@ import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
-import com.cwfgw.golfers.GolferService
 import com.cwfgw.http.appJson
 import com.cwfgw.leagues.LeagueId
-import com.cwfgw.scoring.FakeScoringRepository
-import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.seasons.SeasonId
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.RosterViewPick
 import com.cwfgw.teams.RosterViewTeam
 import com.cwfgw.teams.TeamId
-import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
-import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.testing.shouldBeRefused
-import com.cwfgw.testing.testEspnService
-import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
-import com.cwfgw.tournamentLinks.TournamentLinkService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -199,37 +190,13 @@ private fun opsFixture(
             }
         }
         val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
-        val teamRepo = FakeTeamRepository(initialRosterView = mapOf(SEASON_ID to rosterOf(golfers)))
-        val golferRepo = FakeGolferRepository(golfers, idFactory = { CREATED_GOLFER_ID }, clock = { GOLFER_CLOCK })
-        val scoringRepo = FakeScoringRepository()
-        val sharedTx = transactor
-        seasonService = SeasonService(seasonRepo, sharedTx)
-        tournamentService = TournamentService(tournamentRepo, sharedTx)
-        teamService = TeamService(teamRepo, sharedTx)
-        golferService = GolferService(golferRepo, sharedTx)
-        val linkRepo = FakeTournamentLinkRepository()
+        seasonRepository = seasonRepo
+        tournamentRepository = tournamentRepo
+        teamRepository = FakeTeamRepository(initialRosterView = mapOf(SEASON_ID to rosterOf(golfers)))
+        golferRepository = FakeGolferRepository(golfers, idFactory = { CREATED_GOLFER_ID }, clock = { GOLFER_CLOCK })
         val scoreboard = FakeEspnClient(tournamentsByDate = espnByDate)
-        val client =
+        espnClient =
             startDateMovedDuringFetch?.let { StartDateMovingEspnClient(scoreboard, tournamentRepo, it) } ?: scoreboard
-        espnService =
-            testEspnService(
-                client = client,
-                seasonRepository = seasonRepo,
-                golferRepository = golferRepo,
-                teamRepository = teamRepo,
-                tournamentRepository = tournamentRepo,
-                linkRepository = linkRepo,
-                tx = sharedTx,
-            )
-        scoringService = ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo)
-        tournamentOpsService =
-            TournamentOpsService(
-                tournamentRepository = tournamentRepo,
-                scoringService = scoringService,
-                scoringRepository = scoringRepo,
-                espnService = espnService,
-                tx = sharedTx,
-            )
     }
 
 class TournamentOpsRoutesSpec : FunSpec({

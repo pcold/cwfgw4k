@@ -2,39 +2,25 @@
 
 package com.cwfgw
 
-import com.cwfgw.admin.AdminService
 import com.cwfgw.cache.CacheRepository
 import com.cwfgw.cache.RequestCache
 import com.cwfgw.config.AppConfig
 import com.cwfgw.config.AuthConfig
 import com.cwfgw.config.LoginThrottleConfig
 import com.cwfgw.datahealth.DataHealthRepository
-import com.cwfgw.datahealth.DataHealthService
 import com.cwfgw.db.Database
 import com.cwfgw.db.Transactor
 import com.cwfgw.db.poolMetricsOrNull
 import com.cwfgw.espn.EspnClient
-import com.cwfgw.espn.EspnService
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.golfers.GolferService
 import com.cwfgw.health.DatabaseHealthProbe
 import com.cwfgw.health.HealthRepository
 import com.cwfgw.leagues.LeagueRepository
-import com.cwfgw.leagues.LeagueService
-import com.cwfgw.reports.LiveOverlayService
-import com.cwfgw.reports.WeeklyReportService
 import com.cwfgw.scoring.ScoringRepository
-import com.cwfgw.scoring.ScoringService
-import com.cwfgw.seasons.SeasonOpsService
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.TeamRepository
-import com.cwfgw.teams.TeamService
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
-import com.cwfgw.tournamentLinks.TournamentLinkService
-import com.cwfgw.tournaments.TournamentOpsService
 import com.cwfgw.tournaments.TournamentRepository
-import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.users.AuthService
 import com.cwfgw.users.AuthSetup
 import com.cwfgw.users.LoginThrottle
@@ -68,109 +54,44 @@ fun main() {
     }.start(wait = true)
 }
 
-@Suppress("LongMethod")
 internal fun buildServices(
     config: AppConfig,
     database: Database,
     httpClient: HttpClient,
 ): AppServices {
     val transactor = Transactor(database.dsl, config.db.maxPoolSize)
-    val requestCache =
-        RequestCache(
-            repository = CacheRepository(),
-            tx = transactor,
-            revision = config.cache.revision,
-            defaultTtl = Duration.ofSeconds(config.cache.defaultTtlSeconds),
-        )
-    val teamRepository = TeamRepository()
-    val teamService = TeamService(teamRepository, transactor)
-    val seasonRepository = SeasonRepository()
-    val seasonService = SeasonService(seasonRepository, transactor)
-    val tournamentRepository = TournamentRepository()
-    val tournamentService = TournamentService(tournamentRepository, transactor)
-    val golferRepository = GolferRepository()
-    val golferService = GolferService(golferRepository, transactor)
-    val userRepository = UserRepository()
-    val linkRepo = TournamentLinkRepository()
-    val tournamentLinkService =
-        TournamentLinkService(linkRepo, tournamentRepository, golferRepository, transactor)
-    val espnService =
-        EspnService(
-            client = EspnClient(httpClient, config.espn),
-            seasonRepository = seasonRepository,
-            golferRepository = golferRepository,
-            teamRepository = teamRepository,
-            tournamentRepository = tournamentRepository,
-            linkRepository = linkRepo,
-            tx = transactor,
-        )
-    val scoringRepository = ScoringRepository()
-    val scoringService =
-        ScoringService(
-            scoringRepository,
-            seasonRepository,
-            tournamentRepository,
-            teamRepository,
-        )
-    val adminService =
-        AdminService(
-            tx = transactor,
-            seasonService = seasonService,
-            tournamentService = tournamentService,
-            espnService = espnService,
-            golferService = golferService,
-            golferRepository = golferRepository,
-            teamRepository = teamRepository,
-        )
-    val liveOverlayService = LiveOverlayService(espnService)
-    val weeklyReportService =
-        WeeklyReportService(
-            seasonRepository = seasonRepository,
-            tournamentRepository = tournamentRepository,
-            teamRepository = teamRepository,
-            golferRepository = golferRepository,
-            scoringRepository = scoringRepository,
-            liveOverlayService = liveOverlayService,
-            tx = transactor,
-        )
-    return AppServices(
+    return AppServices.from(
+        repositories = postgresRepositories(),
         healthProbe = DatabaseHealthProbe(HealthRepository(), transactor),
-        leagueService = LeagueService(LeagueRepository(), transactor),
-        golferService = golferService,
-        seasonService = seasonService,
-        teamService = teamService,
-        tournamentService = tournamentService,
-        tournamentLinkService = tournamentLinkService,
-        tournamentOpsService =
-            TournamentOpsService(
-                tournamentRepository = tournamentRepository,
-                scoringService = scoringService,
-                scoringRepository = scoringRepository,
-                espnService = espnService,
-                tx = transactor,
-            ),
-        seasonOpsService =
-            SeasonOpsService(
-                seasonRepository = seasonRepository,
-                tournamentRepository = tournamentRepository,
-                scoringRepository = scoringRepository,
-                tx = transactor,
-            ),
-        espnService = espnService,
-        adminService = adminService,
-        dataHealthService = DataHealthService(DataHealthRepository(), transactor),
-        liveOverlayService = liveOverlayService,
-        weeklyReportService = weeklyReportService,
-        authService = AuthService(userRepository, transactor),
-        loginThrottle = config.loginThrottle.toLoginThrottle(),
-        userRepository = userRepository,
+        espnClient = EspnClient(httpClient, config.espn),
         transactor = transactor,
-        requestCache = requestCache,
-        sweepIntervalSeconds = config.cache.sweepIntervalSeconds.value,
+        bcryptCost = AuthService.DEFAULT_COST,
+        loginThrottle = config.loginThrottle.toLoginThrottle(),
         authSetup = config.auth.toAuthSetup(),
+        requestCache =
+            RequestCache(
+                repository = CacheRepository(),
+                tx = transactor,
+                revision = config.cache.revision,
+                defaultTtl = Duration.ofSeconds(config.cache.defaultTtlSeconds),
+            ),
+        sweepIntervalSeconds = config.cache.sweepIntervalSeconds.value,
         debugEnabled = config.debug.enabled,
     )
 }
+
+private fun postgresRepositories(): AppRepositories =
+    AppRepositories(
+        leagueRepository = LeagueRepository(),
+        golferRepository = GolferRepository(),
+        seasonRepository = SeasonRepository(),
+        teamRepository = TeamRepository(),
+        tournamentRepository = TournamentRepository(),
+        scoringRepository = ScoringRepository(),
+        tournamentLinkRepository = TournamentLinkRepository(),
+        dataHealthRepository = DataHealthRepository(),
+        userRepository = UserRepository(),
+    )
 
 private const val HTTP_CLIENT_CONNECT_TIMEOUT_MS: Long = 10_000
 private const val HTTP_CLIENT_REQUEST_TIMEOUT_MS: Long = 30_000

@@ -2,7 +2,6 @@ package com.cwfgw.teams
 
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
-import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
@@ -66,7 +65,7 @@ class TeamRoutesSpec : FunSpec({
                 initialRosterView = mapOf(SEASON_ID to view),
             )
 
-        apiTest({ teamService = TeamService(fake, FakeTransactor()) }) { client ->
+        apiTest({ teamRepository = fake }) { client ->
             val response = client.get("/api/v1/seasons/${SEASON_ID.value}/rosters")
 
             response.status shouldBe HttpStatusCode.OK
@@ -77,7 +76,7 @@ class TeamRoutesSpec : FunSpec({
     }
 
     test("GET /seasons/{non-uuid}/rosters returns 400") {
-        apiTest({ teamService = TeamService(FakeTeamRepository(), FakeTransactor()) }) { client ->
+        apiTest({ teamRepository = FakeTeamRepository() }) { client ->
             val response = client.get("/api/v1/seasons/not-a-uuid/rosters")
 
             response.status shouldBe HttpStatusCode.BadRequest

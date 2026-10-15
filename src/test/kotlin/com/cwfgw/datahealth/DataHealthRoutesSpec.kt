@@ -47,7 +47,7 @@ class DataHealthRoutesSpec : FunSpec({
                 rosteredWithoutEspnId = listOf(ROSTERED),
                 blankFirstNames = listOf(BLANK),
             )
-        authenticatedApiTest({ dataHealthService = DataHealthService(repository, transactor) }) { client ->
+        authenticatedApiTest({ dataHealthRepository = repository }) { client ->
             val response = client.get("/api/v1/admin/data-health")
 
             response.status shouldBe HttpStatusCode.OK

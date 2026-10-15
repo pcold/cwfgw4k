@@ -2,7 +2,6 @@ package com.cwfgw.seasons
 
 import com.cwfgw.http.ErrorBody
 import com.cwfgw.leagues.LeagueId
-import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.authenticatedApiTest
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FunSpec
@@ -156,7 +155,7 @@ class CreateSeasonViolationSpec : FunSpec({
 
     test("POST /api/v1/seasons refuses a violation with 400, its message, and no season written") {
         val fake = FakeSeasonRepository()
-        authenticatedApiTest({ seasonService = SeasonService(fake, FakeTransactor()) }) { client ->
+        authenticatedApiTest({ seasonRepository = fake }) { client ->
             val response =
                 client.post("/api/v1/seasons") {
                     contentType(ContentType.Application.Json)

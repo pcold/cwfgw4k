@@ -1,6 +1,5 @@
 package com.cwfgw.leagues
 
-import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.seedLeagues
@@ -39,7 +38,7 @@ class LeagueRoutesSpec : FunSpec({
         val newCreatedAt = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeLeagueRepository(idFactory = { newId }, clock = { newCreatedAt })
 
-        authenticatedApiTest({ leagueService = LeagueService(fake, FakeTransactor()) }) { client ->
+        authenticatedApiTest({ leagueRepository = fake }) { client ->
             val createResponse =
                 client.post("/api/v1/leagues") {
                     contentType(ContentType.Application.Json)

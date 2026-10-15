@@ -9,7 +9,6 @@ import com.cwfgw.testing.OUTAGE_TOURNAMENT
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.captureLogs
 import com.cwfgw.testing.espnClientOver
-import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournaments.FakeTournamentRepository
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -56,12 +55,8 @@ private val UPSTREAM_FAILURES: List<FailingUpstream> =
 
 private fun espnFailing(failure: FailingUpstream): ApiFixture.() -> Unit =
     {
-        espnService =
-            testEspnService(
-                client = failure.client(),
-                tournamentRepository = FakeTournamentRepository(initial = listOf(OUTAGE_TOURNAMENT)),
-                tx = transactor,
-            )
+        espnClient = failure.client()
+        tournamentRepository = FakeTournamentRepository(initial = listOf(OUTAGE_TOURNAMENT))
     }
 
 private suspend fun HttpResponse.shouldBeBadGateway(error: String) {

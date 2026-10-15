@@ -13,30 +13,23 @@ import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
-import com.cwfgw.golfers.GolferService
 import com.cwfgw.http.appJson
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.scoring.FakeScoringRepository
 import com.cwfgw.scoring.FantasyScore
 import com.cwfgw.scoring.FantasyScoreId
-import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.seasons.SeasonId
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.RosterEntryId
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
-import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.noopTransactionContext
-import com.cwfgw.testing.testEspnService
-import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
-import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.ESPN_SCHEDULE_ZONE
 import com.cwfgw.tournaments.FakeTournamentRepository
@@ -44,7 +37,6 @@ import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentResult
 import com.cwfgw.tournaments.TournamentResultId
-import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
@@ -242,43 +234,13 @@ private fun reportFixture(
                 }
             }
         }
-        val teamRepo = FakeTeamRepository(initialTeams = initialTeams, initialRoster = initialRosters)
-        val golferRepo = FakeGolferRepository(initial = initialGolfers)
-        val scoringRepo = FakeScoringRepository(initialScores = initialScores)
-        seasonService = SeasonService(seasonRepo, FakeTransactor())
-        tournamentService = TournamentService(tournamentRepo, FakeTransactor())
-        teamService = TeamService(teamRepo, FakeTransactor())
-        golferService = GolferService(golferRepo, FakeTransactor())
-        scoringService =
-            ScoringService(
-                repository = scoringRepo,
-                seasonRepository = seasonRepo,
-                tournamentRepository = tournamentRepo,
-                teamRepository = teamRepo,
-            )
-        val sharedTx = FakeTransactor()
-        val linkRepo = FakeTournamentLinkRepository()
-        val previewEspnService =
-            testEspnService(
-                client = espn,
-                seasonRepository = seasonRepo,
-                golferRepository = golferRepo,
-                teamRepository = teamRepo,
-                tournamentRepository = tournamentRepo,
-                linkRepository = linkRepo,
-                tx = sharedTx,
-            )
-        liveOverlayService = LiveOverlayService(previewEspnService)
-        weeklyReportService =
-            WeeklyReportService(
-                seasonRepository = seasonRepo,
-                tournamentRepository = tournamentRepo,
-                teamRepository = teamRepo,
-                golferRepository = golferRepo,
-                scoringRepository = scoringRepo,
-                liveOverlayService = liveOverlayService,
-                tx = reportTx,
-            )
+        seasonRepository = seasonRepo
+        tournamentRepository = tournamentRepo
+        teamRepository = FakeTeamRepository(initialTeams = initialTeams, initialRoster = initialRosters)
+        golferRepository = FakeGolferRepository(initial = initialGolfers)
+        scoringRepository = FakeScoringRepository(initialScores = initialScores)
+        espnClient = espn
+        reportTransactor = reportTx
     }
 
 // A read is a service call only while every report method opens exactly one, on a transactor nothing else shares.

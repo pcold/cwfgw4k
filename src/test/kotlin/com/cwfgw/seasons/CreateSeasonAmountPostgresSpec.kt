@@ -72,7 +72,10 @@ private fun refusesEveryField(
     leagueId: LeagueId,
     rawAmounts: List<String>,
     message: (String) -> String,
-) = authenticatedApiTest({ seasonService = SeasonService(SeasonRepository(), tx) }) { client ->
+) = authenticatedApiTest({
+    seasonRepository = SeasonRepository()
+    transactor = tx
+}) { client ->
     // One comparison so a red run names every failing case: assertSoftly loses its collector across the client's
     // thread hops.
     val cases = rawAmounts.flatMap { rawAmount -> RULE_AMOUNT_FIELDS.map { field -> field to rawAmount } }
@@ -109,7 +112,10 @@ class CreateSeasonAmountPostgresSpec : FunSpec({
     }
 
     test("a zero with an exponent past what Postgres parses as text is written as zero in every rule field") {
-        authenticatedApiTest({ seasonService = SeasonService(SeasonRepository(), tx) }) { client ->
+        authenticatedApiTest({
+            seasonRepository = SeasonRepository()
+            transactor = tx
+        }) { client ->
             RULE_AMOUNT_FIELDS.forEach { field ->
                 val response = client.createSeason(leagueId, field, "0E+2000000000")
                 withClue(field.label) { response.status shouldBe HttpStatusCode.Created }

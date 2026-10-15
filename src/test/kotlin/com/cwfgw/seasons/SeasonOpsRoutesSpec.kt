@@ -1,19 +1,13 @@
 package com.cwfgw.seasons
 
 import com.cwfgw.leagues.LeagueId
-import com.cwfgw.scoring.FakeScoringRepository
-import com.cwfgw.scoring.ScoringService
-import com.cwfgw.teams.FakeTeamRepository
-import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
-import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
-import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -63,21 +57,8 @@ private fun opsFixture(initialTournaments: List<Tournament> = emptyList()): ApiF
                 )
             }
         }
-        val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
-        val teamRepo = FakeTeamRepository()
-        val scoringRepo = FakeScoringRepository()
-        val sharedTx = transactor
-        seasonService = SeasonService(seasonRepo, sharedTx)
-        tournamentService = TournamentService(tournamentRepo, sharedTx)
-        teamService = TeamService(teamRepo, sharedTx)
-        scoringService = ScoringService(scoringRepo, seasonRepo, tournamentRepo, teamRepo)
-        seasonOpsService =
-            SeasonOpsService(
-                seasonRepository = seasonRepo,
-                tournamentRepository = tournamentRepo,
-                scoringRepository = scoringRepo,
-                tx = sharedTx,
-            )
+        seasonRepository = seasonRepo
+        tournamentRepository = FakeTournamentRepository(initial = initialTournaments)
     }
 
 class SeasonOpsRoutesSpec : FunSpec({
