@@ -4,8 +4,11 @@ import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.golfers.GolferName
 import com.cwfgw.golfers.GolferRepository
+import com.cwfgw.golfers.PgaPlayerIdClaim
 import com.cwfgw.golfers.UNIQUE_PGA_PLAYER_ID
+import com.cwfgw.golfers.findOrCreateAll
 import com.cwfgw.result.Result
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -18,6 +21,8 @@ import java.util.UUID
 
 private val SCHEFFLER =
     CreateGolferRequest(pgaPlayerId = "pga-1", firstName = "Scottie", lastName = "Scheffler", worldRanking = 1)
+
+private val SCHEFFLER_NAME: GolferName = checkNotNull(GolferName.splitName("Scottie Scheffler"))
 
 class GolferRepositoryContractSpec : FunSpec({
     val postgres = postgresHarness()
@@ -100,6 +105,30 @@ private val golferContract: List<ContractCase<GolferRepository>> =
             val idless = tx.update { repository.create(SCHEFFLER.copy(pgaPlayerId = null)) }
 
             tx.update { repository.backfillPgaPlayerId(idless.id, "pga-1") }.shouldBeNull()
+            tx.get { repository.findAll(search = null) } shouldContainExactlyInAnyOrder listOf(holder, idless)
+        },
+        ContractCase("findOrCreateAll backfills one row and creates another, answering each by its pga id") {
+            val idless = tx.update { repository.create(SCHEFFLER.copy(pgaPlayerId = null)) }
+            val claims =
+                listOf(
+                    PgaPlayerIdClaim.Create("pga-2", checkNotNull(GolferName.splitName("Rory McIlroy"))),
+                    PgaPlayerIdClaim.Backfill(idless.id, "pga-1", SCHEFFLER_NAME),
+                )
+
+            val written = tx.update { repository.findOrCreateAll(claims) }
+
+            written.getValue("pga-1") shouldBe idless.copy(pgaPlayerId = "pga-1")
+            written.getValue("pga-2").lastName shouldBe "McIlroy"
+            tx.get { repository.findAll(search = null) } shouldHaveSize 2
+        },
+        ContractCase("findOrCreateAll answers a lost backfill with the id's holder and leaves its row id-less") {
+            val holder = tx.update { repository.create(SCHEFFLER) }
+            val idless = tx.update { repository.create(SCHEFFLER.copy(pgaPlayerId = null)) }
+            val lostBackfill = PgaPlayerIdClaim.Backfill(idless.id, "pga-1", SCHEFFLER_NAME)
+
+            val written = tx.update { repository.findOrCreateAll(listOf(lostBackfill)) }
+
+            written.getValue("pga-1") shouldBe holder
             tx.get { repository.findAll(search = null) } shouldContainExactlyInAnyOrder listOf(holder, idless)
         },
     )
