@@ -67,7 +67,10 @@ sealed interface ConfirmedRosterProblem {
     /** No surname to store. The preview never offers such an athlete, so only a hand-built payload carries one. */
     data class BlankEspnGolferName(val teamName: String, val espnId: String) : ConfirmedRosterProblem
 
-    /** As [BlankEspnGolferName], named by [round] as a new golfer has no id. The roster parser refuses a blank name. */
+    /**
+     * As [BlankEspnGolferName], named by [round] as a new golfer has no id, and never also a [RepeatedNewGolfer]. The
+     * roster parser refuses a blank name.
+     */
     data class BlankNewGolferName(val teamName: String, val round: Int) : ConfirmedRosterProblem
 
     /** One per round however many picks name it, so it is never also a [RepeatedRound]. */

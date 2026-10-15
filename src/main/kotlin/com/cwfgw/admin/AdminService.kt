@@ -461,6 +461,7 @@ private fun repeatedGolfers(team: ConfirmedTeam): List<ConfirmedRosterProblem> {
             .map { repeat -> ConfirmedRosterProblem.RepeatedExistingGolfer(team.teamName, repeat.golferId) }
     val repeatedNew =
         assignments.filterIsInstance<GolferAssignment.New>()
+            .filter { newGolfer -> GolferName.splitName(newGolfer.name) != null }
             .firstOfEachRepeat { repeat -> normalizeName(repeat.name) }
             .map { repeat -> ConfirmedRosterProblem.RepeatedNewGolfer(team.teamName, repeat.name) }
     val repeatedEspn =

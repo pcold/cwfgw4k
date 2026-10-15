@@ -92,4 +92,24 @@ class AdminServiceConfirmRosterNewGolferSpec : FunSpec({
         tx.read { TeamRepository().findBySeason(seasonId) }.shouldBeEmpty()
         tx.read { GolferRepository().findAll(search = null) }.shouldBeEmpty()
     }
+
+    test("two blank new golfers on one team are each refused as blank, never as a repeat of each other") {
+        val seasonId = seedSeason()
+        val brown =
+            fullTeam(
+                number = 1,
+                name = "BROWN",
+                ConfirmedPick(round = 1, ownershipPct = 100, assignment = GolferAssignment.New("")),
+                ConfirmedPick(round = 2, ownershipPct = 100, assignment = GolferAssignment.New("  ")),
+            )
+
+        val result = service().confirmRoster(ConfirmRosterRequest(seasonId = seasonId, teams = listOf(brown)))
+
+        val problems =
+            listOf(
+                ConfirmedRosterProblem.BlankNewGolferName(teamName = "BROWN", round = 1),
+                ConfirmedRosterProblem.BlankNewGolferName(teamName = "BROWN", round = 2),
+            )
+        result shouldBe Result.Err(AdminError.InvalidConfirmedRoster(problems))
+    }
 })
