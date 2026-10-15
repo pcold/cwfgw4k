@@ -119,7 +119,7 @@ Domain code throws a `DomainError`; `http/ErrorHandling.kt` maps it to a status 
 | `Forbidden` | 403 |
 | `NotFound` | 404 |
 | unsupported content type | 415 |
-| `Conflict` | 409 |
+| `Conflict` | 409; also a create that lost a unique-key race |
 | `Refused` | 409, body `{"refusal": "<code>", "error": "..."}` |
 | Postgres lock timeout (`55P03`) | 409 "another change is being saved here; try again", plus WARN `cwfgw4k.db.lock_timeout` |
 | `Unprocessable` | 422 |
@@ -240,6 +240,12 @@ Each of these runs in exactly one `tx.update`, so it lands whole or not at all:
 - **Roster confirm** creates every team, golfer and roster entry in the upload together (`AdminService.kt`).
 - **Player-override write** re-checks the tournament's link and status inside the same transaction as the
   write, so it cannot race a finalize (`TournamentLinkService.kt`).
+
+A create that loses a race on a unique key gets a typed outcome, not a 500. `Transactor.updateOrOutraced`
+(`db/OutracedWrites.kt`) turns a 23505 on the one constraint it names into a typed error and rethrows anything
+else: 409 from the golfer POST and roster confirm, a skipped entry in schedule confirm, a log line in the boot
+admin seed. The finalize import creates golfers with `ON CONFLICT DO NOTHING` instead, since a 23505 would abort
+the finalize.
 
 Not atomic, deliberately or by default:
 
