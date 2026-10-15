@@ -85,7 +85,7 @@ data class AppServices private constructor(
          * leaves, so a dependency added to a service can't reach one of them and miss another. [reportsTransactor]
          * exists for a spec that counts the report's reads on a transactor nothing else shares.
          */
-        @Suppress("LongMethod") // One line per service; splitting it would scatter the single wiring list.
+        @Suppress("LongMethod") // The single wiring list; splitting it scatters what each bundle is given.
         fun from(
             repositories: AppRepositories,
             healthProbe: HealthProbe,
