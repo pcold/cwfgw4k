@@ -201,10 +201,7 @@ class EspnService(
         event: EspnTournament,
     ) {
         val matchingContext = buildMatchingContextIn(tournament.seasonId, tournament.id)
-        val matchedPairs =
-            event.competitors.mapNotNull { competitor ->
-                matchOrCreateIn(competitor, matchingContext)?.let { golferId -> competitor to golferId }
-            }
+        val matchedPairs = matchOrCreateIn(event.competitors, matchingContext)
         persistResultsIn(tournament.id, matchedPairs)
         syncTournamentFromEventIn(tournament, event)
     }
@@ -228,12 +225,25 @@ class EspnService(
 
     context(ctx: WriteTransactionContext)
     private fun matchOrCreateIn(
-        competitor: EspnCompetitor,
+        competitors: List<EspnCompetitor>,
         context: MatchingContext,
-    ): GolferId? {
-        val existing = locateExistingGolferIn(competitor, context)
-        if (existing != null) return existing.id
+    ): List<Pair<EspnCompetitor, GolferId>> {
+        val leaderboard =
+            competitors.withIndex().associateWith { (_, competitor) -> locateExistingGolferIn(competitor, context)?.id }
+        // Confirm inserts in this order too: a conflicting insert waits on the other transaction's row, so
+        // leaderboard order would let an import and a confirm that share athletes deadlock.
+        val created =
+            leaderboard.filterValues { it == null }.keys
+                .sortedBy { it.value.espnId }
+                .mapNotNull { entry -> createGolferIn(entry.value)?.let { golferId -> entry to golferId } }
+                .toMap()
+        return leaderboard.mapNotNull { (entry, existingId) ->
+            (existingId ?: created[entry])?.let { golferId -> entry.value to golferId }
+        }
+    }
 
+    context(ctx: WriteTransactionContext)
+    private fun createGolferIn(competitor: EspnCompetitor): GolferId? {
         val (firstName, lastName) = GolferName.splitName(competitor.name) ?: return null
         val created =
             golferRepository.findOrCreate(
