@@ -60,15 +60,15 @@ interface GolferRepository {
 }
 
 /** Taken by [GolferRepository.lockRow]; [findOrCreateAll] is the one caller, so its order is every caller's. */
-enum class GolferRowLock {
+sealed interface GolferRowLock {
     /** A result or roster row's foreign-key lock: it waits only on a delete or a write to a key, `pga_player_id`. */
-    Reference,
+    data object Reference : GolferRowLock
 
     /**
      * The backfill UPDATE's own lock, and like it skips a row that has an id by then. Taking [Reference] and upgrading
      * would deadlock two backfills of one row.
      */
-    Backfill,
+    data object Backfill : GolferRowLock
 }
 
 fun GolferRepository(): GolferRepository = JooqGolferRepository()

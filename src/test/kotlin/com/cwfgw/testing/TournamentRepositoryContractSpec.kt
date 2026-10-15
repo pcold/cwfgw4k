@@ -148,7 +148,7 @@ private val tournamentRowContract: List<ContractCase<TournamentRepository>> =
             namesFound(unfinalized) shouldContainExactly unfinalized.statuses.map { it.value }
             namesFound(TournamentFilter(seasonId, statuses = emptySet())).shouldBeEmpty()
         },
-        ContractCase("findAll's start-date bounds are strict and combine") {
+        ContractCase("findAll's start-date bounds are strict, startsOn is exact, and they combine") {
             val seasonId = seeds.season()
             val unlinked = masters(seasonId).copy(pgaTournamentId = null)
             val (early, middle, late) = listOf("2026-04-01", "2026-04-09", "2026-05-01").map(LocalDate::parse)
@@ -160,6 +160,8 @@ private val tournamentRowContract: List<ContractCase<TournamentRepository>> =
             namesFound(TournamentFilter(seasonId, startsAfter = middle)) shouldContainExactly listOf("2026-05-01")
             namesFound(TournamentFilter(seasonId, startsBefore = late, startsAfter = early)) shouldContainExactly
                 listOf("2026-04-09")
+            namesFound(TournamentFilter(seasonId, startsOn = middle)) shouldContainExactly listOf("2026-04-09")
+            namesFound(TournamentFilter(seasonId, startsOn = middle, startsAfter = middle)).shouldBeEmpty()
         },
         ContractCase("update changes only the fields it carries, and answers null for an unknown id") {
             val request = masters(seeds.season()).copy(courseName = "Augusta", week = "15")

@@ -144,8 +144,11 @@ class EspnService(
     }
 
     context(ctx: TransactionContext)
-    private fun findUnfinalizedIn(seasonId: SeasonId): List<Tournament> =
-        tournamentRepository.findAll(TournamentFilter(seasonId = seasonId, statuses = UNFINALIZED))
+    private fun findUnfinalizedIn(
+        seasonId: SeasonId,
+        startsOn: LocalDate? = null,
+    ): List<Tournament> =
+        tournamentRepository.findAll(TournamentFilter(seasonId = seasonId, statuses = UNFINALIZED, startsOn = startsOn))
 
     /**
      * Network-only ESPN scoreboard fetch — wraps the upstream client and
@@ -187,8 +190,9 @@ class EspnService(
             tx.read {
                 val context = buildMatchingContextIn(tournament.seasonId, tournamentId)
                 val located = event.competitors.map { it to locateExistingGolferIn(it, context) }
+                val sameDay = findUnfinalizedIn(tournament.seasonId, startsOn = tournament.startDate)
                 val siblings =
-                    findSiblingImports(tournament, event, events, findUnfinalizedIn(tournament.seasonId))
+                    findSiblingImports(tournament, event, events, sameDay)
                         .map { sibling -> locateEventIn(sibling).matches }
                 located.settledBeside(siblings).map { (competitor, match) ->
                     TournamentCompetitorView(
