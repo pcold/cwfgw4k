@@ -208,13 +208,18 @@ class EspnLivePreviewSpec : FunSpec({
         preview.espnId shouldBe "espn-masters"
     }
 
-    test("previewForTournament falls back to the only event when its id is not the tournament's") {
+    test("previewForTournament answers NoMatchingEvent for a stale id though the date has a lone event") {
         val onlyEvent = espnTournament(espnId = "espn-different")
         val fixture = PreviewFixture(tournamentsByDate = mapOf(START_DATE to listOf(onlyEvent)))
 
-        val preview = fixture.previewFor(tournament(pgaTournamentId = "espn-masters")).orFail()
+        fixture.previewFor(tournament(pgaTournamentId = "espn-masters")) shouldBe
+            Result.Err(LivePreviewError.NoMatchingEvent)
+    }
 
-        preview.espnId shouldBe "espn-different"
+    test("previewForTournament answers NoMatchingEvent for an unlinked tournament though the date has a lone event") {
+        val fixture = PreviewFixture(tournamentsByDate = mapOf(START_DATE to listOf(espnTournament())))
+
+        fixture.previewFor(tournament(pgaTournamentId = null)) shouldBe Result.Err(LivePreviewError.NoMatchingEvent)
     }
 
     test("previewForTournament answers NoMatchingEvent when no id matches and several events exist") {
@@ -291,27 +296,7 @@ class EspnLivePreviewSpec : FunSpec({
         preview.teams.single().topTenEarnings.compareTo(BigDecimal(36)) shouldBe 0
     }
 
-    test("previewForTournament pays a fallback-matched tournament at its own payout multiplier") {
-        val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
-        val event = espnTournament(competitors = listOf(espnCompetitor("p1", "Scottie Scheffler", 1, -10)))
-        val unlinked = tournament(pgaTournamentId = null, payoutMultiplier = BigDecimal(2))
-        val fixture =
-            PreviewFixture(
-                initialTournaments = listOf(unlinked),
-                initialTeams = listOf(team(TEAM_A_ID, "BROWN")),
-                initialGolfers = listOf(scottie),
-                initialRosters = listOf(rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1)),
-                tournamentsByDate = mapOf(START_DATE to listOf(event)),
-            )
-
-        val preview = fixture.previewFor(unlinked).orFail()
-
-        preview.payoutMultiplier.compareTo(BigDecimal(2)) shouldBe 0
-        // $18 first place × 2.0 multiplier = $36
-        preview.teams.single().topTenEarnings.compareTo(BigDecimal(36)) shouldBe 0
-    }
-
-    test("previewForTournament prices a stale-id fallback from its own row, not the one linked to the event") {
+    test("previewForTournament previews a lone event only for the row linked to it, never a stale-id sibling") {
         val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
         val event = espnTournament(competitors = listOf(espnCompetitor("p1", "Scottie Scheffler", 1, -10)))
         val stale = tournament(pgaTournamentId = "espn-stale", payoutMultiplier = BigDecimal(3))
@@ -326,39 +311,40 @@ class EspnLivePreviewSpec : FunSpec({
                 initialRosters = listOf(rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1)),
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
+        val ctx = fixture.service.loadLivePreviewContext(SEASON_ID, fixture.initialTournaments)
 
-        val preview = fixture.previewFor(stale).orFail()
-
-        preview.payoutMultiplier.compareTo(BigDecimal(3)) shouldBe 0
+        fixture.service.previewForTournament(ctx, stale) shouldBe Result.Err(LivePreviewError.NoMatchingEvent)
+        val preview = fixture.service.previewForTournament(ctx, linkedToEvent).orFail()
+        preview.payoutMultiplier.compareTo(BigDecimal(2)) shouldBe 0
     }
 
-    test("previewForTournament pays a fallback-matched team event as one, though ESPN does not flag it") {
+    test("previewForTournament pays by ESPN's team-event flag where the tournament row disagrees") {
         val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
         val event = espnTournament(competitors = listOf(espnCompetitor("p1", "Scottie Scheffler", 1, -10)))
-        val unlinkedTeamEvent = tournament(pgaTournamentId = null, isTeamEvent = true)
+        val rowSaysTeamEvent = tournament(isTeamEvent = true)
         val fixture =
             PreviewFixture(
-                initialTournaments = listOf(unlinkedTeamEvent),
+                initialTournaments = listOf(rowSaysTeamEvent),
                 initialTeams = listOf(team(TEAM_A_ID, "BROWN")),
                 initialGolfers = listOf(scottie),
                 initialRosters = listOf(rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1)),
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val preview = fixture.previewFor(unlinkedTeamEvent).orFail()
+        val preview = fixture.previewFor(rowSaysTeamEvent).orFail()
 
-        preview.isTeamEvent shouldBe true
-        // $18 first place, halved between the two partners of a team event = $9
-        preview.teams.single().topTenEarnings.compareTo(BigDecimal(9)) shouldBe 0
+        preview.isTeamEvent shouldBe false
+        // $18 first place, unhalved: finalize's import writes ESPN's flag over the row before it scores
+        preview.teams.single().topTenEarnings.compareTo(BigDecimal(18)) shouldBe 0
     }
 
-    test("previewForTournament applies a fallback-matched tournament's own link overrides") {
+    test("previewForTournament applies the tournament's own link overrides") {
         val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
         val event = espnTournament(competitors = listOf(espnCompetitor("espn-x", "S. Scheffler-Smith", 1, -10)))
-        val unlinked = tournament(pgaTournamentId = null)
+        val linked = tournament()
         val fixture =
             PreviewFixture(
-                initialTournaments = listOf(unlinked),
+                initialTournaments = listOf(linked),
                 initialTeams = listOf(team(TEAM_A_ID, "BROWN")),
                 initialGolfers = listOf(scottie),
                 initialRosters = listOf(rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1)),
@@ -373,7 +359,7 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        val preview = fixture.previewFor(unlinked).orFail()
+        val preview = fixture.previewFor(linked).orFail()
 
         preview.teams.single().topTenEarnings.compareTo(BigDecimal(18)) shouldBe 0
         preview.leaderboard.single().teamNames shouldContainExactly listOf("BROWN")
