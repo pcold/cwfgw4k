@@ -278,8 +278,9 @@ by this status (see [Live overlay](#live-overlay)).
 
 1. Read the tournament. Fetch ESPN's scoreboard for its start date, outside any transaction. ESPN unreachable
    answers 502.
-2. In one `update`: refuse `tournament_out_of_order` if an earlier tournament in the season is still
-   `upcoming` or `in_progress`.
+2. In one `update`, re-read the tournament under its row lock, so a concurrent finalize or reset waits and one
+   deleted during the fetch answers 404. Refuse `tournament_out_of_order` if an earlier tournament in the season
+   is still `upcoming` or `in_progress`.
 3. Import results. A linked tournament imports only its own ESPN event (a no-op if the scoreboard lacks it). An
    unlinked one imports each completed event on that scoreboard that matches a tournament by ESPN id.
 4. The tournament becomes `completed` only if ESPN marks the event completed; the import also syncs
@@ -291,8 +292,8 @@ Re-finalizing a completed tournament is not blocked; it re-imports and upserts t
 **Reset** refuses when a later tournament in the season is completed, so results are always unwound newest
 first. **Season clean-results** resets the whole season at once.
 
-Pinned by `TournamentOpsServiceSpec`, `TournamentOpsServiceFinalizeRollbackSpec` and
-`TournamentOpsServiceResetSpec`.
+Pinned by `TournamentOpsServiceSpec`, `TournamentOpsServiceFinalizeRollbackSpec`,
+`TournamentOpsServiceResetSpec` and `TournamentFinalizeRaceSpec`.
 
 ## 7. Scoring and Payouts
 

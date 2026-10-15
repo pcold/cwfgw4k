@@ -51,6 +51,10 @@ class FakeTournamentRepository(
     context(ctx: TransactionContext)
     override fun findById(id: TournamentId): Tournament? = tournaments[id]
 
+    /** The lock order is pinned against Postgres, in TournamentFinalizeRaceSpec. */
+    context(ctx: WriteTransactionContext)
+    override fun findByIdForUpdate(id: TournamentId): Tournament? = tournaments[id]
+
     context(ctx: TransactionContext)
     override fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
         tournaments.values.firstOrNull { it.pgaTournamentId == pgaTournamentId }

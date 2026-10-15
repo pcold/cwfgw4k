@@ -34,31 +34,44 @@ class TournamentOpsService(
                 .getOrElse { return Result.Err(TournamentOpsError.UpstreamUnavailable(it.failure)) }
 
         return try {
-            tx.update {
-                val blocking = findEarlierUnfinalized(tournament)
-                if (blocking.isNotEmpty()) {
-                    return@update Result.Err(
-                        TournamentOpsError.OutOfOrder(TournamentOpsError.Action.Finalize, blocking),
-                    )
-                }
-
-                log.info { "Finalizing tournament '${tournament.name}' (${tournament.id.value})..." }
-                persistEspnEventsIn(tournament, events)
-                scoringService.calculateScoresIn(tournament.seasonId, tournamentId)
-                    .getOrElse { throw FinalizeAborted(it.toOpsError(tournament)) }
-                log.info { "Finalized '${tournament.name}'" }
-                Result.Ok(tournamentRepository.findById(tournamentId) ?: tournament)
-            }
+            tx.update { finalizeLockedIn(tournamentId, events) }
         } catch (aborted: FinalizeAborted) {
             log.warn(aborted) { "Finalize of '${tournament.name}' rolled back: ${aborted.error}" }
             Result.Err(aborted.error)
         }
     }
 
+    /**
+     * The row may have changed or gone during the ESPN fetch, so the gates read it again under the lock. [events]
+     * are still the pre-fetch start date's.
+     */
+    context(ctx: WriteTransactionContext)
+    private fun finalizeLockedIn(
+        tournamentId: TournamentId,
+        events: List<EspnTournament>,
+    ): Result<Tournament, TournamentOpsError> {
+        val tournament =
+            tournamentRepository.findByIdForUpdate(tournamentId)
+                ?: return Result.Err(TournamentOpsError.TournamentNotFound(tournamentId))
+
+        val blocking = findEarlierUnfinalized(tournament)
+        if (blocking.isNotEmpty()) {
+            return Result.Err(TournamentOpsError.OutOfOrder(TournamentOpsError.Action.Finalize, blocking))
+        }
+
+        log.info { "Finalizing tournament '${tournament.name}' (${tournament.id.value})..." }
+        persistEspnEventsIn(tournament, events)
+        scoringService.calculateScoresIn(tournament.seasonId, tournamentId)
+            .getOrElse { throw FinalizeAborted(it.toOpsError(tournament)) }
+        log.info { "Finalized '${tournament.name}'" }
+        return Result.Ok(tournamentRepository.findById(tournamentId) ?: tournament)
+    }
+
     suspend fun resetTournament(tournamentId: TournamentId): Result<Tournament, TournamentOpsError> =
         tx.update {
+            // Finalize locks before its upserts; this must match: the reverse order deadlocks the two.
             val tournament =
-                tournamentRepository.findById(tournamentId)
+                tournamentRepository.findByIdForUpdate(tournamentId)
                     ?: return@update Result.Err(TournamentOpsError.TournamentNotFound(tournamentId))
 
             val blocking = findLaterCompleted(tournament)
