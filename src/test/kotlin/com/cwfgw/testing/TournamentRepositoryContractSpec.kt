@@ -124,9 +124,8 @@ private val tournamentRowContract: List<ContractCase<TournamentRepository>> =
             val unfinalized =
                 TournamentFilter(seasonId, statuses = setOf(TournamentStatus.Upcoming, TournamentStatus.InProgress))
 
-            tx.get { repository.findAll(unfinalized) }.map { it.status } shouldContainExactly
-                listOf(TournamentStatus.Upcoming, TournamentStatus.InProgress)
-            tx.get { repository.findAll(TournamentFilter(seasonId, statuses = emptySet())) }.shouldBeEmpty()
+            namesFound(unfinalized) shouldContainExactly unfinalized.statuses.map { it.value }
+            namesFound(TournamentFilter(seasonId, statuses = emptySet())).shouldBeEmpty()
         },
         ContractCase("findAll's start-date bounds are strict and combine") {
             val seasonId = seeds.season()
