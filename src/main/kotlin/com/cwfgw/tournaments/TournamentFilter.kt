@@ -4,8 +4,8 @@ import com.cwfgw.seasons.SeasonId
 import java.time.LocalDate
 
 /**
- * [statuses] defaults to every status, so "any" is never spelled as an empty set: empty matches nothing, as
- * `IN ()` does. [startsBefore] and [startsAfter] are strict, so the tournament on that date is never included.
+ * "Any status" is the full default set, never an empty one: empty [statuses] matches nothing, as `IN ()` does.
+ * [startsBefore] and [startsAfter] are strict: a tournament starting on that date is excluded.
  */
 data class TournamentFilter(
     val seasonId: SeasonId? = null,
