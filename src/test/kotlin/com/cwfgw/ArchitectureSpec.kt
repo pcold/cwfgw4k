@@ -28,8 +28,9 @@ class ArchitectureSpec : FunSpec({
     }
 
     test("a repository function that writes or takes a row lock declares a WriteTransactionContext") {
-        // By the jOOQ call, not the name: findOrCreate, lockSeason and clear write under names no convention
-        // catches. A write reached through a helper is the helper's to declare; the compiler holds its caller.
+        // By the jOOQ call, not the name: findOrCreate, lockSeason and clear need the write context under
+        // names no convention catches. A write reached through a helper is the helper's to declare; the
+        // compiler holds its caller.
         val leaks =
             repositoryFiles
                 .flatMap { file -> file.functions(includeNested = true, includeLocal = true) }
@@ -72,7 +73,9 @@ private fun KoFileDeclaration.linesMatching(pattern: Regex): List<String> =
  */
 private fun KoFunctionDeclaration.declaresWriteContext(): Boolean {
     val fileText = containingFile.text
-    val (line, column) = location.removePrefix("${containingFile.path}:").split(":").map(String::toInt)
+    val lineAndColumn = location.removePrefix("${containingFile.path}:")
+    val line = lineAndColumn.substringBefore(":").toInt()
+    val column = lineAndColumn.substringAfter(":").toInt()
     val start = fileText.lines().take(line - 1).sumOf { above -> above.length + 1 } + column - 1
     val clause = CONTEXT_CLAUSE_AT_END.find(fileText.substring(0, start))?.value
 
