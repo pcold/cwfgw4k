@@ -25,6 +25,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import org.jooq.exception.DataAccessException
 import java.sql.SQLException
@@ -53,7 +54,7 @@ private class StepClock(start: Instant = Instant.parse("2026-05-03T00:00:00Z")) 
 
     override fun instant(): Instant = current
 
-    override fun getZone() = ZoneOffset.UTC
+    override fun getZone(): ZoneId = ZoneOffset.UTC
 
     override fun withZone(zone: ZoneId) = error("not used in tests")
 }
@@ -148,7 +149,7 @@ class RequestCacheSpec : FunSpec({
                 // Give the in-flight registration time to settle for all 10
                 // callers before we resolve the gate. With single-flight only
                 // the first reaches `fetch`; the others coalesce.
-                Thread.sleep(SETTLE_MS)
+                delay(SETTLE_MS)
                 gate.complete("[\"shared\"]")
                 concurrent.awaitAll()
             }

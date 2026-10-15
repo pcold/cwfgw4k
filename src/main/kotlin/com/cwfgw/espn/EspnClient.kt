@@ -3,6 +3,7 @@ package com.cwfgw.espn
 import com.cwfgw.config.EspnConfig
 import com.github.benmanes.caffeine.cache.AsyncCache
 import com.github.benmanes.caffeine.cache.Caffeine
+import com.github.benmanes.caffeine.cache.Ticker
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -109,6 +110,7 @@ internal class CachingEspnClient(
     private val delegate: EspnClient,
     scoreboardTtl: Duration,
     scoreboardMaxSize: Long,
+    ticker: Ticker = Ticker.systemTicker(),
 ) : EspnClient {
     // Long-lived scope tied to the JVM lifetime. SupervisorJob so one
     // failed ESPN load doesn't poison sibling loads.
@@ -118,11 +120,13 @@ internal class CachingEspnClient(
         Caffeine.newBuilder()
             .expireAfterWrite(scoreboardTtl)
             .maximumSize(scoreboardMaxSize)
+            .ticker(ticker)
             .buildAsync()
     private val calendarCache: AsyncCache<Unit, List<EspnCalendarEntry>> =
         Caffeine.newBuilder()
             .expireAfterWrite(scoreboardTtl)
             .maximumSize(1)
+            .ticker(ticker)
             .buildAsync()
 
     override suspend fun fetchScoreboard(date: LocalDate): List<EspnTournament> {
