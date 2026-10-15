@@ -26,11 +26,12 @@ class TournamentLinkRepositoryContractSpec : FunSpec({
 
 private val linkContract: List<ContractCase<TournamentLinkRepository>> =
     listOf(
-        ContractCase("an upserted link reads back from its tournament, and an unknown tournament lists none") {
-            val tournamentId = seeds.tournament()
+        ContractCase("an upserted link reads back from its tournament alone, and an unknown tournament lists none") {
+            val (tournamentId, other) = seeds.tournament() to seeds.tournament()
             val golferId = seeds.golfer()
 
             val saved = tx.update { repository.upsert(tournamentId, "abc-123", golferId) }
+            tx.update { repository.upsert(other, "xyz-789", golferId) }
 
             saved shouldBe TournamentPlayerOverride(tournamentId, "abc-123", golferId)
             tx.get { repository.listByTournament(tournamentId) } shouldContainExactly listOf(saved)

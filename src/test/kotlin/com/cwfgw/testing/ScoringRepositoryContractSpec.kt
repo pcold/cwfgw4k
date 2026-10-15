@@ -68,11 +68,12 @@ private val scoringContract: List<ContractCase<ScoringRepository>> =
             val first = UpsertScore(seasonId, seeds.team(), tournamentId, seeds.golfer(), breakdown(BigDecimal(18)))
             val created = tx.update { repository.upsertScore(first) }
 
-            val updated = tx.update { repository.upsertScore(first.copy(breakdown = breakdown(BigDecimal(9), 3))) }
+            val tiedForThird = breakdown(BigDecimal(9), position = 3).copy(numTied = 2)
+            val updated = tx.update { repository.upsertScore(first.copy(breakdown = tiedForThird)) }
 
             updated.id shouldBe created.id
             updated.points.toPlainString() shouldBe "9.0000"
-            updated.position shouldBe 3
+            (updated.position to updated.numTied) shouldBe (3 to 2)
             tx.get { repository.getScores(seasonId, tournamentId) } shouldContainExactly listOf(updated)
         },
         ContractCase("getScores answers one tournament's scores in the season, highest points first") {
