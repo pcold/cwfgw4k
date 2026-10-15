@@ -20,6 +20,7 @@ import com.cwfgw.leagues.LeagueId
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentStatus
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.runBlocking
@@ -202,10 +203,8 @@ private suspend fun finalizeCompleted(
     seasonId: SeasonId,
     services: AppServices,
 ) {
-    val tournaments =
-        services.tournamentService.list(seasonId, status = null)
-            .filter { it.status != TournamentStatus.Completed }
-            .sortedBy { it.startDate }
+    val unfinalized = setOf(TournamentStatus.Upcoming, TournamentStatus.InProgress)
+    val tournaments = services.tournamentService.list(TournamentFilter(seasonId = seasonId, statuses = unfinalized))
     if (tournaments.isEmpty()) {
         log.info { "No upcoming tournaments to finalize" }
         return

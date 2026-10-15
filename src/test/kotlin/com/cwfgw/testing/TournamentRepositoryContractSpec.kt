@@ -6,6 +6,7 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
+import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentResult
@@ -36,6 +37,9 @@ private val COMPLETED = UpdateTournamentRequest(status = TournamentStatus.Comple
 
 private val RESULT_ORDER: Comparator<TournamentResult> =
     compareBy<TournamentResult, Int?>(nullsLast()) { it.position }.thenBy(POSTGRES_UUID_ORDER) { it.id.value }
+
+private suspend fun ContractSubject<TournamentRepository>.namesFound(filter: TournamentFilter): List<String> =
+    tx.get { repository.findAll(filter) }.map { it.name }
 
 class TournamentRepositoryContractSpec : FunSpec({
     val postgres = postgresHarness()
@@ -91,8 +95,7 @@ private val tournamentRowContract: List<ContractCase<TournamentRepository>> =
 
             tx.updateUnlessOutraced(UNIQUE_PGA_TOURNAMENT_ID) { repository.create(masters(seasonId)) } shouldBe
                 Result.Err(Outraced)
-            tx.get { repository.findAll(seasonId = null, status = null) }.map { it.name } shouldContainExactly
-                listOf("Masters")
+            namesFound(TournamentFilter()) shouldContainExactly listOf("Masters")
         },
         ContractCase("findAll filters by season and status, ordered by start date then creation") {
             val seasonId = seeds.season()
@@ -104,12 +107,38 @@ private val tournamentRowContract: List<ContractCase<TournamentRepository>> =
             tx.update { repository.create(elsewhere) }
             tx.update { repository.update(second.id, COMPLETED) }
 
-            tx.get { repository.findAll(seasonId, status = null) }.map { it.name } shouldContainExactly
-                listOf("First", "Second", "Later")
-            tx.get { repository.findAll(seasonId, TournamentStatus.Completed) }.map { it.name } shouldContainExactly
+            namesFound(TournamentFilter(seasonId)) shouldContainExactly listOf("First", "Second", "Later")
+            namesFound(TournamentFilter(seasonId, statuses = setOf(TournamentStatus.Completed))) shouldContainExactly
                 listOf("Second")
-            tx.get { repository.findAll(seasonId = null, status = null) }.map { it.name } shouldContainExactly
-                listOf("First", "Second", "Elsewhere", "Later")
+            namesFound(TournamentFilter()) shouldContainExactly listOf("First", "Second", "Elsewhere", "Later")
+        },
+        ContractCase("findAll keeps every status in the set, and an empty set matches nothing") {
+            val seasonId = seeds.season()
+            val unlinked = masters(seasonId).copy(pgaTournamentId = null)
+            TournamentStatus.entries.forEach { status ->
+                tx.update {
+                    val created = repository.create(unlinked.copy(name = status.value))
+                    repository.update(created.id, UpdateTournamentRequest(status = status))
+                }
+            }
+            val unfinalized =
+                TournamentFilter(seasonId, statuses = setOf(TournamentStatus.Upcoming, TournamentStatus.InProgress))
+
+            namesFound(unfinalized) shouldContainExactly unfinalized.statuses.map { it.value }
+            namesFound(TournamentFilter(seasonId, statuses = emptySet())).shouldBeEmpty()
+        },
+        ContractCase("findAll's start-date bounds are strict and combine") {
+            val seasonId = seeds.season()
+            val unlinked = masters(seasonId).copy(pgaTournamentId = null)
+            val (early, middle, late) = listOf("2026-04-01", "2026-04-09", "2026-05-01").map(LocalDate::parse)
+            listOf(early, middle, late).forEach { date ->
+                tx.update { repository.create(unlinked.copy(name = date.toString(), startDate = date)) }
+            }
+
+            namesFound(TournamentFilter(seasonId, startsBefore = middle)) shouldContainExactly listOf("2026-04-01")
+            namesFound(TournamentFilter(seasonId, startsAfter = middle)) shouldContainExactly listOf("2026-05-01")
+            namesFound(TournamentFilter(seasonId, startsBefore = late, startsAfter = early)) shouldContainExactly
+                listOf("2026-04-09")
         },
         ContractCase("update changes only the fields it carries, and answers null for an unknown id") {
             val request = masters(seeds.season()).copy(courseName = "Augusta", week = "15")

@@ -5,6 +5,7 @@ import com.cwfgw.db.Transactor
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnTournament
+import com.cwfgw.espn.findLinkedEvent
 import com.cwfgw.result.Result
 import com.cwfgw.result.getOrElse
 import com.cwfgw.scoring.ScoringError
@@ -108,7 +109,7 @@ class TournamentOpsService(
         events: List<EspnTournament>,
     ) {
         if (tournament.pgaTournamentId != null) {
-            val event = events.firstOrNull { it.espnId == tournament.pgaTournamentId } ?: return
+            val event = findLinkedEvent(events, tournament) ?: return
             espnService.persistImportIn(tournament, event)
             return
         }
@@ -119,20 +120,24 @@ class TournamentOpsService(
     }
 
     context(ctx: TransactionContext)
-    private fun findEarlierUnfinalized(tournament: Tournament): List<Tournament> {
-        val upcoming = tournamentRepository.findAll(seasonId = tournament.seasonId, status = TournamentStatus.Upcoming)
-        val inProgress =
-            tournamentRepository.findAll(seasonId = tournament.seasonId, status = TournamentStatus.InProgress)
-        return (upcoming + inProgress)
-            .filter { it.id != tournament.id && it.startDate.isBefore(tournament.startDate) }
-            .sortedBy { it.startDate }
-    }
+    private fun findEarlierUnfinalized(tournament: Tournament): List<Tournament> =
+        tournamentRepository.findAll(
+            TournamentFilter(
+                seasonId = tournament.seasonId,
+                statuses = setOf(TournamentStatus.Upcoming, TournamentStatus.InProgress),
+                startsBefore = tournament.startDate,
+            ),
+        )
 
     context(ctx: TransactionContext)
     private fun findLaterCompleted(tournament: Tournament): List<Tournament> =
-        tournamentRepository.findAll(seasonId = tournament.seasonId, status = TournamentStatus.Completed)
-            .filter { it.id != tournament.id && it.startDate.isAfter(tournament.startDate) }
-            .sortedBy { it.startDate }
+        tournamentRepository.findAll(
+            TournamentFilter(
+                seasonId = tournament.seasonId,
+                statuses = setOf(TournamentStatus.Completed),
+                startsAfter = tournament.startDate,
+            ),
+        )
 }
 
 /**

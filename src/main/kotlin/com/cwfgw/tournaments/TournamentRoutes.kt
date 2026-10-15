@@ -29,7 +29,8 @@ private fun RoutingContext.tournamentId(): TournamentId =
 private suspend fun RoutingContext.listTournaments(service: TournamentService) {
     val seasonId = optionalQueryParam("season_id", String::toSeasonId)
     val status = optionalQueryParam("status", TournamentStatus::fromValueOrNull)
-    call.respond(service.list(seasonId = seasonId, status = status))
+    val bySeason = TournamentFilter(seasonId = seasonId)
+    call.respond(service.list(if (status == null) bySeason else bySeason.copy(statuses = setOf(status))))
 }
 
 private suspend fun RoutingContext.updateTournament(service: TournamentService) {

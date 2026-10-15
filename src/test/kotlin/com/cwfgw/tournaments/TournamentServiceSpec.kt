@@ -18,7 +18,7 @@ class TournamentServiceSpec : FunSpec({
         val masters = tournament(name = "Masters")
         val open = tournament(name = "Open")
 
-        val result = service(initial = listOf(masters, open)).list(seasonId = null, status = null)
+        val result = service(initial = listOf(masters, open)).list(TournamentFilter())
 
         result.map { it.id } shouldContainExactlyInAnyOrder listOf(masters.id, open.id)
     }

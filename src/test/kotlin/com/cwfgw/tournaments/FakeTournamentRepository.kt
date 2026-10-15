@@ -37,14 +37,13 @@ class FakeTournamentRepository(
     }
 
     context(ctx: TransactionContext)
-    override fun findAll(
-        seasonId: SeasonId?,
-        status: TournamentStatus?,
-    ): List<Tournament> =
+    override fun findAll(filter: TournamentFilter): List<Tournament> =
         tournaments.values
             .asSequence()
-            .filter { seasonId == null || it.seasonId == seasonId }
-            .filter { status == null || it.status == status }
+            .filter { filter.seasonId == null || it.seasonId == filter.seasonId }
+            .filter { it.status in filter.statuses }
+            .filter { tournament -> filter.startsBefore?.let { tournament.startDate < it } ?: true }
+            .filter { tournament -> filter.startsAfter?.let { tournament.startDate > it } ?: true }
             .sortedWith(tournamentOrdering)
             .toList()
 
