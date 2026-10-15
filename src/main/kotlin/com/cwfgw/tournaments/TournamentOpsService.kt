@@ -129,7 +129,10 @@ class TournamentOpsService(
         }
     }
 
-    /** Sound only under findByIdForUpdate's season lock, without which a sibling's reset can commit after this read. */
+    /**
+     * Sound only under findByIdForUpdate's season lock, without which a sibling's finalize or reset can commit after
+     * this read.
+     */
     context(ctx: TransactionContext)
     private fun findEarlierUnfinalized(tournament: Tournament): List<Tournament> =
         tournamentRepository.findAll(
