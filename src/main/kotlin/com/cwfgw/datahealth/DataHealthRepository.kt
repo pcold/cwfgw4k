@@ -18,6 +18,7 @@ interface DataHealthRepository {
     context(ctx: TransactionContext)
     fun findRosteredTwins(): List<RosteredTwinGroup>
 
+    /** Tombstones stay in: a rostered tombstone is still rostered, and name matching never offers one. */
     context(ctx: TransactionContext)
     fun findRosteredWithoutEspnId(): List<DataHealthGolfer>
 
