@@ -197,13 +197,7 @@ private fun scoreRow(
         calculatedAt = Instant.parse("2026-04-12T20:00:00Z"),
     )
 
-/**
- * Wire WeeklyReportService over fakes for a route test. Builds the
- * fakes' contents from supplied seeds, then constructs the dependent
- * services so the WeeklyReportService captured into [ApiFixture] sees
- * the seeded repos rather than the empty defaults.
- */
-@Suppress("LongParameterList", "LongMethod")
+@Suppress("LongParameterList")
 private fun reportFixture(
     seedSeason: Boolean = true,
     initialTournaments: List<Tournament> = emptyList(),
