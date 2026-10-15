@@ -10,6 +10,8 @@ import com.cwfgw.golfers.GolferName
 import com.cwfgw.golfers.GolferNameIndex
 import com.cwfgw.golfers.GolferNameMatch
 import com.cwfgw.golfers.GolferRepository
+import com.cwfgw.golfers.PgaPlayerIdClaim
+import com.cwfgw.golfers.findOrCreateAll
 import com.cwfgw.result.Result
 import com.cwfgw.result.getOrElse
 import com.cwfgw.scoring.PayoutTable
@@ -193,18 +195,38 @@ class EspnService(
         )
     }
 
-    /**
-     * Writes into the caller's transaction so finalize persists the import and the scores atomically.
-     */
+    /** @see persistImportsIn */
     context(ctx: WriteTransactionContext)
     internal fun persistImportIn(
         tournament: Tournament,
         event: EspnTournament,
-    ) {
-        val matchingContext = buildMatchingContextIn(tournament.seasonId, tournament.id)
-        val matchedPairs = matchOrCreateIn(event.competitors, matchingContext)
-        persistResultsIn(tournament.id, matchedPairs)
-        syncTournamentFromEventIn(tournament, event)
+    ) = persistImportsIn(listOf(EventImport(tournament, event)))
+
+    /**
+     * Writes into the caller's transaction so finalize persists the import and the scores atomically. Every event is
+     * matched before any golfer is written, so all their writes share [findOrCreateAll]'s one order: written event by
+     * event, a later event's athlete could take its lock before an earlier one's, against a confirm taking both.
+     */
+    context(ctx: WriteTransactionContext)
+    internal fun persistImportsIn(imports: List<EventImport>) {
+        val matched = imports.map { matchEventIn(it) }.withholdingRowsContestedAcrossEvents()
+        val written = golferRepository.findOrCreateAll(matched.flatMap(MatchedEvent::claims))
+        for ((import, matches) in matched) {
+            val matchedPairs =
+                matches.mapNotNull { (competitor, match) ->
+                    bindGolferIn(competitor, match, written)?.let { golferId -> competitor to golferId }
+                }
+            persistResultsIn(import.tournament.id, matchedPairs)
+            syncTournamentFromEventIn(import.tournament, import.event)
+        }
+    }
+
+    context(ctx: TransactionContext)
+    private fun matchEventIn(import: EventImport): MatchedEvent {
+        val context = buildMatchingContextIn(import.tournament.seasonId, import.tournament.id)
+        val competitors = import.event.competitors
+        val matches = competitors.map { locateExistingGolferIn(it, context) }.withholdingContestedRows()
+        return MatchedEvent(import = import, matches = competitors.zip(matches))
     }
 
     context(ctx: TransactionContext)
@@ -224,67 +246,40 @@ class EspnService(
         return MatchingContext(names = names, rosterGolferIds = rosterIds, overrides = overrides)
     }
 
-    context(ctx: WriteTransactionContext)
-    private fun matchOrCreateIn(
-        competitors: List<EspnCompetitor>,
-        context: MatchingContext,
-    ): List<Pair<EspnCompetitor, GolferId>> {
-        val matches = competitors.map { locateExistingGolferIn(it, context) }.withholdingContestedRows()
-        val leaderboard = competitors.withIndex().zip(matches).toMap()
-        // Confirm inserts and backfills in this order too: a conflicting write waits on the other transaction's
-        // row, so leaderboard order would let an import and a confirm that share athletes deadlock. A roster row's
-        // key-share lock on a golfer is not ordered by it, as AdminService's confirm admits of itself.
-        val bound =
-            leaderboard.entries
-                .sortedBy { (entry, _) -> entry.value.espnId }
-                .associate { (entry, match) -> entry to bindGolferIn(entry.value, match) }
-        return leaderboard.keys.mapNotNull { entry -> bound[entry]?.let { golferId -> entry.value to golferId } }
-    }
-
+    /** A competitor whose id another event's claim wrote is credited that row, as a later event would find it by id. */
     context(ctx: WriteTransactionContext)
     private fun bindGolferIn(
         competitor: EspnCompetitor,
         match: CompetitorMatch,
-    ): GolferId? =
-        when (match) {
+        written: Map<String, Golfer>,
+    ): GolferId? {
+        val writtenId = written[competitor.espnId]?.id?.takeUnless { competitor.isTeamPartner }
+        return when (match) {
             is CompetitorMatch.Credited -> match.golfer.id
-            is CompetitorMatch.Idless -> backfillIn(competitor, match.golfer)
-            CompetitorMatch.Unmatched -> createGolferIn(competitor)
+            is CompetitorMatch.Idless -> writtenId
+            CompetitorMatch.Unmatched -> if (competitor.isTeamPartner) createPartnerIn(competitor) else writtenId
             is CompetitorMatch.IdMismatch -> {
                 val espnId = LoggedEspnId(competitor.espnId)
                 log.warn {
                     "cwfgw4k.espn event=namesake-id-mismatch espn_id=$espnId golfer_id=${match.namesake.id.value}"
                 }
-                createGolferIn(competitor)
+                writtenId
             }
-            is CompetitorMatch.Withheld -> {
-                val espnId = LoggedEspnId(competitor.espnId)
-                val golferIds = match.candidates.map { it.id.value }
-                log.warn { "cwfgw4k.espn event=namesake-withheld espn_id=$espnId golfer_ids=$golferIds" }
-                null
-            }
+            is CompetitorMatch.Withheld ->
+                writtenId ?: run {
+                    val espnId = LoggedEspnId(competitor.espnId)
+                    val golferIds = match.candidates.map { it.id.value }
+                    log.warn { "cwfgw4k.espn event=namesake-withheld espn_id=$espnId golfer_ids=$golferIds" }
+                    null
+                }
         }
+    }
 
-    // Null means a concurrent writer gave the row an id, or this competitor's id to another row; findOrCreate then
-    // returns that holder, or inserts beside a row that turned out to be a namesake.
+    /** Outside [findOrCreateAll]: a partner's id is synthetic and never written, so its insert takes no key lock. */
     context(ctx: WriteTransactionContext)
-    private fun backfillIn(
-        competitor: EspnCompetitor,
-        row: Golfer,
-    ): GolferId? = golferRepository.backfillPgaPlayerId(row.id, competitor.espnId)?.id ?: createGolferIn(competitor)
-
-    context(ctx: WriteTransactionContext)
-    private fun createGolferIn(competitor: EspnCompetitor): GolferId? {
+    private fun createPartnerIn(competitor: EspnCompetitor): GolferId? {
         val (firstName, lastName) = GolferName.splitName(competitor.name) ?: return null
-        val created =
-            golferRepository.findOrCreate(
-                CreateGolferRequest(
-                    pgaPlayerId = if (competitor.isTeamPartner) null else competitor.espnId,
-                    firstName = firstName,
-                    lastName = lastName,
-                ),
-            )
-        return created.id
+        return golferRepository.findOrCreate(CreateGolferRequest(firstName = firstName, lastName = lastName)).id
     }
 
     context(ctx: TransactionContext)
@@ -407,6 +402,59 @@ private fun List<CompetitorMatch>.withholdingContestedRows(): List<CompetitorMat
         } else {
             match
         }
+    }
+}
+
+/** One completed ESPN event and the tournament its results are written to. */
+internal data class EventImport(
+    val tournament: Tournament,
+    val event: EspnTournament,
+)
+
+private data class MatchedEvent(
+    val import: EventImport,
+    val matches: List<Pair<EspnCompetitor, CompetitorMatch>>,
+)
+
+private val CompetitorMatch.idlessRow: Golfer?
+    get() = (this as? CompetitorMatch.Idless)?.golfer
+
+/**
+ * Two events' competitors with different ids naming one id-less row are the per-event contest across events, and are
+ * withheld the same way. One id in two events is one athlete, not a contest.
+ */
+private fun List<MatchedEvent>.withholdingRowsContestedAcrossEvents(): List<MatchedEvent> {
+    val idsPerRow =
+        flatMap(MatchedEvent::matches)
+            .mapNotNull { (competitor, match) -> match.idlessRow?.let { row -> row.id to competitor.espnId } }
+            .groupBy(keySelector = { (rowId, _) -> rowId }, valueTransform = { (_, espnId) -> espnId })
+    val contested = idsPerRow.filterValues { espnIds -> espnIds.distinct().size > 1 }.keys
+    return map { matched ->
+        matched.copy(
+            matches =
+                matched.matches.map { (competitor, match) ->
+                    val row = match.idlessRow
+                    competitor to
+                        if (row != null && row.id in contested) CompetitorMatch.Withheld(listOf(row)) else match
+                },
+        )
+    }
+}
+
+private fun MatchedEvent.claims(): List<PgaPlayerIdClaim> =
+    matches.mapNotNull { (competitor, match) -> claimFor(competitor, match) }
+
+/** A partner's synthetic id is never written, and a blank name has nothing to create. */
+private fun claimFor(
+    competitor: EspnCompetitor,
+    match: CompetitorMatch,
+): PgaPlayerIdClaim? {
+    if (competitor.isTeamPartner) return null
+    val name = GolferName.splitName(competitor.name) ?: return null
+    return when (match) {
+        is CompetitorMatch.Idless -> PgaPlayerIdClaim.Backfill(match.golfer.id, competitor.espnId, name)
+        CompetitorMatch.Unmatched, is CompetitorMatch.IdMismatch -> PgaPlayerIdClaim.Create(competitor.espnId, name)
+        is CompetitorMatch.Credited, is CompetitorMatch.Withheld -> null
     }
 }
 

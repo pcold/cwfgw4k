@@ -5,6 +5,7 @@ import com.cwfgw.db.Transactor
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnTournament
+import com.cwfgw.espn.EventImport
 import com.cwfgw.espn.findLinkedEvent
 import com.cwfgw.result.Result
 import com.cwfgw.result.getOrElse
@@ -116,10 +117,8 @@ class TournamentOpsService(
         val matchedByEspnId =
             tournamentRepository.findByPgaTournamentIdsForUpdate(completed.map { it.espnId })
                 .associateBy { it.pgaTournamentId }
-        for (event in completed) {
-            val matched = matchedByEspnId[event.espnId] ?: continue
-            espnService.persistImportIn(matched, event)
-        }
+        val imports = completed.mapNotNull { event -> matchedByEspnId[event.espnId]?.let { EventImport(it, event) } }
+        espnService.persistImportsIn(imports)
     }
 
     /**
