@@ -432,7 +432,8 @@ deadlock a confirm. Names are compared normalized for case, accents and hyphens,
 concatenation rather than the stored columns; the surname is its last word, kept whole if hyphenated and past a
 "Jr"/"III" suffix (`golfers/GolferMatching.kt`, which roster upload shares). A new golfer's name is split at its
 last space, and a single word is stored as the last name. Overrides are managed per tournament through the tournament-link routes and are refused once the
-tournament is finalized.
+tournament is finalized, or when they name a tombstone. An admin's create-and-link shares that split but refuses a
+single word, as its form always did.
 
 ### Live overlay
 
@@ -472,8 +473,7 @@ Request and response shapes are the `@Serializable` types in each package's `*Ro
 | GET | `/health` | Database probe: 200 ok or 500 degraded | Public |
 | GET | `/leagues` | List leagues | Public |
 | POST | `/leagues` | Create a league | Admin |
-| GET | `/golfers` | List golfers, optional `search` | Public |
-| POST | `/golfers` | Create a golfer | Admin |
+| GET | `/golfers` | List golfers an admin may link (tombstones left out), optional `search` | Public |
 | GET | `/seasons` | List seasons, optional `league_id`, `year` | Public |
 | GET | `/seasons/{id}/rules` | A season's rules | Public |
 | GET | `/seasons/default-rules` | Default rules to prefill season create | Admin |
@@ -492,6 +492,7 @@ Request and response shapes are the `@Serializable` types in each package's `*Ro
 | POST | `/admin/roster/confirm` | Create the season's teams and rosters | Admin |
 | GET | `/admin/tournaments/{id}/competitors` | ESPN competitors for a linked tournament, to pick overrides from | Admin |
 | POST | `/admin/tournaments/{id}/player-overrides` | Pin an ESPN competitor to a golfer | Admin |
+| POST | `/admin/tournaments/{id}/player-overrides/new-golfer` | Create a golfer from a full name and pin the competitor to it, in one transaction | Admin |
 | DELETE | `/admin/tournaments/{id}/player-overrides/{espnCompetitorId}` | Remove an override | Admin |
 | GET | `/seasons/{id}/report` | Season weekly report, finalized results only | Public |
 | GET | `/seasons/{id}/report/{tournamentId}` | Weekly report for one tournament, optional `live` | Public |

@@ -12,6 +12,7 @@ import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -70,6 +71,18 @@ private fun service(
         tx = FakeTransactor(),
     )
 
+/** Takes the golfer repository so a spec can read back what a create wrote. */
+private fun createService(
+    tournament: Tournament,
+    golfers: FakeGolferRepository,
+): TournamentLinkService =
+    TournamentLinkService(
+        repository = FakeTournamentLinkRepository(),
+        tournamentRepository = FakeTournamentRepository(initial = listOf(tournament)),
+        golferRepository = golfers,
+        tx = FakeTransactor(),
+    )
+
 class TournamentLinkServiceSpec : FunSpec({
 
     test("upsert stores an override on an upcoming tournament") {
@@ -119,6 +132,53 @@ class TournamentLinkServiceSpec : FunSpec({
 
         result.shouldBeInstanceOf<Result.Err<TournamentLinkError.GolferNotFound>>()
         result.error.id shouldBe ghost
+    }
+
+    test("upsert refuses a tombstoned golfer and stores no override") {
+        val t = tournament()
+        val tombstone = golfer().copy(tombstonedAt = Instant.parse("2026-10-15T00:00:00Z"))
+        val svc = service(tournaments = listOf(t), golfers = listOf(tombstone))
+        val request = UpsertTournamentPlayerOverrideRequest(espnCompetitorId = "abc-123", golferId = tombstone.id)
+
+        val result = svc.upsert(t.id, request)
+
+        result shouldBe Result.Err(TournamentLinkError.GolferTombstoned(tombstone.id))
+        svc.listByTournament(t.id).shouldBeEmpty()
+    }
+
+    test("createGolferAndLink stores the name split at its last space, with no pga id, and links the row") {
+        val t = tournament()
+        val golfers = FakeGolferRepository()
+        val svc = createService(t, golfers)
+
+        val link = svc.createGolferAndLink(t.id, CreateLinkedGolferRequest("abc-123", "  Min Woo   Lee ")).orFail()
+
+        val created = FakeTransactor().get { golfers.findById(link.golferId) }
+        (created?.firstName to created?.lastName) shouldBe ("Min Woo" to "Lee")
+        created?.pgaPlayerId shouldBe null
+        svc.listByTournament(t.id) shouldBe listOf(TournamentPlayerOverride(t.id, "abc-123", link.golferId))
+    }
+
+    test("createGolferAndLink refuses a lone surname and creates no golfer") {
+        val t = tournament()
+        val golfers = FakeGolferRepository()
+        val svc = createService(t, golfers)
+
+        val result = svc.createGolferAndLink(t.id, CreateLinkedGolferRequest("abc-123", "Fitzpatrick"))
+
+        result shouldBe Result.Err(TournamentLinkError.GolferNameIncomplete("Fitzpatrick"))
+        FakeTransactor().get { golfers.findAll(search = null) }.shouldBeEmpty()
+    }
+
+    test("createGolferAndLink on a finalized tournament creates no golfer") {
+        val t = tournament(status = TournamentStatus.Completed)
+        val golfers = FakeGolferRepository()
+        val svc = createService(t, golfers)
+
+        val result = svc.createGolferAndLink(t.id, CreateLinkedGolferRequest("abc-123", "Alex Fitzpatrick"))
+
+        result shouldBe Result.Err(TournamentLinkError.TournamentFinalized(t.id))
+        FakeTransactor().get { golfers.findAll(search = null) }.shouldBeEmpty()
     }
 
     test("delete removes an existing override and returns true") {

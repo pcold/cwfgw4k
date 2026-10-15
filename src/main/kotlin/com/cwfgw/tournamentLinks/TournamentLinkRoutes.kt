@@ -22,8 +22,8 @@ import io.ktor.server.routing.route
 /**
  * Admin-only routes for managing manual ESPN→golfer link overrides on a
  * tournament. The GET delegates to ESPN to list every competitor with its
- * current (override-aware) match. The POST/DELETE mutate the overrides
- * stored locally; both are refused once the tournament is finalized.
+ * current (override-aware) match. The POSTs/DELETE mutate the overrides
+ * stored locally; all are refused once the tournament is finalized.
  */
 fun Route.tournamentLinkRoutes(
     espnService: EspnService,
@@ -33,6 +33,7 @@ fun Route.tournamentLinkRoutes(
         authenticate(SESSION_AUTH_NAME) {
             get("/competitors") { listCompetitors(espnService) }
             post("/player-overrides") { upsertOverride(linkService) }
+            post("/player-overrides/new-golfer") { createGolferAndLink(linkService) }
             delete("/player-overrides/{espnCompetitorId}") { deleteOverride(linkService) }
         }
     }
@@ -56,6 +57,12 @@ private suspend fun RoutingContext.upsertOverride(service: TournamentLinkService
     call.respond(service.upsert(tournamentId(), request).orThrowLink())
 }
 
+private suspend fun RoutingContext.createGolferAndLink(service: TournamentLinkService) {
+    requireAdmin()
+    val request = call.receive<CreateLinkedGolferRequest>()
+    call.respond(HttpStatusCode.Created, service.createGolferAndLink(tournamentId(), request).orThrowLink())
+}
+
 private suspend fun RoutingContext.deleteOverride(service: TournamentLinkService) {
     requireAdmin()
     val deleted = service.delete(tournamentId(), espnCompetitorId()).orThrowLink()
@@ -76,6 +83,10 @@ private fun TournamentLinkError.toDomainError(): DomainError =
                 code = "tournament_finalized",
             )
         is TournamentLinkError.GolferNotFound -> DomainError.Validation("golfer ${id.value} not found")
+        is TournamentLinkError.GolferTombstoned ->
+            DomainError.Refused("golfer ${id.value} is tombstoned and can't be linked", code = "golfer_tombstoned")
+        is TournamentLinkError.GolferNameIncomplete ->
+            DomainError.Validation("a new golfer needs a first and a last name; got \"$name\"")
     }
 
 private fun EspnError.toDomainError(): DomainError =

@@ -14,6 +14,10 @@ interface GolferRepository {
     context(ctx: TransactionContext)
     fun findAll(search: String?): List<Golfer>
 
+    /** [findAll] less the tombstones: a tombstone still answers [findById], but no admin may link it again. */
+    context(ctx: TransactionContext)
+    fun findLinkable(search: String?): List<Golfer>
+
     context(ctx: TransactionContext)
     fun findById(id: GolferId): Golfer?
 
@@ -49,9 +53,16 @@ internal val UNIQUE_PGA_PLAYER_ID: String = GOLFERS_PGA_PLAYER_ID_KEY.name
 
 private class JooqGolferRepository : GolferRepository {
     context(ctx: TransactionContext)
-    override fun findAll(search: String?): List<Golfer> =
+    override fun findAll(search: String?): List<Golfer> = findWhere(searchCondition(search))
+
+    context(ctx: TransactionContext)
+    override fun findLinkable(search: String?): List<Golfer> =
+        findWhere(searchCondition(search).and(GOLFERS.TOMBSTONED_AT.isNull))
+
+    context(ctx: TransactionContext)
+    private fun findWhere(condition: Condition): List<Golfer> =
         ctx.dsl.selectFrom(GOLFERS)
-            .where(searchCondition(search))
+            .where(condition)
             .orderBy(
                 GOLFERS.WORLD_RANKING.asc().nullsLast(),
                 GOLFERS.LAST_NAME.asc(),

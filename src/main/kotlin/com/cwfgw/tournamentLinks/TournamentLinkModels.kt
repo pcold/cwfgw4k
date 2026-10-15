@@ -26,6 +26,13 @@ data class UpsertTournamentPlayerOverrideRequest(
     val golferId: GolferId,
 )
 
+/** One [name], not two fields: the server splits it as an import splits ESPN's, so the row reads the same. */
+@Serializable
+data class CreateLinkedGolferRequest(
+    val espnCompetitorId: String,
+    val name: String,
+)
+
 /**
  * Admin-UI view of one ESPN competitor for a tournament. Shows what golfer
  * the override-aware matcher would currently link this competitor to, and
