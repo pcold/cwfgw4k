@@ -418,8 +418,8 @@ private fun List<CompetitorMatch>.withholdingContestedRows(): List<CompetitorMat
 }
 
 /**
- * A surname credit is a guess: it yields a row any other credit names under another ESPN id, which is that row's id
- * once this import lands, so the guesser is its namesake. Two ids guessing one row are withheld, as two full names are.
+ * A surname credit is a guess: it yields a row any other match credits, backfills or contests under another ESPN id,
+ * and the guesser is that row's namesake. Two ids guessing one row are withheld, as two full names are.
  */
 private fun List<Pair<EspnCompetitor, CompetitorMatch>>.settlingSurnameGuesses(): List<CompetitorMatch> {
     val settlement = SurnameGuessSettlement(this)
@@ -465,7 +465,7 @@ private class SurnameGuessSettlement(located: List<Pair<EspnCompetitor, Competit
 private val CompetitorMatch.guessedRow: Golfer?
     get() = (this as? CompetitorMatch.SurnameGuess)?.golfer
 
-/** Every row a match names on evidence firmer than a surname, contested or not. */
+/** A partner's surname credit counts: its name is a surname alone, so that is its full-name match. */
 private val CompetitorMatch.claimedRows: List<Golfer>
     get() =
         when (this) {

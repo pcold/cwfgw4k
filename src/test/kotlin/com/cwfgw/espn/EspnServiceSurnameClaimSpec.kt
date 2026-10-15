@@ -5,9 +5,13 @@ import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferRepository
+import com.cwfgw.seasons.SeasonRepository
+import com.cwfgw.teams.TeamRepository
+import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.seedTournament
 import com.cwfgw.testing.testEspnService
+import com.cwfgw.tournamentLinks.TournamentLinkRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentRepository
 import io.kotest.core.spec.style.FunSpec
@@ -61,6 +65,27 @@ class EspnServiceSurnameClaimSpec : FunSpec({
             creditedEspnIds(joeTournament) shouldBe mapOf(joeBloggs.id to JOE_ESPN_ID)
             creditedEspnIds(jimTournament).values.toList() shouldBe listOf(JIM_ESPN_ID)
         }
+    }
+
+    test("the competitor listing links a surname guess to nothing when another competitor's full name names the row") {
+        val tournament = seededTournament("evt-1")
+        val joeBloggs = idlessJoeBloggs()
+        val event = bloggsEvent("evt-1", joe(), jim())
+        val listingService =
+            testEspnService(
+                client = FakeEspnClient(tournamentsByDate = mapOf(tournament.startDate to listOf(event))),
+                seasonRepository = SeasonRepository(),
+                golferRepository = golfers,
+                teamRepository = TeamRepository(),
+                tournamentRepository = tournaments,
+                linkRepository = TournamentLinkRepository(),
+                tx = tx,
+            )
+
+        val listing = listingService.listCompetitorsForLinking(tournament.id).orFail()
+
+        listing.competitors.map { it.espnCompetitorId to it.linkedGolfer?.id } shouldBe
+            listOf(JOE_ESPN_ID to joeBloggs.id, JIM_ESPN_ID to null)
     }
 })
 
