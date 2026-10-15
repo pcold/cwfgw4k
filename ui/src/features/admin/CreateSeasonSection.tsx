@@ -40,17 +40,19 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
   const [userLeagueId, setUserLeagueId] = useState<string>('');
   // User's pick wins; otherwise default to the first loaded league.
   const leagueId = userLeagueId || (leaguesQuery.data?.[0]?.id ?? '');
-  const [seasonYear, setSeasonYear] = useState<number>(new Date().getFullYear());
+  const [seasonYear, setSeasonYear] = useState(String(new Date().getFullYear()));
   const [seasonName, setSeasonName] = useState('');
   // Null until edited, rather than seeded from `defaults`, so no prop is copied into state.
-  const [editedPayouts, setEditedPayouts] = useState<number[] | null>(null);
-  const [editedTieFloor, setEditedTieFloor] = useState<number | null>(null);
+  const [editedPayouts, setEditedPayouts] = useState<string[] | null>(null);
+  const [editedTieFloor, setEditedTieFloor] = useState<string | null>(null);
   const [editedSideBetRounds, setEditedSideBetRounds] = useState<string | null>(null);
-  const [editedSideBetAmount, setEditedSideBetAmount] = useState<number | null>(null);
-  const payouts = editedPayouts ?? defaults.payouts;
-  const tieFloor = editedTieFloor ?? defaults.tieFloor;
+  const [editedSideBetAmount, setEditedSideBetAmount] = useState<string | null>(null);
+  const payouts = editedPayouts ?? defaults.payouts.map(String);
+  const tieFloor = editedTieFloor ?? String(defaults.tieFloor);
   const sideBetRoundsStr = editedSideBetRounds ?? formatSideBetRounds(defaults.sideBetRounds);
-  const sideBetAmount = editedSideBetAmount ?? defaults.sideBetAmount;
+  const sideBetAmount = editedSideBetAmount ?? String(defaults.sideBetAmount);
+  // Numbers are kept as typed: Number('') is 0, so a cleared field would otherwise submit a zero nobody entered.
+  const fieldCleared = [seasonYear, ...payouts, tieFloor, sideBetAmount].includes('');
   const [success, setSuccess] = useState<string | null>(null);
 
   const createMutation = useMutation({
@@ -58,8 +60,13 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
       api.createSeason({
         leagueId,
         name: seasonName.trim(),
-        seasonYear,
-        rules: buildRules({ payouts, tieFloor, sideBetRoundsStr, sideBetAmount }),
+        seasonYear: Number(seasonYear),
+        rules: buildRules({
+          payouts: payouts.map(Number),
+          tieFloor: Number(tieFloor),
+          sideBetRoundsStr,
+          sideBetAmount: Number(sideBetAmount),
+        }),
       }),
     onSuccess: (season: Season) => {
       setSuccess(`Season "${season.name}" created`);
@@ -69,9 +76,9 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
 
   const errorMessage = mutationError(createMutation.error);
 
-  const disabled = createMutation.isPending || !seasonName.trim() || !leagueId;
+  const disabled = createMutation.isPending || !seasonName.trim() || !leagueId || fieldCleared;
 
-  const updatePayout = (index: number, value: number) => {
+  const updatePayout = (index: number, value: string) => {
     setEditedPayouts(payouts.map((p, i) => (i === index ? value : p)));
   };
 
@@ -97,7 +104,7 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
             id="season-year"
             type="number"
             value={seasonYear}
-            onChange={(e) => setSeasonYear(Number(e.target.value))}
+            onChange={(e) => setSeasonYear(e.target.value)}
             className={FIELD_CLASS}
           />
         </FieldShell>
@@ -124,9 +131,10 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
               <span className="text-xs text-ink-soft">$</span>
               <input
                 type="number"
+                min="0"
                 aria-label={`Payout ${i + 1}`}
                 value={amt}
-                onChange={(e) => updatePayout(i, Number(e.target.value))}
+                onChange={(e) => updatePayout(i, e.target.value)}
                 className="bg-surface-raised border border-control-border rounded px-2 py-1 text-sm w-16"
               />
             </div>
@@ -136,7 +144,7 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
           <div>
             <button
               type="button"
-              onClick={() => setEditedPayouts([...payouts, 0])}
+              onClick={() => setEditedPayouts([...payouts, '0'])}
               className="text-xs text-semantic-info hover:text-semantic-info-hover"
             >
               + Add place
@@ -153,9 +161,10 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
             <input
               id="season-tie-floor"
               type="number"
+              min="0"
               step="0.5"
               value={tieFloor}
-              onChange={(e) => setEditedTieFloor(Number(e.target.value))}
+              onChange={(e) => setEditedTieFloor(e.target.value)}
               className={FIELD_CLASS}
             />
           </FieldShell>
@@ -177,8 +186,9 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
             <input
               id="season-side-amount"
               type="number"
+              min="0"
               value={sideBetAmount}
-              onChange={(e) => setEditedSideBetAmount(Number(e.target.value))}
+              onChange={(e) => setEditedSideBetAmount(e.target.value)}
               className={FIELD_CLASS}
             />
           </FieldShell>

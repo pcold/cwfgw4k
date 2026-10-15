@@ -154,7 +154,8 @@ CREATE TABLE cwfgw4k.season_rule_payouts (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     season_id uuid NOT NULL,
     "position" integer NOT NULL,
-    amount numeric(10,4) NOT NULL
+    amount numeric(10,4) NOT NULL,
+    CONSTRAINT season_rule_payouts_amount_non_negative CHECK ((amount >= (0)::numeric))
 );
 
 
@@ -184,8 +185,10 @@ CREATE TABLE cwfgw4k.seasons (
     max_teams integer DEFAULT 10 NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT seasons_max_teams_positive CHECK ((max_teams >= 1)),
     CONSTRAINT seasons_name_not_blank CHECK ((name ~ '[^ \t\n\r\v\f]'::text)),
-    CONSTRAINT seasons_side_bet_amount_non_negative CHECK ((side_bet_amount >= (0)::numeric))
+    CONSTRAINT seasons_side_bet_amount_non_negative CHECK ((side_bet_amount >= (0)::numeric)),
+    CONSTRAINT seasons_tie_floor_non_negative CHECK ((tie_floor >= (0)::numeric))
 );
 
 

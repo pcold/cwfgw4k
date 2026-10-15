@@ -4,6 +4,7 @@ import com.cwfgw.http.ErrorBody
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.authenticatedApiTest
+import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
@@ -22,6 +23,33 @@ private val LEAGUE = LeagueId(UUID.fromString("00000000-0000-0000-0000-000000000
 
 private fun request(rules: SeasonRules?): CreateSeasonRequest =
     CreateSeasonRequest(leagueId = LEAGUE, name = "Spring", seasonYear = 2026, rules = rules)
+
+private fun overflowCases(amount: BigDecimal): List<Pair<CreateSeasonRequest, CreateSeasonViolation>> {
+    val rules = SeasonRules.defaults()
+    return listOf(
+        request(rules.copy(payouts = listOf(BigDecimal(18), amount))) to CreateSeasonViolation.PayoutTooLarge,
+        request(rules.copy(tieFloor = amount)) to CreateSeasonViolation.TieFloorTooLarge,
+        request(rules = null).copy(tieFloor = amount) to CreateSeasonViolation.TieFloorTooLarge,
+        request(rules.copy(sideBetAmount = amount)) to CreateSeasonViolation.SideBetAmountTooLarge,
+        request(rules = null).copy(sideBetAmount = amount) to CreateSeasonViolation.SideBetAmountTooLarge,
+    )
+}
+
+private fun outOfRangeRefusals(): List<Pair<CreateSeasonRequest, String>> {
+    val rules = SeasonRules.defaults()
+    val overflow = BigDecimal("1e7")
+    return listOf(
+        request(rules.copy(payouts = listOf(BigDecimal(-5), BigDecimal(12)))) to "payouts must not be negative",
+        request(rules.copy(tieFloor = BigDecimal(-1))) to "tie floor must not be negative",
+        request(rules = null).copy(tieFloor = BigDecimal(-1)) to "tie floor must not be negative",
+        request(rules).copy(maxTeams = 0) to "max teams must be at least 1",
+        request(rules.copy(payouts = listOf(overflow))) to "payouts must be less than 1,000,000",
+        request(rules.copy(tieFloor = overflow)) to "tie floor must be less than 1,000,000",
+        request(rules = null).copy(tieFloor = overflow) to "tie floor must be less than 1,000,000",
+        request(rules.copy(sideBetAmount = overflow)) to "side bet amount must be less than 1,000,000",
+        request(rules = null).copy(sideBetAmount = overflow) to "side bet amount must be less than 1,000,000",
+    )
+}
 
 class CreateSeasonViolationSpec : FunSpec({
 
@@ -78,6 +106,39 @@ class CreateSeasonViolationSpec : FunSpec({
         listOf("\tSpring \n", "v", " ").forEach { name ->
             request(rules = null).copy(name = name).violation().shouldBeNull()
         }
+    }
+
+    test("a negative payout place is NegativePayout, and a zero one has no violation") {
+        val charged = SeasonRules.defaults().copy(payouts = listOf(BigDecimal(18), BigDecimal("-0.01")))
+        request(charged).violation() shouldBe CreateSeasonViolation.NegativePayout
+        request(SeasonRules.defaults().copy(payouts = listOf(BigDecimal.ZERO))).violation().shouldBeNull()
+    }
+
+    test("a negative tie floor, flat or in rules, is NegativeTieFloor, and a zero one has no violation") {
+        val negative = BigDecimal("-1")
+        listOf(
+            request(rules = null).copy(tieFloor = negative),
+            request(SeasonRules.defaults().copy(tieFloor = negative)),
+            request(SeasonRules.defaults()).copy(tieFloor = negative),
+        ).forEach { floorless -> floorless.violation() shouldBe CreateSeasonViolation.NegativeTieFloor }
+        request(SeasonRules.defaults().copy(tieFloor = BigDecimal.ZERO)).violation().shouldBeNull()
+    }
+
+    test("max teams below 1 is MaxTeamsBelowOne, and 1 has no violation") {
+        listOf(0, -3).forEach { maxTeams ->
+            request(rules = null).copy(maxTeams = maxTeams).violation() shouldBe CreateSeasonViolation.MaxTeamsBelowOne
+        }
+        request(rules = null).copy(maxTeams = 1).violation().shouldBeNull()
+    }
+
+    test("each rule amount NUMERIC(10,4) would round to 10^6 or past is its TooLarge variant") {
+        listOf("999999.99995", "1e7", "1E+1000000000").map(::BigDecimal).forEach { amount ->
+            overflowCases(amount).forEach { (overflowing, variant) -> overflowing.violation() shouldBe variant }
+        }
+    }
+
+    test("each rule amount at the largest NUMERIC(10,4) holds, 999999.9999, has no violation") {
+        overflowCases(BigDecimal("999999.9999")).forEach { (largest, _) -> largest.violation().shouldBeNull() }
     }
 
     test("POST /api/v1/seasons refuses a violation with 400, its message, and no season written") {
@@ -158,6 +219,24 @@ class CreateSeasonViolationSpec : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.body<ErrorBody>().error shouldBe "season name must not be blank"
+            client.get("/api/v1/seasons").body<List<Season>>().shouldBeEmpty()
+        }
+    }
+
+    test("POST /api/v1/seasons refuses each out-of-range rule value with 400, its message, and no season written") {
+        authenticatedApiTest { client ->
+            outOfRangeRefusals().forEach { (outOfRange, message) ->
+                val response =
+                    client.post("/api/v1/seasons") {
+                        contentType(ContentType.Application.Json)
+                        setBody(outOfRange)
+                    }
+
+                withClue(message) {
+                    response.status shouldBe HttpStatusCode.BadRequest
+                    response.body<ErrorBody>().error shouldBe message
+                }
+            }
             client.get("/api/v1/seasons").body<List<Season>>().shouldBeEmpty()
         }
     }

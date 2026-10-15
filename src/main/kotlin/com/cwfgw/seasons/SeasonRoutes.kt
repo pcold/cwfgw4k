@@ -51,6 +51,13 @@ private fun CreateSeasonViolation.toDomainError(): DomainError =
         CreateSeasonViolation.DuplicateSideBetRound -> DomainError.Validation("side bet rounds must not repeat a round")
         CreateSeasonViolation.NegativeSideBetAmount -> DomainError.Validation("side bet amount must not be negative")
         CreateSeasonViolation.BlankName -> DomainError.Validation("season name must not be blank")
+        CreateSeasonViolation.NegativePayout -> DomainError.Validation("payouts must not be negative")
+        CreateSeasonViolation.NegativeTieFloor -> DomainError.Validation("tie floor must not be negative")
+        CreateSeasonViolation.MaxTeamsBelowOne -> DomainError.Validation("max teams must be at least 1")
+        CreateSeasonViolation.PayoutTooLarge -> DomainError.Validation("payouts must be less than 1,000,000")
+        CreateSeasonViolation.TieFloorTooLarge -> DomainError.Validation("tie floor must be less than 1,000,000")
+        CreateSeasonViolation.SideBetAmountTooLarge ->
+            DomainError.Validation("side bet amount must be less than 1,000,000")
     }
 
 private suspend fun RoutingContext.getRules(service: SeasonService) {

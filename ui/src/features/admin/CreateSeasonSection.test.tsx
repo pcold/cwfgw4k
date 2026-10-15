@@ -135,4 +135,53 @@ describe('CreateSeasonSection', () => {
     });
     expect(screen.getByRole('button', { name: /Create Season/i })).toBeDisabled();
   });
+
+  it('bounds every rule amount input below at zero', async () => {
+    renderWithProviders(<CreateSeasonSection />, { withLeagueSeasonProvider: false });
+
+    expect(await screen.findByLabelText(/Bet Amount/i)).toHaveAttribute('min', '0');
+    expect(screen.getByLabelText(/Tie Floor/i)).toHaveAttribute('min', '0');
+    screen.getAllByLabelText(/^Payout \d+$/).forEach((payout) => {
+      expect(payout).toHaveAttribute('min', '0');
+    });
+  });
+
+  it.each([/^Year$/i, /Bet Amount/i, /Tie Floor/i, /^Payout 1$/])(
+    'disables submit rather than sending 0 when %s is cleared',
+    async (label) => {
+      const user = userEvent.setup();
+      renderWithProviders(<CreateSeasonSection />, { withLeagueSeasonProvider: false });
+      await waitFor(() => {
+        expect(screen.getByLabelText(/^League$/i)).toHaveValue('lg-1');
+      });
+      await user.type(screen.getByLabelText(/Season Name/i), 'Spring');
+
+      await user.clear(screen.getByLabelText(label));
+
+      const submit = screen.getByRole('button', { name: /Create Season/i });
+      expect(submit).toBeDisabled();
+      await user.click(submit);
+      expect(createSeasonMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it('submits a zero bet amount typed in explicitly', async () => {
+    createSeasonMock.mockResolvedValue(makeSeason({ id: 'sn-6' }));
+    const user = userEvent.setup();
+    renderWithProviders(<CreateSeasonSection />, { withLeagueSeasonProvider: false });
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^League$/i)).toHaveValue('lg-1');
+    });
+    await user.type(screen.getByLabelText(/Season Name/i), 'Spring');
+
+    const betAmount = screen.getByLabelText(/Bet Amount/i);
+    await user.clear(betAmount);
+    await user.type(betAmount, '0');
+    await user.click(screen.getByRole('button', { name: /Create Season/i }));
+
+    await waitFor(() => {
+      expect(createSeasonMock).toHaveBeenCalledTimes(1);
+    });
+    expect(createSeasonMock.mock.calls[0]?.[0].rules).toEqual({ ...serverDefaults, sideBetAmount: 0 });
+  });
 });
