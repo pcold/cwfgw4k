@@ -17,7 +17,7 @@ import org.jooq.Table
 import org.jooq.impl.DSL
 
 interface TournamentRepository {
-    /** Ordered by start date, then creation. */
+    /** Ordered by start date, then creation, then id: one transaction's inserts share a `created_at`. */
     context(ctx: TransactionContext)
     fun findAll(filter: TournamentFilter): List<Tournament>
 
@@ -114,7 +114,7 @@ private class JooqTournamentRepository : TournamentRepository {
             }
         return ctx.dsl.selectFrom(TOURNAMENTS)
             .where(conditions)
-            .orderBy(TOURNAMENTS.START_DATE.asc(), TOURNAMENTS.CREATED_AT.asc())
+            .orderBy(TOURNAMENTS.START_DATE.asc(), TOURNAMENTS.CREATED_AT.asc(), TOURNAMENTS.ID.asc())
             .fetch(::toTournament)
     }
 

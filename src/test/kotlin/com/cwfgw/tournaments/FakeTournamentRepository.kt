@@ -16,7 +16,7 @@ import java.util.UUID
 private const val MULTIPLIER_SCALE = 4
 
 private val tournamentOrdering: Comparator<Tournament> =
-    compareBy<Tournament> { it.startDate }.thenBy { it.createdAt }
+    compareBy<Tournament> { it.startDate }.thenBy { it.createdAt }.thenBy(POSTGRES_UUID_ORDER) { it.id.value }
 
 private val resultOrdering: Comparator<TournamentResult> =
     compareBy<TournamentResult, Int?>(nullsLast()) { it.position }

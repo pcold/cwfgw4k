@@ -17,6 +17,7 @@ import io.ktor.server.routing.route
 fun Route.tournamentRoutes(service: TournamentService) {
     route("/tournaments") {
         get { listTournaments(service) }
+        get("/current") { currentTournament(service) }
         authenticate(SESSION_AUTH_NAME) {
             put("/{id}") { updateTournament(service) }
         }
@@ -31,6 +32,13 @@ private suspend fun RoutingContext.listTournaments(service: TournamentService) {
     val status = optionalQueryParam("status", TournamentStatus::fromValueOrNull)
     val bySeason = TournamentFilter(seasonId = seasonId)
     call.respond(service.list(if (status == null) bySeason else bySeason.copy(statuses = setOf(status))))
+}
+
+private suspend fun RoutingContext.currentTournament(service: TournamentService) {
+    val seasonId =
+        optionalQueryParam("season_id", String::toSeasonId)
+            ?: throw DomainError.Validation("missing query parameter season_id")
+    call.respond(service.current(seasonId))
 }
 
 private suspend fun RoutingContext.updateTournament(service: TournamentService) {
