@@ -9,7 +9,7 @@ import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.teams.AddToRosterRequest
+import com.cwfgw.teams.NewRosterEntry
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.orFail
@@ -53,7 +53,7 @@ class EspnLivePreviewSiblingSpec : FunSpec({
         val ctx = espn.loadLivePreviewContext(week.seasonId, listOf(week.guessing))
         val previewed = week.linked.associate { it.id to espn.previewForTournament(ctx, it).orFail().payouts() }
 
-        opsService(tx, espn).finalizeTournament(week.unlinked.id).orFail()
+        opsService(tx, espn).finalizeAndReport(week.unlinked.id).orFail()
 
         week.linked.forEach { tournament ->
             previewed.getValue(tournament.id) shouldBe tx.scoredPayouts(week.seasonId, tournament.id)
@@ -92,7 +92,7 @@ class EspnLivePreviewSiblingSpec : FunSpec({
         val ctx = espn.loadLivePreviewContext(week.seasonId, listOf(week.guessing))
         val previewed = espn.previewForTournament(ctx, week.guessing).orFail().payouts()
 
-        opsService(tx, espn).finalizeTournament(week.guessing.id).orFail()
+        opsService(tx, espn).finalizeAndReport(week.guessing.id).orFail()
 
         previewed shouldBe tx.scoredPayouts(week.seasonId, week.guessing.id)
         previewed.shouldNotBeEmpty()
@@ -120,7 +120,7 @@ private fun seedWeek(): SiblingWeek {
     val seasonId = seedSeason()
     val alpha = seedTeams(seasonId).first()
     val joe = GolferRepository().create(CreateGolferRequest(firstName = "Joe", lastName = "Bloggs"))
-    TeamRepository().addToRoster(alpha, AddToRosterRequest(golferId = joe.id))
+    TeamRepository().addToRoster(alpha, NewRosterEntry(golferId = joe.id))
 
     fun seeded(
         name: String,

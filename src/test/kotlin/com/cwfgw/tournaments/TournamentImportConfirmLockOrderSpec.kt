@@ -117,7 +117,7 @@ private suspend fun race(
     val confirm = rosterConfirm(seeded.confirmSeason, picks)
     coroutineScope {
         val finalize =
-            async { opsService(tx, scoreboard, pause.afterFirstWrite()).finalizeTournament(seeded.tournament) }
+            async { opsService(tx, scoreboard, pause.afterFirstWrite()).finalizeAndReport(seeded.tournament) }
         val (confirming, waited) = pause.contend(postgres) { async { adminService(tx).confirmRoster(confirm) } }
         finalize.await().orFail()
         confirming.await().orFail()
