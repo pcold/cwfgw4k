@@ -42,7 +42,7 @@ function DeleteSeasonSection(): ReactNode {
     const message =
       `Are you sure you want to DELETE the season "${name}"?\n\n` +
       'This will permanently remove the season, its schedule (tournaments), ' +
-      'every drafted team and roster, drafts, picks, scores, and standings. ' +
+      'every drafted team and roster, picks, scores, and standings. ' +
       'This cannot be undone.';
     if (!window.confirm(message)) return;
     deleteMutation.mutate(seasonId);
@@ -56,8 +56,8 @@ function DeleteSeasonSection(): ReactNode {
         Delete Season
       </h3>
       <p className="text-xs text-ink-muted mb-4">
-        Permanently delete a season along with its schedule, drafted teams, rosters, drafts,
-        picks, scores, and standings. This cannot be undone.
+        Permanently delete a season along with its schedule, drafted teams, rosters, picks,
+        scores, and standings. This cannot be undone.
       </p>
 
       <div className="flex flex-wrap items-end gap-4">
