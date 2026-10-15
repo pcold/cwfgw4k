@@ -117,9 +117,9 @@ function CompetitorRow({
   disabled,
 }: CompetitorRowProps) {
   const queryClient = useQueryClient();
-  const [draftGolferId, setDraftGolferId] = useState<string>(
-    competitor.linkedGolfer?.id ?? '',
-  );
+  // Null until picked, so a link saved from elsewhere still shows rather than a stale copy of the prop.
+  const [pickedGolferId, setPickedGolferId] = useState<string | null>(null);
+  const draftGolferId = pickedGolferId ?? competitor.linkedGolfer?.id ?? '';
   const [creating, setCreating] = useState(false);
 
   // The live overlay resolves ESPN competitors through these links on the server, so every read
@@ -194,7 +194,7 @@ function CompetitorRow({
             id={selectId}
             value={draftGolferId}
             disabled={disabled || pending}
-            onChange={(e) => setDraftGolferId(e.target.value)}
+            onChange={(e) => setPickedGolferId(e.target.value)}
             className={`${FIELD_CLASS} disabled:opacity-50`}
           >
             <option value="">— unlinked —</option>
@@ -262,7 +262,8 @@ interface NewGolferInlineFormProps {
 }
 
 function NewGolferInlineForm({ competitor, pending, onSubmit, onCancel }: NewGolferInlineFormProps) {
-  const [name, setName] = useState(competitor.name);
+  const [editedName, setEditedName] = useState<string | null>(null);
+  const name = editedName ?? competitor.name;
   const trimmed = name.trim();
 
   return (
@@ -276,7 +277,7 @@ function NewGolferInlineForm({ competitor, pending, onSubmit, onCancel }: NewGol
         value={name}
         error={undefined}
         width="max-w-sm"
-        onChange={setName}
+        onChange={setEditedName}
       />
       <div className="flex gap-2 items-center">
         <button

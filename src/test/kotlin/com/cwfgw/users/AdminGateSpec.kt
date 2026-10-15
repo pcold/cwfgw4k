@@ -39,17 +39,6 @@ class AdminGateSpec : FunSpec({
         }
     }
 
-    test("GolferRoutes: POST /api/v1/golfers rejects a regular user with 403") {
-        regularUserApiTest { client ->
-            val response =
-                client.post("/api/v1/golfers") {
-                    contentType(ContentType.Application.Json)
-                    setBody("{}")
-                }
-            response.status shouldBe HttpStatusCode.Forbidden
-        }
-    }
-
     test("SeasonRoutes: DELETE /api/v1/seasons/{id} rejects a regular user with 403") {
         regularUserApiTest { client ->
             val response = client.delete("/api/v1/seasons/$anyId")

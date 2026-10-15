@@ -16,6 +16,7 @@ import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.testing.regularUserApiTest
 import com.cwfgw.testing.shouldBeRefused
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournaments.FakeTournamentRepository
@@ -229,6 +230,17 @@ class TournamentLinkRoutesSpec : FunSpec({
                     setBody(CreateLinkedGolferRequest("abc-123", "Alex Fitzpatrick"))
                 }
             response.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("POST /admin/tournaments/{id}/player-overrides/new-golfer rejects a regular user with 403") {
+        regularUserApiTest(fixture(golfers = emptyList())) { client ->
+            val response =
+                client.post("/api/v1/admin/tournaments/${TOURNAMENT_ID.value}/player-overrides/new-golfer") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CreateLinkedGolferRequest("abc-123", "Alex Fitzpatrick"))
+                }
+            response.status shouldBe HttpStatusCode.Forbidden
         }
     }
 

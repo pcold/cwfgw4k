@@ -195,6 +195,32 @@ describe('PlayerLinksPanel', () => {
     });
   });
 
+  it('shows a link the refetch brings in on a row the admin has not touched', async () => {
+    const refetched = buildListing();
+    competitorsMock.mockResolvedValueOnce(buildListing()).mockResolvedValue({
+      ...refetched,
+      competitors: refetched.competitors.map((competitor) =>
+        competitor.espnCompetitorId === 'comp-alex' ? { ...competitor, linkedGolfer: otherGolfer } : competitor,
+      ),
+    });
+    upsertMock.mockResolvedValue({ tournamentId: 'tn-1', espnCompetitorId: 'comp-nobody', golferId: otherGolfer.id });
+    const user = userEvent.setup();
+    renderPanel();
+
+    const nobodySelect = await screen.findByLabelText(/Link to golfer/i, { selector: '#golfer-select-comp-nobody' });
+    await user.selectOptions(nobodySelect, otherGolfer.id);
+    const nobodyRow = nobodySelect.closest('li');
+    if (!nobodyRow) throw new Error('competitor row not found');
+    await user.click(within(nobodyRow as HTMLElement).getByRole('button', { name: /Save link/i }));
+
+    const alexSelect = screen.getByLabelText<HTMLSelectElement>(/Link to golfer/i, {
+      selector: '#golfer-select-comp-alex',
+    });
+    await waitFor(() => {
+      expect(alexSelect.value).toBe(otherGolfer.id);
+    });
+  });
+
   // Widened to any resolving mock: the test counts fetches and never renders the `{}` it resolves.
   it.each<[string, ReactElement, Mock<(...args: never[]) => Promise<unknown>>]>([
     ['an open live weekly report', <OpenLiveWeeklyReport key="weekly" />, tournamentReportMock],
