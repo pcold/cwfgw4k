@@ -123,7 +123,7 @@ class TournamentOpsService(
 
     /**
      * Only [unlinked]'s own season is ordered by the season lock it holds, so a match elsewhere is skipped, not
-     * written. A match is gated as its own finalize would be, counting this finalize's other writes as done.
+     * written. A match is gated as its own finalize would be, counting [unlinked] and the other matches as done.
      */
     context(ctx: TransactionContext)
     private fun findImportableMatches(
@@ -131,27 +131,16 @@ class TournamentOpsService(
         matches: List<Tournament>,
     ): List<Tournament> {
         val finalizing = matches.map { it.id }.toSet() + unlinked.id
+        val unfinalized =
+            tournamentRepository.findAll(TournamentFilter(seasonId = unlinked.seasonId, statuses = UNFINALIZED))
         return matches.filter { match ->
-            val skip = findMatchSkip(unlinked, match, finalizing) ?: return@filter true
+            val skip = findMatchSkip(unlinked, match, unfinalized, finalizing) ?: return@filter true
             val unlinkedId = unlinked.id.value
             val matchId = match.id.value
             log.warn { "cwfgw4k.finalize event=match-skipped reason=$skip tournament_id=$unlinkedId match_id=$matchId" }
             false
         }
     }
-
-    context(ctx: TransactionContext)
-    private fun findMatchSkip(
-        unlinked: Tournament,
-        match: Tournament,
-        finalizing: Set<TournamentId>,
-    ): MatchSkip? =
-        when {
-            match.seasonId != unlinked.seasonId -> MatchSkip.OtherSeason
-            match.status == TournamentStatus.Completed -> MatchSkip.Completed
-            findEarlierUnfinalized(match).any { it.id !in finalizing } -> MatchSkip.OutOfOrder
-            else -> null
-        }
 
     /**
      * Sound only under findByIdForUpdate's season lock, without which a sibling's finalize or reset can commit after
@@ -162,7 +151,7 @@ class TournamentOpsService(
         tournamentRepository.findAll(
             TournamentFilter(
                 seasonId = tournament.seasonId,
-                statuses = setOf(TournamentStatus.Upcoming, TournamentStatus.InProgress),
+                statuses = UNFINALIZED,
                 startsBefore = tournament.startDate,
             ),
         )
@@ -179,8 +168,23 @@ class TournamentOpsService(
         )
 }
 
+private val UNFINALIZED: Set<TournamentStatus> = setOf(TournamentStatus.Upcoming, TournamentStatus.InProgress)
+
 /** Logged by name as a skip's `reason=`, so a rename changes what a search of the logs matches. */
 private enum class MatchSkip { OtherSeason, Completed, OutOfOrder }
+
+private fun findMatchSkip(
+    unlinked: Tournament,
+    match: Tournament,
+    unfinalized: List<Tournament>,
+    finalizing: Set<TournamentId>,
+): MatchSkip? =
+    when {
+        match.seasonId != unlinked.seasonId -> MatchSkip.OtherSeason
+        match.status == TournamentStatus.Completed -> MatchSkip.Completed
+        unfinalized.any { it.startDate < match.startDate && it.id !in finalizing } -> MatchSkip.OutOfOrder
+        else -> null
+    }
 
 /**
  * Thrown, not returned, from `tx.update`: the block commits on any normal return, an Err included, so only a

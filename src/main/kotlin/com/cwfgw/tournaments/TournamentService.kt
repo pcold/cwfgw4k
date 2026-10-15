@@ -40,8 +40,8 @@ class TournamentService(
         request: UpdateTournamentRequest,
     ): Tournament? =
         tx.update {
-            val reschedules = request.status != null || request.startDate != null
-            if (reschedules && repository.findByIdForUpdate(id) == null) return@update null
+            val changesSiblingOrder = request.status != null || request.startDate != null
+            if (changesSiblingOrder && repository.findByIdForUpdate(id) == null) return@update null
             repository.update(id, request)
         }
 }
