@@ -30,7 +30,6 @@ private val DEFAULT_RULES =
     )
 
 private fun preview(
-    espnId: String = "espn-masters",
     teams: List<PreviewTeamScore> = emptyList(),
     leaderboard: List<PreviewLeaderboardEntry> = emptyList(),
     multiplier: BigDecimal = BigDecimal.ONE,
@@ -38,10 +37,7 @@ private fun preview(
 ): EspnLivePreview =
     EspnLivePreview(
         espnName = "The Masters",
-        espnId = espnId,
-        completed = false,
         payoutMultiplier = multiplier,
-        totalCompetitors = teams.sumOf { it.golferScores.size },
         teams = teams,
         leaderboard = leaderboard,
         isTeamEvent = isTeamEvent,
@@ -49,13 +45,10 @@ private fun preview(
 
 private fun previewTeam(
     teamId: TeamId,
-    teamName: String = "TEAM",
     golfers: List<PreviewGolferScore> = emptyList(),
 ): PreviewTeamScore =
     PreviewTeamScore(
         teamId = teamId,
-        teamName = teamName,
-        ownerName = "Owner $teamName",
         topTenEarnings = golfers.fold(BigDecimal.ZERO) { acc, g -> acc.add(g.payout) },
         golferScores = golfers,
     )
@@ -64,17 +57,12 @@ private fun previewGolfer(
     golferId: GolferId,
     position: Int,
     payout: BigDecimal,
-    scoreToPar: Int? = -10,
     numTied: Int = 1,
 ): PreviewGolferScore =
     PreviewGolferScore(
-        golferName = "Test Golfer",
         golferId = golferId,
         position = position,
         numTied = numTied,
-        scoreToPar = scoreToPar,
-        basePayout = payout,
-        ownershipPct = BigDecimal(100),
         payout = payout,
     )
 
@@ -89,7 +77,6 @@ private fun leaderboardEntry(
         name = name,
         position = position,
         scoreToPar = scoreToPar,
-        thru = null,
         teamNames = teamNames,
         pairKey = pairKey,
     )

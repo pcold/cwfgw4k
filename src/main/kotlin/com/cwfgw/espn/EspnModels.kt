@@ -97,34 +97,24 @@ data class EspnAthlete(
  */
 data class EspnLivePreview(
     val espnName: String,
-    val espnId: String,
-    val completed: Boolean,
     val payoutMultiplier: BigDecimal,
-    val totalCompetitors: Int,
     val teams: List<PreviewTeamScore>,
     val leaderboard: List<PreviewLeaderboardEntry>,
     val isTeamEvent: Boolean = false,
 )
 
-/** Per-team rollup of live golfer scores — sums golferScores into topTenEarnings + weekly +/- across the league. */
+/** [golferScores] holds only this team's golfers inside the paying places; [topTenEarnings] sums their payouts. */
 data class PreviewTeamScore(
     val teamId: TeamId,
-    val teamName: String,
-    val ownerName: String,
     val topTenEarnings: BigDecimal,
     val golferScores: List<PreviewGolferScore>,
-    val weeklyTotal: BigDecimal = BigDecimal.ZERO,
 )
 
-/** One rostered golfer's projected score for the in-progress tournament. */
+/** [payout] is this team's share after the ownership split, not the finish's whole payout. */
 data class PreviewGolferScore(
-    val golferName: String,
     val golferId: GolferId,
     val position: Int,
     val numTied: Int,
-    val scoreToPar: Int?,
-    val basePayout: BigDecimal,
-    val ownershipPct: BigDecimal,
     val payout: BigDecimal,
 )
 
@@ -136,7 +126,6 @@ data class PreviewLeaderboardEntry(
     val name: String,
     val position: Int,
     val scoreToPar: Int?,
-    val thru: String?,
     val teamNames: List<String>,
     val pairKey: String? = null,
     val roundScores: List<Int> = emptyList(),
