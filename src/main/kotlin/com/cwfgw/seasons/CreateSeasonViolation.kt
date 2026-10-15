@@ -24,7 +24,7 @@ private const val NAME_PADDING = " \t\n\r\u000B\u000C"
 
 internal fun CreateSeasonRequest.violation(): CreateSeasonViolation? =
     when {
-        name.trim { it in NAME_PADDING }.isEmpty() -> CreateSeasonViolation.BlankName
+        name.all { it in NAME_PADDING } -> CreateSeasonViolation.BlankName
         // Both amount fields, not only the one the repository writes, so the guard needn't track their precedence.
         listOfNotNull(sideBetAmount, rules?.sideBetAmount).any { it.signum() < 0 } ->
             CreateSeasonViolation.NegativeSideBetAmount
