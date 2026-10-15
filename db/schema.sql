@@ -52,36 +52,6 @@ CREATE TABLE cwfgw4k.cache_generation (
 
 
 --
--- Name: draft_picks; Type: TABLE; Schema: cwfgw4k; Owner: -
---
-
-CREATE TABLE cwfgw4k.draft_picks (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    draft_id uuid NOT NULL,
-    team_id uuid NOT NULL,
-    golfer_id uuid,
-    round_num integer NOT NULL,
-    pick_num integer NOT NULL,
-    picked_at timestamp with time zone
-);
-
-
---
--- Name: drafts; Type: TABLE; Schema: cwfgw4k; Owner: -
---
-
-CREATE TABLE cwfgw4k.drafts (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    season_id uuid NOT NULL,
-    status text DEFAULT 'pending'::text NOT NULL,
-    draft_type text DEFAULT 'snake'::text NOT NULL,
-    started_at timestamp with time zone,
-    completed_at timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
 -- Name: fantasy_scores; Type: TABLE; Schema: cwfgw4k; Owner: -
 --
 
@@ -307,38 +277,6 @@ ALTER TABLE ONLY cwfgw4k.cache
 
 
 --
--- Name: draft_picks draft_picks_draft_id_pick_num_key; Type: CONSTRAINT; Schema: cwfgw4k; Owner: -
---
-
-ALTER TABLE ONLY cwfgw4k.draft_picks
-    ADD CONSTRAINT draft_picks_draft_id_pick_num_key UNIQUE (draft_id, pick_num);
-
-
---
--- Name: draft_picks draft_picks_pkey; Type: CONSTRAINT; Schema: cwfgw4k; Owner: -
---
-
-ALTER TABLE ONLY cwfgw4k.draft_picks
-    ADD CONSTRAINT draft_picks_pkey PRIMARY KEY (id);
-
-
---
--- Name: drafts drafts_pkey; Type: CONSTRAINT; Schema: cwfgw4k; Owner: -
---
-
-ALTER TABLE ONLY cwfgw4k.drafts
-    ADD CONSTRAINT drafts_pkey PRIMARY KEY (id);
-
-
---
--- Name: drafts drafts_season_id_key; Type: CONSTRAINT; Schema: cwfgw4k; Owner: -
---
-
-ALTER TABLE ONLY cwfgw4k.drafts
-    ADD CONSTRAINT drafts_season_id_key UNIQUE (season_id);
-
-
---
 -- Name: fantasy_scores fantasy_scores_pkey; Type: CONSTRAINT; Schema: cwfgw4k; Owner: -
 --
 
@@ -543,20 +481,6 @@ CREATE INDEX idx_golfers_ranking ON cwfgw4k.golfers USING btree (world_ranking);
 
 
 --
--- Name: idx_picks_draft; Type: INDEX; Schema: cwfgw4k; Owner: -
---
-
-CREATE INDEX idx_picks_draft ON cwfgw4k.draft_picks USING btree (draft_id);
-
-
---
--- Name: idx_picks_team; Type: INDEX; Schema: cwfgw4k; Owner: -
---
-
-CREATE INDEX idx_picks_team ON cwfgw4k.draft_picks USING btree (team_id);
-
-
---
 -- Name: idx_results_golfer; Type: INDEX; Schema: cwfgw4k; Owner: -
 --
 
@@ -624,38 +548,6 @@ CREATE INDEX idx_tournaments_dates ON cwfgw4k.tournaments USING btree (start_dat
 --
 
 CREATE INDEX idx_tournaments_season ON cwfgw4k.tournaments USING btree (season_id);
-
-
---
--- Name: draft_picks draft_picks_draft_id_fkey; Type: FK CONSTRAINT; Schema: cwfgw4k; Owner: -
---
-
-ALTER TABLE ONLY cwfgw4k.draft_picks
-    ADD CONSTRAINT draft_picks_draft_id_fkey FOREIGN KEY (draft_id) REFERENCES cwfgw4k.drafts(id) ON DELETE CASCADE;
-
-
---
--- Name: draft_picks draft_picks_golfer_id_fkey; Type: FK CONSTRAINT; Schema: cwfgw4k; Owner: -
---
-
-ALTER TABLE ONLY cwfgw4k.draft_picks
-    ADD CONSTRAINT draft_picks_golfer_id_fkey FOREIGN KEY (golfer_id) REFERENCES cwfgw4k.golfers(id);
-
-
---
--- Name: draft_picks draft_picks_team_id_fkey; Type: FK CONSTRAINT; Schema: cwfgw4k; Owner: -
---
-
-ALTER TABLE ONLY cwfgw4k.draft_picks
-    ADD CONSTRAINT draft_picks_team_id_fkey FOREIGN KEY (team_id) REFERENCES cwfgw4k.teams(id) ON DELETE CASCADE;
-
-
---
--- Name: drafts drafts_season_id_fkey; Type: FK CONSTRAINT; Schema: cwfgw4k; Owner: -
---
-
-ALTER TABLE ONLY cwfgw4k.drafts
-    ADD CONSTRAINT drafts_season_id_fkey FOREIGN KEY (season_id) REFERENCES cwfgw4k.seasons(id) ON DELETE CASCADE;
 
 
 --

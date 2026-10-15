@@ -29,10 +29,8 @@ interface SeasonRepository {
     fun getRules(id: SeasonId): SeasonRules?
 
     /**
-     * Delete a season and everything that hangs off it (teams, tournaments,
-     * rosters, draft picks, scores, payout/side-bet rules, drafts).
-     * Returns true if a row was deleted, false if the id didn't exist.
-     * Single SQL DELETE — the FKs migrated in V010 cascade the subtree.
+     * Single SQL DELETE: the subtree goes by ON DELETE CASCADE FKs (V010's and the tables' own), so a new
+     * season-owned table needs one too. False when the id didn't exist.
      */
     context(ctx: WriteTransactionContext)
     fun delete(id: SeasonId): Boolean
