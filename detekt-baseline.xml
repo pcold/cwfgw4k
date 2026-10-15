@@ -78,7 +78,6 @@
     <ID>UnsafeMessageInterpolation:AdminService.kt:AdminService$"ESPN sent an unparseable startDate: '$raw'"</ID>
     <ID>UnsafeMessageInterpolation:App.kt:"cwfgw4k.db.pool active=${snapshot.active} idle=${snapshot.idle} " + "waiting=${snapshot.waiting} total=${snapshot.total}"</ID>
     <ID>UnsafeMessageInterpolation:App.kt:"cwfgw4k.debug.probe\n" + buildDebugDump()</ID>
-    <ID>UnsafeMessageInterpolation:EspnClient.kt:"ESPN event ${event.id} has no competitions"</ID>
     <ID>UnsafeMessageInterpolation:EspnClient.kt:CachingEspnClient$"cwfgw4k.espn event=error endpoint=calendar date=- " + "duration_ms=${System.currentTimeMillis() - started}"</ID>
     <ID>UnsafeMessageInterpolation:EspnClient.kt:CachingEspnClient$"cwfgw4k.espn event=error endpoint=scoreboard date=$date " + "duration_ms=${System.currentTimeMillis() - started}"</ID>
     <ID>UnsafeMessageInterpolation:EspnClient.kt:CachingEspnClient$"cwfgw4k.espn event=miss endpoint=calendar date=- " + "duration_ms=${System.currentTimeMillis() - started}"</ID>

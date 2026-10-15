@@ -63,6 +63,8 @@ private val LIVE_CAPABLE_PATHS =
 private const val MASTERS_SCOREBOARD =
     """{"events":[{"id":"espn-masters","name":"The Masters","competitions":[{"competitors":[]}]}]}"""
 
+private const val TRUNCATED_SCOREBOARD = """{"events":[{"id":"espn-masters","name":"""
+
 private const val LIVE_MASTERS_ROUTE = "GET /api/v1/seasons/{id}/report/{tid}?live=true"
 private val LIVE_MASTERS_URL = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
 private val MASTERS_URL = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}"
@@ -72,6 +74,12 @@ private fun CapturedLogs.previewFailuresAtWarn(): List<String> =
         .filter { it.level == Level.WARN }
         .map { it.formattedMessage }
         .filter { it.contains("ESPN preview failed") }
+
+private fun malformedEspn(requests: AtomicInteger = AtomicInteger()): EspnClient =
+    espnClientOver {
+        requests.incrementAndGet()
+        respond(content = TRUNCATED_SCOREBOARD, status = HttpStatusCode.OK)
+    }
 
 private fun mastersInPlay(espn: EspnClient): ApiFixture.() -> Unit =
     {
@@ -209,6 +217,31 @@ class LiveReportEspnOutageSpec : FunSpec({
                 fallback.getValue("cash_totals") shouldBe base.getValue("cash_totals")
                 fallback.getValue("side_bet_totals") shouldBe base.getValue("side_bet_totals")
             }
+        }
+    }
+
+    LIVE_CAPABLE_PATHS.forEach { report ->
+        val name = "GET /api/v1/seasons/{id}/${report.label}?live=true"
+        test("$name returns the base report when ESPN answers 200 with a malformed body") {
+            val requests = AtomicInteger()
+            apiTest(mastersInPlay(malformedEspn(requests))) { client ->
+                val url = "/api/v1/seasons/${SEASON_ID.value}/${report.path}"
+
+                val live = client.get("$url?live=true")
+
+                live.status shouldBe HttpStatusCode.OK
+                live.bodyAsText() shouldBe report.fallback(client.get(url).bodyAsText())
+                requests.get() shouldBeGreaterThan 0
+            }
+        }
+    }
+
+    test("$LIVE_MASTERS_ROUTE logs one WARN naming the overlay when ESPN answers 200 with a malformed body") {
+        captureLogs { logs ->
+            apiTest(mastersInPlay(malformedEspn())) { client -> client.get(LIVE_MASTERS_URL) }
+
+            logs.previewFailuresAtWarn().single() shouldBe
+                "live overlay $MASTERS_ID: ESPN preview failed: UpstreamUnavailable(failure=MalformedBody)"
         }
     }
 

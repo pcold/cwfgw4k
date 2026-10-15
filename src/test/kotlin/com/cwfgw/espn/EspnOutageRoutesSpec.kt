@@ -15,6 +15,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.client.call.body
+import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
@@ -30,7 +31,7 @@ private data class FailingUpstream(
     val client: () -> EspnClient,
 )
 
-// The 503 sits beside the outages so one set of assertions holds both to the same status and log level.
+// The 503 and the malformed 200 sit beside the outages so one set of assertions holds all to one status and log level.
 private val UPSTREAM_FAILURES: List<FailingUpstream> =
     EspnOutage.entries.map { outage ->
         FailingUpstream(
@@ -45,6 +46,12 @@ private val UPSTREAM_FAILURES: List<FailingUpstream> =
             error = "ESPN returned 503",
             logged = "ESPN returned 503",
             client = { espnClientOver { respondError(HttpStatusCode.ServiceUnavailable) } },
+        ) +
+        FailingUpstream(
+            description = "ESPN answers 200 with a malformed body",
+            error = "ESPN sent a malformed body",
+            logged = "ESPN sent a malformed body",
+            client = { espnClientOver { respond(content = """{"events":[""", status = HttpStatusCode.OK) } },
         )
 
 private fun espnFailing(failure: FailingUpstream): ApiFixture.() -> Unit =

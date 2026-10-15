@@ -423,9 +423,12 @@ leaderboard, scores it with the same payout rules, and overlays the result on th
 writing anything. Rankings gain a column per live candidate; player rankings fold in the live payouts. A
 completed tournament selected in the weekly report is never overlaid.
 
-**Fallback.** If ESPN does not answer or answers non-200, the overlay logs a WARN and skips that candidate, so a
-full outage returns the persisted report unchanged (`LiveReportEspnOutageSpec`,
-`CompletedTournamentLiveGuardSpec`). A malformed 200 body is not caught and fails the request.
+**Fallback.** If ESPN does not answer, answers non-200, or answers 200 with a body that does not parse, the
+overlay logs a WARN and skips that candidate, so a full outage returns the persisted report unchanged
+(`LiveReportEspnOutageSpec`, `CompletedTournamentLiveGuardSpec`). The client reports an unparseable 200 as its
+own failure, `MalformedBody`, and never caches it (`EspnClientSpec`). A route that needs the scoreboard answers it
+with a 502 as it does an outage (`EspnOutageRoutesSpec`). Finalize is one: it refuses before opening its write
+transaction, so nothing is imported (`TournamentOpsServiceSpec`).
 
 ## 9. HTTP API Surface
 

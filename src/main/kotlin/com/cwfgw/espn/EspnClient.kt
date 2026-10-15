@@ -16,6 +16,7 @@ import kotlinx.coroutines.future.await
 import kotlinx.coroutines.future.future
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import java.io.IOException
 import java.nio.channels.UnresolvedAddressException
@@ -38,8 +39,9 @@ private val log = KotlinLogging.logger {}
 interface EspnClient {
     /**
      * Fetch tournaments (completed + in-progress) for a specific date.
-     * Throws [EspnUpstreamException] on a non-200 response and on a request
-     * that got none; callers decide how to translate that at the HTTP boundary.
+     * Throws [EspnUpstreamException] on a non-200 response, on a request
+     * that got none, and on a 200 whose body does not parse; callers decide
+     * how to translate that at the HTTP boundary.
      */
     suspend fun fetchScoreboard(date: LocalDate): List<EspnTournament>
 
@@ -205,11 +207,15 @@ private class HttpEspnClient(
 ) : EspnClient {
     override suspend fun fetchScoreboard(date: LocalDate): List<EspnTournament> {
         val dateStr = date.format(DateTimeFormatter.BASIC_ISO_DATE)
-        return parseScoreboard(fetchBody(url = "$baseUrl?dates=$dateStr", subject = dateStr))
+        val body = fetchBody(url = "$baseUrl?dates=$dateStr", subject = dateStr)
+        return parsedOrMalformed(subject = dateStr) { parseScoreboard(body) }
     }
 
-    override suspend fun fetchCalendar(): List<EspnCalendarEntry> =
-        parseCalendar(fetchBody(url = baseUrl, subject = "the calendar request"))
+    override suspend fun fetchCalendar(): List<EspnCalendarEntry> {
+        val subject = "the calendar request"
+        val body = fetchBody(url = baseUrl, subject = subject)
+        return parsedOrMalformed(subject = subject) { parseCalendar(body) }
+    }
 
     private suspend fun fetchBody(
         url: String,
@@ -242,10 +248,25 @@ private fun noResponse(
         cause = cause,
     )
 
+// Not IllegalArgumentException, SerializationException's supertype: that would report a bug of ours as ESPN's.
+private inline fun <T> parsedOrMalformed(
+    subject: String,
+    parse: () -> T,
+): T =
+    try {
+        parse()
+    } catch (e: SerializationException) {
+        throw EspnUpstreamException(
+            failure = EspnUpstreamFailure.MalformedBody,
+            message = "ESPN sent a malformed body for $subject",
+            cause = e,
+        )
+    }
+
 /**
  * Kept in the client layer so callers can distinguish upstream failures from our own bugs without
- * catching `Throwable`. A transport failure has to arrive as this type too: it is the only one the cache
- * logs and evicts synchronously, and the only one a caller falls back on.
+ * catching `Throwable`. A transport failure or an unparseable 200 has to arrive as this type too: it is the
+ * only one the cache logs and evicts synchronously, and the only one a caller falls back on.
  */
 class EspnUpstreamException(
     val failure: EspnUpstreamFailure,
@@ -348,9 +369,10 @@ internal data class EspnNamedJson(
 internal data class EspnLinescoreJson(val value: Double? = null)
 
 private fun parseEvent(event: EspnEventJson): EspnTournament {
+    // A SerializationException, not error(): the client refuses this body as malformed rather than failing.
     val competitorRows =
         event.competitions.firstOrNull()?.competitors
-            ?: error("ESPN event ${event.id} has no competitions")
+            ?: throw SerializationException("ESPN event ${event.id} has no competitions")
     val parsed = competitorRows.flatMapIndexed(::parseCompetitor)
     val isTeamEvent = parsed.any { it.isTeamPartner }
     val completed = event.status?.type?.completed ?: false
