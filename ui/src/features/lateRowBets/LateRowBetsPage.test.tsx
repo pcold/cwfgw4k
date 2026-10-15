@@ -162,7 +162,6 @@ describe('LateRowBetsPage', () => {
     await user.selectOptions(screen.getByLabelText(/Through/i), '');
 
     await waitFor(() => expect(seasonReportMock).toHaveBeenCalledWith('sn-1'));
-    expect(screen.queryByRole('checkbox', { name: /Live overlay/i })).not.toBeInTheDocument();
   });
 
   it("shows the season's own side-bet amount and rounds, not the defaults", async () => {
@@ -194,7 +193,7 @@ describe('LateRowBetsPage', () => {
     expect(screen.queryByText(/per team in/)).not.toBeInTheDocument();
   });
 
-  it('switches to the per-tournament report, not live, when a completed tournament is selected', async () => {
+  it('switches to the per-tournament report when a tournament is selected', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournament]);
@@ -208,7 +207,7 @@ describe('LateRowBetsPage', () => {
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-1');
 
-    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', false);
+    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
   });
 
   it('shows an empty state when there are no leagues', async () => {
