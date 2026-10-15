@@ -89,6 +89,23 @@ class EspnServiceNamesakeSpec : FunSpec({
             listOf(rory.id to "espn-2")
     }
 
+    test("of two competitors claiming one id-less row, the lower ESPN id backfills it and the other gets its own") {
+        val tournament = seededTournament()
+        val rory = tx.update { golfers.create(golferRequest("Rory", "McIlroy")) }
+
+        tx.update {
+            service().persistImportIn(
+                tournament,
+                masters(competitor("espn-8", "Rory McIlroy"), competitor("espn-7", "Rory McIlroy")),
+            )
+        }
+
+        val credited = tx.read { tournaments.getResults(tournament.id) }.map { it.golferId }
+        tx.get { credited.map { golfers.findById(it)?.pgaPlayerId } } shouldContainExactlyInAnyOrder
+            listOf("espn-7", "espn-8")
+        tx.get { golfers.findById(rory.id) }?.pgaPlayerId shouldBe "espn-7"
+    }
+
     test("an import credits and backfills the one id-less rostered row among full-name namesakes") {
         val tournament = seededTournament()
         val (drafted, undrafted) =
