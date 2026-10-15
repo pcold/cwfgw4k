@@ -9,6 +9,8 @@ import com.cwfgw.seasons.SeasonRules
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.RosterEntryId
+import com.cwfgw.teams.RosterViewPick
+import com.cwfgw.teams.RosterViewTeam
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.testing.FakeTransactor
@@ -22,6 +24,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -92,7 +95,26 @@ private val TOURNAMENT =
         createdAt = Instant.EPOCH,
     )
 
-private class ImportFixture(initialGolfers: List<Golfer>) {
+private fun rosterViewOf(rostered: List<Golfer>): RosterViewTeam =
+    RosterViewTeam(
+        teamId = TEAM_ID,
+        teamNumber = 1,
+        teamName = "Team A",
+        picks =
+            rostered.mapIndexed { index, golfer ->
+                RosterViewPick(
+                    round = index + 1,
+                    golferName = "${golfer.firstName} ${golfer.lastName}",
+                    ownershipPct = BigDecimal(100),
+                    golferId = golfer.id,
+                )
+            },
+    )
+
+private class ImportFixture(
+    initialGolfers: List<Golfer>,
+    rostered: List<Golfer> = emptyList(),
+) {
     val golferRepo = FakeGolferRepository(initial = initialGolfers)
     val tournamentRepo = FakeTournamentRepository(initial = listOf(TOURNAMENT))
     val service =
@@ -100,7 +122,7 @@ private class ImportFixture(initialGolfers: List<Golfer>) {
             client = FakeEspnClient(),
             seasonRepository = FakeSeasonRepository(),
             golferRepository = golferRepo,
-            teamRepository = FakeTeamRepository(),
+            teamRepository = FakeTeamRepository(initialRosterView = mapOf(SEASON_ID to listOf(rosterViewOf(rostered)))),
             tournamentRepository = tournamentRepo,
             linkRepository = FakeTournamentLinkRepository(),
             tx = FakeTransactor(),
@@ -181,6 +203,37 @@ class EspnNameMatchingSpec : FunSpec({
         fixture.import(event(competitor("team:t1:0", "Griffin", 1, isTeamPartner = true)))
 
         fixture.allGolfers().map { it.firstName to it.lastName } shouldBe listOf("Griffin" to "")
+    }
+
+    test("import keeps a non-partner apart from a golfer whose hyphenated surname ends in his") {
+        val norgaardPetersen = golfer("Niklas", "Nørgaard-Petersen")
+        val fixture = ImportFixture(listOf(norgaardPetersen))
+
+        val credited = fixture.import(event(competitor("espn-petersen", "Mark Petersen", 1)))
+
+        credited.single() shouldNotBe norgaardPetersen.id
+        fixture.allGolfers().map { it.firstName to it.lastName } shouldContainExactlyInAnyOrder
+            listOf("Niklas" to "Nørgaard-Petersen", "Mark" to "Petersen")
+    }
+
+    // A single-word partner is stored as ("Griffin", ""), whose full name is the partner's whole name.
+    test("import credits a partner to his rostered namesake, not to a phantom row named only his surname") {
+        val ben = golfer("Ben", "Griffin")
+        val phantom = golfer("Griffin", "")
+        val fixture = ImportFixture(listOf(ben, phantom, golfer("Lucas", "Griffin")), rostered = listOf(ben))
+
+        fixture.import(event(competitor("team:t1:0", "Griffin", 1, isTeamPartner = true))) shouldBe listOf(ben.id)
+    }
+
+    test("the live preview credits a partner to his rostered namesake, not to a phantom row named only his surname") {
+        val preview =
+            rosteredPreview(
+                rostered = listOf(golfer("Ben", "Griffin")),
+                unrostered = listOf(golfer("Griffin", ""), golfer("Lucas", "Griffin")),
+                event = event(competitor("team:t1:0", "Griffin", 1, isTeamPartner = true)),
+            )
+
+        preview.leaderboard.map { it.teamNames } shouldContainExactly listOf(listOf("Team A"))
     }
 
     test("the live preview credits rostered golfers whose ESPN names differ by accent, hyphen or split") {
