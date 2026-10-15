@@ -87,6 +87,20 @@ class EspnServiceMultiEventSpec : FunSpec({
         import.resultGolferIds("evt-b") shouldContainExactly listOf(fleetwood.id)
         with(noopTransactionContext) { import.golfers.findAll(search = null) } shouldHaveSize 1
     }
+
+    test("a competitor withheld in its own event is credited the row another event backfilled its id onto") {
+        val fleetwood = idlessGolfer("Tommy", "Fleetwood")
+        val import = MultiEventImport(listOf(fleetwood))
+
+        import.persist(
+            event("evt-a", competitor("100", "Tommy Fleetwood")),
+            event("evt-b", competitor("100", "Tommy Fleetwood"), competitor("200", "Tommy Fleetwood")),
+        )
+
+        import.golfers.writes shouldContainExactly listOf("backfill 100")
+        import.resultGolferIds("evt-a") shouldContainExactly listOf(fleetwood.id)
+        import.resultGolferIds("evt-b") shouldContainExactly listOf(fleetwood.id)
+    }
 })
 
 private class MultiEventImport(initialGolfers: List<Golfer> = emptyList()) {
