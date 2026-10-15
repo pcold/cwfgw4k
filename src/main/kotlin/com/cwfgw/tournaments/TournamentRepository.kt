@@ -25,9 +25,8 @@ interface TournamentRepository {
     fun findById(id: TournamentId): Tournament?
 
     /**
-     * Holds the row until the transaction ends, after key-sharing its season row: the order a season delete
-     * cascading here takes them. Locking the tournament alone deadlocks that delete (40P01) once a score insert
-     * needs the season row.
+     * Key-shares the season row before locking the tournament, the order a season delete's cascade takes both.
+     * Locking the tournament alone deadlocks that delete (40P01) once a score insert needs the season row.
      */
     context(ctx: WriteTransactionContext)
     fun findByIdForUpdate(id: TournamentId): Tournament?
