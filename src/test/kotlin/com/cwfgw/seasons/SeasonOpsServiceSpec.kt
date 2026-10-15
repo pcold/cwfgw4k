@@ -10,8 +10,8 @@ import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamId
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
-import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
+import com.cwfgw.tournaments.NewTournamentResult
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentResult
@@ -96,8 +96,8 @@ private fun resultRow(
         pairKey = null,
     )
 
-private fun asUpsertRequest(r: TournamentResult): CreateTournamentResultRequest =
-    CreateTournamentResultRequest(
+private fun asUpsertRequest(r: TournamentResult): NewTournamentResult =
+    NewTournamentResult(
         golferId = r.golferId,
         position = r.position,
         scoreToPar = r.scoreToPar,

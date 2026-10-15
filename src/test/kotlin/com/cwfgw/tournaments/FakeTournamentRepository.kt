@@ -74,7 +74,7 @@ class FakeTournamentRepository(
             .sortedWith(compareBy(POSTGRES_UUID_ORDER) { it.id.value })
 
     context(ctx: WriteTransactionContext)
-    override fun create(request: CreateTournamentRequest): Tournament {
+    override fun create(request: NewTournament): Tournament {
         if (request.pgaTournamentId != null && findByPgaTournamentId(request.pgaTournamentId) != null) {
             throw uniqueViolation(UNIQUE_PGA_TOURNAMENT_ID)
         }
@@ -184,7 +184,7 @@ class FakeTournamentRepository(
     context(ctx: WriteTransactionContext)
     override fun upsertResult(
         tournamentId: TournamentId,
-        request: CreateTournamentResultRequest,
+        request: NewTournamentResult,
     ): TournamentResult {
         val existing =
             results.values.firstOrNull {

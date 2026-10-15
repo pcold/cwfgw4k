@@ -22,8 +22,8 @@ import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.Season
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.teams.AddToRosterRequest
-import com.cwfgw.teams.CreateTeamRequest
+import com.cwfgw.teams.NewRosterEntry
+import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
@@ -80,17 +80,17 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
                         teamRepo.create(
                             seasonId = season.id,
                             request =
-                                CreateTeamRequest(
+                                NewTeam(
                                     ownerName = "Alice",
                                     teamName = "Eagles",
                                     teamNumber = 1,
                                 ),
                         )
                     val golfer = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
-                    teamRepo.addToRoster(team.id, AddToRosterRequest(golferId = golfer.id))
+                    teamRepo.addToRoster(team.id, NewRosterEntry(golferId = golfer.id))
                     val tournament =
                         tournamentRepo.create(
-                            CreateTournamentRequest(
+                            NewTournament(
                                 name = "The Masters",
                                 seasonId = season.id,
                                 startDate = LocalDate.parse("2026-04-09"),
@@ -101,7 +101,7 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
                         )
                     tournamentRepo.upsertResult(
                         tournament.id,
-                        CreateTournamentResultRequest(golferId = golfer.id, position = 1),
+                        NewTournamentResult(golferId = golfer.id, position = 1),
                     )
                     tournament
                 }
@@ -249,7 +249,7 @@ private fun seedUpcomingMasters(): Tournament {
             CreateSeasonRequest(leagueId = league.id, name = "2026 Spring", seasonYear = 2026),
         )
     return TournamentRepository().create(
-        CreateTournamentRequest(
+        NewTournament(
             name = "The Masters",
             seasonId = season.id,
             startDate = LocalDate.parse("2026-04-09"),

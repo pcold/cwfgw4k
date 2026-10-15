@@ -30,7 +30,7 @@ data class Team(
     @Serializable(with = InstantSerializer::class) val updatedAt: Instant,
 )
 
-data class CreateTeamRequest(
+data class NewTeam(
     val ownerName: String,
     val teamName: String,
     val teamNumber: Int? = null,
@@ -46,7 +46,7 @@ data class RosterEntry(
     val acquiredAt: Instant,
 )
 
-data class AddToRosterRequest(
+data class NewRosterEntry(
     val golferId: GolferId,
     val acquiredVia: String? = null,
     val draftRound: Int? = null,

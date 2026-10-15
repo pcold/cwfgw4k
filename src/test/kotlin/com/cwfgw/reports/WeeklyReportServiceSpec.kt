@@ -30,8 +30,8 @@ import com.cwfgw.testing.orFail
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
-import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
+import com.cwfgw.tournaments.NewTournamentResult
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentResult
@@ -423,8 +423,8 @@ private suspend fun Fixture.roundOneCells(live: Boolean = false): List<ReportCel
 private suspend fun Fixture.mastersReport(): WeeklyReport =
     service.getReport(SEASON_ID, MASTERS_ID).orFail()
 
-private fun asUpsertRequest(r: TournamentResult): CreateTournamentResultRequest =
-    CreateTournamentResultRequest(
+private fun asUpsertRequest(r: TournamentResult): NewTournamentResult =
+    NewTournamentResult(
         golferId = r.golferId,
         position = r.position,
         scoreToPar = r.scoreToPar,

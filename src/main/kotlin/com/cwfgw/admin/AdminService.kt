@@ -21,12 +21,12 @@ import com.cwfgw.result.Result
 import com.cwfgw.result.map
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonService
-import com.cwfgw.teams.AddToRosterRequest
-import com.cwfgw.teams.CreateTeamRequest
+import com.cwfgw.teams.NewRosterEntry
+import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.teams.UNIQUE_TEAM_NAME_PER_SEASON
-import com.cwfgw.tournaments.CreateTournamentRequest
+import com.cwfgw.tournaments.NewTournament
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentService
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -328,7 +328,7 @@ class AdminService(
             teamRepository.create(
                 seasonId = seasonId,
                 request =
-                    CreateTeamRequest(
+                    NewTeam(
                         ownerName = team.teamName,
                         teamName = team.teamName,
                         teamNumber = team.teamNumber,
@@ -348,7 +348,7 @@ class AdminService(
             teamRepository.addToRoster(
                 teamId = createdTeam.id,
                 request =
-                    AddToRosterRequest(
+                    NewRosterEntry(
                         golferId = golferId,
                         acquiredVia = ROSTER_ACQUIRED_VIA_DRAFT,
                         draftRound = pick.round,
@@ -376,7 +376,7 @@ class AdminService(
         findLinked(entry)?.let { return it }
         val created =
             tournamentService.create(
-                CreateTournamentRequest(
+                NewTournament(
                     pgaTournamentId = entry.espnEventId,
                     name = entry.name,
                     seasonId = seasonId,

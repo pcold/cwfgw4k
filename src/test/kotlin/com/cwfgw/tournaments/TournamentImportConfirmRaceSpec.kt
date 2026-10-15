@@ -101,7 +101,7 @@ private fun seedMatch(
     espnId: String,
 ): Tournament =
     TournamentRepository().create(
-        CreateTournamentRequest(
+        NewTournament(
             name = "Event $espnId",
             seasonId = unlinked.seasonId,
             startDate = START_DATE,

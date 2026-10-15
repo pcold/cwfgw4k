@@ -14,7 +14,7 @@ import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.SeasonOpsService
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.teams.AddToRosterRequest
+import com.cwfgw.teams.NewRosterEntry
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.Pause
 import com.cwfgw.testing.orFail
@@ -189,7 +189,7 @@ private fun seedRosteredEvent(): Tournament {
         GolferRepository().create(
             CreateGolferRequest(pgaPlayerId = FINISHER_ESPN_ID, firstName = "Scottie", lastName = "Scheffler"),
         )
-    TeamRepository().addToRoster(seedTeams(event.seasonId).first(), AddToRosterRequest(golferId = finisher.id))
+    TeamRepository().addToRoster(seedTeams(event.seasonId).first(), NewRosterEntry(golferId = finisher.id))
     return event
 }
 
@@ -205,7 +205,7 @@ private fun seedConsecutiveWeeks(): Pair<Tournament, Tournament> {
 context(ctx: WriteTransactionContext)
 private fun seedEarlierWeek(later: Tournament): Tournament =
     TournamentRepository().create(
-        CreateTournamentRequest(
+        NewTournament(
             name = "RBC Heritage",
             seasonId = later.seasonId,
             startDate = EARLIER_WEEK,
@@ -219,7 +219,7 @@ private fun seedWeekAfter(): Pair<Tournament, Tournament> {
     val event = seedLinkedEvent()
     val after =
         TournamentRepository().create(
-            CreateTournamentRequest(
+            NewTournament(
                 name = "Zurich Classic",
                 seasonId = event.seasonId,
                 startDate = LATER_WEEK,

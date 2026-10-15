@@ -6,8 +6,8 @@ import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
-import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
+import com.cwfgw.tournaments.NewTournament
 import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.UpdateTournamentRequest
 import io.kotest.assertions.throwables.shouldThrow
@@ -22,7 +22,7 @@ private val SCHEFFLER = CreateGolferRequest(pgaPlayerId = "pga-1", firstName = "
 private val MCILROY = CreateGolferRequest(pgaPlayerId = "pga-2", firstName = "Rory", lastName = "McIlroy")
 
 private val MASTERS =
-    CreateTournamentRequest(
+    NewTournament(
         name = "Masters",
         seasonId = SeasonId(UUID.randomUUID()),
         startDate = LocalDate.parse("2026-04-09"),

@@ -19,8 +19,8 @@ import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.seedTournament
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
-import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
+import com.cwfgw.tournaments.NewTournamentResult
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentRepository
@@ -138,12 +138,12 @@ private class RecordingGolferRepository(
 private class RecordingTournamentRepository(
     private val delegate: TournamentRepository,
 ) : TournamentRepository by delegate {
-    val upserts = mutableListOf<CreateTournamentResultRequest>()
+    val upserts = mutableListOf<NewTournamentResult>()
 
     context(ctx: WriteTransactionContext)
     override fun upsertResult(
         tournamentId: TournamentId,
-        request: CreateTournamentResultRequest,
+        request: NewTournamentResult,
     ): TournamentResult {
         upserts += request
         return delegate.upsertResult(tournamentId, request)

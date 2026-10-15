@@ -177,7 +177,7 @@ private fun seedConsecutiveWeeks(): Pair<Tournament, Tournament> {
     val later = seedLinkedEvent()
     val earlier =
         TournamentRepository().create(
-            CreateTournamentRequest(
+            NewTournament(
                 name = "RBC Heritage",
                 seasonId = later.seasonId,
                 startDate = EARLIER_WEEK,
@@ -194,7 +194,7 @@ private fun seedUnlinkedWithSibling(): Pair<Tournament, Tournament> {
     val unlinked = checkNotNull(TournamentRepository().findById(seedTournament()))
     val sibling =
         TournamentRepository().create(
-            CreateTournamentRequest(
+            NewTournament(
                 name = "Zurich Classic",
                 seasonId = unlinked.seasonId,
                 startDate = unlinked.startDate,

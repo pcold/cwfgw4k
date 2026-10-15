@@ -4,7 +4,7 @@ import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
-import com.cwfgw.teams.CreateTeamRequest
+import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.postgresHarness
 import io.kotest.assertions.throwables.shouldThrow
@@ -47,7 +47,7 @@ class OutracedWritesSpec : FunSpec({
     }
 
     test("a violation that names the constraint but is not a unique violation still throws") {
-        val orphan = CreateTeamRequest(ownerName = "Nobody", teamName = "ORPHAN", teamNumber = 1)
+        val orphan = NewTeam(ownerName = "Nobody", teamName = "ORPHAN", teamNumber = 1)
 
         shouldThrow<DataAccessException> {
             tx.updateOrOutraced("teams_season_id_fkey", outraced = { Outraced }) {

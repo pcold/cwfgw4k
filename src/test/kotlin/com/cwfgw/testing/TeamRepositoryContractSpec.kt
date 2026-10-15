@@ -2,9 +2,9 @@ package com.cwfgw.testing
 
 import com.cwfgw.db.Transactor
 import com.cwfgw.result.Result
-import com.cwfgw.teams.AddToRosterRequest
-import com.cwfgw.teams.CreateTeamRequest
 import com.cwfgw.teams.FakeTeamRepository
+import com.cwfgw.teams.NewRosterEntry
+import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamRepository
@@ -37,13 +37,13 @@ private val teamContract: List<ContractCase<TeamRepository>> =
         ContractCase("findBySeason lists the season's teams by number with the unnumbered last, then by name") {
             val seasonId = seeds.season()
             tx.update {
-                repository.create(seasonId, CreateTeamRequest(ownerName = "Dee", teamName = "Delta"))
-                repository.create(seasonId, CreateTeamRequest(ownerName = "Bea", teamName = "Bravo", teamNumber = 2))
-                repository.create(seasonId, CreateTeamRequest(ownerName = "Cal", teamName = "Charlie"))
-                repository.create(seasonId, CreateTeamRequest(ownerName = "Al", teamName = "Alpha", teamNumber = 1))
+                repository.create(seasonId, NewTeam(ownerName = "Dee", teamName = "Delta"))
+                repository.create(seasonId, NewTeam(ownerName = "Bea", teamName = "Bravo", teamNumber = 2))
+                repository.create(seasonId, NewTeam(ownerName = "Cal", teamName = "Charlie"))
+                repository.create(seasonId, NewTeam(ownerName = "Al", teamName = "Alpha", teamNumber = 1))
             }
             val otherSeason = seeds.season()
-            tx.update { repository.create(otherSeason, CreateTeamRequest(ownerName = "Eve", teamName = "Echo")) }
+            tx.update { repository.create(otherSeason, NewTeam(ownerName = "Eve", teamName = "Echo")) }
             val unusedSeason = seeds.season()
 
             val listed = tx.get { repository.findBySeason(seasonId) }
@@ -54,7 +54,7 @@ private val teamContract: List<ContractCase<TeamRepository>> =
         },
         ContractCase("a second team on a name taken in the season is outraced, and another season may reuse it") {
             val seasonId = seeds.season()
-            val brown = CreateTeamRequest(ownerName = "Pete", teamName = "BROWN")
+            val brown = NewTeam(ownerName = "Pete", teamName = "BROWN")
             tx.update { repository.create(seasonId, brown) }
 
             tx.updateUnlessOutraced(UNIQUE_TEAM_NAME_PER_SEASON) { repository.create(seasonId, brown) } shouldBe
@@ -66,11 +66,11 @@ private val teamContract: List<ContractCase<TeamRepository>> =
             val seasonId = seeds.season()
             val team =
                 tx.update {
-                    repository.create(seasonId, CreateTeamRequest(ownerName = "Pete", teamName = "BROWN"))
+                    repository.create(seasonId, NewTeam(ownerName = "Pete", teamName = "BROWN"))
                 }
-            val bare = AddToRosterRequest(seeds.golfer())
+            val bare = NewRosterEntry(seeds.golfer())
             val half =
-                AddToRosterRequest(seeds.golfer(), acquiredVia = "draft", draftRound = 1, ownershipPct = BigDecimal(50))
+                NewRosterEntry(seeds.golfer(), acquiredVia = "draft", draftRound = 1, ownershipPct = BigDecimal(50))
 
             val defaulted = tx.update { repository.addToRoster(team.id, bare) }
             val drafted = tx.update { repository.addToRoster(team.id, half) }
@@ -86,23 +86,23 @@ private val teamContract: List<ContractCase<TeamRepository>> =
             val seasonTeams =
                 (1..4).map { number ->
                     tx.update {
-                        repository.create(seasonId, CreateTeamRequest(ownerName = "O$number", teamName = "T$number"))
+                        repository.create(seasonId, NewTeam(ownerName = "O$number", teamName = "T$number"))
                     }
                 }
             val otherSeason = seeds.season()
             val elsewhere =
                 tx.update {
-                    repository.create(otherSeason, CreateTeamRequest(ownerName = "X", teamName = "X"))
+                    repository.create(otherSeason, NewTeam(ownerName = "X", teamName = "X"))
                 }
             val rounds = listOf(null, 2, 1)
             val added =
                 seasonTeams.flatMap { team ->
                     rounds.map { round ->
                         val golfer = seeds.golfer()
-                        tx.update { repository.addToRoster(team.id, AddToRosterRequest(golfer, draftRound = round)) }
+                        tx.update { repository.addToRoster(team.id, NewRosterEntry(golfer, draftRound = round)) }
                     }
                 }
-            val stray = AddToRosterRequest(seeds.golfer())
+            val stray = NewRosterEntry(seeds.golfer())
             tx.update { repository.addToRoster(elsewhere.id, stray) }
 
             tx.get { repository.findRostersBySeason(seasonId) } shouldContainExactly added.sortedWith(ROSTER_ORDER)

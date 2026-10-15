@@ -21,7 +21,7 @@ interface TeamRepository {
     context(ctx: WriteTransactionContext)
     fun create(
         seasonId: SeasonId,
-        request: CreateTeamRequest,
+        request: NewTeam,
     ): Team
 
     /** Ordered by `(team_id, draft_round, acquired_at)` so callers can group by team deterministically. */
@@ -31,7 +31,7 @@ interface TeamRepository {
     context(ctx: WriteTransactionContext)
     fun addToRoster(
         teamId: TeamId,
-        request: AddToRosterRequest,
+        request: NewRosterEntry,
     ): RosterEntry
 
     context(ctx: TransactionContext)
@@ -67,7 +67,7 @@ private class JooqTeamRepository : TeamRepository {
     context(ctx: WriteTransactionContext)
     override fun create(
         seasonId: SeasonId,
-        request: CreateTeamRequest,
+        request: NewTeam,
     ): Team {
         val inserted =
             ctx.dsl.insertInto(TEAMS)
@@ -98,7 +98,7 @@ private class JooqTeamRepository : TeamRepository {
     context(ctx: WriteTransactionContext)
     override fun addToRoster(
         teamId: TeamId,
-        request: AddToRosterRequest,
+        request: NewRosterEntry,
     ): RosterEntry {
         val inserted =
             ctx.dsl.insertInto(TEAM_ROSTERS)

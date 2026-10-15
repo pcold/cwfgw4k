@@ -8,10 +8,10 @@ import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.teams.CreateTeamRequest
+import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamRepository
-import com.cwfgw.tournaments.CreateTournamentRequest
+import com.cwfgw.tournaments.NewTournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentRepository
 import java.math.BigDecimal
@@ -64,7 +64,7 @@ fun seedTournament(
     pgaTournamentId: String?,
 ): TournamentId =
     TournamentRepository().create(
-        CreateTournamentRequest(
+        NewTournament(
             name = name,
             seasonId = seasonId,
             startDate = LocalDate.parse("2026-04-23"),
@@ -77,5 +77,5 @@ fun seedTournament(
 context(ctx: WriteTransactionContext)
 fun seedTeams(seasonId: SeasonId): List<TeamId> =
     listOf("Alpha", "Bravo", "Charlie").map { name ->
-        TeamRepository().create(seasonId, CreateTeamRequest(ownerName = "Owner $name", teamName = name)).id
+        TeamRepository().create(seasonId, NewTeam(ownerName = "Owner $name", teamName = name)).id
     }

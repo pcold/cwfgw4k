@@ -202,8 +202,8 @@ private class Fixture(
     }
 }
 
-private fun asUpsertRequest(r: TournamentResult): CreateTournamentResultRequest =
-    CreateTournamentResultRequest(
+private fun asUpsertRequest(r: TournamentResult): NewTournamentResult =
+    NewTournamentResult(
         golferId = r.golferId,
         position = r.position,
         scoreToPar = r.scoreToPar,

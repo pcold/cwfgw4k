@@ -14,7 +14,7 @@ import com.cwfgw.result.Result
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.teams.AddToRosterRequest
+import com.cwfgw.teams.NewRosterEntry
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
@@ -200,7 +200,7 @@ private fun seedRosteredEvent(): Tournament {
         GolferRepository().create(
             CreateGolferRequest(pgaPlayerId = ROSTERED_WINNER_ESPN_ID, firstName = "Scottie", lastName = "Scheffler"),
         )
-    TeamRepository().addToRoster(seedTeams(event.seasonId).first(), AddToRosterRequest(golferId = winner.id))
+    TeamRepository().addToRoster(seedTeams(event.seasonId).first(), NewRosterEntry(golferId = winner.id))
     return event
 }
 

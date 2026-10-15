@@ -13,7 +13,7 @@ import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
-import com.cwfgw.tournaments.CreateTournamentRequest
+import com.cwfgw.tournaments.NewTournament
 import com.cwfgw.tournaments.TournamentRepository
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
@@ -38,7 +38,7 @@ class EspnServiceRaceSpec : FunSpec({
                         CreateSeasonRequest(leagueId = league.id, name = "2026", seasonYear = 2026),
                     )
                 tournaments.create(
-                    CreateTournamentRequest(
+                    NewTournament(
                         pgaTournamentId = "evt-401",
                         name = "Masters",
                         seasonId = season.id,

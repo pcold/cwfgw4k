@@ -17,7 +17,7 @@ import com.cwfgw.scoring.ScoringService
 import com.cwfgw.scoring.UpsertScore
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.teams.AddToRosterRequest
+import com.cwfgw.teams.NewRosterEntry
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
@@ -162,15 +162,15 @@ private fun seedWeek(
 ): SeededWeek {
     val seasonId = seedSeason()
     val (alpha, bravo, charlie) = seedTeams(seasonId)
-    val halfScheffler = AddToRosterRequest(golferId = golfers.getValue(SCHEFFLER), ownershipPct = BigDecimal(50))
+    val halfScheffler = NewRosterEntry(golferId = golfers.getValue(SCHEFFLER), ownershipPct = BigDecimal(50))
     TeamRepository().addToRoster(alpha, halfScheffler)
     TeamRepository().addToRoster(charlie, halfScheffler)
-    TeamRepository().addToRoster(bravo, AddToRosterRequest(golferId = golfers.getValue(MCILROY)))
-    TeamRepository().addToRoster(charlie, AddToRosterRequest(golferId = golfers.getValue(MORIKAWA)))
+    TeamRepository().addToRoster(bravo, NewRosterEntry(golferId = golfers.getValue(MCILROY)))
+    TeamRepository().addToRoster(charlie, NewRosterEntry(golferId = golfers.getValue(MORIKAWA)))
     val matches =
         MATCH_NAMES.zip(espnIds).mapIndexed { index, (name, espnId) ->
             TournamentRepository().create(
-                CreateTournamentRequest(
+                NewTournament(
                     name = name,
                     seasonId = seasonId,
                     startDate = startDate,
@@ -182,7 +182,7 @@ private fun seedWeek(
         }
     val unlinked =
         TournamentRepository().create(
-            CreateTournamentRequest(
+            NewTournament(
                 name = "Week placeholder",
                 seasonId = seasonId,
                 startDate = startDate,
