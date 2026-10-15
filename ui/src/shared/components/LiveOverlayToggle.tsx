@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
-import type { Tournament } from '@/shared/api/types';
+import type { CurrentTournament, Tournament } from '@/shared/api/types';
 
 /**
  * Decide whether the live overlay applies to the given tournament selection
  * and (when it does) the value to pass through to API calls.
  *
  * Live overlay only adds signal for tournaments in the season's current
- * week — i.e. the week containing the earliest non-completed tournament.
- * That's where ESPN's projected payouts matter. Past-completed events are
- * immutable and future events haven't started. A null selection ("All
+ * week — i.e. the week of the server's current tournament, while it is
+ * unfinalized. That's where ESPN's projected payouts matter. Past-completed
+ * events are immutable and future events haven't started. A null selection ("All
  * Tournaments") is never eligible: the server keeps those rollups to
  * finalized results. Multi-tournament weeks (e.g. a regular tour event plus an
  * opposite-field event) are common enough that scoping to a single id
@@ -30,16 +30,18 @@ export interface LiveOverlayState {
 
 export function useLiveOverlay(
   tournaments: Tournament[],
+  current: CurrentTournament | undefined,
   tournamentId: string | null,
 ): LiveOverlayState {
   const { live, setLive } = useLeagueSeason();
-  const earliest = tournaments.find((t) => t.status !== 'completed') ?? null;
+  const currentId = current?.type === 'unfinalized' ? current.tournamentId : null;
+  const currentRow = tournaments.find((t) => t.id === currentId) ?? null;
   const selected = tournaments.find((t) => t.id === tournamentId) ?? null;
   const eligible =
     selected !== null &&
-    earliest !== null &&
+    currentRow !== null &&
     selected.status !== 'completed' &&
-    (selected.id === earliest.id || sameWeekNumber(selected.week, earliest.week));
+    (selected.id === currentRow.id || sameWeekNumber(selected.week, currentRow.week));
   return {
     eligible,
     effectiveLive: eligible && live,

@@ -8,7 +8,11 @@ import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
 import { mutationError } from '@/shared/util/mutationError';
-import { defaultScoreboardSelection, tournamentLabel } from '@/shared/util/tournament';
+import {
+  defaultScoreboardSelection,
+  pickInSeason,
+  tournamentLabel,
+} from '@/shared/util/tournament';
 import type { WeeklyReport } from '@/shared/api/types';
 import PlayerLinksPanel from './PlayerLinksPanel';
 import ScoreboardView from './ScoreboardView';
@@ -41,13 +45,10 @@ function ScoreboardPage(): ReactNode {
 
   const tournaments = tournamentsQuery.data ?? [];
 
-  // A pick survives only while it is in the loaded season, so a season change needs no handler.
   const tournamentId =
-    userTournamentId !== null && tournaments.some((t) => t.id === userTournamentId)
-      ? userTournamentId
-      : defaultScoreboardSelection(currentQuery.data);
+    pickInSeason(userTournamentId, tournaments) ?? defaultScoreboardSelection(currentQuery.data);
 
-  const liveOverlay = useLiveOverlay(tournaments, tournamentId);
+  const liveOverlay = useLiveOverlay(tournaments, currentQuery.data, tournamentId);
 
   const reportQuery = useQuery({
     queryKey: queryKeys.tournamentReport.detail(seasonId, tournamentId, liveOverlay.effectiveLive),

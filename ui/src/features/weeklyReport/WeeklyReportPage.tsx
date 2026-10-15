@@ -6,7 +6,12 @@ import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
-import { ALL_TOURNAMENTS, defaultReportSelection, tournamentLabel } from '@/shared/util/tournament';
+import {
+  ALL_TOURNAMENTS,
+  defaultReportSelection,
+  pickInSeason,
+  tournamentLabel,
+} from '@/shared/util/tournament';
 import type { Season, WeeklyReport } from '@/shared/api/types';
 import WeeklyReportView from './WeeklyReportView';
 
@@ -39,8 +44,9 @@ function WeeklyReportPage(): ReactNode {
   });
 
   const tournaments = tournamentsQuery.data ?? [];
-  const effectiveId = userTournamentId ?? defaultReportSelection(currentQuery.data);
-  const liveOverlay = useLiveOverlay(tournaments, effectiveId || null);
+  const effectiveId =
+    pickInSeason(userTournamentId, tournaments) ?? defaultReportSelection(currentQuery.data);
+  const liveOverlay = useLiveOverlay(tournaments, currentQuery.data, effectiveId || null);
 
   const reportQuery = useQuery({
     queryKey: queryKeys.report.detail(seasonId, effectiveId, liveOverlay.effectiveLive),

@@ -5,7 +5,12 @@ import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
-import { ALL_TOURNAMENTS, defaultReportSelection, tournamentLabel } from '@/shared/util/tournament';
+import {
+  ALL_TOURNAMENTS,
+  defaultReportSelection,
+  pickInSeason,
+  tournamentLabel,
+} from '@/shared/util/tournament';
 import RankingsView from './RankingsView';
 
 function RankingsPage(): ReactNode {
@@ -23,9 +28,10 @@ function RankingsPage(): ReactNode {
   });
 
   const tournaments = tournamentsQuery.data ?? [];
-  const throughTournamentId = throughOverride ?? defaultReportSelection(currentQuery.data);
+  const throughTournamentId =
+    pickInSeason(throughOverride, tournaments) ?? defaultReportSelection(currentQuery.data);
 
-  const liveOverlay = useLiveOverlay(tournaments, throughTournamentId || null);
+  const liveOverlay = useLiveOverlay(tournaments, currentQuery.data, throughTournamentId || null);
 
   const rankingsQuery = useQuery({
     queryKey: queryKeys.rankings.detail(seasonId, liveOverlay.effectiveLive, throughTournamentId),

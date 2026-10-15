@@ -8,6 +8,12 @@ export function tournamentLabel(t: Tournament): string {
   return `Wk ${t.week ?? '?'} — ${t.name}${multiplier} — ${t.status}`;
 }
 
+/** Null once the loaded season lacks the pick, so a season change needs no handler. */
+export function pickInSeason(pick: string | null, tournaments: Tournament[]): string | null {
+  if (pick === ALL_TOURNAMENTS) return pick;
+  return tournaments.some((t) => t.id === pick) ? pick : null;
+}
+
 /**
  * Null until the server answers, so a page fetches nothing for a default it would then replace. A
  * finalized season opens on the rollup, which then holds every result.

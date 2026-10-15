@@ -212,21 +212,38 @@ describe('ScoreboardPage', () => {
   });
 
   it('opens on the tournament the server names, not the first unfinalized one in the list', async () => {
-    const opposite: Tournament = { ...activeTournament, id: 'tn-active-b', name: 'Opposite Field Open' };
+    const nextWeek: Tournament = {
+      ...activeTournament,
+      id: 'tn-active-b',
+      name: 'Next Week Open',
+      week: '11',
+    };
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
-    tournamentsMock.mockResolvedValue([activeTournament, opposite]);
+    tournamentsMock.mockResolvedValue([activeTournament, nextWeek]);
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active-b' });
     tournamentReportMock.mockImplementation((_s, id) =>
-      Promise.resolve(buildReport(id === 'tn-active-b' ? 'Opposite Field Open' : 'Current Open')),
+      Promise.resolve(buildReport(id === 'tn-active-b' ? 'Next Week Open' : 'Current Open')),
     );
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
-    expect(await screen.findByRole('heading', { name: /Opposite Field Open/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Next Week Open/i })).toBeInTheDocument();
     expect(screen.getByLabelText<HTMLSelectElement>(/Tournament/i).value).toBe('tn-active-b');
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-active-b', true);
     expect(tournamentReportMock).not.toHaveBeenCalledWith('sn-1', 'tn-active', expect.anything());
+  });
+
+  it('shows the error, and fetches nothing, when the server cannot name the current tournament', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockRejectedValue(new Error('down'));
+
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    expect(await screen.findByText(/Failed to load current tournament/i)).toBeInTheDocument();
+    expect(tournamentReportMock).not.toHaveBeenCalled();
   });
 
   it('fetches no report while the server has not yet named the current tournament', async () => {

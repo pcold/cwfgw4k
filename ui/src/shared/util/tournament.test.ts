@@ -4,6 +4,7 @@ import {
   ALL_TOURNAMENTS,
   defaultReportSelection,
   defaultScoreboardSelection,
+  pickInSeason,
   tournamentLabel,
 } from './tournament';
 
@@ -44,6 +45,27 @@ describe('tournamentLabel', () => {
     expect(tournamentLabel(makeTournament({ status: 'in_progress' }))).toBe(
       'Wk 1 — Sony Open — in_progress',
     );
+  });
+});
+
+describe('pickInSeason', () => {
+  const loaded = [makeTournament({ id: 'tn-1' }), makeTournament({ id: 'tn-2' })];
+
+  it('keeps a pick the loaded season holds', () => {
+    expect(pickInSeason('tn-2', loaded)).toBe('tn-2');
+  });
+
+  it('drops a pick the loaded season lacks', () => {
+    expect(pickInSeason('tn-other', loaded)).toBeNull();
+    expect(pickInSeason('tn-1', [])).toBeNull();
+  });
+
+  it('keeps All Tournaments, which every season has', () => {
+    expect(pickInSeason(ALL_TOURNAMENTS, [])).toBe(ALL_TOURNAMENTS);
+  });
+
+  it('has nothing to keep before a pick', () => {
+    expect(pickInSeason(null, loaded)).toBeNull();
   });
 });
 

@@ -4,7 +4,12 @@ import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
-import { ALL_TOURNAMENTS, defaultReportSelection, tournamentLabel } from '@/shared/util/tournament';
+import {
+  ALL_TOURNAMENTS,
+  defaultReportSelection,
+  pickInSeason,
+  tournamentLabel,
+} from '@/shared/util/tournament';
 import LateRowBetsView from './LateRowBetsView';
 
 function LateRowBetsPage(): ReactNode {
@@ -22,7 +27,8 @@ function LateRowBetsPage(): ReactNode {
   });
 
   const tournaments = tournamentsQuery.data ?? [];
-  const effectiveId = userTournamentId ?? defaultReportSelection(currentQuery.data);
+  const effectiveId =
+    pickInSeason(userTournamentId, tournaments) ?? defaultReportSelection(currentQuery.data);
 
   const reportQuery = useQuery({
     queryKey: queryKeys.report.detail(seasonId, effectiveId, live),
