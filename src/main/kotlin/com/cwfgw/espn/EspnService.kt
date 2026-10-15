@@ -178,7 +178,7 @@ class EspnService(
                         name = competitor.name,
                         position = competitor.position,
                         isTeamPartner = competitor.isTeamPartner,
-                        linkedGolfer = locateExistingGolferIn(competitor, context),
+                        linkedGolfer = locateExistingGolferIn(competitor, context).creditedGolfer,
                         hasOverride = competitor.espnId in context.overrides,
                     )
                 }
@@ -229,18 +229,50 @@ class EspnService(
         context: MatchingContext,
     ): List<Pair<EspnCompetitor, GolferId>> {
         val leaderboard =
-            competitors.withIndex().associateWith { (_, competitor) -> locateExistingGolferIn(competitor, context)?.id }
-        // Confirm inserts in this order too: a conflicting insert waits on the other transaction's row, so
-        // leaderboard order would let an import and a confirm that share athletes deadlock.
-        val created =
-            leaderboard.filterValues { it == null }.keys
-                .sortedBy { it.value.espnId }
-                .mapNotNull { entry -> createGolferIn(entry.value)?.let { golferId -> entry to golferId } }
-                .toMap()
-        return leaderboard.mapNotNull { (entry, existingId) ->
-            (existingId ?: created[entry])?.let { golferId -> entry.value to golferId }
-        }
+            competitors.withIndex().associateWith { (_, competitor) -> locateExistingGolferIn(competitor, context) }
+        // Confirm inserts and backfills in this order too: a conflicting write waits on the other transaction's
+        // row, so leaderboard order would let an import and a confirm that share athletes deadlock.
+        val bound =
+            leaderboard.entries
+                .sortedBy { (entry, _) -> entry.value.espnId }
+                .associate { (entry, match) -> entry to bindGolferIn(entry.value, match) }
+        return leaderboard.keys.mapNotNull { entry -> bound[entry]?.let { golferId -> entry.value to golferId } }
     }
+
+    context(ctx: WriteTransactionContext)
+    private fun bindGolferIn(
+        competitor: EspnCompetitor,
+        match: CompetitorMatch,
+    ): GolferId? =
+        when (match) {
+            is CompetitorMatch.Credited -> match.golfer.id
+            is CompetitorMatch.Idless -> backfillIn(competitor, match.golfer)
+            CompetitorMatch.Unmatched -> createGolferIn(competitor)
+            is CompetitorMatch.IdMismatch -> {
+                val espnId = LoggedEspnId(competitor.espnId)
+                log.warn {
+                    "cwfgw4k.espn event=namesake-id-mismatch espn_id=$espnId golfer_id=${match.namesake.id.value}"
+                }
+                createGolferIn(competitor)
+            }
+            is CompetitorMatch.Withheld -> {
+                val espnId = LoggedEspnId(competitor.espnId)
+                log.warn {
+                    "cwfgw4k.espn event=namesake-withheld espn_id=$espnId golfer_ids=${match.drafted.map {
+                        it.id.value
+                    }}"
+                }
+                null
+            }
+        }
+
+    // Null means a concurrent writer gave the row an id, or this competitor's id to another row; findOrCreate then
+    // returns that holder, or inserts beside a row that turned out to be a namesake.
+    context(ctx: WriteTransactionContext)
+    private fun backfillIn(
+        competitor: EspnCompetitor,
+        row: Golfer,
+    ): GolferId? = golferRepository.backfillPgaPlayerId(row.id, competitor.espnId)?.id ?: createGolferIn(competitor)
 
     context(ctx: WriteTransactionContext)
     private fun createGolferIn(competitor: EspnCompetitor): GolferId? {
@@ -260,15 +292,13 @@ class EspnService(
     private fun locateExistingGolferIn(
         competitor: EspnCompetitor,
         context: MatchingContext,
-    ): Golfer? {
+    ): CompetitorMatch {
         // Manual override wins. Lets an admin disambiguate ESPN partner rows
         // (last-name only) when multiple rostered golfers share the surname.
-        context.overrides[competitor.espnId]?.let { golferId ->
-            golferRepository.findById(golferId)?.let { return it }
-        }
-        if (!competitor.isTeamPartner) {
-            golferRepository.findByPgaPlayerId(competitor.espnId)?.let { return it }
-        }
+        val overridden = context.overrides[competitor.espnId]?.let { golferId -> golferRepository.findById(golferId) }
+        if (overridden != null) return CompetitorMatch.Credited(overridden)
+        val byEspnId = if (competitor.isTeamPartner) null else golferRepository.findByPgaPlayerId(competitor.espnId)
+        if (byEspnId != null) return CompetitorMatch.Credited(byEspnId)
         return resolveByName(competitor, context.names, context.rosterGolferIds)
     }
 
@@ -335,6 +365,41 @@ class EspnService(
 }
 
 /**
+ * Pure, so the read-only paths name the row the import credits. Only the import writes: it gives an [Idless] row
+ * the competitor's ESPN id, and creates a golfer for [Unmatched] and [IdMismatch].
+ */
+private sealed interface CompetitorMatch {
+    /** @see CompetitorMatch */
+    data class Credited(val golfer: Golfer) : CompetitorMatch
+
+    /** @see CompetitorMatch */
+    data class Idless(val golfer: Golfer) : CompetitorMatch
+
+    /** @see CompetitorMatch */
+    data object Unmatched : CompetitorMatch
+
+    /** [namesake] holds another ESPN id, so it is another golfer however its name reads. */
+    data class IdMismatch(val namesake: Golfer) : CompetitorMatch
+
+    /** A new golfer would twin one of the [drafted] namesakes, and none of them can be told apart by name. */
+    data class Withheld(val drafted: List<Golfer>) : CompetitorMatch
+}
+
+/** An ESPN athlete id is a public token, never member data, so a log line may carry it. */
+@JvmInline
+private value class LoggedEspnId(private val value: String) {
+    override fun toString(): String = value
+}
+
+private val CompetitorMatch.creditedGolfer: Golfer?
+    get() =
+        when (this) {
+            is CompetitorMatch.Credited -> golfer
+            is CompetitorMatch.Idless -> golfer
+            CompetitorMatch.Unmatched, is CompetitorMatch.IdMismatch, is CompetitorMatch.Withheld -> null
+        }
+
+/**
  * A partner row skips the full-name step: its name is a surname alone, which would fully match only a
  * name-only phantom row and let it outrank the rostered golfer. Only partners may break a surname tie by
  * roster; a full-named competitor guessed that way overwrote a rostered namesake's result (CWF-35).
@@ -343,17 +408,69 @@ private fun resolveByName(
     competitor: EspnCompetitor,
     names: GolferNameIndex,
     rosteredGolferIds: Set<GolferId>,
-): Golfer? {
-    if (!competitor.isTeamPartner) {
-        (names.matchFullName(competitor.name) as? GolferNameMatch.Matched)?.let { return it.golfer }
+): CompetitorMatch =
+    if (competitor.isTeamPartner) {
+        resolvePartnerByName(competitor, names, rosteredGolferIds)
+    } else {
+        resolveAthleteByName(competitor, names, rosteredGolferIds)
     }
-    return when (val bySurname = names.matchSurname(competitor.name)) {
-        is GolferNameMatch.Matched -> bySurname.golfer
-        is GolferNameMatch.Ambiguous ->
-            if (competitor.isTeamPartner) bySurname.candidates.singleOrNull { it.id in rosteredGolferIds } else null
-        GolferNameMatch.NoMatch -> null
-    }
+
+/** A partner's ESPN id is synthetic, so a row's own id neither refuses the match nor is written. */
+private fun resolvePartnerByName(
+    competitor: EspnCompetitor,
+    names: GolferNameIndex,
+    rosteredGolferIds: Set<GolferId>,
+): CompetitorMatch {
+    val golfer =
+        when (val bySurname = names.matchSurname(competitor.name)) {
+            is GolferNameMatch.Matched -> bySurname.golfer
+            is GolferNameMatch.Ambiguous -> bySurname.candidates.singleOrNull { it.id in rosteredGolferIds }
+            GolferNameMatch.NoMatch -> null
+        }
+    return golfer?.let(CompetitorMatch::Credited) ?: CompetitorMatch.Unmatched
 }
+
+private fun resolveAthleteByName(
+    competitor: EspnCompetitor,
+    names: GolferNameIndex,
+    rosteredGolferIds: Set<GolferId>,
+): CompetitorMatch =
+    when (val byFullName = names.matchFullName(competitor.name)) {
+        is GolferNameMatch.Matched -> claim(competitor, byFullName.golfer)
+        is GolferNameMatch.Ambiguous ->
+            preferDrafted(byFullName.candidates, rosteredGolferIds) ?: claimUniqueSurname(competitor, names)
+        GolferNameMatch.NoMatch -> claimUniqueSurname(competitor, names)
+    }
+
+/** Full-name namesakes only: the roster may never break a surname tie for a full-named competitor (CWF-35). */
+private fun preferDrafted(
+    namesakes: List<Golfer>,
+    rosteredGolferIds: Set<GolferId>,
+): CompetitorMatch? {
+    val drafted = namesakes.filter { it.pgaPlayerId == null && it.id in rosteredGolferIds }
+    if (drafted.isEmpty()) return null
+    return drafted.singleOrNull()?.let(CompetitorMatch::Idless) ?: CompetitorMatch.Withheld(drafted)
+}
+
+private fun claimUniqueSurname(
+    competitor: EspnCompetitor,
+    names: GolferNameIndex,
+): CompetitorMatch =
+    when (val bySurname = names.matchSurname(competitor.name)) {
+        is GolferNameMatch.Matched -> claim(competitor, bySurname.golfer)
+        is GolferNameMatch.Ambiguous, GolferNameMatch.NoMatch -> CompetitorMatch.Unmatched
+    }
+
+/** A blank id is not id-less: the backfill only ever replaces NULL. */
+private fun claim(
+    competitor: EspnCompetitor,
+    namesake: Golfer,
+): CompetitorMatch =
+    when (namesake.pgaPlayerId) {
+        null -> CompetitorMatch.Idless(namesake)
+        competitor.espnId -> CompetitorMatch.Credited(namesake)
+        else -> CompetitorMatch.IdMismatch(namesake)
+    }
 
 /**
  * Kept apart from [EspnError] so the overlay's `when` is exhaustive over what a preview can actually
@@ -480,7 +597,7 @@ internal data class LivePreviewContext(
         val override = overridesByTournament[tournamentId]?.get(competitor.espnId)
         if (override != null) golferById[override]?.let { return it }
         if (!competitor.isTeamPartner) golferByEspnId[competitor.espnId]?.let { return it }
-        return resolveByName(competitor, golferNames, rosteredGolferIds)
+        return resolveByName(competitor, golferNames, rosteredGolferIds).creditedGolfer
     }
 
     companion object {
