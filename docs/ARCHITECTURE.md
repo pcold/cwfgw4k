@@ -273,7 +273,7 @@ Not atomic, deliberately or by default:
 `in_progress`; only an admin's `PUT` sets it, and nothing requires it. "Is it live?" is decided by dates, not
 by this status (see [Live overlay](#live-overlay)).
 
-**Finalize** (`TournamentOpsService.finalizeTournament`):
+**Finalize** (`TournamentOpsService.finalizeAndReport`):
 
 1. Read the tournament. Fetch ESPN's scoreboard for its start date, outside any transaction. ESPN unreachable
    answers 502.
@@ -294,7 +294,7 @@ by this status (see [Live overlay](#live-overlay)).
    itself, which no import writes results into when it is unlinked. Scoring takes no further season or tournament
    lock, and an error scoring any of them rolls back the whole finalize. Step 3's gates leave every match on the
    unlinked tournament's start date, and no tournament's scores read another's, so the order among them is free.
-6. Answer `FinalizedTournament` (`finalizeAndReport`): the tournament plus `import_warnings`, one
+6. Answer `FinalizedTournament`: the tournament plus `import_warnings`, one
    `EspnImportWarnings` per tournament step 3 imported into, so `[]` means nothing was imported. A created golfer
    whose surname matches a rostered one, under the matcher's own `surnameKey`, is reported apart from other created
    golfers unless every such namesake has its own result in that event, since its results may belong to the pick.

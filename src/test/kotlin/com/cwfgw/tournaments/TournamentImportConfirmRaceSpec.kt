@@ -58,7 +58,7 @@ class TournamentImportConfirmRaceSpec : FunSpec({
 
         val confirmed =
             coroutineScope {
-                val finalize = async { opsService(tx, pause.afterFirstWrite()).finalizeTournament(seeded.unlinked.id) }
+                val finalize = async { opsService(tx, pause.afterFirstWrite()).finalizeAndReport(seeded.unlinked.id) }
                 val (confirming, waited) = pause.contend(postgres) { async { adminService(tx).confirmRoster(confirm) } }
                 finalize.await().orFail()
                 confirming.await().orFail().also { waited.shouldBeTrue() }

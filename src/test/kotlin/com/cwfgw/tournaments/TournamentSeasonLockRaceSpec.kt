@@ -51,10 +51,10 @@ class TournamentSeasonLockRaceSpec : FunSpec({
         val seasonOps = SeasonOpsService(SeasonRepository(), TournamentRepository(), ScoringRepository(), tx)
 
         coroutineScope {
-            val finalize = async { pausedFinalize.finalizeTournament(event.id) }
+            val finalize = async { pausedFinalize.finalizeAndReport(event.id) }
             val (clean, waited) = pause.contend(postgres) { async { seasonOps.cleanSeasonResults(event.seasonId) } }
 
-            finalize.await().orFail().status shouldBe TournamentStatus.Completed
+            finalize.await().orFail().tournament.status shouldBe TournamentStatus.Completed
             clean.await()?.resultsDeleted shouldBe 1
             waited.shouldBeTrue()
         }
@@ -70,7 +70,7 @@ class TournamentSeasonLockRaceSpec : FunSpec({
 
         coroutineScope {
             val put = async { TournamentService(pause.afterUpdate(), tx).update(earlier.id, reopen) }
-            val (finalize, waited) = pause.contend(postgres) { async { opsService(tx).finalizeTournament(later.id) } }
+            val (finalize, waited) = pause.contend(postgres) { async { opsService(tx).finalizeAndReport(later.id) } }
 
             val reopened = checkNotNull(put.await())
             finalize.await() shouldBe Result.Err(TournamentOpsError.OutOfOrder(Action.Finalize, listOf(reopened)))
@@ -85,7 +85,7 @@ class TournamentSeasonLockRaceSpec : FunSpec({
 
         coroutineScope {
             val put = async { TournamentService(pause.afterUpdate(), tx).update(moving.id, moveEarlier) }
-            val (finalize, waited) = pause.contend(postgres) { async { opsService(tx).finalizeTournament(event.id) } }
+            val (finalize, waited) = pause.contend(postgres) { async { opsService(tx).finalizeAndReport(event.id) } }
 
             val moved = checkNotNull(put.await())
             finalize.await() shouldBe Result.Err(TournamentOpsError.OutOfOrder(Action.Finalize, listOf(moved)))
@@ -99,7 +99,7 @@ class TournamentSeasonLockRaceSpec : FunSpec({
         val pausedFinalize = opsService(tx, scoringTournamentRepository = pause.afterImport())
 
         coroutineScope {
-            val finalize = async { pausedFinalize.finalizeTournament(unlinked.id) }
+            val finalize = async { pausedFinalize.finalizeAndReport(unlinked.id) }
             val (reset, _) = pause.contend(postgres) { async { opsService(tx).resetTournament(seeded.earlier.id) } }
 
             finalize.await().orFail()

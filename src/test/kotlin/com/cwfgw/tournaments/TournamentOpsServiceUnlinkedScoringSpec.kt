@@ -63,8 +63,8 @@ class TournamentOpsServiceUnlinkedScoringSpec : FunSpec({
         val linkedWeek = tx.update { seedWeek(golfers, LINKED_WEEK, LINKED_ESPN_IDS) }
         val ops = opsService(tx)
 
-        ops.finalizeTournament(unlinkedWeek.unlinked.id).orFail()
-        linkedWeek.matches.forEach { match -> ops.finalizeTournament(match.id).orFail() }
+        ops.finalizeAndReport(unlinkedWeek.unlinked.id).orFail()
+        linkedWeek.matches.forEach { match -> ops.finalizeAndReport(match.id).orFail() }
 
         val payouts = tx.payoutsOf(unlinkedWeek.seasonId)
         payouts.map(TeamPayout::tournament).toSet() shouldBe MATCH_NAMES.toSet()
@@ -83,7 +83,7 @@ class TournamentOpsServiceUnlinkedScoringSpec : FunSpec({
                 scores = upserts,
             )
 
-        ops.finalizeTournament(week.unlinked.id) shouldBe Result.Err(TournamentOpsError.TournamentNotFound(second.id))
+        ops.finalizeAndReport(week.unlinked.id) shouldBe Result.Err(TournamentOpsError.TournamentNotFound(second.id))
 
         upserts.scoredTournaments.toSet() shouldBe setOf(first.id)
         week.matches.forEach { match ->
@@ -97,7 +97,7 @@ class TournamentOpsServiceUnlinkedScoringSpec : FunSpec({
         val golfers = tx.update { seedGolfers() }
         val week = tx.update { seedWeek(golfers, UNLINKED_WEEK, UNLINKED_ESPN_IDS) }
 
-        opsService(tx).finalizeTournament(week.unlinked.id).orFail().status shouldBe TournamentStatus.Upcoming
+        opsService(tx).finalizeAndReport(week.unlinked.id).orFail().tournament.status shouldBe TournamentStatus.Upcoming
 
         tx.get { TournamentRepository().getResults(week.unlinked.id) }.shouldBeEmpty()
         tx.get { ScoringRepository().getScores(week.seasonId, week.unlinked.id) }.shouldBeEmpty()

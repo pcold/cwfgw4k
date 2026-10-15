@@ -36,7 +36,7 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 /**
- * Real-DB coverage for [TournamentOpsService.finalizeTournament]'s
+ * Real-DB coverage for [TournamentOpsService.finalizeAndReport]'s
  * atomicity invariant (CWF-25). Forces a mid-flow exception inside
  * [ScoringService.calculateScoresIn] via a wrapping [ScoringRepository]
  * that throws on `upsertScore`. Verifies that the ESPN
@@ -61,7 +61,7 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
     val realScoringRepo = ScoringRepository()
     val linkRepo = TournamentLinkRepository()
 
-    test("finalizeTournament rolls back ESPN status write when calculateScoresIn throws") {
+    test("finalizeAndReport rolls back ESPN status write when calculateScoresIn throws") {
         // The rostered golfer's seeded win is what makes calculateScoresIn reach upsertScore: the ESPN
         // event below carries no competitors, so scoring finds no result unless one is seeded here.
         val seeded =
@@ -149,7 +149,7 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
             )
 
         shouldThrow<Throwable> {
-            runBlocking { opsService.finalizeTournament(seeded.id) }
+            runBlocking { opsService.finalizeAndReport(seeded.id) }
         }
 
         // The whole tx.update rolled back: tournament status is still Upcoming despite
@@ -160,7 +160,7 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
         afterRollback?.status shouldBe TournamentStatus.Upcoming
     }
 
-    test("finalizeTournament rolls back the ESPN import when scoring can't find the season") {
+    test("finalizeAndReport rolls back the ESPN import when scoring can't find the season") {
         val seeded = runBlocking { tx.update { seedUpcomingMasters() } }
         val opsService =
             opsServiceScoringThrough(
@@ -169,13 +169,13 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
                 scoringSeasons = SeasonHidingSeasonRepository(SeasonRepository()),
             )
 
-        val outcome = runBlocking { opsService.finalizeTournament(seeded.id) }
+        val outcome = runBlocking { opsService.finalizeAndReport(seeded.id) }
 
         tx.shouldHoldNothingImportedFor(seeded)
         outcome shouldBe Result.Err(TournamentOpsError.SeasonNotFound(seeded.seasonId))
     }
 
-    test("finalizeTournament rolls back the ESPN import when scoring can't find the tournament") {
+    test("finalizeAndReport rolls back the ESPN import when scoring can't find the tournament") {
         val seeded = runBlocking { tx.update { seedUpcomingMasters() } }
         val opsService =
             opsServiceScoringThrough(
@@ -184,7 +184,7 @@ class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
                 scoringTournaments = TournamentHidingTournamentRepository(TournamentRepository()),
             )
 
-        val outcome = runBlocking { opsService.finalizeTournament(seeded.id) }
+        val outcome = runBlocking { opsService.finalizeAndReport(seeded.id) }
 
         tx.shouldHoldNothingImportedFor(seeded)
         outcome shouldBe Result.Err(TournamentOpsError.TournamentNotFound(seeded.id))

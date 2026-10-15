@@ -219,15 +219,15 @@ private fun asUpsertRequest(r: TournamentResult): CreateTournamentResultRequest 
 
 class TournamentOpsServiceSpec : FunSpec({
 
-    // ----- finalizeTournament -----
+    // ----- finalizeAndReport -----
 
-    test("finalizeTournament returns TournamentNotFound when the id doesn't exist") {
+    test("finalizeAndReport returns TournamentNotFound when the id doesn't exist") {
         val fixture = Fixture()
-        fixture.service.finalizeTournament(MASTERS_ID) shouldBe
+        fixture.service.finalizeAndReport(MASTERS_ID) shouldBe
             Result.Err(TournamentOpsError.TournamentNotFound(MASTERS_ID))
     }
 
-    test("finalizeTournament rejects with OutOfOrder when an earlier tournament is still upcoming") {
+    test("finalizeAndReport rejects with OutOfOrder when an earlier tournament is still upcoming") {
         val sony = tournament(SONY_ID, "Sony Open", "2026-01-15", status = TournamentStatus.Upcoming)
         val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.Upcoming)
         val fixture =
@@ -241,7 +241,7 @@ class TournamentOpsServiceSpec : FunSpec({
             )
 
         val err =
-            fixture.service.finalizeTournament(MASTERS_ID)
+            fixture.service.finalizeAndReport(MASTERS_ID)
                 .shouldBeInstanceOf<Result.Err<TournamentOpsError>>()
                 .error
                 .shouldBeInstanceOf<TournamentOpsError.OutOfOrder>()
@@ -249,7 +249,7 @@ class TournamentOpsServiceSpec : FunSpec({
         err.blocking.map { it.id } shouldContainExactly listOf(SONY_ID)
     }
 
-    test("finalizeTournament happy path runs ESPN import + scoring and flips status to completed") {
+    test("finalizeAndReport happy path runs ESPN import + scoring and flips status to completed") {
         val masters =
             tournament(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.Upcoming)
         val fixture =
@@ -262,11 +262,11 @@ class TournamentOpsServiceSpec : FunSpec({
                     ),
             )
 
-        val finalized = fixture.service.finalizeTournament(MASTERS_ID).orFail()
+        val finalized = fixture.service.finalizeAndReport(MASTERS_ID).orFail().tournament
         finalized.status shouldBe TournamentStatus.Completed
     }
 
-    test("finalizeTournament of an unlinked tournament imports only the completed events linked elsewhere") {
+    test("finalizeAndReport of an unlinked tournament imports only the completed events linked elsewhere") {
         val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", pgaTournamentId = null)
         val sony = tournament(SONY_ID, "Sony Open", "2026-04-09")
         val pgaChampionship = tournament(PGA_CHAMPIONSHIP_ID, "PGA Championship", "2026-04-09")
@@ -288,7 +288,7 @@ class TournamentOpsServiceSpec : FunSpec({
                     ),
             )
 
-        fixture.service.finalizeTournament(MASTERS_ID).orFail()
+        fixture.service.finalizeAndReport(MASTERS_ID).orFail()
 
         with(noopTransactionContext) {
             fixture.tournamentRepo.getResults(SONY_ID).map { it.position } shouldContainExactly listOf(1)
@@ -297,7 +297,7 @@ class TournamentOpsServiceSpec : FunSpec({
         }
     }
 
-    test("finalizeTournament refuses a completed tournament, leaving the results it was finalized with") {
+    test("finalizeAndReport refuses a completed tournament, leaving the results it was finalized with") {
         val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.Completed)
         val finalizedWith = winningResult(MASTERS_ID, GolferId(UUID.randomUUID()))
         val fixture =
@@ -312,7 +312,7 @@ class TournamentOpsServiceSpec : FunSpec({
             )
         val before = with(noopTransactionContext) { fixture.tournamentRepo.getResults(MASTERS_ID) }
 
-        fixture.service.finalizeTournament(MASTERS_ID) shouldBe
+        fixture.service.finalizeAndReport(MASTERS_ID) shouldBe
             Result.Err(TournamentOpsError.TournamentFinalized(MASTERS_ID))
 
         with(noopTransactionContext) {
@@ -321,7 +321,7 @@ class TournamentOpsServiceSpec : FunSpec({
         }
     }
 
-    test("finalizeTournament of an unlinked tournament skips a match in another season or already completed") {
+    test("finalizeAndReport of an unlinked tournament skips a match in another season or already completed") {
         val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", pgaTournamentId = null)
         val sony = tournament(SONY_ID, "Sony Open", "2026-04-09").copy(seasonId = OTHER_SEASON_ID)
         val pgaChampionship =
@@ -343,7 +343,7 @@ class TournamentOpsServiceSpec : FunSpec({
                     ),
             )
 
-        fixture.service.finalizeTournament(MASTERS_ID).orFail()
+        fixture.service.finalizeAndReport(MASTERS_ID).orFail()
 
         with(noopTransactionContext) {
             fixture.tournamentRepo.getResults(SONY_ID).shouldBeEmpty()
@@ -352,7 +352,7 @@ class TournamentOpsServiceSpec : FunSpec({
         }
     }
 
-    test("finalizeTournament of an unlinked tournament skips a match starting after it, since it stays unfinalized") {
+    test("finalizeAndReport of an unlinked tournament skips a match starting after it, since it stays unfinalized") {
         val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", pgaTournamentId = null)
         val sony = tournament(SONY_ID, "Sony Open", "2026-04-09")
         val pgaChampionship = tournament(PGA_CHAMPIONSHIP_ID, "PGA Championship", "2026-05-14")
@@ -373,7 +373,7 @@ class TournamentOpsServiceSpec : FunSpec({
                     ),
             )
 
-        fixture.service.finalizeTournament(MASTERS_ID).orFail()
+        fixture.service.finalizeAndReport(MASTERS_ID).orFail()
 
         with(noopTransactionContext) {
             fixture.tournamentRepo.getResults(SONY_ID).map { it.position } shouldContainExactly listOf(1)
@@ -382,7 +382,7 @@ class TournamentOpsServiceSpec : FunSpec({
         }
     }
 
-    test("finalizeTournament surfaces UpstreamUnavailable when ESPN is down") {
+    test("finalizeAndReport surfaces UpstreamUnavailable when ESPN is down") {
         val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09")
         val fixture =
             Fixture(
@@ -390,7 +390,7 @@ class TournamentOpsServiceSpec : FunSpec({
                 espnUpstreamError = EspnUpstreamException(status = 503, message = "Service Unavailable"),
             )
 
-        fixture.service.finalizeTournament(MASTERS_ID) shouldBe
+        fixture.service.finalizeAndReport(MASTERS_ID) shouldBe
             Result.Err(TournamentOpsError.UpstreamUnavailable(EspnUpstreamFailure.BadStatus(503)))
     }
 
