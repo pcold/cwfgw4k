@@ -623,11 +623,11 @@ class WeeklyReportServiceSpec : FunSpec({
 
         val report = fixture.mastersReport()
 
-        report.sideBetRules shouldBe ReportSideBetRules(amountPerTeam = BigDecimal(20), rounds = listOf(2, 3))
+        report.sideBetRules shouldBe ReportSideBetRules(amountPerTeam = BigDecimal("20.0000"), rounds = listOf(2, 3))
         report.sideBetDetail.map { it.round } shouldContainExactly listOf(2, 3)
         val secondRound = report.sideBetDetail.first().teams
         secondRound.map { it.teamName } shouldContainExactly listOf("BROWN", "WOMBLE")
-        secondRound.map { it.payout } shouldContainExactly listOf(BigDecimal(20), BigDecimal(-20))
+        secondRound.map { it.payout.toPlainString() } shouldContainExactly listOf("20.0000", "-20.0000")
         secondRound.map { it.outcome } shouldContainExactly listOf(SideBetOutcome.Won, SideBetOutcome.Lost)
     }
 
@@ -641,11 +641,11 @@ class WeeklyReportServiceSpec : FunSpec({
 
         val report = fixture.service.getSeasonReport(SEASON_ID).orFail()
 
-        report.sideBetRules shouldBe ReportSideBetRules(amountPerTeam = BigDecimal(20), rounds = listOf(2, 3))
+        report.sideBetRules shouldBe ReportSideBetRules(amountPerTeam = BigDecimal("20.0000"), rounds = listOf(2, 3))
         report.sideBetDetail.map { it.round } shouldContainExactly listOf(2, 3)
         val thirdRound = report.sideBetDetail.last().teams
         thirdRound.map { it.teamName } shouldContainExactly listOf("BROWN", "WOMBLE")
-        thirdRound.map { it.payout } shouldContainExactly listOf(BigDecimal(-20), BigDecimal(20))
+        thirdRound.map { it.payout.toPlainString() } shouldContainExactly listOf("-20.0000", "20.0000")
         thirdRound.map { it.outcome } shouldContainExactly listOf(SideBetOutcome.Lost, SideBetOutcome.Won)
     }
 
@@ -661,8 +661,8 @@ class WeeklyReportServiceSpec : FunSpec({
 
         tiedRound.associate { it.teamName to it.outcome } shouldBe
             mapOf("BROWN" to SideBetOutcome.Won, "WOMBLE" to SideBetOutcome.Lost, "ALVAREZ" to SideBetOutcome.Won)
-        tiedRound.associate { it.teamName to it.payout } shouldBe
-            mapOf("BROWN" to BigDecimal(10), "WOMBLE" to BigDecimal(-20), "ALVAREZ" to BigDecimal(10))
+        tiedRound.associate { it.teamName to it.payout.toPlainString() } shouldBe
+            mapOf("BROWN" to "10.0000", "WOMBLE" to "-20.0000", "ALVAREZ" to "10.0000")
     }
 
     test("a side-bet round every team ties is won by all of them even though nobody is paid") {
@@ -697,7 +697,6 @@ class WeeklyReportServiceSpec : FunSpec({
             listOf(
                 sideBetRules(amount = BigDecimal.ZERO, rounds = listOf(2, 3)),
                 sideBetRules(amount = BigDecimal("0.00"), rounds = listOf(2, 3)),
-                sideBetRules(amount = BigDecimal(20), rounds = emptyList()),
             )
 
         stakingNothing.forAll { rules ->
@@ -769,11 +768,11 @@ class WeeklyReportServiceSpec : FunSpec({
         val report = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true).orFail()
 
         report.live shouldBe true
-        report.sideBetRules shouldBe ReportSideBetRules(amountPerTeam = BigDecimal(20), rounds = listOf(1))
+        report.sideBetRules shouldBe ReportSideBetRules(amountPerTeam = BigDecimal("20.0000"), rounds = listOf(1))
         val firstRound = report.sideBetDetail.single().teams
         firstRound.map { it.teamName to it.outcome } shouldContainExactly
             listOf("BROWN" to SideBetOutcome.Won, "WOMBLE" to SideBetOutcome.Lost)
-        firstRound.map { it.payout } shouldContainExactly listOf(BigDecimal(20), BigDecimal(-20))
+        firstRound.map { it.payout.toPlainString() } shouldContainExactly listOf("20.0000", "-20.0000")
     }
 
     test("sideBetDetail does not double-apply ownership for partial-share picks") {

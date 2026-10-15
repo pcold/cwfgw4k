@@ -477,7 +477,7 @@ class ReportRoutesSpec : FunSpec({
 
             report["side_bet_rules"] shouldBe
                 buildJsonObject {
-                    put("amount_per_team", 15)
+                    put("amount_per_team", BigDecimal("15.0000"))
                     putJsonArray("rounds") { listOf(5, 6, 7, 8).forEach { add(it) } }
                 }
             val teamsByRound =
