@@ -5,6 +5,8 @@ A fantasy PGA Tour league tracker. Configurable number of teams draft real PGA p
 > **[Architecture](docs/ARCHITECTURE.md)** — domain, persistence, tournament lifecycle, the league's payout and side-bet rules, ESPN integration, and every HTTP endpoint.
 >
 > **[Local Development Setup](docs/DEV.md)** — prerequisites, dev.properties, docker-compose, seed data, dev vs bundled UI workflows.
+>
+> **[DESIGN.md](DESIGN.md)** — the UI's visual design: colour tokens, typography, components, do's and don'ts. Format follows [awesome-design-md](https://github.com/VoltAgent/awesome-design-md).
 
 ## League Rules
 

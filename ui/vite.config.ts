@@ -15,6 +15,11 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:8080',
     },
+    fs: {
+      // For index.css.test.ts's `?raw` import of the repo-root DESIGN.md. Entries match as directory
+      // prefixes, so naming the file itself denies it; Vite's default `fs.deny` still covers .env and keys.
+      allow: ['.', '..'],
+    },
   },
   test: {
     globals: true,
