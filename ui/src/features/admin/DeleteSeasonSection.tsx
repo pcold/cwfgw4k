@@ -31,6 +31,7 @@ function DeleteSeasonSection(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.root });
       void queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.root });
       void queryClient.invalidateQueries({ queryKey: queryKeys.leagues.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dataHealth.root });
     },
   });
 
