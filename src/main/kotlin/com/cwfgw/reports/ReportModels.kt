@@ -246,6 +246,13 @@ data class WeeklyReport(
     val cashTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::totalCash))
     val sideBetTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::sideBets))
     val weeklyTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::weeklyTotal))
+
+    /**
+     * A body property for the reason [weeklyTotals] is. Teams tied on [ReportTeamColumn.weeklyTotal] keep
+     * [teams]' order rather than share a place, so a client numbering this list never skips a number.
+     */
+    val weeklyStandings: List<TeamId> =
+        teams.sortedByDescending(ReportTeamColumn::weeklyTotal).map(ReportTeamColumn::teamId)
 }
 
 /**
