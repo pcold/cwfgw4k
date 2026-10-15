@@ -27,8 +27,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
- * On Postgres because a repeated golfer used to fail only there, on the roster's unique key, and because
- * "nothing written" has to mean nothing committed.
+ * On Postgres because "nothing written" has to mean nothing committed, and the roster's unique key is the
+ * backstop these checks run ahead of.
  */
 class AdminServiceConfirmRosterRepeatsSpec : FunSpec({
 
@@ -141,7 +141,12 @@ class AdminServiceConfirmRosterRepeatsSpec : FunSpec({
             confirm(
                 seasonId,
                 team(number = 1, name = "BROWN", existingPick(1, scottie), existingPick(2, scottie)),
-                team(number = 2, name = "BROWN", newPick(1, "Tom", "Kim"), newPick(2, "Tom", "Kim")),
+                team(
+                    number = 2,
+                    name = "BROWN",
+                    newPick(round = 1, firstName = "Tom", lastName = "Kim"),
+                    newPick(round = 2, firstName = "Tom", lastName = "Kim"),
+                ),
             ).shouldBeInstanceOf<Result.Err<AdminError>>()
                 .error
                 .shouldBeInstanceOf<AdminError.InvalidConfirmedRoster>()
