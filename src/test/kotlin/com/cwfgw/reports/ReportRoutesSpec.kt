@@ -49,6 +49,7 @@ import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.collections.shouldNotContainAnyOf
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
@@ -924,9 +925,9 @@ class ReportRoutesSpec : FunSpec({
         }
     }
 
-    // ----- no field goes on the wire without a reader in the UI -----
+    // ----- fields the UI stopped reading stay off the wire -----
 
-    test("GET report, rankings and golfer history leave off every field the UI does not read") {
+    test("GET report, rankings and golfer history no longer send the fields the UI stopped reading") {
         val schefflerWinsSchauffeleUndrafted =
             reportFixture(
                 initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
@@ -947,14 +948,14 @@ class ReportRoutesSpec : FunSpec({
             val history = wireReport(client.get("$seasonPath/golfer/${SCOTTIE_ID.value}/history").bodyAsText())
             val team = report.getValue("teams").jsonArray.single().jsonObject
 
-            report.getValue("tournament").jsonObject.keys shouldNotContainAnyOf listOf("id")
-            team.keys shouldNotContainAnyOf listOf("owner_name")
+            report.getValue("tournament").jsonObject.keys shouldNotContain "id"
+            team.keys shouldNotContain "owner_name"
             team.keysOfEach("cells") shouldNotContainAnyOf listOf("score_to_par", "top_tens", "pair_key")
             report.keysOfEach("undrafted_top_tens") shouldNotContainAnyOf
                 listOf("position", "score_to_par", "pair_key")
-            report.keysOfEach("standings_order") shouldNotContainAnyOf listOf("total_cash")
-            rankings.keysOfEach("teams") shouldNotContainAnyOf listOf("live_weekly")
-            history.keys shouldNotContainAnyOf listOf("golfer_id")
+            report.keysOfEach("standings_order") shouldNotContain "total_cash"
+            rankings.keysOfEach("teams") shouldNotContain "live_weekly"
+            history.keys shouldNotContain "golfer_id"
         }
     }
 })

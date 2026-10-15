@@ -20,9 +20,9 @@ import java.math.BigDecimal
 private val log = KotlinLogging.logger {}
 
 /**
- * A prior unfinalized tournament's live payouts roll into `previous` and the season columns, never this-tournament
- * `earnings`; an in-progress selected tournament's replace its cells' earnings and finish. A failed pull (ESPN 5xx,
- * parse error) logs at WARN and returns the base report un-overlaid rather than an error.
+ * In [overlayReport], unless the selected tournament is completed, a prior unfinalized one's live payouts roll into
+ * `previous` and the season columns and the selected one's replace its cells' earnings and finish. A pull that fails
+ * is skipped, keeping whatever was already overlaid; an unavailable ESPN logs at WARN.
  */
 class LiveOverlayService(private val espnService: EspnService) {
     /**
