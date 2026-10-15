@@ -135,7 +135,7 @@ class EspnService(
     ): Result<EspnLivePreview, LivePreviewError> {
         val events =
             fetchEspnEvents(tournament.startDate).getOrElse { return Result.Err(LivePreviewError.EspnUnavailable(it)) }
-        val event = matchEvent(events, tournament) ?: return Result.Err(LivePreviewError.NoMatchingEvent)
+        val event = findLinkedEvent(events, tournament) ?: return Result.Err(LivePreviewError.NoMatchingEvent)
         return Result.Ok(buildLivePreviewForEvent(event, tournament, ctx))
     }
 
@@ -173,8 +173,7 @@ class EspnService(
         val espnId =
             tournament.pgaTournamentId ?: return Result.Err(EspnError.TournamentNotLinked(tournamentId))
         val events = fetchEspnEvents(tournament.startDate).getOrElse { return Result.Err(it) }
-        val event =
-            events.firstOrNull { it.espnId == espnId } ?: return Result.Err(EspnError.EventNotInScoreboard(espnId))
+        val event = findLinkedEvent(events, tournament) ?: return Result.Err(EspnError.EventNotInScoreboard(espnId))
 
         val views =
             tx.read {
@@ -365,17 +364,17 @@ internal sealed interface LivePreviewError {
 }
 
 /**
- * The lone-event fallback covers a tournament whose `pga_tournament_id` is unset or stale. It must stay
- * "exactly one": with several events on the date, taking any of them overlays the wrong tournament.
+ * Exact id only, never the lone event on the date: an unset or stale id would then preview money finalize
+ * never imports. Preview and finalize must pick by the same rule.
  */
-private fun matchEvent(
+internal fun findLinkedEvent(
     events: List<EspnTournament>,
     tournament: Tournament,
-): EspnTournament? = events.firstOrNull { it.espnId == tournament.pgaTournamentId } ?: events.singleOrNull()
+): EspnTournament? = tournament.pgaTournamentId?.let { espnId -> events.firstOrNull { it.espnId == espnId } }
 
 /**
- * Multiplier, team flag and overrides come from [tournament], never a lookup by [event]'s id: the lone-event
- * fallback matches without that id, so the lookup would miss and preview at single payout.
+ * The team flag is [event]'s, not [tournament]'s: finalize's import writes ESPN's flag over the row before it
+ * scores, and preview must pay what finalize will.
  */
 internal fun buildLivePreviewForEvent(
     event: EspnTournament,
@@ -383,7 +382,7 @@ internal fun buildLivePreviewForEvent(
     ctx: LivePreviewContext,
 ): EspnLivePreview {
     val multiplier = tournament.payoutMultiplier
-    val isTeamEvent = event.isTeamEvent || tournament.isTeamEvent
+    val isTeamEvent = event.isTeamEvent
 
     val matchedCompetitors: List<Pair<EspnCompetitor, Golfer?>> =
         event.competitors.map { competitor -> competitor to ctx.resolveGolfer(competitor, tournament.id) }
