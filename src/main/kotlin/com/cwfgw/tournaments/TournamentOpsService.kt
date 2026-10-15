@@ -12,6 +12,7 @@ import com.cwfgw.result.getOrElse
 import com.cwfgw.scoring.ScoringError
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
+import com.cwfgw.scoring.WeeklyScoreResult
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.LocalDate
 
@@ -82,10 +83,9 @@ class TournamentOpsService(
 
     /** Takes no season or tournament lock: finalize already holds each one it scores, in season → tournament order. */
     context(ctx: WriteTransactionContext)
-    private fun scoreIn(tournament: Tournament) {
+    private fun scoreIn(tournament: Tournament): WeeklyScoreResult =
         scoringService.calculateScoresIn(tournament.seasonId, tournament.id)
             .getOrElse { throw FinalizeAborted(it.toOpsError(tournament)) }
-    }
 
     suspend fun resetTournament(tournamentId: TournamentId): Result<Tournament, TournamentOpsError> =
         tx.update {
@@ -111,7 +111,7 @@ class TournamentOpsService(
             Result.Ok(updated ?: tournament)
         }
 
-    /** A linked [tournament] imports into itself, so only an unlinked one returns matches. */
+    /** A linked [tournament] imports into itself, never into a match. */
     context(ctx: WriteTransactionContext)
     private fun persistEspnEventsIn(
         tournament: Tournament,

@@ -204,7 +204,10 @@ private fun scoreboard(espnIds: List<String>): List<EspnTournament> {
             espnId = event.second,
             name = event.first,
             completed = true,
-            competitors = field.mapIndexed { index, (pro, position) -> finisher(pro, order = index + 1, position) },
+            competitors =
+                field.mapIndexed { index, (pro, position) ->
+                    finisher(pro, order = index + 1, position = position)
+                },
             isTeamEvent = false,
         )
     }
