@@ -269,6 +269,7 @@ class EspnLivePreviewSpec : FunSpec({
         val b = preview.teams.single { it.teamId == TEAM_B_ID }
         a.topTenEarnings.compareTo(BigDecimal(18)) shouldBe 0
         b.topTenEarnings.compareTo(BigDecimal.ZERO) shouldBe 0
+        b.golferScores shouldBe emptyList()
     }
 
     test("previewForTournament honors the matched DB tournament's payout multiplier") {
