@@ -54,15 +54,10 @@ class EspnService(
     suspend fun fetchCalendar(): List<EspnCalendarEntry> = client.fetchCalendar()
 
     /**
-     * Build a deduped pool of currently-active golfers by unioning the
-     * competitor lists from the most recent [recentEventCount] PGA
-     * scoreboards. Used by the roster matcher to offer players our `golfers`
-     * table hasn't seen yet; [com.cwfgw.admin.AdminService.confirmRoster]
-     * inserts the ones a roster picks.
-     *
-     * Calendar parse failures and individual scoreboard fetch failures are
-     * absorbed (logged as warnings, contributing zero athletes) so a single
-     * upstream hiccup doesn't black out the entire pool.
+     * The athletes a roster may name before our `golfers` table has them, drawn from the last
+     * [recentEventCount] scoreboards; [com.cwfgw.admin.AdminService.confirmRoster] inserts the ones picked.
+     * A failed calendar parse or scoreboard fetch is logged and contributes no athletes, so one upstream
+     * hiccup doesn't black out the pool.
      */
     suspend fun fetchActivePlayers(recentEventCount: Int = DEFAULT_RECENT_EVENT_COUNT): List<EspnAthlete> {
         val calendar =
