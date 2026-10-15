@@ -5,6 +5,7 @@ import com.cwfgw.db.Transactor
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnTournament
+import com.cwfgw.espn.findLinkedEvent
 import com.cwfgw.result.Result
 import com.cwfgw.result.getOrElse
 import com.cwfgw.scoring.ScoringError
@@ -108,7 +109,7 @@ class TournamentOpsService(
         events: List<EspnTournament>,
     ) {
         if (tournament.pgaTournamentId != null) {
-            val event = events.firstOrNull { it.espnId == tournament.pgaTournamentId } ?: return
+            val event = findLinkedEvent(events, tournament) ?: return
             espnService.persistImportIn(tournament, event)
             return
         }
