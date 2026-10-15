@@ -99,7 +99,7 @@ describe('FinalizeWarnings', () => {
   it('says the import raised no warnings when the server returned none', () => {
     renderWithProviders(<FinalizeWarnings warnings={[]} />);
 
-    expect(screen.getByRole('status')).toHaveTextContent('Finalized. The ESPN import raised no warnings.');
+    expect(screen.getByRole('status')).toHaveTextContent('The ESPN import raised no warnings.');
     expect(screen.queryByRole('region', { name: 'ESPN import warnings' })).not.toBeInTheDocument();
   });
 });

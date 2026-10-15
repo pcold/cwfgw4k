@@ -95,7 +95,7 @@ function FinalizeWarnings({ warnings }: FinalizeWarningsProps): ReactNode {
   if (warnings.length === 0) {
     return (
       <p role="status" className="text-xs text-ink-muted">
-        Finalized. The ESPN import raised no warnings.
+        The ESPN import raised no warnings.
       </p>
     );
   }
