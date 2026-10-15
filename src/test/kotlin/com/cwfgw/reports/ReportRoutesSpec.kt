@@ -49,6 +49,7 @@ import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
+import io.kotest.matchers.collections.shouldNotContainAnyOf
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -357,6 +358,9 @@ private fun wirePlayer(
 
 private fun wireLeaderboard(body: String): List<JsonObject> =
     wireReport(body).getValue("live_leaderboard").jsonArray.map { it.jsonObject }
+
+private fun JsonObject.keysOfEach(field: String): Set<String> =
+    getValue(field).jsonArray.flatMap { it.jsonObject.keys }.toSet()
 
 private val SCHEFFLER = golferRow(SCOTTIE_ID, "Scottie", "Scheffler")
 
@@ -923,6 +927,40 @@ class ReportRoutesSpec : FunSpec({
         apiTest(reportFixture()) { client ->
             val response = client.get("/api/v1/seasons/${SEASON_ID.value}/golfer/not-a-uuid/history")
             response.status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    // ----- no field goes on the wire without a reader in the UI -----
+
+    test("GET report, rankings and golfer history leave off every field the UI does not read") {
+        val schefflerWinsSchauffeleUndrafted =
+            reportFixture(
+                initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN")),
+                initialGolfers = MASTERS_GOLFERS,
+                initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5)),
+                initialResults =
+                    listOf(
+                        resultRow(MASTERS_ID, SCOTTIE_ID, position = 1),
+                        resultRow(MASTERS_ID, XANDER_ID, position = 2),
+                    ),
+                initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
+            )
+        apiTest(schefflerWinsSchauffeleUndrafted) { client ->
+            val seasonPath = "/api/v1/seasons/${SEASON_ID.value}"
+            val report = wireReport(client.get("$seasonPath/report/${MASTERS_ID.value}").bodyAsText())
+            val rankings = wireReport(client.get("$seasonPath/rankings").bodyAsText())
+            val history = wireReport(client.get("$seasonPath/golfer/${SCOTTIE_ID.value}/history").bodyAsText())
+            val team = report.getValue("teams").jsonArray.single().jsonObject
+
+            report.getValue("tournament").jsonObject.keys shouldNotContainAnyOf listOf("id")
+            team.keys shouldNotContainAnyOf listOf("owner_name")
+            team.keysOfEach("cells") shouldNotContainAnyOf listOf("score_to_par", "top_tens", "pair_key")
+            report.keysOfEach("undrafted_top_tens") shouldNotContainAnyOf
+                listOf("position", "score_to_par", "pair_key")
+            report.keysOfEach("standings_order") shouldNotContainAnyOf listOf("total_cash")
+            rankings.keysOfEach("teams") shouldNotContainAnyOf listOf("live_weekly")
+            history.keys shouldNotContainAnyOf listOf("golfer_id")
         }
     }
 })
