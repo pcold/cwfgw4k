@@ -19,7 +19,6 @@ function buildRankings(overrides: Partial<Rankings> = {}): Rankings {
         sideBets: 0,
         totalCash: 150,
         series: [50, 100, 150],
-        liveWeekly: null,
       },
       {
         teamId: 't-2',
@@ -28,7 +27,6 @@ function buildRankings(overrides: Partial<Rankings> = {}): Rankings {
         sideBets: 0,
         totalCash: -35,
         series: [0, -20, -35],
-        liveWeekly: null,
       },
     ],
     weeks: ['9', '10', '11'],

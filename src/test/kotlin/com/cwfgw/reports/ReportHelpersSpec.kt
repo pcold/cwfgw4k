@@ -49,7 +49,6 @@ private fun teamColumn(
     ReportTeamColumn(
         teamId = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000$teamHex")),
         teamName = teamName,
-        ownerName = teamName,
         cells = emptyList(),
         topTenEarnings = BigDecimal.ZERO,
         weeklyTotal = BigDecimal.ZERO,

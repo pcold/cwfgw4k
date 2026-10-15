@@ -449,7 +449,6 @@ class WeeklyReportService(
             Result.Ok(
                 GolferHistory(
                     golferName = "${golfer.firstName} ${golfer.lastName}",
-                    golferId = golfer.id,
                     totalEarnings = entries.fold(BigDecimal.ZERO) { acc, entry -> acc.add(entry.earnings) },
                     topTens = entries.size,
                     results = entries,
@@ -669,7 +668,6 @@ private fun buildTeamColumnFromContext(
 
 internal fun buildTournamentInfo(tournament: Tournament): ReportTournamentInfo =
     ReportTournamentInfo(
-        id = tournament.id,
         name = tournament.name,
         startDate = tournament.startDate.toString(),
         endDate = tournament.endDate.toString(),
@@ -684,7 +682,6 @@ internal fun buildTournamentInfo(tournament: Tournament): ReportTournamentInfo =
  */
 private fun seasonTournamentInfo(): ReportTournamentInfo =
     ReportTournamentInfo(
-        id = null,
         name = "All Tournaments",
         startDate = null,
         endDate = null,
@@ -697,7 +694,7 @@ private fun seasonTournamentInfo(): ReportTournamentInfo =
  * Pure: assemble the season-aggregate report. Each team column shows
  * cumulative season earnings (`weeklyTotal` is the season total for
  * the column; `previous` is zero because there's nothing prior to
- * "all of it"). Cells use [buildSeasonCells] which renders `topTens`
+ * "all of it"). Cells use [buildSeasonCells] which renders top-ten
  * counts ("3x") in place of a position string.
  */
 internal fun assembleSeasonReport(inputs: SeasonReportInputs): WeeklyReport {
@@ -725,7 +722,6 @@ internal fun assembleSeasonReport(inputs: SeasonReportInputs): WeeklyReport {
             ReportTeamColumn(
                 teamId = team.id,
                 teamName = team.teamName,
-                ownerName = team.ownerName,
                 cells = cells,
                 topTenEarnings = teamTopTenEarnings,
                 weeklyTotal = weeklyTotal,
@@ -771,9 +767,7 @@ private fun buildSeasonCells(
             golferId = entry.golferId,
             positionStr = positionStr,
             finish = null,
-            scoreToPar = null,
             earnings = earnings,
-            topTens = topTens,
             ownershipPct = entry.ownershipPct,
             seasonEarnings = earnings,
             seasonTopTens = topTens,
@@ -821,7 +815,7 @@ internal fun buildUndraftedAgg(
                         ),
                     )
                 }
-            UndraftedGolfer(name = name, position = null, payout = totalPayout)
+            UndraftedGolfer(name = name, payout = totalPayout)
         }
         .sortedByDescending { it.payout }
 }
@@ -932,7 +926,6 @@ internal fun buildReportTeamColumn(
     return ReportTeamColumn(
         teamId = team.id,
         teamName = team.teamName,
-        ownerName = team.ownerName,
         cells = cells,
         topTenEarnings = weeklyTopTenEarnings,
         weeklyTotal = weeklyTotal,
@@ -996,13 +989,10 @@ private fun cellForEntry(
         golferId = entry.golferId,
         positionStr = finish?.label(),
         finish = finish,
-        scoreToPar = result?.scoreToPar,
         earnings = score?.points ?: BigDecimal.ZERO,
-        topTens = if (finish != null && finish.position <= TOP_TEN_CUTOFF) 1 else 0,
         ownershipPct = entry.ownershipPct,
         seasonEarnings = cumulativeEarnings,
         seasonTopTens = cumulativeTopTens,
-        pairKey = result?.pairKey,
     )
 }
 
@@ -1013,9 +1003,7 @@ private fun emptyCell(round: Int): ReportCell =
         golferId = null,
         positionStr = null,
         finish = null,
-        scoreToPar = null,
         earnings = BigDecimal.ZERO,
-        topTens = 0,
         ownershipPct = BigDecimal(100),
         seasonEarnings = BigDecimal.ZERO,
         seasonTopTens = 0,
@@ -1048,13 +1036,7 @@ internal fun buildUndraftedForTournament(
                     rules = rules,
                     isTeamEvent = isTeamEvent,
                 )
-            UndraftedGolfer(
-                name = name,
-                position = result.position,
-                payout = payout,
-                scoreToPar = result.scoreToPar,
-                pairKey = result.pairKey,
-            )
+            UndraftedGolfer(name = name, payout = payout)
         }
 
 /**

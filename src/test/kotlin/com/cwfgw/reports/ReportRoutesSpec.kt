@@ -454,7 +454,6 @@ class ReportRoutesSpec : FunSpec({
             response.status shouldBe HttpStatusCode.OK
             val body: WeeklyReport = response.body()
             body.tournament.name shouldBe "All Tournaments"
-            body.tournament.id shouldBe null
         }
     }
 
@@ -646,11 +645,6 @@ class ReportRoutesSpec : FunSpec({
             val report = wireReport(body)
             val evenPar = JsonPrimitive(0)
 
-            wireCell(report, team = 0, round = 5)["score_to_par"] shouldBe JsonPrimitive(-5)
-            wireCell(report, team = 1, round = 5)["score_to_par"] shouldBe evenPar
-            wireCell(report, team = 0, round = 1)["score_to_par"] shouldBe JsonNull
-            report.getValue("undrafted_top_tens").jsonArray.map { it.jsonObject["score_to_par"] } shouldContainExactly
-                listOf(evenPar)
             report.getValue("live_leaderboard").jsonArray.map { it.jsonObject["score_to_par"] } shouldContainExactly
                 listOf(JsonPrimitive(-5), evenPar, evenPar)
         }

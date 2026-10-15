@@ -85,7 +85,7 @@ private sealed interface SlotKey {
 fun buildStandingsOrder(teams: List<ReportTeamColumn>): List<StandingsEntry> =
     teams.sortedByDescending { it.totalCash }
         .mapIndexed { index, team ->
-            StandingsEntry(rank = index + 1, teamName = team.teamName, totalCash = team.totalCash)
+            StandingsEntry(rank = index + 1, teamName = team.teamName)
         }
 
 /** Cents — a side-bet payout is a terminal cash settle-up, not an intermediate split. */

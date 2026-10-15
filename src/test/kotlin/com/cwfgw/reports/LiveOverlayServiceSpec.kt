@@ -7,7 +7,6 @@ import com.cwfgw.espn.PreviewTeamScore
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonRules
 import com.cwfgw.teams.TeamId
-import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -16,7 +15,6 @@ import io.kotest.matchers.shouldBe
 import java.math.BigDecimal
 import java.util.UUID
 
-private val TOURNAMENT_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b01"))
 private val TEAM_A_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c01"))
 private val TEAM_B_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c02"))
 private val TEAM_C_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c03"))
@@ -109,9 +107,7 @@ private fun cell(
         golferId = golferId,
         positionStr = null,
         finish = null,
-        scoreToPar = null,
         earnings = earnings,
-        topTens = 0,
         ownershipPct = BigDecimal(100),
         seasonEarnings = seasonEarnings,
         seasonTopTens = seasonTopTens,
@@ -127,7 +123,6 @@ private fun teamColumn(
     ReportTeamColumn(
         teamId = teamId,
         teamName = teamName,
-        ownerName = "Owner $teamName",
         cells = cells,
         topTenEarnings = BigDecimal.ZERO,
         weeklyTotal = BigDecimal.ZERO,
@@ -144,7 +139,6 @@ private fun emptyReport(teams: List<ReportTeamColumn> = emptyList()): WeeklyRepo
         scope = ReportScope.Tournament,
         tournament =
             ReportTournamentInfo(
-                id = TOURNAMENT_ID,
                 name = "The Masters",
                 startDate = "2026-04-09",
                 endDate = "2026-04-12",
@@ -245,7 +239,6 @@ class LiveOverlayServiceSpec : FunSpec({
         overlaid.teams.single().cells.single().earnings.compareTo(BigDecimal(18)) shouldBe 0
         overlaid.teams.single().cells.single().positionStr shouldBe "1"
         overlaid.teams.single().cells.single().finish shouldBe ReportCellFinish(position = 1, tied = false)
-        overlaid.teams.single().cells.single().scoreToPar shouldBe -10
     }
 
     test("mergeLiveData marks both cells tied, in finish and label alike, when two rostered golfers share a position") {

@@ -13,13 +13,10 @@ function row(overrides: Partial<ReportCell> = {}): ReportCell {
     golferId: 'g-1',
     positionStr: 'T1',
     finish: { position: 1, tied: true },
-    scoreToPar: -12,
     earnings: 50,
-    topTens: 1,
     ownershipPct: 100,
     seasonEarnings: 50,
     seasonTopTens: 1,
-    pairKey: null,
     ...overrides,
   };
 }
@@ -28,7 +25,6 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
   return {
     teamId: 't-1',
     teamName: 'Aces',
-    ownerName: 'Alice',
     cells: [row()],
     topTenEarnings: 1,
     weeklyTotal: 18,
@@ -66,7 +62,6 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
   return {
     scope: 'tournament',
     tournament: {
-      id: 't-1',
       name: 'Sample Open',
       startDate: '2026-03-01',
       endDate: '2026-03-04',
@@ -281,7 +276,6 @@ describe('ScoreboardView', () => {
                   golferName: 'FITZPATRICK',
                   positionStr: '1',
                   finish: { position: 1, tied: false },
-                  scoreToPar: -19,
                   earnings: 18,
                 }),
               ],
@@ -312,7 +306,6 @@ describe('ScoreboardView', () => {
                   golferName: 'MORIKAWA',
                   positionStr: 'T4',
                   finish: { position: 4, tied: true },
-                  scoreToPar: -13,
                   earnings: 7,
                 }),
               ],

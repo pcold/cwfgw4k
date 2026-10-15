@@ -21,13 +21,10 @@ function row(overrides: Partial<ReportCell> = {}): ReportCell {
     golferId: 'g-1',
     positionStr: null,
     finish: null,
-    scoreToPar: null,
     earnings: 0,
-    topTens: 0,
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
-    pairKey: null,
     ...overrides,
   };
 }
@@ -48,7 +45,6 @@ function buildTeam(teamId: string, teamName: string, earningsRound?: number): Re
   return {
     teamId,
     teamName,
-    ownerName: `Owner-${teamName}`,
     cells,
     topTenEarnings: earningsRound ? 7.5 : 0,
     weeklyTotal: earningsRound ? 50 : -40,
@@ -102,7 +98,6 @@ function buildFixture(overrides: {
   return {
     scope,
     tournament: {
-      id: 'tn-1',
       name: 'Masters',
       startDate: '2026-04-16',
       endDate: '2026-04-19',

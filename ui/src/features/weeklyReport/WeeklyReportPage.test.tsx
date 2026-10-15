@@ -67,7 +67,6 @@ function buildReport(name: string, tournamentId: string | null = null): WeeklyRe
   return {
     scope: tournamentId ? 'tournament' : 'season',
     tournament: {
-      id: tournamentId,
       name,
       startDate: tournamentId ? '2026-03-01' : null,
       endDate: tournamentId ? '2026-03-04' : null,
@@ -79,7 +78,6 @@ function buildReport(name: string, tournamentId: string | null = null): WeeklyRe
       {
         teamId: 'team-1',
         teamName: 'Aces',
-        ownerName: 'Alice',
         cells: [1, 2, 3, 4, 5, 6, 7, 8].map((r) => ({
           round: r,
           golferName: `Golfer ${r}`,

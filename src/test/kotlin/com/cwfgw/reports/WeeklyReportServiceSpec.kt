@@ -550,7 +550,6 @@ class WeeklyReportServiceSpec : FunSpec({
 
         undraftedList shouldHaveSize 1
         undraftedList.single().name shouldBe "R. McIlroy"
-        undraftedList.single().position shouldBe 5
     }
 
     test("getReport renders a tied position with a 'T' prefix on every cell that shares it") {
@@ -889,7 +888,6 @@ class WeeklyReportServiceSpec : FunSpec({
 
         val report = fixture.service.getSeasonReport(SEASON_ID).orFail()
 
-        report.tournament.id shouldBe null
         report.tournament.name shouldBe "All Tournaments"
         report.teams.forAll { col ->
             col.weeklyTotal.compareTo(BigDecimal.ZERO) shouldBe 0
@@ -1437,7 +1435,7 @@ class WeeklyReportServiceSpec : FunSpec({
         rankings.tournamentNames shouldContainExactly listOf("The Masters *")
         rankings.weeks shouldContainExactly listOf("15")
         val a = rankings.teams.single { it.teamId == TEAM_A.id }
-        a.liveWeekly?.compareTo(BigDecimal(18)) shouldBe 0
+        a.subtotal.compareTo(BigDecimal(18)) shouldBe 0
     }
 
     test("getReport with live=true on a completed tournament does not call the live overlay (no live flag set)") {
