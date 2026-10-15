@@ -264,7 +264,8 @@ class AdminService(
     /**
      * Before any team, so an athlete two teams share is one row, and every refusal is decided before the first write
      * since a returned error still commits. [EspnGolfers.insertedCount] can include a row a concurrent confirm
-     * inserted first, since [GolferRepository.findOrCreate] returns either the same way.
+     * inserted first, since [GolferRepository.findOrCreate] returns either the same way. Every existing row a pick
+     * names is locked with the claims, in their one order, so no roster insert after it waits out of order.
      */
     context(ctx: WriteTransactionContext)
     private fun resolveEspnGolfers(teams: List<ConfirmedTeam>): Result<EspnGolfers, AdminError> {
@@ -286,7 +287,8 @@ class AdminService(
             return Result.Err(AdminError.UnresolvableEspnGolfers(refusedIds))
         }
         val writes = claims.values.filterNotNull()
-        val written = golferRepository.findOrCreateAll(writes)
+        val existing = teams.flatMap { it.picks }.mapNotNull { (it.assignment as? GolferAssignment.Existing)?.golferId }
+        val written = golferRepository.findOrCreateAll(writes, referenced = existing.toSet() + persisted.values)
         return Result.Ok(
             EspnGolfers(
                 golferIds = persisted + written.mapValues { (_, golfer) -> golfer.id },

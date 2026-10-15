@@ -218,7 +218,8 @@ class EspnService(
                 .settlingSurnameGuessesAcrossEvents()
                 .map(MatchedEvent::withholdingContestedRows)
                 .withholdingRowsContestedAcrossEvents()
-        val written = golferRepository.findOrCreateAll(matched.flatMap(MatchedEvent::claims))
+        val credited = matched.flatMap { it.matches }.mapNotNull { (_, match) -> match.creditedRow?.id }.toSet()
+        val written = golferRepository.findOrCreateAll(matched.flatMap(MatchedEvent::claims), referenced = credited)
         return matched.map { matchedEvent ->
             val (import, matches) = matchedEvent
             val placements =
@@ -460,6 +461,17 @@ private class SurnameGuessSettlement(located: List<Pair<EspnCompetitor, Competit
             .groupBy(keySelector = { (rowId, _) -> rowId }, valueTransform = { (_, espnId) -> espnId })
             .mapValues { (_, espnIds) -> espnIds.toSet() }
 }
+
+/** An existing row the result is written for as matched; an [CompetitorMatch.Idless] row is a claim's instead. */
+private val CompetitorMatch.creditedRow: Golfer?
+    get() =
+        when (this) {
+            is CompetitorMatch.Credited -> golfer
+            is CompetitorMatch.SurnameGuess -> golfer
+            is CompetitorMatch.Idless, CompetitorMatch.Unmatched, is CompetitorMatch.IdMismatch,
+            is CompetitorMatch.Withheld,
+            -> null
+        }
 
 private val CompetitorMatch.guessedRow: Golfer?
     get() = (this as? CompetitorMatch.SurnameGuess)?.golfer

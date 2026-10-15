@@ -66,6 +66,13 @@ class FakeGolferRepository(
     override fun findOrCreate(request: CreateGolferRequest): Golfer =
         request.pgaPlayerId?.let { findByPgaPlayerId(it) } ?: create(request)
 
+    /** One fake transaction at a time, so there is nothing to wait on. */
+    context(ctx: WriteTransactionContext)
+    override fun lockRow(
+        id: GolferId,
+        lock: GolferRowLock,
+    ) = Unit
+
     context(ctx: WriteTransactionContext)
     override fun backfillPgaPlayerId(
         id: GolferId,

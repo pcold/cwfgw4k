@@ -3,6 +3,7 @@ package com.cwfgw.golfers
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.db.required
+import com.cwfgw.db.writeOrOutraced
 import com.cwfgw.jooq.keys.GOLFERS_PGA_PLAYER_ID_KEY
 import com.cwfgw.jooq.tables.records.GolfersRecord
 import com.cwfgw.jooq.tables.references.GOLFERS
@@ -39,16 +40,35 @@ interface GolferRepository {
     context(ctx: WriteTransactionContext)
     fun findOrCreate(request: CreateGolferRequest): Golfer
 
+    /** A missing row is no error: the write that follows decides what it means. */
+    context(ctx: WriteTransactionContext)
+    fun lockRow(
+        id: GolferId,
+        lock: GolferRowLock,
+    )
+
     /**
      * Null when row [id] already has an id or another row holds [pgaPlayerId]. The UPDATE's WHERE decides, not a
      * read before it, so a concurrent setter of row [id] is waited on and wins; one still inserting [pgaPlayerId]
-     * elsewhere surfaces as the 23505 instead.
+     * elsewhere is waited on too, and its commit undoes this UPDATE alone.
      */
     context(ctx: WriteTransactionContext)
     fun backfillPgaPlayerId(
         id: GolferId,
         pgaPlayerId: String,
     ): Golfer?
+}
+
+/** Taken by [GolferRepository.lockRow]; [findOrCreateAll] is the one caller, so its order is every caller's. */
+enum class GolferRowLock {
+    /** A result or roster row's foreign-key lock: it waits only on a delete or a write to a key, `pga_player_id`. */
+    Reference,
+
+    /**
+     * The backfill UPDATE's own lock, and like it skips a row that has an id by then. Taking [Reference] and upgrading
+     * would deadlock two backfills of one row.
+     */
+    Backfill,
 }
 
 fun GolferRepository(): GolferRepository = JooqGolferRepository()
@@ -113,19 +133,32 @@ private class JooqGolferRepository : GolferRepository {
     }
 
     context(ctx: WriteTransactionContext)
+    override fun lockRow(
+        id: GolferId,
+        lock: GolferRowLock,
+    ) {
+        val row = ctx.dsl.selectOne().from(GOLFERS).where(GOLFERS.ID.eq(id.value))
+        when (lock) {
+            GolferRowLock.Reference -> row.forKeyShare()
+            GolferRowLock.Backfill -> row.and(GOLFERS.PGA_PLAYER_ID.isNull).forUpdate()
+        }.execute()
+    }
+
+    context(ctx: WriteTransactionContext)
     override fun backfillPgaPlayerId(
         id: GolferId,
         pgaPlayerId: String,
     ): Golfer? {
         val holder = GOLFERS.`as`("holder")
-        return ctx.dsl.update(GOLFERS)
-            .set(GOLFERS.PGA_PLAYER_ID, pgaPlayerId)
-            .where(GOLFERS.ID.eq(id.value))
-            .and(GOLFERS.PGA_PLAYER_ID.isNull)
-            .andNotExists(ctx.dsl.selectOne().from(holder).where(holder.PGA_PLAYER_ID.eq(pgaPlayerId)))
-            .returning()
-            .fetchOne()
-            ?.let(::toGolfer)
+        return writeOrOutraced(UNIQUE_PGA_PLAYER_ID) {
+            ctx.dsl.update(GOLFERS)
+                .set(GOLFERS.PGA_PLAYER_ID, pgaPlayerId)
+                .where(GOLFERS.ID.eq(id.value))
+                .and(GOLFERS.PGA_PLAYER_ID.isNull)
+                .andNotExists(ctx.dsl.selectOne().from(holder).where(holder.PGA_PLAYER_ID.eq(pgaPlayerId)))
+                .returning()
+                .fetchOne()
+        }?.let(::toGolfer)
     }
 
     context(ctx: WriteTransactionContext)
