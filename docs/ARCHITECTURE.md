@@ -409,12 +409,15 @@ Import, finalize, the link editor and the live preview resolve each competitor t
 (`EspnService.kt`): a manual player override for the tournament; the ESPN player id (not for team partners); a
 unique normalized full-name match (not for team partners, whose name is a surname alone); a unique surname match,
 or on a tie, for a partner only, the rostered golfer among the candidates. A full-named competitor's name match is
-credited only to a row with no ESPN id or with its own: a row holding another id is a namesake, so the competitor
-gets a golfer of its own and the import logs a warning. When several rows share the full name, the one id-less
-golfer rostered this season is credited; if more than one is, the import scores none of them and logs a warning
-rather than create a twin. Only import and finalize write: they backfill the competitor's ESPN id onto an id-less
-row they credit and create a golfer for a competitor that matches nothing, in one pass ordered by ESPN id, the order a
-roster confirm writes in. Names are compared normalized for case, accents and hyphens, on the "first last"
+credited only to an id-less row: a row holding another id is a namesake, so the competitor gets a golfer of its own
+and the import logs `cwfgw4k.espn event=namesake-id-mismatch`. When several rows share the full name, the one id-less
+golfer rostered this season is credited; with none, matching falls through to the surname; with several, or when two
+competitors claim one id-less row, the competitor is scored to nobody and the import logs
+`cwfgw4k.espn event=namesake-withheld` rather than create a twin. Only import and finalize write, in one pass ordered
+by ESPN id, the order a roster confirm writes in: they backfill the competitor's ESPN id onto an id-less row its full
+name matched (never one credited by override, surname or partner) and create a golfer for a competitor that matches
+nothing. A roster row's key-share lock on a golfer is not ordered by ESPN id, so that pass can still deadlock a
+confirm. Names are compared normalized for case, accents and hyphens, on the "first last"
 concatenation rather than the stored columns; the surname is its last word, kept whole if hyphenated and past a
 "Jr"/"III" suffix (`golfers/GolferMatching.kt`, which roster upload shares). A new golfer's name is split at its
 last space, and a single word is stored as the last name. Overrides are managed per tournament through the tournament-link routes and are refused once the
