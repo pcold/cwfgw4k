@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **JDK 21** — the Gradle toolchain provisions one if your system version is wrong
+- **JDK 25** — the Gradle toolchain provisions one if your system version is wrong
 - **Docker** — used by docker-compose for Postgres, and by Testcontainers during the test suite
 - **Node** — *not* required directly; the `node-gradle` plugin downloads its own copy on first build
 
