@@ -4,10 +4,8 @@
 -- Each step raises unless it touched exactly the rows it expects, which rolls the whole run back, and a second
 -- run finds nothing left and refuses. It deletes nothing: the 8 unreferenced blank-name rows went on 2026-07-25.
 --
--- Left out on purpose:
---   * Jordan Shipley (id-less, 2 rosters) needs Pete's decision first; likely a roster typo for Neal Shipley, 5209442.
---   * Byeong Hun An is a real golfer missing his ESPN id, not a duplicate, so he is never tombstoned.
---     When his ESPN id is confirmed, backfill it in its own one-off script.
+-- Left out on purpose: Byeong Hun An is a real golfer missing his ESPN id, not a duplicate, so he is never
+-- tombstoned. When his ESPN id is confirmed, backfill it in its own one-off script.
 
 BEGIN;
 
@@ -48,6 +46,18 @@ BEGIN
     GET DIAGNOSTICS touched = ROW_COUNT;
     IF touched <> 1 THEN
         RAISE EXCEPTION 'expected 1 id-less Alex Fitzpatrick, tombstoned %', touched;
+    END IF;
+
+    -- Jordan Shipley is a football player: the row is a roster typo for Neal Shipley.
+    SELECT id INTO STRICT survivor
+      FROM cwfgw4k.golfers
+     WHERE pga_player_id = '5209442' AND last_name = 'Shipley' AND tombstoned_at IS NULL;
+    UPDATE cwfgw4k.golfers
+       SET tombstoned_at = now(), merged_into = survivor
+     WHERE pga_player_id IS NULL AND first_name = 'Jordan' AND last_name = 'Shipley' AND tombstoned_at IS NULL;
+    GET DIAGNOSTICS touched = ROW_COUNT;
+    IF touched <> 1 THEN
+        RAISE EXCEPTION 'expected 1 id-less Jordan Shipley, tombstoned %', touched;
     END IF;
 END $$;
 
