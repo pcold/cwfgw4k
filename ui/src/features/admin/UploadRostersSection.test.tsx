@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { QueryKey } from '@tanstack/react-query';
 import type { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
-import type { PickMatch, RosterPreview } from '@/shared/api/types';
+import type { PickMatch, RosterConfirmTeamInput, RosterPreview } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
 import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
@@ -100,6 +100,16 @@ function espnPreview(match: PickMatch): RosterPreview {
   };
 }
 
+/** Fails naming the blocked encoding, rather than as a missing team several lines later. */
+function encodedTeams(
+  preview: RosterPreview,
+  selections: Readonly<Record<string, string>>,
+): RosterConfirmTeamInput[] {
+  const teams = buildConfirmTeams(preview, selections);
+  if (teams === null) throw new Error('Expected every pick to encode, but an ambiguous pick sits on the placeholder.');
+  return teams;
+}
+
 describe('buildConfirmTeams', () => {
   it('maps matched, ambiguous selection, and no_match picks correctly', () => {
     const preview = samplePreview();
@@ -139,8 +149,8 @@ describe('buildConfirmTeams', () => {
       '1|2|Cam Smith': 'none',
       '1|3|Brand New': '',
     };
-    const teams = buildConfirmTeams(preview, selections);
-    expect(nth(teams ?? [], 0).picks[1]).toMatchObject({
+    const teams = encodedTeams(preview, selections);
+    expect(nth(teams, 0).picks[1]).toMatchObject({
       assignment: { type: 'new', name: 'Cam Smith' },
     });
   });
@@ -151,8 +161,8 @@ describe('buildConfirmTeams', () => {
       espnId: 'espn-9478',
       golferName: 'Scottie Scheffler',
     });
-    const teams = buildConfirmTeams(preview, {});
-    expect(nth(nth(teams ?? [], 0).picks, 0).assignment).toEqual({
+    const teams = encodedTeams(preview, {});
+    expect(nth(nth(teams, 0).picks, 0).assignment).toEqual({
       type: 'espn',
       espnId: 'espn-9478',
       name: 'Scottie Scheffler',
@@ -165,8 +175,8 @@ describe('buildConfirmTeams', () => {
       espnId: 'espn-9478',
       golferName: 'Scottie Scheffler',
     });
-    const teams = buildConfirmTeams(preview, {});
-    expect(nth(nth(teams ?? [], 0).picks, 0).assignment).toEqual({
+    const teams = encodedTeams(preview, {});
+    expect(nth(nth(teams, 0).picks, 0).assignment).toEqual({
       type: 'espn',
       espnId: 'espn-9478',
       name: 'Scottie Scheffler',
@@ -181,8 +191,8 @@ describe('buildConfirmTeams', () => {
         { type: 'espn', espnId: 'espn-9478', name: 'Scottie Scheffler' },
       ],
     });
-    const teams = buildConfirmTeams(preview, { '1|1|Scottie Scheffler': 'espn:espn-9478' });
-    expect(nth(nth(teams ?? [], 0).picks, 0).assignment).toEqual({
+    const teams = encodedTeams(preview, { '1|1|Scottie Scheffler': 'espn:espn-9478' });
+    expect(nth(nth(teams, 0).picks, 0).assignment).toEqual({
       type: 'espn',
       espnId: 'espn-9478',
       name: 'Scottie Scheffler',
@@ -205,8 +215,8 @@ describe('buildConfirmTeams', () => {
         },
       ],
     };
-    const teams = buildConfirmTeams(preview, {});
-    expect(nth(nth(teams ?? [], 0).picks, 0).assignment).toEqual({ type: 'new', name: 'Byeong Hun An' });
+    const teams = encodedTeams(preview, {});
+    expect(nth(nth(teams, 0).picks, 0).assignment).toEqual({ type: 'new', name: 'Byeong Hun An' });
   });
 
   it('encodes nothing while an ambiguous pick sits on the placeholder', () => {
