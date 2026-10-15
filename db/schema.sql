@@ -184,7 +184,7 @@ CREATE TABLE cwfgw4k.seasons (
     max_teams integer DEFAULT 10 NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT seasons_name_not_blank CHECK ((btrim(name) <> ''::text)),
+    CONSTRAINT seasons_name_not_blank CHECK ((name ~ '[^ \t\n\r\v\f]'::text)),
     CONSTRAINT seasons_side_bet_amount_non_negative CHECK ((side_bet_amount >= (0)::numeric))
 );
 

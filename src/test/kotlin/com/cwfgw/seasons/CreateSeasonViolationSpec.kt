@@ -68,13 +68,16 @@ class CreateSeasonViolationSpec : FunSpec({
         request(rules = null).copy(sideBetAmount = BigDecimal.ZERO).violation().shouldBeNull()
     }
 
-    test("an empty or all-space name is BlankName") {
-        request(rules = null).copy(name = "").violation() shouldBe CreateSeasonViolation.BlankName
-        request(rules = null).copy(name = "   ").violation() shouldBe CreateSeasonViolation.BlankName
+    test("an empty name, or one of nothing but ASCII whitespace, is BlankName") {
+        listOf("", "   ", "\t", "\n", " \t\n\r\u000B\u000C ").forEach { blank ->
+            request(rules = null).copy(name = blank).violation() shouldBe CreateSeasonViolation.BlankName
+        }
     }
 
-    test("a tab-only name has no violation, since btrim in the CHECK trims spaces only") {
-        request(rules = null).copy(name = "\t").violation().shouldBeNull()
+    test("a padded name, a lone v, and a no-break space have no violation, matching the CHECK") {
+        listOf("\tSpring \n", "v", " ").forEach { name ->
+            request(rules = null).copy(name = name).violation().shouldBeNull()
+        }
     }
 
     test("POST /api/v1/seasons refuses a violation with 400, its message, and no season written") {

@@ -144,25 +144,30 @@ class SeasonRepositorySpec : FunSpec({
         created.sideBetAmount.signum() shouldBe 0
     }
 
-    test("create past the route guard is refused a blank name by the CHECK") {
-        val refusal =
-            shouldThrow<DataAccessException> {
-                tx.update {
-                    repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "   ", seasonYear = 2026))
+    test("create past the route guard is refused a name of nothing but ASCII whitespace by the CHECK") {
+        listOf("   ", "\t\t", "\n", " \t\n\r\u000B\u000C ").forEach { blank ->
+            val refusal =
+                shouldThrow<DataAccessException> {
+                    tx.update {
+                        repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = blank, seasonYear = 2026))
+                    }
                 }
-            }
 
-        refusal.message shouldContain "seasons_name_not_blank"
+            refusal.message shouldContain "seasons_name_not_blank"
+        }
         tx.read { repository.findAll(leagueId = castlewoodId, seasonYear = null) }.shouldBeEmpty()
     }
 
-    test("create stores a tab-only name, since btrim trims spaces only, as the route guard does") {
-        val created =
+    test("create stores the names the route guard passes: a padded name, a lone v, and a no-break space") {
+        val names = listOf("\tSpring \n", "v", " ")
+        val stored =
             tx.update {
-                repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "\t", seasonYear = 2026))
+                names.map { name ->
+                    repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = name, seasonYear = 2026)).name
+                }
             }
 
-        created.name shouldBe "\t"
+        stored shouldBe names
     }
 
     test("findAll orders by year desc, number desc, created_at desc") {

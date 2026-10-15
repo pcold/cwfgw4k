@@ -14,14 +14,18 @@ internal sealed interface CreateSeasonViolation {
     /** Settles inverted, paying the losers; zero means no side bets. A CHECK would refuse it anyway, as a 500. */
     data object NegativeSideBetAmount : CreateSeasonViolation
 
-    /** Spaces only, as `btrim` trims, so it agrees with the CHECK, which would refuse it anyway, as a 500. */
+    /** Nothing but [NAME_PADDING]. The CHECK would refuse it anyway, as a 500. */
     data object BlankName : CreateSeasonViolation
 }
 
-// Both amount fields are checked, not only the one the repository writes, so the guard needn't track its precedence.
+// Must match the character class in seasons_name_not_blank (V018). A no-break space and other non-ASCII spaces pass
+// both, and are left to the UI's trim().
+private const val NAME_PADDING = " \t\n\r\u000B\u000C"
+
 internal fun CreateSeasonRequest.violation(): CreateSeasonViolation? =
     when {
-        name.trim(' ').isEmpty() -> CreateSeasonViolation.BlankName
+        name.trim { it in NAME_PADDING }.isEmpty() -> CreateSeasonViolation.BlankName
+        // Both amount fields, not only the one the repository writes, so the guard needn't track their precedence.
         listOfNotNull(sideBetAmount, rules?.sideBetAmount).any { it.signum() < 0 } ->
             CreateSeasonViolation.NegativeSideBetAmount
         else -> rules?.violation()
