@@ -426,8 +426,9 @@ completed tournament selected in the weekly report is never overlaid.
 **Fallback.** If ESPN does not answer, answers non-200, or answers 200 with a body that does not parse, the
 overlay logs a WARN and skips that candidate, so a full outage returns the persisted report unchanged
 (`LiveReportEspnOutageSpec`, `CompletedTournamentLiveGuardSpec`). The client reports an unparseable 200 as its
-own failure, `MalformedBody`, and never caches it (`EspnClientSpec`). A route that needs the scoreboard, finalize
-among them, answers it with a 502 as it does an outage, and finalize writes nothing (`EspnOutageRoutesSpec`).
+own failure, `MalformedBody`, and never caches it (`EspnClientSpec`). A route that needs the scoreboard answers it
+with a 502 as it does an outage (`EspnOutageRoutesSpec`). Finalize is one: it refuses before opening its write
+transaction, so nothing is imported (`TournamentOpsServiceSpec`).
 
 ## 9. HTTP API Surface
 
