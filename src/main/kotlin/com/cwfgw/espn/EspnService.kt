@@ -37,8 +37,8 @@ import java.time.format.DateTimeParseException
 private val log = KotlinLogging.logger {}
 
 /**
- * A named competitor [locateExistingGolferIn] can't match becomes a new golfer. A team-partner row gets no
- * `pga_player_id`, because its ESPN id is synthetic (`team:X:N`).
+ * A named competitor [locateExistingGolferIn] credits to no row becomes a new golfer, unless that golfer would twin
+ * a drafted namesake. A team-partner row gets no `pga_player_id`, because its ESPN id is synthetic (`team:X:N`).
  */
 @Suppress("LongParameterList")
 class EspnService(
