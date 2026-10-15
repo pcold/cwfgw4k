@@ -137,6 +137,8 @@ export interface WeeklyReport {
   sideBetTotals: WonLostTotals;
   /** Over every team's `weeklyTotal`. @see WeeklyReport.cashTotals */
   weeklyTotals: WonLostTotals;
+  /** Every `teams` id, best `weeklyTotal` first; a tie keeps `teams`' order. Lay rows out in it; never re-sort. */
+  weeklyStandings: string[];
 }
 
 export interface TeamRanking {

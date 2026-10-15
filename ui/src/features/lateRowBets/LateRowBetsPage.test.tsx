@@ -104,6 +104,7 @@ function buildReport(): WeeklyReport {
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
     weeklyTotals: makeWonLostTotals(),
+    weeklyStandings: [],
   };
 }
 
