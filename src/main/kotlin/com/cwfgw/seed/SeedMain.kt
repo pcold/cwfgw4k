@@ -56,6 +56,7 @@ fun main() {
 
     try {
         val services = buildServices(config, database, httpClient)
+        @Suppress("ForbiddenMethodCall") // the seed entry point, where src/CLAUDE.md allows runBlocking
         runBlocking { seed(services) }
         log.info { "SeedMain: done" }
     } finally {
@@ -160,7 +161,9 @@ private fun pickAssignment(
         is PickMatch.Matched -> GolferAssignment.Existing(match.golferId)
         is PickMatch.MatchedEspn -> GolferAssignment.Espn(espnId = match.espnId, name = match.golferName)
         is PickMatch.MatchedBackfill -> GolferAssignment.Espn(espnId = match.espnId, name = match.golferName)
-        is PickMatch.Ambiguous -> match.candidates.first().toAssignment()
+        is PickMatch.Ambiguous ->
+            match.candidates.firstOrNull()?.toAssignment()
+                ?: GolferAssignment.New(name = playerName)
         PickMatch.NoMatch -> GolferAssignment.New(name = playerName)
     }
 
@@ -194,7 +197,7 @@ private suspend fun applyMajorMultipliers(
 /**
  * Walk tournaments in chronological order and finalize each one that's
  * already completed on ESPN. Stops on the first non-completed event so
- * the chronological-order check inside finalizeTournament stays happy.
+ * the chronological-order check inside finalizeAndReport stays happy.
  */
 private suspend fun finalizeCompleted(
     seasonId: SeasonId,
@@ -207,7 +210,7 @@ private suspend fun finalizeCompleted(
         return
     }
     for (tournament in tournaments) {
-        when (val result = services.tournamentOpsService.finalizeTournament(tournament.id)) {
+        when (val result = services.tournamentOpsService.finalizeAndReport(tournament.id)) {
             is Result.Ok -> log.info { "Finalized '${tournament.name}'" }
             is Result.Err -> {
                 log.info { "Stopping finalize loop at '${tournament.name}': ${result.error}" }

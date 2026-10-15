@@ -22,8 +22,8 @@ import com.cwfgw.testing.orFail
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
-import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
+import com.cwfgw.tournaments.NewTournament
 import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -297,7 +297,7 @@ class AdminServiceSpec : FunSpec({
         runBlocking {
             with(noopTransactionContext) {
                 fixture.tournamentRepo.create(
-                    CreateTournamentRequest(
+                    NewTournament(
                         pgaTournamentId = "e-1",
                         name = "Sony Open (already)",
                         seasonId = SEASON_ID,

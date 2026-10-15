@@ -50,7 +50,7 @@ interface TournamentRepository {
     fun findByPgaTournamentIdsForUpdate(pgaTournamentIds: Collection<String>): List<Tournament>
 
     context(ctx: WriteTransactionContext)
-    fun create(request: CreateTournamentRequest): Tournament
+    fun create(request: NewTournament): Tournament
 
     context(ctx: WriteTransactionContext)
     fun update(
@@ -85,7 +85,7 @@ interface TournamentRepository {
     context(ctx: WriteTransactionContext)
     fun upsertResult(
         tournamentId: TournamentId,
-        request: CreateTournamentResultRequest,
+        request: NewTournamentResult,
     ): TournamentResult
 
     /** Wipe every leaderboard row for the given tournament. Returns the row count for logging. */
@@ -118,6 +118,7 @@ private class JooqTournamentRepository : TournamentRepository {
                 }
                 filter.startsBefore?.let { add(TOURNAMENTS.START_DATE.lt(it)) }
                 filter.startsAfter?.let { add(TOURNAMENTS.START_DATE.gt(it)) }
+                filter.startsOn?.let { add(TOURNAMENTS.START_DATE.eq(it)) }
             }
         return ctx.dsl.selectFrom(TOURNAMENTS)
             .where(conditions)
@@ -176,7 +177,7 @@ private class JooqTournamentRepository : TournamentRepository {
     }
 
     context(ctx: WriteTransactionContext)
-    override fun create(request: CreateTournamentRequest): Tournament {
+    override fun create(request: NewTournament): Tournament {
         val inserted =
             ctx.dsl.insertInto(TOURNAMENTS)
                 .set(insertAssignments(request))
@@ -293,7 +294,7 @@ private class JooqTournamentRepository : TournamentRepository {
     context(ctx: WriteTransactionContext)
     override fun upsertResult(
         tournamentId: TournamentId,
-        request: CreateTournamentResultRequest,
+        request: NewTournamentResult,
     ): TournamentResult {
         val upserted =
             ctx.dsl.insertInto(TOURNAMENT_RESULTS)
@@ -306,7 +307,7 @@ private class JooqTournamentRepository : TournamentRepository {
         return toResult(upserted)
     }
 
-    private fun insertAssignments(request: CreateTournamentRequest): Map<Field<*>, Any?> =
+    private fun insertAssignments(request: NewTournament): Map<Field<*>, Any?> =
         buildMap {
             put(TOURNAMENTS.NAME, request.name)
             put(TOURNAMENTS.SEASON_ID, request.seasonId.value)
@@ -333,7 +334,7 @@ private class JooqTournamentRepository : TournamentRepository {
 
     private fun resultInsertAssignments(
         tournamentId: TournamentId,
-        request: CreateTournamentResultRequest,
+        request: NewTournamentResult,
     ): Map<Field<*>, Any?> =
         mapOf(
             TOURNAMENT_RESULTS.TOURNAMENT_ID to tournamentId.value,
@@ -350,7 +351,7 @@ private class JooqTournamentRepository : TournamentRepository {
             TOURNAMENT_RESULTS.PAIR_KEY to request.pairKey,
         )
 
-    private fun resultUpdateAssignments(request: CreateTournamentResultRequest): Map<Field<*>, Any?> =
+    private fun resultUpdateAssignments(request: NewTournamentResult): Map<Field<*>, Any?> =
         mapOf(
             TOURNAMENT_RESULTS.POSITION to request.position,
             TOURNAMENT_RESULTS.SCORE_TO_PAR to request.scoreToPar,

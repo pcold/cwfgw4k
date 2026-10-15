@@ -22,7 +22,7 @@ import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.testEspnService
-import com.cwfgw.tournaments.CreateTournamentRequest
+import com.cwfgw.tournaments.NewTournament
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentService
@@ -77,7 +77,7 @@ class AdminServiceRaceSpec : FunSpec({
         val winner =
             tx.update {
                 TournamentRepository().create(
-                    CreateTournamentRequest(
+                    NewTournament(
                         pgaTournamentId = "evt-401",
                         name = "Masters",
                         seasonId = seasonId,

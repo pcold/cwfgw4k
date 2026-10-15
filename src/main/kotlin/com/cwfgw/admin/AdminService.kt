@@ -21,12 +21,12 @@ import com.cwfgw.result.Result
 import com.cwfgw.result.map
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonService
-import com.cwfgw.teams.AddToRosterRequest
-import com.cwfgw.teams.CreateTeamRequest
+import com.cwfgw.teams.NewRosterEntry
+import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.teams.UNIQUE_TEAM_NAME_PER_SEASON
-import com.cwfgw.tournaments.CreateTournamentRequest
+import com.cwfgw.tournaments.NewTournament
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentService
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -263,7 +263,8 @@ class AdminService(
     /**
      * Before any team, so an athlete two teams share is one row, and every refusal is decided before the first write
      * since a returned error still commits. [EspnGolfers.insertedCount] can include a row a concurrent confirm
-     * inserted first, since [GolferRepository.findOrCreate] returns either the same way.
+     * inserted first, since [GolferRepository.findOrCreate] returns either the same way. Every existing row a pick
+     * names is locked with the claims, in their one order, so no roster insert after it waits out of order.
      */
     context(ctx: WriteTransactionContext)
     private fun resolveEspnGolfers(teams: List<ConfirmedTeam>): Result<EspnGolfers, AdminError> {
@@ -285,7 +286,8 @@ class AdminService(
             return Result.Err(AdminError.UnresolvableEspnGolfers(refusedIds))
         }
         val writes = claims.values.filterNotNull()
-        val written = golferRepository.findOrCreateAll(writes)
+        val existing = teams.flatMap { it.picks }.mapNotNull { (it.assignment as? GolferAssignment.Existing)?.golferId }
+        val written = golferRepository.findOrCreateAll(writes, referenced = existing.toSet() + persisted.values)
         return Result.Ok(
             EspnGolfers(
                 golferIds = persisted + written.mapValues { (_, golfer) -> golfer.id },
@@ -328,7 +330,7 @@ class AdminService(
             teamRepository.create(
                 seasonId = seasonId,
                 request =
-                    CreateTeamRequest(
+                    NewTeam(
                         ownerName = team.teamName,
                         teamName = team.teamName,
                         teamNumber = team.teamNumber,
@@ -348,7 +350,7 @@ class AdminService(
             teamRepository.addToRoster(
                 teamId = createdTeam.id,
                 request =
-                    AddToRosterRequest(
+                    NewRosterEntry(
                         golferId = golferId,
                         acquiredVia = ROSTER_ACQUIRED_VIA_DRAFT,
                         draftRound = pick.round,
@@ -376,7 +378,7 @@ class AdminService(
         findLinked(entry)?.let { return it }
         val created =
             tournamentService.create(
-                CreateTournamentRequest(
+                NewTournament(
                     pgaTournamentId = entry.espnEventId,
                     name = entry.name,
                     seasonId = seasonId,

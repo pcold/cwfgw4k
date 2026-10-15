@@ -25,8 +25,9 @@ import com.cwfgw.teams.TeamRepository
 import com.cwfgw.tournamentLinks.TournamentCompetitorListing
 import com.cwfgw.tournamentLinks.TournamentCompetitorView
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
-import com.cwfgw.tournaments.CreateTournamentResultRequest
+import com.cwfgw.tournaments.NewTournamentResult
 import com.cwfgw.tournaments.Tournament
+import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentStatus
@@ -37,6 +38,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeParseException
 
 private val log = KotlinLogging.logger {}
+
+/** Finalize's own gate: a sibling an unlinked finalize would skip as completed is never settled with. */
+private val UNFINALIZED: Set<TournamentStatus> = setOf(TournamentStatus.Upcoming, TournamentStatus.InProgress)
 
 /**
  * A named competitor [locateExistingGolferIn] credits to no row becomes a new golfer, unless names can't tell which
@@ -100,23 +104,26 @@ class EspnService(
 
     /**
      * Called once per overlay and reused across its fold, so the gather is not paid per candidate.
-     * [candidates] must hold every tournament later handed to [previewForTournament]: one left out
-     * previews without its link overrides.
+     * [candidates] must hold every completed tournament later handed to [previewForTournament]: one left
+     * out previews without its link overrides. The season's unfinalized ones are loaded as siblings anyway.
      */
     internal suspend fun loadLivePreviewContext(
         seasonId: SeasonId,
         candidates: List<Tournament>,
     ): LivePreviewContext =
         tx.read {
+            val unfinalized = findUnfinalizedIn(seasonId)
+            val previewable = (candidates + unfinalized).distinctBy { it.id }
             val overrides =
-                linkRepository.listByTournaments(candidates.map { it.id })
+                linkRepository.listByTournaments(previewable.map { it.id })
                     .groupBy({ it.tournamentId }, { it.espnCompetitorId to it.golferId })
             LivePreviewContext.from(
                 allGolfers = golferRepository.findAll(search = null),
                 teams = teamRepository.findBySeason(seasonId),
                 rosters = teamRepository.findRostersBySeason(seasonId),
                 rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults(),
-                overridesByTournament = candidates.associate { it.id to overrides[it.id].orEmpty().toMap() },
+                overridesByTournament = previewable.associate { it.id to overrides[it.id].orEmpty().toMap() },
+                unfinalizedTournaments = unfinalized,
             )
         }
 
@@ -131,8 +138,16 @@ class EspnService(
         val events =
             fetchEspnEvents(tournament.startDate).getOrElse { return Result.Err(LivePreviewError.EspnUnavailable(it)) }
         val event = findLinkedEvent(events, tournament) ?: return Result.Err(LivePreviewError.NoMatchingEvent)
-        return Result.Ok(buildLivePreviewForEvent(event, tournament, ctx))
+        val siblings = findSiblingImports(tournament, event, events, ctx.unfinalizedTournaments)
+        return Result.Ok(buildLivePreviewForEvent(event, tournament, ctx, siblings))
     }
+
+    context(ctx: TransactionContext)
+    private fun findUnfinalizedIn(
+        seasonId: SeasonId,
+        startsOn: LocalDate? = null,
+    ): List<Tournament> =
+        tournamentRepository.findAll(TournamentFilter(seasonId = seasonId, statuses = UNFINALIZED, startsOn = startsOn))
 
     /**
      * Network-only ESPN scoreboard fetch — wraps the upstream client and
@@ -173,11 +188,12 @@ class EspnService(
         val views =
             tx.read {
                 val context = buildMatchingContextIn(tournament.seasonId, tournamentId)
-                val matches =
-                    event.competitors.map { it to locateExistingGolferIn(it, context) }
-                        .settlingSurnameGuesses()
-                        .withholdingContestedRows()
-                event.competitors.zip(matches) { competitor, match ->
+                val located = event.competitors.map { it to locateExistingGolferIn(it, context) }
+                val sameDay = findUnfinalizedIn(tournament.seasonId, startsOn = tournament.startDate)
+                val siblings =
+                    findSiblingImports(tournament, event, events, sameDay)
+                        .map { sibling -> locateEventIn(sibling).matches }
+                located.settledBeside(siblings).map { (competitor, match) ->
                     TournamentCompetitorView(
                         espnCompetitorId = competitor.espnId,
                         name = competitor.name,
@@ -212,12 +228,13 @@ class EspnService(
      */
     context(ctx: WriteTransactionContext)
     internal fun persistImportsIn(imports: List<EventImport>): List<EspnImportWarnings> {
+        val located = imports.map { locateEventIn(it) }
         val matched =
-            imports.map { locateEventIn(it) }
-                .settlingSurnameGuessesAcrossEvents()
-                .map(MatchedEvent::withholdingContestedRows)
-                .withholdingRowsContestedAcrossEvents()
-        val written = golferRepository.findOrCreateAll(matched.flatMap(MatchedEvent::claims))
+            located.zip(located.map(MatchedEvent::matches).settled()) { event, settled ->
+                event.copy(matches = settled)
+            }
+        val credited = matched.flatMap { it.matches }.mapNotNull { (_, match) -> match.creditedRow?.id }.toSet()
+        val written = golferRepository.findOrCreateAll(matched.flatMap(MatchedEvent::claims), referenced = credited)
         return matched.map { matchedEvent ->
             val (import, matches) = matchedEvent
             val placements =
@@ -315,7 +332,7 @@ class EspnService(
     ) {
         val requests =
             matchedPairs.map { (competitor, golferId) ->
-                CreateTournamentResultRequest(
+                NewTournamentResult(
                     golferId = golferId,
                     position = competitor.position,
                     scoreToPar = competitor.scoreToPar,
@@ -403,34 +420,30 @@ private val CompetitorMatch.creditedGolfer: Golfer?
             CompetitorMatch.Unmatched, is CompetitorMatch.IdMismatch, is CompetitorMatch.Withheld -> null
         }
 
-/** Confirm refuses the same contest: neither name says whose the row is, and the loser's new golfer would twin it. */
-private fun List<CompetitorMatch>.withholdingContestedRows(): List<CompetitorMatch> {
-    val claimsPerRow = filterIsInstance<CompetitorMatch.Idless>().groupingBy { it.golfer.id }.eachCount()
-    return map { match ->
-        if (match is CompetitorMatch.Idless && claimsPerRow.getValue(match.golfer.id) > 1) {
-            CompetitorMatch.Withheld(listOf(match.golfer))
-        } else {
-            match
-        }
-    }
-}
+/** One event's competitors, in ESPN's order, each with the row it matched. */
+private typealias LocatedField = List<Pair<EspnCompetitor, CompetitorMatch>>
+
+/**
+ * Finalize's rule over every event one import writes; the listing and the preview settle through it too, so each
+ * credits what that import would. A contest inside one event is withheld before the events are compared.
+ */
+private fun List<LocatedField>.settled(): List<LocatedField> =
+    settlingSurnameGuesses()
+        .flatMap { field -> listOf(field).withholdingContestedRows() }
+        .withholdingContestedRows()
+
+/** @see settled */
+@Suppress("ForbiddenMethodCall") // settled answers one field per field, in order, so the head is this one's.
+private fun LocatedField.settledBeside(siblings: List<LocatedField>): LocatedField =
+    (listOf(this) + siblings).settled().first()
 
 /**
  * A surname credit is a guess: it yields a row any other match credits, backfills or contests under another ESPN id,
  * and the guesser is that row's namesake. Two ids guessing one row are withheld, as two full names are.
  */
-private fun List<Pair<EspnCompetitor, CompetitorMatch>>.settlingSurnameGuesses(): List<CompetitorMatch> {
-    val settlement = SurnameGuessSettlement(this)
-    return map { (competitor, match) -> settlement.settle(competitor, match) }
-}
-
-/** @see settlingSurnameGuesses */
-private fun List<MatchedEvent>.settlingSurnameGuessesAcrossEvents(): List<MatchedEvent> {
-    val settlement = SurnameGuessSettlement(flatMap(MatchedEvent::matches))
-    return map { matched ->
-        val settled = matched.matches.map { (competitor, match) -> competitor to settlement.settle(competitor, match) }
-        matched.copy(matches = settled)
-    }
+private fun List<LocatedField>.settlingSurnameGuesses(): List<LocatedField> {
+    val settlement = SurnameGuessSettlement(flatten())
+    return map { field -> field.map { (competitor, match) -> competitor to settlement.settle(competitor, match) } }
 }
 
 /** Reads every claim before any is settled, so a guess withheld here never counts as a claim on its row. */
@@ -459,6 +472,17 @@ private class SurnameGuessSettlement(located: List<Pair<EspnCompetitor, Competit
             .groupBy(keySelector = { (rowId, _) -> rowId }, valueTransform = { (_, espnId) -> espnId })
             .mapValues { (_, espnIds) -> espnIds.toSet() }
 }
+
+/** An existing row the result is written for as matched; an [CompetitorMatch.Idless] row is a claim's instead. */
+private val CompetitorMatch.creditedRow: Golfer?
+    get() =
+        when (this) {
+            is CompetitorMatch.Credited -> golfer
+            is CompetitorMatch.SurnameGuess -> golfer
+            is CompetitorMatch.Idless, CompetitorMatch.Unmatched, is CompetitorMatch.IdMismatch,
+            is CompetitorMatch.Withheld,
+            -> null
+        }
 
 private val CompetitorMatch.guessedRow: Golfer?
     get() = (this as? CompetitorMatch.SurnameGuess)?.golfer
@@ -554,34 +578,24 @@ private fun rosteredSurnameTwin(
     return if (unplaced.isEmpty()) null else RosteredSurnameTwin(created = created, rostered = unplaced)
 }
 
-/** @see withholdingContestedRows */
-private fun MatchedEvent.withholdingContestedRows(): MatchedEvent {
-    val (competitors, located) = matches.unzip()
-    return copy(matches = competitors.zip(located.withholdingContestedRows()))
-}
-
 private val CompetitorMatch.idlessRow: Golfer?
     get() = (this as? CompetitorMatch.Idless)?.golfer
 
 /**
- * Two events' competitors with different ids naming one id-less row are the per-event contest across events, and are
- * withheld the same way. One id in two events is one athlete, not a contest.
+ * Confirm refuses the same contest: neither name says whose the row is, and the loser's new golfer would twin it. An
+ * id ESPN lists twice, in one event or across two, is one athlete and no contest, as it is on an id-bearing row.
  */
-private fun List<MatchedEvent>.withholdingRowsContestedAcrossEvents(): List<MatchedEvent> {
+private fun List<LocatedField>.withholdingContestedRows(): List<LocatedField> {
     val idsPerRow =
-        flatMap(MatchedEvent::matches)
+        flatten()
             .mapNotNull { (competitor, match) -> match.idlessRow?.let { row -> row.id to competitor.espnId } }
             .groupBy(keySelector = { (rowId, _) -> rowId }, valueTransform = { (_, espnId) -> espnId })
     val contested = idsPerRow.filterValues { espnIds -> espnIds.distinct().size > 1 }.keys
-    return map { matched ->
-        matched.copy(
-            matches =
-                matched.matches.map { (competitor, match) ->
-                    val row = match.idlessRow
-                    competitor to
-                        if (row != null && row.id in contested) CompetitorMatch.Withheld(listOf(row)) else match
-                },
-        )
+    return map { field ->
+        field.map { (competitor, match) ->
+            val row = match.idlessRow
+            competitor to if (row != null && row.id in contested) CompetitorMatch.Withheld(listOf(row)) else match
+        }
     }
 }
 
@@ -696,6 +710,26 @@ internal fun findLinkedEvent(
 ): EspnTournament? = tournament.pgaTournamentId?.let { espnId -> events.firstOrNull { it.espnId == espnId } }
 
 /**
+ * What an unlinked finalize of [tournament]'s day imports beside [event], so a preview or listing settles them as one
+ * import; none once [tournament] is finalized, since that finalize skips it, or with no unlinked tournament that day,
+ * since each linked one then finalizes alone. ESPN's completion flag is ignored: both predict the finished import.
+ */
+private fun findSiblingImports(
+    tournament: Tournament,
+    event: EspnTournament,
+    events: List<EspnTournament>,
+    unfinalized: List<Tournament>,
+): List<EventImport> {
+    val sameDay = unfinalized.filter { it.seasonId == tournament.seasonId && it.startDate == tournament.startDate }
+    if (tournament.status !in UNFINALIZED || sameDay.none { it.pgaTournamentId == null }) return emptyList()
+    return sameDay
+        .filter { it.id != tournament.id }
+        .mapNotNull { sibling ->
+            findLinkedEvent(events, sibling)?.takeIf { it.espnId != event.espnId }?.let { EventImport(sibling, it) }
+        }
+}
+
+/**
  * The team flag is [event]'s, not [tournament]'s: finalize's import writes ESPN's flag over the row before it
  * scores, and preview must pay what finalize will.
  */
@@ -703,14 +737,16 @@ internal fun buildLivePreviewForEvent(
     event: EspnTournament,
     tournament: Tournament,
     ctx: LivePreviewContext,
+    siblings: List<EventImport> = emptyList(),
 ): EspnLivePreview {
     val multiplier = tournament.payoutMultiplier
     val isTeamEvent = event.isTeamEvent
 
-    val matches =
-        event.competitors.map { it to ctx.match(it, tournament.id) }.settlingSurnameGuesses().withholdingContestedRows()
+    val located = event.competitors.map { it to ctx.match(it, tournament.id) }
+    val siblingFields =
+        siblings.map { sibling -> sibling.event.competitors.map { it to ctx.match(it, sibling.tournament.id) } }
     val matchedCompetitors: List<Pair<EspnCompetitor, Golfer?>> =
-        event.competitors.zip(matches) { competitor, match -> competitor to match.creditedGolfer }
+        located.settledBeside(siblingFields).map { (competitor, match) -> competitor to match.creditedGolfer }
     val tiedCounts = event.competitors.groupingBy { it.position }.eachCount()
 
     val teamPreviews =
@@ -791,6 +827,7 @@ internal data class LivePreviewContext(
     val golferOwners: Map<GolferId, List<Pair<TeamId, BigDecimal>>>,
     val numPlaces: Int,
     val overridesByTournament: Map<TournamentId, Map<String, GolferId>>,
+    val unfinalizedTournaments: List<Tournament> = emptyList(),
 ) {
     companion object {
         fun from(
@@ -799,6 +836,7 @@ internal data class LivePreviewContext(
             rosters: List<RosterEntry>,
             rules: SeasonRules,
             overridesByTournament: Map<TournamentId, Map<String, GolferId>>,
+            unfinalizedTournaments: List<Tournament> = emptyList(),
         ): LivePreviewContext =
             LivePreviewContext(
                 teams = teams,
@@ -814,6 +852,7 @@ internal data class LivePreviewContext(
                         .mapValues { (_, entries) -> entries.map { it.teamId to it.ownershipPct } },
                 numPlaces = rules.payouts.size,
                 overridesByTournament = overridesByTournament,
+                unfinalizedTournaments = unfinalizedTournaments,
             )
     }
 }

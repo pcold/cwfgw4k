@@ -30,9 +30,9 @@ import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.noopTransactionContext
-import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.ESPN_SCHEDULE_ZONE
 import com.cwfgw.tournaments.FakeTournamentRepository
+import com.cwfgw.tournaments.NewTournamentResult
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentResult
@@ -262,8 +262,8 @@ private class FailsFirstFetchEspnClient(
     override suspend fun fetchCalendar(): List<EspnCalendarEntry> = emptyList()
 }
 
-private fun asUpsertRequest(r: TournamentResult): CreateTournamentResultRequest =
-    CreateTournamentResultRequest(
+private fun asUpsertRequest(r: TournamentResult): NewTournamentResult =
+    NewTournamentResult(
         golferId = r.golferId,
         position = r.position,
         scoreToPar = r.scoreToPar,

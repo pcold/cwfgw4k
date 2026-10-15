@@ -49,8 +49,8 @@ class TournamentRepositorySpec : FunSpec({
         startDate: LocalDate = LocalDate.parse("2026-04-09"),
         endDate: LocalDate = LocalDate.parse("2026-04-12"),
         payoutMultiplier: BigDecimal? = null,
-    ): CreateTournamentRequest =
-        CreateTournamentRequest(
+    ): NewTournament =
+        NewTournament(
             name = name,
             seasonId = seasonId,
             startDate = startDate,
@@ -110,7 +110,7 @@ class TournamentRepositorySpec : FunSpec({
                     ).id
                 val mine = repository.create(create(name = "Mine"))
                 repository.create(
-                    CreateTournamentRequest(
+                    NewTournament(
                         name = "Theirs",
                         seasonId = otherSeason,
                         startDate = LocalDate.parse("2026-04-09"),
@@ -160,7 +160,7 @@ class TournamentRepositorySpec : FunSpec({
             tx.update {
                 repository.create(create(name = "Other"))
                 repository.create(
-                    CreateTournamentRequest(
+                    NewTournament(
                         name = "The Masters",
                         seasonId = seasonId,
                         startDate = LocalDate.parse("2026-04-09"),
@@ -213,11 +213,11 @@ class TournamentRepositorySpec : FunSpec({
                 val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
                 repository.upsertResult(
                     tournament.id,
-                    CreateTournamentResultRequest(golferId = rory.id, position = 2, earnings = 1_500_000),
+                    NewTournamentResult(golferId = rory.id, position = 2, earnings = 1_500_000),
                 )
                 repository.upsertResult(
                     tournament.id,
-                    CreateTournamentResultRequest(golferId = scottie.id, position = 1, earnings = 2_500_000),
+                    NewTournamentResult(golferId = scottie.id, position = 1, earnings = 2_500_000),
                 )
                 Triple(tournament, rory, scottie)
             }
@@ -236,8 +236,8 @@ class TournamentRepositorySpec : FunSpec({
                 val c = repository.create(create(name = "Open C", startDate = LocalDate.parse("2026-04-15")))
                 val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
                 val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
-                repository.upsertResult(a.id, CreateTournamentResultRequest(golferId = rory.id, position = 1))
-                repository.upsertResult(b.id, CreateTournamentResultRequest(golferId = scottie.id, position = 1))
+                repository.upsertResult(a.id, NewTournamentResult(golferId = rory.id, position = 1))
+                repository.upsertResult(b.id, NewTournamentResult(golferId = scottie.id, position = 1))
                 // Tournament c has no results — its id is passed in but should contribute zero rows.
                 Triple(a.id, b.id, c.id)
             }
@@ -262,12 +262,12 @@ class TournamentRepositorySpec : FunSpec({
                 val initial =
                     repository.upsertResult(
                         tournament.id,
-                        CreateTournamentResultRequest(golferId = rory.id, position = 30, madeCut = true),
+                        NewTournamentResult(golferId = rory.id, position = 30, madeCut = true),
                     )
                 val updated =
                     repository.upsertResult(
                         tournament.id,
-                        CreateTournamentResultRequest(golferId = rory.id, position = 2, madeCut = true),
+                        NewTournamentResult(golferId = rory.id, position = 2, madeCut = true),
                     )
                 val resultIds = repository.getResults(tournament.id).map { it.id }
                 resultIds shouldContainExactly listOf(initial.id)

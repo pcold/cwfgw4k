@@ -20,13 +20,13 @@ class TournamentCreateRaceSpec : FunSpec({
     val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
     val service = TournamentService(TournamentRepository(), tx)
 
-    suspend fun masters(): CreateTournamentRequest {
+    suspend fun masters(): NewTournament {
         val season =
             tx.update {
                 val league = LeagueRepository().create(CreateLeagueRequest(name = "Castlewood"))
                 SeasonRepository().create(CreateSeasonRequest(leagueId = league.id, name = "2026", seasonYear = 2026))
             }
-        return CreateTournamentRequest(
+        return NewTournament(
             pgaTournamentId = "evt-401",
             name = "Masters",
             seasonId = season.id,

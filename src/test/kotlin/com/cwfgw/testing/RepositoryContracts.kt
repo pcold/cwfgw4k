@@ -13,7 +13,7 @@ import com.cwfgw.result.Result
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.teams.CreateTeamRequest
+import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.tournaments.TournamentId
@@ -92,7 +92,7 @@ internal class PostgresSeeds(private val tx: Transactor) : ContractSeeds {
     override suspend fun team(): TeamId {
         val season = season()
         return tx.update {
-            TeamRepository().create(season, CreateTeamRequest(ownerName = "Seeded", teamName = "Seeded")).id
+            TeamRepository().create(season, NewTeam(ownerName = "Seeded", teamName = "Seeded")).id
         }
     }
 

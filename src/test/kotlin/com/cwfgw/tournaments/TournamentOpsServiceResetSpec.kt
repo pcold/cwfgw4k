@@ -40,7 +40,7 @@ class TournamentOpsServiceResetSpec : FunSpec({
                     GolferRepository().create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
                 tournamentRepo.upsertResult(
                     tournamentId,
-                    CreateTournamentResultRequest(golferId = golfer.id, position = 1),
+                    NewTournamentResult(golferId = golfer.id, position = 1),
                 )
                 seedTeams(seasonId).forEach { teamId ->
                     scoringRepo.upsertScore(

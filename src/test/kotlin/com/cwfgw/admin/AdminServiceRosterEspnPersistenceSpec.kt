@@ -16,7 +16,7 @@ import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.seasons.SeasonService
-import com.cwfgw.teams.CreateTeamRequest
+import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
@@ -118,7 +118,7 @@ class AdminServiceRosterEspnPersistenceSpec : FunSpec({
 
     test("a confirm that fails after inserting an ESPN athlete leaves neither the golfer nor any roster") {
         val seasonId = seedSeason()
-        val takenName = CreateTeamRequest(ownerName = "BROWN", teamName = "BROWN", teamNumber = 1)
+        val takenName = NewTeam(ownerName = "BROWN", teamName = "BROWN", teamNumber = 1)
         tx.update { TeamRepository().create(seasonId, takenName) }
         val before = golferCount()
         val brown = fullTeam(1, "BROWN", espnPick(1, "espn-1", "Scottie Scheffler"))

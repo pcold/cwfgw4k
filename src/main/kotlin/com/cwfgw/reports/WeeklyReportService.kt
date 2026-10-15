@@ -269,7 +269,7 @@ class WeeklyReportService(
             }.sortedByDescending { it.totalCash }
         return Rankings(
             teams = baseTeams,
-            weeks = sortedIncluded.map { it.week ?: "" },
+            weeks = sortedIncluded.map { it.week.orEmpty() },
             tournamentNames = sortedIncluded.map { it.name },
         )
     }

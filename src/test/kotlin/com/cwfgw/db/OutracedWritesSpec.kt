@@ -4,12 +4,13 @@ import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
-import com.cwfgw.teams.CreateTeamRequest
+import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.postgresHarness
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import org.jooq.exception.DataAccessException
 import java.util.UUID
@@ -47,7 +48,7 @@ class OutracedWritesSpec : FunSpec({
     }
 
     test("a violation that names the constraint but is not a unique violation still throws") {
-        val orphan = CreateTeamRequest(ownerName = "Nobody", teamName = "ORPHAN", teamNumber = 1)
+        val orphan = NewTeam(ownerName = "Nobody", teamName = "ORPHAN", teamNumber = 1)
 
         shouldThrow<DataAccessException> {
             tx.updateOrOutraced("teams_season_id_fkey", outraced = { Outraced }) {
@@ -63,5 +64,30 @@ class OutracedWritesSpec : FunSpec({
             }
 
         result shouldBe Result.Ok(tx.read { golfers.findByPgaPlayerId("espn-1") })
+    }
+
+    test("a write outraced inside a transaction undoes that write alone and answers null") {
+        tx.update { golfers.create(scottie) }
+
+        val written =
+            tx.update {
+                golfers.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
+                writeOrOutraced(PGA_PLAYER_ID_KEY) {
+                    golfers.create(CreateGolferRequest(firstName = "Ludvig", lastName = "Aberg"))
+                    golfers.create(scottie)
+                }
+            }
+
+        written shouldBe null
+        tx.read { golfers.findAll(search = null) }.map { it.firstName } shouldContainExactlyInAnyOrder
+            listOf("Scottie", "Rory")
+    }
+
+    test("a write outraced on a different constraint still throws") {
+        tx.update { golfers.create(scottie) }
+
+        shouldThrow<DataAccessException> {
+            tx.update { writeOrOutraced("users_username_key") { golfers.create(scottie) } }
+        }
     }
 })

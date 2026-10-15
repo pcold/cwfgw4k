@@ -11,8 +11,8 @@ import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.teams.AddToRosterRequest
-import com.cwfgw.teams.CreateTeamRequest
+import com.cwfgw.teams.NewRosterEntry
+import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamRepository
 import java.util.UUID
@@ -55,7 +55,7 @@ fun seedRosteredTeam(
     golferIds: List<GolferId>,
 ): TeamId {
     val teams = TeamRepository()
-    val team = teams.create(seasonId, CreateTeamRequest(ownerName = "Owner", teamName = "Team ${UUID.randomUUID()}"))
-    golferIds.forEach { golferId -> teams.addToRoster(team.id, AddToRosterRequest(golferId = golferId)) }
+    val team = teams.create(seasonId, NewTeam(ownerName = "Owner", teamName = "Team ${UUID.randomUUID()}"))
+    golferIds.forEach { golferId -> teams.addToRoster(team.id, NewRosterEntry(golferId = golferId)) }
     return team.id
 }

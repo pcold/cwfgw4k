@@ -39,7 +39,7 @@ class TeamRepositorySpec : FunSpec({
 
     test("create persists the team under a season") {
         tx.update {
-            val created = repository.create(seasonId, CreateTeamRequest(ownerName = "Alice", teamName = "Eagles"))
+            val created = repository.create(seasonId, NewTeam(ownerName = "Alice", teamName = "Eagles"))
 
             created.seasonId shouldBe seasonId
             created.ownerName shouldBe "Alice"
@@ -50,10 +50,10 @@ class TeamRepositorySpec : FunSpec({
 
     test("findBySeason orders by team_number asc nulls last, then team_name") {
         tx.update {
-            val unnumberedLater = repository.create(seasonId, CreateTeamRequest("Carol", "Wolves"))
-            val numbered2 = repository.create(seasonId, CreateTeamRequest("Bob", "Hawks", teamNumber = 2))
-            val numbered1 = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles", teamNumber = 1))
-            val unnumberedEarly = repository.create(seasonId, CreateTeamRequest("Dave", "Bears"))
+            val unnumberedLater = repository.create(seasonId, NewTeam("Carol", "Wolves"))
+            val numbered2 = repository.create(seasonId, NewTeam("Bob", "Hawks", teamNumber = 2))
+            val numbered1 = repository.create(seasonId, NewTeam("Alice", "Eagles", teamNumber = 1))
+            val unnumberedEarly = repository.create(seasonId, NewTeam("Dave", "Bears"))
 
             val result = repository.findBySeason(seasonId)
 
@@ -64,10 +64,10 @@ class TeamRepositorySpec : FunSpec({
 
     test("addToRoster applies default acquired_via and ownership_pct") {
         tx.update {
-            val team = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
+            val team = repository.create(seasonId, NewTeam("Alice", "Eagles"))
             val golfer = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
 
-            val entry = repository.addToRoster(team.id, AddToRosterRequest(golferId = golfer.id))
+            val entry = repository.addToRoster(team.id, NewRosterEntry(golferId = golfer.id))
 
             entry.teamId shouldBe team.id
             entry.golferId shouldBe golfer.id
@@ -78,7 +78,7 @@ class TeamRepositorySpec : FunSpec({
 
     test("findRostersBySeason orders a team's entries by draft_round asc nulls last") {
         tx.update {
-            val team = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
+            val team = repository.create(seasonId, NewTeam("Alice", "Eagles"))
             val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
             val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
             val phil = golferRepo.create(CreateGolferRequest(firstName = "Phil", lastName = "Mickelson"))
@@ -86,14 +86,14 @@ class TeamRepositorySpec : FunSpec({
             val roundedScottie =
                 repository.addToRoster(
                     team.id,
-                    AddToRosterRequest(golferId = scottie.id, draftRound = 1, acquiredVia = "draft"),
+                    NewRosterEntry(golferId = scottie.id, draftRound = 1, acquiredVia = "draft"),
                 )
             val roundedRory =
                 repository.addToRoster(
                     team.id,
-                    AddToRosterRequest(golferId = rory.id, draftRound = 2, acquiredVia = "draft"),
+                    NewRosterEntry(golferId = rory.id, draftRound = 2, acquiredVia = "draft"),
                 )
-            val unrounded = repository.addToRoster(team.id, AddToRosterRequest(golferId = phil.id))
+            val unrounded = repository.addToRoster(team.id, NewRosterEntry(golferId = phil.id))
 
             val roster = repository.findRostersBySeason(seasonId)
 
@@ -103,15 +103,15 @@ class TeamRepositorySpec : FunSpec({
 
     test("findRostersBySeason returns entries across every team in the season") {
         tx.update {
-            val alice = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
-            val bob = repository.create(seasonId, CreateTeamRequest("Bob", "Hawks"))
+            val alice = repository.create(seasonId, NewTeam("Alice", "Eagles"))
+            val bob = repository.create(seasonId, NewTeam("Bob", "Hawks"))
             val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
             val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
             val phil = golferRepo.create(CreateGolferRequest(firstName = "Phil", lastName = "Mickelson"))
 
-            repository.addToRoster(alice.id, AddToRosterRequest(golferId = rory.id, draftRound = 1))
-            repository.addToRoster(alice.id, AddToRosterRequest(golferId = scottie.id, draftRound = 2))
-            repository.addToRoster(bob.id, AddToRosterRequest(golferId = phil.id, draftRound = 1))
+            repository.addToRoster(alice.id, NewRosterEntry(golferId = rory.id, draftRound = 1))
+            repository.addToRoster(alice.id, NewRosterEntry(golferId = scottie.id, draftRound = 2))
+            repository.addToRoster(bob.id, NewRosterEntry(golferId = phil.id, draftRound = 1))
 
             val rosters = repository.findRostersBySeason(seasonId)
 
@@ -133,12 +133,12 @@ class TeamRepositorySpec : FunSpec({
             }.id
 
         tx.update {
-            val team = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
-            val otherTeam = repository.create(otherSeasonId, CreateTeamRequest("Carol", "Wolves"))
+            val team = repository.create(seasonId, NewTeam("Alice", "Eagles"))
+            val otherTeam = repository.create(otherSeasonId, NewTeam("Carol", "Wolves"))
             val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
             val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
-            repository.addToRoster(team.id, AddToRosterRequest(golferId = rory.id))
-            repository.addToRoster(otherTeam.id, AddToRosterRequest(golferId = scottie.id))
+            repository.addToRoster(team.id, NewRosterEntry(golferId = rory.id))
+            repository.addToRoster(otherTeam.id, NewRosterEntry(golferId = scottie.id))
 
             repository.findRostersBySeason(seasonId).map { it.golferId } shouldContainExactly listOf(rory.id)
         }
@@ -146,18 +146,18 @@ class TeamRepositorySpec : FunSpec({
 
     test("getRosterView groups picks by team, joining golfer names") {
         tx.update {
-            val alice = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles"))
-            val bob = repository.create(seasonId, CreateTeamRequest("Bob", "Hawks"))
+            val alice = repository.create(seasonId, NewTeam("Alice", "Eagles"))
+            val bob = repository.create(seasonId, NewTeam("Bob", "Hawks"))
             val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
             val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
 
             repository.addToRoster(
                 alice.id,
-                AddToRosterRequest(golferId = rory.id, draftRound = 1, acquiredVia = "draft"),
+                NewRosterEntry(golferId = rory.id, draftRound = 1, acquiredVia = "draft"),
             )
             repository.addToRoster(
                 bob.id,
-                AddToRosterRequest(golferId = scottie.id, draftRound = 1, acquiredVia = "draft"),
+                NewRosterEntry(golferId = scottie.id, draftRound = 1, acquiredVia = "draft"),
             )
 
             val view = repository.getRosterView(seasonId)
@@ -171,23 +171,23 @@ class TeamRepositorySpec : FunSpec({
     test("getRosterView orders teams by team_number asc nulls last and carries the number") {
         tx.update {
             // Created out of team_number order; the view must still come back numbered order.
-            val hawks = repository.create(seasonId, CreateTeamRequest("Bob", "Hawks", teamNumber = 2))
-            val eagles = repository.create(seasonId, CreateTeamRequest("Alice", "Eagles", teamNumber = 1))
-            val bears = repository.create(seasonId, CreateTeamRequest("Dave", "Bears"))
+            val hawks = repository.create(seasonId, NewTeam("Bob", "Hawks", teamNumber = 2))
+            val eagles = repository.create(seasonId, NewTeam("Alice", "Eagles", teamNumber = 1))
+            val bears = repository.create(seasonId, NewTeam("Dave", "Bears"))
             val rory = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
             val scottie = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
             val phil = golferRepo.create(CreateGolferRequest(firstName = "Phil", lastName = "Mickelson"))
             repository.addToRoster(
                 hawks.id,
-                AddToRosterRequest(golferId = rory.id, draftRound = 1, acquiredVia = "draft"),
+                NewRosterEntry(golferId = rory.id, draftRound = 1, acquiredVia = "draft"),
             )
             repository.addToRoster(
                 eagles.id,
-                AddToRosterRequest(golferId = scottie.id, draftRound = 1, acquiredVia = "draft"),
+                NewRosterEntry(golferId = scottie.id, draftRound = 1, acquiredVia = "draft"),
             )
             repository.addToRoster(
                 bears.id,
-                AddToRosterRequest(golferId = phil.id, draftRound = 1, acquiredVia = "draft"),
+                NewRosterEntry(golferId = phil.id, draftRound = 1, acquiredVia = "draft"),
             )
 
             val view = repository.getRosterView(seasonId)

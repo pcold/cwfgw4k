@@ -3,6 +3,7 @@ package com.cwfgw.db
 import com.cwfgw.result.Result
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jooq.exception.DataAccessException
+import org.jooq.impl.DSL
 import org.postgresql.util.PSQLException
 import org.postgresql.util.ServerErrorMessage
 
@@ -27,6 +28,30 @@ internal suspend fun <T, E> Transactor.updateOrOutraced(
         log.warn(thrown) { "cwfgw4k.db event=write-outraced" }
         Result.Err(outraced())
     }
+
+/**
+ * Null when [block] raises a 23505 on [constraint], as [updateOrOutraced] converts it, but inside the caller's
+ * transaction: a savepoint undoes the block alone, so the caller can go on to read the winner's row.
+ */
+context(ctx: WriteTransactionContext)
+internal fun <T : Any> writeOrOutraced(
+    constraint: String,
+    block: () -> T?,
+): T? {
+    val savepoint = DSL.name("outraced_write")
+    ctx.dsl.savepoint(savepoint).execute()
+    val written =
+        try {
+            block()
+        } catch (thrown: DataAccessException) {
+            if (thrown.violatedUniqueConstraint() != constraint) throw thrown
+            log.warn(thrown) { "cwfgw4k.db event=write-outraced" }
+            ctx.dsl.rollback().toSavepoint(savepoint).execute()
+            return null
+        }
+    ctx.dsl.releaseSavepoint(savepoint).execute()
+    return written
+}
 
 /** Through jOOQ's cause walk, so a coroutine-recovered copy of the exception still matches. */
 private fun DataAccessException.violatedUniqueConstraint(): String? {

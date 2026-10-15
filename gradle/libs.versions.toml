@@ -12,6 +12,7 @@ jooq = "3.21.9"
 bcrypt = "0.10.2"
 hoplite = "3.0.3"
 kotest = "5.9.1"
+konsist = "0.17.3"
 kotest-extensions-testcontainers = "2.0.2"
 testcontainers = "1.21.4"
 docker-java = "3.7.1"
@@ -68,6 +69,7 @@ kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.
 kotest-framework-datatest = { module = "io.kotest:kotest-framework-datatest", version.ref = "kotest" }
 kotest-property = { module = "io.kotest:kotest-property", version.ref = "kotest" }
 kotest-extensions-testcontainers = { module = "io.kotest.extensions:kotest-extensions-testcontainers", version.ref = "kotest-extensions-testcontainers" }
+konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
 testcontainers-junit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
 testcontainers-postgres = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
 docker-java-api = { module = "com.github.docker-java:docker-java-api", version.ref = "docker-java" }

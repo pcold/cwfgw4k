@@ -17,7 +17,7 @@ import com.cwfgw.scoring.ScoringService
 import com.cwfgw.scoring.UpsertScore
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.teams.AddToRosterRequest
+import com.cwfgw.teams.NewRosterEntry
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
@@ -63,8 +63,8 @@ class TournamentOpsServiceUnlinkedScoringSpec : FunSpec({
         val linkedWeek = tx.update { seedWeek(golfers, LINKED_WEEK, LINKED_ESPN_IDS) }
         val ops = opsService(tx)
 
-        ops.finalizeTournament(unlinkedWeek.unlinked.id).orFail()
-        linkedWeek.matches.forEach { match -> ops.finalizeTournament(match.id).orFail() }
+        ops.finalizeAndReport(unlinkedWeek.unlinked.id).orFail()
+        linkedWeek.matches.forEach { match -> ops.finalizeAndReport(match.id).orFail() }
 
         val payouts = tx.payoutsOf(unlinkedWeek.seasonId)
         payouts.map(TeamPayout::tournament).toSet() shouldBe MATCH_NAMES.toSet()
@@ -83,7 +83,7 @@ class TournamentOpsServiceUnlinkedScoringSpec : FunSpec({
                 scores = upserts,
             )
 
-        ops.finalizeTournament(week.unlinked.id) shouldBe Result.Err(TournamentOpsError.TournamentNotFound(second.id))
+        ops.finalizeAndReport(week.unlinked.id) shouldBe Result.Err(TournamentOpsError.TournamentNotFound(second.id))
 
         upserts.scoredTournaments.toSet() shouldBe setOf(first.id)
         week.matches.forEach { match ->
@@ -97,7 +97,7 @@ class TournamentOpsServiceUnlinkedScoringSpec : FunSpec({
         val golfers = tx.update { seedGolfers() }
         val week = tx.update { seedWeek(golfers, UNLINKED_WEEK, UNLINKED_ESPN_IDS) }
 
-        opsService(tx).finalizeTournament(week.unlinked.id).orFail().status shouldBe TournamentStatus.Upcoming
+        opsService(tx).finalizeAndReport(week.unlinked.id).orFail().tournament.status shouldBe TournamentStatus.Upcoming
 
         tx.get { TournamentRepository().getResults(week.unlinked.id) }.shouldBeEmpty()
         tx.get { ScoringRepository().getScores(week.seasonId, week.unlinked.id) }.shouldBeEmpty()
@@ -162,15 +162,15 @@ private fun seedWeek(
 ): SeededWeek {
     val seasonId = seedSeason()
     val (alpha, bravo, charlie) = seedTeams(seasonId)
-    val halfScheffler = AddToRosterRequest(golferId = golfers.getValue(SCHEFFLER), ownershipPct = BigDecimal(50))
+    val halfScheffler = NewRosterEntry(golferId = golfers.getValue(SCHEFFLER), ownershipPct = BigDecimal(50))
     TeamRepository().addToRoster(alpha, halfScheffler)
     TeamRepository().addToRoster(charlie, halfScheffler)
-    TeamRepository().addToRoster(bravo, AddToRosterRequest(golferId = golfers.getValue(MCILROY)))
-    TeamRepository().addToRoster(charlie, AddToRosterRequest(golferId = golfers.getValue(MORIKAWA)))
+    TeamRepository().addToRoster(bravo, NewRosterEntry(golferId = golfers.getValue(MCILROY)))
+    TeamRepository().addToRoster(charlie, NewRosterEntry(golferId = golfers.getValue(MORIKAWA)))
     val matches =
         MATCH_NAMES.zip(espnIds).mapIndexed { index, (name, espnId) ->
             TournamentRepository().create(
-                CreateTournamentRequest(
+                NewTournament(
                     name = name,
                     seasonId = seasonId,
                     startDate = startDate,
@@ -182,7 +182,7 @@ private fun seedWeek(
         }
     val unlinked =
         TournamentRepository().create(
-            CreateTournamentRequest(
+            NewTournament(
                 name = "Week placeholder",
                 seasonId = seasonId,
                 startDate = startDate,

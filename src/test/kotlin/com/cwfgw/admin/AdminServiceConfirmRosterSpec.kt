@@ -11,7 +11,7 @@ import com.cwfgw.result.Result
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.seasons.SeasonService
-import com.cwfgw.teams.CreateTeamRequest
+import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.orFail
@@ -167,7 +167,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
                 teamRepo().create(
                     seasonId = sid,
                     request =
-                        CreateTeamRequest(
+                        NewTeam(
                             ownerName = "Pre-existing",
                             teamName = "WOMBLE",
                             teamNumber = 99,

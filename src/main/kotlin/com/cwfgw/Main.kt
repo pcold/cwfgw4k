@@ -48,6 +48,7 @@ fun main() {
     val database = Database.start(config.db)
     val httpClient = buildHttpClient()
     val services = buildServices(config, database, httpClient)
+    @Suppress("ForbiddenMethodCall") // the server entry point, where src/CLAUDE.md allows runBlocking
     runBlocking { seedAdminIfEmpty(services.authService, services.userRepository, services.transactor, config.auth) }
     embeddedServer(Netty, port = config.http.port, host = config.http.host) {
         module(services, database.dataSource.poolMetricsOrNull())

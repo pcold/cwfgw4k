@@ -14,7 +14,7 @@ import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.SeasonOpsService
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.teams.AddToRosterRequest
+import com.cwfgw.teams.NewRosterEntry
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.Pause
 import com.cwfgw.testing.orFail
@@ -51,10 +51,10 @@ class TournamentSeasonLockRaceSpec : FunSpec({
         val seasonOps = SeasonOpsService(SeasonRepository(), TournamentRepository(), ScoringRepository(), tx)
 
         coroutineScope {
-            val finalize = async { pausedFinalize.finalizeTournament(event.id) }
+            val finalize = async { pausedFinalize.finalizeAndReport(event.id) }
             val (clean, waited) = pause.contend(postgres) { async { seasonOps.cleanSeasonResults(event.seasonId) } }
 
-            finalize.await().orFail().status shouldBe TournamentStatus.Completed
+            finalize.await().orFail().tournament.status shouldBe TournamentStatus.Completed
             clean.await()?.resultsDeleted shouldBe 1
             waited.shouldBeTrue()
         }
@@ -70,7 +70,7 @@ class TournamentSeasonLockRaceSpec : FunSpec({
 
         coroutineScope {
             val put = async { TournamentService(pause.afterUpdate(), tx).update(earlier.id, reopen) }
-            val (finalize, waited) = pause.contend(postgres) { async { opsService(tx).finalizeTournament(later.id) } }
+            val (finalize, waited) = pause.contend(postgres) { async { opsService(tx).finalizeAndReport(later.id) } }
 
             val reopened = checkNotNull(put.await())
             finalize.await() shouldBe Result.Err(TournamentOpsError.OutOfOrder(Action.Finalize, listOf(reopened)))
@@ -85,7 +85,7 @@ class TournamentSeasonLockRaceSpec : FunSpec({
 
         coroutineScope {
             val put = async { TournamentService(pause.afterUpdate(), tx).update(moving.id, moveEarlier) }
-            val (finalize, waited) = pause.contend(postgres) { async { opsService(tx).finalizeTournament(event.id) } }
+            val (finalize, waited) = pause.contend(postgres) { async { opsService(tx).finalizeAndReport(event.id) } }
 
             val moved = checkNotNull(put.await())
             finalize.await() shouldBe Result.Err(TournamentOpsError.OutOfOrder(Action.Finalize, listOf(moved)))
@@ -99,7 +99,7 @@ class TournamentSeasonLockRaceSpec : FunSpec({
         val pausedFinalize = opsService(tx, scoringTournamentRepository = pause.afterImport())
 
         coroutineScope {
-            val finalize = async { pausedFinalize.finalizeTournament(unlinked.id) }
+            val finalize = async { pausedFinalize.finalizeAndReport(unlinked.id) }
             val (reset, _) = pause.contend(postgres) { async { opsService(tx).resetTournament(seeded.earlier.id) } }
 
             finalize.await().orFail()
@@ -189,7 +189,7 @@ private fun seedRosteredEvent(): Tournament {
         GolferRepository().create(
             CreateGolferRequest(pgaPlayerId = FINISHER_ESPN_ID, firstName = "Scottie", lastName = "Scheffler"),
         )
-    TeamRepository().addToRoster(seedTeams(event.seasonId).first(), AddToRosterRequest(golferId = finisher.id))
+    TeamRepository().addToRoster(seedTeams(event.seasonId).first(), NewRosterEntry(golferId = finisher.id))
     return event
 }
 
@@ -205,7 +205,7 @@ private fun seedConsecutiveWeeks(): Pair<Tournament, Tournament> {
 context(ctx: WriteTransactionContext)
 private fun seedEarlierWeek(later: Tournament): Tournament =
     TournamentRepository().create(
-        CreateTournamentRequest(
+        NewTournament(
             name = "RBC Heritage",
             seasonId = later.seasonId,
             startDate = EARLIER_WEEK,
@@ -219,7 +219,7 @@ private fun seedWeekAfter(): Pair<Tournament, Tournament> {
     val event = seedLinkedEvent()
     val after =
         TournamentRepository().create(
-            CreateTournamentRequest(
+            NewTournament(
                 name = "Zurich Classic",
                 seasonId = event.seasonId,
                 startDate = LATER_WEEK,

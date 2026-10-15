@@ -26,11 +26,8 @@ enum class TournamentStatus(val value: String) {
 
     companion object {
         /**
-         * Parse a wire/DB string into a status, returning `null` for
-         * unrecognized input. Routes use this to reject malformed
-         * `?status=` query parameters at the HTTP boundary; the
-         * repository uses it to translate column values, asserting
-         * non-null because the DB is write-controlled by us.
+         * Null rather than a throw, so each caller names its own failure: the serializer rejects the payload,
+         * and the repository's `decoded` raises a `ColumnDomainViolation` naming the column.
          */
         fun fromValueOrNull(value: String): TournamentStatus? = entries.firstOrNull { it.value == value }
     }

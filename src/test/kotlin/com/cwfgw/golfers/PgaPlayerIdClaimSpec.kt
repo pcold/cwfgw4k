@@ -37,6 +37,24 @@ class PgaPlayerIdClaimSpec : FunSpec({
         written.getValue("100").id shouldBe fleetwood.id
     }
 
+    test("every row is locked before the first write, in golfer-id order, a backfill's row for its update") {
+        val (first, second, third) = (1L..3L).map { GolferId(UUID(0L, it)) }
+        val fleetwood = idlessGolfer("Tommy", "Fleetwood").copy(id = third)
+        val mcilroy = idlessGolfer("Rory", "McIlroy").copy(id = first)
+        val repository = ClaimRecordingGolferRepository(FakeGolferRepository(initial = listOf(fleetwood, mcilroy)))
+
+        with(noopTransactionContext) {
+            repository.findOrCreateAll(
+                listOf(backfill(fleetwood, "100"), create("200", "Ludvig Aberg"), backfill(mcilroy, "300")),
+                referenced = setOf(third, second),
+            )
+        }
+
+        repository.locks shouldContainExactly
+            listOf("Backfill" to first, "Reference" to second, "Backfill" to third)
+                .map { (lock, id) -> "$lock ${id.value} after 0 writes" }
+    }
+
     test("a lost backfill falls back to findOrCreate and answers the row holding the id") {
         val holder = idlessGolfer("Tommy", "Fleetwood").copy(pgaPlayerId = "100")
         val namesake = idlessGolfer("Tommy", "Fleetwood")
@@ -53,6 +71,16 @@ private class ClaimRecordingGolferRepository(
     private val delegate: GolferRepository,
 ) : GolferRepository by delegate {
     val writes = mutableListOf<String>()
+    val locks = mutableListOf<String>()
+
+    context(ctx: WriteTransactionContext)
+    override fun lockRow(
+        id: GolferId,
+        lock: GolferRowLock,
+    ) {
+        locks += "$lock ${id.value} after ${writes.size} writes"
+        delegate.lockRow(id, lock)
+    }
 
     context(ctx: WriteTransactionContext)
     override fun findOrCreate(request: CreateGolferRequest): Golfer {
