@@ -204,4 +204,20 @@ describe('CreateSeasonSection', () => {
     });
     expect(createSeasonMock.mock.calls[0]?.[0].rules).toEqual({ ...serverDefaults, sideBetRounds: [] });
   });
+
+  it('disables submit rather than sending no side-bet rounds when the rounds field reads as none', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<CreateSeasonSection />, { withLeagueSeasonProvider: false });
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^League$/i)).toHaveValue('lg-1');
+    });
+    await user.type(screen.getByLabelText(/Season Name/i), 'Spring');
+
+    const rounds = screen.getByLabelText(/Rounds/i);
+    await user.clear(rounds);
+    await user.type(rounds, 'five');
+
+    expect(screen.getByRole('button', { name: /Create Season/i })).toBeDisabled();
+    expect(createSeasonMock).not.toHaveBeenCalled();
+  });
 });

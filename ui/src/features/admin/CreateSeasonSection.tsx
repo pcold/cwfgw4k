@@ -6,7 +6,7 @@ import type { League, Season, SeasonRules } from '@/shared/api/types';
 import { FIELD_CLASS, FieldShell, TextField } from '@/shared/components/formFields';
 import { QueryState } from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
-import { buildRules, formatSideBetRounds } from './rulesInput';
+import { buildRules, formatSideBetRounds, parseSideBetRounds } from './rulesInput';
 
 function CreateSeasonSection(): ReactNode {
   const defaultsQuery = useQuery({
@@ -53,6 +53,9 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
   const sideBetAmount = editedSideBetAmount ?? String(defaults.sideBetAmount);
   // Numbers are kept as typed: Number('') is 0, so a cleared field would otherwise submit a zero nobody entered.
   const fieldCleared = [seasonYear, ...payouts, tieFloor, sideBetAmount].includes('');
+  // An empty list means no side bets, so text that parses to no rounds must not submit as that choice.
+  const roundsUnreadable =
+    sideBetRoundsStr.trim() !== '' && parseSideBetRounds(sideBetRoundsStr).length === 0;
   const [success, setSuccess] = useState<string | null>(null);
 
   const createMutation = useMutation({
@@ -76,7 +79,7 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
 
   const errorMessage = mutationError(createMutation.error);
 
-  const disabled = createMutation.isPending || !seasonName.trim() || !leagueId || fieldCleared;
+  const disabled = createMutation.isPending || !seasonName.trim() || !leagueId || fieldCleared || roundsUnreadable;
 
   const updatePayout = (index: number, value: string) => {
     setEditedPayouts(payouts.map((p, i) => (i === index ? value : p)));
