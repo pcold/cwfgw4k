@@ -2,7 +2,7 @@ package com.cwfgw.seasons
 
 import java.math.BigDecimal
 
-/** Refused before any row is written. Without `rules`, payouts and rounds default and go unchecked. */
+/** Refused before any row is written. Without `rules`, every rule value defaults and goes unchecked. */
 internal sealed interface CreateSeasonViolation {
     /** An empty list writes no payout rows, so the season would silently read back the default payouts. */
     data object NoPayoutPlaces : CreateSeasonViolation
@@ -50,20 +50,19 @@ internal fun CreateSeasonRequest.violation(): CreateSeasonViolation? =
     when {
         name.all { it in NAME_PADDING } -> CreateSeasonViolation.BlankName
         maxTeams != null && maxTeams < 1 -> CreateSeasonViolation.MaxTeamsBelowOne
-        else -> seasonAmountViolation() ?: rules?.violation()
+        else -> rules?.let { it.seasonAmountViolation() ?: it.sideTableViolation() }
     }
 
-// Both fields of each amount, not only the one the repository writes, so the guard needn't track their precedence.
-private fun CreateSeasonRequest.seasonAmountViolation(): CreateSeasonViolation? =
-    listOfNotNull(sideBetAmount, rules?.sideBetAmount).amountViolation(
+private fun SeasonRules.seasonAmountViolation(): CreateSeasonViolation? =
+    listOf(sideBetAmount).amountViolation(
         negative = CreateSeasonViolation.NegativeSideBetAmount,
         tooLarge = CreateSeasonViolation.SideBetAmountTooLarge,
-    ) ?: listOfNotNull(tieFloor, rules?.tieFloor).amountViolation(
+    ) ?: listOf(tieFloor).amountViolation(
         negative = CreateSeasonViolation.NegativeTieFloor,
         tooLarge = CreateSeasonViolation.TieFloorTooLarge,
     )
 
-private fun SeasonRules.violation(): CreateSeasonViolation? =
+private fun SeasonRules.sideTableViolation(): CreateSeasonViolation? =
     when {
         payouts.isEmpty() -> CreateSeasonViolation.NoPayoutPlaces
         sideBetRounds.isEmpty() -> CreateSeasonViolation.NoSideBetRounds

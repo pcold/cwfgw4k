@@ -31,6 +31,12 @@ import java.util.UUID
 private fun seasonRequest(leagueId: LeagueId): CreateSeasonRequest =
     CreateSeasonRequest(leagueId = leagueId, name = "Rules", seasonYear = 2026)
 
+private fun stakedRequest(
+    leagueId: LeagueId,
+    sideBetAmount: BigDecimal,
+): CreateSeasonRequest =
+    seasonRequest(leagueId).copy(rules = SeasonRules.defaults().copy(sideBetAmount = sideBetAmount))
+
 class SeasonRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
@@ -98,8 +104,8 @@ class SeasonRepositorySpec : FunSpec({
                         seasonYear = 2027,
                         seasonNumber = 2,
                         maxTeams = 13,
-                        tieFloor = BigDecimal("0.5"),
-                        sideBetAmount = BigDecimal("20"),
+                        rules =
+                            SeasonRules.defaults().copy(tieFloor = BigDecimal("0.5"), sideBetAmount = BigDecimal("20")),
                     ),
                 )
 
@@ -119,7 +125,7 @@ class SeasonRepositorySpec : FunSpec({
                             leagueId = castlewoodId,
                             name = "Inverted",
                             seasonYear = 2026,
-                            sideBetAmount = BigDecimal("-15"),
+                            rules = SeasonRules.defaults().copy(sideBetAmount = BigDecimal("-15")),
                         ),
                     )
                 }
@@ -137,7 +143,7 @@ class SeasonRepositorySpec : FunSpec({
                         leagueId = castlewoodId,
                         name = "No Side Bets",
                         seasonYear = 2026,
-                        sideBetAmount = BigDecimal.ZERO,
+                        rules = SeasonRules.defaults().copy(sideBetAmount = BigDecimal.ZERO),
                     ),
                 )
             }
@@ -173,9 +179,10 @@ class SeasonRepositorySpec : FunSpec({
 
     test("create past the route guard is refused a negative tie floor, a negative payout, or no teams by the CHECKs") {
         val negativePayout = SeasonRules.defaults().copy(payouts = listOf(BigDecimal(18), BigDecimal("-0.01")))
+        val negativeFloor = SeasonRules.defaults().copy(tieFloor = BigDecimal(-1))
         val refusals =
             listOf(
-                seasonRequest(castlewoodId).copy(tieFloor = BigDecimal(-1)) to "seasons_tie_floor_non_negative",
+                seasonRequest(castlewoodId).copy(rules = negativeFloor) to "seasons_tie_floor_non_negative",
                 seasonRequest(castlewoodId).copy(rules = negativePayout) to "season_rule_payouts_amount_non_negative",
                 seasonRequest(castlewoodId).copy(maxTeams = 0) to "seasons_max_teams_positive",
             )
@@ -199,10 +206,10 @@ class SeasonRepositorySpec : FunSpec({
 
     test("create stores the largest amount the route guard passes, and the least it refuses overflows the column") {
         val largest = BigDecimal("999999.9999")
-        val stored = tx.update { repository.create(seasonRequest(castlewoodId).copy(sideBetAmount = largest)) }
+        val stored = tx.update { repository.create(stakedRequest(castlewoodId, sideBetAmount = largest)) }
         stored.sideBetAmount shouldBe largest
 
-        val leastRefused = seasonRequest(castlewoodId).copy(sideBetAmount = BigDecimal("999999.99995"))
+        val leastRefused = stakedRequest(castlewoodId, sideBetAmount = BigDecimal("999999.99995"))
         val overflow = shouldThrow<DataAccessException> { tx.update { repository.create(leastRefused) } }
         overflow.message shouldContain "numeric field overflow"
     }
@@ -338,29 +345,6 @@ class SeasonRepositorySpec : FunSpec({
             rules.sideBetRounds shouldContainExactly listOf(2, 3)
             rules.tieFloor.compareTo(BigDecimal("2")) shouldBe 0
             rules.sideBetAmount.compareTo(BigDecimal("20")) shouldBe 0
-        }
-    }
-
-    test("create with rules prefers rules' tieFloor over the top-level field") {
-        tx.update {
-            val created =
-                repository.create(
-                    CreateSeasonRequest(
-                        leagueId = castlewoodId,
-                        name = "2026 Conflict",
-                        seasonYear = 2026,
-                        tieFloor = BigDecimal("99"),
-                        rules =
-                            SeasonRules(
-                                payouts = listOf(BigDecimal("1")),
-                                tieFloor = BigDecimal("3"),
-                                sideBetRounds = listOf(1),
-                                sideBetAmount = BigDecimal("10"),
-                            ),
-                    ),
-                )
-
-            created.tieFloor.compareTo(BigDecimal("3")) shouldBe 0
         }
     }
 

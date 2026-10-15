@@ -178,10 +178,9 @@ private class JooqSeasonRepository : SeasonRepository {
             put(SEASONS.SEASON_YEAR, request.seasonYear)
             put(SEASONS.SEASON_NUMBER, seasonNumber)
             request.maxTeams?.let { put(SEASONS.MAX_TEAMS, it) }
-            // `rules` wins when supplied — see CreateSeasonRequest KDoc.
-            (request.rules?.tieFloor ?: request.tieFloor)?.let { put(SEASONS.TIE_FLOOR, it) }
-            (request.rules?.sideBetAmount ?: request.sideBetAmount)?.let {
-                put(SEASONS.SIDE_BET_AMOUNT, it)
+            request.rules?.let { rules ->
+                put(SEASONS.TIE_FLOOR, rules.tieFloor)
+                put(SEASONS.SIDE_BET_AMOUNT, rules.sideBetAmount)
             }
         }
 
