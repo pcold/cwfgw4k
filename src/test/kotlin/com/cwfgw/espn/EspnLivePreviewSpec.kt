@@ -379,6 +379,46 @@ class EspnLivePreviewSpec : FunSpec({
         preview.leaderboard.single().teamNames shouldContainExactly listOf("BROWN")
     }
 
+    test("previewForTournament resolves a competitor through its own candidate's override, not a sibling's") {
+        val masters = tournament(pgaTournamentId = "espn-masters")
+        val heritageStart = START_DATE.plusWeeks(1)
+        val heritage =
+            tournament(pgaTournamentId = "espn-heritage").copy(
+                id = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b02")),
+                startDate = heritageStart,
+                endDate = heritageStart.plusDays(3),
+            )
+        val shared = listOf(espnCompetitor("espn-x", "Mystery Entrant", 1, -10))
+        val fixture =
+            PreviewFixture(
+                initialTournaments = listOf(masters, heritage),
+                initialTeams = listOf(team(TEAM_A_ID, "BROWN"), team(TEAM_B_ID, "WOMBLE")),
+                initialGolfers = listOf(golfer(SCOTTIE_ID, "Scottie", "Scheffler"), golfer(RORY_ID, "Rory", "McIlroy")),
+                initialRosters =
+                    listOf(
+                        rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1),
+                        rosterEntry(TEAM_B_ID, RORY_ID, draftRound = 1),
+                    ),
+                initialOverrides =
+                    listOf(
+                        TournamentPlayerOverride(masters.id, espnCompetitorId = "espn-x", golferId = SCOTTIE_ID),
+                        TournamentPlayerOverride(heritage.id, espnCompetitorId = "espn-x", golferId = RORY_ID),
+                    ),
+                tournamentsByDate =
+                    mapOf(
+                        START_DATE to listOf(espnTournament(espnId = "espn-masters", competitors = shared)),
+                        heritageStart to listOf(espnTournament(espnId = "espn-heritage", competitors = shared)),
+                    ),
+            )
+        val ctx = fixture.service.loadLivePreviewContext(SEASON_ID, fixture.initialTournaments)
+
+        val mastersBoard = fixture.service.previewForTournament(ctx, masters).orFail().leaderboard
+        val heritageBoard = fixture.service.previewForTournament(ctx, heritage).orFail().leaderboard
+
+        mastersBoard.single().teamNames shouldContainExactly listOf("BROWN")
+        heritageBoard.single().teamNames shouldContainExactly listOf("WOMBLE")
+    }
+
     test("previewForTournament returns the full leaderboard sorted by position") {
         val event =
             espnTournament(
