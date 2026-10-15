@@ -5,7 +5,7 @@ import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.tournaments.TournamentRepository
 
 /** @see com.cwfgw.AppServices.from */
-class SeasonsSupport private constructor(
+internal class SeasonsSupport private constructor(
     val seasonService: SeasonService,
     val seasonOpsService: SeasonOpsService,
 ) {

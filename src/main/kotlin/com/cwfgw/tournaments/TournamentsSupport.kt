@@ -6,7 +6,7 @@ import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringSupport
 
 /** @see com.cwfgw.AppServices.from */
-class TournamentsSupport private constructor(
+internal class TournamentsSupport private constructor(
     val tournamentService: TournamentService,
     val tournamentOpsService: TournamentOpsService,
 ) {

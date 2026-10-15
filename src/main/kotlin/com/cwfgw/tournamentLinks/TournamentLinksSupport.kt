@@ -5,7 +5,7 @@ import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.tournaments.TournamentRepository
 
 /** @see com.cwfgw.AppServices.from */
-class TournamentLinksSupport private constructor(
+internal class TournamentLinksSupport private constructor(
     val tournamentLinkService: TournamentLinkService,
 ) {
     companion object {

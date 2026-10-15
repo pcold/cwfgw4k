@@ -9,7 +9,7 @@ import com.cwfgw.teams.TeamRepository
 import com.cwfgw.tournaments.TournamentsSupport
 
 /** @see com.cwfgw.AppServices.from */
-class AdminSupport private constructor(
+internal class AdminSupport private constructor(
     val adminService: AdminService,
 ) {
     companion object {

@@ -3,7 +3,7 @@ package com.cwfgw.golfers
 import com.cwfgw.db.Transactor
 
 /** @see com.cwfgw.AppServices.from */
-class GolfersSupport private constructor(
+internal class GolfersSupport private constructor(
     val golferService: GolferService,
 ) {
     companion object {

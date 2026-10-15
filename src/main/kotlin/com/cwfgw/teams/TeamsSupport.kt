@@ -3,7 +3,7 @@ package com.cwfgw.teams
 import com.cwfgw.db.Transactor
 
 /** @see com.cwfgw.AppServices.from */
-class TeamsSupport private constructor(
+internal class TeamsSupport private constructor(
     val teamService: TeamService,
 ) {
     companion object {

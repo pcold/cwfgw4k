@@ -5,7 +5,7 @@ import com.cwfgw.teams.TeamRepository
 import com.cwfgw.tournaments.TournamentRepository
 
 /** @see com.cwfgw.AppServices.from */
-class ScoringSupport private constructor(
+internal class ScoringSupport private constructor(
     val scoringService: ScoringService,
 ) {
     companion object {

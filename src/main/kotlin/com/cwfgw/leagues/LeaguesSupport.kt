@@ -3,7 +3,7 @@ package com.cwfgw.leagues
 import com.cwfgw.db.Transactor
 
 /** @see com.cwfgw.AppServices.from */
-class LeaguesSupport private constructor(
+internal class LeaguesSupport private constructor(
     val leagueService: LeagueService,
 ) {
     companion object {

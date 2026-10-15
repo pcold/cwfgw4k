@@ -8,7 +8,7 @@ import com.cwfgw.tournamentLinks.TournamentLinkRepository
 import com.cwfgw.tournaments.TournamentRepository
 
 /** @see com.cwfgw.AppServices.from */
-class EspnSupport private constructor(
+internal class EspnSupport private constructor(
     val espnService: EspnService,
 ) {
     companion object {

@@ -3,7 +3,7 @@ package com.cwfgw.users
 import com.cwfgw.db.Transactor
 
 /** @see com.cwfgw.AppServices.from */
-class UsersSupport private constructor(
+internal class UsersSupport private constructor(
     val authService: AuthService,
 ) {
     companion object {

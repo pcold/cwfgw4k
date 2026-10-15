@@ -9,7 +9,7 @@ import com.cwfgw.teams.TeamRepository
 import com.cwfgw.tournaments.TournamentRepository
 
 /** @see com.cwfgw.AppServices.from */
-class ReportsSupport private constructor(
+internal class ReportsSupport private constructor(
     val liveOverlayService: LiveOverlayService,
     val weeklyReportService: WeeklyReportService,
 ) {
