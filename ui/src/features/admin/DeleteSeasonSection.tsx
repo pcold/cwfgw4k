@@ -2,10 +2,11 @@ import { useState, type ReactNode } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
-import type { League, Season } from '@/shared/api/types';
+import type { Season } from '@/shared/api/types';
 import { SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
+import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
 
 const DELETE_BUTTON_CLASS =
   'bg-semantic-danger-fill hover:bg-semantic-danger-fill-hover disabled:bg-disabled text-on-fill ' +
@@ -14,9 +15,7 @@ const DELETE_BUTTON_CLASS =
 function DeleteSeasonSection(): ReactNode {
   const queryClient = useQueryClient();
 
-  const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
-  // No UI to pick a league — just default to the first one when leagues load.
-  const leagueId = leaguesQuery.data?.[0]?.id ?? '';
+  const { leagues, leagueId, setLeagueId } = useAdminLeague();
 
   const seasonsQuery = useQuery<Season[]>({
     queryKey: queryKeys.seasons.byLeague(leagueId),
@@ -61,6 +60,15 @@ function DeleteSeasonSection(): ReactNode {
       </p>
 
       <div className="flex flex-wrap items-end gap-4">
+        <AdminLeagueField
+          id="delete-season-league"
+          leagues={leagues}
+          leagueId={leagueId}
+          onChange={(id) => {
+            setLeagueId(id);
+            setSeasonId('');
+          }}
+        />
         <SelectField
           id="delete-season"
           label="Season to delete"

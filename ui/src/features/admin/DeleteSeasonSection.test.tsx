@@ -88,6 +88,38 @@ describe('DeleteSeasonSection', () => {
     expect(alert).toHaveTextContent(/Season not found/);
   });
 
+  it('deletes a season in the league the admin picks, not only the first', async () => {
+    leaguesMock.mockResolvedValue([
+      { id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'lg-2', name: 'Beta', createdAt: '2026-01-01T00:00:00Z' },
+    ]);
+    seasonsMock.mockImplementation((leagueId) =>
+      Promise.resolve(
+        leagueId === 'lg-2'
+          ? [makeSeason({ id: 'sn-beta', leagueId: 'lg-2', name: 'Fall' })]
+          : [makeSeason()],
+      ),
+    );
+    deleteMock.mockResolvedValue(undefined);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    const user = userEvent.setup();
+    renderWithProviders(<DeleteSeasonSection />, { withLeagueSeasonProvider: false });
+
+    await screen.findByRole('option', { name: 'Beta' });
+    await user.selectOptions(screen.getByLabelText('League'), 'lg-2');
+    await screen.findByRole('option', { name: /^2026 Fall$/ });
+    expect(screen.queryByRole('option', { name: /^2026 Spring$/ })).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText(/Season to delete/i), 'sn-beta');
+    await user.click(screen.getByRole('button', { name: /Delete Season/i }));
+
+    await waitFor(() => {
+      expect(deleteMock).toHaveBeenCalledWith('sn-beta');
+    });
+    expect(seasonsMock).toHaveBeenCalledWith('lg-2');
+  });
+
   it('names the season picker with a visible label', () => {
     renderWithProviders(<DeleteSeasonSection />, { withLeagueSeasonProvider: false });
     expect(screen.getByText('Season to delete')).toBeInTheDocument();
