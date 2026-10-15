@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import tailwindTheme from 'tailwindcss/theme.css?raw';
+import designMd from '../../DESIGN.md?raw';
 import indexCss from './index.css?raw';
 
 /**
@@ -213,5 +214,40 @@ describe('the text tokens declared in index.css', () => {
 
   it.each(declaredPairs)('clear AA for normal text where $label', (pair) => {
     expect(measure(pair)).toBeGreaterThanOrEqual(AA_NORMAL_TEXT);
+  });
+});
+
+// A narrow read of the front matter's `colors:` block rather than a YAML parser, which would be a dependency.
+const designColorEntries = ((): readonly { readonly token: string; readonly value: string }[] => {
+  const block = designMd.match(/^colors:\n((?: {2}.*\n)+)/m);
+  if (block === null) {
+    throw new Error('DESIGN.md has no `colors:` block of two-space-indented entries');
+  }
+  return [...captured(block, 1).matchAll(/^ {2}([\w-]+):\s*(.*)$/gm)].map((match) => ({
+    token: captured(match, 1),
+    value: captured(match, 2),
+  }));
+})();
+
+// Every declaration, not only ramp aliases, so a literal colour can't hide from the name check.
+const declaredTokens: readonly string[] = [...indexCss.matchAll(/--color-([\w-]+):/g)].map((match) =>
+  captured(match, 1),
+);
+
+const toHex = (colour: Srgb): string =>
+  `#${colour.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+
+describe("DESIGN.md's colors", () => {
+  it('name exactly the tokens index.css declares', () => {
+    expect(designColorEntries.map((entry) => entry.token).sort()).toEqual([...declaredTokens].sort());
+  });
+
+  it.each(designColorEntries)('give $token the hex its ramp step resolves to', (entry) => {
+    expect(entry.value).toBe(`"${toHex(resolveToken(entry.token))}"`);
+  });
+
+  it('are the only colours its prose references', () => {
+    const referenced = [...designMd.matchAll(/\{colors\.([\w-]+)\}/g)].map((match) => captured(match, 1));
+    expect(referenced.filter((token) => !declaredTokens.includes(token))).toEqual([]);
   });
 });
