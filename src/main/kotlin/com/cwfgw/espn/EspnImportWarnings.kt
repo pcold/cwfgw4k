@@ -5,7 +5,7 @@ import com.cwfgw.tournaments.TournamentId
 import kotlinx.serialization.Serializable
 
 /**
- * Each golfer is listed once, under its most severe kind: a created golfer that twins a rostered surname is in
+ * Each created golfer is listed once, under its most severe kind: one that twins a rostered surname is in
  * [rosteredSurnameTwins], not [createdGolfers]. A competitor that ends up with a result row is never unplaced.
  */
 @Serializable
@@ -16,14 +16,12 @@ data class EspnImportWarnings(
     val createdGolfers: List<Golfer>,
     val unmatchedCompetitors: List<UnmatchedCompetitor>,
     val contestedCompetitors: List<ContestedCompetitor>,
-) {
-    val isEmpty: Boolean
-        get() =
-            rosteredSurnameTwins.isEmpty() && createdGolfers.isEmpty() &&
-                unmatchedCompetitors.isEmpty() && contestedCompetitors.isEmpty()
-}
+)
 
-/** The Koivun signature: results credited to [created] may belong to one of [rostered], whose team then scores none. */
+/**
+ * The Koivun signature: results credited to [created] may belong to one of [rostered], whose team then scores none.
+ * Raised only by the import that creates [created]; the data-health check reports a twin that persists.
+ */
 @Serializable
 data class RosteredSurnameTwin(
     val created: Golfer,

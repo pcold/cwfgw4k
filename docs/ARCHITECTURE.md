@@ -295,9 +295,9 @@ by this status (see [Live overlay](#live-overlay)).
    lock, and an error scoring any of them rolls back the whole finalize. Step 3's gates leave every match on the
    unlinked tournament's start date, and no tournament's scores read another's, so the order among them is free.
 6. Answer `FinalizedTournament` (`finalizeAndReport`): the tournament plus `import_warnings`, one
-   `EspnImportWarnings` per tournament step 3 imported into that raised any, so a clean finalize answers `[]`. A
-   created golfer whose surname matches a rostered one, under the matcher's own `surnameKey`, is reported apart
-   from other created golfers, since its results may belong to the rostered pick.
+   `EspnImportWarnings` per tournament step 3 imported into, so `[]` means nothing was imported. A created golfer
+   whose surname matches a rostered one, under the matcher's own `surnameKey`, is reported apart from other created
+   golfers unless every such namesake has its own result in that event, since its results may belong to the pick.
 
 **Reset** refuses when a later tournament in the season is completed, so results are always unwound newest
 first. **Season clean-results** resets the whole season at once. Both take the same season lock first, as does an

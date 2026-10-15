@@ -58,11 +58,10 @@ class TournamentFinalizeImportWarningsSpec : FunSpec({
         val zurich = tx.update { seedTournament(seasonId, "Zurich Classic", ZURICH_ESPN_ID) }
         val field =
             listOf(
-                finisher(espnId = "4410", name = "Nicolai Højgaard", position = 1),
-                finisher(espnId = "9999", name = "Rasmus Hojgaard", position = 2),
-                finisher(espnId = "5000", name = "Sam Burns", position = 3),
-                finisher(espnId = "5501", name = "Tom Kim", position = 4),
-                finisher(espnId = "5502", name = "", position = 5),
+                finisher(espnId = "9999", name = "Rasmus Hojgaard", position = 1),
+                finisher(espnId = "5000", name = "Sam Burns", position = 2),
+                finisher(espnId = "5501", name = "Tom Kim", position = 3),
+                finisher(espnId = "5502", name = "", position = 4),
             )
 
         val finalized = opsService(tx, listOf(event(ZURICH_ESPN_ID, field))).finalizeAndReport(zurich).orFail()
@@ -88,7 +87,47 @@ class TournamentFinalizeImportWarningsSpec : FunSpec({
             )
     }
 
-    test("a finalize whose import credits every competitor answers an empty list") {
+    test("a created golfer whose rostered namesake has its own result in the event is created, not a twin") {
+        val (seasonId, _) = tx.update { seedRosteredSeason() }
+        val zurich = tx.update { seedTournament(seasonId, "Zurich Classic", ZURICH_ESPN_ID) }
+        val field =
+            listOf(
+                finisher(espnId = "4410", name = "Nicolai Højgaard", position = 1),
+                finisher(espnId = "9999", name = "Rasmus Hojgaard", position = 2),
+            )
+
+        val finalized = opsService(tx, listOf(event(ZURICH_ESPN_ID, field))).finalizeAndReport(zurich).orFail()
+
+        finalized.importWarnings shouldBe
+            listOf(noWarnings(zurich, "Zurich Classic").copy(createdGolfers = listOf(tx.createdGolfer("9999"))))
+    }
+
+    test("a created golfer sharing a surname with two rostered golfers names both as its twins") {
+        val (seasonId, roster) = tx.update { seedRosteredSeason() }
+        val zurich = tx.update { seedTournament(seasonId, "Zurich Classic", ZURICH_ESPN_ID) }
+        val field = listOf(finisher(espnId = "7000", name = "Joohyung Kim", position = 1))
+
+        val finalized = opsService(tx, listOf(event(ZURICH_ESPN_ID, field))).finalizeAndReport(zurich).orFail()
+
+        val twin =
+            RosteredSurnameTwin(created = tx.createdGolfer("7000"), rostered = listOf(roster.tomKim, roster.tomKimTwin))
+        finalized.importWarnings shouldBe
+            listOf(noWarnings(zurich, "Zurich Classic").copy(rosteredSurnameTwins = listOf(twin)))
+    }
+
+    test("a team partner the import creates a golfer for is reported as created") {
+        val (seasonId, _) = tx.update { seedRosteredSeason() }
+        val zurich = tx.update { seedTournament(seasonId, "Zurich Classic", ZURICH_ESPN_ID) }
+        val partner = finisher(espnId = "team:t1:0", name = "Griffin", position = 1).copy(isTeamPartner = true)
+        val scoreboard = listOf(event(ZURICH_ESPN_ID, listOf(partner)))
+
+        val finalized = opsService(tx, scoreboard).finalizeAndReport(zurich).orFail()
+
+        finalized.importWarnings.single().createdGolfers.map { it.firstName to it.lastName } shouldBe
+            listOf("" to "Griffin")
+    }
+
+    test("a finalize whose import credits every competitor answers that tournament with no warnings") {
         val (seasonId, _) = tx.update { seedRosteredSeason() }
         val zurich = tx.update { seedTournament(seasonId, "Zurich Classic", ZURICH_ESPN_ID) }
         val field = listOf(finisher(espnId = "4410", name = "Nicolai Højgaard", position = 1))
@@ -96,14 +135,23 @@ class TournamentFinalizeImportWarningsSpec : FunSpec({
         val finalized = opsService(tx, listOf(event(ZURICH_ESPN_ID, field))).finalizeAndReport(zurich).orFail()
 
         finalized.tournament.status shouldBe TournamentStatus.Completed
+        finalized.importWarnings shouldBe listOf(noWarnings(zurich, "Zurich Classic"))
+    }
+
+    test("a linked finalize whose event is missing from the scoreboard imports nothing and answers an empty list") {
+        val (seasonId, _) = tx.update { seedRosteredSeason() }
+        val zurich = tx.update { seedTournament(seasonId, "Zurich Classic", ZURICH_ESPN_ID) }
+
+        val finalized = opsService(tx, scoreboard = emptyList()).finalizeAndReport(zurich).orFail()
+
         finalized.importWarnings.shouldBeEmpty()
     }
 
-    test("an unlinked finalize reports each match it imported into under that match, and a clean one not at all") {
+    test("an unlinked finalize reports each match it imported into under that match, a clean one included") {
         val (seasonId, roster) = tx.update { seedRosteredSeason() }
         val zurich = tx.update { seedTournament(seasonId, "Zurich Classic", ZURICH_ESPN_ID) }
         val corales = tx.update { seedTournament(seasonId, "Corales Puntacana", CORALES_ESPN_ID) }
-        tx.update { seedTournament(seasonId, "Valspar Championship", VALSPAR_ESPN_ID) }
+        val valspar = tx.update { seedTournament(seasonId, "Valspar Championship", VALSPAR_ESPN_ID) }
         val unlinked = tx.update { seedTournament(seasonId, "Week placeholder", pgaTournamentId = null) }
         val scoreboard =
             listOf(
@@ -119,6 +167,7 @@ class TournamentFinalizeImportWarningsSpec : FunSpec({
             listOf(
                 noWarnings(zurich, "Zurich Classic").copy(createdGolfers = listOf(tx.createdGolfer("5000"))),
                 noWarnings(corales, "Corales Puntacana").copy(rosteredSurnameTwins = listOf(twin)),
+                noWarnings(valspar, "Valspar Championship"),
             )
     }
 })

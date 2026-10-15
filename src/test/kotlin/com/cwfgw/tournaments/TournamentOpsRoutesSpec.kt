@@ -241,7 +241,19 @@ class TournamentOpsRoutesSpec : FunSpec({
             response.status shouldBe HttpStatusCode.OK
             val finalized = response.body<FinalizedTournament>()
             finalized.tournament.status shouldBe TournamentStatus.Completed
-            response.wireJson().jsonObject.getValue("import_warnings") shouldBe appJson.parseToJsonElement("[]")
+            response.wireJson().jsonObject.getValue("import_warnings") shouldBe
+                appJson.parseToJsonElement(
+                    """
+                    [{
+                      "tournament_id": "${MASTERS_ID.value}",
+                      "tournament_name": "The Masters",
+                      "rostered_surname_twins": [],
+                      "created_golfers": [],
+                      "unmatched_competitors": [],
+                      "contested_competitors": []
+                    }]
+                    """,
+                )
         }
     }
 

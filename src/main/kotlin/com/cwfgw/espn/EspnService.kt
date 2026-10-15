@@ -480,7 +480,10 @@ internal data class EventImport(
     val event: EspnTournament,
 )
 
-/** [names] holds every golfer the matcher read, so a bound golfer missing from it was created by this import. */
+/**
+ * [names] holds every golfer the matcher read, so a bound golfer missing from it is reported as created. A row another
+ * transaction commits between that read and the write is reported too: nothing here records which rows were inserted.
+ */
 private data class MatchingContext(
     val names: GolferNameIndex,
     val rosterGolferIds: Set<GolferId>,
@@ -507,8 +510,9 @@ private data class Placement(
 private fun MatchedEvent.warningsFor(placements: List<Placement>): EspnImportWarnings {
     val readIds = context.names.golfers.map(Golfer::id).toSet()
     val created = placements.mapNotNull(Placement::golfer).distinctBy(Golfer::id).filter { it.id !in readIds }
+    val placedIds = placements.mapNotNull { it.golfer?.id }.toSet()
     val rostered = GolferNameIndex(context.names.golfers.filter { it.id in context.rosterGolferIds })
-    val twins = created.mapNotNull { golfer -> rosteredSurnameTwin(golfer, rostered) }
+    val twins = created.mapNotNull { golfer -> rosteredSurnameTwin(golfer, rostered, placedIds) }
     val twinIds = twins.map { it.created.id }.toSet()
     val unplaced = placements.filter { it.golfer == null }
     return EspnImportWarnings(
@@ -532,16 +536,24 @@ private fun MatchedEvent.warningsFor(placements: List<Placement>): EspnImportWar
     )
 }
 
-/** Keyed as the matcher keys a surname guess, so the twin it would have guessed at is the one reported. */
+/**
+ * Keyed as the matcher keys a surname guess, so the twin it would have guessed at is the one reported. A namesake
+ * placed in the same event played beside [created], so it is provably someone else and is left out.
+ */
 private fun rosteredSurnameTwin(
     created: Golfer,
     rostered: GolferNameIndex,
-): RosteredSurnameTwin? =
-    when (val namesakes = rostered.matchSurname("${created.firstName} ${created.lastName}")) {
-        is GolferNameMatch.Matched -> RosteredSurnameTwin(created = created, rostered = listOf(namesakes.golfer))
-        is GolferNameMatch.Ambiguous -> RosteredSurnameTwin(created = created, rostered = namesakes.candidates)
-        GolferNameMatch.NoMatch -> null
-    }
+    placedIds: Set<GolferId>,
+): RosteredSurnameTwin? {
+    val namesakes =
+        when (val bySurname = rostered.matchSurname("${created.firstName} ${created.lastName}")) {
+            is GolferNameMatch.Matched -> listOf(bySurname.golfer)
+            is GolferNameMatch.Ambiguous -> bySurname.candidates
+            GolferNameMatch.NoMatch -> emptyList()
+        }
+    val unplaced = namesakes.filter { it.id !in placedIds }
+    return if (unplaced.isEmpty()) null else RosteredSurnameTwin(created = created, rostered = unplaced)
+}
 
 /** @see withholdingContestedRows */
 private fun MatchedEvent.withholdingContestedRows(): MatchedEvent {

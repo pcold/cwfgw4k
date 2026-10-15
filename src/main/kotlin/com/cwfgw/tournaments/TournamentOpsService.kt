@@ -87,7 +87,7 @@ class TournamentOpsService(
         return Result.Ok(
             FinalizedTournament(
                 tournament = tournamentRepository.findById(tournamentId) ?: tournament,
-                importWarnings = imported.warnings.filterNot(EspnImportWarnings::isEmpty),
+                importWarnings = imported.warnings,
             ),
         )
     }
