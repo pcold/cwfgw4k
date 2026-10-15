@@ -101,7 +101,11 @@ CREATE TABLE cwfgw4k.golfers (
     last_name text NOT NULL,
     country text,
     world_ranking integer,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    tombstoned_at timestamp with time zone,
+    merged_into uuid,
+    CONSTRAINT golfers_merged_into_is_tombstoned CHECK (((merged_into IS NULL) OR (tombstoned_at IS NOT NULL))),
+    CONSTRAINT golfers_merged_into_other_row CHECK ((merged_into <> id))
 );
 
 
@@ -580,6 +584,14 @@ ALTER TABLE ONLY cwfgw4k.fantasy_scores
 
 ALTER TABLE ONLY cwfgw4k.fantasy_scores
     ADD CONSTRAINT fantasy_scores_tournament_id_fkey FOREIGN KEY (tournament_id) REFERENCES cwfgw4k.tournaments(id) ON DELETE CASCADE;
+
+
+--
+-- Name: golfers golfers_merged_into_fkey; Type: FK CONSTRAINT; Schema: cwfgw4k; Owner: -
+--
+
+ALTER TABLE ONLY cwfgw4k.golfers
+    ADD CONSTRAINT golfers_merged_into_fkey FOREIGN KEY (merged_into) REFERENCES cwfgw4k.golfers(id);
 
 
 --
