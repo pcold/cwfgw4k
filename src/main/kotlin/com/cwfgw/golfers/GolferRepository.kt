@@ -45,7 +45,7 @@ interface GolferRepository {
     fun lockRow(
         id: GolferId,
         lock: GolferRowLock,
-    )
+    ): Unit
 
     /**
      * Null when row [id] already has an id or another row holds [pgaPlayerId]. The UPDATE's WHERE decides, not a
