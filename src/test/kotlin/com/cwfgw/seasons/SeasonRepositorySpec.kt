@@ -30,6 +30,9 @@ import org.jooq.exception.DataAccessException
 import java.math.BigDecimal
 import java.util.UUID
 
+private fun seasonRequest(leagueId: LeagueId): CreateSeasonRequest =
+    CreateSeasonRequest(leagueId = leagueId, name = "Rules", seasonYear = 2026)
+
 class SeasonRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
@@ -168,6 +171,42 @@ class SeasonRepositorySpec : FunSpec({
             }
 
         stored shouldBe names
+    }
+
+    test("create past the route guard is refused a negative tie floor, a negative payout, or no teams by the CHECKs") {
+        val negativePayout = SeasonRules.defaults().copy(payouts = listOf(BigDecimal(18), BigDecimal("-0.01")))
+        val refusals =
+            listOf(
+                seasonRequest(castlewoodId).copy(tieFloor = BigDecimal(-1)) to "seasons_tie_floor_non_negative",
+                seasonRequest(castlewoodId).copy(rules = negativePayout) to "season_rule_payouts_amount_non_negative",
+                seasonRequest(castlewoodId).copy(maxTeams = 0) to "seasons_max_teams_positive",
+            )
+        refusals.forEach { (outOfRange, constraint) ->
+            val refusal = shouldThrow<DataAccessException> { tx.update { repository.create(outOfRange) } }
+
+            refusal.message shouldContain constraint
+        }
+        tx.read { repository.findAll(leagueId = castlewoodId, seasonYear = null) }.shouldBeEmpty()
+    }
+
+    test("create stores a zero tie floor, a zero payout place, and a single team") {
+        val zeroes =
+            SeasonRules.defaults().copy(payouts = listOf(BigDecimal(18), BigDecimal.ZERO), tieFloor = BigDecimal.ZERO)
+        val created = tx.update { repository.create(seasonRequest(castlewoodId).copy(maxTeams = 1, rules = zeroes)) }
+
+        created.tieFloor.signum() shouldBe 0
+        created.maxTeams shouldBe 1
+        tx.read { repository.getRules(created.id) }?.payouts?.map(BigDecimal::signum) shouldBe listOf(1, 0)
+    }
+
+    test("create stores the largest amount the route guard passes, and the least it refuses overflows the column") {
+        val largest = BigDecimal("999999.9999")
+        val stored = tx.update { repository.create(seasonRequest(castlewoodId).copy(sideBetAmount = largest)) }
+        stored.sideBetAmount shouldBe largest
+
+        val leastRefused = seasonRequest(castlewoodId).copy(sideBetAmount = BigDecimal("999999.99995"))
+        val overflow = shouldThrow<DataAccessException> { tx.update { repository.create(leastRefused) } }
+        overflow.message shouldContain "numeric field overflow"
     }
 
     test("findAll orders by year desc, number desc, created_at desc") {
