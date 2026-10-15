@@ -36,6 +36,9 @@ class FakeGolferRepository(
     context(ctx: TransactionContext)
     override fun findById(id: GolferId): Golfer? = store[id]
 
+    context(ctx: WriteTransactionContext)
+    override fun findByIdForShare(id: GolferId): Golfer? = findById(id)
+
     context(ctx: TransactionContext)
     override fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
         store.values.firstOrNull { it.pgaPlayerId == pgaPlayerId }

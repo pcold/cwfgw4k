@@ -25,6 +25,28 @@ SET row_security = off;
 CREATE SCHEMA cwfgw4k;
 
 
+--
+-- Name: refuse_override_to_tombstoned_golfer(); Type: FUNCTION; Schema: cwfgw4k; Owner: -
+--
+
+CREATE FUNCTION cwfgw4k.refuse_override_to_tombstoned_golfer() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'cwfgw4k', '$user', 'public'
+    AS $$
+DECLARE
+    tombstoned TIMESTAMPTZ;
+BEGIN
+    -- Not filtered on tombstoned_at: the snapshot reads an uncommitted tombstone as NULL, so the row would never be locked.
+    SELECT tombstoned_at INTO tombstoned FROM golfers WHERE id = NEW.golfer_id FOR SHARE;
+    IF tombstoned IS NOT NULL THEN
+        RAISE EXCEPTION 'golfer % is tombstoned and cannot be linked', NEW.golfer_id
+            USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -552,6 +574,13 @@ CREATE INDEX idx_tournaments_dates ON cwfgw4k.tournaments USING btree (start_dat
 --
 
 CREATE INDEX idx_tournaments_season ON cwfgw4k.tournaments USING btree (season_id);
+
+
+--
+-- Name: tournament_player_overrides tournament_player_overrides_golfer_not_tombstoned; Type: TRIGGER; Schema: cwfgw4k; Owner: -
+--
+
+CREATE TRIGGER tournament_player_overrides_golfer_not_tombstoned BEFORE INSERT OR UPDATE OF golfer_id ON cwfgw4k.tournament_player_overrides FOR EACH ROW EXECUTE FUNCTION cwfgw4k.refuse_override_to_tombstoned_golfer();
 
 
 --
