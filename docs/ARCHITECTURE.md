@@ -104,6 +104,10 @@ deletion takes effect at once (`users/SessionAuth.kt`). Every data write, and th
 call `requireAdmin` (`users/AdminGate.kt`): 401 with no session, 403 for a signed-in non-admin, plus a WARN
 `cwfgw4k.forbidden`.
 
+Failed logins are throttled per submitted username and per client address (`users/LoginThrottle.kt`). Once
+`LOGIN_THROTTLE_MAX_FAILURES` (5) have failed inside `LOGIN_THROTTLE_WINDOW_SECONDS` (900), the next attempt
+gets 429 before its password is checked. Counts live in memory, per instance. A bad value refuses boot.
+
 An admin account is seeded at boot from `AUTH_ADMIN_USERNAME` / `AUTH_ADMIN_PASSWORD` only when the users
 table is empty. Setting one without the other, or a blank `AUTH_SESSION_SECRET`, refuses boot
 (`config/ConfigViolation.kt`).
@@ -123,7 +127,7 @@ Domain code throws a `DomainError`; `http/ErrorHandling.kt` maps it to a status 
 | `Refused` | 409, body `{"refusal": "<code>", "error": "..."}` |
 | Postgres lock timeout (`55P03`) | 409 "another change is being saved here; try again", plus WARN `cwfgw4k.db.lock_timeout` |
 | `Unprocessable` | 422 |
-| `TooManyRequests` | 429 with `Retry-After` (mapped; nothing raises it yet) |
+| `TooManyRequests` | 429 with `Retry-After`; raised by the login throttle |
 | `BadGateway` (ESPN unreachable) | 502 |
 | anything else | 500 |
 
@@ -425,7 +429,7 @@ Request and response shapes are the `@Serializable` types in each package's `*Ro
 
 | Method | Path | Purpose | Auth |
 |---|---|---|---|
-| POST | `/auth/login` | Check credentials, set the session cookie, return the user | Public |
+| POST | `/auth/login` | Check credentials, set the session cookie, return the user; throttled (429) | Public |
 | POST | `/auth/logout` | Clear the session cookie (204) | Public |
 | GET | `/auth/me` | The signed-in user | Session |
 | GET | `/health` | Database probe: 200 ok or 500 degraded | Public |
