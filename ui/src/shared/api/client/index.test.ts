@@ -112,12 +112,10 @@ describe('api client', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/seasons?league_id=league%2Fwith%20space');
   });
 
-  it('seasonReport() appends live=true only when requested', async () => {
-    fetchMock.mockImplementation(() => Promise.resolve(mockJson({})));
-    await api.seasonReport('season-1', false);
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/seasons/season-1/report');
-    await api.seasonReport('season-1', true);
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/seasons/season-1/report?live=true');
+  it('seasonReport() asks for the finalized season report, with no query string', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({}));
+    await api.seasonReport('season-1');
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/seasons/season-1/report');
   });
 
   it('rankings() builds the query string from live + through tournament', async () => {

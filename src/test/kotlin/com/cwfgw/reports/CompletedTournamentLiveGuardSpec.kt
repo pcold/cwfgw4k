@@ -98,26 +98,18 @@ private class GuardFixture {
 
 class CompletedTournamentLiveGuardSpec : FunSpec({
 
-    test("getSeasonReport with live=true asks ESPN for the tournament in play and never the completed one") {
+    test("getRankings with live=true through the tournament in play never asks ESPN for the completed one") {
         val fixture = GuardFixture()
 
-        fixture.service.getSeasonReport(SEASON_ID, live = true).orFail()
+        fixture.service.getRankings(SEASON_ID, throughTournamentId = MASTERS_ID, live = true).orFail()
 
         fixture.espn.fetchCalls.toSet() shouldBe setOf(MASTERS_START)
     }
 
-    test("getRankings with live=true asks ESPN for the tournament in play and never the completed one") {
+    test("getPlayerRankings with live=true through the tournament in play never asks ESPN for the completed one") {
         val fixture = GuardFixture()
 
-        fixture.service.getRankings(SEASON_ID, live = true).orFail()
-
-        fixture.espn.fetchCalls.toSet() shouldBe setOf(MASTERS_START)
-    }
-
-    test("getPlayerRankings with live=true asks ESPN for the tournament in play and never the completed one") {
-        val fixture = GuardFixture()
-
-        fixture.service.getPlayerRankings(SEASON_ID, live = true).orFail()
+        fixture.service.getPlayerRankings(SEASON_ID, throughTournamentId = MASTERS_ID, live = true).orFail()
 
         fixture.espn.fetchCalls.toSet() shouldBe setOf(MASTERS_START)
     }

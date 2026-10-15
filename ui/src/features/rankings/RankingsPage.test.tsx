@@ -128,6 +128,25 @@ describe('RankingsPage', () => {
     expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', true, 'tn-upcoming');
   });
 
+  it('shows the live toggle through the tournament in play and asks no live rankings at All Tournaments', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([{ ...tournament, status: 'in_progress' }]);
+    rankingsMock.mockResolvedValue(rankings);
+
+    const user = userEvent.setup();
+    renderWithProviders(<RankingsPage />);
+
+    await screen.findByRole('heading', { name: /Team Standings/i });
+    expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', true, 'tn-7');
+    expect(screen.getByRole('checkbox', { name: /Live overlay/i })).toBeChecked();
+
+    await user.selectOptions(screen.getByLabelText(/Through/i), '');
+
+    expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', false, undefined);
+    expect(screen.queryByRole('checkbox', { name: /Live overlay/i })).not.toBeInTheDocument();
+  });
+
   it('shows an error message when rankings fail to load', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);

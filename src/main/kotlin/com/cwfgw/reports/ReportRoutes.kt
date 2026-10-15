@@ -44,7 +44,7 @@ private suspend fun RoutingContext.getSeasonReport(
     cache: RequestCache,
 ) {
     val sid = seasonId()
-    respondReport(service, sid, cache) { live -> service.getSeasonReport(sid, live = live).orThrow() }
+    cachedRespond(cache) { service.getSeasonReport(sid).orThrow() }
 }
 
 private suspend fun RoutingContext.getReport(
@@ -62,7 +62,7 @@ private suspend fun RoutingContext.getRankings(
 ) {
     val sid = seasonId()
     val through = optionalQueryParam("through", String::toTournamentId)
-    respondReport(service, sid, cache) { live ->
+    respondRollup(service, sid, cache, through) { live ->
         service.getRankings(sid, throughTournamentId = through, live = live).orThrow()
     }
 }
@@ -73,7 +73,7 @@ private suspend fun RoutingContext.getPlayerRankings(
 ) {
     val sid = seasonId()
     val through = optionalQueryParam("through", String::toTournamentId)
-    respondReport(service, sid, cache) { live ->
+    respondRollup(service, sid, cache, through) { live ->
         service.getPlayerRankings(sid, throughTournamentId = through, live = live).orThrow()
     }
 }
@@ -99,6 +99,17 @@ private suspend inline fun <reified T : Any> RoutingContext.respondReport(
     val live = optionalQueryParam("live", String::toBooleanStrictOrNull) ?: false
     val mayOverlay = live && service.hasLiveCandidate(seasonId)
     if (mayOverlay) call.respond(build(live)) else cachedRespond(cache) { build(live) }
+}
+
+// The service never overlays a rollup with no `through`, so a `live` flag on one must not cost it the cache.
+private suspend inline fun <reified T : Any> RoutingContext.respondRollup(
+    service: WeeklyReportService,
+    seasonId: SeasonId,
+    cache: RequestCache,
+    through: TournamentId?,
+    crossinline build: suspend (live: Boolean) -> T,
+) {
+    if (through == null) cachedRespond(cache) { build(false) } else respondReport(service, seasonId, cache, build)
 }
 
 private fun ReportError.toDomainError(): DomainError =

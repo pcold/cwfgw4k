@@ -53,12 +53,17 @@ private data class LiveCapablePath(
 
 private val LIVE_CAPABLE_PATHS =
     listOf(
-        LiveCapablePath("report"),
         LiveCapablePath("report/{tid}", path = "report/${MASTERS_ID.value}"),
-        LiveCapablePath("rankings"),
+        LiveCapablePath("rankings?through={tid}", path = "rankings?through=${MASTERS_ID.value}"),
         // Echoes the request's `live` flag whether or not ESPN answered, so its fallback differs in that field.
-        LiveCapablePath("player-rankings", fallback = { it.replace("\"live\":false", "\"live\":true") }),
+        LiveCapablePath(
+            "player-rankings?through={tid}",
+            path = "player-rankings?through=${MASTERS_ID.value}",
+            fallback = { it.replace("\"live\":false", "\"live\":true") },
+        ),
     )
+
+private fun withLive(url: String): String = if ('?' in url) "$url&live=true" else "$url?live=true"
 
 private const val MASTERS_SCOREBOARD =
     """{"events":[{"id":"espn-masters","name":"The Masters","competitions":[{"competitors":[]}]}]}"""
@@ -161,13 +166,13 @@ class LiveReportEspnOutageSpec : FunSpec({
 
     EspnOutage.entries.forEach { outage ->
         LIVE_CAPABLE_PATHS.forEach { report ->
-            val name = "GET /api/v1/seasons/{id}/${report.label}?live=true"
+            val name = "GET /api/v1/seasons/{id}/${withLive(report.label)}"
             test("$name returns the base report when ESPN ${outage.description}") {
                 val requests = AtomicInteger()
                 apiTest(mastersInPlay(outage.client(requests))) { client ->
                     val url = "/api/v1/seasons/${SEASON_ID.value}/${report.path}"
 
-                    val live = client.get("$url?live=true")
+                    val live = client.get(withLive(url))
 
                     live.status shouldBe HttpStatusCode.OK
                     live.bodyAsText() shouldBe report.fallback(client.get(url).bodyAsText())
@@ -220,13 +225,13 @@ class LiveReportEspnOutageSpec : FunSpec({
     }
 
     LIVE_CAPABLE_PATHS.forEach { report ->
-        val name = "GET /api/v1/seasons/{id}/${report.label}?live=true"
+        val name = "GET /api/v1/seasons/{id}/${withLive(report.label)}"
         test("$name returns the base report when ESPN answers 200 with a malformed body") {
             val requests = AtomicInteger()
             apiTest(mastersInPlay(malformedEspn(requests))) { client ->
                 val url = "/api/v1/seasons/${SEASON_ID.value}/${report.path}"
 
-                val live = client.get("$url?live=true")
+                val live = client.get(withLive(url))
 
                 live.status shouldBe HttpStatusCode.OK
                 live.bodyAsText() shouldBe report.fallback(client.get(url).bodyAsText())

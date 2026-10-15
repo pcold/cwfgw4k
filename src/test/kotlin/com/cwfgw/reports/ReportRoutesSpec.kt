@@ -87,11 +87,14 @@ private val XANDER_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000
 
 private val LIVE_CAPABLE_PATHS =
     listOf(
-        "report" to "report",
         "report/{tid}" to "report/${MASTERS_ID.value}",
-        "rankings" to "rankings",
-        "player-rankings" to "player-rankings",
+        "rankings?through={tid}" to "rankings?through=${MASTERS_ID.value}",
+        "player-rankings?through={tid}" to "player-rankings?through=${MASTERS_ID.value}",
     )
+
+private val ALL_TOURNAMENTS_PATHS = listOf("report", "rankings", "player-rankings")
+
+private fun withLive(url: String): String = if ('?' in url) "$url&live=true" else "$url?live=true"
 
 private fun teamRow(
     id: TeamId,
@@ -836,20 +839,20 @@ class ReportRoutesSpec : FunSpec({
     LIVE_CAPABLE_PATHS.forEach { (label, path) ->
         val url = "/api/v1/seasons/${SEASON_ID.value}/$path"
 
-        test("GET /api/v1/seasons/{id}/$label?live=true reaches the service on every request") {
+        test("GET /api/v1/seasons/{id}/${withLive(label)} reaches the service on every request") {
             val reportTx = ReadCountingTransactor()
             val espn = FakeEspnClient()
             val masters =
                 tournamentRow(MASTERS_ID, "The Masters", "2026-04-09").copy(status = TournamentStatus.InProgress)
             val configure = reportFixture(initialTournaments = listOf(masters), espn = espn, reportTx = reportTx)
             apiTest(configure) { client ->
-                repeat(2) { client.get("$url?live=true").status shouldBe HttpStatusCode.OK }
+                repeat(2) { client.get(withLive(url)).status shouldBe HttpStatusCode.OK }
                 reportTx.reads shouldBe 2
                 espn.fetchCalls shouldContainExactly listOf(masters.startDate, masters.startDate)
             }
         }
 
-        test("GET /api/v1/seasons/{id}/$label?live=true is served from the response cache between events") {
+        test("GET /api/v1/seasons/{id}/${withLive(label)} is served from the response cache between events") {
             val reportTx = ReadCountingTransactor()
             val finished = tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
             val beyondLookahead =
@@ -857,16 +860,36 @@ class ReportRoutesSpec : FunSpec({
                     .copy(status = TournamentStatus.Upcoming)
             val configure = reportFixture(initialTournaments = listOf(finished, beyondLookahead), reportTx = reportTx)
             apiTest(configure) { client ->
-                repeat(2) { client.get("$url?live=true").status shouldBe HttpStatusCode.OK }
+                repeat(2) { client.get(withLive(url)).status shouldBe HttpStatusCode.OK }
                 reportTx.reads shouldBe 1
             }
         }
+    }
 
+    ALL_TOURNAMENTS_PATHS.forEach { path ->
+        val url = "/api/v1/seasons/${SEASON_ID.value}/$path"
+
+        test("GET /api/v1/seasons/{id}/${withLive(path)} with a tournament in play serves the finalized body cached") {
+            val reportTx = ReadCountingTransactor()
+            val espn = FakeEspnClient()
+            val masters =
+                tournamentRow(MASTERS_ID, "The Masters", "2026-04-09").copy(status = TournamentStatus.InProgress)
+            val configure = reportFixture(initialTournaments = listOf(masters), espn = espn, reportTx = reportTx)
+            apiTest(configure) { client ->
+                val liveBodies = List(2) { client.get(withLive(url)).bodyAsText() }
+                reportTx.reads shouldBe 1
+                espn.fetchCalls shouldBe emptyList<LocalDate>()
+                liveBodies.distinct() shouldContainExactly listOf(client.get(url).bodyAsText())
+            }
+        }
+    }
+
+    (LIVE_CAPABLE_PATHS + ALL_TOURNAMENTS_PATHS.map { it to it }).forEach { (label, path) ->
         test("GET /api/v1/seasons/{id}/$label answers a repeat request from the response cache") {
             val reportTx = ReadCountingTransactor()
             val masters = tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
             apiTest(reportFixture(initialTournaments = listOf(masters), reportTx = reportTx)) { client ->
-                repeat(2) { client.get(url).status shouldBe HttpStatusCode.OK }
+                repeat(2) { client.get("/api/v1/seasons/${SEASON_ID.value}/$path").status shouldBe HttpStatusCode.OK }
                 reportTx.reads shouldBe 1
             }
         }

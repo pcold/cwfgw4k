@@ -28,7 +28,7 @@ vi.mock('@/shared/api/client', () => ({
   api: {
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
-    seasonReport: (id: string, live: boolean) => seasonReportMock(id, live),
+    seasonReport: (id: string) => seasonReportMock(id),
     rankings: vi.fn(),
     rosters: vi.fn(),
     tournaments: (id: string) => tournamentsMock(id),
@@ -124,7 +124,7 @@ function buildReport(name: string): WeeklyReport {
 function OpenSeasonReport() {
   useQuery({
     queryKey: queryKeys.report.detail('sn-1', '', false),
-    queryFn: () => api.seasonReport('sn-1', false),
+    queryFn: () => api.seasonReport('sn-1'),
   });
   return null;
 }
@@ -358,7 +358,7 @@ describe('ScoreboardPage', () => {
     await waitFor(() => {
       expect(seasonReportMock).toHaveBeenCalledTimes(2);
     });
-    expect(seasonReportMock).toHaveBeenLastCalledWith('sn-1', false);
+    expect(seasonReportMock).toHaveBeenLastCalledWith('sn-1');
   });
 
   it.each([

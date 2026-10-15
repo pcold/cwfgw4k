@@ -31,7 +31,7 @@ function LateRowBetsPage(): ReactNode {
         ? skipToken
         : () =>
             effectiveId === ALL_TOURNAMENTS
-              ? api.seasonReport(seasonId, live)
+              ? api.seasonReport(seasonId)
               : api.tournamentReport(seasonId, effectiveId, live),
   });
 

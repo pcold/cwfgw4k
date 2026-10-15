@@ -200,7 +200,7 @@ class LiveOverlayServiceSpec : FunSpec({
         mergeLiveData(base, emptyList(), DEFAULT_RULES) shouldBe base
     }
 
-    test("mergeLiveData replaces per-cell earnings with live projections in non-additive mode") {
+    test("mergeLiveData replaces per-cell earnings with live projections") {
         val base =
             emptyReport(
                 listOf(
@@ -221,7 +221,7 @@ class LiveOverlayServiceSpec : FunSpec({
                     ),
             )
 
-        val overlaid = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false)
+        val overlaid = mergeLiveData(base, listOf(live), DEFAULT_RULES)
         overlaid.live shouldBe true
         overlaid.teams.single().cells.single().earnings.compareTo(BigDecimal(18)) shouldBe 0
         overlaid.teams.single().cells.single().positionStr shouldBe "1"
@@ -245,7 +245,7 @@ class LiveOverlayServiceSpec : FunSpec({
             )
         val live = preview(teams = listOf(previewTeam(teamId = TEAM_A_ID, golfers = sharedSecond)))
 
-        val cells = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false).teams.single().cells
+        val cells = mergeLiveData(base, listOf(live), DEFAULT_RULES).teams.single().cells
 
         cells.map { it.finish } shouldContainExactly List(2) { ReportCellFinish(position = 2, tied = true) }
         cells.map { it.positionStr } shouldContainExactly listOf("T2", "T2")
@@ -269,7 +269,7 @@ class LiveOverlayServiceSpec : FunSpec({
                     ),
             )
 
-        val cells = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false).teams.flatMap { it.cells }
+        val cells = mergeLiveData(base, listOf(live), DEFAULT_RULES).teams.flatMap { it.cells }
 
         cells.map { it.finish } shouldContainExactly List(2) { ReportCellFinish(position = 1, tied = false) }
         cells.map { it.positionStr } shouldContainExactly listOf("1", "1")
@@ -280,7 +280,7 @@ class LiveOverlayServiceSpec : FunSpec({
         val tiedWithUndrafted = previewGolfer(SCOTTIE_ID, position = 2, payout = BigDecimal(11), numTied = 2)
         val live = preview(teams = listOf(previewTeam(teamId = TEAM_A_ID, golfers = listOf(tiedWithUndrafted))))
 
-        val cell = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false).teams.single().cells.single()
+        val cell = mergeLiveData(base, listOf(live), DEFAULT_RULES).teams.single().cells.single()
 
         cell.finish shouldBe ReportCellFinish(position = 2, tied = true)
         cell.positionStr shouldBe "T2"
@@ -295,7 +295,7 @@ class LiveOverlayServiceSpec : FunSpec({
                 isTeamEvent = true,
             )
 
-        val cell = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false).teams.single().cells.single()
+        val cell = mergeLiveData(base, listOf(live), DEFAULT_RULES).teams.single().cells.single()
 
         cell.finish shouldBe ReportCellFinish(position = 2, tied = true)
         cell.positionStr shouldBe "T2"
@@ -310,13 +310,13 @@ class LiveOverlayServiceSpec : FunSpec({
                 isTeamEvent = true,
             )
 
-        val cell = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false).teams.single().cells.single()
+        val cell = mergeLiveData(base, listOf(live), DEFAULT_RULES).teams.single().cells.single()
 
         cell.finish shouldBe ReportCellFinish(position = 1, tied = false)
         cell.positionStr shouldBe "1"
     }
 
-    test("mergeLiveData bumps team.topTenMoney + topTenCount for live wins (non-additive mode)") {
+    test("mergeLiveData bumps team.topTenMoney + topTenCount for live wins") {
         val base =
             emptyReport(
                 listOf(
@@ -346,7 +346,7 @@ class LiveOverlayServiceSpec : FunSpec({
                     ),
             )
 
-        val overlaid = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false)
+        val overlaid = mergeLiveData(base, listOf(live), DEFAULT_RULES)
         val team = overlaid.teams.single()
         team.topTenMoney.compareTo(BigDecimal(23)) shouldBe 0
         team.topTenCount shouldBe 2
@@ -354,31 +354,6 @@ class LiveOverlayServiceSpec : FunSpec({
         val cellSum = team.cells.fold(BigDecimal.ZERO) { acc, c -> acc.add(c.seasonEarnings) }
         cellSum.compareTo(team.topTenMoney) shouldBe 0
         team.cells.sumOf { it.seasonTopTens } shouldBe team.topTenCount
-    }
-
-    test("mergeLiveData adds live earnings to existing cell.earnings in additive mode") {
-        val base =
-            emptyReport(
-                listOf(
-                    teamColumn(
-                        TEAM_A_ID,
-                        cells = listOf(cell(round = 1, golferId = SCOTTIE_ID, earnings = BigDecimal(5))),
-                    ),
-                ),
-            )
-        val live =
-            preview(
-                teams =
-                    listOf(
-                        previewTeam(
-                            teamId = TEAM_A_ID,
-                            golfers = listOf(previewGolfer(SCOTTIE_ID, position = 1, payout = BigDecimal(18))),
-                        ),
-                    ),
-            )
-
-        val overlaid = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = true)
-        overlaid.teams.single().cells.single().earnings.compareTo(BigDecimal(23)) shouldBe 0
     }
 
     test("mergeLiveData side-bet folds this-week live payouts into the per-round cumulative") {
@@ -431,7 +406,7 @@ class LiveOverlayServiceSpec : FunSpec({
                     ),
             )
 
-        val overlaid = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false)
+        val overlaid = mergeLiveData(base, listOf(live), DEFAULT_RULES)
         val r8 = overlaid.sideBetDetail.single()
         val a = r8.teams.single { it.teamId == TEAM_A_ID }
         val b = r8.teams.single { it.teamId == TEAM_B_ID }
@@ -443,7 +418,7 @@ class LiveOverlayServiceSpec : FunSpec({
     test("mergeLiveData re-settles each side-bet outcome on the live cumulative and keeps the season's rules") {
         val twentyPerTeam = DEFAULT_RULES.copy(sideBetAmount = BigDecimal(20))
 
-        val overlaid = mergeLiveData(brownLeadingRoundEight(), listOf(roryWinsLive()), twentyPerTeam, additive = false)
+        val overlaid = mergeLiveData(brownLeadingRoundEight(), listOf(roryWinsLive()), twentyPerTeam)
 
         overlaid.sideBetRules shouldBe TWENTY_ON_ROUND_EIGHT
         val roundEight = overlaid.sideBetDetail.single().teams
@@ -535,7 +510,7 @@ class LiveOverlayServiceSpec : FunSpec({
         val base = brownLeadingRoundEight()
         val twentyPerTeam = DEFAULT_RULES.copy(sideBetAmount = BigDecimal(20))
 
-        val overlaid = mergeLiveData(base, listOf(roryWinsLive()), twentyPerTeam, additive = false)
+        val overlaid = mergeLiveData(base, listOf(roryWinsLive()), twentyPerTeam)
 
         base.cashTotals.won.signum() shouldBe 0
         base.sideBetTotals.won.signum() shouldBe 0
@@ -566,7 +541,7 @@ class LiveOverlayServiceSpec : FunSpec({
     test("mergeLiveData totals the overlaid weekly +/- where the base report's weekly totals were all zero") {
         val base = brownLeadingRoundEight()
 
-        val overlaid = mergeLiveData(base, listOf(roryWinsLive()), DEFAULT_RULES, additive = false)
+        val overlaid = mergeLiveData(base, listOf(roryWinsLive()), DEFAULT_RULES)
 
         base.weeklyTotals.won.signum() shouldBe 0
         base.weeklyTotals.lost.signum() shouldBe 0
@@ -581,7 +556,7 @@ class LiveOverlayServiceSpec : FunSpec({
     test("mergeLiveData reorders the weekly standings by the overlaid weekly +/-") {
         val base = brownLeadingRoundEight()
 
-        val overlaid = mergeLiveData(base, listOf(roryWinsLive()), DEFAULT_RULES, additive = false)
+        val overlaid = mergeLiveData(base, listOf(roryWinsLive()), DEFAULT_RULES)
 
         base.weeklyStandings shouldContainExactly listOf(TEAM_A_ID, TEAM_B_ID)
         overlaid.weeklyStandings shouldContainExactly listOf(TEAM_B_ID, TEAM_A_ID)
@@ -650,7 +625,7 @@ class LiveOverlayServiceSpec : FunSpec({
             )
         val base = emptyReport(listOf(teamColumn(TEAM_A_ID))).copy(liveLeaderboard = listOf(persisted))
 
-        val overlaid = mergeLiveData(base, listOf(preview()), DEFAULT_RULES, additive = false)
+        val overlaid = mergeLiveData(base, listOf(preview()), DEFAULT_RULES)
 
         overlaid.live shouldBe true
         overlaid.liveLeaderboard shouldContainExactly listOf(persisted)
@@ -662,7 +637,7 @@ class LiveOverlayServiceSpec : FunSpec({
         val base = emptyReport(listOf(teamColumn(TEAM_A_ID))).copy(liveLeaderboard = listOf(persisted))
         val live = preview(leaderboard = listOf(leaderboardEntry("Leader", position = 1)))
 
-        val overlaid = mergeLiveData(base, listOf(live), DEFAULT_RULES, additive = false)
+        val overlaid = mergeLiveData(base, listOf(live), DEFAULT_RULES)
 
         overlaid.liveLeaderboard.flatMap { it.players }.map { it.name } shouldContainExactly listOf("Leader")
     }

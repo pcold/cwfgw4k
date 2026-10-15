@@ -2,8 +2,8 @@ import type { GolferHistory, PlayerRankings, Rankings, WeeklyReport } from '../t
 import { getJson } from './core';
 
 export const reportsApi = {
-  seasonReport: (seasonId: string, live: boolean): Promise<WeeklyReport> =>
-    getJson<WeeklyReport>(`/seasons/${seasonId}/report${live ? '?live=true' : ''}`),
+  seasonReport: (seasonId: string): Promise<WeeklyReport> =>
+    getJson<WeeklyReport>(`/seasons/${seasonId}/report`),
   rankings: (seasonId: string, live: boolean, throughTournamentId?: string): Promise<Rankings> => {
     const params = new URLSearchParams();
     if (live) params.set('live', 'true');
