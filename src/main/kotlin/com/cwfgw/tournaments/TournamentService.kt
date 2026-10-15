@@ -3,16 +3,12 @@ package com.cwfgw.tournaments
 import com.cwfgw.db.Transactor
 import com.cwfgw.db.updateOrOutraced
 import com.cwfgw.result.Result
-import com.cwfgw.seasons.SeasonId
 
 class TournamentService(
     private val repository: TournamentRepository,
     private val tx: Transactor,
 ) {
-    suspend fun list(
-        seasonId: SeasonId?,
-        status: TournamentStatus?,
-    ): List<Tournament> = tx.get { repository.findAll(seasonId = seasonId, status = status) }
+    suspend fun list(filter: TournamentFilter): List<Tournament> = tx.get { repository.findAll(filter) }
 
     suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
         tx.get { repository.findByPgaTournamentId(pgaTournamentId) }

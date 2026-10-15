@@ -13,6 +13,7 @@ import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.seedSeasonRules
 import com.cwfgw.tournaments.CreateTournamentRequest
+import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentRepository
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
@@ -400,7 +401,7 @@ class SeasonRepositorySpec : FunSpec({
 
         tx.read { repository.findById(seasonId) }.shouldBeNull()
         tx.read { teamRepo.findBySeason(seasonId) }.shouldBeEmpty()
-        tx.read { tournamentRepo.findAll(seasonId = seasonId, status = null) }.shouldBeEmpty()
+        tx.read { tournamentRepo.findAll(TournamentFilter(seasonId = seasonId)) }.shouldBeEmpty()
         postgres.dsl.fetchCount(TEAM_ROSTERS, TEAM_ROSTERS.TEAM_ID.eq(teamId.value)) shouldBe 0
     }
 

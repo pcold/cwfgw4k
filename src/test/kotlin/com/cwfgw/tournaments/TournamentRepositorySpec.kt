@@ -1,15 +1,19 @@
 package com.cwfgw.tournaments
 
+import com.cwfgw.db.ColumnDomainViolation
 import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
+import com.cwfgw.jooq.tables.references.TOURNAMENTS
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.testing.postgresHarness
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.nulls.shouldBeNull
@@ -77,7 +81,7 @@ class TournamentRepositorySpec : FunSpec({
                 Triple(april, may, june)
             }
 
-        val result = tx.read { repository.findAll(seasonId = null, status = null) }
+        val result = tx.read { repository.findAll(TournamentFilter()) }
 
         result.map { it.id } shouldContainExactly listOf(april.id, may.id, june.id)
     }
@@ -102,7 +106,7 @@ class TournamentRepositorySpec : FunSpec({
                 mine
             }
 
-        val result = tx.read { repository.findAll(seasonId = seasonId, status = null) }
+        val result = tx.read { repository.findAll(TournamentFilter(seasonId = seasonId)) }
 
         result.map { it.id } shouldContainExactly listOf(mine.id)
     }
@@ -116,9 +120,21 @@ class TournamentRepositorySpec : FunSpec({
                 upcoming
             }
 
-        val result = tx.read { repository.findAll(seasonId = null, status = TournamentStatus.Upcoming) }
+        val result = tx.read { repository.findAll(TournamentFilter(statuses = setOf(TournamentStatus.Upcoming))) }
 
         result.map { it.id } shouldContainExactly listOf(upcoming.id)
+    }
+
+    test("findAll over every status refuses a stored status outside the enum rather than dropping it") {
+        val rainedOut = tx.update { repository.create(create(name = "Rained Out")) }
+        postgres.dsl.update(TOURNAMENTS)
+            .set(TOURNAMENTS.STATUS, "rained_out")
+            .where(TOURNAMENTS.ID.eq(rainedOut.id.value))
+            .execute()
+
+        shouldThrow<ColumnDomainViolation> { tx.read { repository.findAll(TournamentFilter(seasonId)) } }
+        tx.read { repository.findAll(TournamentFilter(seasonId, statuses = setOf(TournamentStatus.Upcoming))) }
+            .shouldBeEmpty()
     }
 
     test("findById returns null for unknown id") {
