@@ -61,7 +61,6 @@ class TournamentPredicatesSpec : FunSpec({
     }
 })
 
-@Suppress("LongParameterList")
 private fun tournament(
     id: TournamentId = TournamentId(UUID.randomUUID()),
     startDate: String,

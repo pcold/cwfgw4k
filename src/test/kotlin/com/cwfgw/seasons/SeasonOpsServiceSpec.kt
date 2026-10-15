@@ -111,7 +111,6 @@ private fun asUpsertRequest(r: TournamentResult): CreateTournamentResultRequest 
         pairKey = r.pairKey,
     )
 
-@Suppress("LongParameterList")
 private class Fixture(
     seedSeason: Boolean = true,
     initialTournaments: List<Tournament> = emptyList(),

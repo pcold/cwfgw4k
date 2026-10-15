@@ -82,7 +82,6 @@ class TournamentServiceSpec : FunSpec({
 
 private fun tournamentId(value: String): TournamentId = TournamentId(UUID.fromString(value))
 
-@Suppress("LongParameterList")
 private fun tournament(
     id: TournamentId = TournamentId(UUID.randomUUID()),
     name: String = "The Masters",

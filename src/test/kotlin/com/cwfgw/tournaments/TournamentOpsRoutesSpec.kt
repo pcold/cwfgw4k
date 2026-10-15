@@ -33,6 +33,7 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.serializer
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -170,7 +171,6 @@ private class StartDateMovingEspnClient(
     }
 }
 
-@Suppress("LongParameterList")
 private fun opsFixture(
     seedSeason: Boolean = true,
     initialTournaments: List<Tournament> = emptyList(),
@@ -408,4 +408,4 @@ class TournamentOpsRoutesSpec : FunSpec({
     }
 })
 
-private fun Golfer.wire(): String = appJson.encodeToString(Golfer.serializer(), this)
+private fun Golfer.wire(): String = appJson.encodeToString(serializer<Golfer>(), this)

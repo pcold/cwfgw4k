@@ -197,7 +197,6 @@ private fun scoreRow(
         calculatedAt = Instant.parse("2026-04-12T20:00:00Z"),
     )
 
-@Suppress("LongParameterList")
 private fun reportFixture(
     seedSeason: Boolean = true,
     initialTournaments: List<Tournament> = emptyList(),

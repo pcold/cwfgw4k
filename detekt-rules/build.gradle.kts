@@ -101,12 +101,21 @@ tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
 }
 
 // The rule resolves types, so it reports nothing — as a green build — without a compile
-// classpath. Mirrors the root module.
+// classpath, or on code detekt could not resolve. Mirrors the root module.
 tasks.named<dev.detekt.gradle.Detekt>("detekt") {
     classpath.setFrom(sourceSets["test"].runtimeClasspath, sourceSets["test"].output)
+    val analysisOutput = StringBuilder()
+    val outputCapture = StandardOutputListener { analysisOutput.append(it) }
     doFirst {
         check(classpath.files.isNotEmpty()) {
             "detekt has no compile classpath, so every type-resolving rule would be skipped silently"
+        }
+        logging.addStandardOutputListener(outputCapture)
+    }
+    doLast {
+        logging.removeStandardOutputListener(outputCapture)
+        check("compiler errors found during analysis" !in analysisOutput) {
+            "detekt hit unresolved code, so its type-resolving rules ran blind on it; `debug = true` lists where"
         }
     }
 }
