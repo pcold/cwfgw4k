@@ -249,7 +249,7 @@ A create that loses a race on a unique key gets a typed outcome, not a 500. `Tra
 (`db/OutracedWrites.kt`) turns a 23505 on the one constraint it names into a typed error and rethrows anything
 else: 409 from the golfer POST and roster confirm, a skipped entry in schedule confirm, a log line in the boot
 admin seed. The finalize import creates golfers with `ON CONFLICT DO NOTHING` instead, since a 23505 would abort
-the finalize.
+the finalize; its backfill, an UPDATE, rolls back to a savepoint on that 23505 (`writeOrOutraced`).
 
 Not atomic, deliberately or by default:
 
@@ -435,9 +435,10 @@ the guesser is a namesake and gets a golfer of its own, and two ids guessing one
 an import's events, in any order. Across the events of one import, two competitors
 still matching one id-less row under different ids are withheld the same way; one withheld in its own event is
 credited the row another event wrote its id onto, and adds no id to that contest. One id ESPN lists twice, in one
-event or two, is one athlete and no contest. The link editor and the live preview settle a tournament's event with
-the same-day events an unlinked finalize would import beside it (each linked to another unfinalized tournament of the
-season starting that day), through the same function finalize uses. Only import and finalize write:
+event or two, is one athlete and no contest. The link editor and the live preview settle an unfinalized
+tournament's event with the same-day events an unlinked finalize would import beside it (each linked to another
+unfinalized tournament of the season starting that day), through the same function finalize uses. Only import and
+finalize write:
 they backfill the competitor's ESPN id onto an id-less row its full name matched (never one credited by override,
 surname or partner) and create a golfer for a competitor that matches nothing. Every event of an import is matched
 first, then all their backfills and creates go through `findOrCreateAll` (`golfers/PgaPlayerIdClaim.kt`), one write
@@ -466,7 +467,8 @@ writing anything. A candidate previews only the ESPN event whose id is its `pga_
 imports by (`findLinkedEvent` in `espn/EspnService.kt`), so an unlinked or stale-id tournament previews nothing
 until it is linked. The preview pays a team event by ESPN's flag, which finalize's import writes over the row.
 It matches the event's competitors beside its same-day siblings (see [Golfer matching](#golfer-matching)), so a
-guess a sibling's full name claims is paid to nobody, as an unlinked finalize importing both scores it. Only a view of one tournament is overlaid: its weekly report, or rankings and player rankings `through` it.
+guess a sibling's full name claims is paid to nobody, as an unlinked finalize importing both scores it.
+Only a view of one tournament is overlaid: its weekly report, or rankings and player rankings `through` it.
 Rankings gain a column per live candidate up to that tournament; player rankings fold in the live payouts. The
 All Tournaments rollups (the season report, and rankings without a `through`) count finalized results alone and
 never ask ESPN (CWF-215). A completed tournament selected in the weekly report is never overlaid.
