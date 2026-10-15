@@ -32,6 +32,7 @@ const playerRankingsMock = vi.fn<typeof api.playerRankings>();
 const golferHistoryMock = vi.fn<typeof api.golferHistory>();
 const otherTournamentReportMock = vi.fn();
 const rankingsMock = vi.fn();
+const dataHealthMock = vi.fn();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -206,6 +207,7 @@ describe('ScoreboardPage', () => {
     golferHistoryMock.mockReset();
     otherTournamentReportMock.mockReset();
     rankingsMock.mockReset();
+    dataHealthMock.mockReset();
     authMeMock.mockResolvedValue(null);
     competitorsMock.mockResolvedValue({
       tournamentId: 'tn-active',
@@ -626,6 +628,11 @@ describe('ScoreboardPage', () => {
         fetcher={rankingsMock}
       />,
       rankingsMock,
+    ],
+    [
+      'an open data health check',
+      <OpenQuery key="data-health" queryKey={queryKeys.dataHealth.root} fetcher={dataHealthMock} />,
+      dataHealthMock,
     ],
   ])('refetches %s after an admin finalizes a tournament', async (_page, openQuery, readMock) => {
     authMeMock.mockResolvedValue({

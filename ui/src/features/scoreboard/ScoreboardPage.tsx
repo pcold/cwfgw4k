@@ -65,6 +65,8 @@ function ScoreboardPage(): ReactNode {
       setUserTournamentId(id);
       void queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.bySeason(seasonId) });
       invalidateAfterScoreChange(queryClient, { type: 'season', seasonId });
+      // The import can create a golfer or backfill an ESPN id, and either changes what data health finds.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dataHealth.root });
     },
   });
   const finalizeErr = mutationError(finalizeMutation.error);
