@@ -11,6 +11,7 @@ import type { downloadWeeklyReportPdf } from './weeklyReportPdf';
 const leaguesMock = vi.fn<typeof api.leagues>();
 const seasonsMock = vi.fn<typeof api.seasons>();
 const tournamentsMock = vi.fn<typeof api.tournaments>();
+const currentTournamentMock = vi.fn<typeof api.currentTournament>();
 const seasonReportMock = vi.fn<typeof api.seasonReport>();
 const tournamentReportMock = vi.fn<typeof api.tournamentReport>();
 
@@ -22,6 +23,7 @@ vi.mock('@/shared/api/client', () => ({
     rankings: vi.fn(),
     rosters: vi.fn(),
     tournaments: (id: string) => tournamentsMock(id),
+    currentTournament: (id: string) => currentTournamentMock(id),
     tournamentReport: (seasonId: string, tournamentId: string, live: boolean) =>
       tournamentReportMock(seasonId, tournamentId, live),
   },
@@ -149,6 +151,7 @@ describe('WeeklyReportPage', () => {
     leaguesMock.mockReset();
     seasonsMock.mockReset();
     tournamentsMock.mockReset();
+    currentTournamentMock.mockReset();
     seasonReportMock.mockReset();
     tournamentReportMock.mockReset();
     downloadPdfMock.mockReset();
@@ -158,6 +161,7 @@ describe('WeeklyReportPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
 
     renderWithProviders(<WeeklyReportPage />);
@@ -167,11 +171,12 @@ describe('WeeklyReportPage', () => {
     expect(tournamentReportMock).not.toHaveBeenCalled();
   });
 
-  it('defaults to the earliest unfinalized tournament, live, and switches to the finalized season report at All Tournaments', async () => {
+  it("defaults to the server's current tournament, live, and switches to the finalized season report at All Tournaments", async () => {
     const inProgress = { ...tournament, status: 'in_progress' };
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([inProgress]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-1' });
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
     tournamentReportMock.mockResolvedValue(buildReport('Sample Open', 'tn-1'));
 
@@ -179,7 +184,6 @@ describe('WeeklyReportPage', () => {
     renderWithProviders(<WeeklyReportPage />);
 
     expect(await screen.findByRole('heading', { name: /Sample Open/i })).toBeInTheDocument();
-    // tn-1 is the earliest non-finalized tournament → live overlay applies.
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
     expect(screen.getByRole('checkbox', { name: /Live overlay/i })).toBeChecked();
 
@@ -195,12 +199,43 @@ describe('WeeklyReportPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-1' });
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
 
     renderWithProviders(<WeeklyReportPage />);
 
     expect(await screen.findByRole('heading', { name: /All Tournaments/i })).toBeInTheDocument();
     expect(seasonReportMock).toHaveBeenCalledWith('sn-1');
+    expect(tournamentReportMock).not.toHaveBeenCalled();
+  });
+
+  it('opens on the tournament the server names, not the first unfinalized one in the list', async () => {
+    const first = { ...tournament, status: 'upcoming' };
+    const second = { ...tournament, id: 'tn-2', name: 'Second Open', status: 'upcoming' };
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([first, second]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-2' });
+    tournamentReportMock.mockResolvedValue(buildReport('Second Open', 'tn-2'));
+
+    renderWithProviders(<WeeklyReportPage />);
+
+    expect(await screen.findByRole('heading', { name: /Second Open/i })).toBeInTheDocument();
+    expect(screen.getByLabelText<HTMLSelectElement>(/Tournament/i).value).toBe('tn-2');
+    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-2', true);
+    expect(tournamentReportMock).not.toHaveBeenCalledWith('sn-1', 'tn-1', expect.anything());
+  });
+
+  it('fetches no report while the server has not yet named the current tournament', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([tournament]);
+    currentTournamentMock.mockReturnValue(new Promise(() => {}));
+
+    renderWithProviders(<WeeklyReportPage />);
+
+    expect(await screen.findByText(/Loading current tournament/i)).toBeInTheDocument();
+    expect(seasonReportMock).not.toHaveBeenCalled();
     expect(tournamentReportMock).not.toHaveBeenCalled();
   });
 
@@ -220,6 +255,7 @@ describe('WeeklyReportPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-1' });
     seasonReportMock.mockRejectedValue(new Error('kaboom'));
 
     renderWithProviders(<WeeklyReportPage />);
@@ -230,6 +266,7 @@ describe('WeeklyReportPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
 
     renderWithProviders(<WeeklyReportPage />);
@@ -242,6 +279,7 @@ describe('WeeklyReportPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
     // @ts-expect-error -- a body cached before the server sent these fields no longer satisfies WeeklyReport.
     seasonReportMock.mockResolvedValue(buildReportWithoutSideBetFacts('All Tournaments'));
 
@@ -256,6 +294,7 @@ describe('WeeklyReportPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
 
     renderWithProviders(<WeeklyReportPage />);
@@ -269,6 +308,7 @@ describe('WeeklyReportPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
     seasonReportMock.mockImplementation(() => new Promise(() => {}));
 
     renderWithProviders(<WeeklyReportPage />);
@@ -281,6 +321,7 @@ describe('WeeklyReportPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
     downloadPdfMock.mockImplementation(() => {
       throw new Error('autoTable exploded');
@@ -300,6 +341,7 @@ describe('WeeklyReportPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
     downloadPdfMock.mockImplementationOnce(() => {
       throw new Error('autoTable exploded');

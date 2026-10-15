@@ -14,7 +14,11 @@ const KEY_CHAINS: Record<keyof typeof queryKeys, readonly QueryKey[]> = {
   auth: [queryKeys.auth.root, queryKeys.auth.me()],
   leagues: [queryKeys.leagues.root],
   seasons: [queryKeys.seasons.root, queryKeys.seasons.byLeague('lg-1')],
-  tournaments: [queryKeys.tournaments.root, queryKeys.tournaments.bySeason('sn-1')],
+  tournaments: [
+    queryKeys.tournaments.root,
+    queryKeys.tournaments.bySeason('sn-1'),
+    queryKeys.tournaments.current('sn-1'),
+  ],
   tournamentCompetitors: [
     queryKeys.tournamentCompetitors.root,
     queryKeys.tournamentCompetitors.byTournament('tn-1'),
@@ -57,7 +61,7 @@ it('pins the value of every key, root first', () => {
     auth: [['auth'], ['auth', 'me']],
     leagues: [['leagues']],
     seasons: [['seasons'], ['seasons', 'lg-1']],
-    tournaments: [['tournaments'], ['tournaments', 'sn-1']],
+    tournaments: [['tournaments'], ['tournaments', 'sn-1'], ['tournaments', 'sn-1', 'current']],
     tournamentCompetitors: [['tournamentCompetitors'], ['tournamentCompetitors', 'tn-1']],
     rosters: [['rosters'], ['rosters', 'sn-1']],
     seasonRules: [['seasonRules'], ['seasonRules', 'sn-1']],

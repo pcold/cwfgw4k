@@ -16,6 +16,7 @@ import PlayerRankingsPage from './PlayerRankingsPage';
 const leaguesMock = vi.fn<typeof api.leagues>();
 const seasonsMock = vi.fn<typeof api.seasons>();
 const tournamentsMock = vi.fn<typeof api.tournaments>();
+const currentTournamentMock = vi.fn<typeof api.currentTournament>();
 const playerRankingsMock = vi.fn<typeof api.playerRankings>();
 
 vi.mock('@/shared/api/client', () => ({
@@ -23,6 +24,7 @@ vi.mock('@/shared/api/client', () => ({
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
     tournaments: (id: string) => tournamentsMock(id),
+    currentTournament: (id: string) => currentTournamentMock(id),
     playerRankings: (seasonId: string, live: boolean, throughTournamentId?: string) =>
       playerRankingsMock(seasonId, live, throughTournamentId),
   },
@@ -87,6 +89,7 @@ describe('PlayerRankingsPage', () => {
     leaguesMock.mockReset();
     seasonsMock.mockReset();
     tournamentsMock.mockReset();
+    currentTournamentMock.mockReset();
     playerRankingsMock.mockReset();
   });
 
@@ -97,6 +100,7 @@ describe('PlayerRankingsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournA, tournB]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-b' });
     playerRankingsMock.mockResolvedValue(
       rankings({
         players: [
@@ -142,6 +146,7 @@ describe('PlayerRankingsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournA, tournB]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-b' });
     playerRankingsMock.mockImplementation((_s: string, _live: boolean, throughId?: string) => {
       const total = throughId === 'tn-a' ? 18 : 30;
       return Promise.resolve(
@@ -165,7 +170,7 @@ describe('PlayerRankingsPage', () => {
     expect(playerRankingsMock).toHaveBeenCalledWith('sn-1', false, 'tn-a');
   });
 
-  it('defaults the through-selector to the earliest non-finalized tournament', async () => {
+  it("defaults the through-selector to the server's current tournament", async () => {
     const completed = tournament({
       id: 'tn-completed',
       startDate: '2026-03-01',
@@ -179,6 +184,7 @@ describe('PlayerRankingsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([completed, upcoming]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-upcoming' });
     playerRankingsMock.mockResolvedValue(rankings({}));
 
     renderWithProviders(<PlayerRankingsPage />);
@@ -188,11 +194,41 @@ describe('PlayerRankingsPage', () => {
     expect(select.value).toBe('tn-upcoming');
   });
 
+  it('runs through the tournament the server names, not the first unfinalized one in the list', async () => {
+    const first = tournament({ id: 'tn-a', name: 'Open A', status: 'upcoming' });
+    const second = tournament({ id: 'tn-b', name: 'Open B', status: 'upcoming' });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([first, second]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-b' });
+    playerRankingsMock.mockResolvedValue(rankings({}));
+
+    renderWithProviders(<PlayerRankingsPage />);
+
+    await screen.findByText(/No players with a top 10 finish yet/i);
+    expect(screen.getByLabelText<HTMLSelectElement>(/Through/i).value).toBe('tn-b');
+    expect(playerRankingsMock).toHaveBeenCalledWith('sn-1', true, 'tn-b');
+    expect(playerRankingsMock).not.toHaveBeenCalledWith('sn-1', expect.anything(), 'tn-a');
+  });
+
+  it('fetches no rankings while the server has not yet named the current tournament', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([tournament({ id: 'tn-a' })]);
+    currentTournamentMock.mockReturnValue(new Promise(() => {}));
+
+    renderWithProviders(<PlayerRankingsPage />);
+
+    expect(await screen.findByText(/Loading current tournament/i)).toBeInTheDocument();
+    expect(playerRankingsMock).not.toHaveBeenCalled();
+  });
+
   it('shows the live toggle through the tournament in play and asks no live rankings at All Tournaments', async () => {
     const inProgress = tournament({ id: 'tn-a', name: 'Open A', status: 'in_progress' });
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([inProgress]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-a' });
     playerRankingsMock.mockResolvedValue(rankings({}));
 
     const user = userEvent.setup();
@@ -213,6 +249,7 @@ describe('PlayerRankingsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournA]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-a' });
     playerRankingsMock.mockResolvedValue(rankings({ players: [] }));
 
     renderWithProviders(<PlayerRankingsPage />);
@@ -226,6 +263,7 @@ describe('PlayerRankingsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournA]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-a' });
     playerRankingsMock.mockRejectedValue(new Error('boom'));
 
     renderWithProviders(<PlayerRankingsPage />);

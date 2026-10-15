@@ -10,6 +10,7 @@ import LateRowBetsPage from './LateRowBetsPage';
 const leaguesMock = vi.fn<typeof api.leagues>();
 const seasonsMock = vi.fn<typeof api.seasons>();
 const tournamentsMock = vi.fn<typeof api.tournaments>();
+const currentTournamentMock = vi.fn<typeof api.currentTournament>();
 const seasonReportMock = vi.fn<typeof api.seasonReport>();
 const tournamentReportMock = vi.fn<typeof api.tournamentReport>();
 
@@ -21,6 +22,7 @@ vi.mock('@/shared/api/client', () => ({
     rankings: vi.fn(),
     rosters: vi.fn(),
     tournaments: (id: string) => tournamentsMock(id),
+    currentTournament: (id: string) => currentTournamentMock(id),
     tournamentReport: (seasonId: string, tournamentId: string, live: boolean) =>
       tournamentReportMock(seasonId, tournamentId, live),
   },
@@ -128,6 +130,7 @@ describe('LateRowBetsPage', () => {
     leaguesMock.mockReset();
     seasonsMock.mockReset();
     tournamentsMock.mockReset();
+    currentTournamentMock.mockReset();
     seasonReportMock.mockReset();
     tournamentReportMock.mockReset();
   });
@@ -136,6 +139,7 @@ describe('LateRowBetsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
     seasonReportMock.mockResolvedValue(buildReport());
 
     renderWithProviders(<LateRowBetsPage />);
@@ -150,6 +154,7 @@ describe('LateRowBetsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([{ ...tournament, status: 'in_progress' }]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-1' });
     seasonReportMock.mockResolvedValue(buildReport());
     tournamentReportMock.mockResolvedValue(buildReport());
 
@@ -164,10 +169,42 @@ describe('LateRowBetsPage', () => {
     await waitFor(() => expect(seasonReportMock).toHaveBeenCalledWith('sn-1'));
   });
 
+  it('opens on the tournament the server names, not the first unfinalized one in the list', async () => {
+    const first: Tournament = { ...tournament, status: 'upcoming' };
+    const second: Tournament = { ...tournament, id: 'tn-2', status: 'upcoming' };
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([first, second]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-2' });
+    tournamentReportMock.mockResolvedValue(buildReport());
+
+    renderWithProviders(<LateRowBetsPage />);
+
+    await screen.findByRole('heading', { name: 'Round 2' });
+    expect(screen.getByLabelText<HTMLSelectElement>(/Through/i).value).toBe('tn-2');
+    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-2', true);
+    expect(tournamentReportMock).not.toHaveBeenCalledWith('sn-1', 'tn-1', expect.anything());
+    expect(seasonReportMock).not.toHaveBeenCalled();
+  });
+
+  it('fetches no report while the server has not yet named the current tournament', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([tournament]);
+    currentTournamentMock.mockReturnValue(new Promise(() => {}));
+
+    renderWithProviders(<LateRowBetsPage />);
+
+    expect(await screen.findByText(/Loading current tournament/i)).toBeInTheDocument();
+    expect(seasonReportMock).not.toHaveBeenCalled();
+    expect(tournamentReportMock).not.toHaveBeenCalled();
+  });
+
   it("shows the season's own side-bet amount and rounds, not the defaults", async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
     seasonReportMock.mockResolvedValue(buildReport());
 
     renderWithProviders(<LateRowBetsPage />);
@@ -183,6 +220,7 @@ describe('LateRowBetsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
     // @ts-expect-error -- a body cached before the server sent these fields no longer satisfies WeeklyReport.
     seasonReportMock.mockResolvedValue(buildReportWithoutSideBetFacts());
 
@@ -197,6 +235,7 @@ describe('LateRowBetsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-1' });
     seasonReportMock.mockResolvedValue(buildReport());
     tournamentReportMock.mockResolvedValue(buildReport());
 
@@ -226,6 +265,7 @@ describe('LateRowBetsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-1' });
     seasonReportMock.mockRejectedValue(new Error('kaboom'));
 
     renderWithProviders(<LateRowBetsPage />);

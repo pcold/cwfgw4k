@@ -14,6 +14,7 @@ const leaguesMock = vi.fn<typeof api.leagues>();
 const seasonsMock = vi.fn<typeof api.seasons>();
 const seasonReportMock = vi.fn<typeof api.seasonReport>();
 const tournamentsMock = vi.fn<typeof api.tournaments>();
+const currentTournamentMock = vi.fn<typeof api.currentTournament>();
 const tournamentReportMock = vi.fn<typeof api.tournamentReport>();
 const authMeMock = vi.fn<typeof api.authMe>();
 const finalizeMock = vi.fn<typeof api.finalizeTournament>();
@@ -32,6 +33,7 @@ vi.mock('@/shared/api/client', () => ({
     rankings: vi.fn(),
     rosters: vi.fn(),
     tournaments: (id: string) => tournamentsMock(id),
+    currentTournament: (id: string) => currentTournamentMock(id),
     tournamentReport: (seasonId: string, tournamentId: string, live: boolean) =>
       tournamentReportMock(seasonId, tournamentId, live),
     authMe: () => authMeMock(),
@@ -153,6 +155,7 @@ describe('ScoreboardPage', () => {
     seasonsMock.mockReset();
     seasonReportMock.mockReset();
     tournamentsMock.mockReset();
+    currentTournamentMock.mockReset();
     tournamentReportMock.mockReset();
     authMeMock.mockReset();
     finalizeMock.mockReset();
@@ -175,6 +178,7 @@ describe('ScoreboardPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament, completedTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
     tournamentReportMock.mockImplementation((_s, id) =>
       Promise.resolve(buildReport(id === 'tn-active' ? 'Current Open' : 'Sample Open')),
     );
@@ -193,6 +197,7 @@ describe('ScoreboardPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([earlier, latest]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-latest' });
     tournamentReportMock.mockImplementation((_s, id) =>
       Promise.resolve(buildReport(id === 'tn-latest' ? 'Latest Open' : 'Early Open')),
     );
@@ -206,10 +211,41 @@ describe('ScoreboardPage', () => {
     });
   });
 
+  it('opens on the tournament the server names, not the first unfinalized one in the list', async () => {
+    const opposite: Tournament = { ...activeTournament, id: 'tn-active-b', name: 'Opposite Field Open' };
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament, opposite]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active-b' });
+    tournamentReportMock.mockImplementation((_s, id) =>
+      Promise.resolve(buildReport(id === 'tn-active-b' ? 'Opposite Field Open' : 'Current Open')),
+    );
+
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    expect(await screen.findByRole('heading', { name: /Opposite Field Open/i })).toBeInTheDocument();
+    expect(screen.getByLabelText<HTMLSelectElement>(/Tournament/i).value).toBe('tn-active-b');
+    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-active-b', true);
+    expect(tournamentReportMock).not.toHaveBeenCalledWith('sn-1', 'tn-active', expect.anything());
+  });
+
+  it('fetches no report while the server has not yet named the current tournament', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockReturnValue(new Promise(() => {}));
+
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    expect(await screen.findByText(/Loading current tournament/i)).toBeInTheDocument();
+    expect(tournamentReportMock).not.toHaveBeenCalled();
+  });
+
   it('refetches the report when the user picks a different tournament', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament, completedTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
     tournamentReportMock.mockImplementation((_s, id) =>
       Promise.resolve(buildReport(id === 'tn-active' ? 'Current Open' : 'Sample Open')),
     );
@@ -243,6 +279,7 @@ describe('ScoreboardPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([truist, oneFlight]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
     tournamentReportMock.mockImplementation((_s, id) =>
       Promise.resolve(
         buildReport(id === 'tn-active' ? 'Current Open' : 'Opposite Field Open'),
@@ -273,6 +310,7 @@ describe('ScoreboardPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
     expect(
@@ -290,6 +328,7 @@ describe('ScoreboardPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
     tournamentReportMock.mockResolvedValue({
       ...buildReport('Current Open'),
       tournament: {
@@ -323,6 +362,7 @@ describe('ScoreboardPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
     tournamentReportMock.mockResolvedValue({
       ...buildReport('Current Open'),
       tournament: {
@@ -394,6 +434,7 @@ describe('ScoreboardPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
     tournamentReportMock.mockResolvedValue({
       ...buildReport('Current Open'),
       tournament: {
@@ -432,6 +473,7 @@ describe('ScoreboardPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
     tournamentReportMock.mockResolvedValue({
       ...buildReport('Current Open'),
       tournament: {
@@ -462,6 +504,7 @@ describe('ScoreboardPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([completedTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-completed' });
     tournamentReportMock.mockResolvedValue(buildReport('Sample Open'));
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
@@ -476,6 +519,7 @@ describe('ScoreboardPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([completedTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-completed' });
     tournamentReportMock.mockRejectedValue(new Error('boom'));
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
@@ -492,6 +536,7 @@ describe('ScoreboardPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
     tournamentReportMock.mockResolvedValue({
       ...buildReport('Current Open'),
       tournament: {
@@ -526,6 +571,7 @@ describe('ScoreboardPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
     tournamentReportMock.mockResolvedValue({
       ...buildReport('Current Open'),
       tournament: {

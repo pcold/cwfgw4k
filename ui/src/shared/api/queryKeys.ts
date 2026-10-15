@@ -23,10 +23,17 @@ export const queryKeys = {
     byLeague: (leagueId: string | null): QueryKey => [...queryKeys.seasons.root, leagueId],
   },
 
-  /** @see queryKeys */
+  /**
+   * `current` sits under `bySeason` because the answer moves when a tournament is finalized or
+   * reset, and every such write invalidates the season's listing.
+   */
   tournaments: {
     root: ['tournaments'] as const,
     bySeason: (seasonId: string | null): QueryKey => [...queryKeys.tournaments.root, seasonId],
+    current: (seasonId: string | null): QueryKey => [
+      ...queryKeys.tournaments.bySeason(seasonId),
+      'current',
+    ],
   },
 
   /** @see queryKeys */
@@ -93,7 +100,7 @@ export const queryKeys = {
   report: {
     root: ['report'] as const,
     bySeason: (seasonId: string | null): QueryKey => [...queryKeys.report.root, seasonId],
-    detail: (seasonId: string | null, tournamentId: string, live: boolean): QueryKey => [
+    detail: (seasonId: string | null, tournamentId: string | null, live: boolean): QueryKey => [
       ...queryKeys.report.bySeason(seasonId),
       tournamentId,
       live,

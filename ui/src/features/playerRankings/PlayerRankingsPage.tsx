@@ -3,19 +3,15 @@ import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
-import { useLeaguesGate } from '@/shared/components/QueryState';
+import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
-import { earliestUnfinalized, tournamentLabel } from '@/shared/util/tournament';
+import { ALL_TOURNAMENTS, defaultReportSelection, tournamentLabel } from '@/shared/util/tournament';
 import PlayerRankingsView from './PlayerRankingsView';
-
-const ALL_TOURNAMENTS = '';
 
 function PlayerRankingsPage(): ReactNode {
   const { seasonId } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
-  // null = use the computed default (earliest non-finalized tournament, or
-  // ALL_TOURNAMENTS if every tournament is completed).
   const [throughOverride, setThroughOverride] = useState<string | null>(null);
   const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
 
@@ -23,13 +19,13 @@ function PlayerRankingsPage(): ReactNode {
     queryKey: queryKeys.tournaments.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
+  const currentQuery = useQuery({
+    queryKey: queryKeys.tournaments.current(seasonId),
+    queryFn: seasonId === null ? skipToken : () => api.currentTournament(seasonId),
+  });
 
   const tournaments = tournamentsQuery.data ?? [];
-  const defaultThrough =
-    tournamentsQuery.data === undefined
-      ? null
-      : (earliestUnfinalized(tournamentsQuery.data) ?? ALL_TOURNAMENTS);
-  const throughTournamentId = throughOverride ?? defaultThrough ?? ALL_TOURNAMENTS;
+  const throughTournamentId = throughOverride ?? defaultReportSelection(currentQuery.data);
   const liveOverlay = useLiveOverlay(tournaments, throughTournamentId || null);
 
   const playerRankingsQuery = useQuery({
@@ -39,7 +35,7 @@ function PlayerRankingsPage(): ReactNode {
       liveOverlay.effectiveLive,
     ),
     queryFn:
-      seasonId === null
+      seasonId === null || throughTournamentId === null
         ? skipToken
         : () =>
             api.playerRankings(
@@ -50,6 +46,9 @@ function PlayerRankingsPage(): ReactNode {
   });
 
   if (leaguesGate) return leaguesGate;
+  if (throughTournamentId === null) {
+    return <QueryState query={currentQuery} label="current tournament">{() => null}</QueryState>;
+  }
 
   return (
     <>

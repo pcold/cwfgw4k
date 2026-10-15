@@ -4,10 +4,8 @@ import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
-import { earliestUnfinalized, tournamentLabel } from '@/shared/util/tournament';
+import { ALL_TOURNAMENTS, defaultReportSelection, tournamentLabel } from '@/shared/util/tournament';
 import LateRowBetsView from './LateRowBetsView';
-
-const ALL_TOURNAMENTS = '';
 
 function LateRowBetsPage(): ReactNode {
   const { seasonId, live } = useLeagueSeason();
@@ -18,16 +16,18 @@ function LateRowBetsPage(): ReactNode {
     queryKey: queryKeys.tournaments.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
+  const currentQuery = useQuery({
+    queryKey: queryKeys.tournaments.current(seasonId),
+    queryFn: seasonId === null ? skipToken : () => api.currentTournament(seasonId),
+  });
 
   const tournaments = tournamentsQuery.data ?? [];
-  // Derived rather than synced: user's pick wins, otherwise the earliest
-  // unfinalized tournament, otherwise the "All Tournaments" sentinel.
-  const effectiveId = userTournamentId ?? earliestUnfinalized(tournaments) ?? ALL_TOURNAMENTS;
+  const effectiveId = userTournamentId ?? defaultReportSelection(currentQuery.data);
 
   const reportQuery = useQuery({
     queryKey: queryKeys.report.detail(seasonId, effectiveId, live),
     queryFn:
-      seasonId === null
+      seasonId === null || effectiveId === null
         ? skipToken
         : () =>
             effectiveId === ALL_TOURNAMENTS
@@ -36,6 +36,9 @@ function LateRowBetsPage(): ReactNode {
   });
 
   if (leaguesGate) return leaguesGate;
+  if (effectiveId === null) {
+    return <QueryState query={currentQuery} label="current tournament">{() => null}</QueryState>;
+  }
 
   return (
     <div className="space-y-4">
