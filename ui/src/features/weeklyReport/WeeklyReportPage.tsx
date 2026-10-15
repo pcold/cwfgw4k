@@ -49,7 +49,7 @@ function WeeklyReportPage(): ReactNode {
         ? skipToken
         : () =>
             effectiveId === ALL_TOURNAMENTS
-              ? api.seasonReport(seasonId, liveOverlay.effectiveLive)
+              ? api.seasonReport(seasonId)
               : api.tournamentReport(seasonId, effectiveId, liveOverlay.effectiveLive),
   });
 

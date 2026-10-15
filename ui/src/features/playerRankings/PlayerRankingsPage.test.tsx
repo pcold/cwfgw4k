@@ -188,6 +188,26 @@ describe('PlayerRankingsPage', () => {
     expect(select.value).toBe('tn-upcoming');
   });
 
+  it('shows the live toggle through the tournament in play and asks no live rankings at All Tournaments', async () => {
+    const inProgress = tournament({ id: 'tn-a', name: 'Open A', status: 'in_progress' });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([inProgress]);
+    playerRankingsMock.mockResolvedValue(rankings({}));
+
+    const user = userEvent.setup();
+    renderWithProviders(<PlayerRankingsPage />);
+
+    expect(await screen.findByRole('checkbox', { name: /Live overlay/i })).toBeChecked();
+    expect(playerRankingsMock).toHaveBeenLastCalledWith('sn-1', true, 'tn-a');
+
+    await user.selectOptions(screen.getByLabelText(/Through/i), '');
+
+    expect(screen.queryByRole('checkbox', { name: /Live overlay/i })).not.toBeInTheDocument();
+    expect(playerRankingsMock).toHaveBeenCalledWith('sn-1', false, undefined);
+    expect(playerRankingsMock).not.toHaveBeenCalledWith('sn-1', true, undefined);
+  });
+
   it('shows an empty state when no players have a top 10', async () => {
     const tournA = tournament({ id: 'tn-a', name: 'Open A' });
     leaguesMock.mockResolvedValue([league]);

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
@@ -17,7 +17,7 @@ vi.mock('@/shared/api/client', () => ({
   api: {
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
-    seasonReport: (id: string, live: boolean) => seasonReportMock(id, live),
+    seasonReport: (...args: Parameters<typeof api.seasonReport>) => seasonReportMock(...args),
     rankings: vi.fn(),
     rosters: vi.fn(),
     tournaments: (id: string) => tournamentsMock(id),
@@ -142,8 +142,27 @@ describe('LateRowBetsPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Late Row Bets' })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Round 2' })).toBeInTheDocument();
-    expect(seasonReportMock).toHaveBeenCalledWith('sn-1', true);
+    expect(seasonReportMock).toHaveBeenCalledWith('sn-1');
     expect(tournamentReportMock).not.toHaveBeenCalled();
+  });
+
+  it('asks live for the tournament in play and only the finalized season report at All Tournaments', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([{ ...tournament, status: 'in_progress' }]);
+    seasonReportMock.mockResolvedValue(buildReport());
+    tournamentReportMock.mockResolvedValue(buildReport());
+
+    const user = userEvent.setup();
+    renderWithProviders(<LateRowBetsPage />);
+
+    await screen.findByRole('heading', { name: 'Round 2' });
+    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
+
+    await user.selectOptions(screen.getByLabelText(/Through/i), '');
+
+    await waitFor(() => expect(seasonReportMock).toHaveBeenCalledWith('sn-1'));
+    expect(screen.queryByRole('checkbox', { name: /Live overlay/i })).not.toBeInTheDocument();
   });
 
   it("shows the season's own side-bet amount and rounds, not the defaults", async () => {
@@ -175,7 +194,7 @@ describe('LateRowBetsPage', () => {
     expect(screen.queryByText(/per team in/)).not.toBeInTheDocument();
   });
 
-  it('switches to the per-tournament report when a tournament is selected', async () => {
+  it('switches to the per-tournament report, not live, when a completed tournament is selected', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournament]);
@@ -189,7 +208,7 @@ describe('LateRowBetsPage', () => {
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-1');
 
-    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
+    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', false);
   });
 
   it('shows an empty state when there are no leagues', async () => {

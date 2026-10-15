@@ -9,8 +9,9 @@ import type { Tournament } from '@/shared/api/types';
  * Live overlay only adds signal for tournaments in the season's current
  * week — i.e. the week containing the earliest non-completed tournament.
  * That's where ESPN's projected payouts matter. Past-completed events are
- * immutable, future events haven't started, and "All Tournaments" rollups
- * never benefit. Multi-tournament weeks (e.g. a regular tour event plus an
+ * immutable and future events haven't started. A null selection ("All
+ * Tournaments") is never eligible: the server keeps those rollups to
+ * finalized results. Multi-tournament weeks (e.g. a regular tour event plus an
  * opposite-field event) are common enough that scoping to a single id
  * leaves the second tournament permanently non-live; same-week scoping
  * keeps both eligible while the week is in flight.
