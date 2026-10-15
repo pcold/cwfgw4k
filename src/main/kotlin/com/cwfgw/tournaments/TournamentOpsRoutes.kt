@@ -46,6 +46,11 @@ private fun TournamentOpsError.toDomainError(): DomainError =
         is TournamentOpsError.SeasonNotFound -> DomainError.NotFound("season ${id.value} not found")
         is TournamentOpsError.OutOfOrder ->
             DomainError.Refused(outOfOrderMessage(), code = "tournament_out_of_order")
+        is TournamentOpsError.StartDateChanged ->
+            DomainError.Refused(
+                "the start date moved from $fetchedFor to $startDate while ESPN was read; finalize again",
+                code = "tournament_start_date_changed",
+            )
         is TournamentOpsError.UpstreamUnavailable -> DomainError.BadGateway(failure.summary)
     }
 

@@ -129,8 +129,8 @@ Domain code throws a `DomainError`; `http/ErrorHandling.kt` maps it to a status 
 | `BadGateway` (ESPN unreachable) | 502 |
 | anything else | 500 |
 
-A `Refused` carries a stable code the UI branches on: `tournament_out_of_order`, `tournament_not_linked`,
-`tournament_finalized`.
+A `Refused` carries a stable code the UI branches on: `tournament_out_of_order`, `tournament_start_date_changed`,
+`tournament_not_linked`, `tournament_finalized`.
 
 ### JSON, IDs and parameters
 
@@ -274,11 +274,13 @@ by this status (see [Live overlay](#live-overlay)).
 
 1. Read the tournament. Fetch ESPN's scoreboard for its start date, outside any transaction. ESPN unreachable
    answers 502.
-2. In one `update`, re-read the tournament under its row lock, so a concurrent finalize or reset waits and one
-   deleted during the fetch answers 404. Refuse `tournament_out_of_order` if an earlier tournament in the season
-   is still `upcoming` or `in_progress`.
+2. In one `update`, re-read the tournament under its season's lock and then its own, so a finalize or reset of
+   any tournament in the season waits, and one deleted during the fetch answers 404. Refuse
+   `tournament_start_date_changed` if its start date moved during the fetch, and `tournament_out_of_order` if an
+   earlier tournament in the season is still `upcoming` or `in_progress`.
 3. Import results. A linked tournament imports only its own ESPN event (a no-op if the scoreboard lacks it). An
-   unlinked one imports each completed event on that scoreboard that matches a tournament by ESPN id.
+   unlinked one locks, then imports into, each tournament that a completed event on that scoreboard matches by
+   ESPN id.
 4. The tournament becomes `completed` only if ESPN marks the event completed; the import also syncs
    `is_team_event` (`EspnService.syncTournamentFromEventIn`).
 5. Compute and upsert fantasy scores ([§7](#7-scoring-and-payouts)).
@@ -289,7 +291,7 @@ Re-finalizing a completed tournament is not blocked; it re-imports and upserts t
 first. **Season clean-results** resets the whole season at once.
 
 Pinned by `TournamentOpsServiceSpec`, `TournamentOpsServiceFinalizeRollbackSpec`,
-`TournamentOpsServiceResetSpec` and `TournamentFinalizeRaceSpec`.
+`TournamentOpsServiceResetSpec`, `TournamentFinalizeRaceSpec` and `TournamentSiblingRaceSpec`.
 
 ## 7. Scoring and Payouts
 

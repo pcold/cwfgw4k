@@ -59,6 +59,13 @@ class FakeTournamentRepository(
     override fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
         tournaments.values.firstOrNull { it.pgaTournamentId == pgaTournamentId }
 
+    /** The locks are pinned against Postgres, in TournamentSiblingRaceSpec. */
+    context(ctx: WriteTransactionContext)
+    override fun findByPgaTournamentIdsForUpdate(pgaTournamentIds: Collection<String>): List<Tournament> =
+        tournaments.values
+            .filter { it.pgaTournamentId in pgaTournamentIds }
+            .sortedWith(compareBy(POSTGRES_UUID_ORDER) { it.id.value })
+
     context(ctx: WriteTransactionContext)
     override fun create(request: CreateTournamentRequest): Tournament {
         if (request.pgaTournamentId != null && findByPgaTournamentId(request.pgaTournamentId) != null) {

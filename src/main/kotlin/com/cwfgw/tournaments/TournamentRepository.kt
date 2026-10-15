@@ -25,14 +25,22 @@ interface TournamentRepository {
     fun findById(id: TournamentId): Tournament?
 
     /**
-     * Key-shares the season row before locking the tournament, the order a season delete's cascade takes both.
-     * Locking the tournament alone deadlocks that delete (40P01) once a score insert needs the season row.
+     * Locks the season row before the tournament, the order a season delete's cascade takes both. NO KEY UPDATE runs
+     * one finalize or reset per season at a time, so each sees the other's sibling writes. Admin edits and a season
+     * clean-results take no season lock, and an FK insert's key-share stays free.
      */
     context(ctx: WriteTransactionContext)
     fun findByIdForUpdate(id: TournamentId): Tournament?
 
     context(ctx: TransactionContext)
     fun findByPgaTournamentId(pgaTournamentId: String): Tournament?
+
+    /**
+     * Locks in id order: an id never changes, where a start date can between two lockers' reads. Their seasons go
+     * unlocked, since a NO KEY UPDATE on them deadlocks two finalizes importing into each other's season.
+     */
+    context(ctx: WriteTransactionContext)
+    fun findByPgaTournamentIdsForUpdate(pgaTournamentIds: Collection<String>): List<Tournament>
 
     context(ctx: WriteTransactionContext)
     fun create(request: CreateTournamentRequest): Tournament
@@ -125,7 +133,7 @@ private class JooqTournamentRepository : TournamentRepository {
                 .where(TOURNAMENTS.ID.eq(id.value))
                 .fetchOne(TOURNAMENTS.SEASON_ID)
                 ?: return null
-        ctx.dsl.selectOne().from(SEASONS).where(SEASONS.ID.eq(seasonId)).forKeyShare().execute()
+        ctx.dsl.selectOne().from(SEASONS).where(SEASONS.ID.eq(seasonId)).forNoKeyUpdate().execute()
         return ctx.dsl.selectFrom(TOURNAMENTS)
             .where(TOURNAMENTS.ID.eq(id.value))
             .forUpdate()
@@ -139,6 +147,16 @@ private class JooqTournamentRepository : TournamentRepository {
             .where(TOURNAMENTS.PGA_TOURNAMENT_ID.eq(pgaTournamentId))
             .fetchOne()
             ?.let(::toTournament)
+
+    context(ctx: WriteTransactionContext)
+    override fun findByPgaTournamentIdsForUpdate(pgaTournamentIds: Collection<String>): List<Tournament> {
+        if (pgaTournamentIds.isEmpty()) return emptyList()
+        return ctx.dsl.selectFrom(TOURNAMENTS)
+            .where(TOURNAMENTS.PGA_TOURNAMENT_ID.`in`(pgaTournamentIds))
+            .orderBy(TOURNAMENTS.ID.asc())
+            .forUpdate()
+            .fetch(::toTournament)
+    }
 
     context(ctx: WriteTransactionContext)
     override fun create(request: CreateTournamentRequest): Tournament {
@@ -217,6 +235,7 @@ private class JooqTournamentRepository : TournamentRepository {
             .and(position.le(positionAtMost))
             .orderBy(tournamentId.asc())
             .fetch { record ->
+                // tournament_id is NOT NULL; position is nullable, but `position <= positionAtMost` drops its NULLs.
                 GolferFinish(
                     tournamentId = TournamentId(checkNotNull(record[tournamentId])),
                     position = checkNotNull(record[position]),

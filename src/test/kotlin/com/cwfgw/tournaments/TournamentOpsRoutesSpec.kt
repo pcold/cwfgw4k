@@ -1,5 +1,6 @@
 package com.cwfgw.tournaments
 
+import com.cwfgw.espn.EspnClient
 import com.cwfgw.espn.EspnTournament
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
@@ -74,11 +75,24 @@ private fun emptyEspnEvent(
         isTeamEvent = false,
     )
 
+/** Moves [MASTERS_ID] to [movedTo] while finalize's fetch is in flight. */
+private class StartDateMovingEspnClient(
+    private val delegate: EspnClient,
+    private val tournaments: TournamentRepository,
+    private val movedTo: LocalDate,
+) : EspnClient by delegate {
+    override suspend fun fetchScoreboard(date: LocalDate): List<EspnTournament> {
+        with(noopTransactionContext) { tournaments.update(MASTERS_ID, UpdateTournamentRequest(startDate = movedTo)) }
+        return delegate.fetchScoreboard(date)
+    }
+}
+
 @Suppress("LongParameterList")
 private fun opsFixture(
     seedSeason: Boolean = true,
     initialTournaments: List<Tournament> = emptyList(),
     espnByDate: Map<LocalDate, List<EspnTournament>> = emptyMap(),
+    startDateMovedDuringFetch: LocalDate? = null,
 ): ApiFixture.() -> Unit =
     {
         val seasonRepo = FakeSeasonRepository(idFactory = { SEASON_ID })
@@ -101,9 +115,12 @@ private fun opsFixture(
         teamService = TeamService(teamRepo, sharedTx)
         golferService = GolferService(golferRepo, sharedTx)
         val linkRepo = FakeTournamentLinkRepository()
+        val scoreboard = FakeEspnClient(tournamentsByDate = espnByDate)
+        val client =
+            startDateMovedDuringFetch?.let { StartDateMovingEspnClient(scoreboard, tournamentRepo, it) } ?: scoreboard
         espnService =
             testEspnService(
-                client = FakeEspnClient(tournamentsByDate = espnByDate),
+                client = client,
                 seasonRepository = seasonRepo,
                 golferRepository = golferRepo,
                 teamRepository = teamRepo,
@@ -194,6 +211,20 @@ class TournamentOpsRoutesSpec : FunSpec({
             val response = client.post("/api/v1/tournaments/${MASTERS_ID.value}/finalize")
             response.shouldBeRefused("tournament_out_of_order")
             response.bodyAsText().shouldContain("Sony Open")
+        }
+    }
+
+    test("POST /api/v1/tournaments/{id}/finalize is refused when the start date moved during the ESPN fetch") {
+        val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09")
+        val configure =
+            opsFixture(
+                initialTournaments = listOf(masters),
+                startDateMovedDuringFetch = LocalDate.parse("2026-04-16"),
+            )
+
+        authenticatedApiTest(configure) { client ->
+            val response = client.post("/api/v1/tournaments/${MASTERS_ID.value}/finalize")
+            response.shouldBeRefused("tournament_start_date_changed")
         }
     }
 
