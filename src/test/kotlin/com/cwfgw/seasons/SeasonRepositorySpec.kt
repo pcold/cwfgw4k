@@ -338,6 +338,17 @@ class SeasonRepositorySpec : FunSpec({
         }
     }
 
+    test("the round CHECK admits the first and last draft rounds that create validation lets through") {
+        tx.update {
+            val created =
+                repository.create(
+                    seasonRequest(castlewoodId).copy(rules = SeasonRules.defaults().copy(sideBetRounds = listOf(1, 8))),
+                )
+
+            repository.getRules(created.id).shouldNotBeNull().sideBetRounds shouldBe listOf(1, 8)
+        }
+    }
+
     test("getRules returns null for unknown season") {
         tx.read { repository.getRules(SeasonId(UUID.randomUUID())) }.shouldBeNull()
     }
