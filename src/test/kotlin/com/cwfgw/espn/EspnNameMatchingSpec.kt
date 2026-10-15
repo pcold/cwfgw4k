@@ -184,7 +184,7 @@ class EspnNameMatchingSpec : FunSpec({
         val fixture = ImportFixture(listOf(byeongHunAn, namesake))
 
         fixture.import(event(competitor("espn-an", "Byeong-Hun An", 1))) shouldBe listOf(byeongHunAn.id)
-        fixture.allGolfers() shouldContainExactlyInAnyOrder listOf(byeongHunAn, namesake)
+        fixture.allGolfers() shouldContainExactlyInAnyOrder listOf(byeongHunAn.copy(pgaPlayerId = "espn-an"), namesake)
     }
 
     test("import attaches ESPN's accented name to the golfer a roster stored unaccented") {
@@ -193,7 +193,7 @@ class EspnNameMatchingSpec : FunSpec({
         val fixture = ImportFixture(listOf(olesen, namesake))
 
         fixture.import(event(competitor("espn-olesen", "Thorbjørn Olesen", 1))) shouldBe listOf(olesen.id)
-        fixture.allGolfers() shouldContainExactlyInAnyOrder listOf(olesen, namesake)
+        fixture.allGolfers() shouldContainExactlyInAnyOrder listOf(olesen.copy(pgaPlayerId = "espn-olesen"), namesake)
     }
 
     test("a single-word partner name nobody matches is stored as a surname") {
