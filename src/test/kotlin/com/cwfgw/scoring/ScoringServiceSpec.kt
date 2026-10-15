@@ -27,15 +27,18 @@ import io.kotest.matchers.types.shouldBeInstanceOf
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
+import java.util.Locale
 import java.util.UUID
 
 private val SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000aaa"))
 private val TOURNAMENT_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000099"))
 private val LEAGUE_ID = LeagueId(UUID.fromString("00000000-0000-0000-0000-000000000111"))
 
-private fun teamId(n: Int): TeamId = TeamId(UUID.fromString("00000000-0000-0000-0000-0000000000%02d".format(n)))
+private fun teamId(n: Int): TeamId =
+    TeamId(UUID.fromString("00000000-0000-0000-0000-0000000000%02d".format(Locale.ROOT, n)))
 
-private fun golferId(n: Int): GolferId = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000f%02d".format(n)))
+private fun golferId(n: Int): GolferId =
+    GolferId(UUID.fromString("00000000-0000-0000-0000-000000000f%02d".format(Locale.ROOT, n)))
 
 private fun mkSeason(): Season =
     Season(

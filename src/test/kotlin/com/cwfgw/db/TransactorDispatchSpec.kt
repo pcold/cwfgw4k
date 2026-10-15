@@ -6,13 +6,15 @@ import com.zaxxer.hikari.HikariDataSource
 import io.kotest.assertions.nondeterministic.eventually
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import org.jooq.impl.DSL.condition
 import org.jooq.impl.DSL.table
 import java.sql.Connection
+import java.util.concurrent.Executors
 import kotlin.time.Duration.Companion.seconds
 
 private const val CALLER_THREADS = 2
@@ -49,7 +51,15 @@ private suspend fun PostgresHarness.assertCallsOutnumberCallerThreads(
         "a pool of $maxPoolSize cannot hold the gate, $CONCURRENT_CALLS calls and the probe at once"
     }
     dataSource.growTo(CONNECTIONS_HELD_AT_ONCE)
-    val caller = Dispatchers.Default.limitedParallelism(CALLER_THREADS)
+    Executors.newFixedThreadPool(CALLER_THREADS).asCoroutineDispatcher().use { caller ->
+        holdGateWhileCalling(caller, transact)
+    }
+}
+
+private suspend fun PostgresHarness.holdGateWhileCalling(
+    caller: CoroutineDispatcher,
+    transact: suspend (context(TransactionContext) () -> Unit) -> Unit,
+) {
     dataSource.connection.use { gate ->
         gate.autoCommit = false
         gate.createStatement().use { it.execute("SELECT pg_advisory_xact_lock($GATE_LOCK_KEY)") }
