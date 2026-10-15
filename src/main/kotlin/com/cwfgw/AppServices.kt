@@ -2,6 +2,7 @@ package com.cwfgw
 
 import com.cwfgw.admin.AdminService
 import com.cwfgw.cache.RequestCache
+import com.cwfgw.datahealth.DataHealthService
 import com.cwfgw.db.Transactor
 import com.cwfgw.espn.EspnService
 import com.cwfgw.golfers.GolferService
@@ -38,6 +39,7 @@ data class AppServices(
     val seasonOpsService: SeasonOpsService,
     val espnService: EspnService,
     val adminService: AdminService,
+    val dataHealthService: DataHealthService,
     val liveOverlayService: LiveOverlayService,
     val weeklyReportService: WeeklyReportService,
     val authService: AuthService,

@@ -430,3 +430,29 @@ export interface GolferHistory {
   topTens: number;
   results: GolferHistoryEntry[];
 }
+
+// Mirrors backend com.cwfgw.datahealth, from GET /api/v1/admin/data-health. The server decides
+// what counts as a problem; `count` is the number of `rows`.
+export interface DataHealthGolfer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  pgaPlayerId: string | null;
+}
+
+export interface RosteredTwinGroup {
+  normalizedName: string;
+  rosteredWithoutEspnId: DataHealthGolfer[];
+  holdingEspnId: DataHealthGolfer[];
+}
+
+export interface DataHealthCheck<T> {
+  count: number;
+  rows: T[];
+}
+
+export interface DataHealthReport {
+  rosteredTwins: DataHealthCheck<RosteredTwinGroup>;
+  rosteredWithoutEspnId: DataHealthCheck<DataHealthGolfer>;
+  blankFirstNames: DataHealthCheck<DataHealthGolfer>;
+}

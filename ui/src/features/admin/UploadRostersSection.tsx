@@ -139,6 +139,7 @@ function UploadRostersSection(): ReactNode {
       void queryClient.invalidateQueries({ queryKey: queryKeys.rosters.root });
       void queryClient.invalidateQueries({ queryKey: queryKeys.golfers.root });
       void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentCompetitors.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dataHealth.root });
       invalidateAfterScoreOwnerChange(queryClient, { type: 'everySeason' });
     },
   });

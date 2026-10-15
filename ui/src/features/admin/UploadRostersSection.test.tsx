@@ -27,7 +27,7 @@ vi.mock('@/shared/api/client', () => ({
 }));
 
 // Each key is the one its reader holds: PlayerLinksPanel for the first two, then ScoreboardPage,
-// WeeklyReportPage (and LateRowBetsPage), RankingsPage, PlayerRankingsPage.
+// WeeklyReportPage (and LateRowBetsPage), RankingsPage, PlayerRankingsPage, DataHealthSection.
 const OPEN_WHEN_AN_UPLOAD_LANDS: [string, QueryKey][] = [
   ['golfers', queryKeys.golfers.list()],
   ['tournamentCompetitors', queryKeys.tournamentCompetitors.byTournament('tn-1')],
@@ -35,6 +35,7 @@ const OPEN_WHEN_AN_UPLOAD_LANDS: [string, QueryKey][] = [
   ['report', queryKeys.report.detail('sn-1', 'tn-1', false)],
   ['rankings', queryKeys.rankings.detail('sn-1', false, 'tn-1')],
   ['playerRankings', queryKeys.playerRankings.detail('sn-1', 'tn-1', false)],
+  ['dataHealth', queryKeys.dataHealth.root],
 ];
 
 async function uploadRosterFile(user: ReturnType<typeof userEvent.setup>, contents: string) {

@@ -8,6 +8,8 @@ import com.cwfgw.cache.RequestCache
 import com.cwfgw.config.AppConfig
 import com.cwfgw.config.AuthConfig
 import com.cwfgw.config.LoginThrottleConfig
+import com.cwfgw.datahealth.DataHealthRepository
+import com.cwfgw.datahealth.DataHealthService
 import com.cwfgw.db.Database
 import com.cwfgw.db.Transactor
 import com.cwfgw.db.poolMetricsOrNull
@@ -156,6 +158,7 @@ internal fun buildServices(
             ),
         espnService = espnService,
         adminService = adminService,
+        dataHealthService = DataHealthService(DataHealthRepository(), transactor),
         liveOverlayService = liveOverlayService,
         weeklyReportService = weeklyReportService,
         authService = AuthService(userRepository, transactor),

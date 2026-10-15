@@ -70,6 +70,7 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
     onSuccess: (season: Season) => {
       setSuccess(`Season "${season.name}" created`);
       void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.root });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dataHealth.root });
     },
   });
 
