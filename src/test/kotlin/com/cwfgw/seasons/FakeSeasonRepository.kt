@@ -12,6 +12,8 @@ import java.util.UUID
 /** Every money column on a season is numeric(10,4): Postgres answers four places whatever the request carried. */
 private const val MONEY_SCALE = 4
 
+private val MONEY_OVERFLOW = BigDecimal("1E+6")
+
 private val seasonOrdering: Comparator<Season> =
     compareByDescending<Season> { it.seasonYear }
         .thenByDescending { it.seasonNumber }
@@ -103,7 +105,12 @@ class FakeSeasonRepository(
         return store.remove(id) != null
     }
 
-    private fun BigDecimal.toMoneyScale(): BigDecimal = setScale(MONEY_SCALE, RoundingMode.HALF_UP)
+    // Throws where the column would round or overflow, since the route's guard leaves it neither to do. The bound is
+    // compared first: setScale would allocate an amount like 1E+1000000000 in full.
+    private fun BigDecimal.toMoneyScale(): BigDecimal {
+        check(abs() < MONEY_OVERFLOW) { "numeric(10,4) overflows at $this" }
+        return setScale(MONEY_SCALE, RoundingMode.UNNECESSARY)
+    }
 
     companion object {
         private const val DEFAULT_MAX_TEAMS = 10
