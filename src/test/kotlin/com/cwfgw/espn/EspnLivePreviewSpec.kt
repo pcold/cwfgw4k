@@ -122,7 +122,6 @@ private fun rosterEntry(
         draftRound = draftRound,
         ownershipPct = ownershipPct,
         acquiredAt = Instant.EPOCH,
-        isActive = true,
     )
 
 private fun tournament(

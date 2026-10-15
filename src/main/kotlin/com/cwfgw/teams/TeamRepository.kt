@@ -188,6 +188,5 @@ private class JooqTeamRepository : TeamRepository {
             draftRound = record.draftRound,
             ownershipPct = record.required(TEAM_ROSTERS.OWNERSHIP_PCT),
             acquiredAt = record.required(TEAM_ROSTERS.ACQUIRED_AT).toInstant(),
-            isActive = record.required(TEAM_ROSTERS.IS_ACTIVE),
         )
 }

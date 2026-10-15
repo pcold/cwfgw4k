@@ -95,7 +95,6 @@ private fun mkRoster(
         draftRound = null,
         ownershipPct = ownership,
         acquiredAt = Instant.EPOCH,
-        isActive = true,
     )
 
 private fun mkResult(

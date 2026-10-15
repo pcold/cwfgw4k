@@ -77,7 +77,6 @@ private val teamContract: List<ContractCase<TeamRepository>> =
 
             defaulted.acquiredVia shouldBe "free_agent"
             defaulted.ownershipPct.toPlainString() shouldBe "100.00"
-            defaulted.isActive shouldBe true
             drafted.acquiredVia shouldBe "draft"
             drafted.draftRound shouldBe 1
             drafted.ownershipPct.toPlainString() shouldBe "50.00"
