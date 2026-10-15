@@ -217,6 +217,7 @@ private class JooqTournamentRepository : TournamentRepository {
             .and(position.le(positionAtMost))
             .orderBy(tournamentId.asc())
             .fetch { record ->
+                // tournament_id is NOT NULL; position is nullable, but `position <= positionAtMost` drops its NULLs.
                 GolferFinish(
                     tournamentId = TournamentId(checkNotNull(record[tournamentId])),
                     position = checkNotNull(record[position]),
