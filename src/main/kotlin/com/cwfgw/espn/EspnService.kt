@@ -257,11 +257,8 @@ class EspnService(
             }
             is CompetitorMatch.Withheld -> {
                 val espnId = LoggedEspnId(competitor.espnId)
-                log.warn {
-                    "cwfgw4k.espn event=namesake-withheld espn_id=$espnId golfer_ids=${match.drafted.map {
-                        it.id.value
-                    }}"
-                }
+                val golferIds = match.drafted.map { it.id.value }
+                log.warn { "cwfgw4k.espn event=namesake-withheld espn_id=$espnId golfer_ids=$golferIds" }
                 null
             }
         }
