@@ -3,11 +3,11 @@ package com.cwfgw.admin
 import com.cwfgw.db.Transactor
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.db.updateOrOutraced
+import com.cwfgw.espn.EspnAthlete
 import com.cwfgw.espn.EspnCalendarEntry
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnUpstreamException
 import com.cwfgw.golfers.CreateGolferRequest
-import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferName
 import com.cwfgw.golfers.GolferNameIndex
@@ -172,18 +172,8 @@ class AdminService(
         get(WeekFields.ISO.weekBasedYear()) to get(WeekFields.ISO.weekOfWeekBasedYear())
 
     /**
-     * Roster preview with persisted-pool fallback. Parses the TSV, matches
-     * each pick against existing golfers by normalized full name, and — if
-     * any picks fail to match — pulls ESPN's recent-active player pool and
-     * persists any newly-discovered golfers (with their `pga_player_id`)
-     * before re-matching. The DB grows opportunistically so subsequent
-     * previews start from a richer base and only need to fish ESPN for
-     * truly new players.
-     *
-     * The route still returns a read-shaped [RosterPreviewResult]; callers
-     * confirm via [confirmRoster] once ambiguous / no-match rows are
-     * resolved. The persisted golfer rows stay valid even if the operator
-     * later abandons the preview.
+     * Writes nothing: a pick only ESPN's recent-active pool names comes back [PickMatch.MatchedEspn] for [confirmRoster]
+     * to insert. ESPN is asked only when some pick matches no row, and an ESPN outage reads as no match.
      */
     suspend fun previewRoster(rosterText: String): Result<RosterPreviewResult, AdminError> {
         val parsed =
@@ -192,53 +182,26 @@ class AdminService(
                 is Result.Err -> return Result.Err(AdminError.InvalidRoster(r.error))
             }
 
-        val initialIndex = GolferNameIndex(golferService.list(search = null))
-        val initialMatches = parsed.flatMap { it.picks }.map { matchPick(it.playerName, initialIndex) }
-        val anyUnmatched = initialMatches.any { it is PickMatch.NoMatch }
-
-        val finalIndex =
-            if (anyUnmatched) {
-                fishEspnPoolInto(initialIndex)
-            } else {
-                initialIndex
+        val golfers = GolferNameIndex(golferService.list(search = null))
+        val anyUnmatched =
+            parsed.flatMap { it.picks }.any { pick ->
+                golfers.matchFullName(pick.playerName) == GolferNameMatch.NoMatch
             }
+        val athletes = if (anyUnmatched) unpersistedAthletes(golfers) else emptyList()
+        val nameIndex = RosterNameIndex(golfers, athletes)
 
-        val previewTeams = parsed.map { team -> previewTeam(team, finalIndex) }
+        val previewTeams = parsed.map { team -> previewTeam(team, nameIndex) }
         return Result.Ok(summarize(previewTeams))
     }
 
-    /**
-     * Pull ESPN's recent-active player pool and persist any athlete whose
-     * `pga_player_id` isn't already in the DB. Returns a fresh name index
-     * over the now-larger golfer set. Best-effort: if ESPN is unavailable
-     * (the service itself absorbs upstream failures into an empty list),
-     * we just return the original index unchanged so the matcher falls
-     * back to "no match" rather than failing the whole preview.
-     */
-    private suspend fun fishEspnPoolInto(currentIndex: GolferNameIndex): GolferNameIndex {
-        val athletes = espnService.fetchActivePlayers()
-        if (athletes.isEmpty()) return currentIndex
-        val existingIds = currentIndex.golfers.mapNotNull { it.pgaPlayerId }.toSet()
-        val newAthletes = athletes.filter { it.espnId !in existingIds }
-        if (newAthletes.isEmpty()) return currentIndex
-        log.info { "Persisting ${newAthletes.size} new ESPN athletes into golfers table" }
-        for (athlete in newAthletes) {
-            val (firstName, lastName) = GolferName.splitName(athlete.name) ?: continue
-            // A PgaPlayerIdTaken loser needs nothing: the re-list below picks up the winner's row.
-            golferService.create(
-                CreateGolferRequest(
-                    pgaPlayerId = athlete.espnId,
-                    firstName = firstName,
-                    lastName = lastName,
-                ),
-            )
-        }
-        return GolferNameIndex(golferService.list(search = null))
+    private suspend fun unpersistedAthletes(golfers: GolferNameIndex): List<EspnAthlete> {
+        val persistedIds = golfers.golfers.mapNotNull { it.pgaPlayerId }.toSet()
+        return espnService.fetchActivePlayers().filter { it.espnId !in persistedIds }
     }
 
     private fun previewTeam(
         team: ParsedTeam,
-        nameIndex: GolferNameIndex,
+        nameIndex: RosterNameIndex,
     ): PreviewTeam =
         PreviewTeam(
             teamNumber = team.teamNumber,
@@ -249,29 +212,10 @@ class AdminService(
                         round = pick.round,
                         playerName = pick.playerName,
                         ownershipPct = pick.ownershipPct,
-                        match = matchPick(pick.playerName, nameIndex),
+                        match = nameIndex.match(pick.playerName),
                     )
                 },
         )
-
-    private fun matchPick(
-        playerName: String,
-        nameIndex: GolferNameIndex,
-    ): PickMatch =
-        when (val match = nameIndex.matchFullName(playerName)) {
-            is GolferNameMatch.Matched ->
-                PickMatch.Matched(golferId = match.golfer.id, golferName = match.golfer.fullName())
-            is GolferNameMatch.Ambiguous ->
-                PickMatch.Ambiguous(
-                    candidates =
-                        match.candidates.map { golfer ->
-                            GolferCandidate(golferId = golfer.id, name = golfer.fullName())
-                        },
-                )
-            GolferNameMatch.NoMatch -> PickMatch.NoMatch
-        }
-
-    private fun Golfer.fullName(): String = "$firstName $lastName"
 
     private fun summarize(teams: List<PreviewTeam>): RosterPreviewResult {
         val allPicks = teams.flatMap { it.picks }
@@ -280,7 +224,7 @@ class AdminService(
         var unmatched = 0
         for (pick in allPicks) {
             when (pick.match) {
-                is PickMatch.Matched -> matched++
+                is PickMatch.Matched, is PickMatch.MatchedEspn -> matched++
                 is PickMatch.Ambiguous -> ambiguous++
                 PickMatch.NoMatch -> unmatched++
             }
@@ -295,13 +239,8 @@ class AdminService(
     }
 
     /**
-     * Persist an operator-confirmed roster atomically: create one Team
-     * per `ConfirmedTeam`, create new golfers for any `New` assignments,
-     * and add a roster entry per pick — all inside a single transaction
-     * so a mid-loop failure rolls back every prior write rather than
-     * leaving the DB with half-built teams. Validates all `Existing`
-     * golfer ids up front so the operator sees every bad reference at
-     * once before the transaction opens.
+     * One transaction, so a mid-loop failure leaves no half-built team and no golfer a `New` or `Espn` pick inserted.
+     * `Existing` ids are checked before it opens, so the operator sees every bad reference at once.
      */
     suspend fun confirmRoster(request: ConfirmRosterRequest): Result<RosterUploadResult, AdminError> {
         seasonService.get(request.seasonId) ?: return Result.Err(AdminError.SeasonNotFound(request.seasonId))
@@ -318,10 +257,11 @@ class AdminService(
             UNIQUE_TEAM_NAME_PER_SEASON,
             outraced = { AdminError.TeamNameTaken(request.seasonId) },
         ) {
-            var golfersCreated = 0
+            val espnGolfers = resolveEspnGolfers(request.teams)
+            var golfersCreated = espnGolfers.insertedCount
             val createdTeams = mutableListOf<Team>()
             for (team in request.teams) {
-                val (createdTeam, newGolfers) = persistConfirmedTeam(request.seasonId, team)
+                val (createdTeam, newGolfers) = persistConfirmedTeam(request.seasonId, team, espnGolfers.golferIds)
                 createdTeams += createdTeam
                 golfersCreated += newGolfers
             }
@@ -335,6 +275,27 @@ class AdminService(
         }
     }
 
+    /**
+     * Before any team, so an athlete two teams share is one row. [EspnGolfers.insertedCount] can include a row a
+     * concurrent confirm inserted first, since [GolferRepository.findOrCreate] returns either the same way.
+     */
+    context(ctx: WriteTransactionContext)
+    private fun resolveEspnGolfers(teams: List<ConfirmedTeam>): EspnGolfers {
+        val athletes =
+            teams.flatMap { it.picks }
+                .map(ConfirmedPick::assignment)
+                .filterIsInstance<GolferAssignment.Espn>()
+                .distinctBy(GolferAssignment.Espn::espnId)
+        val persisted =
+            athletes.mapNotNull { athlete ->
+                golferRepository.findByPgaPlayerId(athlete.espnId)?.let { golfer -> athlete.espnId to golfer.id }
+            }.toMap()
+        val inserted =
+            athletes.filterNot { it.espnId in persisted }
+                .associate { athlete -> athlete.espnId to golferRepository.findOrCreate(athlete.toCreateRequest()).id }
+        return EspnGolfers(golferIds = persisted + inserted, insertedCount = inserted.size)
+    }
+
     // Repos are the right surface here: every write needs to join the
     // surrounding tx, and the services capture their own Transactor and
     // would each open a fresh nested transaction.
@@ -342,6 +303,7 @@ class AdminService(
     private fun persistConfirmedTeam(
         seasonId: SeasonId,
         team: ConfirmedTeam,
+        espnGolferIds: Map<String, GolferId>,
     ): Pair<Team, Int> {
         val createdTeam =
             teamRepository.create(
@@ -364,6 +326,7 @@ class AdminService(
                             CreateGolferRequest(firstName = assignment.firstName, lastName = assignment.lastName)
                         golferRepository.create(req).id
                     }
+                    is GolferAssignment.Espn -> espnGolferIds.getValue(assignment.espnId)
                 }
             teamRepository.addToRoster(
                 teamId = createdTeam.id,
@@ -450,7 +413,8 @@ class AdminService(
 internal val DRAFT_ROUNDS: IntRange = 1..8
 
 private fun findRosterProblems(teams: List<ConfirmedTeam>): List<ConfirmedRosterProblem> =
-    repeatedTeamNames(teams) + teams.flatMap(::repeatedGolfers) + teams.flatMap(::draftRoundProblems)
+    repeatedTeamNames(teams) + teams.flatMap(::repeatedGolfers) + teams.flatMap(::blankEspnNames) +
+        teams.flatMap(::draftRoundProblems)
 
 private fun repeatedTeamNames(teams: List<ConfirmedTeam>): List<ConfirmedRosterProblem> =
     teams.firstOfEachRepeat(ConfirmedTeam::teamName)
@@ -472,8 +436,25 @@ private fun repeatedGolfers(team: ConfirmedTeam): List<ConfirmedRosterProblem> {
                     lastName = repeat.lastName,
                 )
             }
-    return repeatedExisting + repeatedNew
+    val repeatedEspn =
+        assignments.filterIsInstance<GolferAssignment.Espn>()
+            .firstOfEachRepeat(GolferAssignment.Espn::espnId)
+            .map { repeat -> ConfirmedRosterProblem.RepeatedEspnGolfer(team.teamName, repeat.espnId) }
+    return repeatedExisting + repeatedNew + repeatedEspn
 }
+
+private fun blankEspnNames(team: ConfirmedTeam): List<ConfirmedRosterProblem> =
+    team.picks.map(ConfirmedPick::assignment)
+        .filterIsInstance<GolferAssignment.Espn>()
+        .filter { athlete -> GolferName.splitName(athlete.name) == null }
+        .map { athlete -> ConfirmedRosterProblem.BlankEspnGolferName(team.teamName, athlete.espnId) }
+
+private fun GolferAssignment.Espn.toCreateRequest(): CreateGolferRequest {
+    val split = checkNotNull(GolferName.splitName(name)) { "findRosterProblems refuses a blank ESPN name" }
+    return CreateGolferRequest(pgaPlayerId = espnId, firstName = split.firstName, lastName = split.lastName)
+}
+
+private class EspnGolfers(val golferIds: Map<String, GolferId>, val insertedCount: Int)
 
 private fun draftRoundProblems(team: ConfirmedTeam): List<ConfirmedRosterProblem> {
     val rounds = team.picks.map(ConfirmedPick::round)

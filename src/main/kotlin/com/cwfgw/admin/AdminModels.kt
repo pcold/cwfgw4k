@@ -134,6 +134,11 @@ sealed interface PickMatch {
     @SerialName("matched")
     data class Matched(val golferId: GolferId, val golferName: String) : PickMatch
 
+    /** Not yet a `golfers` row: [AdminService.confirmRoster] inserts it, so an abandoned preview writes nothing. */
+    @Serializable
+    @SerialName("matched_espn")
+    data class MatchedEspn(val espnId: String, val golferName: String) : PickMatch
+
     @Serializable
     @SerialName("ambiguous")
     data class Ambiguous(val candidates: List<GolferCandidate>) : PickMatch
@@ -143,14 +148,30 @@ sealed interface PickMatch {
     data object NoMatch : PickMatch
 }
 
+/** A variant per source, not one class with a nullable `golferId` and `espnId`, which could carry both or neither. */
 @Serializable
-data class GolferCandidate(val golferId: GolferId, val name: String)
+sealed interface GolferCandidate {
+    @Serializable
+    @SerialName("existing")
+    data class Existing(val golferId: GolferId, val name: String) : GolferCandidate
+
+    @Serializable
+    @SerialName("espn")
+    data class Espn(val espnId: String, val name: String) : GolferCandidate
+}
+
+/** Carry a preview candidate straight into a confirm call. */
+fun GolferCandidate.toAssignment(): GolferAssignment =
+    when (this) {
+        is GolferCandidate.Existing -> GolferAssignment.Existing(golferId)
+        is GolferCandidate.Espn -> GolferAssignment.Espn(espnId = espnId, name = name)
+    }
 
 /**
  * Operator-confirmed roster ready to write. Each pick's golfer is fully
- * resolved — either an existing golfer id (operator accepted Matched or
- * picked from Ambiguous candidates) or an explicit new-golfer record
- * (operator chose to create rather than reuse). Forcing the choice keeps
+ * resolved — an existing golfer id (operator accepted Matched or picked
+ * from Ambiguous candidates), an ESPN athlete to insert, or an explicit
+ * new-golfer record (operator chose to create rather than reuse). Forcing the choice keeps
  * typo'd names from quietly multiplying golfer rows.
  */
 @Serializable
@@ -188,6 +209,14 @@ sealed interface GolferAssignment {
     @Serializable
     @SerialName("new")
     data class New(val firstName: String, val lastName: String) : GolferAssignment
+
+    /**
+     * Inserted inside the confirm's transaction, or bound to the row already holding [espnId] as `pga_player_id`.
+     * [name] is split there as an ESPN import splits it.
+     */
+    @Serializable
+    @SerialName("espn")
+    data class Espn(val espnId: String, val name: String) : GolferAssignment
 }
 
 /**

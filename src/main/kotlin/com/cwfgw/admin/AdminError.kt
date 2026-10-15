@@ -59,6 +59,12 @@ sealed interface ConfirmedRosterProblem {
         val lastName: String,
     ) : ConfirmedRosterProblem
 
+    /** @see RepeatedExistingGolfer */
+    data class RepeatedEspnGolfer(val teamName: String, val espnId: String) : ConfirmedRosterProblem
+
+    /** No surname to store. The preview never offers such an athlete, so only a hand-built payload carries one. */
+    data class BlankEspnGolferName(val teamName: String, val espnId: String) : ConfirmedRosterProblem
+
     /** One per round however many picks name it, so it is never also a [RepeatedRound]. */
     data class RoundOutOfRange(val teamName: String, val round: Int) : ConfirmedRosterProblem
 

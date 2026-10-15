@@ -133,6 +133,30 @@ class AdminServiceConfirmRosterRepeatsSpec : FunSpec({
         golfersWritten().shouldBeEmpty()
     }
 
+    test("an ESPN athlete a team names twice is refused, and no golfer is created") {
+        val seasonId = seedSeason()
+
+        val tomKim = GolferAssignment.Espn("espn-1", "Tom Kim")
+        val first = ConfirmedPick(round = 1, ownershipPct = 100, assignment = tomKim)
+        val second = ConfirmedPick(round = 2, ownershipPct = 100, assignment = tomKim)
+
+        val result = confirm(seasonId, fullTeam(number = 1, name = "BROWN", first, second))
+
+        result shouldBe refusal(ConfirmedRosterProblem.RepeatedEspnGolfer("BROWN", "espn-1"))
+        golfersWritten().shouldBeEmpty()
+    }
+
+    test("an ESPN athlete with a blank name is refused rather than stored without a surname") {
+        val seasonId = seedSeason()
+
+        val blank = ConfirmedPick(round = 1, ownershipPct = 100, assignment = GolferAssignment.Espn("espn-1", "  "))
+
+        val result = confirm(seasonId, fullTeam(number = 1, name = "BROWN", blank))
+
+        result shouldBe refusal(ConfirmedRosterProblem.BlankEspnGolferName("BROWN", "espn-1"))
+        golfersWritten().shouldBeEmpty()
+    }
+
     test("one refusal lists every problem the roster has with itself") {
         val seasonId = seedSeason()
         val scottie = seedGolfer()
