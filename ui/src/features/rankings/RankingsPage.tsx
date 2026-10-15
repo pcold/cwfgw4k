@@ -4,7 +4,7 @@ import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
-import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
+import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
 import {
   ALL_TOURNAMENTS,
   defaultReportSelection,
@@ -34,20 +34,12 @@ function RankingsPage(): ReactNode {
       : (pickInSeason(throughOverride, tournaments) ??
         pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
 
-  const liveOverlay = useLiveOverlay(
-    tournaments ?? [],
-    currentQuery.data,
-    throughTournamentId || null,
+  const { query: rankingsQuery, overlay: liveOverlay } = useLiveOverlayQuery(
+    (live) => queryKeys.rankings.detail(seasonId, live, throughTournamentId),
+    seasonId === null || throughTournamentId === null
+      ? null
+      : (live) => api.rankings(seasonId, live, throughTournamentId || undefined),
   );
-
-  const rankingsQuery = useQuery({
-    queryKey: queryKeys.rankings.detail(seasonId, liveOverlay.effectiveLive, throughTournamentId),
-    queryFn:
-      seasonId === null || throughTournamentId === null
-        ? skipToken
-        : () =>
-            api.rankings(seasonId, liveOverlay.effectiveLive, throughTournamentId || undefined),
-  });
 
   if (leaguesGate) return leaguesGate;
   if (tournaments === undefined || throughTournamentId === null) {

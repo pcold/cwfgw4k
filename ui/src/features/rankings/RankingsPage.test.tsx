@@ -69,7 +69,14 @@ const rankings: Rankings = {
   weeks: ['9', '10', '11'],
   tournamentNames: ['A', 'B', 'C'],
   live: false,
+  liveEligible: false,
 };
+
+function answerLiveEligibleThrough(...eligibleIds: string[]): void {
+  rankingsMock.mockImplementation((_id, _live, through) =>
+    Promise.resolve({ ...rankings, liveEligible: through !== undefined && eligibleIds.includes(through) }),
+  );
+}
 
 describe('RankingsPage', () => {
   beforeEach(() => {
@@ -92,8 +99,6 @@ describe('RankingsPage', () => {
     expect(await screen.findByRole('heading', { name: /Team Standings/i })).toBeInTheDocument();
     const table = screen.getByRole('table');
     expect(within(table).getByText('Aces')).toBeInTheDocument();
-    // Only the earliest non-finalized tournament view triggers live=true.
-    // Test data here is fully completed → effective live is false.
     expect(rankingsMock).toHaveBeenCalledWith('sn-1', false, undefined);
   });
 
@@ -129,7 +134,7 @@ describe('RankingsPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([completed, upcoming]);
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-upcoming' });
-    rankingsMock.mockResolvedValue(rankings);
+    answerLiveEligibleThrough('tn-upcoming');
 
     renderWithProviders(<RankingsPage />);
 
@@ -144,7 +149,7 @@ describe('RankingsPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([first, second]);
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-8' });
-    rankingsMock.mockResolvedValue(rankings);
+    answerLiveEligibleThrough('tn-8');
 
     renderWithProviders(<RankingsPage />);
 
@@ -163,7 +168,7 @@ describe('RankingsPage', () => {
       seasonId: 'sn-2',
       status: 'in_progress',
     };
-    rankingsMock.mockResolvedValue(rankings);
+    answerLiveEligibleThrough('tn-fall');
 
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season, fall]);
@@ -266,7 +271,7 @@ describe('RankingsPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([{ ...tournament, status: 'in_progress' }]);
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-7' });
-    rankingsMock.mockResolvedValue(rankings);
+    answerLiveEligibleThrough('tn-7');
 
     const user = userEvent.setup();
     renderWithProviders(<RankingsPage />);
@@ -279,6 +284,28 @@ describe('RankingsPage', () => {
 
     expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', false, undefined);
     expect(screen.queryByRole('checkbox', { name: /Live overlay/i })).not.toBeInTheDocument();
+  });
+
+  it('offers the live toggle through another week when the server says the overlay applies there', async () => {
+    const inPlay: Tournament = { ...tournament, status: 'in_progress' };
+    const later: Tournament = { ...tournament, id: 'tn-12', status: 'upcoming', week: '12' };
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([inPlay, later]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-7' });
+    answerLiveEligibleThrough('tn-12');
+
+    const user = userEvent.setup();
+    renderWithProviders(<RankingsPage />);
+
+    await screen.findByRole('heading', { name: /Team Standings/i });
+    expect(screen.queryByRole('checkbox', { name: /Live overlay/i })).not.toBeInTheDocument();
+    expect(rankingsMock).not.toHaveBeenCalledWith('sn-1', true, 'tn-7');
+
+    await user.selectOptions(screen.getByLabelText(/Through/i), 'tn-12');
+
+    expect(await screen.findByRole('checkbox', { name: /Live overlay/i })).toBeChecked();
+    expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', true, 'tn-12');
   });
 
   it('shows an error message when rankings fail to load', async () => {

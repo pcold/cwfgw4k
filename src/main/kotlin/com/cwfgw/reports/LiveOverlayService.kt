@@ -546,7 +546,7 @@ internal fun foldLivePlayerRankings(
         }
     }
 
-    return acc.copy(drafted = drafted.toMap(), undrafted = undrafted.toMap())
+    return acc.copy(drafted = drafted.toMap(), undrafted = undrafted.toMap(), live = true)
 }
 
 /**

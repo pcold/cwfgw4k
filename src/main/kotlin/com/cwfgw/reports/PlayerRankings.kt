@@ -41,6 +41,8 @@ data class PlayerRankingsRow(
 data class PlayerRankings(
     val players: List<PlayerRankingsRow>,
     val live: Boolean,
+    /** @see Rankings.liveEligible */
+    val liveEligible: Boolean,
 )
 
 /**
@@ -58,6 +60,8 @@ data class PlayerRankings(
 internal data class PlayerRankingsAcc(
     val drafted: Map<GolferId, DraftedAgg>,
     val undrafted: Map<String, UndraftedAgg>,
+    /** Set by folding in a preview, never from the request's flag. */
+    val live: Boolean = false,
 )
 
 internal data class DraftedAgg(

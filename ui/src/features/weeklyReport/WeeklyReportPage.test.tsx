@@ -124,6 +124,7 @@ function buildReport(name: string, tournamentId: string | null = null): WeeklyRe
     })),
     standingsOrder: [],
     live: false,
+    liveEligible: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
@@ -181,7 +182,7 @@ describe('WeeklyReportPage', () => {
     tournamentsMock.mockResolvedValue([inProgress]);
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-1' });
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
-    tournamentReportMock.mockResolvedValue(buildReport('Sample Open', 'tn-1'));
+    tournamentReportMock.mockResolvedValue({ ...buildReport('Sample Open', 'tn-1'), liveEligible: true });
 
     const user = userEvent.setup();
     renderWithProviders(<WeeklyReportPage />);
@@ -225,7 +226,7 @@ describe('WeeklyReportPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([first, second]);
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-2' });
-    tournamentReportMock.mockResolvedValue(buildReport('Second Open', 'tn-2'));
+    tournamentReportMock.mockResolvedValue({ ...buildReport('Second Open', 'tn-2'), liveEligible: true });
 
     renderWithProviders(<WeeklyReportPage />);
 
@@ -245,7 +246,9 @@ describe('WeeklyReportPage', () => {
       status: 'in_progress',
     };
     seasonReportMock.mockResolvedValue(buildReport('Season'));
-    tournamentReportMock.mockResolvedValue(buildReport('Event', 'tn-1'));
+    tournamentReportMock.mockImplementation((_s, id) =>
+      Promise.resolve({ ...buildReport('Event', 'tn-1'), liveEligible: id === 'tn-fall' }),
+    );
 
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season, fall]);

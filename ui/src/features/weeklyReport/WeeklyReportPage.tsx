@@ -5,7 +5,7 @@ import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
-import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
+import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
 import {
   ALL_TOURNAMENTS,
   defaultReportSelection,
@@ -49,18 +49,15 @@ function WeeklyReportPage(): ReactNode {
       ? null
       : (pickInSeason(userTournamentId, tournaments) ??
         pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
-  const liveOverlay = useLiveOverlay(tournaments ?? [], currentQuery.data, effectiveId || null);
-
-  const reportQuery = useQuery({
-    queryKey: queryKeys.report.detail(seasonId, effectiveId, liveOverlay.effectiveLive),
-    queryFn:
-      seasonId === null || effectiveId === null
-        ? skipToken
-        : () =>
-            effectiveId === ALL_TOURNAMENTS
-              ? api.seasonReport(seasonId)
-              : api.tournamentReport(seasonId, effectiveId, liveOverlay.effectiveLive),
-  });
+  const { query: reportQuery, overlay: liveOverlay } = useLiveOverlayQuery(
+    (live) => queryKeys.report.detail(seasonId, effectiveId, live),
+    seasonId === null || effectiveId === null
+      ? null
+      : (live) =>
+          effectiveId === ALL_TOURNAMENTS
+            ? api.seasonReport(seasonId)
+            : api.tournamentReport(seasonId, effectiveId, live),
+  );
 
   if (leaguesGate) return leaguesGate;
   if (tournaments === undefined || effectiveId === null) {

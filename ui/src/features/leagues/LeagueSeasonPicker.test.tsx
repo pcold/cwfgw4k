@@ -69,8 +69,4 @@ describe('LeagueSeasonPicker', () => {
     });
     expect(await screen.findByRole('option', { name: '2026 Shadow' })).toBeInTheDocument();
   });
-
-  // The Live overlay checkbox lives per-page now (LiveOverlayCheckbox), only
-  // visible when the active tournament selection is the season's earliest
-  // non-finalized event. The picker no longer renders it.
 });

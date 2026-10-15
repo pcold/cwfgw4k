@@ -4,16 +4,16 @@ import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type {
   ConfirmedTournamentEntry,
-  League,
   PreviewedTournament,
   Season,
   SeasonImportResult,
   SeasonSchedulePreviewResult,
   Tournament,
 } from '@/shared/api/types';
-import { DateField, FIELD_CLASS, FieldShell, SelectField } from '@/shared/components/formFields';
+import { DateField, FieldShell, SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
+import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
 
 const SKIPPED_BANNER_CLASS =
   'mb-4 px-3 py-2 bg-semantic-warning-tint/30 border border-semantic-warning-soft rounded ' +
@@ -30,9 +30,7 @@ function toConfirmedEntry(entry: PreviewedTournament): ConfirmedTournamentEntry 
 function UploadScheduleSection(): ReactNode {
   const queryClient = useQueryClient();
 
-  const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
-  const [userLeagueId, setUserLeagueId] = useState<string>('');
-  const leagueId = userLeagueId || (leaguesQuery.data?.[0]?.id ?? '');
+  const { leagues, leagueId, setLeagueId } = useAdminLeague();
 
   const seasonsQuery = useQuery<Season[]>({
     queryKey: queryKeys.seasons.byLeague(leagueId),
@@ -106,23 +104,15 @@ function UploadScheduleSection(): ReactNode {
       </p>
 
       <div className="flex flex-wrap gap-4 mb-4">
-        <FieldShell id="schedule-league" label="League" error={undefined} width="sm:w-64">
-          <select
-            id="schedule-league"
-            value={leagueId}
-            onChange={(e) => {
-              setUserLeagueId(e.target.value);
-              setSeasonId('');
-            }}
-            className={FIELD_CLASS}
-          >
-            {(leaguesQuery.data ?? []).map((lg) => (
-              <option key={lg.id} value={lg.id}>
-                {lg.name}
-              </option>
-            ))}
-          </select>
-        </FieldShell>
+        <AdminLeagueField
+          id="schedule-league"
+          leagues={leagues}
+          leagueId={leagueId}
+          onChange={(id) => {
+            setLeagueId(id);
+            setSeasonId('');
+          }}
+        />
         <SelectField
           id="schedule-season"
           label="Season"

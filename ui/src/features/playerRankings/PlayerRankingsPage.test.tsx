@@ -83,8 +83,15 @@ function rankings(overrides: Partial<PlayerRankings>): PlayerRankings {
   return {
     players: [],
     live: false,
+    liveEligible: false,
     ...overrides,
   };
+}
+
+function answerLiveEligibleThrough(...eligibleIds: string[]): void {
+  playerRankingsMock.mockImplementation((_id, _live, through) =>
+    Promise.resolve(rankings({ liveEligible: through !== undefined && eligibleIds.includes(through) })),
+  );
 }
 
 describe('PlayerRankingsPage', () => {
@@ -204,7 +211,7 @@ describe('PlayerRankingsPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([first, second]);
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-b' });
-    playerRankingsMock.mockResolvedValue(rankings({}));
+    answerLiveEligibleThrough('tn-b');
 
     renderWithProviders(<PlayerRankingsPage />);
 
@@ -218,7 +225,7 @@ describe('PlayerRankingsPage', () => {
     const fall: Season = { ...season, id: 'sn-2', name: 'Fall', seasonNumber: 2 };
     const spring = tournament({ id: 'tn-a', status: 'completed' });
     const autumn = tournament({ id: 'tn-fall', seasonId: 'sn-2', status: 'in_progress' });
-    playerRankingsMock.mockResolvedValue(rankings({}));
+    answerLiveEligibleThrough('tn-fall');
 
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season, fall]);
@@ -321,7 +328,7 @@ describe('PlayerRankingsPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([inProgress]);
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-a' });
-    playerRankingsMock.mockResolvedValue(rankings({}));
+    answerLiveEligibleThrough('tn-a');
 
     const user = userEvent.setup();
     renderWithProviders(<PlayerRankingsPage />);
