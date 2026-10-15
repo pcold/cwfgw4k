@@ -9,8 +9,8 @@ import com.cwfgw.golfers.normalizeName
 /**
  * One pool, not ESPN as a fallback after the rows. A row with a `pga_player_id` and an athlete of its name stay
  * Ambiguous, since that row is some other athlete. A row without one is never offered beside an athlete of its name:
- * imports already credit it by name, so a second row would take its results. An athlete with a blank name is
- * dropped; confirm refuses one.
+ * a second row holding the athlete's id is the one imports would credit. An athlete with a blank name is dropped;
+ * confirm refuses one.
  */
 internal class RosterNameIndex(
     private val golfers: GolferNameIndex,
@@ -29,7 +29,8 @@ internal class RosterNameIndex(
         // new would have confirm insert a second golfer that imports never credit.
         val heldRows = athletes.mapNotNull { golfersByEspnId[it.espnId] }
         matchBackfill(byName, athletes)?.let { return it }
-        // Confirm refuses an athlete beside an id-less row it can't single out, so only the rows are offered.
+        // Beside an id-less row, confirm writes the athlete's id onto that row or refuses it, never inserts it, so
+        // offering the athlete as a candidate of its own would misdescribe it.
         val offered =
             if (byName.any { it.pgaPlayerId == null }) {
                 emptyList()

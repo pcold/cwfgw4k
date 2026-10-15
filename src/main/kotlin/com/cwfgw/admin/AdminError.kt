@@ -39,7 +39,8 @@ sealed interface AdminError {
 
     /**
      * Each [espnIds] pick's name is on a row without a `pga_player_id` and on another row or pick too, so which golfer
-     * the athlete is would be a guess. The preview never offers one; only a hand-built payload carries it.
+     * the athlete is would be a guess. The preview never offers one against the rows it read; a hand-built payload,
+     * or a row added since the preview, can carry it.
      */
     data class UnresolvableEspnGolfers(val espnIds: List<String>) : AdminError
 

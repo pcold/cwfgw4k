@@ -221,8 +221,9 @@ sealed interface GolferAssignment {
     data class New(val firstName: String, val lastName: String) : GolferAssignment
 
     /**
-     * Inside the confirm's transaction: bound to the row holding [espnId] as `pga_player_id`, else written onto the
-     * one id-less row of [name], else inserted, with [name] split as an ESPN import splits it.
+     * Inside the confirm's transaction: bound to the row holding [espnId] as `pga_player_id`, else written onto
+     * [name]'s id-less row when it is the name's only row and refused when not, else inserted, with [name] split as
+     * an ESPN import splits it.
      */
     @Serializable
     @SerialName("espn")
