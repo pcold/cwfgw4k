@@ -6,8 +6,13 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.testing.POSTGRES_UUID_ORDER
 import com.cwfgw.testing.fakeTableOf
 import com.cwfgw.tournaments.TournamentId
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Instant
 import java.util.UUID
+
+private const val AMOUNT_SCALE = 4
+private const val MULTIPLIER_SCALE = 2
 
 class FakeScoringRepository(
     initialScores: List<FantasyScore> = emptyList(),
@@ -63,13 +68,13 @@ class FakeScoringRepository(
                 teamId = record.teamId,
                 tournamentId = record.tournamentId,
                 golferId = record.golferId,
-                points = record.breakdown.payout,
+                points = record.breakdown.payout.toAmountScale(),
                 position = record.breakdown.position,
                 numTied = record.breakdown.numTied,
-                basePayout = record.breakdown.basePayout,
-                ownershipPct = record.breakdown.ownershipPct,
-                payout = record.breakdown.payout,
-                multiplier = record.breakdown.multiplier,
+                basePayout = record.breakdown.basePayout.toAmountScale(),
+                ownershipPct = record.breakdown.ownershipPct.toAmountScale(),
+                payout = record.breakdown.payout.toAmountScale(),
+                multiplier = record.breakdown.multiplier.setScale(MULTIPLIER_SCALE, RoundingMode.HALF_UP),
                 calculatedAt = Instant.now(),
             )
         scores[score.id] = score
@@ -90,4 +95,6 @@ class FakeScoringRepository(
         matching.forEach { scores.remove(it.id) }
         return matching.size
     }
+
+    private fun BigDecimal.toAmountScale(): BigDecimal = setScale(AMOUNT_SCALE, RoundingMode.HALF_UP)
 }
