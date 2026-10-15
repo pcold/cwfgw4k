@@ -56,10 +56,9 @@ class EspnService(
     /**
      * Build a deduped pool of currently-active golfers by unioning the
      * competitor lists from the most recent [recentEventCount] PGA
-     * scoreboards. Used by the roster matcher to discover players that
-     * haven't been seen in our `golfers` table yet — see
-     * [com.cwfgw.admin.AdminService.previewRoster] for the persist-and-
-     * rematch flow.
+     * scoreboards. Used by the roster matcher to offer players our `golfers`
+     * table hasn't seen yet; [com.cwfgw.admin.AdminService.confirmRoster]
+     * inserts the ones a roster picks.
      *
      * Calendar parse failures and individual scoreboard fetch failures are
      * absorbed (logged as warnings, contributing zero athletes) so a single

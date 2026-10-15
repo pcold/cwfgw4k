@@ -252,7 +252,6 @@ Not atomic, deliberately or by default:
 
 - **Schedule confirm** creates each tournament in its own transaction; a failure part way leaves the earlier
   entries. An entry already linked to the same ESPN event is skipped, so re-running the confirm is safe.
-- **Roster preview** is not read-only: it may create golfers it finds in ESPN's recent fields.
 
 ## 6. State Machines
 
@@ -465,7 +464,7 @@ Request and response shapes are the `@Serializable` types in each package's `*Ro
 | POST | `/tournaments/{id}/reset` | Delete results and scores, back to upcoming | Admin |
 | POST | `/admin/seasons/{id}/upload/preview` | Match a schedule against ESPN's calendar; writes nothing | Admin |
 | POST | `/admin/seasons/{id}/upload/confirm` | Create the previewed tournaments | Admin |
-| POST | `/admin/roster/preview` | Parse a plain-text roster and match golfers; may create golfers | Admin |
+| POST | `/admin/roster/preview` | Parse a plain-text roster and match golfers; writes nothing | Admin |
 | POST | `/admin/roster/confirm` | Create the season's teams and rosters | Admin |
 | GET | `/admin/tournaments/{id}/competitors` | ESPN competitors for a linked tournament, to pick overrides from | Admin |
 | POST | `/admin/tournaments/{id}/player-overrides` | Pin an ESPN competitor to a golfer | Admin |
