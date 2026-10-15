@@ -428,20 +428,23 @@ class AdminRoutesSpec : FunSpec({
         }
     }
 
-    test("POST /api/v1/admin/roster/confirm returns 409 naming an ESPN athlete two id-less rows of its name share") {
-        val twins = listOf(golfer("301", "Tom", "Kim"), golfer("302", "Tom", "Kim")).map { it.copy(pgaPlayerId = null) }
-        authenticatedApiTest(adminFixture(seedGolfers = twins)) { client ->
-            val tomKim = GolferAssignment.Espn(espnId = "espn-1", name = "Tom Kim")
+    test("POST /api/v1/admin/roster/confirm returns 422 naming ESPN athletes that all name one id-less golfer") {
+        val idless = golfer("301", "Tom", "Kim").copy(pgaPlayerId = null)
+        authenticatedApiTest(adminFixture(seedGolfers = listOf(idless))) { client ->
             val response =
                 client.post("/api/v1/admin/roster/confirm") {
                     contentType(ContentType.Application.Json)
-                    val pick = ConfirmedPick(round = 1, ownershipPct = 100, assignment = tomKim)
-                    val brown = fullTeam(number = 1, name = "BROWN", pick)
-                    setBody(ConfirmRosterRequest(seasonId = SEASON_ID, teams = listOf(brown)))
+                    val teams =
+                        listOf("espn-1", "espn-2").mapIndexed { index, espnId ->
+                            val assignment = GolferAssignment.Espn(espnId = espnId, name = "Tom Kim")
+                            val pick = ConfirmedPick(round = 1, ownershipPct = 100, assignment = assignment)
+                            fullTeam(number = index + 1, name = "TEAM ${index + 1}", pick)
+                        }
+                    setBody(ConfirmRosterRequest(seasonId = SEASON_ID, teams = teams))
                 }
 
-            response.status shouldBe HttpStatusCode.Conflict
-            response.bodyAsString().shouldContain("ESPN athletes espn-1")
+            response.status shouldBe HttpStatusCode.UnprocessableEntity
+            response.bodyAsString().shouldContain("ESPN athletes espn-1, espn-2")
         }
     }
 

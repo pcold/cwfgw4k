@@ -396,7 +396,7 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         with(noopTransactionContext) { f.golferRepo.findAll(search = null) } shouldBe listOf(idless)
     }
 
-    test("a name an id-less row shares with another row offers the rows alone, never the ESPN athlete") {
+    test("a name an id-less row shares with another row is ambiguous among both rows and the ESPN athlete") {
         val idless = seededGolfer("00000000-0000-0000-0000-000000000c05", pgaPlayerId = null)
         val namesake = seededGolfer("00000000-0000-0000-0000-000000000c06", pgaPlayerId = "espn-1111")
         val f = scottieFixture(idless, namesake)
@@ -404,8 +404,12 @@ class AdminServicePreviewRosterEspnSpec : FunSpec({
         val result = f.service.previewRoster(SCOTTIE_AND_BRAND_NEW).orFail()
 
         val match = result.teams.single().picks.first().match.shouldBeInstanceOf<PickMatch.Ambiguous>()
-        match.candidates.map { (it as GolferCandidate.Existing).golferId } shouldContainExactlyInAnyOrder
-            listOf(idless.id, namesake.id)
+        match.candidates shouldContainExactlyInAnyOrder
+            listOf(
+                GolferCandidate.Existing(golferId = idless.id, name = "Scottie Scheffler"),
+                GolferCandidate.Existing(golferId = namesake.id, name = "Scottie Scheffler"),
+                GolferCandidate.Espn(espnId = "espn-9478", name = "Scottie Scheffler"),
+            )
     }
 
     test("preview survives ESPN being unavailable — picks stay no_match instead of failing") {

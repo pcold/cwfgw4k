@@ -31,7 +31,6 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
-import io.kotest.matchers.collections.shouldNotContain
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
@@ -94,6 +93,14 @@ class AdminServiceRosterBackfillSpec : FunSpec({
     suspend fun rosterGolferIds(seasonId: SeasonId): List<GolferId> =
         tx.read { TeamRepository().findRostersBySeason(seasonId) }.map { it.golferId }
 
+    suspend fun confirmKoivunAsNamesake(seasonId: SeasonId): Golfer {
+        val womble = fullTeam(1, "WOMBLE", espnPick(1, "espn-koivun", "Jackson Koivun"))
+        service().confirmRoster(ConfirmRosterRequest(seasonId, listOf(womble))).orFail()
+        val inserted = tx.read { GolferRepository().findByPgaPlayerId("espn-koivun") }.shouldNotBeNull()
+        rosterGolferIds(seasonId).filter { it in koivunRows().map(Golfer::id) } shouldContainExactly listOf(inserted.id)
+        return inserted
+    }
+
     test("an ESPN pick named like an earlier upload's id-less row writes its id onto that row, not a second one") {
         val leagueId = seedLeague()
         val earlier = seedSeason(leagueId, 2025)
@@ -118,27 +125,28 @@ class AdminServiceRosterBackfillSpec : FunSpec({
         result.golfersCreated shouldBe DRAFT_ROUNDS.count() - 1
     }
 
-    test("an ESPN pick whose name two id-less rows carry is refused, and the confirm writes nothing") {
+    test("an ESPN pick whose name two id-less rows carry inserts its own row, guessing at neither") {
         val seasonId = seedSeason(seedLeague(), 2026)
         val twins = tx.update { listOf(GolferRepository().create(KOIVUN), GolferRepository().create(KOIVUN)) }
-        val womble = fullTeam(1, "WOMBLE", espnPick(1, "espn-koivun", "Jackson Koivun"))
 
-        service().confirmRoster(ConfirmRosterRequest(seasonId, listOf(womble))) shouldBe
-            Result.Err(AdminError.UnresolvableEspnGolfers(listOf("espn-koivun")))
-        koivunRows() shouldContainExactlyInAnyOrder twins
-        rosterGolferIds(seasonId).shouldBeEmpty()
+        val inserted = confirmKoivunAsNamesake(seasonId)
+
+        koivunRows() shouldContainExactlyInAnyOrder twins + inserted
     }
 
-    test("an ESPN pick whose name an id-less row shares with another athlete's row is refused") {
+    test("an ESPN pick whose name an id-less row shares with another athlete's row inserts its own row") {
         val seasonId = seedSeason(seedLeague(), 2026)
-        tx.update {
-            GolferRepository().create(KOIVUN)
-            GolferRepository().create(KOIVUN.copy(pgaPlayerId = "espn-namesake"))
-        }
-        val womble = fullTeam(1, "WOMBLE", espnPick(1, "espn-koivun", "Jackson Koivun"))
+        val rows =
+            tx.update {
+                listOf(
+                    GolferRepository().create(KOIVUN),
+                    GolferRepository().create(KOIVUN.copy(pgaPlayerId = "espn-namesake")),
+                )
+            }
 
-        service().confirmRoster(ConfirmRosterRequest(seasonId, listOf(womble))) shouldBe
-            Result.Err(AdminError.UnresolvableEspnGolfers(listOf("espn-koivun")))
+        val inserted = confirmKoivunAsNamesake(seasonId)
+
+        koivunRows() shouldContainExactlyInAnyOrder rows + inserted
     }
 
     test("two ESPN picks that would both land on one id-less row are both refused") {
@@ -152,17 +160,27 @@ class AdminServiceRosterBackfillSpec : FunSpec({
         koivunRows().map(Golfer::pgaPlayerId) shouldContainExactly listOf(null)
     }
 
+    test("a refusal leaves unwritten the backfill of a pick that sorts before it") {
+        val seasonId = seedSeason(seedLeague(), 2026)
+        val alpha = tx.update { GolferRepository().create(CreateGolferRequest(firstName = "Alpha", lastName = "One")) }
+        tx.update { GolferRepository().create(KOIVUN) }
+        val brown = fullTeam(1, "BROWN", espnPick(1, "espn-a", "Alpha One"))
+        val womble = fullTeam(2, "WOMBLE", espnPick(1, "espn-b", "Jackson Koivun"))
+        val grey = fullTeam(3, "GREY", espnPick(1, "espn-c", "Jackson Koivun"))
+
+        service().confirmRoster(ConfirmRosterRequest(seasonId, listOf(brown, womble, grey))) shouldBe
+            Result.Err(AdminError.UnresolvableEspnGolfers(listOf("espn-b", "espn-c")))
+        tx.read { GolferRepository().findById(alpha.id) } shouldBe alpha
+        rosterGolferIds(seasonId).shouldBeEmpty()
+    }
+
     test("an ESPN pick whose only namesake row holds another athlete's id inserts its own row") {
         val seasonId = seedSeason(seedLeague(), 2026)
         val namesake = tx.update { GolferRepository().create(KOIVUN.copy(pgaPlayerId = "espn-namesake")) }
-        val womble = fullTeam(1, "WOMBLE", espnPick(1, "espn-koivun", "Jackson Koivun"))
 
-        service().confirmRoster(ConfirmRosterRequest(seasonId, listOf(womble))).orFail()
+        val inserted = confirmKoivunAsNamesake(seasonId)
 
-        val inserted = tx.read { GolferRepository().findByPgaPlayerId("espn-koivun") }.shouldNotBeNull()
         koivunRows() shouldContainExactlyInAnyOrder listOf(namesake, inserted)
-        rosterGolferIds(seasonId) shouldContain inserted.id
-        rosterGolferIds(seasonId) shouldNotContain namesake.id
     }
 
     test("a backfill a concurrent writer beat to the row binds the pick to the row it gave the id") {
@@ -180,8 +198,8 @@ class AdminServiceRosterBackfillSpec : FunSpec({
 })
 
 /**
- * Reads every row as it stood before a concurrent writer set its `pga_player_id`, once each, which is the window that
- * writer commits into; the backfill itself then meets the committed row.
+ * The first [findAll] and the first [findByPgaPlayerId] each answer as before a concurrent writer set the
+ * `pga_player_id`, which is the window that writer commits into; the backfill itself then meets the committed row.
  */
 private class OnceStaleGolferRepository(
     delegate: GolferRepository,

@@ -8,9 +8,9 @@ import com.cwfgw.golfers.normalizeName
 
 /**
  * One pool, not ESPN as a fallback after the rows. A row with a `pga_player_id` and an athlete of its name stay
- * Ambiguous, since that row is some other athlete. A row without one is never offered beside an athlete of its name:
- * a second row holding the athlete's id is the one imports would credit. An athlete with a blank name is dropped;
- * confirm refuses one.
+ * Ambiguous, since that row is some other athlete. A name's lone row without one takes the athlete's id on confirm
+ * instead, since a second row holding it is the one imports would credit; beside several rows nothing is guessed.
+ * An athlete with a blank name is dropped; confirm refuses one.
  */
 internal class RosterNameIndex(
     private val golfers: GolferNameIndex,
@@ -28,11 +28,11 @@ internal class RosterNameIndex(
         // An athlete whose row is spelled otherwise ("Matt" for ESPN's "Matthew") binds to that row; offering it as
         // new would have confirm insert a second golfer that imports never credit.
         val heldRows = athletes.mapNotNull { golfersByEspnId[it.espnId] }
-        matchBackfill(byName, athletes)?.let { return it }
-        // Beside an id-less row, confirm writes the athlete's id onto that row or refuses it, never inserts it, so
-        // offering the athlete as a candidate of its own would misdescribe it.
+        val loneIdlessRow = byName.singleOrNull()?.takeIf { it.pgaPlayerId == null }
+        loneIdlessRow?.let { row -> matchBackfill(row, athletes) }?.let { return it }
+        // Confirm writes an athlete's id onto a lone id-less row rather than insert it, so there it is no candidate.
         val offered =
-            if (byName.any { it.pgaPlayerId == null }) {
+            if (loneIdlessRow != null) {
                 emptyList()
             } else {
                 athletes.filterNot { it.espnId in golfersByEspnId }.map { athlete ->
@@ -43,10 +43,9 @@ internal class RosterNameIndex(
     }
 
     private fun matchBackfill(
-        byName: List<Golfer>,
+        row: Golfer,
         athletes: List<EspnAthlete>,
     ): PickMatch.MatchedBackfill? {
-        val row = byName.singleOrNull()?.takeIf { it.pgaPlayerId == null } ?: return null
         val athlete = athletes.singleOrNull()?.takeIf { it.espnId !in golfersByEspnId } ?: return null
         return PickMatch.MatchedBackfill(espnId = athlete.espnId, golferName = fullName(row))
     }

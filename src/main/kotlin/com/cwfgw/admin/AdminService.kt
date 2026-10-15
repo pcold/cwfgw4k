@@ -272,7 +272,8 @@ class AdminService(
                 .filterIsInstance<GolferAssignment.Espn>()
                 .distinctBy(GolferAssignment.Espn::espnId)
                 // A conflicting insert or backfill waits on the other transaction's row, so roster order would let
-                // two confirms that share athletes deadlock.
+                // two confirms that share athletes deadlock. A roster row's key-share lock on a backfilled golfer
+                // is not ordered by this.
                 .sortedBy(GolferAssignment.Espn::espnId)
         val persisted =
             athletes.mapNotNull { athlete ->
@@ -300,17 +301,18 @@ class AdminService(
     private fun targetRowsByName(athletes: List<GolferAssignment.Espn>): Map<String, EspnTarget> {
         if (athletes.isEmpty()) return emptyMap()
         val names = GolferNameIndex(golferRepository.findAll(search = null))
-        val rowsByEspnId =
+        // Among several rows of a name the preview offers the athlete as a golfer of its own, so only a lone id-less
+        // row is taken to be the athlete; an id-less row among namesakes is never guessed at.
+        val loneIdlessRows =
             athletes.associate { athlete ->
-                athlete.espnId to names.matchFullName(athlete.name).golfers()
+                athlete.espnId to
+                    names.matchFullName(athlete.name).golfers().singleOrNull()?.takeIf { it.pgaPlayerId == null }
             }
-        val claimsPerIdlessRow =
-            rowsByEspnId.values.flatten().filter { it.pgaPlayerId == null }.groupingBy(Golfer::id).eachCount()
-        return rowsByEspnId.mapValues { (_, rows) ->
-            val row = rows.singleOrNull()
+        val claimsPerRow = loneIdlessRows.values.filterNotNull().groupingBy(Golfer::id).eachCount()
+        return loneIdlessRows.mapValues { (_, row) ->
             when {
-                rows.none { it.pgaPlayerId == null } -> EspnTarget.NewRow
-                row != null && claimsPerIdlessRow.getValue(row.id) == 1 -> EspnTarget.IdlessRow(row.id)
+                row == null -> EspnTarget.NewRow
+                claimsPerRow.getValue(row.id) == 1 -> EspnTarget.IdlessRow(row.id)
                 else -> EspnTarget.Unresolvable
             }
         }
@@ -496,7 +498,7 @@ private sealed interface EspnTarget {
     /** The name's one row, without an id, and no other pick of the payload names it. */
     data class IdlessRow(val golferId: GolferId) : EspnTarget
 
-    /** Every row of the name holds some other athlete's id, so the pick is a namesake of each. */
+    /** The name has no row, several, or one holding another id: the preview offered the athlete as its own golfer. */
     data object NewRow : EspnTarget
 
     /** @see AdminError.UnresolvableEspnGolfers */

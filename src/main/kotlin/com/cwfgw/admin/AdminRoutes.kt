@@ -65,9 +65,9 @@ private fun AdminError.toDomainError(): DomainError =
         is AdminError.TeamNameTaken ->
             DomainError.Conflict("a team name in this roster is already taken in season ${seasonId.value}")
         is AdminError.UnresolvableEspnGolfers ->
-            DomainError.Conflict(
-                "ESPN athletes ${espnIds.joinToString(", ")} share a name with a golfer that has no ESPN id and with " +
-                    "another golfer; assign the existing golfer instead",
+            DomainError.Unprocessable(
+                "ESPN athletes ${espnIds.joinToString(", ")} all name one golfer that has no ESPN id; " +
+                    "assign that golfer to at most one of them",
             )
         is AdminError.InvalidConfirmedRoster ->
             DomainError.Validation("invalid roster: " + problems.joinToString("; ") { it.describe() })

@@ -38,9 +38,8 @@ sealed interface AdminError {
     data class TeamNameTaken(val seasonId: SeasonId) : AdminError
 
     /**
-     * Each [espnIds] pick's name is on a row without a `pga_player_id` and on another row or pick too, so which golfer
-     * the athlete is would be a guess. The preview never offers one against the rows it read; a hand-built payload,
-     * or a row added since the preview, can carry it.
+     * The [espnIds] picks name one lone row without a `pga_player_id`, so which athlete it is would be a guess. The
+     * preview never offers this against the rows it read; a hand-built payload, or such a row added since, can.
      */
     data class UnresolvableEspnGolfers(val espnIds: List<String>) : AdminError
 
