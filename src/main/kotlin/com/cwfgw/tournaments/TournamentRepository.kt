@@ -118,6 +118,7 @@ private class JooqTournamentRepository : TournamentRepository {
                 }
                 filter.startsBefore?.let { add(TOURNAMENTS.START_DATE.lt(it)) }
                 filter.startsAfter?.let { add(TOURNAMENTS.START_DATE.gt(it)) }
+                filter.startsOn?.let { add(TOURNAMENTS.START_DATE.eq(it)) }
             }
         return ctx.dsl.selectFrom(TOURNAMENTS)
             .where(conditions)

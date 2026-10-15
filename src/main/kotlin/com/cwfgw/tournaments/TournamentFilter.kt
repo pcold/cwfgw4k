@@ -12,4 +12,5 @@ data class TournamentFilter(
     val statuses: Set<TournamentStatus> = TournamentStatus.entries.toSet(),
     val startsBefore: LocalDate? = null,
     val startsAfter: LocalDate? = null,
+    val startsOn: LocalDate? = null,
 )

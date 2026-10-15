@@ -184,7 +184,7 @@ private class PreviewFixture(
     }
 }
 
-// The context loads link overrides only for the tournaments handed to it; it never lists the repository's.
+// The context loads link overrides only for its candidates and the season's unfinalized tournaments.
 private suspend fun PreviewFixture.previewFor(candidate: Tournament): Result<EspnLivePreview, LivePreviewError> =
     service.previewForTournament(service.loadLivePreviewContext(SEASON_ID, initialTournaments), candidate)
 

@@ -28,15 +28,32 @@ internal sealed interface PgaPlayerIdClaim {
 }
 
 /**
- * Writes in [PgaPlayerIdClaim.pgaPlayerId] order, one write per id and a backfill over a create, so two transactions
- * sharing athletes take their id locks in one order. An extension, so no implementation or decorator can reorder it.
- * Neither key-share locks on named golfers nor the row lock two backfills of one row share are ordered by this.
+ * Locks first, in one golfer-id order: each backfill's row as its UPDATE will, and each of [referenced] as the result
+ * or roster row the caller inserts next will. Then writes in [PgaPlayerIdClaim.pgaPlayerId] order, one write per id
+ * and a backfill over a create. An extension, so no implementation or decorator can reorder either. A holder a create
+ * finds is left unlocked unless in [referenced]: it had its id when found, so no backfill's lock can stand on it.
  */
 context(ctx: WriteTransactionContext)
-internal fun GolferRepository.findOrCreateAll(claims: List<PgaPlayerIdClaim>): Map<String, Golfer> =
-    claims.sortedWith(compareBy<PgaPlayerIdClaim> { it.pgaPlayerId }.thenBy { it is PgaPlayerIdClaim.Create })
+internal fun GolferRepository.findOrCreateAll(
+    claims: List<PgaPlayerIdClaim>,
+    referenced: Set<GolferId> = emptySet(),
+): Map<String, Golfer> {
+    lockInOrder(claims, referenced)
+    return claims.sortedWith(compareBy<PgaPlayerIdClaim> { it.pgaPlayerId }.thenBy { it is PgaPlayerIdClaim.Create })
         .distinctBy(PgaPlayerIdClaim::pgaPlayerId)
         .associate { claim -> claim.pgaPlayerId to write(claim) }
+}
+
+context(ctx: WriteTransactionContext)
+private fun GolferRepository.lockInOrder(
+    claims: List<PgaPlayerIdClaim>,
+    referenced: Set<GolferId>,
+) {
+    val backfilled = claims.mapNotNull { (it as? PgaPlayerIdClaim.Backfill)?.golferId }.toSet()
+    (backfilled + referenced).sortedBy(GolferId::value).forEach { id ->
+        lockRow(id, if (id in backfilled) GolferRowLock.Backfill else GolferRowLock.Reference)
+    }
+}
 
 context(ctx: WriteTransactionContext)
 private fun GolferRepository.write(claim: PgaPlayerIdClaim): Golfer =
