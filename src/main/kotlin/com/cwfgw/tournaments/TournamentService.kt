@@ -12,7 +12,7 @@ class TournamentService(
     suspend fun list(filter: TournamentFilter): List<Tournament> = tx.get { repository.findAll(filter) }
 
     /**
-     * By finalization, not today's date: a past week stays current until it is finalized (CWF-78). Schedule order is
+     * By finalization, not today's date: a past week stays current until it is finalized. Schedule order is
      * [TournamentRepository.findAll]'s, so the pages' dropdowns and this answer agree on a tie.
      */
     suspend fun current(seasonId: SeasonId): CurrentTournament {
