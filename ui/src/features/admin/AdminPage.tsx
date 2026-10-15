@@ -9,6 +9,7 @@ import UploadRostersSection from './UploadRostersSection';
 import ResetTournamentSection from './ResetTournamentSection';
 import CleanSeasonSection from './CleanSeasonSection';
 import DeleteSeasonSection from './DeleteSeasonSection';
+import DataHealthSection from './DataHealthSection';
 
 function AdminPage(): ReactNode {
   const { authenticated, loading, username, logout } = useAuth();
@@ -51,6 +52,7 @@ function AdminPage(): ReactNode {
       <ResetTournamentSection />
       <CleanSeasonSection />
       <DeleteSeasonSection />
+      <DataHealthSection />
     </section>
   );
 }

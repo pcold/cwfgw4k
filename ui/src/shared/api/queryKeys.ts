@@ -63,6 +63,11 @@ export const queryKeys = {
   },
 
   /** @see queryKeys */
+  dataHealth: {
+    root: ['dataHealth'] as const,
+  },
+
+  /** @see queryKeys */
   golfers: {
     root: ['golfers'] as const,
     list: (): QueryKey => [...queryKeys.golfers.root, 'all'],
