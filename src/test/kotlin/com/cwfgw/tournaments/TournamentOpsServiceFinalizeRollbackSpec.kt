@@ -47,9 +47,7 @@ import java.time.LocalDate
  *
  * The Err cases hide a row from [ScoringService] alone, so `calculateScoresIn` returns an Err rather than throwing.
  *
- * Fakes can't honestly model rollback (there's no real transaction);
- * the spec uses [postgresHarness] for the same reason
- * `AdminServiceConfirmRosterSpec` does.
+ * Uses [postgresHarness] for the same reason `AdminServiceConfirmRosterSpec` does.
  */
 class TournamentOpsServiceFinalizeRollbackSpec : FunSpec({
 

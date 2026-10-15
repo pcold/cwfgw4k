@@ -3,9 +3,14 @@ package com.cwfgw.seasons
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.leagues.LeagueId
+import com.cwfgw.testing.fakeTableOf
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Instant
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
+
+/** Every money column on a season is numeric(10,4): Postgres answers four places whatever the request carried. */
+private const val MONEY_SCALE = 4
 
 private val seasonOrdering: Comparator<Season> =
     compareByDescending<Season> { it.seasonYear }
@@ -18,8 +23,8 @@ class FakeSeasonRepository(
     private val idFactory: () -> SeasonId = { SeasonId(UUID.randomUUID()) },
     private val clock: () -> Instant = Instant::now,
 ) : SeasonRepository {
-    private val store = ConcurrentHashMap<SeasonId, Season>()
-    private val rulesStore = ConcurrentHashMap<SeasonId, SeasonRules>()
+    private val store = fakeTableOf<SeasonId, Season>()
+    private val rulesStore = fakeTableOf<SeasonId, SeasonRules>()
 
     init {
         initial.forEach { season -> store[season.id] = season }
@@ -57,14 +62,20 @@ class FakeSeasonRepository(
                 name = request.name,
                 seasonYear = request.seasonYear,
                 seasonNumber = request.seasonNumber ?: nextSeasonNumber(request.leagueId, request.seasonYear),
-                tieFloor = tieFloor,
-                sideBetAmount = sideBetAmount,
+                tieFloor = tieFloor.toMoneyScale(),
+                sideBetAmount = sideBetAmount.toMoneyScale(),
                 maxTeams = request.maxTeams ?: DEFAULT_MAX_TEAMS,
                 createdAt = now,
                 updatedAt = now,
             )
         store[season.id] = season
-        request.rules?.let { rulesStore[season.id] = it }
+        request.rules?.let { rules ->
+            rulesStore[season.id] =
+                rules.copy(
+                    payouts = rules.payouts.map { it.toMoneyScale() },
+                    sideBetRounds = rules.sideBetRounds.sorted(),
+                )
+        }
         return season
     }
 
@@ -83,9 +94,9 @@ class FakeSeasonRepository(
         val season = store[id] ?: return null
         val custom = rulesStore[id]
         return SeasonRules(
-            payouts = custom?.payouts ?: SeasonRules.DEFAULT_PAYOUTS,
+            payouts = custom?.payouts.orEmpty().ifEmpty { SeasonRules.DEFAULT_PAYOUTS },
             tieFloor = season.tieFloor,
-            sideBetRounds = custom?.sideBetRounds ?: SeasonRules.DEFAULT_SIDE_BET_ROUNDS,
+            sideBetRounds = custom?.sideBetRounds.orEmpty().ifEmpty { SeasonRules.DEFAULT_SIDE_BET_ROUNDS },
             sideBetAmount = season.sideBetAmount,
         )
     }
@@ -95,6 +106,8 @@ class FakeSeasonRepository(
         rulesStore.remove(id)
         return store.remove(id) != null
     }
+
+    private fun BigDecimal.toMoneyScale(): BigDecimal = setScale(MONEY_SCALE, RoundingMode.HALF_UP)
 
     companion object {
         private const val DEFAULT_MAX_TEAMS = 10

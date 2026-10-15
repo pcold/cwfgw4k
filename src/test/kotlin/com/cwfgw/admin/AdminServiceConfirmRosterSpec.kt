@@ -32,7 +32,7 @@ import kotlinx.coroutines.runBlocking
  * Real-DB coverage for [AdminService.confirmRoster]. Validates the
  * transactional invariant — happy paths persist team + roster + new
  * golfers atomically; a mid-loop failure rolls back every prior write.
- * Fakes can't honestly model rollback so this spec uses [postgresHarness].
+ * Uses [postgresHarness] because the invariant is Postgres's rollback; `FakeTransactor`'s would only prove itself.
  */
 class AdminServiceConfirmRosterSpec : FunSpec({
 

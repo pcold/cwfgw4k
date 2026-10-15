@@ -3,16 +3,17 @@ package com.cwfgw.scoring
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.testing.POSTGRES_UUID_ORDER
+import com.cwfgw.testing.fakeTableOf
 import com.cwfgw.tournaments.TournamentId
 import java.time.Instant
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 class FakeScoringRepository(
     initialScores: List<FantasyScore> = emptyList(),
     private val scoreIdFactory: () -> FantasyScoreId = { FantasyScoreId(UUID.randomUUID()) },
 ) : ScoringRepository {
-    private val scores = ConcurrentHashMap<FantasyScoreId, FantasyScore>()
+    private val scores = fakeTableOf<FantasyScoreId, FantasyScore>()
     val scoreUpserts = mutableListOf<FantasyScore>()
 
     init {
@@ -40,7 +41,10 @@ class FakeScoringRepository(
                 it.seasonId == seasonId &&
                     (tournamentFilter == null || it.tournamentId in tournamentFilter)
             }
-            .sortedWith(compareBy<FantasyScore> { it.tournamentId.value }.thenByDescending { it.points })
+            .sortedWith(
+                compareBy(POSTGRES_UUID_ORDER) { score: FantasyScore -> score.tournamentId.value }
+                    .thenByDescending { it.points },
+            )
     }
 
     context(ctx: WriteTransactionContext)

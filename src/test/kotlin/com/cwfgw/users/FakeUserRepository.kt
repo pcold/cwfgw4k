@@ -2,15 +2,15 @@ package com.cwfgw.users
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
+import com.cwfgw.testing.fakeTableOf
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 class FakeUserRepository(
     initial: List<UserWithHash> = emptyList(),
     private val idFactory: () -> UserId = { UserId(UUID.randomUUID()) },
     private val now: () -> java.time.Instant = java.time.Instant::now,
 ) : UserRepository {
-    private val store = ConcurrentHashMap<UserId, UserWithHash>()
+    private val store = fakeTableOf<UserId, UserWithHash>()
 
     init {
         initial.forEach { entry -> store[entry.user.id] = entry }
