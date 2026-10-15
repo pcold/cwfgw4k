@@ -405,10 +405,14 @@ Pinned by `EspnClientSpec`.
 
 ### Golfer matching
 
-Import resolves each competitor to a golfer in this order (`EspnService.kt`): a manual player override for the
-tournament; the ESPN player id (not for team partners); a unique full-name match; a unique last-name match, or
-for a partner the rostered golfer with that last name. A competitor that matches nothing is created as a new
-golfer. Overrides are managed per tournament through the tournament-link routes and are refused once the
+Import, finalize, the link editor and the live preview resolve each competitor to a golfer in this order
+(`EspnService.kt`): a manual player override for the tournament; the ESPN player id (not for team partners); a
+unique normalized full-name match (not for team partners, whose name is a surname alone); a unique surname match,
+or on a tie, for a partner only, the rostered golfer among the candidates. A competitor that matches nothing is
+created as a new golfer. Names are compared normalized for case, accents and hyphens, on the "first last"
+concatenation rather than the stored columns; the surname is its last word, kept whole if hyphenated and past a
+"Jr"/"III" suffix (`golfers/GolferMatching.kt`, which roster upload shares). A new golfer's name is split at its
+last space, and a single word is stored as the last name. Overrides are managed per tournament through the tournament-link routes and are refused once the
 tournament is finalized.
 
 ### Live overlay
