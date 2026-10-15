@@ -263,8 +263,8 @@ class EspnService(
             }
         }
 
-    // Null means a concurrent writer gave the row an id, or this competitor's id to another row; findOrCreate then
-    // returns that holder, or inserts beside a row that turned out to be a namesake.
+    // Null means another writer, concurrent or earlier in this import, gave the row an id or this competitor's id to
+    // another row; findOrCreate then returns that holder, or inserts beside a row that turned out to be a namesake.
     context(ctx: WriteTransactionContext)
     private fun backfillIn(
         competitor: EspnCompetitor,
@@ -362,8 +362,8 @@ class EspnService(
 }
 
 /**
- * Pure, so the read-only paths name the row the import credits. Only the import writes: it gives an [Idless] row
- * the competitor's ESPN id, and creates a golfer for [Unmatched] and [IdMismatch].
+ * Found without writing, so the read-only paths name the row the import credits. Only the import writes: it gives
+ * an [Idless] row the competitor's ESPN id, and creates a golfer for [Unmatched] and [IdMismatch].
  */
 private sealed interface CompetitorMatch {
     /** @see CompetitorMatch */
@@ -439,7 +439,7 @@ private fun resolveAthleteByName(
         GolferNameMatch.NoMatch -> claimUniqueSurname(competitor, names)
     }
 
-/** Full-name namesakes only: the roster may never break a surname tie for a full-named competitor (CWF-35). */
+/** Full-name namesakes only: the roster may never break a surname tie for a full-named competitor. */
 private fun preferDrafted(
     namesakes: List<Golfer>,
     rosteredGolferIds: Set<GolferId>,
