@@ -157,6 +157,27 @@ class GolferMatchingSpec : FunSpec({
         index.matchSurname("") shouldBe GolferNameMatch.NoMatch
     }
 
+    test("a tombstoned row is matched by neither its full name nor its surname, yet stays among the golfers") {
+        val phantom = golfer("", "Detry").copy(tombstonedAt = Instant.EPOCH)
+        val duplicate = golfer("Thomas", "Detry").copy(tombstonedAt = Instant.EPOCH)
+        val index = GolferNameIndex(listOf(phantom, duplicate))
+
+        index.matchFullName("Thomas Detry") shouldBe GolferNameMatch.NoMatch
+        index.matchFullName("Detry") shouldBe GolferNameMatch.NoMatch
+        index.matchSurname("Detry") shouldBe GolferNameMatch.NoMatch
+        index.golfers shouldBe listOf(phantom, duplicate)
+    }
+
+    test("a live namesake beside a tombstone is matched alone, not ambiguous with it") {
+        val duplicate = golfer("Thomas", "Detry").copy(tombstonedAt = Instant.EPOCH)
+        val phantom = golfer("", "Detry").copy(tombstonedAt = Instant.EPOCH)
+        val detry = golfer("Thomas", "Detry")
+        val index = GolferNameIndex(listOf(duplicate, phantom, detry))
+
+        index.matchFullName("Thomas Detry") shouldBe GolferNameMatch.Matched(detry)
+        index.matchSurname("Detry") shouldBe GolferNameMatch.Matched(detry)
+    }
+
     test("Ambiguous refuses fewer than two candidates") {
         GolferNameMatch.Ambiguous.of(emptyList()) shouldBe null
         GolferNameMatch.Ambiguous.of(listOf(golfer("Ben", "Griffin"))) shouldBe null
