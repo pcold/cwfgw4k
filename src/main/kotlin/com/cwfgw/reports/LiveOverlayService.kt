@@ -235,11 +235,9 @@ private fun bumpPriorTeamCells(
 
 /**
  * Replace per-cell tournament data with live projected payouts and
- * recompute weekly / subtotal / total cash. The per-cell `earnings` is
- * replaced outright — this is the in-progress projection, not a sum.
- * Also surfaces the full ESPN leaderboard for the
- * scoreboard view, keeping the report's own where ESPN lists no field,
- * and rebuilds the undrafted top-10s from ESPN's.
+ * recompute weekly / subtotal / total cash. Also surfaces the full ESPN
+ * leaderboard for the scoreboard view, keeping the report's own where
+ * ESPN lists no field, and rebuilds the undrafted top-10s from ESPN's.
  */
 internal fun mergeLiveData(
     report: WeeklyReport,

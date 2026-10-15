@@ -144,8 +144,8 @@ class WeeklyReportService(
      * Season-aggregate report: same wire shape as [getReport] but every
      * column rolls up across every completed tournament. [ReportScope.Season]
      * tells the UI which of the two it has; the "tournament" info block is
-     * an id-less placeholder. Never live, nor are the rankings without a `through`:
-     * the All Tournaments rollups count finalized results alone (CWF-215).
+     * an id-less placeholder. Never live: the All Tournaments rollups count
+     * finalized results alone (CWF-215).
      */
     suspend fun getSeasonReport(seasonId: SeasonId): Result<WeeklyReport, ReportError> =
         tx.read {
@@ -177,7 +177,8 @@ class WeeklyReportService(
      * Cumulative team rankings with per-tournament series for the line
      * chart. `through` optionally trims the included tournaments to those
      * at or before a cutoff event so an operator can replay standings as
-     * of any past week.
+     * of any past week. Live only with a `through`; without one this is an
+     * All Tournaments rollup, as [getSeasonReport] is.
      */
     suspend fun getRankings(
         seasonId: SeasonId,
@@ -187,10 +188,9 @@ class WeeklyReportService(
         val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
         val prepared =
             gatherRankings(seasonId, throughTournamentId).getOrElse { return Result.Err(it) }
-        val through = prepared.through
-        if (!live || through == null) return Result.Ok(prepared.baseRankings)
+        val liveThrough = prepared.through?.takeIf { live } ?: return Result.Ok(prepared.baseRankings)
 
-        val liveCandidates = liveCandidatesFor(prepared.allTournaments, today, through)
+        val liveCandidates = liveCandidatesFor(prepared.allTournaments, today, liveThrough)
         return Result.Ok(
             liveOverlayService.overlayRankings(
                 seasonId,
@@ -289,21 +289,20 @@ class WeeklyReportService(
         val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
         val prepared =
             gatherPlayerRankings(seasonId, throughTournamentId).getOrElse { return Result.Err(it) }
-        val through = prepared.through
-        if (!live || through == null) {
-            return Result.Ok(
-                composePlayerRankings(prepared.baseAcc, prepared.rosterIndex, prepared.golferMap, live = false),
-            )
-        }
-
-        val liveAcc =
-            liveOverlayService.overlayPlayerRankings(
-                seasonId = seasonId,
-                base = prepared.baseAcc,
-                candidates = liveCandidatesFor(prepared.allTournaments, today, through),
-                rules = prepared.rules,
-            )
-        return Result.Ok(composePlayerRankings(liveAcc, prepared.rosterIndex, prepared.golferMap, live = true))
+        val liveThrough = prepared.through?.takeIf { live }
+        val finalAcc =
+            if (liveThrough == null) {
+                prepared.baseAcc
+            } else {
+                liveOverlayService.overlayPlayerRankings(
+                    seasonId = seasonId,
+                    base = prepared.baseAcc,
+                    candidates = liveCandidatesFor(prepared.allTournaments, today, liveThrough),
+                    rules = prepared.rules,
+                )
+            }
+        val overlaid = liveThrough != null
+        return Result.Ok(composePlayerRankings(finalAcc, prepared.rosterIndex, prepared.golferMap, live = overlaid))
     }
 
     private suspend fun gatherPlayerRankings(
