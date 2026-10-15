@@ -3,7 +3,7 @@ import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   resolve: {
     alias: {
@@ -15,11 +15,9 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:8080',
     },
-    fs: {
-      // For index.css.test.ts's `?raw` import of the repo-root DESIGN.md. Entries match as directory
-      // prefixes, so naming the file itself denies it; Vite's default `fs.deny` still covers .env and keys.
-      allow: ['.', '..'],
-    },
+    // For index.css.test.ts's `?raw` import of the repo-root DESIGN.md. Entries match as directory prefixes, so
+    // naming the file itself is denied; widening to `..` is test-only because the root holds dev.properties.
+    fs: mode === 'test' ? { allow: ['.', '..'] } : undefined,
   },
   test: {
     globals: true,
@@ -44,4 +42,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
