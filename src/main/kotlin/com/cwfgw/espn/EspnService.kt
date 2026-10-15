@@ -42,7 +42,6 @@ private val log = KotlinLogging.logger {}
  * A named competitor [locateExistingGolferIn] credits to no row becomes a new golfer, unless names can't tell which
  * existing row it is. A team-partner row gets no `pga_player_id`, because its ESPN id is synthetic (`team:X:N`).
  */
-@Suppress("LongParameterList")
 class EspnService(
     private val client: EspnClient,
     private val seasonRepository: SeasonRepository,
@@ -728,7 +727,6 @@ internal fun buildLivePreviewForEvent(
     )
 }
 
-@Suppress("LongParameterList")
 private fun buildTeamPreview(
     team: Team,
     matchedCompetitors: List<Pair<EspnCompetitor, Golfer?>>,
@@ -781,7 +779,6 @@ private fun buildTeamPreview(
  * (CWF-18). Callers outside `com.cwfgw.espn` / `com.cwfgw.reports` must
  * not depend on the field layout.
  */
-@Suppress("LongParameterList")
 internal data class LivePreviewContext(
     val teams: List<Team>,
     val rosters: List<RosterEntry>,

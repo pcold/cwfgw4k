@@ -46,7 +46,6 @@ import java.time.LocalDate
  * consistency across the gathered data for free. The pattern mirrors
  * [com.cwfgw.scoring.ScoringService] / [com.cwfgw.admin.AdminService].
  */
-@Suppress("LongParameterList")
 class WeeklyReportService(
     private val seasonRepository: SeasonRepository,
     private val tournamentRepository: TournamentRepository,
@@ -934,7 +933,6 @@ internal fun buildReportTeamColumn(
     )
 }
 
-@Suppress("LongParameterList")
 private fun buildWeeklyCells(
     roster: List<RosterEntry>,
     golferMap: Map<GolferId, Golfer>,
@@ -962,7 +960,6 @@ private fun buildWeeklyCells(
         }
     }
 
-@Suppress("LongParameterList")
 private fun cellForEntry(
     round: Int,
     entry: RosterEntry,
@@ -1005,7 +1002,6 @@ private fun emptyCell(round: Int): ReportCell =
         seasonTopTens = 0,
     )
 
-@Suppress("LongParameterList")
 internal fun buildUndraftedForTournament(
     results: List<TournamentResult>,
     rosteredGolferIds: Set<GolferId>,
@@ -1174,7 +1170,6 @@ private fun rosterIndexEntry(
  *    per-tournament reports. Keyed by display name because the
  *    matching ESPN-leaderboard path doesn't carry golferId.
  */
-@Suppress("LongParameterList")
 internal fun buildPlayerRankingsAcc(
     allScores: List<FantasyScore>,
     allResults: List<TournamentResult>,
@@ -1218,7 +1213,6 @@ internal fun buildPlayerRankingsAcc(
  * detekt sees a single early-exit per branch instead of a stack of
  * `continue`s.
  */
-@Suppress("LongParameterList")
 private fun undraftedRowFromResult(
     result: TournamentResult,
     tournamentsById: Map<TournamentId, Tournament>,

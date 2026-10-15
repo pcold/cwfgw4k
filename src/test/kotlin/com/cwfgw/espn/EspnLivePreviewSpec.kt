@@ -145,7 +145,6 @@ private fun tournament(
         createdAt = Instant.EPOCH,
     )
 
-@Suppress("LongParameterList")
 private class PreviewFixture(
     val initialTournaments: List<Tournament> = emptyList(),
     initialTeams: List<Team> = emptyList(),

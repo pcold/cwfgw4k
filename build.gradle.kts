@@ -318,9 +318,20 @@ tasks.named<dev.detekt.gradle.Detekt>("detekt") {
     setSource(analyzedSources)
     classpath.setFrom(typeResolutionClasspath)
     // An empty classpath is not an error to detekt: every type-resolving rule is skipped and the run is green.
+    // Unresolved code is the same failure in part, reported as one console line; detekt applies no compiler
+    // plugins, so code writes `serializer<T>()` where `T.serializer()` would not resolve.
+    val analysisOutput = StringBuilder()
+    val outputCapture = StandardOutputListener { analysisOutput.append(it) }
     doFirst {
         check(classpath.files.isNotEmpty()) {
             "detekt has no compile classpath, so every type-resolving rule would be skipped silently"
+        }
+        logging.addStandardOutputListener(outputCapture)
+    }
+    doLast {
+        logging.removeStandardOutputListener(outputCapture)
+        check("compiler errors found during analysis" !in analysisOutput) {
+            "detekt hit unresolved code, so its type-resolving rules ran blind on it; `debug = true` lists where"
         }
     }
 }

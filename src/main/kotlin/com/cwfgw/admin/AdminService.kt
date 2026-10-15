@@ -58,7 +58,6 @@ private val log = KotlinLogging.logger {}
  * Re-runs are safe: any ESPN entry already linked to a tournament lands in
  * the `skipped` list with a clear reason, never overwrites or duplicates.
  */
-@Suppress("LongParameterList")
 class AdminService(
     private val tx: Transactor,
     private val seasonService: SeasonService,

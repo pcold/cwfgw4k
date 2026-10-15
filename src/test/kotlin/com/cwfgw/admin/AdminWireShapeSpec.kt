@@ -7,6 +7,7 @@ import io.kotest.datatest.withData
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 import java.util.UUID
 
 private const val FLEETWOOD_UUID = "00000000-0000-0000-0000-000000000100"
@@ -50,7 +51,7 @@ class AdminWireShapeSpec : FunSpec({
                     ),
                 "no_match" to WireCase(PickMatch.NoMatch, """{"type": "no_match"}"""),
             ),
-        ) { case -> case.shouldRoundTrip(PickMatch.serializer()) }
+        ) { case -> case.shouldRoundTrip(serializer<PickMatch>()) }
     }
 
     context("a golfer candidate encodes under its type tag and decodes back") {
@@ -67,7 +68,7 @@ class AdminWireShapeSpec : FunSpec({
                         """{"type": "espn", "espn_id": "200", "name": "Tom Fleetwood"}""",
                     ),
             ),
-        ) { case -> case.shouldRoundTrip(GolferCandidate.serializer()) }
+        ) { case -> case.shouldRoundTrip(serializer<GolferCandidate>()) }
     }
 
     context("a golfer assignment encodes under its type tag and decodes back") {
@@ -86,7 +87,7 @@ class AdminWireShapeSpec : FunSpec({
                         """{"type": "espn", "espn_id": "100", "name": "Tommy Fleetwood"}""",
                     ),
             ),
-        ) { case -> case.shouldRoundTrip(GolferAssignment.serializer()) }
+        ) { case -> case.shouldRoundTrip(serializer<GolferAssignment>()) }
     }
 })
 
