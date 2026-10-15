@@ -179,6 +179,7 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
             label="Rounds"
             value={sideBetRoundsStr}
             error={undefined}
+            placeholder="none"
             width="w-28"
             onChange={setEditedSideBetRounds}
           />
