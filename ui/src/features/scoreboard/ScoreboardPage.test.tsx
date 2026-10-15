@@ -6,7 +6,7 @@ import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import { makeTournament, makeWonLostTotals } from '@/shared/test/fixtures';
+import { makeWonLostTotals } from '@/shared/test/fixtures';
 import type {
   EspnImportWarnings,
   FinalizedTournament,
@@ -156,8 +156,10 @@ const twinWarnings: EspnImportWarnings = {
   contestedCompetitors: [],
 };
 
+const cleanWarnings: EspnImportWarnings = { ...twinWarnings, rosteredSurnameTwins: [] };
+
 function finalizedWith(importWarnings: EspnImportWarnings[]): FinalizedTournament {
-  return { tournament: makeTournament(), importWarnings };
+  return { tournament: activeTournament, importWarnings };
 }
 
 // Copies the key and fetcher WeeklyReportPage and LateRowBetsPage use on "All Tournaments". A key
@@ -463,7 +465,7 @@ describe('ScoreboardPage', () => {
 
   it.each([
     ['the warnings the server returned', [twinWarnings], /Possible duplicate of a rostered golfer/],
-    ['that the import raised none', [], /The ESPN import raised no warnings/],
+    ['that the import raised none', [cleanWarnings], /No ESPN import warnings from finalizing Current Open/],
   ])('shows %s after an admin finalizes a tournament', async (_outcome, importWarnings, shown) => {
     authMeMock.mockResolvedValue({
       id: 'u-1',
@@ -487,6 +489,41 @@ describe('ScoreboardPage', () => {
     expect(screen.queryByText(shown)).not.toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: /Finalize Results/i }));
     expect(await screen.findByText(shown)).toBeInTheDocument();
+  });
+
+  it('stays on the finalized tournament with its warnings when the current one moves on', async () => {
+    authMeMock.mockResolvedValue({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    const nextWeek: Tournament = { ...activeTournament, id: 'tn-next', name: 'Next Week Open' };
+    tournamentsMock.mockResolvedValue([activeTournament, nextWeek]);
+    currentTournamentMock
+      .mockResolvedValueOnce({ type: 'unfinalized', tournamentId: 'tn-active' })
+      .mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-next' });
+    tournamentReportMock.mockResolvedValue({
+      ...buildReport('Current Open'),
+      tournament: { ...buildReport('Current Open').tournament, status: 'in_progress' },
+    });
+    finalizeMock.mockResolvedValue(finalizedWith([twinWarnings]));
+
+    const user = userEvent.setup();
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    await user.click(await screen.findByRole('button', { name: /Finalize Results/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Possible duplicate of a rostered golfer/);
+    await waitFor(() => {
+      expect(currentTournamentMock).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByLabelText('Tournament')).toHaveValue('tn-active');
+    expect(screen.getByRole('alert')).toHaveTextContent(/Possible duplicate of a rostered golfer/);
+
+    await user.selectOptions(screen.getByLabelText('Tournament'), 'tn-next');
+    expect(screen.queryByText(/Possible duplicate of a rostered golfer/)).not.toBeInTheDocument();
   });
 
   it('asks the server for the current tournament again after an admin finalizes one', async () => {

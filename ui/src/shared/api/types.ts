@@ -205,13 +205,13 @@ export interface Tournament {
 }
 
 // Mirrors backend com.cwfgw.tournaments.FinalizedTournament. importWarnings holds one entry per tournament the
-// finalize imported into that has any, so it is [] after a clean finalize, never absent.
+// finalize imported into, a clean one included, so [] means no ESPN event was imported.
 export interface FinalizedTournament {
   tournament: Tournament;
   importWarnings: EspnImportWarnings[];
 }
 
-// Mirrors backend com.cwfgw.espn.EspnImportWarnings: a golfer is listed under its most severe kind only.
+// Mirrors backend com.cwfgw.espn.EspnImportWarnings: a created golfer is listed under its most severe kind only.
 export interface EspnImportWarnings {
   tournamentId: string;
   tournamentName: string;

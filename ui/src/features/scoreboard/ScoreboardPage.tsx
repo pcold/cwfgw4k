@@ -59,7 +59,10 @@ function ScoreboardPage(): ReactNode {
 
   const finalizeMutation = useMutation({
     mutationFn: (id: string) => api.finalizeTournament(id),
-    onSuccess: () => {
+    // Pinned because finalizing this week's tournament moves the default selection to the next one, which would
+    // hide the warnings below.
+    onSuccess: (_finalized, id) => {
+      setUserTournamentId(id);
       void queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.bySeason(seasonId) });
       invalidateAfterScoreChange(queryClient, { type: 'season', seasonId });
     },
@@ -142,7 +145,7 @@ function ScoreboardPage(): ReactNode {
               <LiveOverlayCheckbox state={liveOverlay} id="scoreboard-live-overlay" />
             </div>
 
-            {finalized ? <FinalizeWarnings warnings={finalized.importWarnings} /> : null}
+            {finalized ? <FinalizeWarnings finalized={finalized} /> : null}
             <QueryState query={reportQuery} label="scoreboard">
               {(report) => (
                 <ScoreboardView

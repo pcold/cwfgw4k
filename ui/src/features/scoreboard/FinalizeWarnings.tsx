@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type {
   ContestedCompetitor,
   EspnImportWarnings,
+  FinalizedTournament,
   Golfer,
   RosteredSurnameTwin,
   UnmatchedCompetitor,
@@ -13,7 +14,7 @@ const ATTENTION_BANNER_CLASS =
   'px-3 py-2 border rounded bg-semantic-warning-tint/30 border-semantic-warning-soft text-semantic-warning-ink';
 
 interface FinalizeWarningsProps {
-  readonly warnings: readonly EspnImportWarnings[];
+  readonly finalized: FinalizedTournament;
 }
 
 function golferName(golfer: Golfer): string {
@@ -21,7 +22,7 @@ function golferName(golfer: Golfer): string {
 }
 
 function espnLabel(name: string, espnCompetitorId: string): string {
-  return name === ''
+  return name.trim() === ''
     ? `an unnamed competitor (ESPN ${espnCompetitorId})`
     : `${name} (ESPN ${espnCompetitorId})`;
 }
@@ -91,17 +92,35 @@ function TournamentWarnings({ warnings }: { readonly warnings: EspnImportWarning
   );
 }
 
-function FinalizeWarnings({ warnings }: FinalizeWarningsProps): ReactNode {
-  if (warnings.length === 0) {
+function hasWarnings(warnings: EspnImportWarnings): boolean {
+  return (
+    warnings.rosteredSurnameTwins.length > 0 ||
+    warnings.contestedCompetitors.length > 0 ||
+    warnings.unmatchedCompetitors.length > 0 ||
+    warnings.createdGolfers.length > 0
+  );
+}
+
+function FinalizeWarnings({ finalized }: FinalizeWarningsProps): ReactNode {
+  const { tournament, importWarnings } = finalized;
+  if (importWarnings.length === 0) {
     return (
       <p role="status" className="text-xs text-ink-muted">
-        The ESPN import raised no warnings.
+        Finalizing {tournament.name} imported no ESPN event.
+      </p>
+    );
+  }
+  const raised = importWarnings.filter(hasWarnings);
+  if (raised.length === 0) {
+    return (
+      <p role="status" className="text-xs text-ink-muted">
+        No ESPN import warnings from finalizing {tournament.name}.
       </p>
     );
   }
   return (
     <section aria-label="ESPN import warnings" className="space-y-3 text-xs">
-      {warnings.map((tournamentWarnings) => (
+      {raised.map((tournamentWarnings) => (
         <TournamentWarnings key={tournamentWarnings.tournamentId} warnings={tournamentWarnings} />
       ))}
     </section>
