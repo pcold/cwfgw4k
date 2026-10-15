@@ -10,6 +10,7 @@ import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.seedTombstone
+import com.cwfgw.testing.seedTombstonedGolfer
 import com.cwfgw.testing.seedTournament
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
@@ -45,21 +46,9 @@ class GolferTombstoneSpec : FunSpec({
             tx = tx,
         )
 
-    suspend fun seededTournament() = tx.update { checkNotNull(tournaments.findById(seedTournament(EVENT_ID))) }
-
-    suspend fun tombstoned(
-        firstName: String,
-        lastName: String,
-    ): Golfer =
-        tx.update {
-            val golfer = golfers.create(CreateGolferRequest(firstName = firstName, lastName = lastName))
-            seedTombstone(golfer.id)
-            checkNotNull(golfers.findById(golfer.id))
-        }
-
     test("an import whose only name match is a tombstone credits a new row and leaves the tombstone id-less") {
-        val tournament = seededTournament()
-        val duplicate = tombstoned("Thomas", "Detry")
+        val tournament = tx.update { checkNotNull(tournaments.findById(seedTournament(EVENT_ID))) }
+        val duplicate = tx.update { seedTombstonedGolfer("Thomas", "Detry") }
 
         tx.update { service().persistImportIn(tournament, masters(competitor("4837", "Thomas Detry"))) }
 
@@ -70,8 +59,8 @@ class GolferTombstoneSpec : FunSpec({
     }
 
     test("a partner credits the live surname beside a tombstoned surname-only phantom, unrostered") {
-        val tournament = seededTournament()
-        tombstoned("", "Griffin")
+        val tournament = tx.update { checkNotNull(tournaments.findById(seedTournament(EVENT_ID))) }
+        tx.update { seedTombstonedGolfer("", "Griffin") }
         val ben = tx.update { golfers.create(CreateGolferRequest(firstName = "Ben", lastName = "Griffin")) }
 
         tx.update { service().persistImportIn(tournament, masters(partner("team:t1:0", "Griffin"))) }
@@ -80,7 +69,7 @@ class GolferTombstoneSpec : FunSpec({
     }
 
     test("a golfer tombstoned after its result still answers findById and findAll, so the result keeps its name") {
-        val tournament = seededTournament()
+        val tournament = tx.update { checkNotNull(tournaments.findById(seedTournament(EVENT_ID))) }
         tx.update { service().persistImportIn(tournament, masters(competitor("4837", "Thomas Detry"))) }
         val credited = tx.read { tournaments.getResults(tournament.id) }.single().golferId
 

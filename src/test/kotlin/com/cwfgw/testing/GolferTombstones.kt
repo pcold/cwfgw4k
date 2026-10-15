@@ -1,7 +1,10 @@
 package com.cwfgw.testing
 
 import com.cwfgw.db.WriteTransactionContext
+import com.cwfgw.golfers.CreateGolferRequest
+import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.jooq.tables.references.GOLFERS
 import java.time.Instant
 import java.time.ZoneOffset
@@ -21,4 +24,16 @@ fun seedTombstone(
         .set(GOLFERS.MERGED_INTO, mergedInto?.value)
         .where(GOLFERS.ID.eq(golferId.value))
         .execute()
+}
+
+/** @see seedTombstone */
+context(ctx: WriteTransactionContext)
+fun seedTombstonedGolfer(
+    firstName: String,
+    lastName: String,
+): Golfer {
+    val golfers = GolferRepository()
+    val golfer = golfers.create(CreateGolferRequest(firstName = firstName, lastName = lastName))
+    seedTombstone(golfer.id)
+    return checkNotNull(golfers.findById(golfer.id))
 }
