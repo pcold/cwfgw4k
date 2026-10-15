@@ -1,10 +1,15 @@
 package com.cwfgw.tournaments
 
 import com.cwfgw.espn.EspnClient
+import com.cwfgw.espn.EspnCompetitor
+import com.cwfgw.espn.EspnStatus
 import com.cwfgw.espn.EspnTournament
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
+import com.cwfgw.golfers.Golfer
+import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferService
+import com.cwfgw.http.appJson
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.scoring.FakeScoringRepository
 import com.cwfgw.scoring.ScoringService
@@ -13,6 +18,9 @@ import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
+import com.cwfgw.teams.RosterViewPick
+import com.cwfgw.teams.RosterViewTeam
+import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
@@ -28,9 +36,12 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.client.call.body
 import io.ktor.client.request.post
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonObject
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -40,6 +51,70 @@ private val LEAGUE_ID = LeagueId(UUID.fromString("00000000-0000-0000-0000-000000
 private val SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000aaa"))
 private val SONY_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b02"))
 private val MASTERS_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b01"))
+private val CREATED_GOLFER_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000c01"))
+private val GOLFER_CLOCK: Instant = Instant.parse("2026-04-12T23:00:00Z")
+
+private fun rosteredGolfer(
+    id: String,
+    pgaPlayerId: String?,
+    firstName: String,
+    lastName: String,
+): Golfer =
+    Golfer(
+        id = GolferId(UUID.fromString(id)),
+        pgaPlayerId = pgaPlayerId,
+        firstName = firstName,
+        lastName = lastName,
+        country = null,
+        worldRanking = null,
+        updatedAt = GOLFER_CLOCK,
+    )
+
+private val NICOLAI_HOJGAARD = rosteredGolfer("00000000-0000-0000-0000-000000000c11", "4410", "Nicolai", "Højgaard")
+
+// Ranked so the fake lists them, and so the matcher names them, in this order.
+private val TOM_KIM = rosteredGolfer("00000000-0000-0000-0000-000000000c12", null, "Tom", "Kim").copy(worldRanking = 20)
+private val TOM_KIM_TWIN =
+    rosteredGolfer("00000000-0000-0000-0000-000000000c13", null, "Tom", "Kim").copy(worldRanking = 21)
+
+private fun rosterOf(golfers: List<Golfer>): List<RosterViewTeam> =
+    listOf(
+        RosterViewTeam(
+            teamId = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000d01")),
+            teamNumber = 1,
+            teamName = "Alpha",
+            picks =
+                golfers.mapIndexed { index, golfer ->
+                    RosterViewPick(
+                        round = index + 1,
+                        golferName = "${golfer.firstName} ${golfer.lastName}",
+                        ownershipPct = BigDecimal(100),
+                        golferId = golfer.id,
+                    )
+                },
+        ),
+    )
+
+private fun competitor(
+    espnId: String,
+    name: String,
+    order: Int,
+): EspnCompetitor =
+    EspnCompetitor(
+        espnId = espnId,
+        name = name,
+        order = order,
+        scoreStr = "-$order",
+        scoreToPar = -order,
+        totalStrokes = 280,
+        roundScores = listOf(70, 70, 70, 70),
+        position = order,
+        status = EspnStatus.Active,
+        isTeamPartner = false,
+        pairKey = null,
+    )
+
+private suspend fun HttpResponse.wireJson(): JsonElement = appJson.parseToJsonElement(bodyAsText())
 
 private fun tournament(
     id: TournamentId,
@@ -93,6 +168,7 @@ private fun opsFixture(
     initialTournaments: List<Tournament> = emptyList(),
     espnByDate: Map<LocalDate, List<EspnTournament>> = emptyMap(),
     startDateMovedDuringFetch: LocalDate? = null,
+    golfers: List<Golfer> = emptyList(),
 ): ApiFixture.() -> Unit =
     {
         val seasonRepo = FakeSeasonRepository(idFactory = { SEASON_ID })
@@ -106,8 +182,8 @@ private fun opsFixture(
             }
         }
         val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
-        val teamRepo = FakeTeamRepository()
-        val golferRepo = FakeGolferRepository()
+        val teamRepo = FakeTeamRepository(initialRosterView = mapOf(SEASON_ID to rosterOf(golfers)))
+        val golferRepo = FakeGolferRepository(golfers, idFactory = { CREATED_GOLFER_ID }, clock = { GOLFER_CLOCK })
         val scoringRepo = FakeScoringRepository()
         val sharedTx = transactor
         seasonService = SeasonService(seasonRepo, sharedTx)
@@ -163,7 +239,55 @@ class TournamentOpsRoutesSpec : FunSpec({
         authenticatedApiTest(configure) { client ->
             val response = client.post("/api/v1/tournaments/${MASTERS_ID.value}/finalize")
             response.status shouldBe HttpStatusCode.OK
-            response.body<Tournament>().status shouldBe TournamentStatus.Completed
+            val finalized = response.body<FinalizedTournament>()
+            finalized.tournament.status shouldBe TournamentStatus.Completed
+            response.wireJson().jsonObject.getValue("import_warnings") shouldBe appJson.parseToJsonElement("[]")
+        }
+    }
+
+    test("POST /api/v1/tournaments/{id}/finalize names each import warning beside the tournament, in snake case") {
+        val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09")
+        val field =
+            listOf(
+                competitor(espnId = "9999", name = "Rasmus Hojgaard", order = 1),
+                competitor(espnId = "5501", name = "Tom Kim", order = 2),
+                competitor(espnId = "5502", name = "", order = 3),
+            )
+        val event = emptyEspnEvent("espn-${MASTERS_ID.value}", "Masters").copy(competitors = field)
+        val configure =
+            opsFixture(
+                initialTournaments = listOf(masters),
+                espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(event)),
+                golfers = listOf(NICOLAI_HOJGAARD, TOM_KIM, TOM_KIM_TWIN),
+            )
+        val created = rosteredGolfer(CREATED_GOLFER_ID.value.toString(), "9999", "Rasmus", "Hojgaard")
+
+        authenticatedApiTest(configure) { client ->
+            val response = client.post("/api/v1/tournaments/${MASTERS_ID.value}/finalize")
+            response.status shouldBe HttpStatusCode.OK
+            val wire = response.wireJson().jsonObject
+            wire.keys shouldBe setOf("tournament", "import_warnings")
+            wire.getValue("import_warnings") shouldBe
+                appJson.parseToJsonElement(
+                    """
+                    [{
+                      "tournament_id": "${MASTERS_ID.value}",
+                      "tournament_name": "The Masters",
+                      "rostered_surname_twins": [
+                        {"created": ${created.wire()}, "rostered": [${NICOLAI_HOJGAARD.wire()}]}
+                      ],
+                      "created_golfers": [],
+                      "unmatched_competitors": [{"espn_competitor_id": "5502", "name": ""}],
+                      "contested_competitors": [
+                        {
+                          "espn_competitor_id": "5501",
+                          "name": "Tom Kim",
+                          "candidates": [${TOM_KIM.wire()}, ${TOM_KIM_TWIN.wire()}]
+                        }
+                      ]
+                    }]
+                    """,
+                )
         }
     }
 
@@ -281,3 +405,5 @@ class TournamentOpsRoutesSpec : FunSpec({
         }
     }
 })
+
+private fun Golfer.wire(): String = appJson.encodeToString(Golfer.serializer(), this)

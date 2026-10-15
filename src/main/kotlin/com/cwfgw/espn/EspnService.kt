@@ -199,32 +199,38 @@ class EspnService(
     }
 
     /** @see persistImportsIn */
+    @Suppress("ForbiddenMethodCall") // single(): persistImportsIn answers one warning per import it is given
     context(ctx: WriteTransactionContext)
     internal fun persistImportIn(
         tournament: Tournament,
         event: EspnTournament,
-    ) = persistImportsIn(listOf(EventImport(tournament, event)))
+    ): EspnImportWarnings = persistImportsIn(listOf(EventImport(tournament, event))).single()
 
     /**
      * Writes into the caller's transaction so finalize persists the import and the scores atomically. Every event is
      * matched before any golfer is written, so all their writes share [findOrCreateAll]'s one order; if written event
      * by event, a later event's athlete could take its lock before an earlier one's, against a confirm taking both.
+     * Answers one [EspnImportWarnings] per import, in [imports]' order.
      */
     context(ctx: WriteTransactionContext)
-    internal fun persistImportsIn(imports: List<EventImport>) {
+    internal fun persistImportsIn(imports: List<EventImport>): List<EspnImportWarnings> {
         val matched =
             imports.map { locateEventIn(it) }
                 .settlingSurnameGuessesAcrossEvents()
                 .map(MatchedEvent::withholdingContestedRows)
                 .withholdingRowsContestedAcrossEvents()
         val written = golferRepository.findOrCreateAll(matched.flatMap(MatchedEvent::claims))
-        for ((import, matches) in matched) {
-            val matchedPairs =
-                matches.mapNotNull { (competitor, match) ->
-                    bindGolferIn(competitor, match, written)?.let { golferId -> competitor to golferId }
+        return matched.map { matchedEvent ->
+            val (import, matches) = matchedEvent
+            val placements =
+                matches.map { (competitor, match) ->
+                    Placement(competitor = competitor, match = match, golfer = bindGolferIn(competitor, match, written))
                 }
+            val matchedPairs =
+                placements.mapNotNull { placement -> placement.golfer?.let { placement.competitor to it.id } }
             persistResultsIn(import.tournament.id, matchedPairs)
             syncTournamentFromEventIn(import.tournament, import.event)
+            matchedEvent.warningsFor(placements)
         }
     }
 
@@ -232,7 +238,7 @@ class EspnService(
     private fun locateEventIn(import: EventImport): MatchedEvent {
         val context = buildMatchingContextIn(import.tournament.seasonId, import.tournament.id)
         val located = import.event.competitors.map { it to locateExistingGolferIn(it, context) }
-        return MatchedEvent(import = import, matches = located)
+        return MatchedEvent(import = import, matches = located, context = context)
     }
 
     context(ctx: TransactionContext)
@@ -258,11 +264,11 @@ class EspnService(
         competitor: EspnCompetitor,
         match: CompetitorMatch,
         written: Map<String, Golfer>,
-    ): GolferId? {
-        val writtenId = written[competitor.espnId]?.id
+    ): Golfer? {
+        val writtenId = written[competitor.espnId]
         return when (match) {
-            is CompetitorMatch.Credited -> match.golfer.id
-            is CompetitorMatch.SurnameGuess -> match.golfer.id
+            is CompetitorMatch.Credited -> match.golfer
+            is CompetitorMatch.SurnameGuess -> match.golfer
             is CompetitorMatch.Idless -> writtenId
             CompetitorMatch.Unmatched -> if (competitor.isTeamPartner) createPartnerIn(competitor) else writtenId
             is CompetitorMatch.IdMismatch -> {
@@ -285,9 +291,9 @@ class EspnService(
 
     /** Outside [findOrCreateAll]: a partner's id is synthetic and never written, so its insert takes no key lock. */
     context(ctx: WriteTransactionContext)
-    private fun createPartnerIn(competitor: EspnCompetitor): GolferId? {
+    private fun createPartnerIn(competitor: EspnCompetitor): Golfer? {
         val (firstName, lastName) = GolferName.splitName(competitor.name) ?: return null
-        return golferRepository.findOrCreate(CreateGolferRequest(firstName = firstName, lastName = lastName)).id
+        return golferRepository.findOrCreate(CreateGolferRequest(firstName = firstName, lastName = lastName))
     }
 
     context(ctx: TransactionContext)
@@ -348,12 +354,6 @@ class EspnService(
             UpdateTournamentRequest(status = statusChange, isTeamEvent = teamEventChange),
         )
     }
-
-    private data class MatchingContext(
-        val names: GolferNameIndex,
-        val rosterGolferIds: Set<GolferId>,
-        val overrides: Map<String, GolferId>,
-    )
 
     companion object {
         // Past PGA events folded into the active-player pool. Six events covers
@@ -481,10 +481,68 @@ internal data class EventImport(
     val event: EspnTournament,
 )
 
+/** [names] holds every golfer the matcher read, so a bound golfer missing from it was created by this import. */
+private data class MatchingContext(
+    val names: GolferNameIndex,
+    val rosterGolferIds: Set<GolferId>,
+    val overrides: Map<String, GolferId>,
+)
+
 private data class MatchedEvent(
     val import: EventImport,
     val matches: List<Pair<EspnCompetitor, CompetitorMatch>>,
+    val context: MatchingContext,
 )
+
+/** [golfer] is the row the competitor's result was written for, or null when it got none. */
+private data class Placement(
+    val competitor: EspnCompetitor,
+    val match: CompetitorMatch,
+    val golfer: Golfer?,
+)
+
+/**
+ * A golfer created for another event's claim in the same import is reported under each event it played. A withheld
+ * competitor credited through another event's claim got a result, so it is not contested.
+ */
+private fun MatchedEvent.warningsFor(placements: List<Placement>): EspnImportWarnings {
+    val readIds = context.names.golfers.map(Golfer::id).toSet()
+    val created = placements.mapNotNull(Placement::golfer).distinctBy(Golfer::id).filter { it.id !in readIds }
+    val rostered = GolferNameIndex(context.names.golfers.filter { it.id in context.rosterGolferIds })
+    val twins = created.mapNotNull { golfer -> rosteredSurnameTwin(golfer, rostered) }
+    val twinIds = twins.map { it.created.id }.toSet()
+    val unplaced = placements.filter { it.golfer == null }
+    return EspnImportWarnings(
+        tournamentId = import.tournament.id,
+        tournamentName = import.tournament.name,
+        rosteredSurnameTwins = twins,
+        createdGolfers = created.filter { it.id !in twinIds },
+        unmatchedCompetitors =
+            unplaced.filter { it.match !is CompetitorMatch.Withheld }
+                .map { UnmatchedCompetitor(espnCompetitorId = it.competitor.espnId, name = it.competitor.name) },
+        contestedCompetitors =
+            unplaced.mapNotNull { placement ->
+                (placement.match as? CompetitorMatch.Withheld)?.let { withheld ->
+                    ContestedCompetitor(
+                        espnCompetitorId = placement.competitor.espnId,
+                        name = placement.competitor.name,
+                        candidates = withheld.candidates,
+                    )
+                }
+            },
+    )
+}
+
+/** Keyed as the matcher keys a surname guess, so the twin it would have guessed at is the one reported. */
+private fun rosteredSurnameTwin(
+    created: Golfer,
+    rostered: GolferNameIndex,
+): RosteredSurnameTwin? =
+    when (val namesakes = rostered.matchSurname("${created.firstName} ${created.lastName}")) {
+        is GolferNameMatch.Matched -> RosteredSurnameTwin(created = created, rostered = listOf(namesakes.golfer))
+        is GolferNameMatch.Ambiguous -> RosteredSurnameTwin(created = created, rostered = namesakes.candidates)
+        GolferNameMatch.NoMatch -> null
+    }
 
 /** @see withholdingContestedRows */
 private fun MatchedEvent.withholdingContestedRows(): MatchedEvent {
