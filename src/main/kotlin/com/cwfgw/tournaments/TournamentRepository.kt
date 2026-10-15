@@ -25,14 +25,22 @@ interface TournamentRepository {
     fun findById(id: TournamentId): Tournament?
 
     /**
-     * Key-shares the season row before locking the tournament, the order a season delete's cascade takes both.
-     * Locking the tournament alone deadlocks that delete (40P01) once a score insert needs the season row.
+     * Locks the season row before the tournament, the order a season delete's cascade takes both. NO KEY UPDATE
+     * runs one caller per season at a time, as the ordering checks against siblings need; it leaves an FK insert's
+     * key-share on the season free.
      */
     context(ctx: WriteTransactionContext)
     fun findByIdForUpdate(id: TournamentId): Tournament?
 
     context(ctx: TransactionContext)
     fun findByPgaTournamentId(pgaTournamentId: String): Tournament?
+
+    /**
+     * Key-shares their seasons, then locks the tournaments in id order: an id never changes, where a start date can
+     * between two lockers' reads. An id that matches no row is skipped.
+     */
+    context(ctx: WriteTransactionContext)
+    fun findByPgaTournamentIdsForUpdate(pgaTournamentIds: Collection<String>): List<Tournament>
 
     context(ctx: WriteTransactionContext)
     fun create(request: CreateTournamentRequest): Tournament
@@ -125,7 +133,7 @@ private class JooqTournamentRepository : TournamentRepository {
                 .where(TOURNAMENTS.ID.eq(id.value))
                 .fetchOne(TOURNAMENTS.SEASON_ID)
                 ?: return null
-        ctx.dsl.selectOne().from(SEASONS).where(SEASONS.ID.eq(seasonId)).forKeyShare().execute()
+        ctx.dsl.selectOne().from(SEASONS).where(SEASONS.ID.eq(seasonId)).forNoKeyUpdate().execute()
         return ctx.dsl.selectFrom(TOURNAMENTS)
             .where(TOURNAMENTS.ID.eq(id.value))
             .forUpdate()
@@ -139,6 +147,23 @@ private class JooqTournamentRepository : TournamentRepository {
             .where(TOURNAMENTS.PGA_TOURNAMENT_ID.eq(pgaTournamentId))
             .fetchOne()
             ?.let(::toTournament)
+
+    context(ctx: WriteTransactionContext)
+    override fun findByPgaTournamentIdsForUpdate(pgaTournamentIds: Collection<String>): List<Tournament> {
+        if (pgaTournamentIds.isEmpty()) return emptyList()
+        val matching = TOURNAMENTS.PGA_TOURNAMENT_ID.`in`(pgaTournamentIds)
+        ctx.dsl.selectOne()
+            .from(SEASONS)
+            .where(SEASONS.ID.`in`(DSL.select(TOURNAMENTS.SEASON_ID).from(TOURNAMENTS).where(matching)))
+            .orderBy(SEASONS.ID.asc())
+            .forKeyShare()
+            .execute()
+        return ctx.dsl.selectFrom(TOURNAMENTS)
+            .where(matching)
+            .orderBy(TOURNAMENTS.ID.asc())
+            .forUpdate()
+            .fetch(::toTournament)
+    }
 
     context(ctx: WriteTransactionContext)
     override fun create(request: CreateTournamentRequest): Tournament {

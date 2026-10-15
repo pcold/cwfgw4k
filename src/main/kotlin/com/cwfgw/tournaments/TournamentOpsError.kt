@@ -2,6 +2,7 @@ package com.cwfgw.tournaments
 
 import com.cwfgw.espn.EspnUpstreamFailure
 import com.cwfgw.seasons.SeasonId
+import java.time.LocalDate
 
 /**
  * Typed failure modes for tournament-scope finalize/reset orchestration.
@@ -23,6 +24,12 @@ sealed interface TournamentOpsError {
      * layer can render a deterministic error message.
      */
     data class OutOfOrder(val action: Action, val blocking: List<Tournament>) : TournamentOpsError
+
+    /**
+     * Finalize only: the start date moved during the ESPN fetch, so the events fetched for [fetchedFor] are another
+     * day's. Refused rather than re-fetched, as CWF-203 decided.
+     */
+    data class StartDateChanged(val fetchedFor: LocalDate, val startDate: LocalDate) : TournamentOpsError
 
     /** ESPN was unreachable (or returned non-2xx) during the import step of finalize. */
     data class UpstreamUnavailable(val failure: EspnUpstreamFailure) : TournamentOpsError

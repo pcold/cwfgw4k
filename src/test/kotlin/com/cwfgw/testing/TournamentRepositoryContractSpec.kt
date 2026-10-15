@@ -82,6 +82,16 @@ private val tournamentRowContract: List<ContractCase<TournamentRepository>> =
             tx.update { repository.findByIdForUpdate(created.id) } shouldBe created
             tx.update { repository.findByIdForUpdate(TournamentId(UUID.randomUUID())) }.shouldBeNull()
         },
+        ContractCase("findByPgaTournamentIdsForUpdate reads the rows on those ids in id order, skipping unknown ids") {
+            val seasonId = seeds.season()
+            val masters = tx.update { repository.create(masters(seasonId)) }
+            val open = tx.update { repository.create(masters(seasonId).copy(pgaTournamentId = "evt-402")) }
+            val idOrder = listOf(masters, open).sortedWith(compareBy(POSTGRES_UUID_ORDER) { it.id.value })
+
+            tx.update { repository.findByPgaTournamentIdsForUpdate(listOf("evt-402", "evt-404", "evt-401")) } shouldBe
+                idOrder
+            tx.update { repository.findByPgaTournamentIdsForUpdate(emptyList()) }.shouldBeEmpty()
+        },
         ContractCase("a payout multiplier comes back at the column's four decimal places") {
             val doubled = masters(seeds.season()).copy(payoutMultiplier = BigDecimal(2))
             val halfAgain = UpdateTournamentRequest(payoutMultiplier = BigDecimal("1.5"))

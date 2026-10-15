@@ -12,6 +12,7 @@ import com.cwfgw.scoring.ScoringError
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import io.github.oshai.kotlinlogging.KotlinLogging
+import java.time.LocalDate
 
 private val log = KotlinLogging.logger {}
 
@@ -35,7 +36,7 @@ class TournamentOpsService(
                 .getOrElse { return Result.Err(TournamentOpsError.UpstreamUnavailable(it.failure)) }
 
         return try {
-            tx.update { finalizeLockedIn(tournamentId, events) }
+            tx.update { finalizeLockedIn(tournamentId, fetchedFor = tournament.startDate, events) }
         } catch (aborted: FinalizeAborted) {
             log.warn(aborted) { "Finalize of '${tournament.name}' rolled back: ${aborted.error}" }
             Result.Err(aborted.error)
@@ -43,17 +44,22 @@ class TournamentOpsService(
     }
 
     /**
-     * The row may have changed or gone during the ESPN fetch, so the gates read it again under the lock. [events]
-     * are still the pre-fetch start date's.
+     * The row may have changed or gone during the ESPN fetch, so the gates read it again under the lock. The linked
+     * event is picked by the locked row's ESPN id, so only the fetch's date needs re-checking.
      */
     context(ctx: WriteTransactionContext)
     private fun finalizeLockedIn(
         tournamentId: TournamentId,
+        fetchedFor: LocalDate,
         events: List<EspnTournament>,
     ): Result<Tournament, TournamentOpsError> {
         val tournament =
             tournamentRepository.findByIdForUpdate(tournamentId)
                 ?: return Result.Err(TournamentOpsError.TournamentNotFound(tournamentId))
+
+        if (tournament.startDate != fetchedFor) {
+            return Result.Err(TournamentOpsError.StartDateChanged(fetchedFor, tournament.startDate))
+        }
 
         val blocking = findEarlierUnfinalized(tournament)
         if (blocking.isNotEmpty()) {
@@ -113,12 +119,17 @@ class TournamentOpsService(
             espnService.persistImportIn(tournament, event)
             return
         }
-        for (event in events.filter { it.completed }) {
-            val matched = tournamentRepository.findByPgaTournamentId(event.espnId) ?: continue
+        val completed = events.filter { it.completed }
+        val matchedByEspnId =
+            tournamentRepository.findByPgaTournamentIdsForUpdate(completed.map { it.espnId })
+                .associateBy { it.pgaTournamentId }
+        for (event in completed) {
+            val matched = matchedByEspnId[event.espnId] ?: continue
             espnService.persistImportIn(matched, event)
         }
     }
 
+    /** Sound only under findByIdForUpdate's season lock, without which a sibling's reset can commit after this read. */
     context(ctx: TransactionContext)
     private fun findEarlierUnfinalized(tournament: Tournament): List<Tournament> =
         tournamentRepository.findAll(
@@ -129,6 +140,7 @@ class TournamentOpsService(
             ),
         )
 
+    /** @see findEarlierUnfinalized */
     context(ctx: TransactionContext)
     private fun findLaterCompleted(tournament: Tournament): List<Tournament> =
         tournamentRepository.findAll(
