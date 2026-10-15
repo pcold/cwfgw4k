@@ -95,7 +95,7 @@ data class GolferFinish(
     val numTied: Int,
 )
 
-data class CreateTournamentRequest(
+data class NewTournament(
     val pgaTournamentId: String? = null,
     val name: String,
     val seasonId: SeasonId,
@@ -119,7 +119,7 @@ data class UpdateTournamentRequest(
     val isTeamEvent: Boolean? = null,
 )
 
-data class CreateTournamentResultRequest(
+data class NewTournamentResult(
     val golferId: GolferId,
     val position: Int? = null,
     val scoreToPar: Int? = null,

@@ -49,7 +49,7 @@ class FakeTeamRepository(
     context(ctx: WriteTransactionContext)
     override fun create(
         seasonId: SeasonId,
-        request: CreateTeamRequest,
+        request: NewTeam,
     ): Team {
         if (teams.values.any { it.seasonId == seasonId && it.teamName == request.teamName }) {
             throw uniqueViolation(UNIQUE_TEAM_NAME_PER_SEASON)
@@ -82,7 +82,7 @@ class FakeTeamRepository(
     context(ctx: WriteTransactionContext)
     override fun addToRoster(
         teamId: TeamId,
-        request: AddToRosterRequest,
+        request: NewRosterEntry,
     ): RosterEntry {
         val entry =
             RosterEntry(

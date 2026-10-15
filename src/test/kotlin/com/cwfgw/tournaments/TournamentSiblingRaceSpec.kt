@@ -48,7 +48,7 @@ class TournamentSiblingRaceSpec : FunSpec({
 
         coroutineScope {
             val reset = async { pausedReset.resetTournament(earlier.id) }
-            val (finalize, waited) = pause.contend(postgres) { async { opsService(tx).finalizeTournament(later.id) } }
+            val (finalize, waited) = pause.contend(postgres) { async { opsService(tx).finalizeAndReport(later.id) } }
 
             reset.await().orFail().status shouldBe TournamentStatus.Upcoming
             val blocking = listOf(checkNotNull(tx.get { TournamentRepository().findById(earlier.id) }))
@@ -63,10 +63,10 @@ class TournamentSiblingRaceSpec : FunSpec({
         val pausedFinalize = opsService(tx, tournamentRepository = pause.afterFindAll())
 
         coroutineScope {
-            val finalize = async { pausedFinalize.finalizeTournament(later.id) }
+            val finalize = async { pausedFinalize.finalizeAndReport(later.id) }
             val (reset, waited) = pause.contend(postgres) { async { opsService(tx).resetTournament(earlier.id) } }
 
-            val finalized = finalize.await().orFail()
+            val finalized = finalize.await().orFail().tournament
             finalized.status shouldBe TournamentStatus.Completed
             reset.await() shouldBe Result.Err(TournamentOpsError.OutOfOrder(Action.Reset, listOf(finalized)))
             waited.shouldBeTrue()
@@ -79,7 +79,7 @@ class TournamentSiblingRaceSpec : FunSpec({
         val pausedFinalize = opsService(tx, golferRepository = pause.afterGolferFindAll())
 
         coroutineScope {
-            val finalize = async { pausedFinalize.finalizeTournament(unlinked.id) }
+            val finalize = async { pausedFinalize.finalizeAndReport(unlinked.id) }
             val (reset, waited) = pause.contend(postgres) { async { opsService(tx).resetTournament(sibling.id) } }
 
             finalize.await().orFail()
@@ -95,7 +95,7 @@ class TournamentSiblingRaceSpec : FunSpec({
         val move = UpdateTournamentRequest(startDate = moved, endDate = moved.plusDays(3))
         val ops = opsService(tx, duringFetch = { tx.update { TournamentRepository().update(event.id, move) } })
 
-        ops.finalizeTournament(event.id) shouldBe
+        ops.finalizeAndReport(event.id) shouldBe
             Result.Err(TournamentOpsError.StartDateChanged(fetchedFor = event.startDate, startDate = moved))
         tx.get { GolferRepository().findByPgaPlayerId(FINISHER_ESPN_ID) }.shouldBeNull()
         tx.get { TournamentRepository().findById(event.id) }?.status shouldBe TournamentStatus.Upcoming
@@ -177,7 +177,7 @@ private fun seedConsecutiveWeeks(): Pair<Tournament, Tournament> {
     val later = seedLinkedEvent()
     val earlier =
         TournamentRepository().create(
-            CreateTournamentRequest(
+            NewTournament(
                 name = "RBC Heritage",
                 seasonId = later.seasonId,
                 startDate = EARLIER_WEEK,
@@ -194,7 +194,7 @@ private fun seedUnlinkedWithSibling(): Pair<Tournament, Tournament> {
     val unlinked = checkNotNull(TournamentRepository().findById(seedTournament()))
     val sibling =
         TournamentRepository().create(
-            CreateTournamentRequest(
+            NewTournament(
                 name = "Zurich Classic",
                 seasonId = unlinked.seasonId,
                 startDate = unlinked.startDate,

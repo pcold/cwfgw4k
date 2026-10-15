@@ -4,10 +4,10 @@ import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
-import com.cwfgw.tournaments.CreateTournamentRequest
-import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.GolferFinish
+import com.cwfgw.tournaments.NewTournament
+import com.cwfgw.tournaments.NewTournamentResult
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentId
@@ -27,8 +27,8 @@ import java.math.BigDecimal
 import java.time.LocalDate
 import java.util.UUID
 
-private fun masters(seasonId: SeasonId): CreateTournamentRequest =
-    CreateTournamentRequest(
+private fun masters(seasonId: SeasonId): NewTournament =
+    NewTournament(
         pgaTournamentId = "evt-401",
         name = "Masters",
         seasonId = seasonId,
@@ -194,8 +194,8 @@ private val tournamentResultContract: List<ContractCase<TournamentRepository>> =
             val seasonId = seeds.season()
             val golfer = seeds.golfer()
             val tournament = tx.update { repository.create(masters(seasonId)) }
-            val third = CreateTournamentResultRequest(golfer, position = 3)
-            val winnerMissedCut = CreateTournamentResultRequest(golfer, position = 1, madeCut = false)
+            val third = NewTournamentResult(golfer, position = 3)
+            val winnerMissedCut = NewTournamentResult(golfer, position = 1, madeCut = false)
 
             val first = tx.update { repository.upsertResult(tournament.id, third) }
             val replaced = tx.update { repository.upsertResult(tournament.id, winnerMissedCut) }
@@ -209,7 +209,7 @@ private val tournamentResultContract: List<ContractCase<TournamentRepository>> =
 
             val upserted =
                 listOf(null, 2, null, 1, 2, null).map { position ->
-                    val entry = CreateTournamentResultRequest(seeds.golfer(), position)
+                    val entry = NewTournamentResult(seeds.golfer(), position)
                     tx.update { repository.upsertResult(tournament.id, entry) }
                 }
 
@@ -217,7 +217,7 @@ private val tournamentResultContract: List<ContractCase<TournamentRepository>> =
         },
         ContractCase("getResultsByTournaments groups by tournament id as Postgres orders uuid") {
             val seasonId = seeds.season()
-            val winner = CreateTournamentResultRequest(seeds.golfer(), position = 1)
+            val winner = NewTournamentResult(seeds.golfer(), position = 1)
             val events = (1..4).map { tx.update { repository.create(masters(seasonId).copy(pgaTournamentId = null)) } }
             val asked = events.take(3).map { event -> tx.update { repository.upsertResult(event.id, winner) } }
             tx.update { repository.upsertResult(events.last().id, winner) }
@@ -240,7 +240,7 @@ private val tournamentResultContract: List<ContractCase<TournamentRepository>> =
                     event: Tournament,
                     golfer: GolferId,
                     position: Int?,
-                ) = repository.upsertResult(event.id, CreateTournamentResultRequest(golfer, position))
+                ) = repository.upsertResult(event.id, NewTournamentResult(golfer, position))
                 finish(tied, winner, position = 1)
                 finish(tied, target, position = 3)
                 finish(tied, rival, position = 3)
@@ -270,7 +270,7 @@ private val tournamentResultContract: List<ContractCase<TournamentRepository>> =
             tx.update {
                 listOf(first, second, elsewhere).forEach { event ->
                     golfers.forEach { golfer ->
-                        repository.upsertResult(event.id, CreateTournamentResultRequest(golfer))
+                        repository.upsertResult(event.id, NewTournamentResult(golfer))
                     }
                 }
             }

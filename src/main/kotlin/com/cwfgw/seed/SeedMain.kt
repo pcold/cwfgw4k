@@ -197,7 +197,7 @@ private suspend fun applyMajorMultipliers(
 /**
  * Walk tournaments in chronological order and finalize each one that's
  * already completed on ESPN. Stops on the first non-completed event so
- * the chronological-order check inside finalizeTournament stays happy.
+ * the chronological-order check inside finalizeAndReport stays happy.
  */
 private suspend fun finalizeCompleted(
     seasonId: SeasonId,
@@ -210,7 +210,7 @@ private suspend fun finalizeCompleted(
         return
     }
     for (tournament in tournaments) {
-        when (val result = services.tournamentOpsService.finalizeTournament(tournament.id)) {
+        when (val result = services.tournamentOpsService.finalizeAndReport(tournament.id)) {
             is Result.Ok -> log.info { "Finalized '${tournament.name}'" }
             is Result.Err -> {
                 log.info { "Stopping finalize loop at '${tournament.name}': ${result.error}" }

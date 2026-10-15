@@ -25,7 +25,7 @@ import com.cwfgw.teams.TeamRepository
 import com.cwfgw.tournamentLinks.TournamentCompetitorListing
 import com.cwfgw.tournamentLinks.TournamentCompetitorView
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
-import com.cwfgw.tournaments.CreateTournamentResultRequest
+import com.cwfgw.tournaments.NewTournamentResult
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentId
@@ -332,7 +332,7 @@ class EspnService(
     ) {
         val requests =
             matchedPairs.map { (competitor, golferId) ->
-                CreateTournamentResultRequest(
+                NewTournamentResult(
                     golferId = golferId,
                     position = competitor.position,
                     scoreToPar = competitor.scoreToPar,

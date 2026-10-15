@@ -17,7 +17,7 @@ import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.teams.AddToRosterRequest
+import com.cwfgw.teams.NewRosterEntry
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
@@ -202,9 +202,9 @@ private fun seedRosteredSeason(): Pair<SeasonId, Roster> {
             tomKim = golfers.create(CreateGolferRequest(firstName = "Tom", lastName = "Kim", worldRanking = 20)),
             tomKimTwin = golfers.create(CreateGolferRequest(firstName = "Tom", lastName = "Kim", worldRanking = 21)),
         )
-    TeamRepository().addToRoster(alpha, AddToRosterRequest(golferId = roster.nicolaiHojgaard.id))
-    TeamRepository().addToRoster(alpha, AddToRosterRequest(golferId = roster.tomKim.id))
-    TeamRepository().addToRoster(bravo, AddToRosterRequest(golferId = roster.tomKimTwin.id))
+    TeamRepository().addToRoster(alpha, NewRosterEntry(golferId = roster.nicolaiHojgaard.id))
+    TeamRepository().addToRoster(alpha, NewRosterEntry(golferId = roster.tomKim.id))
+    TeamRepository().addToRoster(bravo, NewRosterEntry(golferId = roster.tomKimTwin.id))
     return seasonId to roster
 }
 

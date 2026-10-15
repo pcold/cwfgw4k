@@ -14,7 +14,7 @@ import com.cwfgw.result.Result
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.teams.AddToRosterRequest
+import com.cwfgw.teams.NewRosterEntry
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
@@ -54,7 +54,7 @@ class TournamentFinalizeRaceSpec : FunSpec({
         val event = tx.update { seedRosteredEvent() }
         val ops = opsService(tx, event, duringFetch = { tx.update { SeasonRepository().delete(event.seasonId) } })
 
-        ops.finalizeTournament(event.id) shouldBe Result.Err(TournamentOpsError.TournamentNotFound(event.id))
+        ops.finalizeAndReport(event.id) shouldBe Result.Err(TournamentOpsError.TournamentNotFound(event.id))
 
         tx.get { GolferRepository().findByPgaPlayerId(UNSEEN_RUNNER_UP_ESPN_ID) }.shouldBeNull()
     }
@@ -65,12 +65,12 @@ class TournamentFinalizeRaceSpec : FunSpec({
 
         val (first, second) =
             coroutineScope {
-                val first = async { opsService(tx, event, hold.pausing()).finalizeTournament(event.id) }
-                val second = hold.whileHeld { async { opsService(tx, event).finalizeTournament(event.id) } }
+                val first = async { opsService(tx, event, hold.pausing()).finalizeAndReport(event.id) }
+                val second = hold.whileHeld { async { opsService(tx, event).finalizeAndReport(event.id) } }
                 first.await() to second.await()
             }
 
-        first.orFail().status shouldBe TournamentStatus.Completed
+        first.orFail().tournament.status shouldBe TournamentStatus.Completed
         second shouldBe Result.Err(TournamentOpsError.TournamentFinalized(event.id))
         tx.get { TournamentRepository().getResults(event.id) } shouldHaveSize 2
         tx.get { GolferRepository().findByPgaPlayerId(UNSEEN_RUNNER_UP_ESPN_ID) }?.lastName shouldBe "McIlroy"
@@ -82,10 +82,10 @@ class TournamentFinalizeRaceSpec : FunSpec({
         val hold = LockHold()
 
         coroutineScope {
-            val finalize = async { opsService(tx, event, hold.pausing()).finalizeTournament(event.id) }
+            val finalize = async { opsService(tx, event, hold.pausing()).finalizeAndReport(event.id) }
             val delete = hold.whileHeld { async { tx.update { SeasonRepository().delete(event.seasonId) } } }
 
-            finalize.await().orFail().status shouldBe TournamentStatus.Completed
+            finalize.await().orFail().tournament.status shouldBe TournamentStatus.Completed
             delete.await() shouldBe true
         }
         tx.get { TournamentRepository().findById(event.id) }.shouldBeNull()
@@ -97,10 +97,10 @@ class TournamentFinalizeRaceSpec : FunSpec({
 
         coroutineScope {
             val reset = async { opsService(tx, event, hold.pausing()).resetTournament(event.id) }
-            val finalize = hold.whileHeld { async { opsService(tx, event).finalizeTournament(event.id) } }
+            val finalize = hold.whileHeld { async { opsService(tx, event).finalizeAndReport(event.id) } }
 
             reset.await().orFail().status shouldBe TournamentStatus.Upcoming
-            finalize.await().orFail().status shouldBe TournamentStatus.Completed
+            finalize.await().orFail().tournament.status shouldBe TournamentStatus.Completed
         }
     }
 
@@ -200,7 +200,7 @@ private fun seedRosteredEvent(): Tournament {
         GolferRepository().create(
             CreateGolferRequest(pgaPlayerId = ROSTERED_WINNER_ESPN_ID, firstName = "Scottie", lastName = "Scheffler"),
         )
-    TeamRepository().addToRoster(seedTeams(event.seasonId).first(), AddToRosterRequest(golferId = winner.id))
+    TeamRepository().addToRoster(seedTeams(event.seasonId).first(), NewRosterEntry(golferId = winner.id))
     return event
 }
 

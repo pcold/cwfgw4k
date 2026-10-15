@@ -10,7 +10,6 @@ import com.cwfgw.espn.EventImport
 import com.cwfgw.espn.findLinkedEvent
 import com.cwfgw.result.Result
 import com.cwfgw.result.getOrElse
-import com.cwfgw.result.map
 import com.cwfgw.scoring.ScoringError
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
@@ -30,10 +29,6 @@ class TournamentOpsService(
     private val espnService: EspnService,
     private val tx: Transactor,
 ) {
-    /** @see finalizeAndReport */
-    suspend fun finalizeTournament(tournamentId: TournamentId): Result<Tournament, TournamentOpsError> =
-        finalizeAndReport(tournamentId).map(FinalizedTournament::tournament)
-
     suspend fun finalizeAndReport(tournamentId: TournamentId): Result<FinalizedTournament, TournamentOpsError> {
         val tournament =
             tx.read { tournamentRepository.findById(tournamentId) }

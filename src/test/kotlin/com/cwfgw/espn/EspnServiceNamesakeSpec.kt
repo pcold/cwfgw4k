@@ -8,7 +8,7 @@ import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.seasons.SeasonRules
-import com.cwfgw.teams.AddToRosterRequest
+import com.cwfgw.teams.NewRosterEntry
 import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.RosterEntryId
 import com.cwfgw.teams.Team
@@ -90,7 +90,7 @@ class EspnServiceNamesakeSpec : FunSpec({
             val teamId = seedTeams(tournament.seasonId).first()
             requests.map {
                 golfers.create(it)
-            }.onEach { TeamRepository().addToRoster(teamId, AddToRosterRequest(it.id)) }
+            }.onEach { TeamRepository().addToRoster(teamId, NewRosterEntry(it.id)) }
         }
 
     test("an import credits the competitor's own new row, not a unique-surname namesake holding another ESPN id") {
@@ -186,7 +186,7 @@ class EspnServiceNamesakeSpec : FunSpec({
             tx.update {
                 val drafted = golfers.create(golferRequest("John", "Smith"))
                 val undrafted = golfers.create(golferRequest("John", "Smith"))
-                TeamRepository().addToRoster(seedTeams(tournament.seasonId).first(), AddToRosterRequest(drafted.id))
+                TeamRepository().addToRoster(seedTeams(tournament.seasonId).first(), NewRosterEntry(drafted.id))
                 drafted to undrafted
             }
 
@@ -203,7 +203,7 @@ class EspnServiceNamesakeSpec : FunSpec({
             tx.update {
                 val teamId = seedTeams(tournament.seasonId).first()
                 List(2) { golfers.create(golferRequest("John", "Smith")) }
-                    .onEach { TeamRepository().addToRoster(teamId, AddToRosterRequest(it.id)) }
+                    .onEach { TeamRepository().addToRoster(teamId, NewRosterEntry(it.id)) }
             }
 
         captureLogs { logs ->
@@ -225,7 +225,7 @@ class EspnServiceNamesakeSpec : FunSpec({
             tx.update {
                 val drafted = golfers.create(golferRequest("John", "Smith"))
                 val undrafted = golfers.create(golferRequest("John", "Smith"))
-                TeamRepository().addToRoster(seedTeams(tournament.seasonId).first(), AddToRosterRequest(drafted.id))
+                TeamRepository().addToRoster(seedTeams(tournament.seasonId).first(), NewRosterEntry(drafted.id))
                 drafted to undrafted
             }
         val event = masters(competitor("espn-5", "John Smith"))

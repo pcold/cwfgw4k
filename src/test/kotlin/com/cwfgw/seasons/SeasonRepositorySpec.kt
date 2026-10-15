@@ -7,12 +7,12 @@ import com.cwfgw.jooq.tables.references.TEAM_ROSTERS
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.leagues.LeagueRepository
-import com.cwfgw.teams.AddToRosterRequest
-import com.cwfgw.teams.CreateTeamRequest
+import com.cwfgw.teams.NewRosterEntry
+import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.seedSeasonRules
-import com.cwfgw.tournaments.CreateTournamentRequest
+import com.cwfgw.tournaments.NewTournament
 import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentRepository
 import io.kotest.assertions.throwables.shouldThrow
@@ -400,10 +400,10 @@ class SeasonRepositorySpec : FunSpec({
                 val team =
                     teamRepo.create(
                         seasonId = season.id,
-                        request = CreateTeamRequest(ownerName = "Owner", teamName = "Birdies"),
+                        request = NewTeam(ownerName = "Owner", teamName = "Birdies"),
                     )
                 tournamentRepo.create(
-                    CreateTournamentRequest(
+                    NewTournament(
                         name = "Sony Open",
                         seasonId = season.id,
                         startDate = java.time.LocalDate.parse("2026-01-15"),
@@ -411,7 +411,7 @@ class SeasonRepositorySpec : FunSpec({
                     ),
                 )
                 val golfer = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
-                teamRepo.addToRoster(team.id, AddToRosterRequest(golferId = golfer.id))
+                teamRepo.addToRoster(team.id, NewRosterEntry(golferId = golfer.id))
                 season.id to team.id
             }
 
