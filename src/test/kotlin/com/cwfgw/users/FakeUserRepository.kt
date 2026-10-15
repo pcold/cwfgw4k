@@ -3,6 +3,7 @@ package com.cwfgw.users
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.testing.fakeTableOf
+import com.cwfgw.testing.uniqueViolation
 import java.util.UUID
 
 class FakeUserRepository(
@@ -31,9 +32,7 @@ class FakeUserRepository(
 
     context(ctx: WriteTransactionContext)
     override fun create(request: NewUser): User {
-        require(store.values.none { it.user.username == request.username }) {
-            "FakeUserRepository: duplicate username '${request.username}'"
-        }
+        if (store.values.any { it.user.username == request.username }) throw uniqueViolation(UNIQUE_USERNAME)
         val user =
             User(
                 id = idFactory(),

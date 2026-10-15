@@ -13,6 +13,10 @@ import com.cwfgw.result.Result
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
+import com.cwfgw.teams.CreateTeamRequest
+import com.cwfgw.teams.TeamId
+import com.cwfgw.teams.TeamRepository
+import com.cwfgw.tournaments.TournamentId
 import io.kotest.core.spec.style.FunSpec
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
@@ -49,15 +53,26 @@ internal interface ContractSeeds {
     suspend fun season(): SeasonId
 
     suspend fun golfer(): GolferId
+
+    suspend fun team(): TeamId
+
+    suspend fun tournament(): TournamentId
 }
 
 /** @see ContractSeeds */
 internal object FakeSeeds : ContractSeeds {
+    /** Sign-straddling, so a fake that orders rows by tournament id must order them as Postgres does. */
+    private val tournamentIds = signStraddlingUuids()
+
     override suspend fun league(): LeagueId = LeagueId(UUID.randomUUID())
 
     override suspend fun season(): SeasonId = SeasonId(UUID.randomUUID())
 
     override suspend fun golfer(): GolferId = GolferId(UUID.randomUUID())
+
+    override suspend fun team(): TeamId = TeamId(UUID.randomUUID())
+
+    override suspend fun tournament(): TournamentId = TournamentId(tournamentIds())
 }
 
 /** @see ContractSeeds */
@@ -73,6 +88,15 @@ internal class PostgresSeeds(private val tx: Transactor) : ContractSeeds {
 
     override suspend fun golfer(): GolferId =
         tx.update { GolferRepository().create(CreateGolferRequest(firstName = "Seeded", lastName = "Golfer")).id }
+
+    override suspend fun team(): TeamId {
+        val season = season()
+        return tx.update {
+            TeamRepository().create(season, CreateTeamRequest(ownerName = "Seeded", teamName = "Seeded")).id
+        }
+    }
+
+    override suspend fun tournament(): TournamentId = tx.update { seedTournament() }
 }
 
 internal data object Outraced
