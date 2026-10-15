@@ -9,6 +9,9 @@ import com.cwfgw.espn.EspnUpstreamException
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.golfers.GolferName
+import com.cwfgw.golfers.GolferNameIndex
+import com.cwfgw.golfers.GolferNameMatch
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.result.Result
@@ -24,7 +27,6 @@ import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.math.BigDecimal
-import java.text.Normalizer
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 import java.time.temporal.WeekFields
@@ -189,7 +191,7 @@ class AdminService(
                 is Result.Err -> return Result.Err(AdminError.InvalidRoster(r.error))
             }
 
-        val initialIndex = buildGolferNameIndex(golferService.list(search = null))
+        val initialIndex = GolferNameIndex(golferService.list(search = null))
         val initialMatches = parsed.flatMap { it.picks }.map { matchPick(it.playerName, initialIndex) }
         val anyUnmatched = initialMatches.any { it is PickMatch.NoMatch }
 
@@ -212,15 +214,15 @@ class AdminService(
      * we just return the original index unchanged so the matcher falls
      * back to "no match" rather than failing the whole preview.
      */
-    private suspend fun fishEspnPoolInto(currentIndex: Map<String, List<Golfer>>): Map<String, List<Golfer>> {
+    private suspend fun fishEspnPoolInto(currentIndex: GolferNameIndex): GolferNameIndex {
         val athletes = espnService.fetchActivePlayers()
         if (athletes.isEmpty()) return currentIndex
-        val existingIds = currentIndex.values.flatten().mapNotNull { it.pgaPlayerId }.toSet()
+        val existingIds = currentIndex.golfers.mapNotNull { it.pgaPlayerId }.toSet()
         val newAthletes = athletes.filter { it.espnId !in existingIds }
         if (newAthletes.isEmpty()) return currentIndex
         log.info { "Persisting ${newAthletes.size} new ESPN athletes into golfers table" }
         for (athlete in newAthletes) {
-            val (firstName, lastName) = splitName(athlete.name)
+            val (firstName, lastName) = GolferName.splitName(athlete.name) ?: continue
             // A PgaPlayerIdTaken loser needs nothing: the re-list below picks up the winner's row.
             golferService.create(
                 CreateGolferRequest(
@@ -230,19 +232,12 @@ class AdminService(
                 ),
             )
         }
-        return buildGolferNameIndex(golferService.list(search = null))
-    }
-
-    private fun splitName(fullName: String): Pair<String, String> {
-        val trimmed = fullName.trim()
-        val lastSpace = trimmed.lastIndexOf(' ')
-        if (lastSpace == -1) return trimmed to ""
-        return trimmed.substring(0, lastSpace) to trimmed.substring(lastSpace + 1)
+        return GolferNameIndex(golferService.list(search = null))
     }
 
     private fun previewTeam(
         team: ParsedTeam,
-        nameIndex: Map<String, List<Golfer>>,
+        nameIndex: GolferNameIndex,
     ): PreviewTeam =
         PreviewTeam(
             teamNumber = team.teamNumber,
@@ -260,59 +255,22 @@ class AdminService(
 
     private fun matchPick(
         playerName: String,
-        nameIndex: Map<String, List<Golfer>>,
-    ): PickMatch {
-        val candidates = nameIndex[normalizeName(playerName)].orEmpty()
-        return when (candidates.size) {
-            0 -> PickMatch.NoMatch
-            1 -> {
-                val golfer = candidates.single()
-                PickMatch.Matched(golferId = golfer.id, golferName = golfer.fullName())
-            }
-            else ->
+        nameIndex: GolferNameIndex,
+    ): PickMatch =
+        when (val match = nameIndex.matchFullName(playerName)) {
+            is GolferNameMatch.Matched ->
+                PickMatch.Matched(golferId = match.golfer.id, golferName = match.golfer.fullName())
+            is GolferNameMatch.Ambiguous ->
                 PickMatch.Ambiguous(
                     candidates =
-                        candidates.map { golfer ->
+                        match.candidates.map { golfer ->
                             GolferCandidate(golferId = golfer.id, name = golfer.fullName())
                         },
                 )
+            GolferNameMatch.NoMatch -> PickMatch.NoMatch
         }
-    }
 
     private fun Golfer.fullName(): String = "$firstName $lastName"
-
-    private fun buildGolferNameIndex(golfers: List<Golfer>): Map<String, List<Golfer>> =
-        golfers.groupBy { normalizeName("${it.firstName} ${it.lastName}") }
-
-    /**
-     * Lowercase + accent-fold a name so "Niklas Nørgaard-Petersen",
-     * "Niklas Norgaard-Petersen", and "niklas  nørgaard-PETERSEN" all
-     * land in the same bucket.
-     *
-     * Two-step folding: explicit substitution of letters that have no NFD
-     * canonical decomposition (Scandinavian ø/å/æ, Polish ł, German ß,
-     * Icelandic ð, Croatian đ — the ones that bit us in production), then
-     * standard NFD-decompose-and-strip-combining-marks for the regular
-     * accented Latin range (é, ñ, ü, etc.).
-     *
-     * Predictable substitution rather than edit-distance fuzzy matching:
-     * "Tom Kim" must not silently match "Tim Kim".
-     */
-    private fun normalizeName(name: String): String {
-        val folded =
-            NON_DECOMPOSABLE_LETTERS.entries.fold(name.trim()) { acc, (from, to) ->
-                acc.replace(from, to)
-            }
-        return Normalizer.normalize(folded, Normalizer.Form.NFD)
-            .replace(DIACRITIC_REGEX, "")
-            // Treat hyphens as token separators so ESPN's "Byeong-Hun An"
-            // matches a roster's "Byeong Hun An" (and vice versa). Compound
-            // surnames like "Nørgaard-Petersen" still match either spelling
-            // because we compare the whole normalized string.
-            .replace('-', ' ')
-            .replace(WHITESPACE_REGEX, " ")
-            .lowercase()
-    }
 
     private fun summarize(teams: List<PreviewTeam>): RosterPreviewResult {
         val allPicks = teams.flatMap { it.picks }
@@ -479,25 +437,6 @@ class AdminService(
 
         /** Roster entries created by confirmRoster are draft picks — distinguishes from waiver/trade adds. */
         private const val ROSTER_ACQUIRED_VIA_DRAFT = "draft"
-
-        private val DIACRITIC_REGEX: Regex = Regex("\\p{InCombiningDiacriticalMarks}+")
-        private val WHITESPACE_REGEX: Regex = Regex("\\s+")
-
-        // Letters with no NFD canonical decomposition that we still want
-        // to fold for name matching. Order doesn't matter — replace passes
-        // are independent.
-        private val NON_DECOMPOSABLE_LETTERS: Map<String, String> =
-            mapOf(
-                "ø" to "o", "Ø" to "O",
-                "å" to "a", "Å" to "A",
-                "æ" to "ae", "Æ" to "AE",
-                "œ" to "oe", "Œ" to "OE",
-                "ß" to "ss",
-                "ł" to "l", "Ł" to "L",
-                "đ" to "d", "Đ" to "D",
-                "ð" to "d", "Ð" to "D",
-                "þ" to "th", "Þ" to "Th",
-            )
     }
 }
 

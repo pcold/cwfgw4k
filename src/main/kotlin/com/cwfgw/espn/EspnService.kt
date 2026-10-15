@@ -6,6 +6,9 @@ import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.golfers.GolferName
+import com.cwfgw.golfers.GolferNameIndex
+import com.cwfgw.golfers.GolferNameMatch
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.result.Result
 import com.cwfgw.result.getOrElse
@@ -218,7 +221,7 @@ class EspnService(
         seasonId: SeasonId,
         tournamentId: TournamentId,
     ): MatchingContext {
-        val golfers = golferRepository.findAll(search = null)
+        val names = GolferNameIndex(golferRepository.findAll(search = null))
         val rosterIds =
             teamRepository.getRosterView(seasonId)
                 .flatMap { it.picks }
@@ -227,7 +230,7 @@ class EspnService(
         val overrides =
             linkRepository.listByTournament(tournamentId)
                 .associate { it.espnCompetitorId to it.golferId }
-        return MatchingContext(golfers = golfers, rosterGolferIds = rosterIds, overrides = overrides)
+        return MatchingContext(names = names, rosterGolferIds = rosterIds, overrides = overrides)
     }
 
     context(ctx: WriteTransactionContext)
@@ -238,7 +241,7 @@ class EspnService(
         val existing = locateExistingGolferIn(competitor, context)
         if (existing != null) return existing.id
 
-        val (firstName, lastName) = splitName(competitor.name) ?: return null
+        val (firstName, lastName) = GolferName.splitName(competitor.name) ?: return null
         val created =
             golferRepository.findOrCreate(
                 CreateGolferRequest(
@@ -263,27 +266,7 @@ class EspnService(
         if (!competitor.isTeamPartner) {
             golferRepository.findByPgaPlayerId(competitor.espnId)?.let { return it }
         }
-        val fullNameMatch =
-            context.golfers.singleOrNull { matchesFullName(it, competitor.name) }
-        if (fullNameMatch != null) return fullNameMatch
-
-        val lastName = competitor.name.substringAfterLast(' ').takeIf { it.isNotBlank() } ?: return null
-        val lastNameMatches = context.golfers.filter { it.lastName.equals(lastName, ignoreCase = true) }
-        return when (lastNameMatches.size) {
-            0 -> null
-            1 -> lastNameMatches.single()
-            else ->
-                // Team-event partners arrive as last-name-only, so preferring the rostered golfer on
-                // ambiguity is the only way to resolve them. Regular competitors carry a full name and a
-                // stable ESPN id; guessing on surname alone risks silently attaching an unrelated golfer's
-                // result to an existing rostered golfer who happens to share the surname (CWF-35 — an
-                // unfamiliar co-sanctioned-event player named "Lee" collided into a rostered "Lee").
-                if (competitor.isTeamPartner) {
-                    lastNameMatches.singleOrNull { it.id in context.rosterGolferIds }
-                } else {
-                    null
-                }
-        }
+        return resolveByName(competitor, context.names, context.rosterGolferIds)
     }
 
     context(ctx: WriteTransactionContext)
@@ -332,7 +315,7 @@ class EspnService(
     }
 
     private data class MatchingContext(
-        val golfers: List<Golfer>,
+        val names: GolferNameIndex,
         val rosterGolferIds: Set<GolferId>,
         val overrides: Map<String, GolferId>,
     )
@@ -348,12 +331,26 @@ class EspnService(
     }
 }
 
-private fun matchesFullName(
-    golfer: Golfer,
-    fullName: String,
-): Boolean =
-    "${golfer.firstName} ${golfer.lastName}".equals(fullName, ignoreCase = true) ||
-        golfer.lastName.equals(fullName, ignoreCase = true)
+/**
+ * A partner row skips the full-name step: its name is a surname alone, which would fully match only a
+ * name-only phantom row and let it outrank the rostered golfer. Only partners may break a surname tie by
+ * roster; a full-named competitor guessed that way overwrote a rostered namesake's result (CWF-35).
+ */
+private fun resolveByName(
+    competitor: EspnCompetitor,
+    names: GolferNameIndex,
+    rosteredGolferIds: Set<GolferId>,
+): Golfer? {
+    if (!competitor.isTeamPartner) {
+        (names.matchFullName(competitor.name) as? GolferNameMatch.Matched)?.let { return it.golfer }
+    }
+    return when (val bySurname = names.matchSurname(competitor.name)) {
+        is GolferNameMatch.Matched -> bySurname.golfer
+        is GolferNameMatch.Ambiguous ->
+            if (competitor.isTeamPartner) bySurname.candidates.singleOrNull { it.id in rosteredGolferIds } else null
+        GolferNameMatch.NoMatch -> null
+    }
+}
 
 /**
  * Kept apart from [EspnError] so the overlay's `when` is exhaustive over what a preview can actually
@@ -481,8 +478,7 @@ internal data class LivePreviewContext(
     val rules: SeasonRules,
     val golferById: Map<GolferId, Golfer>,
     val golferByEspnId: Map<String, Golfer>,
-    val golferByName: Map<Pair<String, String>, Golfer>,
-    val golferByLastName: Map<String, List<Golfer>>,
+    val golferNames: GolferNameIndex,
     val rosteredGolferIds: Set<GolferId>,
     val rostersByTeam: Map<TeamId, List<RosterEntry>>,
     val golferOwners: Map<GolferId, List<Pair<TeamId, BigDecimal>>>,
@@ -495,7 +491,8 @@ internal data class LivePreviewContext(
     ): Golfer? {
         val override = overridesByTournament[tournamentId]?.get(competitor.espnId)
         if (override != null) golferById[override]?.let { return it }
-        return resolveGolfer(competitor, golferByEspnId, golferByName, golferByLastName, rosteredGolferIds)
+        if (!competitor.isTeamPartner) golferByEspnId[competitor.espnId]?.let { return it }
+        return resolveByName(competitor, golferNames, rosteredGolferIds)
     }
 
     companion object {
@@ -512,8 +509,7 @@ internal data class LivePreviewContext(
                 rules = rules,
                 golferById = allGolfers.associateBy { it.id },
                 golferByEspnId = allGolfers.mapNotNull { golfer -> golfer.pgaPlayerId?.let { it to golfer } }.toMap(),
-                golferByName = allGolfers.associateBy { (it.firstName.lowercase() to it.lastName.lowercase()) },
-                golferByLastName = allGolfers.groupBy { it.lastName.lowercase() },
+                golferNames = GolferNameIndex(allGolfers),
                 rosteredGolferIds = rosters.map { it.golferId }.toSet(),
                 rostersByTeam = rosters.groupBy { it.teamId },
                 golferOwners =
@@ -522,35 +518,6 @@ internal data class LivePreviewContext(
                 numPlaces = rules.payouts.size,
                 overridesByTournament = overridesByTournament,
             )
-    }
-}
-
-@Suppress("LongParameterList")
-private fun resolveGolfer(
-    competitor: EspnCompetitor,
-    golferByEspnId: Map<String, Golfer>,
-    golferByName: Map<Pair<String, String>, Golfer>,
-    golferByLastName: Map<String, List<Golfer>>,
-    rosteredGolferIds: Set<GolferId>,
-): Golfer? {
-    if (!competitor.isTeamPartner) {
-        golferByEspnId[competitor.espnId]?.let { return it }
-    }
-    val parts = competitor.name.split(WHITESPACE_RUN, limit = 2)
-    val (first, last) =
-        if (parts.size >= 2) parts[0].lowercase() to parts[1].lowercase() else "" to parts[0].lowercase()
-    golferByName[first to last]?.let { return it }
-    val byLastName = golferByLastName[last] ?: return null
-    return when (byLastName.size) {
-        1 -> byLastName.single()
-        else ->
-            // Team-event partners arrive as last-name-only; with multiple matches, prefer a rostered golfer if
-            // exactly one exists. Scoped to partners — regular competitors should match by ESPN id directly.
-            if (competitor.isTeamPartner) {
-                byLastName.singleOrNull { it.id in rosteredGolferIds }
-            } else {
-                null
-            }
     }
 }
 
@@ -578,23 +545,4 @@ private fun buildLivePreviewLeaderboard(
                 totalStrokes = competitor.totalStrokes,
             )
         }
-}
-
-private val WHITESPACE_RUN = Regex("\\s+")
-
-/**
- * Split an ESPN display name into (firstName, lastName). Single-word names
- * (e.g. a team-partner row with just "Novak") become last-name-only with an
- * empty first name; the domain lets that through and admins can clean up
- * later. Returns null for an empty/blank name.
- */
-private fun splitName(fullName: String): Pair<String, String>? {
-    val trimmed = fullName.trim()
-    if (trimmed.isEmpty()) return null
-    val firstSpace = trimmed.indexOf(' ')
-    return if (firstSpace < 0) {
-        "" to trimmed
-    } else {
-        trimmed.substring(0, firstSpace) to trimmed.substring(firstSpace + 1).trim()
-    }
 }

@@ -13,6 +13,7 @@ import com.cwfgw.buildHttpClient
 import com.cwfgw.buildServices
 import com.cwfgw.config.AppConfig
 import com.cwfgw.db.Database
+import com.cwfgw.golfers.GolferName
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.result.Result
@@ -124,8 +125,8 @@ private suspend fun seedSeason(
 /**
  * Convert a preview into a confirm request, auto-accepting whatever the
  * matcher resolved. Ambiguous picks take the first candidate; unmatched
- * picks become `New` golfers (split on first space — operators can clean
- * up via the real UI later).
+ * picks become `New` golfers, split as ESPN import splits them — operators
+ * can clean up via the real UI later.
  */
 private fun toConfirmRequest(
     seasonId: SeasonId,
@@ -158,9 +159,8 @@ private fun pickAssignment(
         is PickMatch.Matched -> GolferAssignment.Existing(match.golferId)
         is PickMatch.Ambiguous -> GolferAssignment.Existing(match.candidates.first().golferId)
         PickMatch.NoMatch -> {
-            val parts = playerName.split(' ', limit = 2)
-            val (first, last) = if (parts.size >= 2) parts[0] to parts[1] else "" to parts[0]
-            GolferAssignment.New(firstName = first, lastName = last)
+            val name = GolferName.splitName(playerName) ?: error("RosterParser let a blank player name through")
+            GolferAssignment.New(firstName = name.firstName, lastName = name.lastName)
         }
     }
 
