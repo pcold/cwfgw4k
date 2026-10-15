@@ -54,29 +54,6 @@ class LiveOverlayService(private val espnService: EspnService) {
     }
 
     /**
-     * Overlay live data onto the season-aggregate report. Walks every
-     * non-completed tournament chronologically, folding each one's
-     * live preview into the running report via [mergeLiveData] in
-     * additive mode (live amounts add to existing rather than
-     * replacing, so completed tournaments' earnings stay intact).
-     */
-    suspend fun overlaySeasonReport(
-        seasonId: SeasonId,
-        baseReport: WeeklyReport,
-        rules: SeasonRules,
-        nonCompleted: List<Tournament>,
-    ): WeeklyReport {
-        if (nonCompleted.isEmpty()) return baseReport
-        val previewCtx = espnService.loadLivePreviewContext(seasonId, nonCompleted)
-        return nonCompleted.sortedWith(tournamentOrdering).fold(baseReport) { acc, tournament ->
-            val matched =
-                fetchPreviewOrLog(previewCtx, tournament, "season live overlay ${tournament.name}")
-                    ?: return@fold acc
-            mergeLiveData(acc, listOf(matched), rules, additive = true)
-        }
-    }
-
-    /**
      * Overlay live data onto the rankings response. Each non-completed
      * candidate tournament adds a new column to the per-team series
      * (with a ` *` suffix in the tournament-name label) and updates
@@ -141,7 +118,7 @@ class LiveOverlayService(private val espnService: EspnService) {
         val matched =
             fetchPreviewOrLog(previewCtx, selectedTournament, "live overlay $tournamentId")
                 ?: return withPrior
-        return mergeLiveData(withPrior, listOf(matched), rules, additive = false)
+        return mergeLiveData(withPrior, listOf(matched), rules)
     }
 
     private suspend fun fetchPreviewOrLog(
@@ -258,11 +235,9 @@ private fun bumpPriorTeamCells(
 
 /**
  * Replace per-cell tournament data with live projected payouts and
- * recompute weekly / subtotal / total cash. When `additive` is false
- * (single-tournament report path) the per-cell `earnings` is replaced
- * outright — this is the in-progress projection, not a sum. When true
- * (season-aggregate path, used in commit C) the live amounts add to
- * what's already there. Also surfaces the full ESPN leaderboard for the
+ * recompute weekly / subtotal / total cash. The per-cell `earnings` is
+ * replaced outright — this is the in-progress projection, not a sum.
+ * Also surfaces the full ESPN leaderboard for the
  * scoreboard view, keeping the report's own where ESPN lists no field,
  * and rebuilds the undrafted top-10s from ESPN's.
  */
@@ -270,13 +245,12 @@ internal fun mergeLiveData(
     report: WeeklyReport,
     previews: List<EspnLivePreview>,
     rules: SeasonRules,
-    additive: Boolean = false,
 ): WeeklyReport {
     val liveData = previews.firstOrNull() ?: return report
     val livePayout = livePayoutMap(liveData)
 
     val numTeams = report.teams.size
-    val phase1 = report.teams.map { team -> overlayTeamCells(team, livePayout, additive) }
+    val phase1 = report.teams.map { team -> overlayTeamCells(team, livePayout) }
     val totalPot = phase1.fold(BigDecimal.ZERO) { acc, snapshot -> acc.add(snapshot.weeklyTopTenEarnings) }
     val liveSideBetDetail =
         updateSideBetDetailWith(
@@ -288,11 +262,9 @@ internal fun mergeLiveData(
         )
     val liveSideBetTotals = aggregateSideBetTotals(liveSideBetDetail)
     val finalTeams = phase1.map { it.toFinalTeam(numTeams, totalPot, liveSideBetTotals) }
-    val updatedUndrafted =
-        if (additive) report.undraftedTopTens else buildUndraftedFromLeaderboard(liveData, rules)
+    val updatedUndrafted = buildUndraftedFromLeaderboard(liveData, rules)
     // ESPN can match the event before it lists a field; the persisted rows are then the only leaderboard.
-    val liveLeaderboard =
-        if (additive) report.liveLeaderboard else buildLiveLeaderboard(liveData).ifEmpty { report.liveLeaderboard }
+    val liveLeaderboard = buildLiveLeaderboard(liveData).ifEmpty { report.liveLeaderboard }
 
     return report.copy(
         teams = finalTeams,
@@ -442,17 +414,15 @@ private data class LiveCellInputs(
 private fun overlayTeamCells(
     team: ReportTeamColumn,
     livePayout: Map<Pair<TeamId, GolferId>, LiveCellInputs>,
-    additive: Boolean,
 ): TeamPhase1 {
     val updatedCells =
         team.cells.map { cell ->
             val live = cell.golferId?.let { livePayout[team.teamId to it] }
             if (live == null) {
-                if (additive) cell else cell.copy(earnings = BigDecimal.ZERO)
+                cell.copy(earnings = BigDecimal.ZERO)
             } else {
-                val newEarnings = if (additive) cell.earnings.add(live.payout) else live.payout
                 cell.copy(
-                    earnings = newEarnings,
+                    earnings = live.payout,
                     positionStr = live.finish.label(),
                     finish = live.finish,
                     seasonEarnings = cell.seasonEarnings.add(live.payout),
@@ -462,7 +432,7 @@ private fun overlayTeamCells(
         }
     val weeklyTopTens = updatedCells.fold(BigDecimal.ZERO) { acc, cell -> acc.add(cell.earnings) }
     // Per-cell seasonEarnings/seasonTopTens already include the live hit, so
-    // the team totals follow from a sum over cells in both overlay modes.
+    // the team totals follow from a sum over cells.
     val liveTopTenCount = updatedCells.sumOf { it.seasonTopTens }
     val liveTopTenMoney = updatedCells.fold(BigDecimal.ZERO) { acc, cell -> acc.add(cell.seasonEarnings) }
     return TeamPhase1(

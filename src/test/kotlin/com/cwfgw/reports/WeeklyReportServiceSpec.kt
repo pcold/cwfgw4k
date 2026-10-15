@@ -333,6 +333,23 @@ private fun liveMasters(leaderEspnId: String): EspnTournament =
         isTeamEvent = false,
     )
 
+/** A finalized Sony that paid BROWN's round-1 pick 18, then a Masters in play on ESPN that the same pick leads. */
+private fun mastersInPlayAfterFinalizedSony(): Fixture {
+    val leader = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
+    val mastersInProgress =
+        tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09", week = "15")
+            .copy(status = TournamentStatus.InProgress, pgaTournamentId = "espn-masters")
+    return Fixture(
+        initialTournaments =
+            listOf(tournamentFixture(SONY_ID, "Sony Open", "2026-01-15", week = "2"), mastersInProgress),
+        initialTeams = listOf(TEAM_A, TEAM_B),
+        initialGolfers = listOf(leader),
+        initialRosters = listOf(rosterEntry(TEAM_A.id, leader.id, draftRound = 1)),
+        initialScores = listOf(scoreFixture(TEAM_A.id, SONY_ID, leader.id, BigDecimal(18), position = 1)),
+        espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(liveMasters(leaderEspnId = "espn-p1"))),
+    )
+}
+
 /**
  * A completed Zurich in which [pairs] two-man teams share first place. BROWN and WOMBLE each roster one
  * partner of the first pair in round 1.
@@ -1362,52 +1379,7 @@ class WeeklyReportServiceSpec : FunSpec({
         report.liveLeaderboard.forEach { it.rostered shouldBe false }
     }
 
-    test("getSeasonReport with live=true overlays additive earnings + sets live=true") {
-        val winner = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
-        val mastersInProgress =
-            tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
-                .copy(status = TournamentStatus.InProgress, pgaTournamentId = "espn-masters")
-        val rosters = listOf(rosterEntry(TEAM_A.id, winner.id, draftRound = 1))
-        val espnEvent =
-            EspnTournament(
-                espnId = "espn-masters",
-                name = "The Masters",
-                completed = false,
-                competitors =
-                    listOf(
-                        EspnCompetitor(
-                            espnId = "espn-p1",
-                            name = "Scottie Scheffler",
-                            order = 1,
-                            scoreStr = "-12",
-                            scoreToPar = -12,
-                            totalStrokes = 270,
-                            roundScores = listOf(68, 68, 67),
-                            position = 1,
-                            status = EspnStatus.Active,
-                            isTeamPartner = false,
-                            pairKey = null,
-                        ),
-                    ),
-                isTeamEvent = false,
-            )
-        val fixture =
-            Fixture(
-                initialTournaments = listOf(mastersInProgress),
-                initialTeams = listOf(TEAM_A, TEAM_B),
-                initialGolfers = listOf(winner),
-                initialRosters = rosters,
-                espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(espnEvent)),
-            )
-
-        val report = fixture.service.getSeasonReport(SEASON_ID, live = true).orFail()
-        report.live shouldBe true
-        report.scope shouldBe ReportScope.Season
-        val a = report.teams.single { it.teamId == TEAM_A.id }
-        a.cells.first { it.round == 1 }.earnings.compareTo(BigDecimal(18)) shouldBe 0
-    }
-
-    test("getRankings with live=true appends a projected column to the series with a starred name label") {
+    test("getRankings with live=true through the tournament in play appends a starred projected column") {
         val winner = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
         val mastersInProgress =
             tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09", week = "15")
@@ -1444,12 +1416,42 @@ class WeeklyReportServiceSpec : FunSpec({
                 espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(espnEvent)),
             )
 
-        val rankings = fixture.service.getRankings(SEASON_ID, live = true).orFail()
+        val rankings = fixture.service.getRankings(SEASON_ID, throughTournamentId = MASTERS_ID, live = true).orFail()
         rankings.live shouldBe true
         rankings.tournamentNames shouldContainExactly listOf("The Masters *")
         rankings.weeks shouldContainExactly listOf("15")
         val a = rankings.teams.single { it.teamId == TEAM_A.id }
         a.subtotal.compareTo(BigDecimal(18)) shouldBe 0
+    }
+
+    test("getSeasonReport with a tournament in play counts the finalized one alone and never asks ESPN") {
+        val fixture = mastersInPlayAfterFinalizedSony()
+
+        val report = fixture.service.getSeasonReport(SEASON_ID).orFail()
+
+        report.live shouldBe null
+        val leaderCell = report.teams.single { it.teamId == TEAM_A.id }.cells.single { it.round == 1 }
+        leaderCell.earnings.compareTo(BigDecimal(18)) shouldBe 0
+        leaderCell.seasonTopTens shouldBe 1
+        fixture.espnClient.fetchCalls shouldBe emptyList<LocalDate>()
+    }
+
+    test("getRankings with live=true and no through returns the finalized-only rankings without asking ESPN") {
+        val fixture = mastersInPlayAfterFinalizedSony()
+
+        val rankings = fixture.service.getRankings(SEASON_ID, live = true)
+
+        rankings shouldBe fixture.service.getRankings(SEASON_ID)
+        fixture.espnClient.fetchCalls shouldBe emptyList<LocalDate>()
+    }
+
+    test("getPlayerRankings with live=true and no through returns the finalized-only rankings without asking ESPN") {
+        val fixture = mastersInPlayAfterFinalizedSony()
+
+        val rankings = fixture.service.getPlayerRankings(SEASON_ID, live = true)
+
+        rankings shouldBe fixture.service.getPlayerRankings(SEASON_ID)
+        fixture.espnClient.fetchCalls shouldBe emptyList<LocalDate>()
     }
 
     test("getReport with live=true on a completed tournament does not call the live overlay (no live flag set)") {
@@ -1605,7 +1607,7 @@ class WeeklyReportServiceSpec : FunSpec({
         row.totalEarnings.compareTo(BigDecimal(18)) shouldBe 0
     }
 
-    test("getPlayerRankings with live=true folds ESPN projected earnings onto drafted golfers") {
+    test("getPlayerRankings with live=true through the tournament in play folds projections onto drafted golfers") {
         val winner = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
         val mastersInProgress =
             tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09", week = "15")
@@ -1642,7 +1644,8 @@ class WeeklyReportServiceSpec : FunSpec({
                 espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(espnEvent)),
             )
 
-        val rankings = fixture.service.getPlayerRankings(SEASON_ID, live = true).orFail()
+        val rankings =
+            fixture.service.getPlayerRankings(SEASON_ID, throughTournamentId = MASTERS_ID, live = true).orFail()
 
         rankings.live shouldBe true
         val row = rankings.players.single { it.golferId == winner.id }

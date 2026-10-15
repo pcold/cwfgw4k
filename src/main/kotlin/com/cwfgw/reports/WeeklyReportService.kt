@@ -144,52 +144,34 @@ class WeeklyReportService(
      * Season-aggregate report: same wire shape as [getReport] but every
      * column rolls up across every completed tournament. [ReportScope.Season]
      * tells the UI which of the two it has; the "tournament" info block is
-     * an id-less placeholder.
+     * an id-less placeholder. Never live, nor are the rankings without a `through`:
+     * the All Tournaments rollups count finalized results alone (CWF-215).
      */
-    suspend fun getSeasonReport(
-        seasonId: SeasonId,
-        live: Boolean = false,
-    ): Result<WeeklyReport, ReportError> {
-        val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
-        val gathered: Result<SeasonReportPrepared, ReportError> =
-            tx.read {
-                seasonRepository.findById(seasonId)
-                    ?: return@read Result.Err(ReportError.SeasonNotFound(seasonId))
-                val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
-                val teams = teamRepository.findBySeason(seasonId)
-                val allGolfers = golferRepository.findAll(search = null)
-                val allTournaments = tournamentRepository.findAll(TournamentFilter(seasonId = seasonId))
-                val completed = allTournaments.filter { it.status == TournamentStatus.Completed }
-                val completedIds = completed.map { it.id }
-                val allRosters = teamRepository.findRostersBySeason(seasonId)
-                val allScores = scoringRepository.getScoresBySeason(seasonId, completedIds)
-                val allResults = tournamentRepository.getResultsByTournaments(completedIds)
-                val inputs =
-                    SeasonReportInputs(
-                        rules = rules,
-                        teams = teams,
-                        allGolfers = allGolfers,
-                        completed = completed,
-                        allRosters = allRosters,
-                        allScores = allScores,
-                        allResults = allResults,
-                    )
-                Result.Ok(
-                    SeasonReportPrepared(
-                        baseReport = assembleSeasonReport(inputs),
-                        rules = rules,
-                        allTournaments = allTournaments,
-                    ),
+    suspend fun getSeasonReport(seasonId: SeasonId): Result<WeeklyReport, ReportError> =
+        tx.read {
+            seasonRepository.findById(seasonId)
+                ?: return@read Result.Err(ReportError.SeasonNotFound(seasonId))
+            val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
+            val teams = teamRepository.findBySeason(seasonId)
+            val allGolfers = golferRepository.findAll(search = null)
+            val allTournaments = tournamentRepository.findAll(TournamentFilter(seasonId = seasonId))
+            val completed = allTournaments.filter { it.status == TournamentStatus.Completed }
+            val completedIds = completed.map { it.id }
+            val allRosters = teamRepository.findRostersBySeason(seasonId)
+            val allScores = scoringRepository.getScoresBySeason(seasonId, completedIds)
+            val allResults = tournamentRepository.getResultsByTournaments(completedIds)
+            val inputs =
+                SeasonReportInputs(
+                    rules = rules,
+                    teams = teams,
+                    allGolfers = allGolfers,
+                    completed = completed,
+                    allRosters = allRosters,
+                    allScores = allScores,
+                    allResults = allResults,
                 )
-            }
-        val prepared = gathered.getOrElse { return Result.Err(it) }
-        if (!live) return Result.Ok(prepared.baseReport)
-
-        val nonCompleted = liveOverlayCandidates(prepared.allTournaments, today)
-        return Result.Ok(
-            liveOverlayService.overlaySeasonReport(seasonId, prepared.baseReport, prepared.rules, nonCompleted),
-        )
-    }
+            Result.Ok(assembleSeasonReport(inputs))
+        }
 
     /**
      * Cumulative team rankings with per-tournament series for the line
@@ -205,9 +187,10 @@ class WeeklyReportService(
         val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
         val prepared =
             gatherRankings(seasonId, throughTournamentId).getOrElse { return Result.Err(it) }
-        if (!live) return Result.Ok(prepared.baseRankings)
+        val through = prepared.through
+        if (!live || through == null) return Result.Ok(prepared.baseRankings)
 
-        val liveCandidates = liveCandidatesFor(prepared.allTournaments, today, prepared.through)
+        val liveCandidates = liveCandidatesFor(prepared.allTournaments, today, through)
         return Result.Ok(
             liveOverlayService.overlayRankings(
                 seasonId,
@@ -306,20 +289,21 @@ class WeeklyReportService(
         val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
         val prepared =
             gatherPlayerRankings(seasonId, throughTournamentId).getOrElse { return Result.Err(it) }
+        val through = prepared.through
+        if (!live || through == null) {
+            return Result.Ok(
+                composePlayerRankings(prepared.baseAcc, prepared.rosterIndex, prepared.golferMap, live = false),
+            )
+        }
 
-        val finalAcc =
-            if (!live) {
-                prepared.baseAcc
-            } else {
-                liveOverlayService.overlayPlayerRankings(
-                    seasonId = seasonId,
-                    base = prepared.baseAcc,
-                    candidates = liveCandidatesFor(prepared.allTournaments, today, prepared.through),
-                    rules = prepared.rules,
-                )
-            }
-
-        return Result.Ok(composePlayerRankings(finalAcc, prepared.rosterIndex, prepared.golferMap, live = live))
+        val liveAcc =
+            liveOverlayService.overlayPlayerRankings(
+                seasonId = seasonId,
+                base = prepared.baseAcc,
+                candidates = liveCandidatesFor(prepared.allTournaments, today, through),
+                rules = prepared.rules,
+            )
+        return Result.Ok(composePlayerRankings(liveAcc, prepared.rosterIndex, prepared.golferMap, live = true))
     }
 
     private suspend fun gatherPlayerRankings(
@@ -385,19 +369,11 @@ class WeeklyReportService(
     private fun liveCandidatesFor(
         allTournaments: List<Tournament>,
         today: LocalDate,
-        through: Tournament?,
+        through: Tournament,
     ): List<Tournament> {
-        val liveCandidates = liveOverlayCandidates(allTournaments, today)
-        val candidates =
-            if (through == null) {
-                liveCandidates
-            } else {
-                val priorLiveCandidates = liveCandidates.filter { isBefore(it, through) }
-                val selectedIfLive =
-                    if (through.isLiveOverlayCandidate(today)) listOf(through) else emptyList()
-                priorLiveCandidates + selectedIfLive
-            }
-        return candidates.sortedWith(tournamentOrdering)
+        val priorLiveCandidates = liveOverlayCandidates(allTournaments, today).filter { isBefore(it, through) }
+        val selectedIfLive = if (through.isLiveOverlayCandidate(today)) listOf(through) else emptyList()
+        return (priorLiveCandidates + selectedIfLive).sortedWith(tournamentOrdering)
     }
 
     /**
@@ -478,12 +454,6 @@ private fun golferHistoryEntry(
 private data class ReportPrepared(
     val baseReport: WeeklyReport,
     val tournament: Tournament,
-    val rules: SeasonRules,
-    val allTournaments: List<Tournament>,
-)
-
-private data class SeasonReportPrepared(
-    val baseReport: WeeklyReport,
     val rules: SeasonRules,
     val allTournaments: List<Tournament>,
 )

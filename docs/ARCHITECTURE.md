@@ -224,7 +224,8 @@ whole cache, whether it succeeded or failed (`cache/ResponseCacheInvalidation.kt
 `cwfgw4k.cache event=uncleared`. Pinned by `ResponseCacheInvalidationSpec`.
 
 Report routes skip the cache only when the request asks for `live=true` and the season has a live candidate
-(see [Live overlay](#live-overlay)); otherwise the live and non-live forms are both cached.
+(see [Live overlay](#live-overlay)); otherwise the live and non-live forms are both cached. The season report and
+rankings without a `through` are never live, so they are served from the cache whatever `live` says.
 
 ## 5. Transactional Invariants
 
@@ -438,8 +439,10 @@ leaderboard, scores it with the same payout rules, and overlays the result on th
 writing anything. A candidate previews only the ESPN event whose id is its `pga_tournament_id`, the rule finalize
 imports by (`findLinkedEvent` in `espn/EspnService.kt`), so an unlinked or stale-id tournament previews nothing
 until it is linked. The preview pays a team event by ESPN's flag, which finalize's import writes over the row.
-Rankings gain a column per live candidate; player rankings fold in the live payouts. A completed tournament
-selected in the weekly report is never overlaid.
+Only a view of one tournament is overlaid: its weekly report, or rankings and player rankings `through` it.
+Rankings gain a column per live candidate up to that tournament; player rankings fold in the live payouts. The
+All Tournaments rollups (the season report, and rankings without a `through`) count finalized results alone and
+never ask ESPN (CWF-215). A completed tournament selected in the weekly report is never overlaid.
 
 **Fallback.** If ESPN does not answer, answers non-200, or answers 200 with a body that does not parse, the
 overlay logs a WARN and skips that candidate, so a full outage returns the persisted report unchanged
@@ -482,10 +485,10 @@ Request and response shapes are the `@Serializable` types in each package's `*Ro
 | GET | `/admin/tournaments/{id}/competitors` | ESPN competitors for a linked tournament, to pick overrides from | Admin |
 | POST | `/admin/tournaments/{id}/player-overrides` | Pin an ESPN competitor to a golfer | Admin |
 | DELETE | `/admin/tournaments/{id}/player-overrides/{espnCompetitorId}` | Remove an override | Admin |
-| GET | `/seasons/{id}/report` | Season weekly report, optional `live` | Public |
+| GET | `/seasons/{id}/report` | Season weekly report, finalized results only | Public |
 | GET | `/seasons/{id}/report/{tournamentId}` | Weekly report for one tournament, optional `live` | Public |
-| GET | `/seasons/{id}/rankings` | Team standings by tournament, optional `live`, `through` | Public |
-| GET | `/seasons/{id}/player-rankings` | Golfer earnings across the season, optional `live`, `through` | Public |
+| GET | `/seasons/{id}/rankings` | Team standings by tournament, optional `through`, `live` with `through` | Public |
+| GET | `/seasons/{id}/player-rankings` | Golfer earnings across the season, optional `through`, `live` with `through` | Public |
 | GET | `/seasons/{id}/golfer/{golferId}/history` | One golfer's finishes and earnings in the season | Public |
 | GET | `/debug/threads` | JVM thread dump; mounted only when `DEBUG_ENDPOINTS_ENABLED` | Public |
 
