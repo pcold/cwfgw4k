@@ -18,6 +18,7 @@ import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.tournaments.ESPN_SCHEDULE_ZONE
 import com.cwfgw.tournaments.Tournament
+import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentResult
@@ -60,7 +61,7 @@ class WeeklyReportService(
      */
     suspend fun hasLiveCandidate(seasonId: SeasonId): Boolean {
         val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
-        val allTournaments = tx.get { tournamentRepository.findAll(seasonId = seasonId, status = null) }
+        val allTournaments = tx.get { tournamentRepository.findAll(TournamentFilter(seasonId = seasonId)) }
         return liveOverlayCandidates(allTournaments, today).isNotEmpty()
     }
 
@@ -111,7 +112,7 @@ class WeeklyReportService(
             val results = tournamentRepository.getResults(tournamentId)
             val allGolfers = golferRepository.findAll(search = null)
             val scores = scoringRepository.getScores(seasonId, tournamentId)
-            val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
+            val allTournaments = tournamentRepository.findAll(TournamentFilter(seasonId = seasonId))
             val allCompletedTournaments = allTournaments.filter { it.status == TournamentStatus.Completed }
             val allRosters = teamRepository.findRostersBySeason(seasonId)
             val allScores =
@@ -156,7 +157,7 @@ class WeeklyReportService(
                 val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
                 val teams = teamRepository.findBySeason(seasonId)
                 val allGolfers = golferRepository.findAll(search = null)
-                val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
+                val allTournaments = tournamentRepository.findAll(TournamentFilter(seasonId = seasonId))
                 val completed = allTournaments.filter { it.status == TournamentStatus.Completed }
                 val completedIds = completed.map { it.id }
                 val allRosters = teamRepository.findRostersBySeason(seasonId)
@@ -230,7 +231,7 @@ class WeeklyReportService(
                 }
             val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
             val teams = teamRepository.findBySeason(seasonId)
-            val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
+            val allTournaments = tournamentRepository.findAll(TournamentFilter(seasonId = seasonId))
             val completed = allTournaments.filter { it.status == TournamentStatus.Completed }
             val included = filterThroughTournament(completed, through)
             val allRosters = teamRepository.findRostersBySeason(seasonId)
@@ -336,7 +337,7 @@ class WeeklyReportService(
             val teams = teamRepository.findBySeason(seasonId)
             val allGolfers = golferRepository.findAll(search = null)
             val golferMap = allGolfers.associateBy { it.id }
-            val allTournaments = tournamentRepository.findAll(seasonId = seasonId, status = null)
+            val allTournaments = tournamentRepository.findAll(TournamentFilter(seasonId = seasonId))
             val completed = allTournaments.filter { it.status == TournamentStatus.Completed }
             val included = filterThroughTournament(completed, through)
             val includedIds = included.map { it.id }
@@ -417,7 +418,7 @@ class WeeklyReportService(
             val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
             val completed =
                 tournamentRepository
-                    .findAll(seasonId = seasonId, status = TournamentStatus.Completed)
+                    .findAll(TournamentFilter(seasonId = seasonId, statuses = setOf(TournamentStatus.Completed)))
             val resultsByTournamentId =
                 tournamentRepository.getResultsByTournaments(completed.map { it.id })
                     .groupBy { it.tournamentId }

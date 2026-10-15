@@ -15,11 +15,9 @@ import com.cwfgw.seasons.SeasonId
 import org.jooq.Field
 
 interface TournamentRepository {
+    /** Ordered by start date, then creation. */
     context(ctx: TransactionContext)
-    fun findAll(
-        seasonId: SeasonId?,
-        status: TournamentStatus?,
-    ): List<Tournament>
+    fun findAll(filter: TournamentFilter): List<Tournament>
 
     context(ctx: TransactionContext)
     fun findById(id: TournamentId): Tournament?
@@ -81,14 +79,13 @@ internal val UNIQUE_PGA_TOURNAMENT_ID: String = TOURNAMENTS_PGA_TOURNAMENT_ID_KE
 
 private class JooqTournamentRepository : TournamentRepository {
     context(ctx: TransactionContext)
-    override fun findAll(
-        seasonId: SeasonId?,
-        status: TournamentStatus?,
-    ): List<Tournament> {
+    override fun findAll(filter: TournamentFilter): List<Tournament> {
         val conditions =
             buildList {
-                seasonId?.let { add(TOURNAMENTS.SEASON_ID.eq(it.value)) }
-                status?.let { add(TOURNAMENTS.STATUS.eq(it.value)) }
+                filter.seasonId?.let { add(TOURNAMENTS.SEASON_ID.eq(it.value)) }
+                add(TOURNAMENTS.STATUS.`in`(filter.statuses.map(TournamentStatus::value)))
+                filter.startsBefore?.let { add(TOURNAMENTS.START_DATE.lt(it)) }
+                filter.startsAfter?.let { add(TOURNAMENTS.START_DATE.gt(it)) }
             }
         return ctx.dsl.selectFrom(TOURNAMENTS)
             .where(conditions)

@@ -8,6 +8,7 @@ import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
+import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.UpdateTournamentRequest
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
@@ -69,7 +70,7 @@ class FakeTransactorSpec : FunSpec({
         }
 
         tx.get { golfers.findAll(search = null) }.shouldBeEmpty()
-        tx.get { tournaments.findAll(seasonId = null, status = null) }.shouldBeEmpty()
+        tx.get { tournaments.findAll(TournamentFilter()) }.shouldBeEmpty()
     }
 
     test("a row a thrown block overwrote reads back as it was before the block") {

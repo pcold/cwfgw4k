@@ -77,7 +77,7 @@ class TournamentRepositorySpec : FunSpec({
                 Triple(april, may, june)
             }
 
-        val result = tx.read { repository.findAll(seasonId = null, status = null) }
+        val result = tx.read { repository.findAll(TournamentFilter()) }
 
         result.map { it.id } shouldContainExactly listOf(april.id, may.id, june.id)
     }
@@ -102,7 +102,7 @@ class TournamentRepositorySpec : FunSpec({
                 mine
             }
 
-        val result = tx.read { repository.findAll(seasonId = seasonId, status = null) }
+        val result = tx.read { repository.findAll(TournamentFilter(seasonId = seasonId)) }
 
         result.map { it.id } shouldContainExactly listOf(mine.id)
     }
@@ -116,7 +116,7 @@ class TournamentRepositorySpec : FunSpec({
                 upcoming
             }
 
-        val result = tx.read { repository.findAll(seasonId = null, status = TournamentStatus.Upcoming) }
+        val result = tx.read { repository.findAll(TournamentFilter(statuses = setOf(TournamentStatus.Upcoming))) }
 
         result.map { it.id } shouldContainExactly listOf(upcoming.id)
     }
