@@ -7,7 +7,7 @@ import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.teams.AddToRosterRequest
+import com.cwfgw.teams.NewRosterEntry
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
@@ -71,7 +71,7 @@ private fun seedFleetwood(eventIds: List<String>): SeededFleetwood {
     val seasonId = seedSeason()
     val alpha = seedTeams(seasonId).first()
     val fleetwood = GolferRepository().create(CreateGolferRequest(firstName = "Tommy", lastName = "Fleetwood"))
-    TeamRepository().addToRoster(alpha, AddToRosterRequest(golferId = fleetwood.id))
+    TeamRepository().addToRoster(alpha, NewRosterEntry(golferId = fleetwood.id))
     val tournaments =
         eventIds.map { eventId ->
             checkNotNull(TournamentRepository().findById(seedTournament(seasonId, "Event $eventId", eventId)))
