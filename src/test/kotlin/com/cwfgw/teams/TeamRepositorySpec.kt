@@ -73,7 +73,6 @@ class TeamRepositorySpec : FunSpec({
             entry.golferId shouldBe golfer.id
             entry.acquiredVia shouldBe "free_agent"
             entry.ownershipPct.compareTo(BigDecimal("100")) shouldBe 0
-            entry.isActive shouldBe true
         }
     }
 

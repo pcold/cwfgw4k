@@ -138,7 +138,6 @@ private val BROWN_DRAFTED_SCOTTIE_FIRST =
         draftRound = 1,
         ownershipPct = BigDecimal(100),
         acquiredAt = SEEDED_AT,
-        isActive = true,
     )
 
 private val SCOTTIE_EARNED_EIGHTEEN_AT_THE_MASTERS =

@@ -44,7 +44,6 @@ data class RosterEntry(
     val draftRound: Int?,
     val ownershipPct: BigDecimal,
     val acquiredAt: Instant,
-    val isActive: Boolean,
 )
 
 data class AddToRosterRequest(

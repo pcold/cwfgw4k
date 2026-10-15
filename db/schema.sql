@@ -173,8 +173,7 @@ CREATE TABLE cwfgw4k.team_rosters (
     acquired_via text DEFAULT 'draft'::text NOT NULL,
     draft_round integer,
     ownership_pct numeric(5,2) DEFAULT 100.00 NOT NULL,
-    acquired_at timestamp with time zone DEFAULT now() NOT NULL,
-    is_active boolean DEFAULT true NOT NULL
+    acquired_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 

@@ -94,7 +94,6 @@ class FakeTeamRepository(
                 ownershipPct =
                     (request.ownershipPct ?: BigDecimal(100)).setScale(OWNERSHIP_SCALE, RoundingMode.HALF_UP),
                 acquiredAt = clock(),
-                isActive = true,
             )
         rosters[entry.id] = entry
         return entry

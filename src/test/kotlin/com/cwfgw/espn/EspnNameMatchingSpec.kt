@@ -152,7 +152,6 @@ private fun rosteredPreview(
                 draftRound = index + 1,
                 ownershipPct = BigDecimal(100),
                 acquiredAt = Instant.EPOCH,
-                isActive = true,
             )
         }
     val team =
