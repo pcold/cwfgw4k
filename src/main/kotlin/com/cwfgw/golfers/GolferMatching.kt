@@ -1,0 +1,57 @@
+package com.cwfgw.golfers
+
+import java.text.Normalizer
+
+private val DIACRITICS = Regex("\\p{InCombiningDiacriticalMarks}+")
+
+// Unicode-aware, so a non-breaking space separates words as an ASCII one does.
+private val WHITESPACE = Regex("(?U)\\s+")
+
+// Letters NFD leaves whole; lowercase only, because normalizeName lowercases before it folds.
+private val NON_DECOMPOSABLE_LETTERS: Map<String, String> =
+    mapOf(
+        "ø" to "o",
+        "å" to "a",
+        "æ" to "ae",
+        "œ" to "oe",
+        "ß" to "ss",
+        "ł" to "l",
+        "đ" to "d",
+        "ð" to "d",
+        "þ" to "th",
+    )
+
+/**
+ * Folds case, accents and hyphens, so "Byeong-Hun An" and "Thorbjørn Olesen" meet a roster's "Byeong Hun An"
+ * and "Thorbjorn Olesen". Substitution only, never edit distance: "Tom Kim" must not match "Tim Kim".
+ * Lowercasing first is what makes a second pass change nothing.
+ */
+internal fun normalizeName(name: String): String {
+    val decomposed = Normalizer.normalize(name.lowercase(), Normalizer.Form.NFD).replace(DIACRITICS, "")
+    val folded = NON_DECOMPOSABLE_LETTERS.entries.fold(decomposed) { acc, (from, to) -> acc.replace(from, to) }
+    return collapseWhitespace(folded.replace('-', ' '))
+}
+
+private fun collapseWhitespace(name: String): String = name.replace(WHITESPACE, " ").trim()
+
+/**
+ * A full name cut at its last space: "Byeong Hun An" is ("Byeong Hun", "An"), and "Erik van Rooyen" is knowingly
+ * ("Erik van", "Rooyen"). A single word is the first name, so `first_name` is never blank. Matching never reads
+ * the split; it only decides the stored columns.
+ */
+@ConsistentCopyVisibility
+internal data class GolferName private constructor(val firstName: String, val lastName: String) {
+    companion object {
+        /** Null for a blank name, the one input with no first name to keep. */
+        fun splitName(fullName: String): GolferName? {
+            val collapsed = collapseWhitespace(fullName)
+            if (collapsed.isEmpty()) return null
+            val lastSpace = collapsed.lastIndexOf(' ')
+            if (lastSpace < 0) return GolferName(firstName = collapsed, lastName = "")
+            return GolferName(
+                firstName = collapsed.substring(0, lastSpace),
+                lastName = collapsed.substring(lastSpace + 1),
+            )
+        }
+    }
+}
