@@ -282,6 +282,49 @@ describe('PlayerLinksPanel', () => {
     });
   });
 
+  it('drops an unsaved pick once a clear lands, showing the link the server now holds', async () => {
+    const cleared = buildListing();
+    competitorsMock.mockResolvedValueOnce(buildListing()).mockResolvedValue({
+      ...cleared,
+      competitors: cleared.competitors.map((competitor) =>
+        competitor.espnCompetitorId === 'team:1:1'
+          ? { ...competitor, linkedGolfer: alexGolfer, hasOverride: false }
+          : competitor,
+      ),
+    });
+    deleteMock.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderPanel();
+
+    const partnerRow = (await screen.findByText('Fitzpatrick')).closest('li');
+    if (!partnerRow) throw new Error('partner row not found');
+    const partnerSelect = within(partnerRow as HTMLElement).getByLabelText<HTMLSelectElement>(/Link to golfer/i);
+    await user.selectOptions(partnerSelect, otherGolfer.id);
+    await user.click(screen.getByRole('button', { name: /Clear override/i }));
+
+    await waitFor(() => {
+      expect(partnerSelect.value).toBe(alexGolfer.id);
+    });
+  });
+
+  it('keeps a row linked to a golfer the list leaves out, rather than reading it as unlinked', async () => {
+    const retired: Golfer = { ...mattGolfer, id: 'g-retired', firstName: 'Old' };
+    const listing = buildListing();
+    competitorsMock.mockResolvedValue({
+      ...listing,
+      competitors: listing.competitors.map((competitor) =>
+        competitor.espnCompetitorId === 'comp-nobody' ? { ...competitor, linkedGolfer: retired } : competitor,
+      ),
+    });
+    renderPanel();
+
+    const nobodySelect = await screen.findByLabelText<HTMLSelectElement>(/Link to golfer/i, {
+      selector: '#golfer-select-comp-nobody',
+    });
+    expect(nobodySelect.value).toBe('g-retired');
+    expect(within(nobodySelect).getByRole('option', { selected: true })).toHaveTextContent('Fitzpatrick, Old');
+  });
+
   it('shows a Clear button only on rows that already carry an override', async () => {
     competitorsMock.mockResolvedValue(buildListing());
     renderPanel();
@@ -410,6 +453,20 @@ describe('PlayerLinksPanel', () => {
     await user.click(within(partnerRow as HTMLElement).getByRole('button', { name: /Create & link/i }));
 
     expect(await within(partnerRow as HTMLElement).findByRole('alert')).toHaveTextContent(/first and a last name/i);
+  });
+
+  it('locks the name while the create is in flight', async () => {
+    competitorsMock.mockResolvedValue(buildListing());
+    createGolferAndLinkMock.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    renderPanel();
+
+    const alexRow = (await screen.findByText('Alex Fitzpatrick')).closest('li');
+    if (!alexRow) throw new Error('competitor row not found');
+    await user.click(within(alexRow as HTMLElement).getByRole('button', { name: /Create new golfer/i }));
+    await user.click(within(alexRow as HTMLElement).getByRole('button', { name: /Create & link/i }));
+
+    expect(await within(alexRow as HTMLElement).findByLabelText(/Golfer name/i)).toBeDisabled();
   });
 
   it('disables Create & link while the name is blank', async () => {

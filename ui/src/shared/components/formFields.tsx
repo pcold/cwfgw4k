@@ -67,6 +67,7 @@ interface TextFieldProps {
   readonly width?: string;
   /** For a modal's first field; `ModalShell` then leaves focus on it rather than on the panel. */
   readonly initialFocus?: boolean;
+  readonly disabled?: boolean;
   readonly onChange: (value: string) => void;
 }
 
@@ -80,6 +81,7 @@ export function TextField({
   placeholder,
   width,
   initialFocus,
+  disabled,
   onChange,
 }: TextFieldProps): ReactElement {
   return (
@@ -91,6 +93,7 @@ export function TextField({
         placeholder={placeholder}
         // eslint-disable-next-line jsx-a11y/no-autofocus -- only a modal's first field asks; see `initialFocus`.
         autoFocus={initialFocus}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         aria-invalid={error !== undefined}
         aria-describedby={error !== undefined ? `${id}-error` : undefined}

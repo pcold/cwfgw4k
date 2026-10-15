@@ -23,7 +23,8 @@ import io.ktor.server.routing.route
  * Admin-only routes for managing manual ESPN→golfer link overrides on a
  * tournament. The GET delegates to ESPN to list every competitor with its
  * current (override-aware) match. The POSTs/DELETE mutate the overrides
- * stored locally; all are refused once the tournament is finalized.
+ * stored locally, the new-golfer POST creating its golfer too; all are
+ * refused once the tournament is finalized.
  */
 fun Route.tournamentLinkRoutes(
     espnService: EspnService,

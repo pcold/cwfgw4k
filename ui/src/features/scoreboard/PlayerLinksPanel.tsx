@@ -117,16 +117,17 @@ function CompetitorRow({
   disabled,
 }: CompetitorRowProps) {
   const queryClient = useQueryClient();
-  // Null until picked, so a link saved from elsewhere still shows rather than a stale copy of the prop.
+  // Null until picked, and again once a write's refetch lands, so the select shows the server's link.
   const [pickedGolferId, setPickedGolferId] = useState<string | null>(null);
   const draftGolferId = pickedGolferId ?? competitor.linkedGolfer?.id ?? '';
   const [creating, setCreating] = useState(false);
 
   // The live overlay resolves ESPN competitors through these links on the server, so every read
   // that can carry the overlay is affected, not only the scoreboard's own report.
-  function invalidateAffected() {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentCompetitors.byTournament(tournamentId) });
+  async function invalidateAffected(): Promise<void> {
     invalidateAfterScoreOwnerChange(queryClient, { type: 'season', seasonId });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.tournamentCompetitors.byTournament(tournamentId) });
+    setPickedGolferId(null);
   }
 
   const saveMutation = useMutation({
@@ -147,10 +148,10 @@ function CompetitorRow({
   const createMutation = useMutation({
     mutationFn: (name: string) =>
       api.createGolferAndLink(tournamentId, { espnCompetitorId: competitor.espnCompetitorId, name }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.golfers.list() });
-      invalidateAffected();
+    onSuccess: async () => {
       setCreating(false);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.golfers.list() });
+      await invalidateAffected();
     },
   });
 
@@ -160,14 +161,15 @@ function CompetitorRow({
   const pending = saveMutation.isPending || clearMutation.isPending || createMutation.isPending;
   const hasChange = draftGolferId !== '' && draftGolferId !== competitor.linkedGolfer?.id;
 
-  const sortedGolfers = useMemo(
-    () =>
-      [...golfers].sort((a, b) => {
-        const last = a.lastName.localeCompare(b.lastName);
-        return last !== 0 ? last : a.firstName.localeCompare(b.firstName);
-      }),
-    [golfers],
-  );
+  const linkedGolfer = competitor.linkedGolfer;
+  const sortedGolfers = useMemo(() => {
+    // The list leaves tombstones out, but a row may still link one, and the select must not read it as unlinked.
+    const choices = linkedGolfer && !golfers.some((g) => g.id === linkedGolfer.id) ? [...golfers, linkedGolfer] : [...golfers];
+    return choices.sort((a, b) => {
+      const last = a.lastName.localeCompare(b.lastName);
+      return last !== 0 ? last : a.firstName.localeCompare(b.firstName);
+    });
+  }, [golfers, linkedGolfer]);
 
   const selectId = `golfer-select-${competitor.espnCompetitorId}`;
 
@@ -277,6 +279,7 @@ function NewGolferInlineForm({ competitor, pending, onSubmit, onCancel }: NewGol
         value={name}
         error={undefined}
         width="max-w-sm"
+        disabled={pending}
         onChange={setEditedName}
       />
       <div className="flex gap-2 items-center">

@@ -63,6 +63,20 @@ describe('TextField', () => {
 
     expect(screen.getByLabelText('Username')).toHaveFocus();
   });
+
+  it('takes no keystrokes while disabled', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    renderWithProviders(
+      <TextField id="name" label="Name" value="" error={undefined} disabled onChange={onChange} />,
+      NO_PROVIDERS,
+    );
+
+    await user.type(screen.getByLabelText('Name'), 'x');
+
+    expect(screen.getByLabelText('Name')).toBeDisabled();
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });
 
 describe('FieldShell', () => {
