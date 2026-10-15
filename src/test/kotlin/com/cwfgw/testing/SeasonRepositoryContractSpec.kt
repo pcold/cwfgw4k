@@ -72,7 +72,7 @@ private val seasonRowContract: List<ContractCase<SeasonRepository>> =
             tx.get { repository.findAll(league, seasonYear = 2025) }.map { it.seasonNumber } shouldContainExactly
                 listOf(1)
         },
-        ContractCase("delete answers true for the season and false once it is gone, taking its rules with it") {
+        ContractCase("delete answers true for the season and false once it is gone") {
             val request = season(seeds.league())
             val created = tx.update { repository.create(request) }
 

@@ -54,8 +54,9 @@ internal sealed class FakeState {
 }
 
 /**
- * Every access enlists, reads included: a view such as [MutableMap.values] can write. Concurrent like the maps it
- * replaced, since `RequestCacheSpec` drives one Fake from concurrent callers.
+ * Every access enlists, reads included: a view such as [MutableMap.values] can write. Concurrent, since
+ * `RequestCacheSpec` drives one Fake from concurrent callers; but a rollback restores the whole table, so it also
+ * erases what another thread wrote meanwhile, where Postgres would keep it.
  */
 internal fun <K : Any, V : Any> fakeTableOf(): MutableMap<K, V> = FakeTable()
 
