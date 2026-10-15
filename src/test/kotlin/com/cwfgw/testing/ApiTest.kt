@@ -37,6 +37,7 @@ import com.cwfgw.users.AuthService
 import com.cwfgw.users.AuthSetup
 import com.cwfgw.users.FakeUserRepository
 import com.cwfgw.users.LoginRequest
+import com.cwfgw.users.LoginThrottle
 import com.cwfgw.users.NewUser
 import com.cwfgw.users.UserRepository
 import com.cwfgw.users.UserRole
@@ -152,6 +153,7 @@ class ApiFixture {
         )
     var userRepository: UserRepository = FakeUserRepository()
     var authService: AuthService = AuthService(userRepository, transactor, cost = TEST_BCRYPT_COST)
+    var loginThrottle: LoginThrottle = LoginThrottle(maxFailures = TEST_LOGIN_MAX_FAILURES, window = TEST_LOGIN_WINDOW)
     var requestCache: RequestCache =
         RequestCache(FakeCacheRepository(), transactor, TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
     var authSetup: AuthSetup =
@@ -164,6 +166,8 @@ class ApiFixture {
 
 private const val TEST_BCRYPT_COST = 4
 private const val TEST_REVISION = "api-test"
+private const val TEST_LOGIN_MAX_FAILURES = 5
+private val TEST_LOGIN_WINDOW: Duration = Duration.ofMinutes(15)
 private const val TEST_SESSION_MAX_AGE = 3_600L
 private const val TEST_SESSION_SECRET = "test-only-session-secret-not-used-in-prod"
 
@@ -267,6 +271,7 @@ private fun ApiFixture.toAppServices(): AppServices =
         liveOverlayService = liveOverlayService,
         weeklyReportService = weeklyReportService,
         authService = authService,
+        loginThrottle = loginThrottle,
         userRepository = userRepository,
         transactor = transactor,
         requestCache = requestCache,

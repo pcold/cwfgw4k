@@ -8,6 +8,7 @@ data class AppConfig(
     val http: HttpConfig,
     val db: DbConfig,
     val auth: AuthConfig,
+    val loginThrottle: LoginThrottleConfig,
     val cache: CacheConfig,
     val espn: EspnConfig,
     val debug: DebugConfig,
@@ -68,6 +69,12 @@ data class AuthConfig(
     /** @see configuredAdminUsername */
     val configuredAdminPassword: ConfigSecret? get() = adminPassword?.takeIf { it.isNotBlank() }
 }
+
+/** One limit and one window for both keys a failure counts against: the submitted username and the client address. */
+data class LoginThrottleConfig(
+    val maxFailures: Int,
+    val windowSeconds: Long,
+)
 
 /**
  * Tuning for the Postgres-backed request cache. [defaultTtlSeconds] is the

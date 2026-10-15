@@ -43,6 +43,18 @@ sealed interface ConfigViolation {
         override val key: String = "espn.scoreboardCacheTtlSeconds"
         override val requirement: String = SECONDS_REQUIREMENT
     }
+
+    /** Mirrors [com.cwfgw.users.LoginThrottle]'s `require`, so a bad value names its key at load. */
+    data object LoginThrottleMaxFailuresNotPositive : ConfigViolation {
+        override val key: String = "loginThrottle.maxFailures"
+        override val requirement: String = "must be at least 1"
+    }
+
+    /** @see RequestCacheTtlOutOfRange */
+    data object LoginThrottleWindowOutOfRange : ConfigViolation {
+        override val key: String = "loginThrottle.windowSeconds"
+        override val requirement: String = SECONDS_REQUIREMENT
+    }
 }
 
 private val SECONDS_REQUIREMENT: String = "must be between 1 and ${PositiveSeconds.MAX.value} seconds"
@@ -67,6 +79,10 @@ internal fun AppConfig.sizingViolations(): List<ConfigViolation> =
         ConfigViolation.RequestCacheTtlOutOfRange.takeIf { PositiveSeconds.of(cache.defaultTtlSeconds) == null },
         ConfigViolation.ScoreboardCacheTtlOutOfRange.takeIf {
             PositiveSeconds.of(espn.scoreboardCacheTtlSeconds) == null
+        },
+        ConfigViolation.LoginThrottleMaxFailuresNotPositive.takeIf { loginThrottle.maxFailures < 1 },
+        ConfigViolation.LoginThrottleWindowOutOfRange.takeIf {
+            PositiveSeconds.of(loginThrottle.windowSeconds) == null
         },
     )
 

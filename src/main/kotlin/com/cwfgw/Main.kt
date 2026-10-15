@@ -7,6 +7,7 @@ import com.cwfgw.cache.CacheRepository
 import com.cwfgw.cache.RequestCache
 import com.cwfgw.config.AppConfig
 import com.cwfgw.config.AuthConfig
+import com.cwfgw.config.LoginThrottleConfig
 import com.cwfgw.db.Database
 import com.cwfgw.db.Transactor
 import com.cwfgw.db.poolMetricsOrNull
@@ -34,6 +35,7 @@ import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.users.AuthService
 import com.cwfgw.users.AuthSetup
+import com.cwfgw.users.LoginThrottle
 import com.cwfgw.users.UserRepository
 import com.cwfgw.users.seedAdminIfEmpty
 import io.ktor.client.HttpClient
@@ -157,6 +159,7 @@ internal fun buildServices(
         liveOverlayService = liveOverlayService,
         weeklyReportService = weeklyReportService,
         authService = AuthService(userRepository, transactor),
+        loginThrottle = config.loginThrottle.toLoginThrottle(),
         userRepository = userRepository,
         transactor = transactor,
         requestCache = requestCache,
@@ -209,6 +212,9 @@ private fun defaultJdkTrustManager(): X509TrustManager? {
 
 private fun firstX509(tmf: TrustManagerFactory): X509TrustManager? =
     tmf.trustManagers.filterIsInstance<X509TrustManager>().firstOrNull()
+
+private fun LoginThrottleConfig.toLoginThrottle(): LoginThrottle =
+    LoginThrottle(maxFailures = maxFailures, window = Duration.ofSeconds(windowSeconds))
 
 // The session secret's one unwrap. Its masked toString() compiles here too, and would sign every cookie with the mask.
 internal fun AuthConfig.toAuthSetup(): AuthSetup =

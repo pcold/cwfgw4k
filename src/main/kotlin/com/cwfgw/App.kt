@@ -145,6 +145,6 @@ private fun Routing.apiRoutes(services: AppServices) {
         adminRoutes(services.adminService)
         tournamentLinkRoutes(services.espnService, services.tournamentLinkService)
         reportRoutes(services.weeklyReportService, services.requestCache)
-        authRoutes(services.authService)
+        authRoutes(services.authService, services.loginThrottle)
     }
 }

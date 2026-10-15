@@ -34,6 +34,7 @@ private val TTL_VIOLATIONS: Map<String, ConfigViolation> =
     mapOf(
         "cache.defaultTtlSeconds" to ConfigViolation.RequestCacheTtlOutOfRange,
         "espn.scoreboardCacheTtlSeconds" to ConfigViolation.ScoreboardCacheTtlOutOfRange,
+        "loginThrottle.windowSeconds" to ConfigViolation.LoginThrottleWindowOutOfRange,
     )
 
 private fun decode(node: Node): ConfigResult<PositiveSeconds> =
