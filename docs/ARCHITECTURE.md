@@ -416,13 +416,15 @@ credited only to an id-less row: a row holding another id is a namesake, so the 
 and the import logs `cwfgw4k.espn event=namesake-id-mismatch`. When several rows share the full name, the one id-less
 golfer rostered this season is credited; with none, matching falls through to the surname; with several, or when two
 competitors claim one id-less row, the competitor is scored to nobody and the import logs
-`cwfgw4k.espn event=namesake-withheld` rather than create a twin; competitors of two events in one import, with
-different ids, claiming one id-less row are withheld the same way. Only import and finalize write: they backfill the
-competitor's ESPN id onto an id-less row its full name matched (never one credited by override, surname or partner)
-and create a golfer for a competitor that matches nothing. Every event of an import is matched first, then all their
-backfills and creates go through `findOrCreateAll` (`golfers/PgaPlayerIdClaim.kt`), one write per ESPN id in ESPN-id
-order, which a roster confirm writes through too. A result or roster row's key-share lock on a golfer is not ordered by
-ESPN id, so that pass can still deadlock a confirm. Names are compared normalized for case, accents and hyphens, on the "first last"
+`cwfgw4k.espn event=namesake-withheld` rather than create a twin. Across the events of one import, two competitors
+still matching one id-less row under different ids are withheld the same way; one withheld in its own event is
+credited the row another event wrote its id onto, and adds no id to that contest. Only import and finalize write:
+they backfill the competitor's ESPN id onto an id-less row its full name matched (never one credited by override,
+surname or partner) and create a golfer for a competitor that matches nothing. Every event of an import is matched
+first, then all their backfills and creates go through `findOrCreateAll` (`golfers/PgaPlayerIdClaim.kt`), one write
+per ESPN id in ESPN-id order, which a roster confirm writes through too. Neither a result or roster row's key-share
+lock on a golfer nor the row lock two ids' backfills of one row share is ordered by ESPN id, so that pass can still
+deadlock a confirm. Names are compared normalized for case, accents and hyphens, on the "first last"
 concatenation rather than the stored columns; the surname is its last word, kept whole if hyphenated and past a
 "Jr"/"III" suffix (`golfers/GolferMatching.kt`, which roster upload shares). A new golfer's name is split at its
 last space, and a single word is stored as the last name. Overrides are managed per tournament through the tournament-link routes and are refused once the
