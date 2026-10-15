@@ -395,6 +395,24 @@ class AdminRoutesSpec : FunSpec({
             response.bodyAsString().shouldContain("team 'BROWN' lists golfer ${scottie.id.value}")
         }
     }
+
+    test("POST /api/v1/admin/roster/confirm returns 400 naming a new golfer one team lists twice") {
+        authenticatedApiTest(adminFixture()) { client ->
+            val picks =
+                listOf(1, 2).map { round ->
+                    ConfirmedPick(round = round, ownershipPct = 100, assignment = GolferAssignment.New("Tom", "Kim"))
+                }
+            val response =
+                client.post("/api/v1/admin/roster/confirm") {
+                    contentType(ContentType.Application.Json)
+                    val brown = ConfirmedTeam(teamNumber = 1, teamName = "BROWN", picks = picks)
+                    setBody(ConfirmRosterRequest(seasonId = SEASON_ID, teams = listOf(brown)))
+                }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.bodyAsString().shouldContain("team 'BROWN' lists new golfer 'Tom Kim'")
+        }
+    }
 })
 
 private suspend fun io.ktor.client.statement.HttpResponse.bodyAsString(): String = body()
