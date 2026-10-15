@@ -14,6 +14,7 @@ import {
   tournamentLabel,
 } from '@/shared/util/tournament';
 import type { WeeklyReport } from '@/shared/api/types';
+import FinalizeWarnings from './FinalizeWarnings';
 import PlayerLinksPanel from './PlayerLinksPanel';
 import ScoreboardView from './ScoreboardView';
 
@@ -64,6 +65,8 @@ function ScoreboardPage(): ReactNode {
     },
   });
   const finalizeErr = mutationError(finalizeMutation.error);
+  // Shown only beside the tournament the admin finalized, so switching tournaments leaves its warnings behind.
+  const finalized = finalizeMutation.variables === tournamentId ? finalizeMutation.data : undefined;
 
   function buildFinalizeSlot(report: WeeklyReport): ReactNode {
     if (!authenticated || !tournamentId) return null;
@@ -139,6 +142,7 @@ function ScoreboardPage(): ReactNode {
               <LiveOverlayCheckbox state={liveOverlay} id="scoreboard-live-overlay" />
             </div>
 
+            {finalized ? <FinalizeWarnings warnings={finalized.importWarnings} /> : null}
             <QueryState query={reportQuery} label="scoreboard">
               {(report) => (
                 <ScoreboardView

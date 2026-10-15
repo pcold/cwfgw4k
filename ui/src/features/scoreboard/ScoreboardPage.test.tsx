@@ -7,7 +7,15 @@ import { queryKeys } from '@/shared/api/queryKeys';
 import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeTournament, makeWonLostTotals } from '@/shared/test/fixtures';
-import type { League, Season, Tournament, WeeklyReport } from '@/shared/api/types';
+import type {
+  EspnImportWarnings,
+  FinalizedTournament,
+  Golfer,
+  League,
+  Season,
+  Tournament,
+  WeeklyReport,
+} from '@/shared/api/types';
 import ScoreboardPage from './ScoreboardPage';
 
 const leaguesMock = vi.fn<typeof api.leagues>();
@@ -120,6 +128,36 @@ function buildReport(name: string): WeeklyReport {
     weeklyTotals: makeWonLostTotals(),
     weeklyStandings: ['team-1'],
   };
+}
+
+function golfer(id: string, firstName: string, lastName: string): Golfer {
+  return {
+    id,
+    pgaPlayerId: null,
+    firstName,
+    lastName,
+    country: null,
+    worldRanking: null,
+    updatedAt: '2026-01-01T00:00:00Z',
+  };
+}
+
+const twinWarnings: EspnImportWarnings = {
+  tournamentId: 'tn-active',
+  tournamentName: 'Current Open',
+  rosteredSurnameTwins: [
+    {
+      created: golfer('g-new', 'Rasmus', 'Hojgaard'),
+      rostered: [golfer('g-rostered', 'Nicolai', 'Højgaard')],
+    },
+  ],
+  createdGolfers: [],
+  unmatchedCompetitors: [],
+  contestedCompetitors: [],
+};
+
+function finalizedWith(importWarnings: EspnImportWarnings[]): FinalizedTournament {
+  return { tournament: makeTournament(), importWarnings };
 }
 
 // Copies the key and fetcher WeeklyReportPage and LateRowBetsPage use on "All Tournaments". A key
@@ -411,7 +449,7 @@ describe('ScoreboardPage', () => {
         week: '10',
       },
     });
-    finalizeMock.mockResolvedValue(makeTournament());
+    finalizeMock.mockResolvedValue(finalizedWith([]));
 
     const user = userEvent.setup();
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
@@ -421,6 +459,34 @@ describe('ScoreboardPage', () => {
     await waitFor(() => {
       expect(finalizeMock).toHaveBeenCalledWith('tn-active');
     });
+  });
+
+  it.each([
+    ['the warnings the server returned', [twinWarnings], /Possible duplicate of a rostered golfer/],
+    ['that the import raised none', [], /The ESPN import raised no warnings/],
+  ])('shows %s after an admin finalizes a tournament', async (_outcome, importWarnings, shown) => {
+    authMeMock.mockResolvedValue({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
+    tournamentReportMock.mockResolvedValue({
+      ...buildReport('Current Open'),
+      tournament: { ...buildReport('Current Open').tournament, status: 'in_progress' },
+    });
+    finalizeMock.mockResolvedValue(finalizedWith(importWarnings));
+
+    const user = userEvent.setup();
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    expect(screen.queryByText(shown)).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: /Finalize Results/i }));
+    expect(await screen.findByText(shown)).toBeInTheDocument();
   });
 
   it('asks the server for the current tournament again after an admin finalizes one', async () => {
@@ -438,7 +504,7 @@ describe('ScoreboardPage', () => {
       ...buildReport('Current Open'),
       tournament: { ...buildReport('Current Open').tournament, status: 'in_progress' },
     });
-    finalizeMock.mockResolvedValue(makeTournament());
+    finalizeMock.mockResolvedValue(finalizedWith([]));
 
     const user = userEvent.setup();
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
@@ -478,7 +544,7 @@ describe('ScoreboardPage', () => {
       ...buildReport('All Tournaments'),
       scope: 'season',
     });
-    finalizeMock.mockResolvedValue(makeTournament());
+    finalizeMock.mockResolvedValue(finalizedWith([]));
 
     const user = userEvent.setup();
     renderWithProviders(
@@ -547,7 +613,7 @@ describe('ScoreboardPage', () => {
       },
     });
     readMock.mockResolvedValue({});
-    finalizeMock.mockResolvedValue(makeTournament());
+    finalizeMock.mockResolvedValue(finalizedWith([]));
 
     const user = userEvent.setup();
     renderWithProviders(
