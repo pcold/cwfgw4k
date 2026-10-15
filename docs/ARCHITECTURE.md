@@ -86,8 +86,6 @@ User (username, role admin | user)
 - **Side bets.** Not stored. Derived in the report from the fantasy scores of each team's pick in rounds 5–8.
 - **Reports.** Not stored. The weekly report, standings, player rankings and golfer history are assembled
   from persisted scores on each request, then cached (see [Response cache](#response-cache)).
-- **Drafts.** The `drafts` and `draft_picks` tables are vestigial: the draft feature's code was removed and the
-  tables remain, cascading from seasons. The draft itself happens outside the app.
 
 ## 3. Conventions
 
@@ -179,7 +177,6 @@ Tables in schema `cwfgw4k`, as dumped in `db/schema.sql`:
 | `fantasy_scores` | a team's payout for a golfer in a tournament | unique `(season_id, team_id, tournament_id, golfer_id)` |
 | `users` | accounts | `role` default `user` |
 | `cache`, `cache_generation` | response cache | `cache` is `UNLOGGED` |
-| `drafts`, `draft_picks` | vestigial | |
 
 Deleting a season cascades to its teams, rosters, tournaments, results and scores. Flyway migrates at boot.
 
