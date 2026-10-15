@@ -194,6 +194,16 @@ describe('RulesPage', () => {
     expect(screen.getByText('$15')).toBeInTheDocument();
   });
 
+  it('says no round carries a side bet for a season with no side-bet rounds, and lists no races', async () => {
+    seasonRulesMock.mockResolvedValue({ ...defaultRules, sideBetRounds: [] });
+    tournamentsMock.mockResolvedValue([]);
+    renderWithProviders(<RulesPage />);
+
+    expect(await screen.findByText('No draft round carries a side bet this season.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Side Bets' })).toBeInTheDocument();
+    expect(screen.queryByText(/season-long races/i)).not.toBeInTheDocument();
+  });
+
   it('shows the rules failure instead of payouts it cannot know, and keeps the schedule', async () => {
     seasonRulesMock.mockRejectedValue(new Error('network down'));
     tournamentsMock.mockResolvedValue([tournament({ name: 'The Masters' })]);

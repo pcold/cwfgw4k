@@ -11,6 +11,11 @@ export function parseSideBetRounds(input: string): number[] {
     .filter((n) => Number.isFinite(n));
 }
 
+/** False when `parseSideBetRounds` would drop or truncate part of the text, sending fewer rounds than typed. */
+export function isReadableSideBetRounds(input: string): boolean {
+  return input.split(',').every((entry) => /^\d*$/.test(entry.trim()));
+}
+
 export function buildRules(input: {
   payouts: readonly number[];
   tieFloor: number;

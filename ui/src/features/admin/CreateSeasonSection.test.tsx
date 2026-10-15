@@ -184,4 +184,46 @@ describe('CreateSeasonSection', () => {
     });
     expect(createSeasonMock.mock.calls[0]?.[0].rules).toEqual({ ...serverDefaults, sideBetAmount: 0 });
   });
+
+  it('submits no side-bet rounds when the rounds field is cleared', async () => {
+    createSeasonMock.mockResolvedValue(makeSeason({ id: 'sn-7' }));
+    const user = userEvent.setup();
+    renderWithProviders(<CreateSeasonSection />, { withLeagueSeasonProvider: false });
+    await waitFor(() => {
+      expect(screen.getByLabelText(/^League$/i)).toHaveValue('lg-1');
+    });
+    await user.type(screen.getByLabelText(/Season Name/i), 'Spring');
+
+    const rounds = screen.getByLabelText(/Rounds/i);
+    await user.clear(rounds);
+    expect(rounds).toHaveAttribute('placeholder', 'none');
+    await user.click(screen.getByRole('button', { name: /Create Season/i }));
+
+    await waitFor(() => {
+      expect(createSeasonMock).toHaveBeenCalledTimes(1);
+    });
+    expect(createSeasonMock.mock.calls[0]?.[0].rules).toEqual({ ...serverDefaults, sideBetRounds: [] });
+  });
+
+  it.each(['five', '5-8'])(
+    'disables submit and says why rather than sending fewer side-bet rounds than %j',
+    async (typed) => {
+      const user = userEvent.setup();
+      renderWithProviders(<CreateSeasonSection />, { withLeagueSeasonProvider: false });
+      await waitFor(() => {
+        expect(screen.getByLabelText(/^League$/i)).toHaveValue('lg-1');
+      });
+      await user.type(screen.getByLabelText(/Season Name/i), 'Spring');
+
+      const rounds = screen.getByLabelText(/Rounds/i);
+      await user.clear(rounds);
+      await user.type(rounds, typed);
+
+      expect(screen.getByRole('alert')).toHaveTextContent(/blank for none/i);
+      const submit = screen.getByRole('button', { name: /Create Season/i });
+      expect(submit).toBeDisabled();
+      await user.click(submit);
+      expect(createSeasonMock).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -6,7 +6,7 @@ import type { League, Season, SeasonRules } from '@/shared/api/types';
 import { FIELD_CLASS, FieldShell, TextField } from '@/shared/components/formFields';
 import { QueryState } from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
-import { buildRules, formatSideBetRounds } from './rulesInput';
+import { buildRules, formatSideBetRounds, isReadableSideBetRounds } from './rulesInput';
 
 function CreateSeasonSection(): ReactNode {
   const defaultsQuery = useQuery({
@@ -53,6 +53,8 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
   const sideBetAmount = editedSideBetAmount ?? String(defaults.sideBetAmount);
   // Numbers are kept as typed: Number('') is 0, so a cleared field would otherwise submit a zero nobody entered.
   const fieldCleared = [seasonYear, ...payouts, tieFloor, sideBetAmount].includes('');
+  // The parse drops what it can't read, and an empty list means no side bets, so a misread must not submit.
+  const roundsUnreadable = !isReadableSideBetRounds(sideBetRoundsStr);
   const [success, setSuccess] = useState<string | null>(null);
 
   const createMutation = useMutation({
@@ -76,7 +78,7 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
 
   const errorMessage = mutationError(createMutation.error);
 
-  const disabled = createMutation.isPending || !seasonName.trim() || !leagueId || fieldCleared;
+  const disabled = createMutation.isPending || !seasonName.trim() || !leagueId || fieldCleared || roundsUnreadable;
 
   const updatePayout = (index: number, value: string) => {
     setEditedPayouts(payouts.map((p, i) => (i === index ? value : p)));
@@ -178,7 +180,8 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
             id="season-side-rounds"
             label="Rounds"
             value={sideBetRoundsStr}
-            error={undefined}
+            error={roundsUnreadable ? 'Round numbers, comma-separated; blank for none' : undefined}
+            placeholder="none"
             width="w-28"
             onChange={setEditedSideBetRounds}
           />

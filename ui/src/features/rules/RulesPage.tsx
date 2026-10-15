@@ -153,7 +153,15 @@ function RulesView({ rules }: RulesViewProps): ReactNode {
             <li>Side bet is not active if all entries are at $0</li>
           </ul>
         </div>
-      ) : null}
+      ) : (
+        <div className="bg-surface-card rounded-lg p-6">
+          <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
+            Side Bets
+          </h3>
+          {/* States the field, not whether bets are on: that also turns on the amount, and is the server's to say. */}
+          <p className="text-ink-soft text-sm">No draft round carries a side bet this season.</p>
+        </div>
+      )}
     </>
   );
 }

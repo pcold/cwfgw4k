@@ -94,7 +94,8 @@ class FakeSeasonRepository(
         return SeasonRules(
             payouts = custom?.payouts.orEmpty().ifEmpty { SeasonRules.DEFAULT_PAYOUTS },
             tieFloor = season.tieFloor,
-            sideBetRounds = custom?.sideBetRounds.orEmpty().ifEmpty { SeasonRules.DEFAULT_SIDE_BET_ROUNDS },
+            // No custom rules means a create without rules, for which the real create writes the default rounds.
+            sideBetRounds = custom?.sideBetRounds ?: SeasonRules.DEFAULT_SIDE_BET_ROUNDS,
             sideBetAmount = season.sideBetAmount,
         )
     }

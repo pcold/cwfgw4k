@@ -1,5 +1,6 @@
 package com.cwfgw.seasons
 
+import com.cwfgw.admin.DRAFT_ROUNDS
 import java.math.BigDecimal
 
 /** Refused before any row is written. Without `rules`, every rule value defaults and goes unchecked. */
@@ -10,11 +11,11 @@ internal sealed interface CreateSeasonViolation {
     /** An empty list writes no payout rows, so the season would silently read back the default payouts. */
     data object NoPayoutPlaces : CreateSeasonViolation
 
-    /** An empty list writes no rows, so the season would silently read back the default rounds. */
-    data object NoSideBetRounds : CreateSeasonViolation
-
     /** The UNIQUE (season_id, round) constraint would refuse it anyway, as a 500. */
     data object DuplicateSideBetRound : CreateSeasonViolation
+
+    /** No team has a pick outside [DRAFT_ROUNDS] to race. A CHECK would refuse it anyway, as a 500. */
+    data object SideBetRoundOutOfRange : CreateSeasonViolation
 
     /** Settles inverted, paying the losers; zero means no side bets. A CHECK would refuse it anyway, as a 500. */
     data object NegativeSideBetAmount : RuleAmount
@@ -81,7 +82,7 @@ private fun SeasonRules.seasonAmountViolation(): CreateSeasonViolation? =
 private fun SeasonRules.sideTableViolation(): CreateSeasonViolation? =
     when {
         payouts.isEmpty() -> CreateSeasonViolation.NoPayoutPlaces
-        sideBetRounds.isEmpty() -> CreateSeasonViolation.NoSideBetRounds
+        sideBetRounds.any { it !in DRAFT_ROUNDS } -> CreateSeasonViolation.SideBetRoundOutOfRange
         sideBetRounds.toSet().size != sideBetRounds.size -> CreateSeasonViolation.DuplicateSideBetRound
         else ->
             payouts.amountViolation(

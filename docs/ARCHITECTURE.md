@@ -83,7 +83,8 @@ User (username, role admin | user)
   and an `ownership_pct`; two teams can each own a share of one golfer.
 - **Golfer.** Global across seasons, unique by `pga_player_id`. A golfer imported from an ESPN team entry has
   no PGA id.
-- **Side bets.** Not stored. Derived in the report from the fantasy scores of each team's pick in rounds 5–8.
+- **Side bets.** Not stored. Derived in the report from the fantasy scores of each team's pick in the season's
+  side-bet rounds.
 - **Reports.** Not stored. The weekly report, standings, player rankings and golfer history are assembled
   from persisted scores on each request, then cached (see [Response cache](#response-cache)).
 
@@ -167,7 +168,7 @@ Tables in schema `cwfgw4k`, as dumped in `db/schema.sql`:
 | `leagues` | the league | |
 | `seasons` | year, number, tie floor, side-bet amount | defaults: `tie_floor` 1, `side_bet_amount` 15, `max_teams` 10 |
 | `season_rule_payouts` | payout per place | unique `(season_id, position)` |
-| `season_rule_side_bet_rounds` | side-bet rounds | unique `(season_id, round)` |
+| `season_rule_side_bet_rounds` | side-bet rounds | unique `(season_id, round)`; `round` within 1–8, the draft's rounds |
 | `tournaments` | schedule, status, multiplier | `pga_tournament_id` unique; `status` default `upcoming`; `payout_multiplier` `NUMERIC(6,4)` default 1 |
 | `tournament_results` | one row per golfer per tournament | unique `(tournament_id, golfer_id)` |
 | `tournament_player_overrides` | ESPN competitor -> golfer | PK `(tournament_id, espn_competitor_id)` |
@@ -229,8 +230,9 @@ Report routes skip the cache only when the request asks for `live=true` and the 
 
 Each of these runs in exactly one `tx.update`, so it lands whole or not at all:
 
-- **Season create** writes the season row and, when the request carries rules, both rules tables
-  (`SeasonRepository.kt`). A season created without rules reads back the defaults.
+- **Season create** writes the season row, its side-bet rounds (rounds 5–8 when the request carries no rules), and
+  its payouts when the request carries rules (`SeasonRepository.kt`). A season created without rules reads back the
+  defaults.
 - **Finalize** checks ordering, imports ESPN results and computes every fantasy score. A scoring failure throws and
   rolls back the import with it (`TournamentOpsServiceFinalizeRollbackSpec`). The ESPN fetch happens *before* the
   transaction, so no connection is held across the network call.
@@ -369,7 +371,8 @@ For each side-bet round, every team's pick from that draft round races for the s
   `amount × (numTeams − winners)`.
 - Winners split the pool evenly; when it does not divide to the cent, the last winner by team id takes the
   remainder.
-- A side-bet amount of 0 turns the bets off for the season.
+- A side-bet amount of 0, or an empty round list, turns the bets off for the season. A season created without
+  rules gets rounds 5–8 written as rows; no rows reads back as no rounds.
 
 ### Report assembly
 
@@ -534,8 +537,6 @@ shared code in `shared/`.
 - **A team with no pick in a side-bet round (CWF-83).** The persisted report and rankings leave such a team out of
   that round's race, yet the pool counts it among the losers, so the round pays out a stake nobody paid. The
   live overlay instead races it at $0 and charges it, so the two views disagree.
-- **A season with no side-bet rounds (CWF-186).** Create refuses an empty round list, and an empty rules table
-  reads back as the default rounds, so a side-bet amount of 0 is the only way to turn the bets off.
 - **A shared ESPN-event resolver (CWF-179).** The live preview and the competitors route resolve a tournament's
   ESPN event through `findLinkedEvent` (`espn/EspnService.kt`); finalize applies the same exact-id rule inline
   and does not call it yet.

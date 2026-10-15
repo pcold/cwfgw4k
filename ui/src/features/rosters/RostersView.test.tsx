@@ -74,6 +74,12 @@ describe('RostersView', () => {
     expect(setApart).toEqual([false, true, true, false, false, false, false, false]);
   });
 
+  it('sets apart no row for a season with no side-bet rounds', () => {
+    render(<RostersView teams={[aces]} sideBetRounds={[]} />);
+    const roundRows = screen.getAllByRole('row').slice(1);
+    expect(roundRows.filter((row) => row.classList.contains('bg-surface-card/70'))).toEqual([]);
+  });
+
   it('renders an em dash for missing picks', () => {
     render(<RostersView teams={[aces]} sideBetRounds={[]} />);
     const rows = screen.getAllByRole('row').slice(1);

@@ -136,7 +136,8 @@ CREATE TABLE cwfgw4k.season_rule_payouts (
 CREATE TABLE cwfgw4k.season_rule_side_bet_rounds (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     season_id uuid NOT NULL,
-    round integer NOT NULL
+    round integer NOT NULL,
+    CONSTRAINT season_rule_side_bet_rounds_round_in_range CHECK (((round >= 1) AND (round <= 8)))
 );
 
 
