@@ -156,6 +156,15 @@ class SeasonRepositorySpec : FunSpec({
         tx.read { repository.findAll(leagueId = castlewoodId, seasonYear = null) }.shouldBeEmpty()
     }
 
+    test("create stores a tab-only name, since btrim trims spaces only, as the route guard does") {
+        val created =
+            tx.update {
+                repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "\t", seasonYear = 2026))
+            }
+
+        created.name shouldBe "\t"
+    }
+
     test("findAll orders by year desc, number desc, created_at desc") {
         tx.update {
             val older =
