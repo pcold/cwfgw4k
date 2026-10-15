@@ -22,7 +22,7 @@ import java.math.BigDecimal
 
 /**
  * The status write is reset's last step, after both deletes, so failing it there shows the deletes share its
- * `tx.update`. Real Postgres because a fake has no transaction to roll back.
+ * `tx.update`. Real Postgres, because the rollback under test is Postgres's, not the fake transactor's.
  */
 class TournamentOpsServiceResetSpec : FunSpec({
 
