@@ -708,19 +708,22 @@ internal fun findLinkedEvent(
 
 /**
  * What an unlinked finalize of [tournament]'s day imports beside [event], so a preview or listing settles them as one
- * import. Completion is ignored: both predict the finished import, before ESPN marks the events completed.
+ * import; none once [tournament] is finalized, since that finalize skips it. ESPN's completion flag is ignored: both
+ * predict the finished import, before ESPN marks the events completed.
  */
 private fun findSiblingImports(
     tournament: Tournament,
     event: EspnTournament,
     events: List<EspnTournament>,
     unfinalized: List<Tournament>,
-): List<EventImport> =
-    unfinalized
+): List<EventImport> {
+    if (tournament.status !in UNFINALIZED) return emptyList()
+    return unfinalized
         .filter { it.id != tournament.id && it.seasonId == tournament.seasonId && it.startDate == tournament.startDate }
         .mapNotNull { sibling ->
             findLinkedEvent(events, sibling)?.takeIf { it.espnId != event.espnId }?.let { EventImport(sibling, it) }
         }
+}
 
 /**
  * The team flag is [event]'s, not [tournament]'s: finalize's import writes ESPN's flag over the row before it

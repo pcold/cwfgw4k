@@ -23,6 +23,8 @@ import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentOpsService
 import com.cwfgw.tournaments.TournamentRepository
+import com.cwfgw.tournaments.TournamentStatus
+import com.cwfgw.tournaments.UpdateTournamentRequest
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
@@ -66,6 +68,20 @@ class EspnLivePreviewSiblingSpec : FunSpec({
         val listing = espnService(tx).listCompetitorsForLinking(week.guessing.id).orFail()
 
         listing.competitors.map { it.name to it.linkedGolfer } shouldContainExactly listOf("Jim Bloggs" to null)
+    }
+
+    test("a finalized tournament's listing settles its event alone, since no unlinked finalize imports it") {
+        val week = tx.update { seedWeek() }
+        val joe =
+            tx.update {
+                val completed = UpdateTournamentRequest(status = TournamentStatus.Completed)
+                TournamentRepository().update(week.guessing.id, completed)
+                GolferRepository().findAll(search = null).single()
+            }
+
+        val listing = espnService(tx).listCompetitorsForLinking(week.guessing.id).orFail()
+
+        listing.competitors.map { it.name to it.linkedGolfer } shouldContainExactly listOf("Jim Bloggs" to joe)
     }
 })
 
