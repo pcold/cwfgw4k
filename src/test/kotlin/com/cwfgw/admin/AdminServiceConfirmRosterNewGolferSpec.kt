@@ -112,4 +112,20 @@ class AdminServiceConfirmRosterNewGolferSpec : FunSpec({
             )
         result shouldBe Result.Err(AdminError.InvalidConfirmedRoster(problems))
     }
+
+    test("a repeated new golfer is named with its whitespace collapsed, as it would be stored") {
+        val seasonId = seedSeason()
+        val brown =
+            fullTeam(
+                number = 1,
+                name = "BROWN",
+                ConfirmedPick(round = 1, ownershipPct = 100, assignment = GolferAssignment.New("  Tom   Kim ")),
+                ConfirmedPick(round = 2, ownershipPct = 100, assignment = GolferAssignment.New("Tom Kim")),
+            )
+
+        val result = service().confirmRoster(ConfirmRosterRequest(seasonId = seasonId, teams = listOf(brown)))
+
+        val problem = ConfirmedRosterProblem.RepeatedNewGolfer(teamName = "BROWN", name = "Tom Kim")
+        result shouldBe Result.Err(AdminError.InvalidConfirmedRoster(listOf(problem)))
+    }
 })

@@ -57,7 +57,7 @@ sealed interface ConfirmedRosterProblem {
 
     /**
      * Compared by the preview matcher's normalized full name. The DB would take both, as two golfer rows of one
-     * name, which leaves every later preview of that name Ambiguous.
+     * name, which leaves every later preview of that name Ambiguous. [name] is whitespace-collapsed, as stored.
      */
     data class RepeatedNewGolfer(val teamName: String, val name: String) : ConfirmedRosterProblem
 

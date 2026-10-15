@@ -461,9 +461,9 @@ private fun repeatedGolfers(team: ConfirmedTeam): List<ConfirmedRosterProblem> {
             .map { repeat -> ConfirmedRosterProblem.RepeatedExistingGolfer(team.teamName, repeat.golferId) }
     val repeatedNew =
         assignments.filterIsInstance<GolferAssignment.New>()
-            .filter { newGolfer -> GolferName.splitName(newGolfer.name) != null }
-            .firstOfEachRepeat { repeat -> normalizeName(repeat.name) }
-            .map { repeat -> ConfirmedRosterProblem.RepeatedNewGolfer(team.teamName, repeat.name) }
+            .mapNotNull { newGolfer -> GolferName.splitName(newGolfer.name)?.storedName() }
+            .firstOfEachRepeat(::normalizeName)
+            .map { name -> ConfirmedRosterProblem.RepeatedNewGolfer(team.teamName, name) }
     val repeatedEspn =
         assignments.filterIsInstance<GolferAssignment.Espn>()
             .firstOfEachRepeat(GolferAssignment.Espn::espnId)
@@ -482,6 +482,8 @@ private fun blankNewNames(team: ConfirmedTeam): List<ConfirmedRosterProblem> =
         val assignment = pick.assignment
         assignment is GolferAssignment.New && GolferName.splitName(assignment.name) == null
     }.map { pick -> ConfirmedRosterProblem.BlankNewGolferName(team.teamName, pick.round) }
+
+private fun GolferName.storedName(): String = "$firstName $lastName".trim()
 
 private fun GolferAssignment.New.toCreateRequest(): CreateGolferRequest {
     val split = checkNotNull(GolferName.splitName(name)) { "findRosterProblems refuses a blank new-golfer name" }
