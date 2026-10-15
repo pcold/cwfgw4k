@@ -204,7 +204,7 @@ class EspnService(
 
     /**
      * Writes into the caller's transaction so finalize persists the import and the scores atomically. Every event is
-     * matched before any golfer is written, so all their writes share [findOrCreateAll]'s one order: written event by
+     * matched before any golfer is written, so all their writes share [findOrCreateAll]'s one order; if written event by
      * event, a later event's athlete could take its lock before an earlier one's, against a confirm taking both.
      */
     context(ctx: WriteTransactionContext)
