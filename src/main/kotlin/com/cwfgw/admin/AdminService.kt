@@ -436,7 +436,7 @@ private fun GolferAssignment.Espn.toCreateRequest(): CreateGolferRequest {
     return CreateGolferRequest(pgaPlayerId = espnId, firstName = split.firstName, lastName = split.lastName)
 }
 
-private class EspnGolfers(val golferIds: Map<String, GolferId>, val insertedCount: Int)
+private data class EspnGolfers(val golferIds: Map<String, GolferId>, val insertedCount: Int)
 
 private fun draftRoundProblems(team: ConfirmedTeam): List<ConfirmedRosterProblem> {
     val rounds = team.picks.map(ConfirmedPick::round)

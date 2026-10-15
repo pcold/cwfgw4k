@@ -156,7 +156,7 @@ sealed interface GolferCandidate {
     @SerialName("existing")
     data class Existing(val golferId: GolferId, val name: String) : GolferCandidate
 
-    /** @see PickMatch.MatchedEspn */
+    /** @see GolferCandidate */
     @Serializable
     @SerialName("espn")
     data class Espn(val espnId: String, val name: String) : GolferCandidate
