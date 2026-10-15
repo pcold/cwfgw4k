@@ -6,7 +6,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
-import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
+import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
 import { mutationError } from '@/shared/util/mutationError';
 import {
   defaultScoreboardSelection,
@@ -49,15 +49,12 @@ function ScoreboardPage(): ReactNode {
     pickInSeason(userTournamentId, tournaments) ??
     pickInSeason(defaultScoreboardSelection(currentQuery.data), tournaments);
 
-  const liveOverlay = useLiveOverlay(tournaments, currentQuery.data, tournamentId);
-
-  const reportQuery = useQuery({
-    queryKey: queryKeys.tournamentReport.detail(seasonId, tournamentId, liveOverlay.effectiveLive),
-    queryFn:
-      seasonId === null || tournamentId === null
-        ? skipToken
-        : () => api.tournamentReport(seasonId, tournamentId, liveOverlay.effectiveLive),
-  });
+  const { query: reportQuery, overlay: liveOverlay } = useLiveOverlayQuery(
+    (live) => queryKeys.tournamentReport.detail(seasonId, tournamentId, live),
+    seasonId === null || tournamentId === null
+      ? null
+      : (live) => api.tournamentReport(seasonId, tournamentId, live),
+  );
 
   const finalizeMutation = useMutation({
     mutationFn: (id: string) => api.finalizeTournament(id),

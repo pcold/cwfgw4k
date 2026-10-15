@@ -1,68 +1,45 @@
 import type { ReactNode } from 'react';
+import { skipToken, useQuery, type QueryKey, type UseQueryResult } from '@tanstack/react-query';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
-import type { CurrentTournament, Tournament } from '@/shared/api/types';
 
-/**
- * Decide whether the live overlay applies to the given tournament selection
- * and (when it does) the value to pass through to API calls.
- *
- * Live overlay only adds signal for tournaments in the season's current
- * week — i.e. the week of the server's current tournament, while it is
- * unfinalized. That's where ESPN's projected payouts matter. Past-completed
- * events are immutable and future events haven't started. A null selection ("All
- * Tournaments") is never eligible: the server keeps those rollups to
- * finalized results. Multi-tournament weeks (e.g. a regular tour event plus an
- * opposite-field event) are common enough that scoping to a single id
- * leaves the second tournament permanently non-live; same-week scoping
- * keeps both eligible while the week is in flight.
- *
- * Returns:
- *   eligible — show the toggle? false hides it everywhere.
- *   effectiveLive — pass to api calls. Always false when not eligible,
- *     even if the user previously checked the toggle on another view.
- */
 export interface LiveOverlayState {
   eligible: boolean;
-  effectiveLive: boolean;
-  toggleLive: (next: boolean) => void;
   liveChecked: boolean;
+  toggleLive: (next: boolean) => void;
 }
 
-export function useLiveOverlay(
-  tournaments: Tournament[],
-  current: CurrentTournament | undefined,
-  tournamentId: string | null,
-): LiveOverlayState {
+interface LiveEligibleResponse {
+  liveEligible: boolean;
+}
+
+export interface LiveOverlayQuery<T> {
+  query: UseQueryResult<T>;
+  overlay: LiveOverlayState;
+}
+
+/**
+ * The non-live response's `liveEligible` is the only rule: the live request waits for it, so a selection the
+ * server would not overlay never asks for one. Pass a null `fetchSelection` while the selection is unresolved.
+ */
+export function useLiveOverlayQuery<T extends LiveEligibleResponse>(
+  queryKey: (live: boolean) => QueryKey,
+  fetchSelection: ((live: boolean) => Promise<T>) | null,
+): LiveOverlayQuery<T> {
   const { live, setLive } = useLeagueSeason();
-  const currentId = current?.type === 'unfinalized' ? current.tournamentId : null;
-  const currentRow = tournaments.find((t) => t.id === currentId) ?? null;
-  const selected = tournaments.find((t) => t.id === tournamentId) ?? null;
-  const eligible =
-    selected !== null &&
-    currentRow !== null &&
-    selected.status !== 'completed' &&
-    (selected.id === currentRow.id || sameWeekNumber(selected.week, currentRow.week));
+  const base = useQuery({
+    queryKey: queryKey(false),
+    queryFn: fetchSelection === null ? skipToken : () => fetchSelection(false),
+  });
+  const eligible = base.data?.liveEligible ?? false;
+  const effectiveLive = eligible && live;
+  const overlaid = useQuery({
+    queryKey: queryKey(true),
+    queryFn: fetchSelection === null || !effectiveLive ? skipToken : () => fetchSelection(true),
+  });
   return {
-    eligible,
-    effectiveLive: eligible && live,
-    toggleLive: setLive,
-    liveChecked: live,
+    query: effectiveLive ? overlaid : base,
+    overlay: { eligible, liveChecked: live, toggleLive: setLive },
   };
-}
-
-// Multi-tournament weeks get suffixed labels like "4a" / "4b" (see
-// AdminService.assignWeeks). The leading digits are the shared week number
-// — that's what determines whether two events are concurrently in flight.
-function sameWeekNumber(a: string | null, b: string | null): boolean {
-  const left = weekNumber(a);
-  const right = weekNumber(b);
-  return left !== null && left === right;
-}
-
-function weekNumber(week: string | null): string | null {
-  if (week === null) return null;
-  const match = week.match(/^\d+/);
-  return match === null ? null : match[0];
 }
 
 interface LiveOverlayCheckboxProps {

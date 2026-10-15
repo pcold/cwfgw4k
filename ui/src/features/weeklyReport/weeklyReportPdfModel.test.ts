@@ -50,6 +50,7 @@ function buildReport(overrides: {
     sideBetDetail: [],
     standingsOrder: [],
     live: false,
+    liveEligible: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
