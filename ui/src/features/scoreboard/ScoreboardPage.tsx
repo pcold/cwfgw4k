@@ -8,7 +8,11 @@ import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
 import { mutationError } from '@/shared/util/mutationError';
-import { defaultScoreboardTournament, tournamentLabel } from '@/shared/util/tournament';
+import {
+  defaultScoreboardSelection,
+  pickInSeason,
+  tournamentLabel,
+} from '@/shared/util/tournament';
 import type { WeeklyReport } from '@/shared/api/types';
 import PlayerLinksPanel from './PlayerLinksPanel';
 import ScoreboardView from './ScoreboardView';
@@ -34,19 +38,18 @@ function ScoreboardPage(): ReactNode {
     queryKey: queryKeys.tournaments.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
+  const currentQuery = useQuery({
+    queryKey: queryKeys.tournaments.current(seasonId),
+    queryFn: seasonId === null ? skipToken : () => api.currentTournament(seasonId),
+  });
 
   const tournaments = tournamentsQuery.data ?? [];
 
-  // User's explicit pick wins if it's still in the loaded set; otherwise
-  // defaultScoreboardTournament picks the right one (earliest unfinalized,
-  // or the most recent if everything is completed). Derived rather than
-  // synced via effect so season changes don't need a separate handler.
   const tournamentId =
-    userTournamentId !== null && tournaments.some((t) => t.id === userTournamentId)
-      ? userTournamentId
-      : defaultScoreboardTournament(tournaments);
+    pickInSeason(userTournamentId, tournaments) ??
+    pickInSeason(defaultScoreboardSelection(currentQuery.data), tournaments);
 
-  const liveOverlay = useLiveOverlay(tournaments, tournamentId);
+  const liveOverlay = useLiveOverlay(tournaments, currentQuery.data, tournamentId);
 
   const reportQuery = useQuery({
     queryKey: queryKeys.tournamentReport.detail(seasonId, tournamentId, liveOverlay.effectiveLive),
@@ -108,6 +111,13 @@ function ScoreboardPage(): ReactNode {
         if (loadedTournaments.length === 0) {
           return <p className="text-ink-muted">No tournaments scheduled for this season.</p>;
         }
+        if (tournamentId === null) {
+          return (
+            <QueryState query={currentQuery} label="current tournament">
+              {() => null}
+            </QueryState>
+          );
+        }
         return (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -120,7 +130,7 @@ function ScoreboardPage(): ReactNode {
               <select
                 id="tournament-select"
                 className="bg-surface-card border border-control-border rounded px-3 py-2 text-sm"
-                value={tournamentId ?? ''}
+                value={tournamentId}
                 onChange={(e) => setUserTournamentId(e.target.value)}
               >
                 {loadedTournaments.map((t) => (

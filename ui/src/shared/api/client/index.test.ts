@@ -311,6 +311,13 @@ describe('api client', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/tournaments?season_id=sn%2F1%20a');
   });
 
+  it('currentTournament() url-encodes the season id and camelizes the answer', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({ type: 'unfinalized', tournament_id: 'tn-1' }));
+    const current = await api.currentTournament('sn/1 a');
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/tournaments/current?season_id=sn%2F1%20a');
+    expect(current).toEqual({ type: 'unfinalized', tournamentId: 'tn-1' });
+  });
+
   it('tournamentReport() appends live=true only when requested', async () => {
     fetchMock.mockImplementation(() => Promise.resolve(mockJson({})));
     await api.tournamentReport('sn-1', 'tn-1', false);

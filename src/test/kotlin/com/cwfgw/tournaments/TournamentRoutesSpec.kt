@@ -11,9 +11,13 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -43,6 +47,8 @@ private fun tournament(
         isTeamEvent = false,
         createdAt = Instant.parse("2026-04-01T00:00:00Z"),
     )
+
+private suspend fun HttpResponse.wireJson(): JsonElement = Json.parseToJsonElement(bodyAsText())
 
 class TournamentRoutesSpec : FunSpec({
 
@@ -82,6 +88,54 @@ class TournamentRoutesSpec : FunSpec({
     test("GET /api/v1/tournaments?status={unknown} returns 400 instead of silently ignoring the filter") {
         apiTest { client ->
             client.get("/api/v1/tournaments?status=garbage").status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    test("GET /api/v1/tournaments/current names the earliest unfinalized tournament") {
+        val players = tournament(name = "Players", status = TournamentStatus.Completed)
+        val masters = tournament(name = "Masters", startDate = LocalDate.parse("2026-04-16"))
+
+        apiTest({ seedTournaments(players, masters) }) { client ->
+            val response = client.get("/api/v1/tournaments/current?season_id=${SEASON_ID.value}")
+
+            response.status shouldBe HttpStatusCode.OK
+            response.wireJson() shouldBe
+                Json.parseToJsonElement("""{"type": "unfinalized", "tournament_id": "${masters.id.value}"}""")
+        }
+    }
+
+    test("GET /api/v1/tournaments/current names the latest tournament of a finalized season") {
+        val players = tournament(name = "Players", status = TournamentStatus.Completed)
+        val masters =
+            tournament(name = "Masters", startDate = LocalDate.parse("2026-04-16"), status = TournamentStatus.Completed)
+
+        apiTest({ seedTournaments(players, masters) }) { client ->
+            val response = client.get("/api/v1/tournaments/current?season_id=${SEASON_ID.value}")
+
+            response.status shouldBe HttpStatusCode.OK
+            response.wireJson() shouldBe
+                Json.parseToJsonElement("""{"type": "season_finalized", "tournament_id": "${masters.id.value}"}""")
+        }
+    }
+
+    test("GET /api/v1/tournaments/current answers no_tournaments for a season with none") {
+        apiTest { client ->
+            val response = client.get("/api/v1/tournaments/current?season_id=${SEASON_ID.value}")
+
+            response.status shouldBe HttpStatusCode.OK
+            response.wireJson() shouldBe Json.parseToJsonElement("""{"type": "no_tournaments"}""")
+        }
+    }
+
+    test("GET /api/v1/tournaments/current without a season_id returns 400") {
+        apiTest { client ->
+            client.get("/api/v1/tournaments/current").status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    test("GET /api/v1/tournaments/current?season_id={non-uuid} returns 400") {
+        apiTest { client ->
+            client.get("/api/v1/tournaments/current?season_id=not-a-uuid").status shouldBe HttpStatusCode.BadRequest
         }
     }
 

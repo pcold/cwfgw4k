@@ -10,6 +10,7 @@ import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
+import com.cwfgw.testing.POSTGRES_UUID_ORDER
 import com.cwfgw.testing.postgresHarness
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
@@ -84,6 +85,19 @@ class TournamentRepositorySpec : FunSpec({
         val result = tx.read { repository.findAll(TournamentFilter()) }
 
         result.map { it.id } shouldContainExactly listOf(april.id, may.id, june.id)
+    }
+
+    test("findAll breaks a start-date tie inside one transaction by id, since the rows share created_at") {
+        val sameWeek =
+            tx.update {
+                (1..6).map { index -> repository.create(create(name = "Event $index")) }
+            }
+
+        val result = tx.read { repository.findAll(TournamentFilter(seasonId = seasonId)) }
+
+        sameWeek.map { it.createdAt }.distinct().size shouldBe 1
+        result.map { it.id } shouldContainExactly
+            sameWeek.sortedWith(compareBy(POSTGRES_UUID_ORDER) { it.id.value }).map { it.id }
     }
 
     test("findAll filters by season_id") {

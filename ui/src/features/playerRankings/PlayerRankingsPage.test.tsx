@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, waitForElementToBeRemoved, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
 import { nth } from '@/shared/test/nth';
+import { queryKeys } from '@/shared/api/queryKeys';
+import QueryAnswered from '@/shared/test/QueryAnswered';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import type {
   League,
@@ -11,11 +13,13 @@ import type {
   Season,
   Tournament,
 } from '@/shared/api/types';
+import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import PlayerRankingsPage from './PlayerRankingsPage';
 
 const leaguesMock = vi.fn<typeof api.leagues>();
 const seasonsMock = vi.fn<typeof api.seasons>();
 const tournamentsMock = vi.fn<typeof api.tournaments>();
+const currentTournamentMock = vi.fn<typeof api.currentTournament>();
 const playerRankingsMock = vi.fn<typeof api.playerRankings>();
 
 vi.mock('@/shared/api/client', () => ({
@@ -23,6 +27,7 @@ vi.mock('@/shared/api/client', () => ({
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
     tournaments: (id: string) => tournamentsMock(id),
+    currentTournament: (id: string) => currentTournamentMock(id),
     playerRankings: (seasonId: string, live: boolean, throughTournamentId?: string) =>
       playerRankingsMock(seasonId, live, throughTournamentId),
   },
@@ -87,6 +92,7 @@ describe('PlayerRankingsPage', () => {
     leaguesMock.mockReset();
     seasonsMock.mockReset();
     tournamentsMock.mockReset();
+    currentTournamentMock.mockReset();
     playerRankingsMock.mockReset();
   });
 
@@ -97,6 +103,7 @@ describe('PlayerRankingsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournA, tournB]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-b' });
     playerRankingsMock.mockResolvedValue(
       rankings({
         players: [
@@ -142,6 +149,7 @@ describe('PlayerRankingsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournA, tournB]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-b' });
     playerRankingsMock.mockImplementation((_s: string, _live: boolean, throughId?: string) => {
       const total = throughId === 'tn-a' ? 18 : 30;
       return Promise.resolve(
@@ -165,7 +173,7 @@ describe('PlayerRankingsPage', () => {
     expect(playerRankingsMock).toHaveBeenCalledWith('sn-1', false, 'tn-a');
   });
 
-  it('defaults the through-selector to the earliest non-finalized tournament', async () => {
+  it("defaults the through-selector to the server's current tournament", async () => {
     const completed = tournament({
       id: 'tn-completed',
       startDate: '2026-03-01',
@@ -179,6 +187,7 @@ describe('PlayerRankingsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([completed, upcoming]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-upcoming' });
     playerRankingsMock.mockResolvedValue(rankings({}));
 
     renderWithProviders(<PlayerRankingsPage />);
@@ -188,11 +197,130 @@ describe('PlayerRankingsPage', () => {
     expect(select.value).toBe('tn-upcoming');
   });
 
+  it('runs through the tournament the server names, not the first unfinalized one in the list', async () => {
+    const first = tournament({ id: 'tn-a', name: 'Open A', status: 'upcoming' });
+    const second = tournament({ id: 'tn-b', name: 'Open B', status: 'upcoming', week: '10' });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([first, second]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-b' });
+    playerRankingsMock.mockResolvedValue(rankings({}));
+
+    renderWithProviders(<PlayerRankingsPage />);
+
+    await screen.findByText(/No players with a top 10 finish yet/i);
+    expect(screen.getByLabelText<HTMLSelectElement>(/Through/i).value).toBe('tn-b');
+    expect(playerRankingsMock).toHaveBeenCalledWith('sn-1', true, 'tn-b');
+    expect(playerRankingsMock).not.toHaveBeenCalledWith('sn-1', expect.anything(), 'tn-a');
+  });
+
+  it("drops a pick the newly selected season lacks and opens on that season's current tournament", async () => {
+    const fall: Season = { ...season, id: 'sn-2', name: 'Fall', seasonNumber: 2 };
+    const spring = tournament({ id: 'tn-a', status: 'completed' });
+    const autumn = tournament({ id: 'tn-fall', seasonId: 'sn-2', status: 'in_progress' });
+    playerRankingsMock.mockResolvedValue(rankings({}));
+
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season, fall]);
+    tournamentsMock.mockImplementation((seasonId) =>
+      Promise.resolve(seasonId === 'sn-1' ? [spring] : [autumn]),
+    );
+    currentTournamentMock.mockImplementation((seasonId) =>
+      Promise.resolve(
+        seasonId === 'sn-1'
+          ? { type: 'season_finalized', tournamentId: spring.id }
+          : { type: 'unfinalized', tournamentId: autumn.id },
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <LeagueSeasonPicker />
+        <PlayerRankingsPage />
+      </>,
+    );
+
+    await user.selectOptions(await screen.findByLabelText(/Through/i), spring.id);
+    await waitFor(() => expect(playerRankingsMock).toHaveBeenCalledWith('sn-1', false, 'tn-a'));
+    await user.selectOptions(screen.getByLabelText(/^Season$/), 'sn-2');
+
+    await waitFor(() => expect(playerRankingsMock).toHaveBeenCalledWith('sn-2', true, 'tn-fall'));
+    expect(playerRankingsMock).not.toHaveBeenCalledWith('sn-2', expect.anything(), 'tn-a');
+  });
+
+  it('shows the error, and fetches nothing, when the server cannot name the current tournament', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([tournament({ id: 'tn-a' })]);
+    currentTournamentMock.mockRejectedValue(new Error('down'));
+
+    renderWithProviders(<PlayerRankingsPage />);
+
+    expect(await screen.findByText(/Failed to load current tournament/i)).toBeInTheDocument();
+    expect(playerRankingsMock).not.toHaveBeenCalled();
+  });
+
+  it('fetches no rankings while the server has not yet named the current tournament', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([tournament({ id: 'tn-a' })]);
+    currentTournamentMock.mockReturnValue(new Promise(() => {}));
+
+    renderWithProviders(<PlayerRankingsPage />);
+
+    expect(await screen.findByText(/Loading current tournament/i)).toBeInTheDocument();
+    expect(playerRankingsMock).not.toHaveBeenCalled();
+  });
+
+  it('shows no selector, and fetches nothing, while the tournament list trails the answer', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockReturnValue(new Promise(() => {}));
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-a' });
+
+    renderWithProviders(
+      <>
+        <PlayerRankingsPage />
+        <QueryAnswered
+          queryKey={queryKeys.tournaments.current('sn-1')}
+          fetcher={() => currentTournamentMock('sn-1')}
+        />
+      </>,
+    );
+
+    expect(await screen.findByText(/Loading tournaments/i)).toBeInTheDocument();
+    expect(await screen.findByText('answered')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Through$/i)).not.toBeInTheDocument();
+    expect(playerRankingsMock).not.toHaveBeenCalled();
+  });
+
+  it('selects nothing, and fetches nothing, when the answer names a tournament the list lacks', async () => {
+    const answer = { release: (): void => {} };
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([tournament({ id: 'tn-a' })]);
+    currentTournamentMock.mockReturnValue(
+      new Promise((resolve) => {
+        answer.release = () => resolve({ type: 'unfinalized', tournamentId: 'tn-not-listed' });
+      }),
+    );
+
+    renderWithProviders(<PlayerRankingsPage />);
+
+    const loading = await screen.findByText(/Loading current tournament/i);
+    answer.release();
+    await waitForElementToBeRemoved(loading);
+    expect(screen.queryByLabelText(/^Through$/i)).not.toBeInTheDocument();
+    expect(playerRankingsMock).not.toHaveBeenCalled();
+  });
+
   it('shows the live toggle through the tournament in play and asks no live rankings at All Tournaments', async () => {
     const inProgress = tournament({ id: 'tn-a', name: 'Open A', status: 'in_progress' });
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([inProgress]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-a' });
     playerRankingsMock.mockResolvedValue(rankings({}));
 
     const user = userEvent.setup();
@@ -213,6 +341,7 @@ describe('PlayerRankingsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournA]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-a' });
     playerRankingsMock.mockResolvedValue(rankings({ players: [] }));
 
     renderWithProviders(<PlayerRankingsPage />);
@@ -226,6 +355,7 @@ describe('PlayerRankingsPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([tournA]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-a' });
     playerRankingsMock.mockRejectedValue(new Error('boom'));
 
     renderWithProviders(<PlayerRankingsPage />);

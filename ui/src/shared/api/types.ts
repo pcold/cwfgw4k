@@ -198,6 +198,12 @@ export interface Tournament {
   createdAt: string;
 }
 
+// Mirrors the backend's sealed CurrentTournament (com.cwfgw.tournaments), discriminated by `type`.
+export type CurrentTournament =
+  | { type: 'unfinalized'; tournamentId: string }
+  | { type: 'season_finalized'; tournamentId: string }
+  | { type: 'no_tournaments' };
+
 // Mirrors backend com.cwfgw.seasons.Season. tieFloor/sideBetAmount/maxTeams
 // are part of the wire shape — keeping them in the TS type so a future
 // backend change ripples back to the UI as a type error rather than a

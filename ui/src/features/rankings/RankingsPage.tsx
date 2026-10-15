@@ -5,29 +5,40 @@ import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
-import { earliestUnfinalized, tournamentLabel } from '@/shared/util/tournament';
+import {
+  ALL_TOURNAMENTS,
+  defaultReportSelection,
+  pickInSeason,
+  tournamentLabel,
+} from '@/shared/util/tournament';
 import RankingsView from './RankingsView';
-
-const ALL_TOURNAMENTS = '';
 
 function RankingsPage(): ReactNode {
   const { seasonId } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
-  // null = user hasn't picked yet, use the computed default; "" = user
-  // explicitly picked All Tournaments; "<uuid>" = explicit tournament.
   const [throughOverride, setThroughOverride] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
     queryKey: queryKeys.tournaments.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
+  const currentQuery = useQuery({
+    queryKey: queryKeys.tournaments.current(seasonId),
+    queryFn: seasonId === null ? skipToken : () => api.currentTournament(seasonId),
+  });
 
   const tournaments = tournamentsQuery.data;
-  const defaultThrough =
-    tournaments === undefined ? null : (earliestUnfinalized(tournaments) ?? ALL_TOURNAMENTS);
-  const throughTournamentId = throughOverride ?? defaultThrough;
+  const throughTournamentId =
+    tournaments === undefined
+      ? null
+      : (pickInSeason(throughOverride, tournaments) ??
+        pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
 
-  const liveOverlay = useLiveOverlay(tournaments ?? [], throughTournamentId);
+  const liveOverlay = useLiveOverlay(
+    tournaments ?? [],
+    currentQuery.data,
+    throughTournamentId || null,
+  );
 
   const rankingsQuery = useQuery({
     queryKey: queryKeys.rankings.detail(seasonId, liveOverlay.effectiveLive, throughTournamentId),
@@ -39,6 +50,17 @@ function RankingsPage(): ReactNode {
   });
 
   if (leaguesGate) return leaguesGate;
+  if (tournaments === undefined || throughTournamentId === null) {
+    return (
+      <QueryState query={tournamentsQuery} label="tournaments">
+        {() => (
+          <QueryState query={currentQuery} label="current tournament">
+            {() => null}
+          </QueryState>
+        )}
+      </QueryState>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -52,11 +74,11 @@ function RankingsPage(): ReactNode {
         <select
           id="rankings-through-tournament"
           className="bg-surface-card border border-control-border rounded px-3 py-2 text-sm"
-          value={throughTournamentId ?? ALL_TOURNAMENTS}
+          value={throughTournamentId}
           onChange={(e) => setThroughOverride(e.target.value)}
         >
           <option value={ALL_TOURNAMENTS}>All Tournaments</option>
-          {(tournaments ?? []).map((t) => (
+          {tournaments.map((t) => (
             <option key={t.id} value={t.id}>
               {tournamentLabel(t)}
             </option>

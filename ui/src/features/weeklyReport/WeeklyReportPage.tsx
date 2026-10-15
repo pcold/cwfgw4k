@@ -6,15 +6,18 @@ import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlay } from '@/shared/components/LiveOverlayToggle';
-import { earliestUnfinalized, tournamentLabel } from '@/shared/util/tournament';
+import {
+  ALL_TOURNAMENTS,
+  defaultReportSelection,
+  pickInSeason,
+  tournamentLabel,
+} from '@/shared/util/tournament';
 import type { Season, WeeklyReport } from '@/shared/api/types';
 import WeeklyReportView from './WeeklyReportView';
 
 function downloadPdf(report: WeeklyReport, season: Season | null): Promise<void> {
   return import('./weeklyReportPdf').then((m) => m.downloadWeeklyReportPdf(report, season));
 }
-
-const ALL_TOURNAMENTS = '';
 
 const DOWNLOAD_BUTTON_CLASS =
   'bg-surface-card border border-control-border rounded px-3 py-2 text-sm hover:bg-surface-raised ' +
@@ -31,21 +34,27 @@ function WeeklyReportPage(): ReactNode {
     queryKey: queryKeys.tournaments.bySeason(seasonId),
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
+  const currentQuery = useQuery({
+    queryKey: queryKeys.tournaments.current(seasonId),
+    queryFn: seasonId === null ? skipToken : () => api.currentTournament(seasonId),
+  });
 
   const pdfMutation = useMutation({
     mutationFn: (report: WeeklyReport) => downloadPdf(report, currentSeason),
   });
 
-  const tournaments = tournamentsQuery.data ?? [];
-  // Derived rather than synced: user's pick wins, otherwise the earliest
-  // unfinalized tournament, otherwise the "All Tournaments" sentinel.
-  const effectiveId = userTournamentId ?? earliestUnfinalized(tournaments) ?? ALL_TOURNAMENTS;
-  const liveOverlay = useLiveOverlay(tournaments, effectiveId || null);
+  const tournaments = tournamentsQuery.data;
+  const effectiveId =
+    tournaments === undefined
+      ? null
+      : (pickInSeason(userTournamentId, tournaments) ??
+        pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
+  const liveOverlay = useLiveOverlay(tournaments ?? [], currentQuery.data, effectiveId || null);
 
   const reportQuery = useQuery({
     queryKey: queryKeys.report.detail(seasonId, effectiveId, liveOverlay.effectiveLive),
     queryFn:
-      seasonId === null
+      seasonId === null || effectiveId === null
         ? skipToken
         : () =>
             effectiveId === ALL_TOURNAMENTS
@@ -54,6 +63,17 @@ function WeeklyReportPage(): ReactNode {
   });
 
   if (leaguesGate) return leaguesGate;
+  if (tournaments === undefined || effectiveId === null) {
+    return (
+      <QueryState query={tournamentsQuery} label="tournaments">
+        {() => (
+          <QueryState query={currentQuery} label="current tournament">
+            {() => null}
+          </QueryState>
+        )}
+      </QueryState>
+    );
+  }
 
   return (
     <div className="space-y-4">

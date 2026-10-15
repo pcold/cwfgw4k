@@ -1,4 +1,7 @@
-import type { Tournament } from '@/shared/api/types';
+import type { CurrentTournament, Tournament } from '@/shared/api/types';
+
+/** The report pages' sentinel for the season-wide rollup, which the server keeps to finalized results. */
+export const ALL_TOURNAMENTS = '';
 
 export function tournamentLabel(t: Tournament): string {
   const multiplier = t.payoutMultiplier !== 1 ? ` (${t.payoutMultiplier}x)` : '';
@@ -6,21 +9,44 @@ export function tournamentLabel(t: Tournament): string {
 }
 
 /**
- * Pick the earliest non-completed tournament — what the report pages want
- * as their default selection while the season is in progress. Null when
- * everything is completed (or the list is empty); callers decide the
- * fallback (an "All Tournaments" rollup for report pages,
- * `defaultScoreboardTournament` for the scoreboard).
+ * Null once the loaded list lacks the pick, so a season change needs no handler and an answer the
+ * cached list trails selects no option the dropdown lacks.
  */
-export function earliestUnfinalized(tournaments: readonly Tournament[]): string | null {
-  return tournaments.find((t) => t.status !== 'completed')?.id ?? null;
+export function pickInSeason(
+  pick: string | null,
+  tournaments: readonly Tournament[],
+): string | null {
+  if (pick === ALL_TOURNAMENTS) return pick;
+  return tournaments.some((t) => t.id === pick) ? pick : null;
 }
 
 /**
- * Default tournament for the scoreboard view. Once the season is fully
- * finalized the scoreboard still wants a single tournament selected (no
- * "All" rollup), and the most useful one is the most recent.
+ * Null until the server answers, so a page fetches nothing for a default it would then replace. A
+ * finalized season opens on the rollup, which then holds every result.
  */
-export function defaultScoreboardTournament(tournaments: readonly Tournament[]): string | null {
-  return earliestUnfinalized(tournaments) ?? tournaments.at(-1)?.id ?? null;
+export function defaultReportSelection(current: CurrentTournament | undefined): string | null {
+  if (current === undefined) return null;
+  switch (current.type) {
+    case 'unfinalized':
+      return current.tournamentId;
+    case 'season_finalized':
+    case 'no_tournaments':
+      return ALL_TOURNAMENTS;
+    default:
+      return current satisfies never;
+  }
+}
+
+/** The scoreboard shows one tournament and has no rollup, so a finalized season opens on its last. */
+export function defaultScoreboardSelection(current: CurrentTournament | undefined): string | null {
+  if (current === undefined) return null;
+  switch (current.type) {
+    case 'unfinalized':
+    case 'season_finalized':
+      return current.tournamentId;
+    case 'no_tournaments':
+      return null;
+    default:
+      return current satisfies never;
+  }
 }

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { Tournament } from '@/shared/api/types';
-import { defaultScoreboardTournament, earliestUnfinalized, tournamentLabel } from './tournament';
+import {
+  ALL_TOURNAMENTS,
+  defaultReportSelection,
+  defaultScoreboardSelection,
+  pickInSeason,
+  tournamentLabel,
+} from './tournament';
 
 function makeTournament(overrides: Partial<Tournament> = {}): Tournament {
   return {
@@ -42,50 +48,63 @@ describe('tournamentLabel', () => {
   });
 });
 
-describe('earliestUnfinalized', () => {
-  it('returns the first non-completed tournament when the list is sorted oldest-first', () => {
-    const tournaments: Tournament[] = [
-      makeTournament({ id: 'tn-1', status: 'completed' }),
-      makeTournament({ id: 'tn-2', status: 'completed' }),
-      makeTournament({ id: 'tn-3', status: 'in_progress' }),
-      makeTournament({ id: 'tn-4', status: 'upcoming' }),
-    ];
-    expect(earliestUnfinalized(tournaments)).toBe('tn-3');
+describe('pickInSeason', () => {
+  const loaded = [makeTournament({ id: 'tn-1' }), makeTournament({ id: 'tn-2' })];
+
+  it('keeps a pick the loaded season holds', () => {
+    expect(pickInSeason('tn-2', loaded)).toBe('tn-2');
   });
 
-  it('returns null when every event is completed (caller picks the fallback)', () => {
-    const tournaments: Tournament[] = [
-      makeTournament({ id: 'tn-1', status: 'completed' }),
-      makeTournament({ id: 'tn-2', status: 'completed' }),
-    ];
-    expect(earliestUnfinalized(tournaments)).toBeNull();
+  it('drops a pick the loaded season lacks', () => {
+    expect(pickInSeason('tn-other', loaded)).toBeNull();
+    expect(pickInSeason('tn-1', [])).toBeNull();
   });
 
-  it('returns null on an empty list', () => {
-    expect(earliestUnfinalized([])).toBeNull();
+  it('keeps All Tournaments, which every season has', () => {
+    expect(pickInSeason(ALL_TOURNAMENTS, [])).toBe(ALL_TOURNAMENTS);
+  });
+
+  it('has nothing to keep before a pick', () => {
+    expect(pickInSeason(null, loaded)).toBeNull();
   });
 });
 
-describe('defaultScoreboardTournament', () => {
-  it('returns the earliest non-completed tournament when one exists', () => {
-    const tournaments: Tournament[] = [
-      makeTournament({ id: 'tn-1', status: 'completed' }),
-      makeTournament({ id: 'tn-2', status: 'in_progress' }),
-      makeTournament({ id: 'tn-3', status: 'upcoming' }),
-    ];
-    expect(defaultScoreboardTournament(tournaments)).toBe('tn-2');
+describe('defaultReportSelection', () => {
+  it('waits for the server rather than guessing', () => {
+    expect(defaultReportSelection(undefined)).toBeNull();
   });
 
-  it('falls back to the last tournament when every event is completed', () => {
-    const tournaments: Tournament[] = [
-      makeTournament({ id: 'tn-1', status: 'completed' }),
-      makeTournament({ id: 'tn-2', status: 'completed' }),
-      makeTournament({ id: 'tn-3', status: 'completed' }),
-    ];
-    expect(defaultScoreboardTournament(tournaments)).toBe('tn-3');
+  it('opens on the unfinalized tournament the server names', () => {
+    expect(defaultReportSelection({ type: 'unfinalized', tournamentId: 'tn-3' })).toBe('tn-3');
   });
 
-  it('returns null on an empty list', () => {
-    expect(defaultScoreboardTournament([])).toBeNull();
+  it('opens on All Tournaments once the season is finalized, not on its last event', () => {
+    expect(defaultReportSelection({ type: 'season_finalized', tournamentId: 'tn-9' })).toBe(
+      ALL_TOURNAMENTS,
+    );
+  });
+
+  it('opens on All Tournaments for a season with none', () => {
+    expect(defaultReportSelection({ type: 'no_tournaments' })).toBe(ALL_TOURNAMENTS);
+  });
+});
+
+describe('defaultScoreboardSelection', () => {
+  it('waits for the server rather than guessing', () => {
+    expect(defaultScoreboardSelection(undefined)).toBeNull();
+  });
+
+  it('opens on the unfinalized tournament the server names', () => {
+    expect(defaultScoreboardSelection({ type: 'unfinalized', tournamentId: 'tn-3' })).toBe('tn-3');
+  });
+
+  it('opens on the last tournament once the season is finalized', () => {
+    expect(defaultScoreboardSelection({ type: 'season_finalized', tournamentId: 'tn-9' })).toBe(
+      'tn-9',
+    );
+  });
+
+  it('selects nothing for a season with none', () => {
+    expect(defaultScoreboardSelection({ type: 'no_tournaments' })).toBeNull();
   });
 });

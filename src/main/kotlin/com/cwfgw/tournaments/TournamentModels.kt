@@ -7,7 +7,10 @@ import com.cwfgw.serialization.InstantSerializer
 import com.cwfgw.serialization.LocalDateSerializer
 import com.cwfgw.serialization.UUIDSerializer
 import com.cwfgw.serialization.toUUIDOrNull
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -44,6 +47,30 @@ data class Tournament(
     val isTeamEvent: Boolean,
     @Serializable(with = InstantSerializer::class) val createdAt: Instant,
 )
+
+/**
+ * A variant per case, not a nullable id beside an `allFinalized` flag, which could claim a finalized season with no
+ * tournament in it.
+ */
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface CurrentTournament {
+    /** The earliest tournament not yet finalized, in schedule order. */
+    @Serializable
+    @SerialName("unfinalized")
+    data class Unfinalized(val tournamentId: TournamentId) : CurrentTournament
+
+    /** Every tournament is finalized; [tournamentId] is the season's last. */
+    @Serializable
+    @SerialName("season_finalized")
+    data class SeasonFinalized(val tournamentId: TournamentId) : CurrentTournament
+
+    /** Answered for an unknown season id too, as `GET /tournaments?season_id=` answers it with an empty list. */
+    @Serializable
+    @SerialName("no_tournaments")
+    data object NoTournaments : CurrentTournament
+}
 
 data class TournamentResult(
     val id: TournamentResultId,
