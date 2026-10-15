@@ -1,6 +1,5 @@
 package com.cwfgw.tournaments
 
-import com.cwfgw.db.LOCK_TIMEOUT_MS
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
 import com.cwfgw.db.WriteTransactionContext
@@ -16,7 +15,7 @@ import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.teams.TeamRepository
-import com.cwfgw.testing.PostgresHarness
+import com.cwfgw.testing.Pause
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.seedTournament
@@ -28,27 +27,13 @@ import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withTimeout
-import org.jooq.impl.DSL
-import java.time.Duration
-import java.time.Instant
 import java.time.LocalDate
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
 private const val EVENT_ESPN_ID = "401580999"
 private const val FINISHER_ESPN_ID = "9478"
 private val EARLIER_WEEK: LocalDate = LocalDate.parse("2026-04-16")
-
-/** A holder never released lets go before its waiter's lock_timeout would fire. */
-private const val HOLD_CEILING_MS: Long = LOCK_TIMEOUT_MS - 2_000
-private val LOCK_WAIT_DEADLINE: Duration = Duration.ofMillis(HOLD_CEILING_MS - 1_000)
 
 /** Each race pauses one transaction past its gate, then starts a contender that must wait for it, not slip by. */
 class TournamentSiblingRaceSpec : FunSpec({
@@ -117,36 +102,10 @@ class TournamentSiblingRaceSpec : FunSpec({
     }
 })
 
-/** Stops one transaction where its hook fires, until [contend] has seen a contender wait on a lock or finish. */
-private class Pause {
-    private val reached = CompletableDeferred<Unit>()
-    private val release = CountDownLatch(1)
+private fun Pause.afterFindAll(): TournamentRepository =
+    FindAllPausingTournamentRepository(TournamentRepository(), this)
 
-    fun afterFindAll(): TournamentRepository = FindAllPausingTournamentRepository(TournamentRepository(), this)
-
-    fun afterGolferFindAll(): GolferRepository = FindAllPausingGolferRepository(GolferRepository(), this)
-
-    fun hold() {
-        reached.complete(Unit)
-        release.await(HOLD_CEILING_MS, TimeUnit.MILLISECONDS)
-    }
-
-    /** The contender, and whether it was seen waiting on a lock while the paused transaction held. */
-    suspend fun <T> contend(
-        postgres: PostgresHarness,
-        contender: () -> Deferred<T>,
-    ): Pair<Deferred<T>, Boolean> {
-        withTimeout(HOLD_CEILING_MS) { reached.await() }
-        val started = contender()
-        val waited =
-            try {
-                postgres.awaitLockWait(started)
-            } finally {
-                release.countDown()
-            }
-        return started to waited
-    }
-}
+private fun Pause.afterGolferFindAll(): GolferRepository = FindAllPausingGolferRepository(GolferRepository(), this)
 
 /** Finalize and reset each call findAll once, for the ordering check against their siblings. */
 private class FindAllPausingTournamentRepository(
@@ -164,25 +123,6 @@ private class FindAllPausingGolferRepository(
 ) : GolferRepository by delegate {
     context(ctx: TransactionContext)
     override fun findAll(search: String?): List<Golfer> = delegate.findAll(search).also { pause.hold() }
-}
-
-/**
- * True once a session in this spec's database waits on a lock; false if [pending] finishes first or the deadline
- * passes. The waiter runs through [Transactor], whose connection the spec can't name, so the database scopes the
- * search.
- */
-private suspend fun PostgresHarness.awaitLockWait(pending: Job): Boolean {
-    val deadline = Instant.now().plus(LOCK_WAIT_DEADLINE)
-    while (!pending.isCompleted && Instant.now().isBefore(deadline)) {
-        val waiting =
-            dsl.fetchExists(
-                DSL.selectOne().from("pg_stat_activity")
-                    .where("datname = current_database() and wait_event_type = 'Lock'"),
-            )
-        if (waiting) return true
-        delay(10)
-    }
-    return false
 }
 
 /** Every service reads one scoreboard: [EVENT_ESPN_ID], completed, on the seeded tournaments' start date. */

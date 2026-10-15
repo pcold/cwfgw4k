@@ -6,7 +6,6 @@ import com.cwfgw.admin.ConfirmedPick
 import com.cwfgw.admin.DRAFT_ROUNDS
 import com.cwfgw.admin.GolferAssignment
 import com.cwfgw.admin.fullTeam
-import com.cwfgw.db.LOCK_TIMEOUT_MS
 import com.cwfgw.db.Transactor
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.espn.EspnCompetitor
@@ -24,34 +23,20 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.TeamRepository
-import com.cwfgw.testing.PostgresHarness
+import com.cwfgw.testing.Pause
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.seedTournament
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withTimeout
-import org.jooq.impl.DSL
-import java.time.Instant
 import java.time.LocalDate
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-
-/** A holder never released lets go before its waiter's lock_timeout would fire. */
-private const val HOLD_CEILING_MS: Long = LOCK_TIMEOUT_MS - 2_000
-
-/** Under [HOLD_CEILING_MS], so the probe gives up before the paused import releases itself. */
-private const val LOCK_WAIT_DEADLINE_MS: Long = HOLD_CEILING_MS - 1_000
 
 private const val FIRST_EVENT_ESPN_ID = "evt-first"
 private const val SECOND_EVENT_ESPN_ID = "evt-second"
@@ -68,15 +53,15 @@ class TournamentImportConfirmRaceSpec : FunSpec({
 
     test("a two-event import and a roster confirm sharing new athletes both commit rather than deadlock") {
         val seeded = tx.update { seedRace() }
-        val hold = WriteHold(postgres)
+        val pause = Pause()
         val confirm = rosterConfirm(seeded.confirmSeason, ConfirmPicks.FLEETWOOD_AND_ABERG)
 
         val confirmed =
             coroutineScope {
-                val finalize = async { opsService(tx, hold.pausing()).finalizeTournament(seeded.unlinked.id) }
-                val confirming = hold.whileHeld { async { adminService(tx).confirmRoster(confirm) } }
+                val finalize = async { opsService(tx, pause.afterFirstWrite()).finalizeTournament(seeded.unlinked.id) }
+                val (confirming, waited) = pause.contend(postgres) { async { adminService(tx).confirmRoster(confirm) } }
                 finalize.await().orFail()
-                confirming.await().orFail()
+                confirming.await().orFail().also { waited.shouldBeTrue() }
             }
 
         // "100"'s backfill lost to the import's on its own row, so beside the fillers only "300"'s create counts.
@@ -139,58 +124,21 @@ private fun rosterConfirm(
 ): ConfirmRosterRequest =
     ConfirmRosterRequest(seasonId = seasonId, teams = listOf(fullTeam(1, "BROWN", *picks.toTypedArray())))
 
-/** The import stops just after its first golfer write until [whileHeld] has seen the confirm wait on a lock. */
-private class WriteHold(private val postgres: PostgresHarness) {
-    private val written = CompletableDeferred<Unit>()
-    private val release = CountDownLatch(1)
-
-    fun pausing(): GolferRepository = FirstWritePausingGolferRepository(GolferRepository(), this)
-
-    fun afterWrite() {
-        if (written.complete(Unit)) release.await(HOLD_CEILING_MS, TimeUnit.MILLISECONDS)
-    }
-
-    /** Fails unless [contender] blocks on a lock: one that is merely slow never staged the race. */
-    suspend fun <T> whileHeld(contender: () -> Deferred<T>): Deferred<T> {
-        withTimeout(HOLD_CEILING_MS) { written.await() }
-        val started = contender()
-        try {
-            postgres.awaitLockWait(started) shouldBe true
-        } finally {
-            release.countDown()
-        }
-        return started
-    }
-}
+private fun Pause.afterFirstWrite(): GolferRepository = FirstWritePausingGolferRepository(GolferRepository(), this)
 
 private class FirstWritePausingGolferRepository(
     private val delegate: GolferRepository,
-    private val hold: WriteHold,
+    private val pause: Pause,
 ) : GolferRepository by delegate {
     context(ctx: WriteTransactionContext)
     override fun findOrCreate(request: CreateGolferRequest): Golfer =
-        delegate.findOrCreate(request).also { hold.afterWrite() }
+        delegate.findOrCreate(request).also { pause.hold() }
 
     context(ctx: WriteTransactionContext)
     override fun backfillPgaPlayerId(
         id: GolferId,
         pgaPlayerId: String,
-    ): Golfer? = delegate.backfillPgaPlayerId(id, pgaPlayerId).also { hold.afterWrite() }
-}
-
-/** The waiter runs through [Transactor], whose connection the spec can't name, so the database scopes the search. */
-private suspend fun PostgresHarness.awaitLockWait(pending: Job): Boolean {
-    val deadline = Instant.now().plusMillis(LOCK_WAIT_DEADLINE_MS)
-    while (!pending.isCompleted && Instant.now().isBefore(deadline)) {
-        val waiting =
-            dsl.fetchExists(
-                DSL.selectOne().from("pg_stat_activity")
-                    .where("datname = current_database() and wait_event_type = 'Lock'"),
-            )
-        if (waiting) return true
-        delay(10)
-    }
-    return false
+    ): Golfer? = delegate.backfillPgaPlayerId(id, pgaPlayerId).also { pause.hold() }
 }
 
 private fun opsService(

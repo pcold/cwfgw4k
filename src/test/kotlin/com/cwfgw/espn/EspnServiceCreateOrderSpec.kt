@@ -1,6 +1,5 @@
 package com.cwfgw.espn
 
-import com.cwfgw.db.LOCK_TIMEOUT_MS
 import com.cwfgw.db.Transactor
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.golfers.CreateGolferRequest
@@ -11,7 +10,7 @@ import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.teams.TeamRepository
-import com.cwfgw.testing.PostgresHarness
+import com.cwfgw.testing.Pause
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.seedTournament
@@ -25,30 +24,17 @@ import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentResult
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withTimeout
-import org.jooq.impl.DSL
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-
-/** A holder never released lets go before its waiter's lock_timeout would fire. */
-private const val HOLD_CEILING_MS: Long = LOCK_TIMEOUT_MS - 2_000
-
-/** Under [HOLD_CEILING_MS], so the probe gives up before the paused import releases itself. */
-private const val LOCK_WAIT_DEADLINE_MS: Long = HOLD_CEILING_MS - 1_000
 
 /** A roster confirm inserts new athletes in espnId order, so an import inserting them in any other can deadlock it. */
 class EspnServiceCreateOrderSpec : FunSpec({
@@ -86,12 +72,12 @@ class EspnServiceCreateOrderSpec : FunSpec({
 
     test("an import and a confirm inserting the same new athletes both commit rather than deadlock") {
         val tournament = tx.update { checkNotNull(TournamentRepository().findById(seedTournament("evt-401"))) }
-        val hold = InsertHold(postgres)
+        val pause = Pause()
         val service =
             testEspnService(
                 client = FakeEspnClient(),
                 seasonRepository = SeasonRepository(),
-                golferRepository = hold.pausing(),
+                golferRepository = pause.afterFirstInsert(),
                 teamRepository = TeamRepository(),
                 tournamentRepository = TournamentRepository(),
                 linkRepository = TournamentLinkRepository(),
@@ -105,9 +91,10 @@ class EspnServiceCreateOrderSpec : FunSpec({
 
         coroutineScope {
             val import = async { tx.update { service.persistImportIn(tournament, mastersEvent(leaderboard)) } }
-            val confirm = hold.whileHeld { async { tx.update { insertAsConfirmDoes(leaderboard) } } }
+            val (confirm, waited) = pause.contend(postgres) { async { tx.update { insertAsConfirmDoes(leaderboard) } } }
             import.await()
             confirm.await()
+            waited.shouldBeTrue()
         }
 
         tx.get { GolferRepository().findAll(search = null) }.map { it.pgaPlayerId } shouldContainExactlyInAnyOrder
@@ -160,52 +147,15 @@ private class RecordingTournamentRepository(
     }
 }
 
-/** The import stops just after its first golfer insert until [whileHeld] has seen the contender wait on a lock. */
-private class InsertHold(private val postgres: PostgresHarness) {
-    private val inserted = CompletableDeferred<Unit>()
-    private val release = CountDownLatch(1)
+private fun Pause.afterFirstInsert(): GolferRepository = InsertPausingGolferRepository(GolferRepository(), this)
 
-    fun pausing(): GolferRepository = PausingGolferRepository(GolferRepository(), inserted, release)
-
-    /** Fails unless [contender] blocks on a lock: one that is merely slow never staged the race. */
-    suspend fun <T> whileHeld(contender: () -> Deferred<T>): Deferred<T> {
-        withTimeout(HOLD_CEILING_MS) { inserted.await() }
-        val started = contender()
-        try {
-            postgres.awaitLockWait(started) shouldBe true
-        } finally {
-            release.countDown()
-        }
-        return started
-    }
-}
-
-private class PausingGolferRepository(
+private class InsertPausingGolferRepository(
     private val delegate: GolferRepository,
-    private val inserted: CompletableDeferred<Unit>,
-    private val release: CountDownLatch,
+    private val pause: Pause,
 ) : GolferRepository by delegate {
     context(ctx: WriteTransactionContext)
-    override fun findOrCreate(request: CreateGolferRequest): Golfer {
-        val golfer = delegate.findOrCreate(request)
-        if (inserted.complete(Unit)) release.await(HOLD_CEILING_MS, TimeUnit.MILLISECONDS)
-        return golfer
-    }
-}
-
-/** The waiter runs through [Transactor], whose connection the spec can't name, so the database scopes the search. */
-private suspend fun PostgresHarness.awaitLockWait(pending: Job): Boolean {
-    val deadline = Instant.now().plusMillis(LOCK_WAIT_DEADLINE_MS)
-    while (!pending.isCompleted && Instant.now().isBefore(deadline)) {
-        val waiting =
-            dsl.fetchExists(
-                DSL.selectOne().from("pg_stat_activity")
-                    .where("datname = current_database() and wait_event_type = 'Lock'"),
-            )
-        if (waiting) return true
-        delay(10)
-    }
-    return false
+    override fun findOrCreate(request: CreateGolferRequest): Golfer =
+        delegate.findOrCreate(request).also { pause.hold() }
 }
 
 /** Stands in for `AdminService.resolveEspnGolfers`, which inserts a confirm's new athletes this way. */
