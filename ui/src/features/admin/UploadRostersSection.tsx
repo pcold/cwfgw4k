@@ -62,6 +62,7 @@ function assignmentFor(pick: RosterPreviewPick, selected: string): GolferAssignm
     case 'matched':
       return { type: 'existing', golferId: match.golferId };
     case 'matched_espn':
+    case 'matched_backfill':
       return { type: 'espn', espnId: match.espnId, name: match.golferName };
     case 'ambiguous': {
       const chosen = match.candidates.find((candidate) => candidateValue(candidate) === selected);
@@ -362,7 +363,9 @@ function RosterReviewStep({
                       {pick.ownershipPct < 100 ? `${pick.ownershipPct}%` : null}
                     </td>
                     <td className="px-2 py-1.5 w-6 text-center">
-                      {match.type === 'matched' || match.type === 'matched_espn' ? (
+                      {match.type === 'matched' ||
+                      match.type === 'matched_espn' ||
+                      match.type === 'matched_backfill' ? (
                         <span className="text-semantic-success" aria-label="exact match">
                           ✓
                         </span>
@@ -386,6 +389,12 @@ function RosterReviewStep({
                         <>
                           <span className="text-semantic-success">{match.golferName}</span>
                           <span className="ml-1 text-ink-muted">(new from ESPN)</span>
+                        </>
+                      ) : null}
+                      {match.type === 'matched_backfill' ? (
+                        <>
+                          <span className="text-semantic-success">{match.golferName}</span>
+                          <span className="ml-1 text-ink-muted">(ESPN id added on confirm)</span>
                         </>
                       ) : null}
                       {match.type === 'ambiguous' ? (

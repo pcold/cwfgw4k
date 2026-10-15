@@ -37,6 +37,12 @@ sealed interface AdminError {
      */
     data class TeamNameTaken(val seasonId: SeasonId) : AdminError
 
+    /**
+     * The [espnIds] picks name one lone row without a `pga_player_id`, so which athlete it is would be a guess. The
+     * preview never offers this against the rows it read; a hand-built payload, or such a row added since, can.
+     */
+    data class UnresolvableEspnGolfers(val espnIds: List<String>) : AdminError
+
     /** Found before anything is written, every check run so one refusal lists every problem. */
     data class InvalidConfirmedRoster(val problems: List<ConfirmedRosterProblem>) : AdminError
 }
@@ -59,7 +65,7 @@ sealed interface ConfirmedRosterProblem {
         val lastName: String,
     ) : ConfirmedRosterProblem
 
-    /** @see RepeatedExistingGolfer */
+    /** One `espnId` resolves to one golfer row, so both picks collide as [RepeatedExistingGolfer]'s do. */
     data class RepeatedEspnGolfer(val teamName: String, val espnId: String) : ConfirmedRosterProblem
 
     /** No surname to store. The preview never offers such an athlete, so only a hand-built payload carries one. */

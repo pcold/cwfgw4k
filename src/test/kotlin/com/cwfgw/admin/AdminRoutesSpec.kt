@@ -428,6 +428,26 @@ class AdminRoutesSpec : FunSpec({
         }
     }
 
+    test("POST /api/v1/admin/roster/confirm returns 422 naming ESPN athletes that all name one id-less golfer") {
+        val idless = golfer("301", "Tom", "Kim").copy(pgaPlayerId = null)
+        authenticatedApiTest(adminFixture(seedGolfers = listOf(idless))) { client ->
+            val response =
+                client.post("/api/v1/admin/roster/confirm") {
+                    contentType(ContentType.Application.Json)
+                    val teams =
+                        listOf("espn-1", "espn-2").mapIndexed { index, espnId ->
+                            val assignment = GolferAssignment.Espn(espnId = espnId, name = "Tom Kim")
+                            val pick = ConfirmedPick(round = 1, ownershipPct = 100, assignment = assignment)
+                            fullTeam(number = index + 1, name = "TEAM ${index + 1}", pick)
+                        }
+                    setBody(ConfirmRosterRequest(seasonId = SEASON_ID, teams = teams))
+                }
+
+            response.status shouldBe HttpStatusCode.UnprocessableEntity
+            response.bodyAsString().shouldContain("ESPN athletes espn-1, espn-2")
+        }
+    }
+
     test("POST /api/v1/admin/roster/confirm returns 400 naming a pick in a round outside the draft") {
         authenticatedApiTest(adminFixture()) { client ->
             val roundNine =

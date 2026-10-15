@@ -7,6 +7,7 @@ import com.cwfgw.espn.EspnCalendarEntry
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnUpstreamException
 import com.cwfgw.golfers.CreateGolferRequest
+import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferName
 import com.cwfgw.golfers.GolferNameIndex
@@ -15,6 +16,7 @@ import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.golfers.normalizeName
 import com.cwfgw.result.Result
+import com.cwfgw.result.map
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.AddToRosterRequest
@@ -216,7 +218,11 @@ class AdminService(
         return RosterPreviewResult(
             teams = teams,
             totalPicks = allPicks.size,
-            matchedCount = allPicks.count { it.match is PickMatch.Matched || it.match is PickMatch.MatchedEspn },
+            matchedCount =
+                allPicks.count { pick ->
+                    pick.match is PickMatch.Matched || pick.match is PickMatch.MatchedEspn ||
+                        pick.match is PickMatch.MatchedBackfill
+                },
             ambiguousCount = allPicks.count { it.match is PickMatch.Ambiguous },
             unmatchedCount = allPicks.count { it.match == PickMatch.NoMatch },
         )
@@ -241,41 +247,88 @@ class AdminService(
             UNIQUE_TEAM_NAME_PER_SEASON,
             outraced = { AdminError.TeamNameTaken(request.seasonId) },
         ) {
-            val espnGolfers = resolveEspnGolfers(request.teams)
-            val builtTeams =
-                request.teams.map { team -> persistConfirmedTeam(request.seasonId, team, espnGolfers.golferIds) }
-            Result.Ok(
+            resolveEspnGolfers(request.teams).map { espnGolfers ->
+                val builtTeams =
+                    request.teams.map { team -> persistConfirmedTeam(request.seasonId, team, espnGolfers.golferIds) }
                 RosterUploadResult(
                     teamsCreated = builtTeams.size,
                     golfersCreated = espnGolfers.insertedCount + builtTeams.sumOf { (_, newGolfers) -> newGolfers },
                     teams = builtTeams.map { (createdTeam, _) -> createdTeam },
-                ),
-            )
+                )
+            }
         }
     }
 
     /**
-     * Before any team, so an athlete two teams share is one row. [EspnGolfers.insertedCount] can include a row a
-     * concurrent confirm inserted first, since [GolferRepository.findOrCreate] returns either the same way.
+     * Before any team, so an athlete two teams share is one row, and every refusal is decided before the first write
+     * since a returned error still commits. [EspnGolfers.insertedCount] can include a row a concurrent confirm
+     * inserted first, since [GolferRepository.findOrCreate] returns either the same way.
      */
     context(ctx: WriteTransactionContext)
-    private fun resolveEspnGolfers(teams: List<ConfirmedTeam>): EspnGolfers {
+    private fun resolveEspnGolfers(teams: List<ConfirmedTeam>): Result<EspnGolfers, AdminError> {
         val athletes =
             teams.flatMap { it.picks }
                 .map(ConfirmedPick::assignment)
                 .filterIsInstance<GolferAssignment.Espn>()
                 .distinctBy(GolferAssignment.Espn::espnId)
-                // A conflicting insert waits on the other transaction's row, so roster order would let two confirms
-                // that share athletes deadlock.
+                // A conflicting insert or backfill waits on the other transaction's row, so roster order would let
+                // two confirms that share athletes deadlock. A roster row's key-share lock on a backfilled golfer
+                // is not ordered by this.
                 .sortedBy(GolferAssignment.Espn::espnId)
         val persisted =
             athletes.mapNotNull { athlete ->
                 golferRepository.findByPgaPlayerId(athlete.espnId)?.let { golfer -> athlete.espnId to golfer.id }
             }.toMap()
-        val inserted =
-            athletes.filterNot { it.espnId in persisted }
-                .associate { athlete -> athlete.espnId to golferRepository.findOrCreate(athlete.toCreateRequest()).id }
-        return EspnGolfers(golferIds = persisted + inserted, insertedCount = inserted.size)
+        val unpersisted = athletes.filterNot { it.espnId in persisted }
+        val targets = targetRowsByName(unpersisted)
+        val unresolvable = unpersisted.filter { targets.getValue(it.espnId) == EspnTarget.Unresolvable }
+        if (unresolvable.isNotEmpty()) {
+            return Result.Err(AdminError.UnresolvableEspnGolfers(unresolvable.map(GolferAssignment.Espn::espnId)))
+        }
+        val bound =
+            unpersisted.associate { athlete ->
+                athlete.espnId to bind(athlete, targets.getValue(athlete.espnId))
+            }
+        return Result.Ok(
+            EspnGolfers(
+                golferIds = persisted + bound.mapValues { (_, binding) -> binding.golferId },
+                insertedCount = bound.values.count(EspnBinding::inserted),
+            ),
+        )
+    }
+
+    context(ctx: WriteTransactionContext)
+    private fun targetRowsByName(athletes: List<GolferAssignment.Espn>): Map<String, EspnTarget> {
+        if (athletes.isEmpty()) return emptyMap()
+        val names = GolferNameIndex(golferRepository.findAll(search = null))
+        // Among several rows of a name the preview offers the athlete as a golfer of its own, so only a lone id-less
+        // row is taken to be the athlete; an id-less row among namesakes is never guessed at.
+        val loneIdlessRows =
+            athletes.associate { athlete ->
+                athlete.espnId to
+                    names.matchFullName(athlete.name).golfers().singleOrNull()?.takeIf { it.pgaPlayerId == null }
+            }
+        val claimsPerRow = loneIdlessRows.values.filterNotNull().groupingBy(Golfer::id).eachCount()
+        return loneIdlessRows.mapValues { (_, row) ->
+            when {
+                row == null -> EspnTarget.NewRow
+                claimsPerRow.getValue(row.id) == 1 -> EspnTarget.IdlessRow(row.id)
+                else -> EspnTarget.Unresolvable
+            }
+        }
+    }
+
+    // A backfill answering null means a concurrent writer gave the row an id, or the athlete's id to another row;
+    // findOrCreate then returns that holder, or inserts beside a row that turned out to be a namesake.
+    context(ctx: WriteTransactionContext)
+    private fun bind(
+        athlete: GolferAssignment.Espn,
+        target: EspnTarget,
+    ): EspnBinding {
+        val backfilled =
+            (target as? EspnTarget.IdlessRow)?.let { golferRepository.backfillPgaPlayerId(it.golferId, athlete.espnId) }
+        return backfilled?.let { EspnBinding(golferId = it.id, inserted = false) }
+            ?: EspnBinding(golferId = golferRepository.findOrCreate(athlete.toCreateRequest()).id, inserted = true)
     }
 
     // Repos are the right surface here: every write needs to join the
@@ -437,6 +490,20 @@ private fun GolferAssignment.Espn.toCreateRequest(): CreateGolferRequest {
 }
 
 private data class EspnGolfers(val golferIds: Map<String, GolferId>, val insertedCount: Int)
+
+private data class EspnBinding(val golferId: GolferId, val inserted: Boolean)
+
+/** Where an ESPN pick no row holds by id lands, by the rows of its name. */
+private sealed interface EspnTarget {
+    /** The name's one row, without an id, and no other pick of the payload names it. */
+    data class IdlessRow(val golferId: GolferId) : EspnTarget
+
+    /** The name has no row, several, or one holding another id: the preview offered the athlete as its own golfer. */
+    data object NewRow : EspnTarget
+
+    /** @see AdminError.UnresolvableEspnGolfers */
+    data object Unresolvable : EspnTarget
+}
 
 private fun draftRoundProblems(team: ConfirmedTeam): List<ConfirmedRosterProblem> {
     val rounds = team.picks.map(ConfirmedPick::round)

@@ -10,6 +10,7 @@ import com.cwfgw.result.Result
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
@@ -79,5 +80,26 @@ private val golferContract: List<ContractCase<GolferRepository>> =
 
             created.pgaPlayerId shouldBe "pga-2"
             tx.get { repository.findAll(search = null) } shouldHaveSize 2
+        },
+        ContractCase("a backfill sets the pga id on a row without one, leaving its other columns as they were") {
+            val idless = tx.update { repository.create(SCHEFFLER.copy(pgaPlayerId = null)) }
+
+            val backfilled = tx.update { repository.backfillPgaPlayerId(idless.id, "pga-1") }
+
+            backfilled shouldBe idless.copy(pgaPlayerId = "pga-1")
+            tx.get { repository.findByPgaPlayerId("pga-1") } shouldBe backfilled
+        },
+        ContractCase("a backfill onto a row that already has a pga id changes nothing and answers null") {
+            val held = tx.update { repository.create(SCHEFFLER) }
+
+            tx.update { repository.backfillPgaPlayerId(held.id, "pga-2") }.shouldBeNull()
+            tx.get { repository.findById(held.id) } shouldBe held
+        },
+        ContractCase("a backfill of a pga id another row holds changes nothing and answers null") {
+            val holder = tx.update { repository.create(SCHEFFLER) }
+            val idless = tx.update { repository.create(SCHEFFLER.copy(pgaPlayerId = null)) }
+
+            tx.update { repository.backfillPgaPlayerId(idless.id, "pga-1") }.shouldBeNull()
+            tx.get { repository.findAll(search = null) } shouldContainExactlyInAnyOrder listOf(holder, idless)
         },
     )

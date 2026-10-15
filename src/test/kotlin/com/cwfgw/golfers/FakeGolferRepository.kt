@@ -60,6 +60,16 @@ class FakeGolferRepository(
     override fun findOrCreate(request: CreateGolferRequest): Golfer =
         request.pgaPlayerId?.let { findByPgaPlayerId(it) } ?: create(request)
 
+    context(ctx: WriteTransactionContext)
+    override fun backfillPgaPlayerId(
+        id: GolferId,
+        pgaPlayerId: String,
+    ): Golfer? {
+        val row = store[id]?.takeIf { it.pgaPlayerId == null } ?: return null
+        if (findByPgaPlayerId(pgaPlayerId) != null) return null
+        return row.copy(pgaPlayerId = pgaPlayerId).also { store[id] = it }
+    }
+
     private fun Golfer.matchesSearch(term: String?): Boolean {
         if (term == null) return true
         return firstName.lowercase().contains(term) || lastName.lowercase().contains(term)

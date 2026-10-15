@@ -139,6 +139,14 @@ sealed interface PickMatch {
     @SerialName("matched_espn")
     data class MatchedEspn(val espnId: String, val golferName: String) : PickMatch
 
+    /**
+     * The name's one row, which has no `pga_player_id`: confirm writes [espnId] onto it rather than insert a twin
+     * that imports would credit instead. [golferName] is the row's.
+     */
+    @Serializable
+    @SerialName("matched_backfill")
+    data class MatchedBackfill(val espnId: String, val golferName: String) : PickMatch
+
     @Serializable
     @SerialName("ambiguous")
     data class Ambiguous(val candidates: List<GolferCandidate>) : PickMatch
@@ -213,8 +221,9 @@ sealed interface GolferAssignment {
     data class New(val firstName: String, val lastName: String) : GolferAssignment
 
     /**
-     * Inserted inside the confirm's transaction, or bound to the row already holding [espnId] as `pga_player_id`.
-     * [name] is split there as an ESPN import splits it.
+     * Inside the confirm's transaction: bound to the row holding [espnId] as `pga_player_id`, else written onto
+     * [name]'s only row when that has none (refused when another pick names that row too), else inserted, with
+     * [name] split as an ESPN import splits it.
      */
     @Serializable
     @SerialName("espn")

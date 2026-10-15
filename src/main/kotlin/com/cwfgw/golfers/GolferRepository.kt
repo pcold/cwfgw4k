@@ -30,6 +30,17 @@ interface GolferRepository {
      */
     context(ctx: WriteTransactionContext)
     fun findOrCreate(request: CreateGolferRequest): Golfer
+
+    /**
+     * Null when row [id] already has an id or another row holds [pgaPlayerId]. The UPDATE's WHERE decides, not a
+     * read before it, so a concurrent setter of row [id] is waited on and wins; one still inserting [pgaPlayerId]
+     * elsewhere surfaces as the 23505 instead.
+     */
+    context(ctx: WriteTransactionContext)
+    fun backfillPgaPlayerId(
+        id: GolferId,
+        pgaPlayerId: String,
+    ): Golfer?
 }
 
 fun GolferRepository(): GolferRepository = JooqGolferRepository()
@@ -76,6 +87,22 @@ private class JooqGolferRepository : GolferRepository {
         val pgaPlayerId = checkNotNull(request.pgaPlayerId) { "an insert without a pga_player_id cannot conflict" }
         val holder = findByPgaPlayerId(pgaPlayerId)
         return checkNotNull(holder) { "the golfer holding a conflicting pga_player_id vanished" }
+    }
+
+    context(ctx: WriteTransactionContext)
+    override fun backfillPgaPlayerId(
+        id: GolferId,
+        pgaPlayerId: String,
+    ): Golfer? {
+        val holder = GOLFERS.`as`("holder")
+        return ctx.dsl.update(GOLFERS)
+            .set(GOLFERS.PGA_PLAYER_ID, pgaPlayerId)
+            .where(GOLFERS.ID.eq(id.value))
+            .and(GOLFERS.PGA_PLAYER_ID.isNull)
+            .andNotExists(ctx.dsl.selectOne().from(holder).where(holder.PGA_PLAYER_ID.eq(pgaPlayerId)))
+            .returning()
+            .fetchOne()
+            ?.let(::toGolfer)
     }
 
     context(ctx: WriteTransactionContext)

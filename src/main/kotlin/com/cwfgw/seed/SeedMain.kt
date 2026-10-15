@@ -160,6 +160,7 @@ private fun pickAssignment(
     when (match) {
         is PickMatch.Matched -> GolferAssignment.Existing(match.golferId)
         is PickMatch.MatchedEspn -> GolferAssignment.Espn(espnId = match.espnId, name = match.golferName)
+        is PickMatch.MatchedBackfill -> GolferAssignment.Espn(espnId = match.espnId, name = match.golferName)
         is PickMatch.Ambiguous -> match.candidates.first().toAssignment()
         PickMatch.NoMatch -> {
             val name = GolferName.splitName(playerName) ?: error("RosterParser let a blank player name through")
