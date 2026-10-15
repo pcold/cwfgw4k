@@ -2,10 +2,10 @@ package com.cwfgw.golfers
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
+import com.cwfgw.testing.fakeTableOf
 import com.cwfgw.testing.uniqueViolation
 import java.time.Instant
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 private val golferOrdering: Comparator<Golfer> =
     compareBy<Golfer, Int?>(nullsLast()) { it.worldRanking }
@@ -16,7 +16,7 @@ class FakeGolferRepository(
     private val idFactory: () -> GolferId = { GolferId(UUID.randomUUID()) },
     private val clock: () -> Instant = Instant::now,
 ) : GolferRepository {
-    private val store = ConcurrentHashMap<GolferId, Golfer>()
+    private val store = fakeTableOf<GolferId, Golfer>()
 
     init {
         initial.forEach { golfer -> store[golfer.id] = golfer }

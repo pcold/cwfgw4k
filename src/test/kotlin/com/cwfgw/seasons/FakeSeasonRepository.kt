@@ -3,9 +3,9 @@ package com.cwfgw.seasons
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.leagues.LeagueId
+import com.cwfgw.testing.fakeTableOf
 import java.time.Instant
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 private val seasonOrdering: Comparator<Season> =
     compareByDescending<Season> { it.seasonYear }
@@ -18,8 +18,8 @@ class FakeSeasonRepository(
     private val idFactory: () -> SeasonId = { SeasonId(UUID.randomUUID()) },
     private val clock: () -> Instant = Instant::now,
 ) : SeasonRepository {
-    private val store = ConcurrentHashMap<SeasonId, Season>()
-    private val rulesStore = ConcurrentHashMap<SeasonId, SeasonRules>()
+    private val store = fakeTableOf<SeasonId, Season>()
+    private val rulesStore = fakeTableOf<SeasonId, SeasonRules>()
 
     init {
         initial.forEach { season -> store[season.id] = season }

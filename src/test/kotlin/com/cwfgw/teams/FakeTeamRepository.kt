@@ -3,11 +3,11 @@ package com.cwfgw.teams
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.testing.fakeTableOf
 import com.cwfgw.testing.uniqueViolation
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 private val teamOrdering: Comparator<Team> =
     compareBy<Team, Int?>(nullsLast()) { it.teamNumber }
@@ -25,9 +25,9 @@ class FakeTeamRepository(
     private val rosterIdFactory: () -> RosterEntryId = { RosterEntryId(UUID.randomUUID()) },
     private val clock: () -> Instant = Instant::now,
 ) : TeamRepository {
-    private val teams = ConcurrentHashMap<TeamId, Team>()
-    private val rosters = ConcurrentHashMap<RosterEntryId, RosterEntry>()
-    private val rosterViews = ConcurrentHashMap<SeasonId, List<RosterViewTeam>>()
+    private val teams = fakeTableOf<TeamId, Team>()
+    private val rosters = fakeTableOf<RosterEntryId, RosterEntry>()
+    private val rosterViews = fakeTableOf<SeasonId, List<RosterViewTeam>>()
 
     init {
         initialTeams.forEach { team -> teams[team.id] = team }

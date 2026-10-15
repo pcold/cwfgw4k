@@ -2,17 +2,17 @@ package com.cwfgw.cache
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
+import com.cwfgw.testing.FakeCell
+import com.cwfgw.testing.fakeTableOf
 import java.time.Clock
 import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicLong
 
 class FakeCacheRepository(
     initial: Map<String, FakeEntry> = emptyMap(),
     private val clock: Clock = Clock.systemUTC(),
 ) : CacheRepository {
-    private val store = ConcurrentHashMap<String, FakeEntry>()
-    private val currentGeneration = AtomicLong()
+    private val store = fakeTableOf<String, FakeEntry>()
+    private val currentGeneration = FakeCell(0L)
 
     init {
         store.putAll(initial)
@@ -49,7 +49,7 @@ class FakeCacheRepository(
 
     context(ctx: WriteTransactionContext)
     override fun clear(): Int {
-        currentGeneration.incrementAndGet()
+        currentGeneration.update { it + 1 }
         val deleted = store.size
         store.clear()
         return deleted

@@ -3,10 +3,10 @@ package com.cwfgw.tournaments
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.testing.fakeTableOf
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 private val tournamentOrdering: Comparator<Tournament> =
     compareBy<Tournament> { it.startDate }.thenBy { it.createdAt }
@@ -22,8 +22,8 @@ class FakeTournamentRepository(
     private val resultIdFactory: () -> TournamentResultId = { TournamentResultId(UUID.randomUUID()) },
     private val clock: () -> Instant = Instant::now,
 ) : TournamentRepository {
-    private val tournaments = ConcurrentHashMap<TournamentId, Tournament>()
-    private val results = ConcurrentHashMap<TournamentResultId, TournamentResult>()
+    private val tournaments = fakeTableOf<TournamentId, Tournament>()
+    private val results = fakeTableOf<TournamentResultId, TournamentResult>()
 
     init {
         initial.forEach { tournaments[it.id] = it }

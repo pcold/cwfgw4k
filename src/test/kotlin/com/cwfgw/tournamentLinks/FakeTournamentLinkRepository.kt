@@ -3,13 +3,13 @@ package com.cwfgw.tournamentLinks
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.testing.fakeTableOf
 import com.cwfgw.tournaments.TournamentId
-import java.util.concurrent.ConcurrentHashMap
 
 class FakeTournamentLinkRepository(
     initial: List<TournamentPlayerOverride> = emptyList(),
 ) : TournamentLinkRepository {
-    private val store = ConcurrentHashMap<Pair<TournamentId, String>, TournamentPlayerOverride>()
+    private val store = fakeTableOf<Pair<TournamentId, String>, TournamentPlayerOverride>()
 
     init {
         initial.forEach { override -> store[override.tournamentId to override.espnCompetitorId] = override }

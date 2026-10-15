@@ -2,16 +2,16 @@ package com.cwfgw.leagues
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
+import com.cwfgw.testing.fakeTableOf
 import java.time.Instant
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 class FakeLeagueRepository(
     initial: List<League> = emptyList(),
     private val idFactory: () -> LeagueId = { LeagueId(UUID.randomUUID()) },
     private val clock: () -> Instant = Instant::now,
 ) : LeagueRepository {
-    private val store = ConcurrentHashMap<LeagueId, League>()
+    private val store = fakeTableOf<LeagueId, League>()
 
     init {
         initial.forEach { league -> store[league.id] = league }
