@@ -105,7 +105,7 @@ class AdminServiceRaceSpec : FunSpec({
 
     test("a roster confirm that loses the race on a team name answers TeamNameTaken") {
         val seasonId = seedSeason()
-        val brown = ConfirmedTeam(teamNumber = 1, teamName = "BROWN", picks = emptyList())
+        val brown = fullTeam(number = 1, name = "BROWN")
         service().confirmRoster(ConfirmRosterRequest(seasonId = seasonId, teams = listOf(brown))).orFail()
 
         service().confirmRoster(ConfirmRosterRequest(seasonId = seasonId, teams = listOf(brown))) shouldBe

@@ -318,17 +318,14 @@ class AdminRoutesSpec : FunSpec({
                     seasonId = SEASON_ID,
                     teams =
                         listOf(
-                            ConfirmedTeam(
-                                teamNumber = 1,
-                                teamName = "BROWN",
-                                picks =
-                                    listOf(
-                                        ConfirmedPick(
-                                            round = 1,
-                                            ownershipPct = 75,
-                                            assignment = GolferAssignment.Existing(ghost),
-                                        ),
-                                    ),
+                            fullTeam(
+                                number = 1,
+                                name = "BROWN",
+                                ConfirmedPick(
+                                    round = 1,
+                                    ownershipPct = 75,
+                                    assignment = GolferAssignment.Existing(ghost),
+                                ),
                             ),
                         ),
                 )
@@ -344,7 +341,7 @@ class AdminRoutesSpec : FunSpec({
 
     test("POST /api/v1/admin/roster/confirm returns 409 when a team name is already taken in the season") {
         authenticatedApiTest(adminFixture()) { client ->
-            val brown = ConfirmedTeam(teamNumber = 1, teamName = "BROWN", picks = emptyList())
+            val brown = fullTeam(number = 1, name = "BROWN")
 
             suspend fun confirmBrown() =
                 client.post("/api/v1/admin/roster/confirm") {
@@ -363,9 +360,7 @@ class AdminRoutesSpec : FunSpec({
                 client.post("/api/v1/admin/roster/confirm") {
                     contentType(ContentType.Application.Json)
                     val teams =
-                        teamNames.mapIndexed { index, name ->
-                            ConfirmedTeam(teamNumber = index + 1, teamName = name, picks = emptyList())
-                        }
+                        teamNames.mapIndexed { index, name -> fullTeam(number = index + 1, name = name) }
                     setBody(ConfirmRosterRequest(seasonId = SEASON_ID, teams = teams))
                 }
 
@@ -411,6 +406,53 @@ class AdminRoutesSpec : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.bodyAsString().shouldContain("team 'BROWN' lists new golfer 'Tom Kim'")
+        }
+    }
+
+    test("POST /api/v1/admin/roster/confirm returns 400 naming a pick in a round outside the draft") {
+        authenticatedApiTest(adminFixture()) { client ->
+            val roundNine =
+                ConfirmedPick(round = 9, ownershipPct = 100, assignment = GolferAssignment.New("Tom", "Kim"))
+            val response =
+                client.post("/api/v1/admin/roster/confirm") {
+                    contentType(ContentType.Application.Json)
+                    val brown = fullTeam(number = 1, name = "BROWN", roundNine)
+                    setBody(ConfirmRosterRequest(seasonId = SEASON_ID, teams = listOf(brown)))
+                }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.bodyAsString().shouldContain("team 'BROWN' has a pick in round 9, outside rounds 1–8")
+        }
+    }
+
+    test("POST /api/v1/admin/roster/confirm returns 400 naming a round one team picks twice") {
+        authenticatedApiTest(adminFixture()) { client ->
+            val tomKim = ConfirmedPick(round = 3, ownershipPct = 100, assignment = GolferAssignment.New("Tom", "Kim"))
+            val minWooLee = tomKim.copy(assignment = GolferAssignment.New("Min Woo", "Lee"))
+            val response =
+                client.post("/api/v1/admin/roster/confirm") {
+                    contentType(ContentType.Application.Json)
+                    val brown = fullTeam(number = 1, name = "BROWN", tomKim, minWooLee)
+                    setBody(ConfirmRosterRequest(seasonId = SEASON_ID, teams = listOf(brown)))
+                }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.bodyAsString().shouldContain("team 'BROWN' has more than one pick in round 3")
+        }
+    }
+
+    test("POST /api/v1/admin/roster/confirm returns 400 naming every round a team has no pick in") {
+        authenticatedApiTest(adminFixture()) { client ->
+            val response =
+                client.post("/api/v1/admin/roster/confirm") {
+                    contentType(ContentType.Application.Json)
+                    val full = fullTeam(number = 1, name = "BROWN")
+                    val brown = full.copy(picks = full.picks.filterNot { it.round == 3 || it.round == 8 })
+                    setBody(ConfirmRosterRequest(seasonId = SEASON_ID, teams = listOf(brown)))
+                }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.bodyAsString().shouldContain("team 'BROWN' has no pick in round 3, round 8")
         }
     }
 })

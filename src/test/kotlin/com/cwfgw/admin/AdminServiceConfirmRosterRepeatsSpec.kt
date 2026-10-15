@@ -27,8 +27,8 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 
 /**
- * On Postgres because a repeated golfer used to fail only there, on the roster's unique key, and because
- * "nothing written" has to mean nothing committed.
+ * On Postgres because "nothing written" has to mean nothing committed, and the roster's unique key is the
+ * backstop these checks run ahead of.
  */
 class AdminServiceConfirmRosterRepeatsSpec : FunSpec({
 
@@ -73,8 +73,8 @@ class AdminServiceConfirmRosterRepeatsSpec : FunSpec({
         val result =
             confirm(
                 seasonId,
-                team(number = 1, name = "BROWN", newPick(round = 1, firstName = "First", lastName = "Golfer")),
-                team(number = 2, name = "BROWN"),
+                fullTeam(number = 1, name = "BROWN", newPick(round = 1, firstName = "First", lastName = "Golfer")),
+                fullTeam(number = 2, name = "BROWN"),
             )
 
         result shouldBe refusal(ConfirmedRosterProblem.RepeatedTeamName("BROWN"))
@@ -85,7 +85,7 @@ class AdminServiceConfirmRosterRepeatsSpec : FunSpec({
     test("team names that differ only in case are two teams, as the unique key compares them") {
         val seasonId = seedSeason()
 
-        confirm(seasonId, team(number = 1, name = "BROWN"), team(number = 2, name = "Brown")).orFail()
+        confirm(seasonId, fullTeam(number = 1, name = "BROWN"), fullTeam(number = 2, name = "Brown")).orFail()
 
         teamsWritten(seasonId).map { it.teamName } shouldContainExactlyInAnyOrder listOf("BROWN", "Brown")
     }
@@ -95,7 +95,7 @@ class AdminServiceConfirmRosterRepeatsSpec : FunSpec({
         val scottie = seedGolfer()
 
         val result =
-            confirm(seasonId, team(number = 1, name = "BROWN", existingPick(1, scottie), existingPick(2, scottie)))
+            confirm(seasonId, fullTeam(number = 1, name = "BROWN", existingPick(1, scottie), existingPick(2, scottie)))
 
         result shouldBe refusal(ConfirmedRosterProblem.RepeatedExistingGolfer("BROWN", scottie.id))
         teamsWritten(seasonId).shouldBeEmpty()
@@ -108,11 +108,11 @@ class AdminServiceConfirmRosterRepeatsSpec : FunSpec({
 
         confirm(
             seasonId,
-            team(number = 1, name = "BROWN", existingPick(1, scottie)),
-            team(number = 2, name = "WOMBLE", existingPick(1, scottie)),
+            fullTeam(number = 1, name = "BROWN", existingPick(1, scottie)),
+            fullTeam(number = 2, name = "WOMBLE", existingPick(1, scottie)),
         ).orFail()
 
-        rosterRowsWritten(seasonId) shouldHaveSize 2
+        rosterRowsWritten(seasonId).filter { it.golferId == scottie.id } shouldHaveSize 2
     }
 
     test("two new golfers under one team with one normalized name are refused, and no golfer is created") {
@@ -121,7 +121,7 @@ class AdminServiceConfirmRosterRepeatsSpec : FunSpec({
         val result =
             confirm(
                 seasonId,
-                team(
+                fullTeam(
                     number = 1,
                     name = "BROWN",
                     newPick(round = 1, firstName = "Byeong-Hun", lastName = "An"),
@@ -140,8 +140,13 @@ class AdminServiceConfirmRosterRepeatsSpec : FunSpec({
         val problems =
             confirm(
                 seasonId,
-                team(number = 1, name = "BROWN", existingPick(1, scottie), existingPick(2, scottie)),
-                team(number = 2, name = "BROWN", newPick(1, "Tom", "Kim"), newPick(2, "Tom", "Kim")),
+                fullTeam(number = 1, name = "BROWN", existingPick(1, scottie), existingPick(2, scottie)),
+                fullTeam(
+                    number = 2,
+                    name = "BROWN",
+                    newPick(round = 1, firstName = "Tom", lastName = "Kim"),
+                    newPick(round = 2, firstName = "Tom", lastName = "Kim"),
+                ),
             ).shouldBeInstanceOf<Result.Err<AdminError>>()
                 .error
                 .shouldBeInstanceOf<AdminError.InvalidConfirmedRoster>()
@@ -155,12 +160,6 @@ class AdminServiceConfirmRosterRepeatsSpec : FunSpec({
             )
     }
 })
-
-private fun team(
-    number: Int,
-    name: String,
-    vararg picks: ConfirmedPick,
-): ConfirmedTeam = ConfirmedTeam(teamNumber = number, teamName = name, picks = picks.toList())
 
 private fun existingPick(
     round: Int,

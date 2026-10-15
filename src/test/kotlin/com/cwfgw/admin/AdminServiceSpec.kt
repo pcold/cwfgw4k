@@ -581,34 +581,28 @@ class AdminServiceSpec : FunSpec({
                 seasonId = SEASON_ID,
                 teams =
                     listOf(
-                        ConfirmedTeam(
-                            teamNumber = 1,
-                            teamName = "BROWN",
-                            picks =
-                                listOf(
-                                    ConfirmedPick(
-                                        round = 1,
-                                        ownershipPct = 75,
-                                        assignment = GolferAssignment.Existing(ghostA),
-                                    ),
-                                    ConfirmedPick(
-                                        round = 2,
-                                        ownershipPct = 50,
-                                        assignment = GolferAssignment.Existing(scottie.id),
-                                    ),
-                                ),
+                        fullTeam(
+                            number = 1,
+                            name = "BROWN",
+                            ConfirmedPick(
+                                round = 1,
+                                ownershipPct = 75,
+                                assignment = GolferAssignment.Existing(ghostA),
+                            ),
+                            ConfirmedPick(
+                                round = 2,
+                                ownershipPct = 50,
+                                assignment = GolferAssignment.Existing(scottie.id),
+                            ),
                         ),
-                        ConfirmedTeam(
-                            teamNumber = 2,
-                            teamName = "WOMBLE",
-                            picks =
-                                listOf(
-                                    ConfirmedPick(
-                                        round = 1,
-                                        ownershipPct = 25,
-                                        assignment = GolferAssignment.Existing(ghostB),
-                                    ),
-                                ),
+                        fullTeam(
+                            number = 2,
+                            name = "WOMBLE",
+                            ConfirmedPick(
+                                round = 1,
+                                ownershipPct = 25,
+                                assignment = GolferAssignment.Existing(ghostB),
+                            ),
                         ),
                     ),
             )
