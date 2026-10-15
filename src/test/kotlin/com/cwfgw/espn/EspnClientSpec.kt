@@ -1,6 +1,7 @@
 package com.cwfgw.espn
 
 import com.cwfgw.config.EspnConfig
+import com.cwfgw.testing.espnClientOver
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -8,6 +9,7 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.comparables.shouldBeLessThanOrEqualTo
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.boolean
 import io.kotest.property.arbitrary.int
@@ -20,7 +22,9 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.serialization.SerializationException
 import java.time.LocalDate
+import java.util.concurrent.atomic.AtomicInteger
 
 private data class CompetitorFixture(
     val id: String,
@@ -145,6 +149,12 @@ private fun arbCompetitors(): Arb<List<EspnCompetitor>> =
     }
 
 private val TEST_ESPN_CONFIG = EspnConfig(scoreboardCacheTtlSeconds = 300, scoreboardCacheMaxSize = 256)
+
+private val MALFORMED_DATE: LocalDate = LocalDate.parse("2026-04-15")
+
+private const val TRUNCATED_SCOREBOARD = """{"events":[{"id":"401580123","name":"""
+
+private const val NO_COMPETITIONS_SCOREBOARD = """{"events":[{"id":"401580123","name":"The Players"}]}"""
 
 class EspnClientSpec : FunSpec({
 
@@ -703,5 +713,53 @@ class EspnClientSpec : FunSpec({
 
         val thrown = shouldThrow<EspnUpstreamException> { client.fetchCalendar() }
         thrown.failure shouldBe EspnUpstreamFailure.BadStatus(HttpStatusCode.BadGateway.value)
+    }
+
+    // ----- a 200 whose body does not parse -----
+
+    test("fetchScoreboard reports a malformed body, caused by the decode failure, when ESPN's 200 is truncated") {
+        val client = espnClientOver { respond(content = TRUNCATED_SCOREBOARD, status = HttpStatusCode.OK) }
+
+        val thrown = shouldThrow<EspnUpstreamException> { client.fetchScoreboard(MALFORMED_DATE) }
+
+        thrown.failure shouldBe EspnUpstreamFailure.MalformedBody
+        thrown.cause.shouldBeInstanceOf<SerializationException>()
+    }
+
+    test("fetchCalendar reports a malformed body, caused by the decode failure, when ESPN's 200 is truncated") {
+        val client = espnClientOver { respond(content = TRUNCATED_SCOREBOARD, status = HttpStatusCode.OK) }
+
+        val thrown = shouldThrow<EspnUpstreamException> { client.fetchCalendar() }
+
+        thrown.failure shouldBe EspnUpstreamFailure.MalformedBody
+        thrown.cause.shouldBeInstanceOf<SerializationException>()
+    }
+
+    test("fetchScoreboard reports a malformed body when ESPN's 200 lists an event with no competitions") {
+        val client = espnClientOver { respond(content = NO_COMPETITIONS_SCOREBOARD, status = HttpStatusCode.OK) }
+
+        val thrown = shouldThrow<EspnUpstreamException> { client.fetchScoreboard(MALFORMED_DATE) }
+
+        thrown.failure shouldBe EspnUpstreamFailure.MalformedBody
+    }
+
+    test("fetchScoreboard asks ESPN again after a malformed 200 instead of caching it") {
+        val requests = AtomicInteger()
+        val client =
+            espnClientOver {
+                val body =
+                    if (requests.incrementAndGet() == 1) {
+                        TRUNCATED_SCOREBOARD
+                    } else {
+                        scoreboard(competitors = listOf(competitor("1", "Rory", 1, "-10")))
+                    }
+                respond(content = body, status = HttpStatusCode.OK)
+            }
+
+        shouldThrow<EspnUpstreamException> { client.fetchScoreboard(MALFORMED_DATE) }
+        val recovered = client.fetchScoreboard(MALFORMED_DATE)
+
+        recovered.single().competitors.single().name shouldBe "Rory"
+        requests.get() shouldBe 2
     }
 })

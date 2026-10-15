@@ -41,4 +41,12 @@ sealed interface EspnUpstreamFailure {
     data object NoResponse : EspnUpstreamFailure {
         override val summary: String = "ESPN did not respond"
     }
+
+    /**
+     * A 200 whose body the parser refused. Not folded into [NoResponse]: ESPN did answer, and a reader of
+     * the log chases a schema change here, not an outage.
+     */
+    data object MalformedBody : EspnUpstreamFailure {
+        override val summary: String = "ESPN sent a malformed body"
+    }
 }
