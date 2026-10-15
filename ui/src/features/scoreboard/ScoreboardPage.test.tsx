@@ -352,6 +352,35 @@ describe('ScoreboardPage', () => {
     });
   });
 
+  it('asks the server for the current tournament again after an admin finalizes one', async () => {
+    authMeMock.mockResolvedValue({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
+    tournamentReportMock.mockResolvedValue({
+      ...buildReport('Current Open'),
+      tournament: { ...buildReport('Current Open').tournament, status: 'in_progress' },
+    });
+    finalizeMock.mockResolvedValue(makeTournament());
+
+    const user = userEvent.setup();
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    const button = await screen.findByRole('button', { name: /Finalize Results/i });
+    expect(currentTournamentMock).toHaveBeenCalledTimes(1);
+    await user.click(button);
+
+    await waitFor(() => {
+      expect(currentTournamentMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it('refetches an open season report after an admin finalizes a tournament', async () => {
     authMeMock.mockResolvedValue({
       id: 'u-1',
