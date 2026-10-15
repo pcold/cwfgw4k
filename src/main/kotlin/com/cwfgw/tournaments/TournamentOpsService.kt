@@ -69,7 +69,7 @@ class TournamentOpsService(
 
     suspend fun resetTournament(tournamentId: TournamentId): Result<Tournament, TournamentOpsError> =
         tx.update {
-            // Locked before the deletes, as finalize locks before its upserts: the reverse order deadlocks the two.
+            // Finalize locks before its upserts; this must match: the reverse order deadlocks the two.
             val tournament =
                 tournamentRepository.findByIdForUpdate(tournamentId)
                     ?: return@update Result.Err(TournamentOpsError.TournamentNotFound(tournamentId))
