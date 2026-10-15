@@ -7,6 +7,7 @@ import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolferService
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
+import com.cwfgw.result.Result
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.seasons.SeasonService
@@ -20,7 +21,6 @@ import com.cwfgw.tournamentLinks.TournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentService
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
@@ -202,7 +202,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
             }
         }
 
-        shouldThrow<Exception> {
+        val result =
             runBlocking {
                 service.confirmRoster(
                     ConfirmRosterRequest(
@@ -231,8 +231,8 @@ class AdminServiceConfirmRosterSpec : FunSpec({
                     ),
                 )
             }
-        }
 
+        result shouldBe Result.Err(AdminError.TeamNameTaken(sid))
         val teams = runBlocking { tx.read { teamRepo().findBySeason(sid) } }
         teams.map { it.teamName } shouldContainExactly listOf("WOMBLE")
         val golfers =

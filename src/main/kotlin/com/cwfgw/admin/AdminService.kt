@@ -2,6 +2,7 @@ package com.cwfgw.admin
 
 import com.cwfgw.db.Transactor
 import com.cwfgw.db.WriteTransactionContext
+import com.cwfgw.db.updateOrOutraced
 import com.cwfgw.espn.EspnCalendarEntry
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnUpstreamException
@@ -17,6 +18,7 @@ import com.cwfgw.teams.AddToRosterRequest
 import com.cwfgw.teams.CreateTeamRequest
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamRepository
+import com.cwfgw.teams.UNIQUE_TEAM_NAME_PER_SEASON
 import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentService
@@ -219,6 +221,7 @@ class AdminService(
         log.info { "Persisting ${newAthletes.size} new ESPN athletes into golfers table" }
         for (athlete in newAthletes) {
             val (firstName, lastName) = splitName(athlete.name)
+            // A PgaPlayerIdTaken loser needs nothing: the re-list below picks up the winner's row.
             golferService.create(
                 CreateGolferRequest(
                     pgaPlayerId = athlete.espnId,
@@ -350,7 +353,10 @@ class AdminService(
             return Result.Ok(RosterUploadResult(teamsCreated = 0, golfersCreated = 0, teams = emptyList()))
         }
 
-        return tx.update {
+        return tx.updateOrOutraced(
+            UNIQUE_TEAM_NAME_PER_SEASON,
+            outraced = { AdminError.TeamNameTaken(request.seasonId) },
+        ) {
             var golfersCreated = 0
             val createdTeams = mutableListOf<Team>()
             for (team in request.teams) {
@@ -426,12 +432,7 @@ class AdminService(
         week: String,
         seasonId: SeasonId,
     ): EntryOutcome {
-        val existing = tournamentService.findByPgaTournamentId(entry.espnEventId)
-        if (existing != null) {
-            return EntryOutcome.Skipped(
-                SkippedEntry(entry.espnEventId, entry.name, "already linked to tournament ${existing.id.value}"),
-            )
-        }
+        findLinked(entry)?.let { return it }
         val created =
             tournamentService.create(
                 CreateTournamentRequest(
@@ -443,8 +444,20 @@ class AdminService(
                     week = week,
                 ),
             )
-        return EntryOutcome.Created(created)
+        return when (created) {
+            is Result.Ok -> EntryOutcome.Created(created.value)
+            is Result.Err ->
+                checkNotNull(findLinked(entry)) { "a tournament that outraced this confirm is no longer linked" }
+        }
     }
+
+    /** Read in a fresh transaction, so it sees a tournament a concurrent confirm committed after our first look. */
+    private suspend fun findLinked(entry: ConfirmedTournamentEntry): EntryOutcome.Skipped? =
+        tournamentService.findByPgaTournamentId(entry.espnEventId)?.let { existing ->
+            EntryOutcome.Skipped(
+                SkippedEntry(entry.espnEventId, entry.name, "already linked to tournament ${existing.id.value}"),
+            )
+        }
 
     /**
      * Parse the ISO-8601 prefix of an ESPN calendar entry's startDate

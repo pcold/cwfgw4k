@@ -3,6 +3,7 @@ package com.cwfgw.users
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.db.required
+import com.cwfgw.jooq.keys.USERS_USERNAME_KEY
 import com.cwfgw.jooq.tables.records.UsersRecord
 import com.cwfgw.jooq.tables.references.USERS
 
@@ -35,6 +36,8 @@ data class UserCredentials(
 )
 
 fun UserRepository(): UserRepository = JooqUserRepository()
+
+internal val UNIQUE_USERNAME: String = USERS_USERNAME_KEY.name
 
 private class JooqUserRepository : UserRepository {
     context(ctx: TransactionContext)

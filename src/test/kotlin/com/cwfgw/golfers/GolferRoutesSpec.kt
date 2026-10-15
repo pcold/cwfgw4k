@@ -81,6 +81,20 @@ class GolferRoutesSpec : FunSpec({
         }
     }
 
+    test("POST /api/v1/golfers returns 409 when another golfer already holds the pga player id") {
+        val fake = FakeGolferRepository(initial = listOf(RORY))
+
+        authenticatedApiTest({ golferService = GolferService(fake, FakeTransactor()) }) { client ->
+            val response =
+                client.post("/api/v1/golfers") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CreateGolferRequest(pgaPlayerId = RORY.pgaPlayerId, firstName = "Rory", lastName = "M"))
+                }
+
+            response.status shouldBe HttpStatusCode.Conflict
+        }
+    }
+
     test("POST /api/v1/golfers returns 401 without an authenticated session") {
         apiTest { client ->
             val response =

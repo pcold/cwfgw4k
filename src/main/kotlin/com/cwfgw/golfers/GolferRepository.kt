@@ -3,9 +3,11 @@ package com.cwfgw.golfers
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.db.required
+import com.cwfgw.jooq.keys.GOLFERS_PGA_PLAYER_ID_KEY
 import com.cwfgw.jooq.tables.records.GolfersRecord
 import com.cwfgw.jooq.tables.references.GOLFERS
 import org.jooq.Condition
+import org.jooq.InsertSetMoreStep
 import org.jooq.impl.DSL
 
 interface GolferRepository {
@@ -20,9 +22,19 @@ interface GolferRepository {
 
     context(ctx: WriteTransactionContext)
     fun create(request: CreateGolferRequest): Golfer
+
+    /**
+     * For a caller inside a larger transaction: a conflicting insert does nothing rather than raise the 23505
+     * that would abort the caller's transaction, and the row already holding [CreateGolferRequest.pgaPlayerId]
+     * comes back instead.
+     */
+    context(ctx: WriteTransactionContext)
+    fun findOrCreate(request: CreateGolferRequest): Golfer
 }
 
 fun GolferRepository(): GolferRepository = JooqGolferRepository()
+
+internal val UNIQUE_PGA_PLAYER_ID: String = GOLFERS_PGA_PLAYER_ID_KEY.name
 
 private class JooqGolferRepository : GolferRepository {
     context(ctx: TransactionContext)
@@ -50,18 +62,30 @@ private class JooqGolferRepository : GolferRepository {
             ?.let(::toGolfer)
 
     context(ctx: WriteTransactionContext)
-    override fun create(request: CreateGolferRequest): Golfer {
+    override fun create(request: CreateGolferRequest): Golfer = toGolfer(insert(request).returning().fetchSingle())
+
+    context(ctx: WriteTransactionContext)
+    override fun findOrCreate(request: CreateGolferRequest): Golfer {
         val inserted =
-            ctx.dsl.insertInto(GOLFERS)
-                .set(GOLFERS.PGA_PLAYER_ID, request.pgaPlayerId)
-                .set(GOLFERS.FIRST_NAME, request.firstName)
-                .set(GOLFERS.LAST_NAME, request.lastName)
-                .set(GOLFERS.COUNTRY, request.country)
-                .set(GOLFERS.WORLD_RANKING, request.worldRanking)
+            insert(request)
+                .onConflictOnConstraint(GOLFERS_PGA_PLAYER_ID_KEY)
+                .doNothing()
                 .returning()
-                .fetchSingle()
-        return toGolfer(inserted)
+                .fetchOne()
+        if (inserted != null) return toGolfer(inserted)
+        val pgaPlayerId = checkNotNull(request.pgaPlayerId) { "an insert without a pga_player_id cannot conflict" }
+        val holder = findByPgaPlayerId(pgaPlayerId)
+        return checkNotNull(holder) { "the golfer holding a conflicting pga_player_id vanished" }
     }
+
+    context(ctx: WriteTransactionContext)
+    private fun insert(request: CreateGolferRequest): InsertSetMoreStep<GolfersRecord> =
+        ctx.dsl.insertInto(GOLFERS)
+            .set(GOLFERS.PGA_PLAYER_ID, request.pgaPlayerId)
+            .set(GOLFERS.FIRST_NAME, request.firstName)
+            .set(GOLFERS.LAST_NAME, request.lastName)
+            .set(GOLFERS.COUNTRY, request.country)
+            .set(GOLFERS.WORLD_RANKING, request.worldRanking)
 
     private fun searchCondition(search: String?): Condition {
         if (search == null) return DSL.noCondition()

@@ -30,4 +30,10 @@ sealed interface AdminError {
      * one-fix-then-retry.
      */
     data class GolferIdsNotFound(val ids: List<GolferId>) : AdminError
+
+    /**
+     * A team name in a confirmRoster payload is already taken in the season: by an earlier upload, a
+     * concurrent one, or a team before it in the same payload. The whole roster rolls back.
+     */
+    data class TeamNameTaken(val seasonId: SeasonId) : AdminError
 }

@@ -240,7 +240,7 @@ class EspnService(
 
         val (firstName, lastName) = splitName(competitor.name) ?: return null
         val created =
-            golferRepository.create(
+            golferRepository.findOrCreate(
                 CreateGolferRequest(
                     pgaPlayerId = if (competitor.isTeamPartner) null else competitor.espnId,
                     firstName = firstName,

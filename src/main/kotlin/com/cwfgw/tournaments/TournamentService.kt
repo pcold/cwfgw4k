@@ -1,6 +1,8 @@
 package com.cwfgw.tournaments
 
 import com.cwfgw.db.Transactor
+import com.cwfgw.db.updateOrOutraced
+import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
 
 class TournamentService(
@@ -15,7 +17,10 @@ class TournamentService(
     suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
         tx.get { repository.findByPgaTournamentId(pgaTournamentId) }
 
-    suspend fun create(request: CreateTournamentRequest): Tournament = tx.update { repository.create(request) }
+    suspend fun create(request: CreateTournamentRequest): Result<Tournament, TournamentError> =
+        tx.updateOrOutraced(UNIQUE_PGA_TOURNAMENT_ID, outraced = { TournamentError.PgaTournamentIdTaken }) {
+            Result.Ok(repository.create(request))
+        }
 
     suspend fun update(
         id: TournamentId,

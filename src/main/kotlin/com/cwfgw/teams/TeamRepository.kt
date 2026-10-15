@@ -4,6 +4,7 @@ import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.db.required
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.jooq.keys.TEAMS_SEASON_ID_TEAM_NAME_KEY
 import com.cwfgw.jooq.tables.records.TeamRostersRecord
 import com.cwfgw.jooq.tables.records.TeamsRecord
 import com.cwfgw.jooq.tables.references.GOLFERS
@@ -38,6 +39,8 @@ interface TeamRepository {
 }
 
 fun TeamRepository(): TeamRepository = JooqTeamRepository()
+
+internal val UNIQUE_TEAM_NAME_PER_SEASON: String = TEAMS_SEASON_ID_TEAM_NAME_KEY.name
 
 private const val DEFAULT_ACQUIRED_VIA = "free_agent"
 private val DEFAULT_OWNERSHIP_PCT: BigDecimal = BigDecimal("100.00")

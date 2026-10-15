@@ -2,6 +2,7 @@ package com.cwfgw.golfers
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
+import com.cwfgw.testing.uniqueViolation
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -38,6 +39,9 @@ class FakeGolferRepository(
 
     context(ctx: WriteTransactionContext)
     override fun create(request: CreateGolferRequest): Golfer {
+        if (request.pgaPlayerId != null && findByPgaPlayerId(request.pgaPlayerId) != null) {
+            throw uniqueViolation(UNIQUE_PGA_PLAYER_ID)
+        }
         val golfer =
             Golfer(
                 id = idFactory(),
@@ -51,6 +55,10 @@ class FakeGolferRepository(
         store[golfer.id] = golfer
         return golfer
     }
+
+    context(ctx: WriteTransactionContext)
+    override fun findOrCreate(request: CreateGolferRequest): Golfer =
+        request.pgaPlayerId?.let { findByPgaPlayerId(it) } ?: create(request)
 
     private fun Golfer.matchesSearch(term: String?): Boolean {
         if (term == null) return true

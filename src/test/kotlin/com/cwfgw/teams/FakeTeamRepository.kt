@@ -3,6 +3,7 @@ package com.cwfgw.teams
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.testing.uniqueViolation
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
@@ -45,6 +46,9 @@ class FakeTeamRepository(
         seasonId: SeasonId,
         request: CreateTeamRequest,
     ): Team {
+        if (teams.values.any { it.seasonId == seasonId && it.teamName == request.teamName }) {
+            throw uniqueViolation(UNIQUE_TEAM_NAME_PER_SEASON)
+        }
         val now = clock()
         val team =
             Team(
