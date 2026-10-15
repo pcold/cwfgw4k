@@ -174,7 +174,10 @@ class EspnService(
         val views =
             tx.read {
                 val context = buildMatchingContextIn(tournament.seasonId, tournamentId)
-                val matches = event.competitors.map { locateExistingGolferIn(it, context) }.withholdingContestedRows()
+                val matches =
+                    event.competitors.map { it to locateExistingGolferIn(it, context) }
+                        .settlingSurnameGuesses()
+                        .withholdingContestedRows()
                 event.competitors.zip(matches) { competitor, match ->
                     TournamentCompetitorView(
                         espnCompetitorId = competitor.espnId,
@@ -209,7 +212,11 @@ class EspnService(
      */
     context(ctx: WriteTransactionContext)
     internal fun persistImportsIn(imports: List<EventImport>) {
-        val matched = imports.map { matchEventIn(it) }.withholdingRowsContestedAcrossEvents()
+        val matched =
+            imports.map { locateEventIn(it) }
+                .settlingSurnameGuessesAcrossEvents()
+                .map(MatchedEvent::withholdingContestedRows)
+                .withholdingRowsContestedAcrossEvents()
         val written = golferRepository.findOrCreateAll(matched.flatMap(MatchedEvent::claims))
         for ((import, matches) in matched) {
             val matchedPairs =
@@ -222,11 +229,10 @@ class EspnService(
     }
 
     context(ctx: TransactionContext)
-    private fun matchEventIn(import: EventImport): MatchedEvent {
+    private fun locateEventIn(import: EventImport): MatchedEvent {
         val context = buildMatchingContextIn(import.tournament.seasonId, import.tournament.id)
-        val competitors = import.event.competitors
-        val matches = competitors.map { locateExistingGolferIn(it, context) }.withholdingContestedRows()
-        return MatchedEvent(import = import, matches = competitors.zip(matches))
+        val located = import.event.competitors.map { it to locateExistingGolferIn(it, context) }
+        return MatchedEvent(import = import, matches = located)
     }
 
     context(ctx: TransactionContext)
@@ -256,6 +262,7 @@ class EspnService(
         val writtenId = written[competitor.espnId]?.id
         return when (match) {
             is CompetitorMatch.Credited -> match.golfer.id
+            is CompetitorMatch.SurnameGuess -> match.golfer.id
             is CompetitorMatch.Idless -> writtenId
             CompetitorMatch.Unmatched -> if (competitor.isTeamPartner) createPartnerIn(competitor) else writtenId
             is CompetitorMatch.IdMismatch -> {
@@ -370,10 +377,13 @@ private sealed interface CompetitorMatch {
     /** @see CompetitorMatch */
     data class Idless(val golfer: Golfer) : CompetitorMatch
 
+    /** Credited unless [settlingSurnameGuesses] finds another claim on [golfer]; never backfilled. */
+    data class SurnameGuess(val golfer: Golfer) : CompetitorMatch
+
     /** @see CompetitorMatch */
     data object Unmatched : CompetitorMatch
 
-    /** [namesake] holds another ESPN id, so it is another golfer however its name reads. */
+    /** [namesake] holds, or this import claims it for, another ESPN id, so it is another golfer however it reads. */
     data class IdMismatch(val namesake: Golfer) : CompetitorMatch
 
     /** Names can't tell which of [candidates] this competitor is, and a new golfer would twin the one it is. */
@@ -391,6 +401,7 @@ private val CompetitorMatch.creditedGolfer: Golfer?
         when (this) {
             is CompetitorMatch.Credited -> golfer
             is CompetitorMatch.Idless -> golfer
+            is CompetitorMatch.SurnameGuess -> golfer
             CompetitorMatch.Unmatched, is CompetitorMatch.IdMismatch, is CompetitorMatch.Withheld -> null
         }
 
@@ -406,6 +417,64 @@ private fun List<CompetitorMatch>.withholdingContestedRows(): List<CompetitorMat
     }
 }
 
+/**
+ * A surname credit is a guess: it yields a row any other credit names under another ESPN id, which is that row's id
+ * once this import lands, so the guesser is its namesake. Two ids guessing one row are withheld, as two full names are.
+ */
+private fun List<Pair<EspnCompetitor, CompetitorMatch>>.settlingSurnameGuesses(): List<CompetitorMatch> {
+    val settlement = SurnameGuessSettlement(this)
+    return map { (competitor, match) -> settlement.settle(competitor, match) }
+}
+
+/** @see settlingSurnameGuesses */
+private fun List<MatchedEvent>.settlingSurnameGuessesAcrossEvents(): List<MatchedEvent> {
+    val settlement = SurnameGuessSettlement(flatMap(MatchedEvent::matches))
+    return map { matched ->
+        val settled = matched.matches.map { (competitor, match) -> competitor to settlement.settle(competitor, match) }
+        matched.copy(matches = settled)
+    }
+}
+
+/** Reads every claim before any is settled, so a guess withheld here never counts as a claim on its row. */
+private class SurnameGuessSettlement(located: List<Pair<EspnCompetitor, CompetitorMatch>>) {
+    private val claimantIds = espnIdsPerRow(located) { match -> match.claimedRows }
+    private val guesserIds = espnIdsPerRow(located) { match -> listOfNotNull(match.guessedRow) }
+
+    fun settle(
+        competitor: EspnCompetitor,
+        match: CompetitorMatch,
+    ): CompetitorMatch {
+        if (match !is CompetitorMatch.SurnameGuess) return match
+        val row = match.golfer
+        return when {
+            claimantIds[row.id].orEmpty().any { it != competitor.espnId } -> CompetitorMatch.IdMismatch(row)
+            guesserIds.getValue(row.id).size > 1 -> CompetitorMatch.Withheld(listOf(row))
+            else -> match
+        }
+    }
+
+    private fun espnIdsPerRow(
+        located: List<Pair<EspnCompetitor, CompetitorMatch>>,
+        rowsOf: (CompetitorMatch) -> List<Golfer>,
+    ): Map<GolferId, Set<String>> =
+        located.flatMap { (competitor, match) -> rowsOf(match).map { row -> row.id to competitor.espnId } }
+            .groupBy(keySelector = { (rowId, _) -> rowId }, valueTransform = { (_, espnId) -> espnId })
+            .mapValues { (_, espnIds) -> espnIds.toSet() }
+}
+
+private val CompetitorMatch.guessedRow: Golfer?
+    get() = (this as? CompetitorMatch.SurnameGuess)?.golfer
+
+/** Every row a match names on evidence firmer than a surname, contested or not. */
+private val CompetitorMatch.claimedRows: List<Golfer>
+    get() =
+        when (this) {
+            is CompetitorMatch.Credited -> listOf(golfer)
+            is CompetitorMatch.Idless -> listOf(golfer)
+            is CompetitorMatch.Withheld -> candidates
+            is CompetitorMatch.SurnameGuess, CompetitorMatch.Unmatched, is CompetitorMatch.IdMismatch -> emptyList()
+        }
+
 /** One completed ESPN event and the tournament its results are written to. */
 internal data class EventImport(
     val tournament: Tournament,
@@ -416,6 +485,12 @@ private data class MatchedEvent(
     val import: EventImport,
     val matches: List<Pair<EspnCompetitor, CompetitorMatch>>,
 )
+
+/** @see withholdingContestedRows */
+private fun MatchedEvent.withholdingContestedRows(): MatchedEvent {
+    val (competitors, located) = matches.unzip()
+    return copy(matches = competitors.zip(located.withholdingContestedRows()))
+}
 
 private val CompetitorMatch.idlessRow: Golfer?
     get() = (this as? CompetitorMatch.Idless)?.golfer
@@ -455,7 +530,7 @@ private fun claimFor(
     return when (match) {
         is CompetitorMatch.Idless -> PgaPlayerIdClaim.Backfill(match.golfer.id, competitor.espnId, name)
         CompetitorMatch.Unmatched, is CompetitorMatch.IdMismatch -> PgaPlayerIdClaim.Create(competitor.espnId, name)
-        is CompetitorMatch.Credited, is CompetitorMatch.Withheld -> null
+        is CompetitorMatch.Credited, is CompetitorMatch.SurnameGuess, is CompetitorMatch.Withheld -> null
     }
 }
 
@@ -519,7 +594,7 @@ private fun creditUniqueSurname(
 ): CompetitorMatch =
     when (val bySurname = names.matchSurname(competitor.name)) {
         is GolferNameMatch.Matched ->
-            bySurname.golfer.takeIf { it.pgaPlayerId == null }?.let(CompetitorMatch::Credited)
+            bySurname.golfer.takeIf { it.pgaPlayerId == null }?.let(CompetitorMatch::SurnameGuess)
                 ?: CompetitorMatch.IdMismatch(bySurname.golfer)
         is GolferNameMatch.Ambiguous, GolferNameMatch.NoMatch -> CompetitorMatch.Unmatched
     }
@@ -564,7 +639,8 @@ internal fun buildLivePreviewForEvent(
     val multiplier = tournament.payoutMultiplier
     val isTeamEvent = event.isTeamEvent
 
-    val matches = event.competitors.map { ctx.match(it, tournament.id) }.withholdingContestedRows()
+    val matches =
+        event.competitors.map { it to ctx.match(it, tournament.id) }.settlingSurnameGuesses().withholdingContestedRows()
     val matchedCompetitors: List<Pair<EspnCompetitor, Golfer?>> =
         event.competitors.zip(matches) { competitor, match -> competitor to match.creditedGolfer }
     val tiedCounts = event.competitors.groupingBy { it.position }.eachCount()
