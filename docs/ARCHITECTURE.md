@@ -437,7 +437,8 @@ still matching one id-less row under different ids are withheld the same way; on
 credited the row another event wrote its id onto, and adds no id to that contest. One id ESPN lists twice, in one
 event or two, is one athlete and no contest. The link editor and the live preview settle an unfinalized
 tournament's event with the same-day events an unlinked finalize would import beside it (each linked to another
-unfinalized tournament of the season starting that day), through the same function finalize uses. Only import and
+unfinalized tournament of the season starting that day), through the same function finalize uses; with no unlinked
+unfinalized tournament that day, each linked one finalizes alone, and so is settled alone. Only import and
 finalize write:
 they backfill the competitor's ESPN id onto an id-less row its full name matched (never one credited by override,
 surname or partner) and create a golfer for a competitor that matches nothing. Every event of an import is matched

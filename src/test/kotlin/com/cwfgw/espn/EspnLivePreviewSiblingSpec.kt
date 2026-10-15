@@ -83,6 +83,20 @@ class EspnLivePreviewSiblingSpec : FunSpec({
 
         listing.competitors.map { it.name to it.linkedGolfer } shouldContainExactly listOf("Jim Bloggs" to joe)
     }
+
+    test("with no unlinked tournament that day, a preview pays what the linked tournament's own finalize scores") {
+        val week = tx.update { seedWeek() }
+        val completed = UpdateTournamentRequest(status = TournamentStatus.Completed)
+        tx.update { TournamentRepository().update(week.unlinked.id, completed) }
+        val espn = espnService(tx)
+        val ctx = espn.loadLivePreviewContext(week.seasonId, listOf(week.guessing))
+        val previewed = espn.previewForTournament(ctx, week.guessing).orFail().payouts()
+
+        opsService(tx, espn).finalizeTournament(week.guessing.id).orFail()
+
+        previewed shouldBe tx.scoredPayouts(week.seasonId, week.guessing.id)
+        previewed.shouldNotBeEmpty()
+    }
 })
 
 private data class SiblingWeek(

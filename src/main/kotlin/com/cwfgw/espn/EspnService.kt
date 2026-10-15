@@ -708,8 +708,8 @@ internal fun findLinkedEvent(
 
 /**
  * What an unlinked finalize of [tournament]'s day imports beside [event], so a preview or listing settles them as one
- * import; none once [tournament] is finalized, since that finalize skips it. ESPN's completion flag is ignored: both
- * predict the finished import, before ESPN marks the events completed.
+ * import; none once [tournament] is finalized, since that finalize skips it, or with no unlinked tournament that day,
+ * since each linked one then finalizes alone. ESPN's completion flag is ignored: both predict the finished import.
  */
 private fun findSiblingImports(
     tournament: Tournament,
@@ -717,9 +717,10 @@ private fun findSiblingImports(
     events: List<EspnTournament>,
     unfinalized: List<Tournament>,
 ): List<EventImport> {
-    if (tournament.status !in UNFINALIZED) return emptyList()
-    return unfinalized
-        .filter { it.id != tournament.id && it.seasonId == tournament.seasonId && it.startDate == tournament.startDate }
+    val sameDay = unfinalized.filter { it.seasonId == tournament.seasonId && it.startDate == tournament.startDate }
+    if (tournament.status !in UNFINALIZED || sameDay.none { it.pgaTournamentId == null }) return emptyList()
+    return sameDay
+        .filter { it.id != tournament.id }
         .mapNotNull { sibling ->
             findLinkedEvent(events, sibling)?.takeIf { it.espnId != event.espnId }?.let { EventImport(sibling, it) }
         }
