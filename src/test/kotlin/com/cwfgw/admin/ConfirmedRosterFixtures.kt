@@ -12,7 +12,7 @@ internal fun fullTeam(
     val pickedRounds = picks.map(ConfirmedPick::round).toSet()
     val fillers =
         DRAFT_ROUNDS.filterNot { it in pickedRounds }.map { round ->
-            val filler = GolferAssignment.New(firstName = "Filler", lastName = "$name-$round")
+            val filler = GolferAssignment.New(name = "Filler $name-$round")
             ConfirmedPick(round = round, ownershipPct = 100, assignment = filler)
         }
     return ConfirmedTeam(teamNumber = number, teamName = name, picks = picks.toList() + fillers)

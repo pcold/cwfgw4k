@@ -78,11 +78,12 @@ private fun ConfirmedRosterProblem.describe(): String =
         is ConfirmedRosterProblem.RepeatedTeamName -> "team name '$teamName' is used by more than one team"
         is ConfirmedRosterProblem.RepeatedExistingGolfer ->
             "team '$teamName' lists golfer ${golferId.value} more than once"
-        is ConfirmedRosterProblem.RepeatedNewGolfer ->
-            "team '$teamName' lists new golfer '$firstName $lastName' more than once"
+        is ConfirmedRosterProblem.RepeatedNewGolfer -> "team '$teamName' lists new golfer '$name' more than once"
         is ConfirmedRosterProblem.RepeatedEspnGolfer ->
             "team '$teamName' lists ESPN athlete $espnId more than once"
         is ConfirmedRosterProblem.BlankEspnGolferName -> "team '$teamName' gives ESPN athlete $espnId a blank name"
+        is ConfirmedRosterProblem.BlankNewGolferName ->
+            "team '$teamName' gives its round $round new golfer a blank name"
         is ConfirmedRosterProblem.RoundOutOfRange ->
             "team '$teamName' has a pick in round $round, outside rounds ${DRAFT_ROUNDS.first}–${DRAFT_ROUNDS.last}"
         is ConfirmedRosterProblem.RepeatedRound -> "team '$teamName' has more than one pick in round $round"

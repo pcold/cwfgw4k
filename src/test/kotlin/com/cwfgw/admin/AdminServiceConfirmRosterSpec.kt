@@ -139,7 +139,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
                                     ConfirmedPick(
                                         round = 1,
                                         ownershipPct = 100,
-                                        assignment = GolferAssignment.New("Scottie", "Scheffler"),
+                                        assignment = GolferAssignment.New("Scottie Scheffler"),
                                     ),
                                 ),
                             ),
@@ -189,7 +189,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
                                     ConfirmedPick(
                                         round = 1,
                                         ownershipPct = 100,
-                                        assignment = GolferAssignment.New("First", "Golfer"),
+                                        assignment = GolferAssignment.New("First Golfer"),
                                     ),
                                 ),
                                 fullTeam(number = 2, name = "WOMBLE"),

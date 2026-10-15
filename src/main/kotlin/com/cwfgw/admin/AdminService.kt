@@ -357,9 +357,7 @@ class AdminService(
                     is GolferAssignment.Existing -> assignment.golferId
                     is GolferAssignment.New -> {
                         newGolfers++
-                        val req =
-                            CreateGolferRequest(firstName = assignment.firstName, lastName = assignment.lastName)
-                        golferRepository.create(req).id
+                        golferRepository.create(assignment.toCreateRequest()).id
                     }
                     is GolferAssignment.Espn -> espnGolferIds.getValue(assignment.espnId)
                 }
@@ -449,7 +447,7 @@ internal val DRAFT_ROUNDS: IntRange = 1..8
 
 private fun findRosterProblems(teams: List<ConfirmedTeam>): List<ConfirmedRosterProblem> =
     repeatedTeamNames(teams) + teams.flatMap(::repeatedGolfers) + teams.flatMap(::blankEspnNames) +
-        teams.flatMap(::draftRoundProblems)
+        teams.flatMap(::blankNewNames) + teams.flatMap(::draftRoundProblems)
 
 private fun repeatedTeamNames(teams: List<ConfirmedTeam>): List<ConfirmedRosterProblem> =
     teams.firstOfEachRepeat(ConfirmedTeam::teamName)
@@ -463,14 +461,8 @@ private fun repeatedGolfers(team: ConfirmedTeam): List<ConfirmedRosterProblem> {
             .map { repeat -> ConfirmedRosterProblem.RepeatedExistingGolfer(team.teamName, repeat.golferId) }
     val repeatedNew =
         assignments.filterIsInstance<GolferAssignment.New>()
-            .firstOfEachRepeat { repeat -> normalizeName("${repeat.firstName} ${repeat.lastName}") }
-            .map { repeat ->
-                ConfirmedRosterProblem.RepeatedNewGolfer(
-                    teamName = team.teamName,
-                    firstName = repeat.firstName,
-                    lastName = repeat.lastName,
-                )
-            }
+            .firstOfEachRepeat { repeat -> normalizeName(repeat.name) }
+            .map { repeat -> ConfirmedRosterProblem.RepeatedNewGolfer(team.teamName, repeat.name) }
     val repeatedEspn =
         assignments.filterIsInstance<GolferAssignment.Espn>()
             .firstOfEachRepeat(GolferAssignment.Espn::espnId)
@@ -483,6 +475,17 @@ private fun blankEspnNames(team: ConfirmedTeam): List<ConfirmedRosterProblem> =
         .filterIsInstance<GolferAssignment.Espn>()
         .filter { athlete -> GolferName.splitName(athlete.name) == null }
         .map { athlete -> ConfirmedRosterProblem.BlankEspnGolferName(team.teamName, athlete.espnId) }
+
+private fun blankNewNames(team: ConfirmedTeam): List<ConfirmedRosterProblem> =
+    team.picks.filter { pick ->
+        val assignment = pick.assignment
+        assignment is GolferAssignment.New && GolferName.splitName(assignment.name) == null
+    }.map { pick -> ConfirmedRosterProblem.BlankNewGolferName(team.teamName, pick.round) }
+
+private fun GolferAssignment.New.toCreateRequest(): CreateGolferRequest {
+    val split = checkNotNull(GolferName.splitName(name)) { "findRosterProblems refuses a blank new-golfer name" }
+    return CreateGolferRequest(firstName = split.firstName, lastName = split.lastName)
+}
 
 private fun GolferAssignment.Espn.toCreateRequest(): CreateGolferRequest {
     val split = checkNotNull(GolferName.splitName(name)) { "findRosterProblems refuses a blank ESPN name" }

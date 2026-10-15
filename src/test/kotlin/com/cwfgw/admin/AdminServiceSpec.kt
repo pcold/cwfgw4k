@@ -557,7 +557,7 @@ class AdminServiceSpec : FunSpec({
                                     ConfirmedPick(
                                         round = 1,
                                         ownershipPct = 75,
-                                        assignment = GolferAssignment.New("New", "Player"),
+                                        assignment = GolferAssignment.New("New Player"),
                                     ),
                                 ),
                         ),
