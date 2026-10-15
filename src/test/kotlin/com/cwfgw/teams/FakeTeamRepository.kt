@@ -101,5 +101,5 @@ class FakeTeamRepository(
 
     context(ctx: TransactionContext)
     override fun getRosterView(seasonId: SeasonId): List<RosterViewTeam> =
-        rosterViews[seasonId] ?: emptyList()
+        rosterViews[seasonId].orEmpty()
 }

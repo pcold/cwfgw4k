@@ -19,7 +19,7 @@ class FakeEspnClient(
     override suspend fun fetchScoreboard(date: LocalDate): List<EspnTournament> {
         fetchCalls += date
         if (upstreamError != null) throw upstreamError
-        return tournamentsByDate[date] ?: emptyList()
+        return tournamentsByDate[date].orEmpty()
     }
 
     override suspend fun fetchCalendar(): List<EspnCalendarEntry> {

@@ -1,5 +1,6 @@
 package com.cwfgw.espn
 
+import com.github.benmanes.caffeine.cache.Ticker
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -7,9 +8,11 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.LocalDate
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 private val DATE_A = LocalDate.parse("2026-04-09")
 private val DATE_B = LocalDate.parse("2026-04-16")
@@ -89,11 +92,12 @@ class CachingEspnClientSpec : FunSpec({
 
     test("entries expire after the configured TTL") {
         val delegate = CountingEspnClient()
-        val client =
-            CachingEspnClient(delegate, scoreboardTtl = Duration.ofMillis(50), scoreboardMaxSize = 256)
+        val ticker = StepTicker()
+        val ttl = Duration.ofMinutes(5)
+        val client = CachingEspnClient(delegate, scoreboardTtl = ttl, scoreboardMaxSize = 256, ticker = ticker)
 
         client.fetchScoreboard(DATE_A)
-        Thread.sleep(EXPIRY_WAIT_MS)
+        ticker.advance(ttl.plusNanos(1))
         client.fetchScoreboard(DATE_A)
 
         delegate.scoreboardCalls.get() shouldBe 2
@@ -133,7 +137,7 @@ class CachingEspnClientSpec : FunSpec({
                 val concurrent = (1..10).map { async { client.fetchScoreboard(DATE_A) } }
                 // Give Caffeine a beat to register all 10 callers as awaiters
                 // on the same in-flight future before we resolve the gate.
-                Thread.sleep(SETTLE_MS)
+                delay(SETTLE_MS)
                 gate.complete(listOf(event("e-shared")))
                 concurrent.awaitAll()
             }
@@ -144,11 +148,18 @@ class CachingEspnClientSpec : FunSpec({
     }
 }) {
     companion object {
-        // Slop above Caffeine's expireAfterWrite TTL so the second fetch reliably misses.
-        private const val EXPIRY_WAIT_MS: Long = 200
-
         // Brief pause to let all concurrent callers register as awaiters on
         // the AsyncCache's in-flight future before the gate resolves.
         private const val SETTLE_MS: Long = 50
     }
+}
+
+private class StepTicker : Ticker {
+    private val nanos = AtomicLong(0)
+
+    fun advance(duration: Duration) {
+        nanos.addAndGet(duration.toNanos())
+    }
+
+    override fun read(): Long = nanos.get()
 }
