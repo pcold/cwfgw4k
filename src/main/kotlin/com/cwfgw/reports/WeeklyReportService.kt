@@ -17,6 +17,7 @@ import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.tournaments.ESPN_SCHEDULE_ZONE
+import com.cwfgw.tournaments.GolferFinish
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentId
@@ -113,10 +114,10 @@ class WeeklyReportService(
             val allGolfers = golferRepository.findAll(search = null)
             val scores = scoringRepository.getScores(seasonId, tournamentId)
             val allTournaments = tournamentRepository.findAll(TournamentFilter(seasonId = seasonId))
-            val allCompletedTournaments = allTournaments.filter { it.status == TournamentStatus.Completed }
+            val completed = allTournaments.filter { it.status == TournamentStatus.Completed }
+            val throughTournaments = filterThroughTournament(completed, tournament)
             val allRosters = teamRepository.findRostersBySeason(seasonId)
-            val allScores =
-                scoringRepository.getScoresBySeason(seasonId, allCompletedTournaments.map { it.id })
+            val throughScores = scoringRepository.getScoresBySeason(seasonId, throughTournaments.map { it.id })
             val inputs =
                 WeeklyReportInputs(
                     rules = rules,
@@ -125,9 +126,9 @@ class WeeklyReportService(
                     results = results,
                     allGolfers = allGolfers,
                     scores = scores,
-                    allCompletedTournaments = allCompletedTournaments,
+                    throughTournaments = throughTournaments,
                     allRosters = allRosters,
-                    allScores = allScores,
+                    throughScores = throughScores,
                 )
             Result.Ok(
                 ReportPrepared(
@@ -419,31 +420,20 @@ class WeeklyReportService(
             val completed =
                 tournamentRepository
                     .findAll(TournamentFilter(seasonId = seasonId, statuses = setOf(TournamentStatus.Completed)))
-            val resultsByTournamentId =
-                tournamentRepository.getResultsByTournaments(completed.map { it.id })
-                    .groupBy { it.tournamentId }
-            val byTournament =
-                completed.associateWith { resultsByTournamentId[it.id] ?: emptyList() }
-
+            val finishByTournament =
+                tournamentRepository
+                    .findResultsForGolfer(
+                        golferId = golferId,
+                        tournamentIds = completed.map { it.id },
+                        positionAtMost = TOP_TEN_CUTOFF,
+                    )
+                    .associateBy { it.tournamentId }
             val entries =
-                byTournament
-                    .mapNotNull { (tournament, results) ->
-                        val mine =
-                            results.firstOrNull { result ->
-                                result.golferId == golferId &&
-                                    (result.position ?: Int.MAX_VALUE) <= TOP_TEN_CUTOFF
-                            } ?: return@mapNotNull null
-                        val position = mine.position ?: return@mapNotNull null
-                        val numTied = results.count { it.position == position }
-                        val payout =
-                            PayoutTable.tieSplitPayout(
-                                position = position,
-                                numTied = numTied,
-                                multiplier = tournament.payoutMultiplier,
-                                rules = rules,
-                                isTeamEvent = tournament.isTeamEvent,
-                            )
-                        GolferHistoryEntry(tournament = tournament.name, position = position, earnings = payout)
+                completed
+                    .mapNotNull { tournament ->
+                        finishByTournament[tournament.id]?.let { finish ->
+                            golferHistoryEntry(tournament, finish, rules)
+                        }
                     }
                     .sortedBy { it.position }
 
@@ -457,6 +447,24 @@ class WeeklyReportService(
             )
         }
 }
+
+private fun golferHistoryEntry(
+    tournament: Tournament,
+    finish: GolferFinish,
+    rules: SeasonRules,
+): GolferHistoryEntry =
+    GolferHistoryEntry(
+        tournament = tournament.name,
+        position = finish.position,
+        earnings =
+            PayoutTable.tieSplitPayout(
+                position = finish.position,
+                numTied = finish.numTied,
+                multiplier = tournament.payoutMultiplier,
+                rules = rules,
+                isTeamEvent = tournament.isTeamEvent,
+            ),
+    )
 
 /**
  * Output of each public method's `tx.read` gather block — the base
@@ -509,9 +517,9 @@ internal data class WeeklyReportInputs(
     val results: List<TournamentResult>,
     val allGolfers: List<Golfer>,
     val scores: List<FantasyScore>,
-    val allCompletedTournaments: List<Tournament>,
+    val throughTournaments: List<Tournament>,
     val allRosters: List<RosterEntry>,
-    val allScores: List<FantasyScore>,
+    val throughScores: List<FantasyScore>,
 )
 
 /**
@@ -620,22 +628,33 @@ private data class ReportContext(
 
 private fun deriveReportContext(inputs: WeeklyReportInputs): ReportContext {
     val numTeams = inputs.teams.size
-    val throughTournaments = inputs.allCompletedTournaments.filter { isOnOrBefore(it, inputs.tournament) }
-    val throughIds = throughTournaments.map { it.id }.toSet()
-    val throughScores = inputs.allScores.filter { it.tournamentId in throughIds }
     val sideBetPerRound =
-        buildSideBetPerRound(inputs.rules, inputs.allRosters, throughScores, numTeams, inputs.rules.sideBetAmount)
+        buildSideBetPerRound(
+            inputs.rules,
+            inputs.allRosters,
+            inputs.throughScores,
+            numTeams,
+            inputs.rules.sideBetAmount,
+        )
     return ReportContext(
         golferMap = inputs.allGolfers.associateBy { it.id },
         resultsByGolfer = inputs.results.associateBy { it.golferId },
         scoresByTeamGolfer = inputs.scores.associateBy { it.teamId to it.golferId },
         cumulativeByTeamGolfer =
-            throughScores.groupBy { it.teamId to it.golferId }
+            inputs.throughScores.groupBy { it.teamId to it.golferId }
                 .mapValues { (_, scores) -> scores.sumPoints() to scores.size },
         priorWeeklyByTeam =
-            buildPriorWeekly(throughTournaments, throughScores, inputs.tournament, inputs.teams, numTeams),
-        cumulativeTopTenCounts = throughScores.groupBy { it.teamId }.mapValues { (_, scores) -> scores.size },
-        cumulativeTopTenEarnings = throughScores.groupBy { it.teamId }.mapValues { (_, scores) -> scores.sumPoints() },
+            buildPriorWeekly(
+                inputs.throughTournaments,
+                inputs.throughScores,
+                inputs.tournament,
+                inputs.teams,
+                numTeams,
+            ),
+        cumulativeTopTenCounts =
+            inputs.throughScores.groupBy { it.teamId }.mapValues { (_, scores) -> scores.size },
+        cumulativeTopTenEarnings =
+            inputs.throughScores.groupBy { it.teamId }.mapValues { (_, scores) -> scores.sumPoints() },
         sideBetPerRound = sideBetPerRound,
         sideBetResults = aggregateSideBets(sideBetPerRound),
         finishByPosition =

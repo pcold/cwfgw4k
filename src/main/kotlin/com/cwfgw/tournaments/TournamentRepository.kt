@@ -13,6 +13,8 @@ import com.cwfgw.jooq.tables.references.TOURNAMENTS
 import com.cwfgw.jooq.tables.references.TOURNAMENT_RESULTS
 import com.cwfgw.seasons.SeasonId
 import org.jooq.Field
+import org.jooq.Table
+import org.jooq.impl.DSL
 
 interface TournamentRepository {
     /** Ordered by start date, then creation. */
@@ -53,6 +55,17 @@ interface TournamentRepository {
      */
     context(ctx: TransactionContext)
     fun getResultsByTournaments(ids: Collection<TournamentId>): List<TournamentResult>
+
+    /**
+     * Placed finishes at or above [positionAtMost] only, ordered by tournament id. The tie count is taken over the
+     * whole field before narrowing to [golferId]; counted after, every finish would read as untied.
+     */
+    context(ctx: TransactionContext)
+    fun findResultsForGolfer(
+        golferId: GolferId,
+        tournamentIds: Collection<TournamentId>,
+        positionAtMost: Int,
+    ): List<GolferFinish>
 
     context(ctx: WriteTransactionContext)
     fun upsertResult(
@@ -176,6 +189,40 @@ private class JooqTournamentRepository : TournamentRepository {
                 TOURNAMENT_RESULTS.ID.asc(),
             )
             .fetch(::toResult)
+    }
+
+    context(ctx: TransactionContext)
+    override fun findResultsForGolfer(
+        golferId: GolferId,
+        tournamentIds: Collection<TournamentId>,
+        positionAtMost: Int,
+    ): List<GolferFinish> {
+        if (tournamentIds.isEmpty()) return emptyList()
+        val numTied =
+            DSL.count()
+                .over(DSL.partitionBy(TOURNAMENT_RESULTS.TOURNAMENT_ID, TOURNAMENT_RESULTS.POSITION))
+                .`as`("num_tied")
+        val leaderboard =
+            ctx.dsl.select(TOURNAMENT_RESULTS.TOURNAMENT_ID, TOURNAMENT_RESULTS.GOLFER_ID, TOURNAMENT_RESULTS.POSITION)
+                .select(numTied)
+                .from(TOURNAMENT_RESULTS)
+                .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.`in`(tournamentIds.map { it.value }))
+                .asTable("leaderboard")
+        val tournamentId = leaderboard.column(TOURNAMENT_RESULTS.TOURNAMENT_ID)
+        val position = leaderboard.column(TOURNAMENT_RESULTS.POSITION)
+        val tiedAtPosition = leaderboard.column(numTied)
+        return ctx.dsl.select(tournamentId, position, tiedAtPosition)
+            .from(leaderboard)
+            .where(leaderboard.column(TOURNAMENT_RESULTS.GOLFER_ID).eq(golferId.value))
+            .and(position.le(positionAtMost))
+            .orderBy(tournamentId.asc())
+            .fetch { record ->
+                GolferFinish(
+                    tournamentId = TournamentId(checkNotNull(record[tournamentId])),
+                    position = checkNotNull(record[position]),
+                    numTied = record[tiedAtPosition],
+                )
+            }
     }
 
     context(ctx: WriteTransactionContext)
@@ -320,3 +367,7 @@ private class JooqTournamentRepository : TournamentRepository {
             pairKey = record.pairKey,
         )
 }
+
+/** Not jOOQ's `Table.field(Field)`, which answers nullable for a column this subquery is known to select. */
+private fun <T> Table<*>.column(selected: Field<T>): Field<T> =
+    DSL.field(qualifiedName.append(selected.unqualifiedName), selected.dataType)
