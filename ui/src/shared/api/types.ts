@@ -269,16 +269,18 @@ export interface ConfirmedTournamentEntry {
   endDate: string;
 }
 
-export interface GolferCandidate {
-  golferId: string;
-  name: string;
-}
+// Mirrors the backend's sealed GolferCandidate (com.cwfgw.admin.GolferCandidate).
+// An `espn` candidate is not yet a golfer row; confirming it as an `espn` assignment inserts one.
+export type GolferCandidate =
+  | { type: 'existing'; golferId: string; name: string }
+  | { type: 'espn'; espnId: string; name: string };
 
 // Mirrors the backend's sealed PickMatch hierarchy
 // (com.cwfgw.admin.PickMatch). kotlinx.serialization emits a "type"
-// discriminator with @SerialName values matched/ambiguous/no_match.
+// discriminator with @SerialName values matched/matched_espn/ambiguous/no_match.
 export type PickMatch =
   | { type: 'matched'; golferId: string; golferName: string }
+  | { type: 'matched_espn'; espnId: string; golferName: string }
   | { type: 'ambiguous'; candidates: GolferCandidate[] }
   | { type: 'no_match' };
 
@@ -305,10 +307,12 @@ export interface RosterPreview {
 
 // Mirrors the backend's sealed GolferAssignment
 // (com.cwfgw.admin.GolferAssignment). For new golfers the operator must
-// supply first/last; existing references the resolved golfer id.
+// supply first/last; existing references the resolved golfer id; espn
+// carries the athlete's whole name, which the server splits.
 export type GolferAssignment =
   | { type: 'existing'; golferId: string }
-  | { type: 'new'; firstName: string; lastName: string };
+  | { type: 'new'; firstName: string; lastName: string }
+  | { type: 'espn'; espnId: string; name: string };
 
 export interface RosterConfirmPick {
   round: number;
