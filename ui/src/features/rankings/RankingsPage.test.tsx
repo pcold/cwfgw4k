@@ -59,7 +59,6 @@ const rankings: Rankings = {
       sideBets: 30,
       totalCash: 150,
       series: [50, 100, 150],
-      liveWeekly: null,
     },
   ],
   weeks: ['9', '10', '11'],

@@ -13,7 +13,6 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
   return {
     teamId: 't-1',
     teamName: 'Aces',
-    ownerName: 'Alice',
     cells: [],
     topTenEarnings: 0,
     weeklyTotal: 0,
@@ -42,7 +41,6 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
   return {
     scope: 'tournament',
     tournament: {
-      id: 't-1',
       name: 'Sample Open',
       startDate: '2026-03-01',
       endDate: '2026-03-04',

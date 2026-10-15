@@ -5,7 +5,6 @@ package com.cwfgw.reports
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.serialization.BigDecimalSerializer
 import com.cwfgw.teams.TeamId
-import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentStatus
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -30,11 +29,9 @@ data class ReportCellFinish(
  * One cell in the weekly report grid — the intersection of a team
  * (column) and a draft round (row). Carries the picked golfer's
  * tournament result plus rolled-up season-to-date totals so the UI can
- * render the cell without a second lookup. Most fields are nullable
- * because a team may have an empty slot for a round, or the picked
- * golfer may have no result yet (cut, withdrew, no-show). `pairKey` is
- * set only for team events (e.g. Zurich Classic), where two partners
- * share a synthetic team id.
+ * render the cell without a second lookup. Its nullable fields are null
+ * where a team has an empty slot for a round, or the picked golfer has
+ * no result yet (cut, withdrew, no-show).
  */
 @Serializable
 data class ReportCell(
@@ -47,13 +44,10 @@ data class ReportCell(
      * and tie state are read from here, never parsed back out of that label.
      */
     val finish: ReportCellFinish?,
-    val scoreToPar: Int?,
     val earnings: BigDecimal,
-    val topTens: Int,
     val ownershipPct: BigDecimal,
     val seasonEarnings: BigDecimal,
     val seasonTopTens: Int,
-    val pairKey: String? = null,
 )
 
 /**
@@ -64,7 +58,6 @@ data class ReportCell(
 data class ReportTeamColumn(
     val teamId: TeamId,
     val teamName: String,
-    val ownerName: String,
     val cells: List<ReportCell>,
     val topTenEarnings: BigDecimal,
     val weeklyTotal: BigDecimal,
@@ -78,16 +71,12 @@ data class ReportTeamColumn(
 
 /**
  * A golfer in the top-10 that no team rostered. Surfaced separately under
- * the report grid so viewers can see "you missed these names." `pairKey`
- * mirrors the team-event pairing logic from [ReportCell].
+ * the report grid so viewers can see "you missed these names."
  */
 @Serializable
 data class UndraftedGolfer(
     val name: String,
-    val position: Int?,
     val payout: BigDecimal,
-    val scoreToPar: Int? = null,
-    val pairKey: String? = null,
 )
 
 /** [teamNames] lists every team rostering the player, since a golfer can be split across teams; empty is undrafted. */
@@ -158,12 +147,11 @@ data class ReportSideBetRules(
     val rounds: List<Int>,
 )
 
-/** One row of the standings panel beside the report grid (rank ordered by totalCash desc). */
+/** One row of the standings panel beside the report grid, ranked by [ReportTeamColumn.totalCash] descending. */
 @Serializable
 data class StandingsEntry(
     val rank: Int,
     val teamName: String,
-    val totalCash: BigDecimal,
 )
 
 /**
@@ -173,7 +161,6 @@ data class StandingsEntry(
  */
 @Serializable
 data class ReportTournamentInfo(
-    val id: TournamentId?,
     val name: String?,
     val startDate: String?,
     val endDate: String?,
@@ -258,8 +245,7 @@ data class WeeklyReport(
 /**
  * One team's entry in the rankings response, including the per-tournament
  * `series` so the UI can draw a cumulative-cash line chart without a
- * second round trip. `liveWeekly` is set only when `live=true` to surface
- * a projected current-week delta beside the locked-in series.
+ * second round trip.
  */
 @Serializable
 data class TeamRanking(
@@ -269,7 +255,6 @@ data class TeamRanking(
     val sideBets: BigDecimal,
     val totalCash: BigDecimal,
     val series: List<BigDecimal>,
-    val liveWeekly: BigDecimal? = null,
 )
 
 /** Full rankings response — teams plus the column headers for the series chart. */
@@ -293,7 +278,6 @@ data class GolferHistoryEntry(
 @Serializable
 data class GolferHistory(
     val golferName: String,
-    val golferId: GolferId,
     val totalEarnings: BigDecimal,
     val topTens: Int,
     val results: List<GolferHistoryEntry>,

@@ -59,7 +59,6 @@ function buildReport(): WeeklyReport {
   return {
     scope: 'season',
     tournament: {
-      id: null,
       name: null,
       startDate: null,
       endDate: null,
@@ -71,7 +70,6 @@ function buildReport(): WeeklyReport {
       {
         teamId: 't-1',
         teamName: 'Aces',
-        ownerName: 'Alice',
         cells: [],
         topTenEarnings: 0,
         weeklyTotal: 0,

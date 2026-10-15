@@ -80,11 +80,10 @@ const activeTournament: Tournament = {
   week: '10',
 };
 
-function buildReport(name: string, tournamentId: string): WeeklyReport {
+function buildReport(name: string): WeeklyReport {
   return {
     scope: 'tournament',
     tournament: {
-      id: tournamentId,
       name,
       startDate: '2026-03-01',
       endDate: '2026-03-04',
@@ -96,7 +95,6 @@ function buildReport(name: string, tournamentId: string): WeeklyReport {
       {
         teamId: 'team-1',
         teamName: 'Aces',
-        ownerName: 'Alice',
         cells: [],
         topTenEarnings: 0,
         weeklyTotal: 0,
@@ -178,7 +176,7 @@ describe('ScoreboardPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament, completedTournament]);
     tournamentReportMock.mockImplementation((_s, id) =>
-      Promise.resolve(buildReport(id === 'tn-active' ? 'Current Open' : 'Sample Open', id)),
+      Promise.resolve(buildReport(id === 'tn-active' ? 'Current Open' : 'Sample Open')),
     );
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
@@ -196,7 +194,7 @@ describe('ScoreboardPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([earlier, latest]);
     tournamentReportMock.mockImplementation((_s, id) =>
-      Promise.resolve(buildReport(id === 'tn-latest' ? 'Latest Open' : 'Early Open', id)),
+      Promise.resolve(buildReport(id === 'tn-latest' ? 'Latest Open' : 'Early Open')),
     );
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
@@ -213,7 +211,7 @@ describe('ScoreboardPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament, completedTournament]);
     tournamentReportMock.mockImplementation((_s, id) =>
-      Promise.resolve(buildReport(id === 'tn-active' ? 'Current Open' : 'Sample Open', id)),
+      Promise.resolve(buildReport(id === 'tn-active' ? 'Current Open' : 'Sample Open')),
     );
 
     const user = userEvent.setup();
@@ -247,7 +245,7 @@ describe('ScoreboardPage', () => {
     tournamentsMock.mockResolvedValue([truist, oneFlight]);
     tournamentReportMock.mockImplementation((_s, id) =>
       Promise.resolve(
-        buildReport(id === 'tn-active' ? 'Current Open' : 'Opposite Field Open', id),
+        buildReport(id === 'tn-active' ? 'Current Open' : 'Opposite Field Open'),
       ),
     );
 
@@ -293,9 +291,8 @@ describe('ScoreboardPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament]);
     tournamentReportMock.mockResolvedValue({
-      ...buildReport('Current Open', 'tn-active'),
+      ...buildReport('Current Open'),
       tournament: {
-        id: 'tn-active',
         name: 'Current Open',
         startDate: '2026-03-01',
         endDate: '2026-03-04',
@@ -327,9 +324,8 @@ describe('ScoreboardPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament]);
     tournamentReportMock.mockResolvedValue({
-      ...buildReport('Current Open', 'tn-active'),
+      ...buildReport('Current Open'),
       tournament: {
-        id: 'tn-active',
         name: 'Current Open',
         startDate: '2026-03-01',
         endDate: '2026-03-04',
@@ -339,7 +335,7 @@ describe('ScoreboardPage', () => {
       },
     });
     seasonReportMock.mockResolvedValue({
-      ...buildReport('All Tournaments', 'tn-active'),
+      ...buildReport('All Tournaments'),
       scope: 'season',
     });
     finalizeMock.mockResolvedValue(makeTournament());
@@ -399,9 +395,8 @@ describe('ScoreboardPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament]);
     tournamentReportMock.mockResolvedValue({
-      ...buildReport('Current Open', 'tn-active'),
+      ...buildReport('Current Open'),
       tournament: {
-        id: 'tn-active',
         name: 'Current Open',
         startDate: '2026-03-01',
         endDate: '2026-03-04',
@@ -438,9 +433,8 @@ describe('ScoreboardPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament]);
     tournamentReportMock.mockResolvedValue({
-      ...buildReport('Current Open', 'tn-active'),
+      ...buildReport('Current Open'),
       tournament: {
-        id: 'tn-active',
         name: 'Current Open',
         startDate: '2026-03-01',
         endDate: '2026-03-04',
@@ -468,7 +462,7 @@ describe('ScoreboardPage', () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([completedTournament]);
-    tournamentReportMock.mockResolvedValue(buildReport('Sample Open', 'tn-completed'));
+    tournamentReportMock.mockResolvedValue(buildReport('Sample Open'));
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
@@ -499,9 +493,8 @@ describe('ScoreboardPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament]);
     tournamentReportMock.mockResolvedValue({
-      ...buildReport('Current Open', 'tn-active'),
+      ...buildReport('Current Open'),
       tournament: {
-        id: 'tn-active',
         name: 'Current Open',
         startDate: '2026-03-01',
         endDate: '2026-03-04',
@@ -534,9 +527,8 @@ describe('ScoreboardPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([activeTournament]);
     tournamentReportMock.mockResolvedValue({
-      ...buildReport('Current Open', 'tn-active'),
+      ...buildReport('Current Open'),
       tournament: {
-        id: 'tn-active',
         name: 'Current Open',
         startDate: '2026-03-01',
         endDate: '2026-03-04',

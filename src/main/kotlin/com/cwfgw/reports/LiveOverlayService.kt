@@ -20,26 +20,9 @@ import java.math.BigDecimal
 private val log = KotlinLogging.logger {}
 
 /**
- * Merges live ESPN scoreboard data onto base reports built from
- * persisted state. Two cases land in [overlayReport]:
- *
- *  1. **Prior non-completed tournaments** — events before the selected
- *     tournament whose results haven't been finalized yet. Their live
- *     payouts roll into the report's `previous` (zero-sum across teams)
- *     and bump the per-cell `seasonEarnings`/`seasonTopTens`. Per-cell
- *     `earnings` (this-tournament) stays untouched — those are owned by
- *     the selected tournament.
- *
- *  2. **The selected tournament itself, if in-progress** — replaces
- *     per-cell `earnings`/`positionStr`/`finish`/`scoreToPar` with live ESPN
- *     projections, recomputes weekly +/- and total cash, and surfaces
- *     the full live leaderboard for the scoreboard view.
- *
- * Both paths recompute side-bet detail with the live data so the
- * standings panel reflects projected outcomes. Per-pull failures (ESPN
- * 5xx, parse errors) are logged at WARN and the path returns the
- * un-overlaid base — the operator sees the data they had before the
- * live attempt rather than a hard error.
+ * In [overlayReport], unless the selected tournament is completed, a prior unfinalized one's live payouts roll into
+ * `previous` and the season columns and the selected one's replace its cells' earnings and finish. A pull that fails
+ * is skipped, keeping whatever was already overlaid; an unavailable ESPN logs at WARN.
  */
 class LiveOverlayService(private val espnService: EspnService) {
     /**
@@ -402,7 +385,6 @@ private fun TeamRanking.applyLive(
         sideBets = sideBets,
         totalCash = newTotal,
         series = series + newTotal,
-        liveWeekly = live,
     )
 }
 
@@ -418,7 +400,6 @@ private fun livePayoutMap(liveData: EspnLivePreview): Map<Pair<TeamId, GolferId>
                             numTied = score.numTied,
                             isTeamEvent = liveData.isTeamEvent,
                         ),
-                    scoreToPar = score.scoreToPar,
                 )
         }
     }.toMap()
@@ -452,11 +433,10 @@ private data class TeamPhase1(
     val originalSideBets: BigDecimal,
 )
 
-/** What the live preview tells us about one (team, golfer) pairing — payout + ESPN finish + score. */
+/** What the live preview tells us about one (team, golfer) pairing — payout + ESPN finish. */
 private data class LiveCellInputs(
     val payout: BigDecimal,
     val finish: ReportCellFinish,
-    val scoreToPar: Int?,
 )
 
 private fun overlayTeamCells(
@@ -468,16 +448,13 @@ private fun overlayTeamCells(
         team.cells.map { cell ->
             val live = cell.golferId?.let { livePayout[team.teamId to it] }
             if (live == null) {
-                if (additive) cell else cell.copy(earnings = BigDecimal.ZERO, topTens = 0)
+                if (additive) cell else cell.copy(earnings = BigDecimal.ZERO)
             } else {
                 val newEarnings = if (additive) cell.earnings.add(live.payout) else live.payout
-                val newTopTens = if (additive) cell.topTens + 1 else 1
                 cell.copy(
                     earnings = newEarnings,
                     positionStr = live.finish.label(),
                     finish = live.finish,
-                    scoreToPar = live.scoreToPar,
-                    topTens = newTopTens,
                     seasonEarnings = cell.seasonEarnings.add(live.payout),
                     seasonTopTens = cell.seasonTopTens + 1,
                 )
@@ -534,12 +511,7 @@ internal fun buildUndraftedFromLeaderboard(
                     rules = rules,
                     isTeamEvent = liveData.isTeamEvent,
                 )
-            UndraftedGolfer(
-                name = entry.name,
-                position = entry.position,
-                payout = payout,
-                scoreToPar = entry.scoreToPar,
-            )
+            UndraftedGolfer(name = entry.name, payout = payout)
         }
 }
 

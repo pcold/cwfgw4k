@@ -37,7 +37,6 @@ function buildReport(overrides: {
   return {
     scope,
     tournament: {
-      id: 'tn-1',
       name: overrides.name ?? 'Sample Open',
       startDate: '2026-04-16',
       endDate: '2026-04-19',
@@ -66,13 +65,10 @@ function row(overrides: Partial<ReportCell> = {}): ReportCell {
     golferId: 'g-1',
     positionStr: null,
     finish: null,
-    scoreToPar: null,
     earnings: 0,
-    topTens: 0,
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
-    pairKey: null,
     ...overrides,
   };
 }

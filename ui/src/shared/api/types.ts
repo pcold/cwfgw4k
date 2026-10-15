@@ -1,5 +1,4 @@
 export interface ReportTournamentInfo {
-  id: string | null;
   name: string | null;
   startDate: string | null;
   endDate: string | null;
@@ -23,19 +22,15 @@ export interface ReportCell {
    * top-ten count is not. Read position and tie state here; never parse `positionStr`.
    */
   finish: ReportCellFinish | null;
-  scoreToPar: number | null;
   earnings: number;
-  topTens: number;
   ownershipPct: number;
   seasonEarnings: number;
   seasonTopTens: number;
-  pairKey: string | null;
 }
 
 export interface ReportTeamColumn {
   teamId: string;
   teamName: string;
-  ownerName: string;
   cells: ReportCell[];
   topTenEarnings: number;
   weeklyTotal: number;
@@ -49,10 +44,7 @@ export interface ReportTeamColumn {
 
 export interface UndraftedGolfer {
   name: string;
-  position: number | null;
   payout: number;
-  scoreToPar: number | null;
-  pairKey: string | null;
 }
 
 export type SideBetOutcome = 'won' | 'lost';
@@ -85,7 +77,6 @@ export interface ReportSideBetRules {
 export interface StandingsEntry {
   rank: number;
   teamName: string;
-  totalCash: number;
 }
 
 /** `teamNames` lists every team rostering the player, since a golfer can be split across teams; empty is undrafted. */
@@ -148,7 +139,6 @@ export interface TeamRanking {
   sideBets: number;
   totalCash: number;
   series: number[];
-  liveWeekly: number | null;
 }
 
 export interface Rankings {
@@ -425,7 +415,6 @@ export interface GolferHistoryEntry {
 
 export interface GolferHistory {
   golferName: string;
-  golferId: string;
   totalEarnings: number;
   topTens: number;
   results: GolferHistoryEntry[];

@@ -23,7 +23,6 @@ function reportScoped(scope: ReportScope, status: string | null = null): WeeklyR
   return {
     scope,
     tournament: {
-      id: null,
       name: null,
       startDate: null,
       endDate: null,
@@ -134,13 +133,10 @@ function reportRow(round: number): ReportCell {
     golferId: `g-${round}`,
     positionStr: 'T1',
     finish: { position: 1, tied: true },
-    scoreToPar: -10,
     earnings: 0,
-    topTens: 0,
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
-    pairKey: null,
   };
 }
 
@@ -149,7 +145,6 @@ describe('teamCellsByRound', () => {
     const team: ReportTeamColumn = {
       teamId: 't-1',
       teamName: 'Aces',
-      ownerName: 'A',
       cells: [reportRow(2), reportRow(5)],
       topTenEarnings: 0,
       weeklyTotal: 0,

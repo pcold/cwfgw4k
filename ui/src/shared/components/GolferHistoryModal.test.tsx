@@ -17,7 +17,6 @@ vi.mock('@/shared/api/client', () => ({
 
 const sampleHistory: GolferHistory = {
   golferName: 'Scottie Scheffler',
-  golferId: 'g-1',
   totalEarnings: 240,
   topTens: 3,
   results: [

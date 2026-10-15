@@ -20,13 +20,10 @@ function row(round: number, overrides: Partial<ReportCell> = {}): ReportCell {
     golferId: `g-${round}`,
     positionStr: 'T1',
     finish: { position: 1, tied: true },
-    scoreToPar: -10,
     earnings: 0,
-    topTens: 0,
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
-    pairKey: null,
     ...overrides,
   };
 }
@@ -35,7 +32,6 @@ function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
   return {
     teamId: 't-1',
     teamName: 'Aces',
-    ownerName: 'Alice',
     cells: [1, 2, 3, 4, 5, 6, 7, 8].map((r) => row(r)),
     topTenEarnings: 18,
     weeklyTotal: 25,
@@ -53,7 +49,6 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
   return {
     scope: 'tournament',
     tournament: {
-      id: 't-1',
       name: 'The Players Championship',
       startDate: '2026-03-12',
       endDate: '2026-03-15',
@@ -174,7 +169,6 @@ describe('WeeklyReportView', () => {
     const seasonReport = report({
       scope: 'season',
       tournament: {
-        id: null,
         name: 'All Tournaments',
         startDate: null,
         endDate: null,
@@ -215,7 +209,7 @@ describe('WeeklyReportView', () => {
       <WeeklyReportView
         report={report({
           undraftedTopTens: [
-            { name: 'Lefty', position: 5, payout: 8, scoreToPar: -3, pairKey: null },
+            { name: 'Lefty', payout: 8 },
           ],
         })}
       />,
