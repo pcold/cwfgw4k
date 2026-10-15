@@ -6,10 +6,12 @@ import type {
   GolferAssignment,
   GolferCandidate,
   League,
+  RosterConfirmPick,
   RosterConfirmResult,
   RosterConfirmTeamInput,
   RosterPreview,
   RosterPreviewPick,
+  RosterPreviewTeam,
   Season,
 } from '@/shared/api/types';
 import { FIELD_CLASS, FieldShell, SelectField } from '@/shared/components/formFields';
@@ -20,9 +22,11 @@ function pickKey(teamNumber: number, pick: RosterPreviewPick): string {
   return `${teamNumber}|${pick.round}|${pick.playerName}`;
 }
 
-// An ambiguous pick's selection is a candidateValue, or '' / 'none' for
-// "create new". Sentinels rather than null because <select> values are strings.
+// An ambiguous pick's selection is a candidateValue, CREATE_NEW, or '' for the
+// placeholder, which encodes no assignment. Strings because <select> values are.
 const CREATE_NEW = 'none';
+
+const CONFIRM_BLOCKED_ID = 'roster-confirm-blocked';
 
 const ROSTER_FILE_INPUT_CLASS =
   'block w-full text-sm text-ink-secondary file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 ' +
@@ -41,22 +45,36 @@ function candidateLabel(candidate: GolferCandidate): string {
   return candidate.type === 'existing' ? candidate.name : `${candidate.name} (new from ESPN)`;
 }
 
+/**
+ * Null while an ambiguous pick sits on the placeholder, never a default new golfer for it: that golfer has no ESPN
+ * id, so imports never credit the pick.
+ */
 export function buildConfirmTeams(
   preview: RosterPreview,
-  selections: Record<string, string>,
-): RosterConfirmTeamInput[] {
-  return preview.teams.map((team) => ({
-    teamNumber: team.teamNumber,
-    teamName: team.teamName,
-    picks: team.picks.map((pick) => ({
-      round: pick.round,
-      ownershipPct: pick.ownershipPct,
-      assignment: assignmentFor(pick, selections[pickKey(team.teamNumber, pick)] ?? ''),
-    })),
-  }));
+  selections: Readonly<Record<string, string>>,
+): RosterConfirmTeamInput[] | null {
+  const teams = preview.teams.map((team) => confirmTeam(team, selections));
+  return teams.every(isPresent) ? teams : null;
 }
 
-function assignmentFor(pick: RosterPreviewPick, selected: string): GolferAssignment {
+function confirmTeam(
+  team: RosterPreviewTeam,
+  selections: Readonly<Record<string, string>>,
+): RosterConfirmTeamInput | null {
+  const picks = team.picks.map((pick) => confirmPick(pick, selections[pickKey(team.teamNumber, pick)] ?? ''));
+  return picks.every(isPresent) ? { teamNumber: team.teamNumber, teamName: team.teamName, picks } : null;
+}
+
+function confirmPick(pick: RosterPreviewPick, selected: string): RosterConfirmPick | null {
+  const assignment = assignmentFor(pick, selected);
+  return assignment ? { round: pick.round, ownershipPct: pick.ownershipPct, assignment } : null;
+}
+
+function isPresent<T>(value: T | null): value is T {
+  return value !== null;
+}
+
+function assignmentFor(pick: RosterPreviewPick, selected: string): GolferAssignment | null {
   const match = pick.match;
   switch (match.type) {
     case 'matched':
@@ -65,8 +83,9 @@ function assignmentFor(pick: RosterPreviewPick, selected: string): GolferAssignm
     case 'matched_backfill':
       return { type: 'espn', espnId: match.espnId, name: match.golferName };
     case 'ambiguous': {
+      if (selected === CREATE_NEW) return newGolfer(pick.playerName);
       const chosen = match.candidates.find((candidate) => candidateValue(candidate) === selected);
-      return chosen ? candidateAssignment(chosen) : newGolfer(pick.playerName);
+      return chosen ? candidateAssignment(chosen) : null;
     }
     case 'no_match':
       return newGolfer(pick.playerName);
@@ -82,18 +101,7 @@ function candidateAssignment(candidate: GolferCandidate): GolferAssignment {
 }
 
 function newGolfer(playerName: string): GolferAssignment {
-  const { firstName, lastName } = splitName(playerName);
-  return { type: 'new', firstName, lastName };
-}
-
-function splitName(fullName: string): { firstName: string; lastName: string } {
-  const trimmed = fullName.trim();
-  const lastSpace = trimmed.lastIndexOf(' ');
-  if (lastSpace === -1) return { firstName: trimmed, lastName: '' };
-  return {
-    firstName: trimmed.slice(0, lastSpace),
-    lastName: trimmed.slice(lastSpace + 1),
-  };
+  return { type: 'new', name: playerName };
 }
 
 function UploadRostersSection(): ReactNode {
@@ -127,13 +135,7 @@ function UploadRostersSection(): ReactNode {
   });
 
   const confirmMutation = useMutation({
-    mutationFn: () => {
-      if (!preview) throw new Error('No preview to confirm');
-      return api.confirmRoster({
-        seasonId,
-        teams: buildConfirmTeams(preview, selections),
-      });
-    },
+    mutationFn: (teams: RosterConfirmTeamInput[]) => api.confirmRoster({ seasonId, teams }),
     onSuccess: (data: RosterConfirmResult) => {
       setResult(data);
       setPreview(null);
@@ -181,7 +183,7 @@ function UploadRostersSection(): ReactNode {
           preview={preview}
           selections={selections}
           onSelectionChange={setSelection}
-          onConfirm={() => confirmMutation.mutate()}
+          onConfirm={(teams) => confirmMutation.mutate(teams)}
           onBack={() => {
             setPreview(null);
             setResult(null);
@@ -302,7 +304,7 @@ interface ReviewStepProps {
   preview: RosterPreview;
   selections: Record<string, string>;
   onSelectionChange: (teamNumber: number, pick: RosterPreviewPick, value: string) => void;
-  onConfirm: () => void;
+  onConfirm: (teams: RosterConfirmTeamInput[]) => void;
   onBack: () => void;
   confirming: boolean;
   errorMessage: string | null;
@@ -330,6 +332,7 @@ function RosterReviewStep({
     ],
     [preview],
   );
+  const confirmTeams = buildConfirmTeams(preview, selections);
 
   return (
     <div>
@@ -430,8 +433,11 @@ function RosterReviewStep({
       <div className="flex items-center gap-4 mt-4">
         <button
           type="button"
-          onClick={onConfirm}
-          disabled={confirming}
+          onClick={() => {
+            if (confirmTeams) onConfirm(confirmTeams);
+          }}
+          disabled={confirming || !confirmTeams}
+          aria-describedby={confirmTeams ? undefined : CONFIRM_BLOCKED_ID}
           className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium"
         >
           {confirming ? 'Creating...' : 'Confirm & Create Teams'}
@@ -443,6 +449,11 @@ function RosterReviewStep({
         >
           Back
         </button>
+        {confirmTeams ? null : (
+          <span id={CONFIRM_BLOCKED_ID} className="text-semantic-warning text-sm">
+            Select a player, or None of these, for each ambiguous pick to confirm.
+          </span>
+        )}
         {errorMessage ? (
           <span role="alert" className="text-semantic-danger text-sm">
             {errorMessage}

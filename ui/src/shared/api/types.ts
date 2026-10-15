@@ -308,12 +308,11 @@ export interface RosterPreview {
 }
 
 // Mirrors the backend's sealed GolferAssignment
-// (com.cwfgw.admin.GolferAssignment). For new golfers the operator must
-// supply first/last; existing references the resolved golfer id; espn
-// carries the athlete's whole name, which the server splits.
+// (com.cwfgw.admin.GolferAssignment). new and espn carry a whole name,
+// which the server splits; the UI never does.
 export type GolferAssignment =
   | { type: 'existing'; golferId: string }
-  | { type: 'new'; firstName: string; lastName: string }
+  | { type: 'new'; name: string }
   | { type: 'espn'; espnId: string; name: string };
 
 export interface RosterConfirmPick {
