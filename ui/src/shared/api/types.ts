@@ -204,6 +204,39 @@ export interface Tournament {
   createdAt: string;
 }
 
+// Mirrors backend com.cwfgw.tournaments.FinalizedTournament. importWarnings holds one entry per tournament the
+// finalize imported into, a clean one included, so [] means no ESPN event was imported.
+export interface FinalizedTournament {
+  tournament: Tournament;
+  importWarnings: EspnImportWarnings[];
+}
+
+// Mirrors backend com.cwfgw.espn.EspnImportWarnings: a created golfer is listed under its most severe kind only.
+export interface EspnImportWarnings {
+  tournamentId: string;
+  tournamentName: string;
+  rosteredSurnameTwins: RosteredSurnameTwin[];
+  createdGolfers: Golfer[];
+  unmatchedCompetitors: UnmatchedCompetitor[];
+  contestedCompetitors: ContestedCompetitor[];
+}
+
+export interface RosteredSurnameTwin {
+  created: Golfer;
+  rostered: Golfer[];
+}
+
+export interface UnmatchedCompetitor {
+  espnCompetitorId: string;
+  name: string;
+}
+
+export interface ContestedCompetitor {
+  espnCompetitorId: string;
+  name: string;
+  candidates: Golfer[];
+}
+
 // Mirrors the backend's sealed CurrentTournament (com.cwfgw.tournaments), discriminated by `type`.
 export type CurrentTournament =
   | { type: 'unfinalized'; tournamentId: string }

@@ -6,8 +6,16 @@ import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import { makeTournament, makeWonLostTotals } from '@/shared/test/fixtures';
-import type { League, Season, Tournament, WeeklyReport } from '@/shared/api/types';
+import { makeWonLostTotals } from '@/shared/test/fixtures';
+import type {
+  EspnImportWarnings,
+  FinalizedTournament,
+  Golfer,
+  League,
+  Season,
+  Tournament,
+  WeeklyReport,
+} from '@/shared/api/types';
 import ScoreboardPage from './ScoreboardPage';
 
 const leaguesMock = vi.fn<typeof api.leagues>();
@@ -24,6 +32,7 @@ const playerRankingsMock = vi.fn<typeof api.playerRankings>();
 const golferHistoryMock = vi.fn<typeof api.golferHistory>();
 const otherTournamentReportMock = vi.fn();
 const rankingsMock = vi.fn();
+const dataHealthMock = vi.fn();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -122,6 +131,38 @@ function buildReport(name: string): WeeklyReport {
   };
 }
 
+function golfer(id: string, firstName: string, lastName: string): Golfer {
+  return {
+    id,
+    pgaPlayerId: null,
+    firstName,
+    lastName,
+    country: null,
+    worldRanking: null,
+    updatedAt: '2026-01-01T00:00:00Z',
+  };
+}
+
+const twinWarnings: EspnImportWarnings = {
+  tournamentId: 'tn-active',
+  tournamentName: 'Current Open',
+  rosteredSurnameTwins: [
+    {
+      created: golfer('g-new', 'Rasmus', 'Hojgaard'),
+      rostered: [golfer('g-rostered', 'Nicolai', 'Højgaard')],
+    },
+  ],
+  createdGolfers: [],
+  unmatchedCompetitors: [],
+  contestedCompetitors: [],
+};
+
+const cleanWarnings: EspnImportWarnings = { ...twinWarnings, rosteredSurnameTwins: [] };
+
+function finalizedWith(importWarnings: EspnImportWarnings[]): FinalizedTournament {
+  return { tournament: activeTournament, importWarnings };
+}
+
 // Copies the key and fetcher WeeklyReportPage and LateRowBetsPage use on "All Tournaments". A key
 // that drifts from theirs leaves the finalize test passing against a query no page holds.
 function OpenSeasonReport() {
@@ -166,6 +207,7 @@ describe('ScoreboardPage', () => {
     golferHistoryMock.mockReset();
     otherTournamentReportMock.mockReset();
     rankingsMock.mockReset();
+    dataHealthMock.mockReset();
     authMeMock.mockResolvedValue(null);
     competitorsMock.mockResolvedValue({
       tournamentId: 'tn-active',
@@ -411,7 +453,7 @@ describe('ScoreboardPage', () => {
         week: '10',
       },
     });
-    finalizeMock.mockResolvedValue(makeTournament());
+    finalizeMock.mockResolvedValue(finalizedWith([]));
 
     const user = userEvent.setup();
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
@@ -421,6 +463,69 @@ describe('ScoreboardPage', () => {
     await waitFor(() => {
       expect(finalizeMock).toHaveBeenCalledWith('tn-active');
     });
+  });
+
+  it.each([
+    ['the warnings the server returned', [twinWarnings], /Possible duplicate of a rostered golfer/],
+    ['that the import raised none', [cleanWarnings], /No ESPN import warnings from finalizing Current Open/],
+  ])('shows %s after an admin finalizes a tournament', async (_outcome, importWarnings, shown) => {
+    authMeMock.mockResolvedValue({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
+    tournamentReportMock.mockResolvedValue({
+      ...buildReport('Current Open'),
+      tournament: { ...buildReport('Current Open').tournament, status: 'in_progress' },
+    });
+    finalizeMock.mockResolvedValue(finalizedWith(importWarnings));
+
+    const user = userEvent.setup();
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    expect(screen.queryByText(shown)).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: /Finalize Results/i }));
+    expect(await screen.findByText(shown)).toBeInTheDocument();
+  });
+
+  it('stays on the finalized tournament with its warnings when the current one moves on', async () => {
+    authMeMock.mockResolvedValue({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    const nextWeek: Tournament = { ...activeTournament, id: 'tn-next', name: 'Next Week Open' };
+    tournamentsMock.mockResolvedValue([activeTournament, nextWeek]);
+    currentTournamentMock
+      .mockResolvedValueOnce({ type: 'unfinalized', tournamentId: 'tn-active' })
+      .mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-next' });
+    tournamentReportMock.mockResolvedValue({
+      ...buildReport('Current Open'),
+      tournament: { ...buildReport('Current Open').tournament, status: 'in_progress' },
+    });
+    finalizeMock.mockResolvedValue(finalizedWith([twinWarnings]));
+
+    const user = userEvent.setup();
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    await user.click(await screen.findByRole('button', { name: /Finalize Results/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Possible duplicate of a rostered golfer/);
+    await waitFor(() => {
+      expect(currentTournamentMock).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByLabelText('Tournament')).toHaveValue('tn-active');
+    expect(screen.getByRole('alert')).toHaveTextContent(/Possible duplicate of a rostered golfer/);
+
+    await user.selectOptions(screen.getByLabelText('Tournament'), 'tn-next');
+    expect(screen.queryByText(/Possible duplicate of a rostered golfer/)).not.toBeInTheDocument();
   });
 
   it('asks the server for the current tournament again after an admin finalizes one', async () => {
@@ -438,7 +543,7 @@ describe('ScoreboardPage', () => {
       ...buildReport('Current Open'),
       tournament: { ...buildReport('Current Open').tournament, status: 'in_progress' },
     });
-    finalizeMock.mockResolvedValue(makeTournament());
+    finalizeMock.mockResolvedValue(finalizedWith([]));
 
     const user = userEvent.setup();
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
@@ -478,7 +583,7 @@ describe('ScoreboardPage', () => {
       ...buildReport('All Tournaments'),
       scope: 'season',
     });
-    finalizeMock.mockResolvedValue(makeTournament());
+    finalizeMock.mockResolvedValue(finalizedWith([]));
 
     const user = userEvent.setup();
     renderWithProviders(
@@ -524,6 +629,11 @@ describe('ScoreboardPage', () => {
       />,
       rankingsMock,
     ],
+    [
+      'an open data health check',
+      <OpenQuery key="data-health" queryKey={queryKeys.dataHealth.root} fetcher={dataHealthMock} />,
+      dataHealthMock,
+    ],
   ])('refetches %s after an admin finalizes a tournament', async (_page, openQuery, readMock) => {
     authMeMock.mockResolvedValue({
       id: 'u-1',
@@ -547,7 +657,7 @@ describe('ScoreboardPage', () => {
       },
     });
     readMock.mockResolvedValue({});
-    finalizeMock.mockResolvedValue(makeTournament());
+    finalizeMock.mockResolvedValue(finalizedWith([]));
 
     const user = userEvent.setup();
     renderWithProviders(

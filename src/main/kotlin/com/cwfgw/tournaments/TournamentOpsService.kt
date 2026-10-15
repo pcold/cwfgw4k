@@ -3,12 +3,14 @@ package com.cwfgw.tournaments
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
 import com.cwfgw.db.WriteTransactionContext
+import com.cwfgw.espn.EspnImportWarnings
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.EspnTournament
 import com.cwfgw.espn.EventImport
 import com.cwfgw.espn.findLinkedEvent
 import com.cwfgw.result.Result
 import com.cwfgw.result.getOrElse
+import com.cwfgw.result.map
 import com.cwfgw.scoring.ScoringError
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
@@ -28,7 +30,11 @@ class TournamentOpsService(
     private val espnService: EspnService,
     private val tx: Transactor,
 ) {
-    suspend fun finalizeTournament(tournamentId: TournamentId): Result<Tournament, TournamentOpsError> {
+    /** @see finalizeAndReport */
+    suspend fun finalizeTournament(tournamentId: TournamentId): Result<Tournament, TournamentOpsError> =
+        finalizeAndReport(tournamentId).map(FinalizedTournament::tournament)
+
+    suspend fun finalizeAndReport(tournamentId: TournamentId): Result<FinalizedTournament, TournamentOpsError> {
         val tournament =
             tx.read { tournamentRepository.findById(tournamentId) }
                 ?: return Result.Err(TournamentOpsError.TournamentNotFound(tournamentId))
@@ -54,7 +60,7 @@ class TournamentOpsService(
         tournamentId: TournamentId,
         fetchedFor: LocalDate,
         events: List<EspnTournament>,
-    ): Result<Tournament, TournamentOpsError> {
+    ): Result<FinalizedTournament, TournamentOpsError> {
         val tournament =
             tournamentRepository.findByIdForUpdate(tournamentId)
                 ?: return Result.Err(TournamentOpsError.TournamentNotFound(tournamentId))
@@ -73,12 +79,17 @@ class TournamentOpsService(
         }
 
         log.info { "Finalizing tournament '${tournament.name}' (${tournament.id.value})..." }
-        val matches = persistEspnEventsIn(tournament, events)
+        val imported = persistEspnEventsIn(tournament, events)
         // The import completes each match, which its own finalize then refuses: a match not scored here stays
         // unscored until a reset.
-        (matches + tournament).forEach { scoreIn(it) }
+        (imported.matches + tournament).forEach { scoreIn(it) }
         log.info { "Finalized '${tournament.name}'" }
-        return Result.Ok(tournamentRepository.findById(tournamentId) ?: tournament)
+        return Result.Ok(
+            FinalizedTournament(
+                tournament = tournamentRepository.findById(tournamentId) ?: tournament,
+                importWarnings = imported.warnings,
+            ),
+        )
     }
 
     /** Takes no season or tournament lock: finalize already holds each one it scores, in season → tournament order. */
@@ -115,19 +126,20 @@ class TournamentOpsService(
     private fun persistEspnEventsIn(
         tournament: Tournament,
         events: List<EspnTournament>,
-    ): List<Tournament> {
+    ): ImportedEvents {
         if (tournament.pgaTournamentId != null) {
-            val event = findLinkedEvent(events, tournament) ?: return emptyList()
-            espnService.persistImportIn(tournament, event)
-            return emptyList()
+            val event =
+                findLinkedEvent(events, tournament)
+                    ?: return ImportedEvents(matches = emptyList(), warnings = emptyList())
+            return ImportedEvents(matches = emptyList(), warnings = espnService.persistImportIn(tournament, event))
         }
         val completed = events.filter { it.completed }
         val matches = tournamentRepository.findByPgaTournamentIdsForUpdate(completed.map { it.espnId })
         val importableByEspnId = findImportableMatches(tournament, matches).associateBy { it.pgaTournamentId }
         val imports =
             completed.mapNotNull { event -> importableByEspnId[event.espnId]?.let { EventImport(it, event) } }
-        espnService.persistImportsIn(imports)
-        return imports.map(EventImport::tournament)
+        val warnings = espnService.persistImportsIn(imports)
+        return ImportedEvents(matches = imports.map(EventImport::tournament), warnings = warnings)
     }
 
     /**
@@ -177,6 +189,12 @@ class TournamentOpsService(
             ),
         )
 }
+
+/** [matches] are the tournaments an unlinked finalize imported into; a linked one imports into itself alone. */
+private data class ImportedEvents(
+    val matches: List<Tournament>,
+    val warnings: List<EspnImportWarnings>,
+)
 
 private val UNFINALIZED: Set<TournamentStatus> = setOf(TournamentStatus.Upcoming, TournamentStatus.InProgress)
 

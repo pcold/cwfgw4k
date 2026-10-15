@@ -32,7 +32,7 @@ private fun RoutingContext.tournamentId(): TournamentId =
 
 private suspend fun RoutingContext.finalizeTournament(service: TournamentOpsService) {
     requireAdmin()
-    call.respond(service.finalizeTournament(tournamentId()).orThrow())
+    call.respond(service.finalizeAndReport(tournamentId()).orThrow())
 }
 
 private suspend fun RoutingContext.resetTournament(service: TournamentOpsService) {

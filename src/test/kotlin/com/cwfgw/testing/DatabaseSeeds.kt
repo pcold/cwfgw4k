@@ -54,10 +54,19 @@ fun seedSeason(): SeasonId {
 /** Seeds a fresh league and season on every call, so two seeded tournaments never share a season. */
 context(ctx: WriteTransactionContext)
 fun seedTournament(pgaTournamentId: String? = null): TournamentId =
+    seedTournament(seasonId = seedSeason(), name = "Zurich Classic", pgaTournamentId = pgaTournamentId)
+
+/** Every tournament seeded shares one week, so one finalize's scoreboard fetch reaches each in [seasonId]. */
+context(ctx: WriteTransactionContext)
+fun seedTournament(
+    seasonId: SeasonId,
+    name: String,
+    pgaTournamentId: String?,
+): TournamentId =
     TournamentRepository().create(
         CreateTournamentRequest(
-            name = "Zurich Classic",
-            seasonId = seedSeason(),
+            name = name,
+            seasonId = seasonId,
             startDate = LocalDate.parse("2026-04-23"),
             endDate = LocalDate.parse("2026-04-26"),
             pgaTournamentId = pgaTournamentId,
