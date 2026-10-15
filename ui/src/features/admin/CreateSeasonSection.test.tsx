@@ -146,7 +146,7 @@ describe('CreateSeasonSection', () => {
     });
   });
 
-  it.each([/Bet Amount/i, /Tie Floor/i, /^Payout 1$/])(
+  it.each([/^Year$/i, /Bet Amount/i, /Tie Floor/i, /^Payout 1$/])(
     'disables submit rather than sending 0 when %s is cleared',
     async (label) => {
       const user = userEvent.setup();
