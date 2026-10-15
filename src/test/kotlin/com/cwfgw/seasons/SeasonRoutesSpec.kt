@@ -122,6 +122,25 @@ class SeasonRoutesSpec : FunSpec({
         }
     }
 
+    test("POST /api/v1/seasons drops a flat tie_floor and side_bet_amount, creating the season at the defaults") {
+        val flatOnly =
+            """{"league_id":"${CASTLEWOOD_ID.value}","name":"Flat","season_year":2026,""" +
+                """"tie_floor":"0.5","side_bet_amount":"-15"}"""
+
+        authenticatedApiTest { client ->
+            val response =
+                client.post("/api/v1/seasons") {
+                    contentType(ContentType.Application.Json)
+                    setBody(flatOnly)
+                }
+
+            response.status shouldBe HttpStatusCode.Created
+            val created: Season = response.body()
+            created.tieFloor.compareTo(SeasonRules.DEFAULT_TIE_FLOOR) shouldBe 0
+            created.sideBetAmount.compareTo(SeasonRules.DEFAULT_SIDE_BET_AMOUNT) shouldBe 0
+        }
+    }
+
     test("POST /api/v1/seasons returns 401 without an authenticated session") {
         apiTest { client ->
             val response =

@@ -86,18 +86,18 @@ private val seasonRowContract: List<ContractCase<SeasonRepository>> =
 
 private val seasonRulesContract: List<ContractCase<SeasonRepository>> =
     listOf(
-        ContractCase("a season created without rules reads the league defaults beside its own floor and stake") {
-            val request = season(seeds.league()).copy(tieFloor = BigDecimal(2), sideBetAmount = BigDecimal(20))
+        ContractCase("a season created without rules reads back the league defaults") {
+            val request = season(seeds.league())
             val created = tx.update { repository.create(request) }
 
             val rules = tx.get { repository.getRules(created.id) }
 
             rules shouldBe
                 SeasonRules.defaults().copy(tieFloor = created.tieFloor, sideBetAmount = created.sideBetAmount)
-            rules?.tieFloor?.toPlainString() shouldBe "2.0000"
+            rules?.tieFloor?.toPlainString() shouldBe "1.0000"
             tx.get { repository.getRules(SeasonId(UUID.randomUUID())) }.shouldBeNull()
         },
-        ContractCase("rules win over the flat fields, and read back sorted at the stored scale") {
+        ContractCase("rules read back sorted at the stored scale, the floor matching the season row") {
             val custom =
                 SeasonRules(
                     payouts = listOf(BigDecimal(20), BigDecimal("7.5")),
@@ -105,7 +105,7 @@ private val seasonRulesContract: List<ContractCase<SeasonRepository>> =
                     sideBetRounds = listOf(8, 2),
                     sideBetAmount = BigDecimal(10),
                 )
-            val request = season(seeds.league()).copy(tieFloor = BigDecimal(9), rules = custom)
+            val request = season(seeds.league()).copy(rules = custom)
             val created = tx.update { repository.create(request) }
 
             val rules = tx.get { repository.getRules(created.id) }

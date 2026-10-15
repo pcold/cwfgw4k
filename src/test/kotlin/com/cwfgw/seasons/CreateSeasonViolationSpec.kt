@@ -29,9 +29,7 @@ private fun overflowCases(amount: BigDecimal): List<Pair<CreateSeasonRequest, Cr
     return listOf(
         request(rules.copy(payouts = listOf(BigDecimal(18), amount))) to CreateSeasonViolation.PayoutTooLarge,
         request(rules.copy(tieFloor = amount)) to CreateSeasonViolation.TieFloorTooLarge,
-        request(rules = null).copy(tieFloor = amount) to CreateSeasonViolation.TieFloorTooLarge,
         request(rules.copy(sideBetAmount = amount)) to CreateSeasonViolation.SideBetAmountTooLarge,
-        request(rules = null).copy(sideBetAmount = amount) to CreateSeasonViolation.SideBetAmountTooLarge,
     )
 }
 
@@ -41,13 +39,10 @@ private fun outOfRangeRefusals(): List<Pair<CreateSeasonRequest, String>> {
     return listOf(
         request(rules.copy(payouts = listOf(BigDecimal(-5), BigDecimal(12)))) to "payouts must not be negative",
         request(rules.copy(tieFloor = BigDecimal(-1))) to "tie floor must not be negative",
-        request(rules = null).copy(tieFloor = BigDecimal(-1)) to "tie floor must not be negative",
         request(rules).copy(maxTeams = 0) to "max teams must be at least 1",
         request(rules.copy(payouts = listOf(overflow))) to "payouts must be less than 1,000,000",
         request(rules.copy(tieFloor = overflow)) to "tie floor must be less than 1,000,000",
-        request(rules = null).copy(tieFloor = overflow) to "tie floor must be less than 1,000,000",
         request(rules.copy(sideBetAmount = overflow)) to "side bet amount must be less than 1,000,000",
-        request(rules = null).copy(sideBetAmount = overflow) to "side bet amount must be less than 1,000,000",
     )
 }
 
@@ -76,24 +71,13 @@ class CreateSeasonViolationSpec : FunSpec({
         request(repeated).violation() shouldBe CreateSeasonViolation.DuplicateSideBetRound
     }
 
-    test("a negative flat side-bet amount is NegativeSideBetAmount even without rules") {
-        val negative = request(rules = null).copy(sideBetAmount = BigDecimal("-0.01"))
-        negative.violation() shouldBe CreateSeasonViolation.NegativeSideBetAmount
-    }
-
     test("a negative side-bet amount in rules is NegativeSideBetAmount") {
         request(SeasonRules.defaults().copy(sideBetAmount = BigDecimal("-15"))).violation() shouldBe
             CreateSeasonViolation.NegativeSideBetAmount
     }
 
-    test("a negative flat side-bet amount is NegativeSideBetAmount even when rules carry the written amount") {
-        val shadowed = request(SeasonRules.defaults()).copy(sideBetAmount = BigDecimal("-15"))
-        shadowed.violation() shouldBe CreateSeasonViolation.NegativeSideBetAmount
-    }
-
     test("a zero side-bet amount has no violation, since zero is the season with no side bets") {
         request(SeasonRules.defaults().copy(sideBetAmount = BigDecimal.ZERO)).violation().shouldBeNull()
-        request(rules = null).copy(sideBetAmount = BigDecimal.ZERO).violation().shouldBeNull()
     }
 
     test("an empty name, or one of nothing but ASCII whitespace, is BlankName") {
@@ -114,13 +98,9 @@ class CreateSeasonViolationSpec : FunSpec({
         request(SeasonRules.defaults().copy(payouts = listOf(BigDecimal.ZERO))).violation().shouldBeNull()
     }
 
-    test("a negative tie floor, flat or in rules, is NegativeTieFloor, and a zero one has no violation") {
-        val negative = BigDecimal("-1")
-        listOf(
-            request(rules = null).copy(tieFloor = negative),
-            request(SeasonRules.defaults().copy(tieFloor = negative)),
-            request(SeasonRules.defaults()).copy(tieFloor = negative),
-        ).forEach { floorless -> floorless.violation() shouldBe CreateSeasonViolation.NegativeTieFloor }
+    test("a negative tie floor in rules is NegativeTieFloor, and a zero one has no violation") {
+        val floorless = request(SeasonRules.defaults().copy(tieFloor = BigDecimal("-1")))
+        floorless.violation() shouldBe CreateSeasonViolation.NegativeTieFloor
         request(SeasonRules.defaults().copy(tieFloor = BigDecimal.ZERO)).violation().shouldBeNull()
     }
 
@@ -179,20 +159,6 @@ class CreateSeasonViolationSpec : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.body<ErrorBody>().error shouldBe "side bet rounds must list at least one round"
-        }
-    }
-
-    test("POST /api/v1/seasons refuses a negative flat side-bet amount with 400, its message, and no season written") {
-        authenticatedApiTest { client ->
-            val response =
-                client.post("/api/v1/seasons") {
-                    contentType(ContentType.Application.Json)
-                    setBody(request(rules = null).copy(sideBetAmount = BigDecimal("-15")))
-                }
-
-            response.status shouldBe HttpStatusCode.BadRequest
-            response.body<ErrorBody>().error shouldBe "side bet amount must not be negative"
-            client.get("/api/v1/seasons").body<List<Season>>().shouldBeEmpty()
         }
     }
 
