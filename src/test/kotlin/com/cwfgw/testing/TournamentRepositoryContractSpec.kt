@@ -125,6 +125,14 @@ private val tournamentRowContract: List<ContractCase<TournamentRepository>> =
                 listOf("Second")
             namesFound(TournamentFilter()) shouldContainExactly listOf("First", "Second", "Elsewhere", "Later")
         },
+        ContractCase("findAll orders a same-date multi-event by week before creation") {
+            val unlinked = masters(seeds.season()).copy(pgaTournamentId = null)
+            tx.update { repository.create(unlinked.copy(name = "Opposite field", week = "8b")) }
+            tx.update { repository.create(unlinked.copy(name = "Main event", week = "8a")) }
+
+            namesFound(TournamentFilter(unlinked.seasonId)) shouldContainExactly
+                listOf("Main event", "Opposite field")
+        },
         ContractCase("findAll keeps every status in the set, and an empty set matches nothing") {
             val seasonId = seeds.season()
             val unlinked = masters(seasonId).copy(pgaTournamentId = null)

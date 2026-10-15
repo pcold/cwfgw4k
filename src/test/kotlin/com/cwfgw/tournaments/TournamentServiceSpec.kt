@@ -15,6 +15,8 @@ private val OTHER_SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-
 private val MARCH_12 = LocalDate.parse("2026-03-12")
 private val APRIL_9 = LocalDate.parse("2026-04-09")
 private val APRIL_16 = LocalDate.parse("2026-04-16")
+private val APRIL_1 = Instant.parse("2026-04-01T00:00:00Z")
+private val APRIL_2 = Instant.parse("2026-04-02T00:00:00Z")
 
 class TournamentServiceSpec : FunSpec({
 
@@ -54,6 +56,16 @@ class TournamentServiceSpec : FunSpec({
         service(initial = listOf(elsewhere)).current(SEASON_ID) shouldBe CurrentTournament.NoTournaments
     }
 
+    test("current names a same-date 8a before an 8b created earlier") {
+        val sameWeek = LocalDate.parse("2026-07-16")
+        val oppositeField =
+            tournament(name = "Opposite Field", startDate = sameWeek, week = "8b", createdAt = APRIL_1)
+        val mainEvent = tournament(name = "Main Event", startDate = sameWeek, week = "8a", createdAt = APRIL_2)
+
+        service(initial = listOf(oppositeField, mainEvent)).current(SEASON_ID) shouldBe
+            CurrentTournament.Unfinalized(mainEvent.id)
+    }
+
     test("current breaks a start-date tie by creation, then by id") {
         val sameWeek = LocalDate.parse("2026-07-16")
         val laterCreated =
@@ -77,6 +89,7 @@ private fun tournament(
     seasonId: SeasonId = SEASON_ID,
     startDate: LocalDate = LocalDate.parse("2026-04-09"),
     status: TournamentStatus = TournamentStatus.Upcoming,
+    week: String? = null,
     createdAt: Instant = Instant.parse("2026-04-01T00:00:00Z"),
 ): Tournament =
     Tournament(
@@ -90,7 +103,7 @@ private fun tournament(
         status = status,
         purseAmount = null,
         payoutMultiplier = BigDecimal("1.0000"),
-        week = null,
+        week = week,
         isTeamEvent = false,
         createdAt = createdAt,
     )
