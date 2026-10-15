@@ -51,7 +51,11 @@ function scoreboardTeamFor(team: ReportTeamColumn): ScoreboardTeam {
 }
 
 export function scoreboardTeams(report: WeeklyReport): ScoreboardTeam[] {
-  return report.teams.map(scoreboardTeamFor).sort((a, b) => b.weeklyTotal - a.weeklyTotal);
+  const teamsById = new Map(report.teams.map((team) => [team.teamId, team]));
+  return report.weeklyStandings.flatMap((teamId) => {
+    const team = teamsById.get(teamId);
+    return team ? [scoreboardTeamFor(team)] : [];
+  });
 }
 
 const PARTNER_SEPARATOR = ' / ';

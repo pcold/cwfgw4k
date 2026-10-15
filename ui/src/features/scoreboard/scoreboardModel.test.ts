@@ -49,6 +49,7 @@ function teamColumn(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn
 }
 
 function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
+  const teams = overrides.teams ?? [];
   return {
     scope: 'tournament',
     tournament: {
@@ -60,7 +61,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
       payoutMultiplier: 1,
       week: '9',
     },
-    teams: [],
+    teams,
     undraftedTopTens: [],
     sideBetRules: null,
     sideBetDetail: [],
@@ -70,6 +71,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
     weeklyTotals: makeWonLostTotals(),
+    weeklyStandings: teams.map((team) => team.teamId),
     ...overrides,
   };
 }
@@ -91,7 +93,7 @@ describe('scoreboardTeams', () => {
     expect(nth(teams, 0).topTenEarnings).toBe(42);
   });
 
-  it('sorts teams by weeklyTotal descending', () => {
+  it('lays the teams out in the server\'s weekly standings, even against their weeklyTotal', () => {
     const teams = scoreboardTeams(
       report({
         teams: [
@@ -99,9 +101,10 @@ describe('scoreboardTeams', () => {
           teamColumn({ teamId: 't-2', teamName: 'Birdies', weeklyTotal: 25 }),
           teamColumn({ teamId: 't-3', teamName: 'Cuts', weeklyTotal: -5 }),
         ],
+        weeklyStandings: ['t-3', 't-1', 't-2'],
       }),
     );
-    expect(teams.map((t) => t.teamName)).toEqual(['Birdies', 'Aces', 'Cuts']);
+    expect(teams.map((t) => t.teamName)).toEqual(['Cuts', 'Aces', 'Birdies']);
   });
 
   it('includes only rows with positive earnings in golferScores', () => {

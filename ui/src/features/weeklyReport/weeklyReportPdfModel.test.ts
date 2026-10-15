@@ -55,6 +55,7 @@ function buildReport(overrides: {
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
     weeklyTotals: makeWonLostTotals(),
+    weeklyStandings: [],
   };
 }
 

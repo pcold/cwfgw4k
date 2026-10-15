@@ -81,6 +81,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
     weeklyTotals: makeWonLostTotals(),
+    weeklyStandings: [],
     ...overrides,
   };
 }

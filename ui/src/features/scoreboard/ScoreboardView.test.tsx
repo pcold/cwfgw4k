@@ -62,6 +62,7 @@ const mcIlroyAndLowry = makeLeaderboardEntry({
 });
 
 function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
+  const teams = overrides.teams ?? [team({ teamId: 't-1', teamName: 'Aces', weeklyTotal: 25 })];
   return {
     scope: 'tournament',
     tournament: {
@@ -73,7 +74,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
       payoutMultiplier: 1,
       week: '9',
     },
-    teams: [team({ teamId: 't-1', teamName: 'Aces', weeklyTotal: 25 })],
+    teams,
     undraftedTopTens: [],
     sideBetRules: null,
     sideBetDetail: [],
@@ -83,6 +84,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
     weeklyTotals: makeWonLostTotals(),
+    weeklyStandings: teams.map((column) => column.teamId),
     ...overrides,
   };
 }
@@ -131,7 +133,7 @@ describe('ScoreboardView', () => {
     expect(screen.queryByRole('button', { name: /Finalize Results/i })).not.toBeInTheDocument();
   });
 
-  it('sorts team rows by weekly total descending', () => {
+  it('numbers the team rows in the server\'s weekly standings, even against their weekly totals', () => {
     render(
       <ScoreboardView
         report={report({
@@ -140,14 +142,19 @@ describe('ScoreboardView', () => {
             team({ teamId: 't-2', teamName: 'Birdies', weeklyTotal: 30 }),
             team({ teamId: 't-3', teamName: 'Cuts', weeklyTotal: -5 }),
           ],
+          weeklyStandings: ['t-3', 't-1', 't-2'],
         })}
       />,
     );
     const tables = screen.getAllByRole('table');
     // first table = teams, second = leaderboard (if any)
     const teamRows = within(nth(tables, 0)).getAllByRole('row').slice(1);
-    const names = teamRows.map((r) => within(r).getAllByRole('cell')[1]?.textContent);
-    expect(names).toEqual(['Birdies', 'Aces', 'Cuts']);
+    const placings = teamRows.map((r) => within(r).getAllByRole('cell').slice(0, 2).map((c) => c.textContent));
+    expect(placings).toEqual([
+      ['1', 'Cuts'],
+      ['2', 'Aces'],
+      ['3', 'Birdies'],
+    ]);
   });
 
   it('renders the leaderboard the server sent, rostered and undrafted alike', () => {

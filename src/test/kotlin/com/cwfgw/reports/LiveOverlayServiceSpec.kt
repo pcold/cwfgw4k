@@ -19,6 +19,7 @@ import java.util.UUID
 private val TOURNAMENT_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b01"))
 private val TEAM_A_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c01"))
 private val TEAM_B_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c02"))
+private val TEAM_C_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c03"))
 private val SCOTTIE_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d01"))
 private val RORY_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d02"))
 
@@ -593,6 +594,30 @@ class LiveOverlayServiceSpec : FunSpec({
         overlaid.weeklyTotals.won.compareTo(BigDecimal(18)) shouldBe 0
         overlaid.weeklyTotals.lost.compareTo(BigDecimal(-18)) shouldBe 0
         overlaid.weeklyTotals.net.signum() shouldBe 0
+    }
+
+    // ----- weekly standings -----
+
+    test("mergeLiveData reorders the weekly standings by the overlaid weekly +/-") {
+        val base = brownLeadingRoundEight()
+
+        val overlaid = mergeLiveData(base, listOf(roryWinsLive()), DEFAULT_RULES, additive = false)
+
+        base.weeklyStandings shouldContainExactly listOf(TEAM_A_ID, TEAM_B_ID)
+        overlaid.weeklyStandings shouldContainExactly listOf(TEAM_B_ID, TEAM_A_ID)
+    }
+
+    test("weekly standings keep the report's team order through a tie, whatever each total's scale") {
+        val report =
+            emptyReport(
+                listOf(
+                    teamColumn(TEAM_A_ID).copy(weeklyTotal = BigDecimal("-4")),
+                    teamColumn(TEAM_B_ID).copy(weeklyTotal = BigDecimal("5.00")),
+                    teamColumn(TEAM_C_ID).copy(weeklyTotal = BigDecimal("5")),
+                ),
+            )
+
+        report.weeklyStandings shouldContainExactly listOf(TEAM_B_ID, TEAM_C_ID, TEAM_A_ID)
     }
 
     // ----- buildLiveLeaderboard / buildUndraftedFromLeaderboard -----

@@ -522,6 +522,26 @@ class ReportRoutesSpec : FunSpec({
                 wireTotals(body, "weekly_totals") shouldBe mapOf("won" to 18.0, "lost" to -18.0, "net" to 0.0)
             }
         }
+
+        test("$route puts the weekly standings on the wire, best weekly +/- first") {
+            val wombleOutEarnsBrown =
+                reportFixture(
+                    initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                    initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                    initialGolfers =
+                        listOf(golferRow(SCOTTIE_ID, "Scottie", "Scheffler"), golferRow(RORY_ID, "Rory", "McIlroy")),
+                    initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, 5), rosterRow(TEAM_B, RORY_ID, 5)),
+                    initialScores = listOf(scoreRow(TEAM_B, MASTERS_ID, RORY_ID, BigDecimal(18))),
+                )
+            apiTest(wombleOutEarnsBrown) { client ->
+                val report = wireReport(client.get(url).bodyAsText())
+                val teamNames = report.getValue("teams").jsonArray.map { it.jsonObject.getValue("team_name") }
+                val standings = report.getValue("weekly_standings").jsonArray.map { it.jsonPrimitive.content }
+
+                teamNames.map { it.jsonPrimitive.content } shouldContainExactly listOf("BROWN", "WOMBLE")
+                standings shouldContainExactly listOf(TEAM_B.value.toString(), TEAM_A.value.toString())
+            }
+        }
     }
 
     // ----- typed finish and score to par -----

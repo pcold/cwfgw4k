@@ -117,6 +117,7 @@ function buildReport(name: string, tournamentId: string): WeeklyReport {
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
     weeklyTotals: makeWonLostTotals(),
+    weeklyStandings: ['team-1'],
   };
 }
 
