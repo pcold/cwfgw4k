@@ -61,6 +61,13 @@ data class TournamentResult(
     val pairKey: String?,
 )
 
+/** [numTied] counts every result row at [position] in the tournament's whole field, as `tieSplitPayout` takes it. */
+data class GolferFinish(
+    val tournamentId: TournamentId,
+    val position: Int,
+    val numTied: Int,
+)
+
 data class CreateTournamentRequest(
     val pgaTournamentId: String? = null,
     val name: String,

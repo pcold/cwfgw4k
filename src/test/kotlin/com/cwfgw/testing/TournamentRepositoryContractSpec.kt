@@ -1,11 +1,14 @@
 package com.cwfgw.testing
 
 import com.cwfgw.db.Transactor
+import com.cwfgw.golfers.GolferId
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.CreateTournamentResultRequest
 import com.cwfgw.tournaments.FakeTournamentRepository
+import com.cwfgw.tournaments.GolferFinish
+import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentRepository
@@ -202,6 +205,40 @@ private val tournamentResultContract: List<ContractCase<TournamentRepository>> =
             tx.get { repository.getResultsByTournaments(asked.map { it.tournamentId }) } shouldContainExactly
                 asked.sortedWith(compareBy(POSTGRES_UUID_ORDER) { it.tournamentId.value })
             tx.get { repository.getResultsByTournaments(emptyList()) }.shouldBeEmpty()
+        },
+        ContractCase("findResultsForGolfer counts a tie across the tournament's whole field, not the golfer's rows") {
+            val seasonId = seeds.season()
+            val (target, rival, winner) = listOf(seeds.golfer(), seeds.golfer(), seeds.golfer())
+            val unlinked = masters(seasonId).copy(pgaTournamentId = null)
+            val tied = tx.update { repository.create(unlinked) }
+            val alone = tx.update { repository.create(unlinked) }
+            val outside = tx.update { repository.create(unlinked) }
+            val unplaced = tx.update { repository.create(unlinked) }
+            val unasked = tx.update { repository.create(unlinked) }
+            tx.update {
+                fun finish(
+                    event: Tournament,
+                    golfer: GolferId,
+                    position: Int?,
+                ) = repository.upsertResult(event.id, CreateTournamentResultRequest(golfer, position))
+                finish(tied, winner, position = 1)
+                finish(tied, target, position = 3)
+                finish(tied, rival, position = 3)
+                finish(alone, target, position = 10)
+                finish(alone, rival, position = 3)
+                finish(outside, target, position = 11)
+                finish(unplaced, target, position = null)
+                finish(unasked, target, position = 1)
+            }
+            val asked = listOf(tied, alone, outside, unplaced).map { it.id }
+
+            val finishes = tx.get { repository.findResultsForGolfer(target, asked, positionAtMost = 10) }
+
+            val tiedAtThree = GolferFinish(tied.id, position = 3, numTied = 2)
+            val tenthAlone = GolferFinish(alone.id, position = 10, numTied = 1)
+            finishes shouldContainExactly
+                listOf(tiedAtThree, tenthAlone).sortedWith(compareBy(POSTGRES_UUID_ORDER) { it.tournamentId.value })
+            tx.get { repository.findResultsForGolfer(target, emptyList(), positionAtMost = 10) }.shouldBeEmpty()
         },
         ContractCase("deleting results by tournament or by season removes and counts only theirs") {
             val seasonId = seeds.season()

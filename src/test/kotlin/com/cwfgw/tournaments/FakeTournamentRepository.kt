@@ -2,6 +2,7 @@ package com.cwfgw.tournaments
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
+import com.cwfgw.golfers.GolferId
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.testing.POSTGRES_UUID_ORDER
 import com.cwfgw.testing.fakeTableOf
@@ -120,6 +121,28 @@ class FakeTournamentRepository(
                 compareBy(POSTGRES_UUID_ORDER) { result: TournamentResult -> result.tournamentId.value }
                     .then(resultOrdering),
             )
+    }
+
+    context(ctx: TransactionContext)
+    override fun findResultsForGolfer(
+        golferId: GolferId,
+        tournamentIds: Collection<TournamentId>,
+        positionAtMost: Int,
+    ): List<GolferFinish> {
+        val idSet = tournamentIds.toSet()
+        val leaderboard = results.values.filter { it.tournamentId in idSet }
+        val tiedAt = leaderboard.groupingBy { it.tournamentId to it.position }.eachCount()
+        return leaderboard
+            .filter { it.golferId == golferId }
+            .mapNotNull { result ->
+                val position = result.position?.takeIf { it <= positionAtMost } ?: return@mapNotNull null
+                GolferFinish(
+                    tournamentId = result.tournamentId,
+                    position = position,
+                    numTied = tiedAt.getValue(result.tournamentId to position),
+                )
+            }
+            .sortedWith(compareBy(POSTGRES_UUID_ORDER) { it.tournamentId.value })
     }
 
     context(ctx: WriteTransactionContext)
