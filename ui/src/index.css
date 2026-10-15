@@ -28,11 +28,12 @@
   --color-ink-secondary: var(--color-gray-300);
   --color-ink-label: var(--color-gray-300);
   --color-ink-muted: var(--color-gray-400);
-  --color-ink-soft: var(--color-gray-500);
-  --color-ink-faint: var(--color-gray-600);
+  /* Lighter than `ink-muted`: it also sits on surface-raised and side-bet-winner, where gray-400 is below AA. */
+  --color-ink-soft: var(--color-gray-300);
+  --color-ink-faint: var(--color-gray-400);
 
-  --color-primary: var(--color-green-600);
-  --color-primary-hover: var(--color-green-700);
+  --color-primary: var(--color-green-700);
+  --color-primary-hover: var(--color-green-800);
   --color-on-primary: var(--color-white);
   --color-primary-ink: var(--color-green-400);
   --color-primary-control: var(--color-green-500);
@@ -59,8 +60,8 @@
   --color-semantic-warning-border: var(--color-yellow-600);
 
   --color-semantic-danger-tint: var(--color-red-900);
-  --color-semantic-danger: var(--color-red-400);
-  --color-semantic-danger-hover: var(--color-red-300);
+  --color-semantic-danger: var(--color-red-300);
+  --color-semantic-danger-hover: var(--color-red-200);
   --color-semantic-danger-strong: var(--color-red-300);
   --color-semantic-danger-fill: var(--color-red-600);
   --color-semantic-danger-fill-hover: var(--color-red-700);
@@ -79,7 +80,7 @@
   --color-gold: var(--color-yellow-600);
   --color-gold-bright: var(--color-yellow-300);
   --color-on-gold: var(--color-black);
-  --color-on-gold-earnings: var(--color-green-700);
+  --color-on-gold-earnings: var(--color-green-800);
 
   --color-side-bet-winner: var(--color-red-800);
 }
