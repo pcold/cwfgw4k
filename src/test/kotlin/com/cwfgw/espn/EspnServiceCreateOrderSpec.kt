@@ -6,7 +6,10 @@ import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.golfers.GolferName
 import com.cwfgw.golfers.GolferRepository
+import com.cwfgw.golfers.PgaPlayerIdClaim
+import com.cwfgw.golfers.findOrCreateAll
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.teams.TeamRepository
@@ -158,14 +161,18 @@ private class InsertPausingGolferRepository(
         delegate.findOrCreate(request).also { pause.hold() }
 }
 
-/** Stands in for `AdminService.resolveEspnGolfers`, which inserts a confirm's new athletes this way. */
+/**
+ * `AdminService.resolveEspnGolfers`'s write, minus its lookups: new athletes as creates through [findOrCreateAll].
+ * TournamentImportConfirmRaceSpec races the real confirm.
+ */
 context(ctx: WriteTransactionContext)
 private fun insertAsConfirmDoes(athletes: List<EspnCompetitor>) {
-    athletes.sortedBy(EspnCompetitor::espnId).forEach { athlete ->
-        GolferRepository().findOrCreate(
-            CreateGolferRequest(pgaPlayerId = athlete.espnId, firstName = "Confirmed", lastName = athlete.name),
-        )
-    }
+    val claims =
+        athletes.map { athlete ->
+            val name = checkNotNull(GolferName.splitName(athlete.name))
+            PgaPlayerIdClaim.Create(pgaPlayerId = athlete.espnId, name = name)
+        }
+    GolferRepository().findOrCreateAll(claims)
 }
 
 private fun existingGolfer(
