@@ -16,7 +16,7 @@ import com.cwfgw.tournaments.TournamentRepository
 
 /**
  * Build an [EspnService] for specs. Repositories default to empty fakes
- * so route/HTTP specs that don't care about ESPN state only need to
+ * so specs that don't care about ESPN state only need to
  * pass the [EspnClient] (typically a [com.cwfgw.espn.FakeEspnClient]).
  * Specs that exercise the import or preview paths should pass their
  * own repo instances so the gathers see the same state as the rest of

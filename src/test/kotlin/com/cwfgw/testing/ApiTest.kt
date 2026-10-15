@@ -1,41 +1,30 @@
 package com.cwfgw.testing
 
+import com.cwfgw.AppRepositories
 import com.cwfgw.AppServices
-import com.cwfgw.admin.AdminService
 import com.cwfgw.cache.FakeCacheRepository
 import com.cwfgw.cache.RequestCache
-import com.cwfgw.datahealth.DataHealthService
+import com.cwfgw.datahealth.DataHealthRepository
 import com.cwfgw.datahealth.FakeDataHealthRepository
 import com.cwfgw.db.Transactor
-import com.cwfgw.espn.EspnService
+import com.cwfgw.espn.EspnClient
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.golfers.GolferService
 import com.cwfgw.health.HealthProbe
 import com.cwfgw.leagues.FakeLeagueRepository
-import com.cwfgw.leagues.LeagueService
+import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.module
-import com.cwfgw.reports.LiveOverlayService
-import com.cwfgw.reports.WeeklyReportService
 import com.cwfgw.scoring.FakeScoringRepository
 import com.cwfgw.scoring.ScoringRepository
-import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.FakeSeasonRepository
-import com.cwfgw.seasons.SeasonOpsService
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.TeamRepository
-import com.cwfgw.teams.TeamService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
-import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.FakeTournamentRepository
-import com.cwfgw.tournaments.TournamentOpsService
 import com.cwfgw.tournaments.TournamentRepository
-import com.cwfgw.tournaments.TournamentService
-import com.cwfgw.users.AuthService
 import com.cwfgw.users.AuthSetup
 import com.cwfgw.users.FakeUserRepository
 import com.cwfgw.users.LoginRequest
@@ -43,6 +32,7 @@ import com.cwfgw.users.LoginThrottle
 import com.cwfgw.users.NewUser
 import com.cwfgw.users.UserRepository
 import com.cwfgw.users.UserRole
+import com.cwfgw.users.UsersSupport
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
@@ -76,86 +66,26 @@ const val TEST_USER_USERNAME: String = "test-user"
 const val TEST_USER_PASSWORD: String = "test-user-password-not-used-in-prod"
 
 /**
- * Mutable fixture that each test overrides in its `apiTest { ... }` configure block. Defaults every slot
- * to an empty fake-backed service so a spec only has to override the domain it's actually exercising.
+ * Mutable fixture that each test overrides in its `apiTest { ... }` configure block. Its slots are the leaves
+ * [AppServices.from] takes, defaulting to empty fakes; the services are built from them only once configure has run,
+ * so every service sees whichever repository a spec assigned.
  */
 class ApiFixture {
     var healthProbe: HealthProbe = HealthProbe { true }
     var transactor: Transactor = FakeTransactor()
-    var leagueService: LeagueService = LeagueService(FakeLeagueRepository(), transactor)
+
+    /** Null shares [transactor]; set it to count the weekly report's reads apart from every other service's. */
+    var reportTransactor: Transactor? = null
+    var leagueRepository: LeagueRepository = FakeLeagueRepository()
     var golferRepository: GolferRepository = FakeGolferRepository()
-    var golferService: GolferService = GolferService(golferRepository, transactor)
     var seasonRepository: SeasonRepository = FakeSeasonRepository()
-    var seasonService: SeasonService = SeasonService(seasonRepository, transactor)
     var teamRepository: TeamRepository = FakeTeamRepository()
-    var teamService: TeamService = TeamService(teamRepository, transactor)
     var tournamentRepository: TournamentRepository = FakeTournamentRepository()
-    var tournamentService: TournamentService = TournamentService(tournamentRepository, transactor)
     var scoringRepository: ScoringRepository = FakeScoringRepository()
-    var scoringService: ScoringService =
-        ScoringService(
-            repository = scoringRepository,
-            seasonRepository = seasonRepository,
-            tournamentRepository = tournamentRepository,
-            teamRepository = teamRepository,
-        )
     var tournamentLinkRepository: TournamentLinkRepository = FakeTournamentLinkRepository()
-    var tournamentLinkService: TournamentLinkService =
-        TournamentLinkService(
-            repository = tournamentLinkRepository,
-            tournamentRepository = tournamentRepository,
-            golferRepository = golferRepository,
-            tx = transactor,
-        )
-    var espnService: EspnService =
-        testEspnService(
-            client = FakeEspnClient(),
-            seasonRepository = seasonRepository,
-            golferRepository = golferRepository,
-            teamRepository = teamRepository,
-            tournamentRepository = tournamentRepository,
-            linkRepository = tournamentLinkRepository,
-            tx = transactor,
-        )
-    var adminService: AdminService =
-        AdminService(
-            tx = transactor,
-            seasonService = seasonService,
-            tournamentService = tournamentService,
-            espnService = espnService,
-            golferService = golferService,
-            golferRepository = FakeGolferRepository(),
-            teamRepository = FakeTeamRepository(),
-        )
-    var dataHealthService: DataHealthService = DataHealthService(FakeDataHealthRepository(), transactor)
-    var liveOverlayService: LiveOverlayService = LiveOverlayService(espnService)
-    var weeklyReportService: WeeklyReportService =
-        WeeklyReportService(
-            seasonRepository = seasonRepository,
-            tournamentRepository = tournamentRepository,
-            teamRepository = teamRepository,
-            golferRepository = golferRepository,
-            scoringRepository = scoringRepository,
-            liveOverlayService = liveOverlayService,
-            tx = transactor,
-        )
-    var tournamentOpsService: TournamentOpsService =
-        TournamentOpsService(
-            tournamentRepository = tournamentRepository,
-            scoringService = scoringService,
-            scoringRepository = scoringRepository,
-            espnService = espnService,
-            tx = transactor,
-        )
-    var seasonOpsService: SeasonOpsService =
-        SeasonOpsService(
-            seasonRepository = seasonRepository,
-            tournamentRepository = tournamentRepository,
-            scoringRepository = scoringRepository,
-            tx = transactor,
-        )
+    var dataHealthRepository: DataHealthRepository = FakeDataHealthRepository()
     var userRepository: UserRepository = FakeUserRepository()
-    var authService: AuthService = AuthService(userRepository, transactor, cost = TEST_BCRYPT_COST)
+    var espnClient: EspnClient = FakeEspnClient()
     var loginThrottle: LoginThrottle = LoginThrottle(maxFailures = TEST_LOGIN_MAX_FAILURES, window = TEST_LOGIN_WINDOW)
     var requestCache: RequestCache =
         RequestCache(FakeCacheRepository(), transactor, TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
@@ -181,7 +111,7 @@ private const val TEST_SWEEP_INTERVAL_SECONDS: Long = 3_600L
 
 /**
  * Spin up a Ktor test application with every domain wired to fake-backed services; the optional
- * `configure` block overrides specific services (typically the one under test), and `block` runs
+ * `configure` block overrides specific leaves (typically the repository under test), and `block` runs
  * with an HttpClient configured to use the same SnakeCase JSON serialization as production.
  */
 fun apiTest(
@@ -201,9 +131,9 @@ fun apiTest(
  * for route specs that exercise auth-gated endpoints — the majority of POST/PUT/DELETE paths —
  * so each test doesn't have to do the seed-and-login dance itself.
  *
- * The `configure` block still runs first so specs can override services. If a spec replaces
- * `userRepository` or `authService`, the seed lands in the replaced one — callers should make
- * sure that replacement happens in configure, not after.
+ * The `configure` block still runs first so specs can override leaves. If a spec replaces
+ * `userRepository`, the seed lands in the replaced one — callers should make sure that
+ * replacement happens in configure, not after.
  */
 fun authenticatedApiTest(
     configure: ApiFixture.() -> Unit = {},
@@ -251,7 +181,7 @@ fun ApiFixture.seedUser(
     role: UserRole,
 ) {
     runBlocking {
-        val hash = authService.hashPassword(password)
+        val hash = UsersSupport.from(userRepository, transactor, TEST_BCRYPT_COST).authService.hashPassword(password)
         with(noopTransactionContext) {
             userRepository.create(NewUser(username = username, passwordHash = hash, role = role))
         }
@@ -259,28 +189,28 @@ fun ApiFixture.seedUser(
 }
 
 private fun ApiFixture.toAppServices(): AppServices =
-    AppServices(
+    AppServices.from(
+        repositories =
+            AppRepositories(
+                leagueRepository = leagueRepository,
+                golferRepository = golferRepository,
+                seasonRepository = seasonRepository,
+                teamRepository = teamRepository,
+                tournamentRepository = tournamentRepository,
+                scoringRepository = scoringRepository,
+                tournamentLinkRepository = tournamentLinkRepository,
+                dataHealthRepository = dataHealthRepository,
+                userRepository = userRepository,
+            ),
         healthProbe = healthProbe,
-        leagueService = leagueService,
-        golferService = golferService,
-        seasonService = seasonService,
-        teamService = teamService,
-        tournamentService = tournamentService,
-        tournamentLinkService = tournamentLinkService,
-        tournamentOpsService = tournamentOpsService,
-        seasonOpsService = seasonOpsService,
-        espnService = espnService,
-        adminService = adminService,
-        dataHealthService = dataHealthService,
-        liveOverlayService = liveOverlayService,
-        weeklyReportService = weeklyReportService,
-        authService = authService,
-        loginThrottle = loginThrottle,
-        userRepository = userRepository,
+        espnClient = espnClient,
         transactor = transactor,
+        reportsTransactor = reportTransactor ?: transactor,
+        bcryptCost = TEST_BCRYPT_COST,
+        loginThrottle = loginThrottle,
+        authSetup = authSetup,
         requestCache = requestCache,
         sweepIntervalSeconds = TEST_SWEEP_INTERVAL_SECONDS,
-        authSetup = authSetup,
         debugEnabled = false,
     )
 

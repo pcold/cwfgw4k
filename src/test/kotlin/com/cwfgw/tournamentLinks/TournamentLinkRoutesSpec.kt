@@ -7,22 +7,14 @@ import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
-import com.cwfgw.golfers.GolferService
-import com.cwfgw.seasons.FakeSeasonRepository
-import com.cwfgw.seasons.SeasonService
-import com.cwfgw.teams.FakeTeamRepository
-import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
-import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.regularUserApiTest
 import com.cwfgw.testing.shouldBeRefused
-import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
-import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -120,30 +112,10 @@ private fun fixture(
     scoreboard: Map<LocalDate, List<EspnTournament>> = emptyMap(),
 ): ApiFixture.() -> Unit =
     {
-        val linkRepo = FakeTournamentLinkRepository(initial = initialOverrides)
-        val tournamentRepo = FakeTournamentRepository(initial = tournaments)
-        val golferRepo = FakeGolferRepository(initial = golfers)
-        val teamRepo = FakeTeamRepository()
-        val seasonRepo = FakeSeasonRepository()
-        val sharedTx = transactor
-        tournamentRepository = tournamentRepo
-        golferRepository = golferRepo
-        tournamentService = TournamentService(tournamentRepo, sharedTx)
-        golferService = GolferService(golferRepo, sharedTx)
-        teamService = TeamService(teamRepo, sharedTx)
-        seasonService = SeasonService(seasonRepo, sharedTx)
-        tournamentLinkRepository = linkRepo
-        tournamentLinkService = TournamentLinkService(linkRepo, tournamentRepo, golferRepo, sharedTx)
-        espnService =
-            testEspnService(
-                client = FakeEspnClient(tournamentsByDate = scoreboard),
-                seasonRepository = seasonRepo,
-                golferRepository = golferRepo,
-                teamRepository = teamRepo,
-                tournamentRepository = tournamentRepo,
-                linkRepository = linkRepo,
-                tx = sharedTx,
-            )
+        tournamentLinkRepository = FakeTournamentLinkRepository(initial = initialOverrides)
+        tournamentRepository = FakeTournamentRepository(initial = tournaments)
+        golferRepository = FakeGolferRepository(initial = golfers)
+        espnClient = FakeEspnClient(tournamentsByDate = scoreboard)
     }
 
 class TournamentLinkRoutesSpec : FunSpec({

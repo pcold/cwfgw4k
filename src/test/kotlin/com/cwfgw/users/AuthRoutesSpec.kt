@@ -1,6 +1,5 @@
 package com.cwfgw.users
 
-import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.TEST_ADMIN_PASSWORD
 import com.cwfgw.testing.TEST_ADMIN_USERNAME
 import com.cwfgw.testing.apiTest
@@ -28,8 +27,6 @@ import io.ktor.server.testing.ApplicationTestBuilder
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
-
-private const val TEST_BCRYPT_COST = 4
 
 @OptIn(ExperimentalSerializationApi::class)
 private val TEST_JSON =
@@ -183,7 +180,6 @@ class AuthRoutesSpec : FunSpec({
         apiTest(
             {
                 userRepository = repo
-                authService = AuthService(repo, FakeTransactor(), cost = TEST_BCRYPT_COST)
                 seedUser(username = "admin", password = "hunter2", role = UserRole.Admin)
             },
         ) { _ ->

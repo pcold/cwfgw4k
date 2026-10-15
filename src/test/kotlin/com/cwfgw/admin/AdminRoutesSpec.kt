@@ -6,24 +6,14 @@ import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
-import com.cwfgw.golfers.GolferService
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.seasons.SeasonId
-import com.cwfgw.seasons.SeasonService
-import com.cwfgw.teams.FakeTeamRepository
-import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.ApiFixture
-import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.noopTransactionContext
-import com.cwfgw.testing.testEspnService
-import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
-import com.cwfgw.tournamentLinks.TournamentLinkService
-import com.cwfgw.tournaments.FakeTournamentRepository
-import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -60,11 +50,6 @@ private fun golfer(
 
 private const val ROSTER_HEADER = "team_number\tteam_name\tround\tplayer_name\townership_pct"
 
-/**
- * Wire AdminService over fakes for a route test. Re-creates the dependent
- * services so the AdminService captured into [ApiFixture.adminService]
- * sees the seeded repos rather than the empty defaults.
- */
 private fun adminFixture(
     seedSeason: Boolean = true,
     calendar: List<EspnCalendarEntry> = emptyList(),
@@ -82,35 +67,9 @@ private fun adminFixture(
                 }
             }
         }
-        val golferRepo = FakeGolferRepository(initial = seedGolfers)
-        val tournamentRepo = FakeTournamentRepository()
-        val teamRepo = FakeTeamRepository()
-        val transactor = FakeTransactor()
-        seasonService = SeasonService(seasonRepo, transactor)
-        tournamentService = TournamentService(tournamentRepo, transactor)
-        golferService = GolferService(golferRepo, transactor)
-        teamService = TeamService(teamRepo, transactor)
-        val linkRepo = FakeTournamentLinkRepository()
-        espnService =
-            testEspnService(
-                client = FakeEspnClient(calendar = calendar, upstreamError = upstreamError),
-                seasonRepository = seasonRepo,
-                golferRepository = golferRepo,
-                teamRepository = teamRepo,
-                tournamentRepository = tournamentRepo,
-                linkRepository = linkRepo,
-                tx = transactor,
-            )
-        adminService =
-            AdminService(
-                tx = transactor,
-                seasonService = seasonService,
-                tournamentService = tournamentService,
-                espnService = espnService,
-                golferService = golferService,
-                golferRepository = golferRepo,
-                teamRepository = teamRepo,
-            )
+        seasonRepository = seasonRepo
+        golferRepository = FakeGolferRepository(initial = seedGolfers)
+        espnClient = FakeEspnClient(calendar = calendar, upstreamError = upstreamError)
     }
 
 private fun calendarEntry(

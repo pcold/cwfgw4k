@@ -558,6 +558,12 @@ Each domain package follows one shape: `*Models.kt` (types and DTOs), `*Reposito
 `*Service.kt` (rules and transactions), `*Routes.kt` (HTTP). Services open transactions; repositories take a
 transaction context and never open one. Ops on a season or tournament live beside them in `*OpsService.kt`.
 
+Each package's services are built by its `*Support.from(...)` (`SeasonsSupport`, `EspnSupport`, ...), and
+`AppServices.from` composes them all. `Main.buildServices` (also used by `SeedMain`) and the route-spec
+`ApiFixture` both call `AppServices.from`, passing only leaves: repositories, the ESPN client, the transactors,
+the health probe, and the cache, throttle and auth settings. Neither constructs a service, so a new dependency is
+wired once.
+
 `src/main/resources/db/migration` holds the Flyway migrations. `detekt-rules/` is the repo's custom detekt
 rule set. The UI lives in `ui/src`, with one folder per screen under `features/` (`admin`, `auth`,
 `lateRowBets`, `leagues`, `playerRankings`, `rankings`, `rosters`, `rules`, `scoreboard`, `weeklyReport`) and

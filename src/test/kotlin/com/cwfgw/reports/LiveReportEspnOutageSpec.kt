@@ -23,7 +23,6 @@ import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.captureLogs
 import com.cwfgw.testing.espnClientOver
 import com.cwfgw.testing.noopTransactionContext
-import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournaments.FakeTournamentRepository
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.ints.shouldBeGreaterThan
@@ -86,27 +85,9 @@ private fun mastersInPlay(espn: EspnClient): ApiFixture.() -> Unit =
         with(noopTransactionContext) {
             seasonRepo.create(CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026))
         }
-        val tournamentRepo = FakeTournamentRepository(initial = listOf(OUTAGE_TOURNAMENT))
-        liveOverlayService =
-            LiveOverlayService(
-                testEspnService(
-                    client = espn,
-                    seasonRepository = seasonRepo,
-                    golferRepository = golferRepository,
-                    teamRepository = teamRepository,
-                    tournamentRepository = tournamentRepo,
-                ),
-            )
-        weeklyReportService =
-            WeeklyReportService(
-                seasonRepository = seasonRepo,
-                tournamentRepository = tournamentRepo,
-                teamRepository = teamRepository,
-                golferRepository = golferRepository,
-                scoringRepository = scoringRepository,
-                liveOverlayService = liveOverlayService,
-                tx = transactor,
-            )
+        seasonRepository = seasonRepo
+        tournamentRepository = FakeTournamentRepository(initial = listOf(OUTAGE_TOURNAMENT))
+        espnClient = espn
     }
 
 private val BROWN_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c01"))

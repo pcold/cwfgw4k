@@ -1,7 +1,6 @@
 package com.cwfgw.seasons
 
 import com.cwfgw.leagues.LeagueId
-import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.seedSeasons
@@ -101,7 +100,7 @@ class SeasonRoutesSpec : FunSpec({
         val newTime = Instant.parse("2026-03-15T12:00:00Z")
         val fake = FakeSeasonRepository(idFactory = { newId }, clock = { newTime })
 
-        authenticatedApiTest({ seasonService = SeasonService(fake, FakeTransactor()) }) { client ->
+        authenticatedApiTest({ seasonRepository = fake }) { client ->
             val response =
                 client.post("/api/v1/seasons") {
                     contentType(ContentType.Application.Json)
