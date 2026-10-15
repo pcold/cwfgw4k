@@ -95,7 +95,7 @@ class TournamentSeasonLockRaceSpec : FunSpec({
     test("an unlinked finalize leaves a match in another season alone, so that season's reset can't strand it") {
         val (unlinked, seeded) = tx.update { seedUnlinkedWithForeignMatch() }
         val pause = WriterPause()
-        val pausedFinalize = opsService(tx, tournamentRepository = pause.afterMatchLock())
+        val pausedFinalize = opsService(tx, scoringTournamentRepository = pause.afterImport())
 
         coroutineScope {
             val finalize = async { pausedFinalize.finalizeTournament(unlinked.id) }
@@ -118,7 +118,7 @@ private class WriterPause {
 
     fun afterUpdate(): TournamentRepository = UpdatePausingTournamentRepository(TournamentRepository(), this)
 
-    fun afterMatchLock(): TournamentRepository = MatchLockPausingTournamentRepository(TournamentRepository(), this)
+    fun afterImport(): TournamentRepository = ResultsPausingTournamentRepository(TournamentRepository(), this)
 
     fun hold() {
         reached.complete(Unit)
@@ -163,14 +163,14 @@ private class UpdatePausingTournamentRepository(
     ): Tournament? = delegate.update(id, request).also { pause.hold() }
 }
 
-/** An unlinked finalize, holding its matches and about to import into them. */
-private class MatchLockPausingTournamentRepository(
+/** Scoring reads the results after every import is written, so a contender commits after the match filter ran. */
+private class ResultsPausingTournamentRepository(
     private val delegate: TournamentRepository,
     private val pause: WriterPause,
 ) : TournamentRepository by delegate {
-    context(ctx: WriteTransactionContext)
-    override fun findByPgaTournamentIdsForUpdate(pgaTournamentIds: Collection<String>): List<Tournament> =
-        delegate.findByPgaTournamentIdsForUpdate(pgaTournamentIds).also { pause.hold() }
+    context(ctx: TransactionContext)
+    override fun getResults(tournamentId: TournamentId): List<TournamentResult> =
+        delegate.getResults(tournamentId).also { pause.hold() }
 }
 
 /**
@@ -196,6 +196,7 @@ private suspend fun PostgresHarness.awaitLockWait(pending: Job): Boolean {
 private fun opsService(
     tx: Transactor,
     tournamentRepository: TournamentRepository = TournamentRepository(),
+    scoringTournamentRepository: TournamentRepository = TournamentRepository(),
 ): TournamentOpsService =
     TournamentOpsService(
         tournamentRepository = tournamentRepository,
@@ -203,7 +204,7 @@ private fun opsService(
             ScoringService(
                 repository = ScoringRepository(),
                 seasonRepository = SeasonRepository(),
-                tournamentRepository = TournamentRepository(),
+                tournamentRepository = scoringTournamentRepository,
                 teamRepository = TeamRepository(),
             ),
         scoringRepository = ScoringRepository(),
