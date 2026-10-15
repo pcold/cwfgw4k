@@ -455,13 +455,21 @@ describe('api client', () => {
   });
 
   it('finalizeTournament() POSTs to the finalize path and returns the parsed body', async () => {
-    fetchMock.mockResolvedValueOnce(mockJson({ id: 'tn-7', name: 'Sony', status: 'completed' }));
+    fetchMock.mockResolvedValueOnce(
+      mockJson({
+        tournament: { id: 'tn-7', name: 'Sony', status: 'completed' },
+        import_warnings: [{ tournament_id: 'tn-7', tournament_name: 'Sony', created_golfers: [] }],
+      }),
+    );
     const result = await api.finalizeTournament('tn-7');
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/tournaments/tn-7/finalize',
       expect.objectContaining({ method: 'POST' }),
     );
-    expect(result).toMatchObject({ id: 'tn-7', status: 'completed' });
+    expect(result).toMatchObject({
+      tournament: { id: 'tn-7', status: 'completed' },
+      importWarnings: [{ tournamentId: 'tn-7', tournamentName: 'Sony', createdGolfers: [] }],
+    });
   });
 
   it('cleanSeasonResults() returns the deletion counts from the body', async () => {
