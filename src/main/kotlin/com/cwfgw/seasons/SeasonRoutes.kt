@@ -1,5 +1,6 @@
 package com.cwfgw.seasons
 
+import com.cwfgw.admin.DRAFT_ROUNDS
 import com.cwfgw.http.DomainError
 import com.cwfgw.http.optionalQueryParam
 import com.cwfgw.leagues.toLeagueId
@@ -47,8 +48,9 @@ private suspend fun RoutingContext.createSeason(service: SeasonService) {
 private fun CreateSeasonViolation.toDomainError(): DomainError =
     when (this) {
         CreateSeasonViolation.NoPayoutPlaces -> DomainError.Validation("payouts must list at least one place")
-        CreateSeasonViolation.NoSideBetRounds -> DomainError.Validation("side bet rounds must list at least one round")
         CreateSeasonViolation.DuplicateSideBetRound -> DomainError.Validation("side bet rounds must not repeat a round")
+        CreateSeasonViolation.SideBetRoundOutOfRange ->
+            DomainError.Validation("side bet rounds must be between ${DRAFT_ROUNDS.first} and ${DRAFT_ROUNDS.last}")
         CreateSeasonViolation.BlankName -> DomainError.Validation("season name must not be blank")
         CreateSeasonViolation.MaxTeamsBelowOne -> DomainError.Validation("max teams must be at least 1")
         is CreateSeasonViolation.RuleAmount -> DomainError.Validation(message())

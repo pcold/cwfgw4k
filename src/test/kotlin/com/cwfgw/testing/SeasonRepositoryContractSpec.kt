@@ -116,7 +116,7 @@ private val seasonRulesContract: List<ContractCase<SeasonRepository>> =
             rules?.sideBetAmount?.toPlainString() shouldBe "10.0000"
             created.tieFloor shouldBe rules?.tieFloor
         },
-        ContractCase("rules with no payouts or side-bet rounds read back the league defaults for each") {
+        ContractCase("rules with no payouts read back the default payouts, and no side-bet rounds read back none") {
             val bare = SeasonRules.defaults().copy(payouts = emptyList(), sideBetRounds = emptyList())
             val request = season(seeds.league()).copy(rules = bare)
             val created = tx.update { repository.create(request) }
@@ -124,6 +124,6 @@ private val seasonRulesContract: List<ContractCase<SeasonRepository>> =
             val rules = tx.get { repository.getRules(created.id) }
 
             rules?.payouts shouldBe SeasonRules.DEFAULT_PAYOUTS
-            rules?.sideBetRounds shouldBe SeasonRules.DEFAULT_SIDE_BET_ROUNDS
+            rules?.sideBetRounds shouldBe emptyList()
         },
     )

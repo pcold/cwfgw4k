@@ -38,6 +38,10 @@ private fun stakedRequest(
 ): CreateSeasonRequest =
     seasonRequest(leagueId).copy(rules = SeasonRules.defaults().copy(sideBetAmount = sideBetAmount))
 
+/** A create without rules writes the default rounds, so a spec seeding its own needs the tables left empty. */
+private fun emptyJoinTables(): SeasonRules =
+    SeasonRules.defaults().copy(payouts = emptyList(), sideBetRounds = emptyList())
+
 class SeasonRepositorySpec : FunSpec({
 
     val postgres = postgresHarness()
@@ -278,7 +282,7 @@ class SeasonRepositorySpec : FunSpec({
         tx.read { repository.findById(SeasonId(UUID.randomUUID())) }.shouldBeNull()
     }
 
-    test("getRules returns defaults when join tables are empty") {
+    test("getRules returns defaults for a season created without rules") {
         tx.update {
             val created =
                 repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "2026", seasonYear = 2026))
@@ -295,8 +299,7 @@ class SeasonRepositorySpec : FunSpec({
 
     test("getRules returns custom payouts and rounds when seeded in join tables") {
         tx.update {
-            val created =
-                repository.create(CreateSeasonRequest(leagueId = castlewoodId, name = "2026", seasonYear = 2026))
+            val created = repository.create(seasonRequest(castlewoodId).copy(rules = emptyJoinTables()))
             seedSeasonRules(
                 created.id,
                 payouts = listOf(1 to BigDecimal("50"), 2 to BigDecimal("25"), 3 to BigDecimal("10")),
@@ -309,6 +312,29 @@ class SeasonRepositorySpec : FunSpec({
             rules.payouts shouldContainExactly
                 listOf(BigDecimal("50.0000"), BigDecimal("25.0000"), BigDecimal("10.0000"))
             rules.sideBetRounds shouldContainExactly listOf(3, 4)
+        }
+    }
+
+    test("a season created with no side-bet rounds reads back none, not the defaults") {
+        tx.update {
+            val created =
+                repository.create(
+                    seasonRequest(castlewoodId).copy(rules = SeasonRules.defaults().copy(sideBetRounds = emptyList())),
+                )
+
+            repository.getRules(created.id).shouldNotBeNull().sideBetRounds.shouldBeEmpty()
+        }
+    }
+
+    test("the round CHECK refuses a side-bet round outside 1..8 written past validation") {
+        val created = tx.update { repository.create(seasonRequest(castlewoodId).copy(rules = emptyJoinTables())) }
+
+        listOf(0, 9).forEach { round ->
+            val failure =
+                shouldThrow<DataAccessException> {
+                    tx.update { seedSeasonRules(created.id, payouts = emptyList(), sideBetRounds = listOf(round)) }
+                }
+            failure.message.shouldNotBeNull() shouldContain "season_rule_side_bet_rounds_round_in_range"
         }
     }
 

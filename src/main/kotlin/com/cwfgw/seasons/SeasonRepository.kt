@@ -11,6 +11,7 @@ import com.cwfgw.leagues.LeagueId
 import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.impl.DSL
+import java.math.BigDecimal
 
 interface SeasonRepository {
     context(ctx: TransactionContext)
@@ -74,7 +75,9 @@ private class JooqSeasonRepository : SeasonRepository {
                 .returning()
                 .fetchSingle()
         val season = toSeason(inserted)
-        request.rules?.let { writeRules(season.id, it) }
+        request.rules?.let { writePayouts(season.id, it.payouts) }
+        // Written even without rules: getRules reads no rounds as a season without side bets, not as the defaults.
+        writeSideBetRounds(season.id, request.rules?.sideBetRounds ?: SeasonRules.DEFAULT_SIDE_BET_ROUNDS)
         return season
     }
 
@@ -96,18 +99,25 @@ private class JooqSeasonRepository : SeasonRepository {
     }
 
     context(ctx: WriteTransactionContext)
-    private fun writeRules(
+    private fun writePayouts(
         seasonId: SeasonId,
-        rules: SeasonRules,
+        payouts: List<BigDecimal>,
     ) {
-        rules.payouts.forEachIndexed { index, amount ->
+        payouts.forEachIndexed { index, amount ->
             ctx.dsl.insertInto(SEASON_RULE_PAYOUTS)
                 .set(SEASON_RULE_PAYOUTS.SEASON_ID, seasonId.value)
                 .set(SEASON_RULE_PAYOUTS.POSITION, index + 1)
                 .set(SEASON_RULE_PAYOUTS.AMOUNT, amount)
                 .execute()
         }
-        rules.sideBetRounds.forEach { round ->
+    }
+
+    context(ctx: WriteTransactionContext)
+    private fun writeSideBetRounds(
+        seasonId: SeasonId,
+        sideBetRounds: List<Int>,
+    ) {
+        sideBetRounds.forEach { round ->
             ctx.dsl.insertInto(SEASON_RULE_SIDE_BET_ROUNDS)
                 .set(SEASON_RULE_SIDE_BET_ROUNDS.SEASON_ID, seasonId.value)
                 .set(SEASON_RULE_SIDE_BET_ROUNDS.ROUND, round)
@@ -147,7 +157,7 @@ private class JooqSeasonRepository : SeasonRepository {
         return SeasonRules(
             payouts = payouts.ifEmpty { SeasonRules.DEFAULT_PAYOUTS },
             tieFloor = season.required(SEASONS.TIE_FLOOR),
-            sideBetRounds = sideBetRounds.ifEmpty { SeasonRules.DEFAULT_SIDE_BET_ROUNDS },
+            sideBetRounds = sideBetRounds,
             sideBetAmount = season.required(SEASONS.SIDE_BET_AMOUNT),
         )
     }

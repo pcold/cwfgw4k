@@ -53,6 +53,7 @@ private fun outOfRangeRefusals(): List<Pair<CreateSeasonRequest, String>> {
         request(rules.copy(payouts = listOf(overflow))) to "payouts must be less than 1,000,000",
         request(rules.copy(tieFloor = overflow)) to "tie floor must be less than 1,000,000",
         request(rules.copy(sideBetAmount = overflow)) to "side bet amount must be less than 1,000,000",
+        request(rules.copy(sideBetRounds = listOf(5, 9))) to "side bet rounds must be between 1 and 8",
     )
 }
 
@@ -71,9 +72,18 @@ class CreateSeasonViolationSpec : FunSpec({
         request(noPlaces).violation() shouldBe CreateSeasonViolation.NoPayoutPlaces
     }
 
-    test("rules with no side-bet rounds are NoSideBetRounds") {
-        val noRounds = SeasonRules.defaults().copy(sideBetRounds = emptyList())
-        request(noRounds).violation() shouldBe CreateSeasonViolation.NoSideBetRounds
+    test("rules with no side-bet rounds have no violation, since no rounds is the season with no side bets") {
+        request(SeasonRules.defaults().copy(sideBetRounds = emptyList())).violation().shouldBeNull()
+    }
+
+    test("a side-bet round outside the draft's rounds is SideBetRoundOutOfRange, and rounds 1 and 8 have none") {
+        listOf(listOf(0), listOf(5, 9), listOf(-1), listOf(9, 9)).forEach { rounds ->
+            withClue(rounds) {
+                request(SeasonRules.defaults().copy(sideBetRounds = rounds)).violation() shouldBe
+                    CreateSeasonViolation.SideBetRoundOutOfRange
+            }
+        }
+        request(SeasonRules.defaults().copy(sideBetRounds = listOf(1, 8))).violation().shouldBeNull()
     }
 
     test("a side-bet round listed twice is DuplicateSideBetRound") {
@@ -172,7 +182,7 @@ class CreateSeasonViolationSpec : FunSpec({
         }
     }
 
-    test("POST /api/v1/seasons refuses empty side-bet rounds with 400 and its message") {
+    test("POST /api/v1/seasons creates a season with no side-bet rounds, and its rules read back none") {
         authenticatedApiTest { client ->
             val response =
                 client.post("/api/v1/seasons") {
@@ -180,8 +190,9 @@ class CreateSeasonViolationSpec : FunSpec({
                     setBody(request(SeasonRules.defaults().copy(sideBetRounds = emptyList())))
                 }
 
-            response.status shouldBe HttpStatusCode.BadRequest
-            response.body<ErrorBody>().error shouldBe "side bet rounds must list at least one round"
+            response.status shouldBe HttpStatusCode.Created
+            val season = response.body<Season>()
+            client.get("/api/v1/seasons/${season.id.value}/rules").body<SeasonRules>().sideBetRounds.shouldBeEmpty()
         }
     }
 

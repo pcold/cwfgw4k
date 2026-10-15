@@ -713,6 +713,21 @@ class WeeklyReportServiceSpec : FunSpec({
         }
     }
 
+    test("a season with no side-bet rounds reports no rules and settles no side bets, whatever its amount") {
+        val fixture =
+            sideBetFixture(
+                rules = sideBetRules(amount = BigDecimal(20), rounds = emptyList()),
+                round = 2,
+                earnedByTeam = listOf(TEAM_A to BigDecimal(12), TEAM_B to BigDecimal(4)),
+            )
+
+        val report = fixture.mastersReport()
+
+        report.sideBetRules shouldBe null
+        report.sideBetDetail.shouldBeEmpty()
+        report.teams.forAll { it.sideBets.compareTo(BigDecimal.ZERO) shouldBe 0 }
+    }
+
     test("getReport totals what its teams won and lost, in cash and in side bets") {
         val report = breakEvenWinnerAndLoser().mastersReport()
 

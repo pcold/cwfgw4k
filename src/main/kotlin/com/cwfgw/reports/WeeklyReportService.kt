@@ -1071,10 +1071,7 @@ internal data class SideBetRoundSnapshot(
     val payouts: Map<TeamId, BigDecimal>,
 )
 
-/**
- * Empty for a season that stakes nothing. A zero amount counts as that: it is the only "off" the rules
- * admin can save, because [SeasonRules.sideBetRounds] stored empty reads back as the defaults.
- */
+/** Empty when side bets are off, which a season says with no rounds or a zero amount alike. */
 internal fun SeasonRules.stakedSideBetRounds(): List<Int> =
     if (sideBetAmount.signum() == 0) emptyList() else sideBetRounds
 
