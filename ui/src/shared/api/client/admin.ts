@@ -1,12 +1,13 @@
 import type {
   ConfirmedTournamentEntry,
+  DataHealthReport,
   RosterConfirmResult,
   RosterConfirmTeamInput,
   RosterPreview,
   SeasonImportResult,
   SeasonSchedulePreviewResult,
 } from '../types';
-import { postJson, postText } from './core';
+import { getJson, postJson, postText } from './core';
 
 export const adminApi = {
   previewSeasonSchedule: (input: {
@@ -32,4 +33,5 @@ export const adminApi = {
     postText<RosterPreview>('/admin/roster/preview', roster),
   confirmRoster: (input: { seasonId: string; teams: RosterConfirmTeamInput[] }): Promise<RosterConfirmResult> =>
     postJson<RosterConfirmResult>('/admin/roster/confirm', input),
+  dataHealth: (): Promise<DataHealthReport> => getJson<DataHealthReport>('/admin/data-health'),
 };

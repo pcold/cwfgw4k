@@ -4,6 +4,8 @@ import com.cwfgw.AppServices
 import com.cwfgw.admin.AdminService
 import com.cwfgw.cache.FakeCacheRepository
 import com.cwfgw.cache.RequestCache
+import com.cwfgw.datahealth.DataHealthService
+import com.cwfgw.datahealth.FakeDataHealthRepository
 import com.cwfgw.db.Transactor
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.FakeEspnClient
@@ -125,6 +127,7 @@ class ApiFixture {
             golferRepository = FakeGolferRepository(),
             teamRepository = FakeTeamRepository(),
         )
+    var dataHealthService: DataHealthService = DataHealthService(FakeDataHealthRepository(), transactor)
     var liveOverlayService: LiveOverlayService = LiveOverlayService(espnService)
     var weeklyReportService: WeeklyReportService =
         WeeklyReportService(
@@ -268,6 +271,7 @@ private fun ApiFixture.toAppServices(): AppServices =
         seasonOpsService = seasonOpsService,
         espnService = espnService,
         adminService = adminService,
+        dataHealthService = dataHealthService,
         liveOverlayService = liveOverlayService,
         weeklyReportService = weeklyReportService,
         authService = authService,

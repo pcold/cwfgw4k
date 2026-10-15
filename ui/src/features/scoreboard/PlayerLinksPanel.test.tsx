@@ -21,6 +21,7 @@ const onCloseMock = vi.fn();
 const tournamentReportMock = vi.fn<typeof api.tournamentReport>();
 const rankingsMock = vi.fn<typeof api.rankings>();
 const playerRankingsMock = vi.fn<typeof api.playerRankings>();
+const dataHealthMock = vi.fn<typeof api.dataHealth>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -42,6 +43,7 @@ vi.mock('@/shared/api/client', () => ({
       rankingsMock(seasonId, live, throughTournamentId),
     playerRankings: (seasonId: string, live: boolean, throughTournamentId?: string) =>
       playerRankingsMock(seasonId, live, throughTournamentId),
+    dataHealth: () => dataHealthMock(),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -133,6 +135,15 @@ function OpenLiveScoreboardReport() {
   return null;
 }
 
+// As OpenLiveWeeklyReport: the key and fetcher of DataHealthSection.
+function OpenDataHealth() {
+  useQuery({
+    queryKey: queryKeys.dataHealth.root,
+    queryFn: api.dataHealth,
+  });
+  return null;
+}
+
 function renderPanel(openQuery: ReactElement | null = null): void {
   renderWithProviders(
     <>
@@ -154,6 +165,7 @@ describe('PlayerLinksPanel', () => {
     tournamentReportMock.mockReset();
     rankingsMock.mockReset();
     playerRankingsMock.mockReset();
+    dataHealthMock.mockReset();
     golfersMock.mockResolvedValue([mattGolfer, alexGolfer, otherGolfer]);
   });
 
@@ -227,6 +239,7 @@ describe('PlayerLinksPanel', () => {
     ['open live rankings', <OpenLiveRankings key="rankings" />, rankingsMock],
     ['open live player rankings', <OpenLivePlayerRankings key="player-rankings" />, playerRankingsMock],
     ['an open live scoreboard report', <OpenLiveScoreboardReport key="scoreboard" />, tournamentReportMock],
+    ['an open data health check', <OpenDataHealth key="data-health" />, dataHealthMock],
   ])('refetches %s after a link is saved', async (_page, openQuery, readMock) => {
     competitorsMock.mockResolvedValue(buildListing());
     upsertMock.mockResolvedValue({

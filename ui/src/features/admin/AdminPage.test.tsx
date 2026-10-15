@@ -43,6 +43,11 @@ vi.mock('@/shared/api/client', () => ({
     tournaments: vi.fn().mockResolvedValue([]),
     resetTournament: vi.fn().mockResolvedValue({ message: 'ok' }),
     cleanSeasonResults: vi.fn().mockResolvedValue({ message: 'ok' }),
+    dataHealth: vi.fn().mockResolvedValue({
+      rosteredTwins: { count: 0, rows: [] },
+      rosteredWithoutEspnId: { count: 0, rows: [] },
+      blankFirstNames: { count: 0, rows: [] },
+    }),
   },
   ApiError: class ApiError extends Error {
     readonly status: number;

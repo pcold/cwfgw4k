@@ -126,6 +126,8 @@ function CompetitorRow({
   // that can carry the overlay is affected, not only the scoreboard's own report.
   async function invalidateAffected(): Promise<void> {
     invalidateAfterScoreOwnerChange(queryClient, { type: 'season', seasonId });
+    // A link can backfill the golfer's ESPN id, which the data-health checks read.
+    void queryClient.invalidateQueries({ queryKey: queryKeys.dataHealth.root });
     await queryClient.invalidateQueries({ queryKey: queryKeys.tournamentCompetitors.byTournament(tournamentId) });
     setPickedGolferId(null);
   }

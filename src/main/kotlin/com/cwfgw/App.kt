@@ -3,6 +3,7 @@ package com.cwfgw
 import com.cwfgw.admin.adminRoutes
 import com.cwfgw.cache.RequestCache
 import com.cwfgw.cache.clearResponseCacheOnWrite
+import com.cwfgw.datahealth.dataHealthRoutes
 import com.cwfgw.db.PoolMetrics
 import com.cwfgw.debug.buildDebugDump
 import com.cwfgw.debug.debugRoutes
@@ -143,6 +144,7 @@ private fun Routing.apiRoutes(services: AppServices) {
         tournamentOpsRoutes(services.tournamentOpsService)
         seasonOpsRoutes(services.seasonOpsService)
         adminRoutes(services.adminService)
+        dataHealthRoutes(services.dataHealthService)
         tournamentLinkRoutes(services.espnService, services.tournamentLinkService)
         reportRoutes(services.weeklyReportService, services.requestCache)
         authRoutes(services.authService, services.loginThrottle)

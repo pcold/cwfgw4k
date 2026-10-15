@@ -1,6 +1,5 @@
 package com.cwfgw.tournaments
 
-import com.cwfgw.db.LOCK_TIMEOUT_MS
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
 import com.cwfgw.db.WriteTransactionContext
@@ -17,7 +16,7 @@ import com.cwfgw.seasons.SeasonOpsService
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.teams.AddToRosterRequest
 import com.cwfgw.teams.TeamRepository
-import com.cwfgw.testing.PostgresHarness
+import com.cwfgw.testing.Pause
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.seedTeams
@@ -29,29 +28,15 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withTimeout
-import org.jooq.impl.DSL
-import java.time.Duration
-import java.time.Instant
 import java.time.LocalDate
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
 private const val EVENT_ESPN_ID = "401580999"
 private const val FINISHER_ESPN_ID = "9478"
 private val EVENT_WEEK: LocalDate = LocalDate.parse("2026-04-23")
 private val EARLIER_WEEK: LocalDate = LocalDate.parse("2026-04-16")
 private val LATER_WEEK: LocalDate = LocalDate.parse("2026-04-30")
-
-/** A holder never released lets go before its waiter's lock_timeout would fire. */
-private const val HOLD_CEILING_MS: Long = LOCK_TIMEOUT_MS - 2_000
-private val LOCK_WAIT_DEADLINE: Duration = Duration.ofMillis(HOLD_CEILING_MS - 1_000)
 
 /** Writers beside finalize and reset that change what their sibling-order checks read, paused mid-transaction. */
 class TournamentSeasonLockRaceSpec : FunSpec({
@@ -61,7 +46,7 @@ class TournamentSeasonLockRaceSpec : FunSpec({
 
     test("a season clean-results waits for a finalize in its season, then clears what that finalize wrote") {
         val event = tx.update { seedRosteredEvent() }
-        val pause = WriterPause()
+        val pause = Pause()
         val pausedFinalize = opsService(tx, tournamentRepository = pause.afterFindAll())
         val seasonOps = SeasonOpsService(SeasonRepository(), TournamentRepository(), ScoringRepository(), tx)
 
@@ -80,7 +65,7 @@ class TournamentSeasonLockRaceSpec : FunSpec({
 
     test("a finalize waits for a PUT reopening the week before it, then refuses as out of order") {
         val (earlier, later) = tx.update { seedConsecutiveWeeks() }
-        val pause = WriterPause()
+        val pause = Pause()
         val reopen = UpdateTournamentRequest(status = TournamentStatus.Upcoming)
 
         coroutineScope {
@@ -95,7 +80,7 @@ class TournamentSeasonLockRaceSpec : FunSpec({
 
     test("a finalize waits for a PUT moving an upcoming week before it, then refuses as out of order") {
         val (moving, event) = tx.update { seedWeekAfter() }
-        val pause = WriterPause()
+        val pause = Pause()
         val moveEarlier = UpdateTournamentRequest(startDate = EARLIER_WEEK, endDate = EARLIER_WEEK.plusDays(3))
 
         coroutineScope {
@@ -110,7 +95,7 @@ class TournamentSeasonLockRaceSpec : FunSpec({
 
     test("an unlinked finalize leaves a match in another season alone, so that season's reset can't strand it") {
         val (unlinked, seeded) = tx.update { seedUnlinkedWithForeignMatch() }
-        val pause = WriterPause()
+        val pause = Pause()
         val pausedFinalize = opsService(tx, scoringTournamentRepository = pause.afterImport())
 
         coroutineScope {
@@ -125,43 +110,17 @@ class TournamentSeasonLockRaceSpec : FunSpec({
     }
 })
 
-/** Stops one transaction where its hook fires, until [contend] has seen a contender wait on a lock or finish. */
-private class WriterPause {
-    private val reached = CompletableDeferred<Unit>()
-    private val release = CountDownLatch(1)
+private fun Pause.afterFindAll(): TournamentRepository =
+    OrderCheckPausingTournamentRepository(TournamentRepository(), this)
 
-    fun afterFindAll(): TournamentRepository = OrderCheckPausingTournamentRepository(TournamentRepository(), this)
+private fun Pause.afterUpdate(): TournamentRepository = UpdatePausingTournamentRepository(TournamentRepository(), this)
 
-    fun afterUpdate(): TournamentRepository = UpdatePausingTournamentRepository(TournamentRepository(), this)
-
-    fun afterImport(): TournamentRepository = ResultsPausingTournamentRepository(TournamentRepository(), this)
-
-    fun hold() {
-        reached.complete(Unit)
-        release.await(HOLD_CEILING_MS, TimeUnit.MILLISECONDS)
-    }
-
-    /** The contender, and whether it was seen waiting on a lock while the paused transaction held. */
-    suspend fun <T> contend(
-        postgres: PostgresHarness,
-        contender: () -> Deferred<T>,
-    ): Pair<Deferred<T>, Boolean> {
-        withTimeout(HOLD_CEILING_MS) { reached.await() }
-        val started = contender()
-        val waited =
-            try {
-                postgres.awaitLockWait(started)
-            } finally {
-                release.countDown()
-            }
-        return started to waited
-    }
-}
+private fun Pause.afterImport(): TournamentRepository = ResultsPausingTournamentRepository(TournamentRepository(), this)
 
 /** Finalize calls findAll once, for its order check, after its locks and before any write. */
 private class OrderCheckPausingTournamentRepository(
     private val delegate: TournamentRepository,
-    private val pause: WriterPause,
+    private val pause: Pause,
 ) : TournamentRepository by delegate {
     context(ctx: TransactionContext)
     override fun findAll(filter: TournamentFilter): List<Tournament> = delegate.findAll(filter).also { pause.hold() }
@@ -170,7 +129,7 @@ private class OrderCheckPausingTournamentRepository(
 /** The PUT's write, made and not yet committed. */
 private class UpdatePausingTournamentRepository(
     private val delegate: TournamentRepository,
-    private val pause: WriterPause,
+    private val pause: Pause,
 ) : TournamentRepository by delegate {
     context(ctx: WriteTransactionContext)
     override fun update(
@@ -182,30 +141,11 @@ private class UpdatePausingTournamentRepository(
 /** Scoring reads the results after every import is written, so a contender commits after the match filter ran. */
 private class ResultsPausingTournamentRepository(
     private val delegate: TournamentRepository,
-    private val pause: WriterPause,
+    private val pause: Pause,
 ) : TournamentRepository by delegate {
     context(ctx: TransactionContext)
     override fun getResults(tournamentId: TournamentId): List<TournamentResult> =
         delegate.getResults(tournamentId).also { pause.hold() }
-}
-
-/**
- * True once a session in this spec's database waits on a lock; false if [pending] finishes first or the deadline
- * passes. The waiter runs through [Transactor], whose connection the spec can't name, so the database scopes the
- * search.
- */
-private suspend fun PostgresHarness.awaitLockWait(pending: Job): Boolean {
-    val deadline = Instant.now().plus(LOCK_WAIT_DEADLINE)
-    while (!pending.isCompleted && Instant.now().isBefore(deadline)) {
-        val waiting =
-            dsl.fetchExists(
-                DSL.selectOne().from("pg_stat_activity")
-                    .where("datname = current_database() and wait_event_type = 'Lock'"),
-            )
-        if (waiting) return true
-        delay(10)
-    }
-    return false
 }
 
 /** Every service reads one scoreboard: [EVENT_ESPN_ID], completed, on [EVENT_WEEK]. */

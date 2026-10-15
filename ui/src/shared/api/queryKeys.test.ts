@@ -26,6 +26,7 @@ const KEY_CHAINS: Record<keyof typeof queryKeys, readonly QueryKey[]> = {
   rosters: [queryKeys.rosters.root, queryKeys.rosters.bySeason('sn-1')],
   seasonRules: [queryKeys.seasonRules.root, queryKeys.seasonRules.bySeason('sn-1')],
   defaultSeasonRules: [queryKeys.defaultSeasonRules.root],
+  dataHealth: [queryKeys.dataHealth.root],
   golfers: [queryKeys.golfers.root, queryKeys.golfers.list()],
   golferHistory: [
     queryKeys.golferHistory.root,
@@ -66,6 +67,7 @@ it('pins the value of every key, root first', () => {
     rosters: [['rosters'], ['rosters', 'sn-1']],
     seasonRules: [['seasonRules'], ['seasonRules', 'sn-1']],
     defaultSeasonRules: [['defaultSeasonRules']],
+    dataHealth: [['dataHealth']],
     golfers: [['golfers'], ['golfers', 'all']],
     golferHistory: [['golferHistory'], ['golferHistory', 'sn-1'], ['golferHistory', 'sn-1', 'g-1']],
     tournamentReport: [

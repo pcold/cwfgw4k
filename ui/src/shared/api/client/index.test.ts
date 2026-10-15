@@ -600,6 +600,25 @@ describe('api client', () => {
     expect(jsonBody(call)).toEqual({ espn_competitor_id: 'abc', name: 'Alex Fitzpatrick' });
     expect(result.golferId).toBe('g-99');
   });
+
+  it('dataHealth() fetches the admin data-health endpoint and camelizes each check', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockJson({
+        rostered_twins: { count: 0, rows: [] },
+        rostered_without_espn_id: {
+          count: 1,
+          rows: [{ id: 'g-1', first_name: 'Si Woo', last_name: 'Kim', pga_player_id: null }],
+        },
+        blank_first_names: { count: 0, rows: [] },
+      }),
+    );
+    const result = await api.dataHealth();
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/admin/data-health');
+    expect(result.rosteredWithoutEspnId).toEqual({
+      count: 1,
+      rows: [{ id: 'g-1', firstName: 'Si Woo', lastName: 'Kim', pgaPlayerId: null }],
+    });
+  });
 });
 
 describe('api', () => {

@@ -4,6 +4,7 @@ import com.cwfgw.db.Transactor
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.jooq.tables.references.CACHE_GENERATION
 import com.cwfgw.testing.PostgresHarness
+import com.cwfgw.testing.awaitLockWait
 import com.cwfgw.testing.postgresHarness
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
@@ -12,19 +13,15 @@ import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import org.jooq.SQLDialect
 import org.jooq.exception.NoDataFoundException
 import org.jooq.impl.DSL
 import java.sql.Connection
-import java.time.Duration
 import java.time.Instant
 
 private const val REPORT_KEY = "rev-a /api/v1/seasons/abc/report"
-private val LOCK_WAIT_DEADLINE: Duration = Duration.ofSeconds(10)
 
 /** Committed by hand, so a second transaction can run against it while it is still open. */
 private class OpenTransaction(private val connection: Connection) : AutoCloseable {
@@ -47,25 +44,6 @@ private class OpenTransaction(private val connection: Connection) : AutoCloseabl
 }
 
 private fun PostgresHarness.openTransaction(): OpenTransaction = OpenTransaction(dataSource.connection)
-
-/**
- * True once a session in this spec's database waits on a lock; false if [pending] finishes first or the deadline
- * passes. The waiter runs through [Transactor], whose connection the spec can't name, so the database scopes the
- * search.
- */
-private suspend fun PostgresHarness.awaitLockWait(pending: Job): Boolean {
-    val deadline = Instant.now().plus(LOCK_WAIT_DEADLINE)
-    while (!pending.isCompleted && Instant.now().isBefore(deadline)) {
-        val waiting =
-            dsl.fetchExists(
-                DSL.selectOne().from("pg_stat_activity")
-                    .where("datname = current_database() and wait_event_type = 'Lock'"),
-            )
-        if (waiting) return true
-        delay(10)
-    }
-    return false
-}
 
 class CacheRepositorySpec : FunSpec({
 

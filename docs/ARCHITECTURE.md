@@ -506,6 +506,7 @@ Request and response shapes are the `@Serializable` types in each package's `*Ro
 | POST | `/admin/seasons/{id}/upload/confirm` | Create the previewed tournaments | Admin |
 | POST | `/admin/roster/preview` | Parse a plain-text roster and match golfers; writes nothing | Admin |
 | POST | `/admin/roster/confirm` | Create the season's teams and rosters | Admin |
+| GET | `/admin/data-health` | Golfer rows that score wrongly: rostered twins, rostered without an ESPN id, blank first names | Admin |
 | GET | `/admin/tournaments/{id}/competitors` | ESPN competitors for a linked tournament, to pick overrides from | Admin |
 | POST | `/admin/tournaments/{id}/player-overrides` | Pin an ESPN competitor to a golfer | Admin |
 | POST | `/admin/tournaments/{id}/player-overrides/new-golfer` | Create a golfer from a full name and pin the competitor to it, in one transaction | Admin |
@@ -517,7 +518,7 @@ Request and response shapes are the `@Serializable` types in each package's `*Ro
 | GET | `/seasons/{id}/golfer/{golferId}/history` | One golfer's finishes and earnings in the season | Public |
 | GET | `/debug/threads` | JVM thread dump; mounted only when `DEBUG_ENDPOINTS_ENABLED` | Public |
 
-The table is generated from the `get`/`post`/`put`/`delete` calls in `src/main/**/*Routes.kt` (31 under
+The table is generated from the `get`/`post`/`put`/`delete` calls in `src/main/**/*Routes.kt` (33 under
 `/api/v1`, plus `/debug/threads`). A route change updates this table in the same PR.
 
 ## 10. Package Layout
@@ -538,6 +539,7 @@ src/main/kotlin/com/cwfgw/
 ├─ scoring/         payout math and finalize-time scoring
 ├─ reports/         report assembly, live overlay, report routes
 ├─ admin/           schedule and roster upload flows
+├─ datahealth/      admin read of golfer rows that score wrongly
 ├─ health/  logging/  debug/   probes, logging setup, thread dump
 └─ seed/            dev-only data seeder, its own entry point (`SeedMain`)
 ```
