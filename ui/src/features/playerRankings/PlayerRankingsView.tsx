@@ -7,7 +7,7 @@ import type { PlayerRankingsRow } from '@/shared/api/types';
 
 interface Props {
   players: PlayerRankingsRow[];
-  live?: boolean;
+  live: boolean;
   onGolferClick?: (golferId: string) => void;
 }
 

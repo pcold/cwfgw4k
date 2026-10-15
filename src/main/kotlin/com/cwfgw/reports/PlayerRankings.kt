@@ -40,7 +40,7 @@ data class PlayerRankingsRow(
 @Serializable
 data class PlayerRankings(
     val players: List<PlayerRankingsRow>,
-    val live: Boolean? = null,
+    val live: Boolean,
 )
 
 /**

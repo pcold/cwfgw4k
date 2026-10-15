@@ -160,7 +160,7 @@ export interface PlayerRankingsRow {
 
 export interface PlayerRankings {
   players: PlayerRankingsRow[];
-  live: boolean | null;
+  live: boolean;
 }
 
 export interface RosterPick {

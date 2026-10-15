@@ -820,6 +820,17 @@ class ReportRoutesSpec : FunSpec({
         }
     }
 
+    // ----- GET /api/v1/seasons/{id}/player-rankings -----
+
+    test("GET /api/v1/seasons/{id}/player-rankings sends live as false on a request that asks for no overlay") {
+        val masters = tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
+        apiTest(reportFixture(initialTournaments = listOf(masters))) { client ->
+            val response = client.get("/api/v1/seasons/${SEASON_ID.value}/player-rankings")
+            response.status shouldBe HttpStatusCode.OK
+            wireReport(response.bodyAsText())["live"] shouldBe JsonPrimitive(false)
+        }
+    }
+
     // ----- response caching: live requests in a tournament's window bypass it, the rest are served from it -----
 
     LIVE_CAPABLE_PATHS.forEach { (label, path) ->
