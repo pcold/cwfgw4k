@@ -82,25 +82,6 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
   'on-gold-earnings': ['gold-bright'],
 };
 
-// Pairs that measured below AA when the tokens were introduced. Each keeps its colour until a restyle
-// decides it; the spec goes red once one clears, so the entry is deleted rather than left stale.
-const BELOW_AA_AT_INTRODUCTION: ReadonlySet<string> = new Set([
-  'ink-soft on canvas',
-  'ink-soft on surface-card',
-  'ink-soft on surface-raised',
-  'ink-soft on side-bet-winner',
-  'ink-soft on semantic-success-tint/10 over canvas',
-  'ink-soft on semantic-danger-tint/10 over canvas',
-  'ink-soft on gold-soft/30 over canvas',
-  'ink-faint on canvas',
-  'ink-faint on surface-card',
-  'ink-faint on semantic-success-tint/10 over canvas',
-  'ink-faint on semantic-danger-tint/10 over canvas',
-  'semantic-danger on surface-raised',
-  'on-primary on primary',
-  'on-gold-earnings on gold-bright',
-]);
-
 // Names alone cannot say which tokens are text: `semantic-danger` is, `semantic-danger-fill` is not.
 const productionSources = import.meta.glob<string>(['./**/*.{ts,tsx}', '!./**/*.test.{ts,tsx}'], {
   query: '?raw',
@@ -230,22 +211,7 @@ describe('the text tokens declared in index.css', () => {
     expect([...textTokensInUse].sort()).toEqual(Object.keys(TEXT_BACKDROPS).sort());
   });
 
-  it('mark only pairs the table declares as below AA', () => {
-    const declaredLabels = new Set(declaredPairs.map((pair) => pair.label));
-    expect([...BELOW_AA_AT_INTRODUCTION].filter((label) => !declaredLabels.has(label))).toEqual([]);
+  it.each(declaredPairs)('clear AA for normal text where $label', (pair) => {
+    expect(measure(pair)).toBeGreaterThanOrEqual(AA_NORMAL_TEXT);
   });
-
-  it.each(declaredPairs.filter((pair) => !BELOW_AA_AT_INTRODUCTION.has(pair.label)))(
-    'clear AA for normal text where $label',
-    (pair) => {
-      expect(measure(pair)).toBeGreaterThanOrEqual(AA_NORMAL_TEXT);
-    },
-  );
-
-  it.each(declaredPairs.filter((pair) => BELOW_AA_AT_INTRODUCTION.has(pair.label)))(
-    'still fall short of AA where $label, a marked finding',
-    (pair) => {
-      expect(measure(pair)).toBeLessThan(AA_NORMAL_TEXT);
-    },
-  );
 });
