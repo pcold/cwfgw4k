@@ -30,6 +30,7 @@
   --color-ink-muted: var(--color-gray-400);
   /* Lighter than `ink-muted`: it also sits on surface-raised and side-bet-winner, where gray-400 is below AA. */
   --color-ink-soft: var(--color-gray-300);
+  /* Same shade as `ink-muted`: gray-500 is below AA even on canvas. */
   --color-ink-faint: var(--color-gray-400);
 
   --color-primary: var(--color-green-700);
@@ -62,6 +63,7 @@
   --color-semantic-danger-tint: var(--color-red-900);
   --color-semantic-danger: var(--color-red-300);
   --color-semantic-danger-hover: var(--color-red-200);
+  /* Ties `semantic-danger`, which red-400 left below AA; red-200 is the step that would set it apart again. */
   --color-semantic-danger-strong: var(--color-red-300);
   --color-semantic-danger-fill: var(--color-red-600);
   --color-semantic-danger-fill-hover: var(--color-red-700);
