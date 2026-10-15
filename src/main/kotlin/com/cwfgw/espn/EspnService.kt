@@ -392,19 +392,11 @@ internal fun buildLivePreviewForEvent(
         ctx.teams.map { team ->
             buildTeamPreview(team, matchedCompetitors, tiedCounts, ctx, multiplier, isTeamEvent)
         }
-    val numTeams = ctx.teams.size
-    val totalPot = teamPreviews.fold(BigDecimal.ZERO) { acc, team -> acc.add(team.topTenEarnings) }
-    val teamsWithWeekly =
-        teamPreviews.map { team ->
-            team.copy(weeklyTotal = team.topTenEarnings.multiply(BigDecimal(numTeams)).subtract(totalPot))
-        }
 
     return EspnLivePreview(
         espnName = event.name,
-        espnId = event.espnId,
-        completed = event.completed,
         payoutMultiplier = multiplier,
-        teams = teamsWithWeekly.sortedByDescending { it.weeklyTotal },
+        teams = teamPreviews,
         isTeamEvent = isTeamEvent,
         leaderboard = buildLivePreviewLeaderboard(matchedCompetitors, ctx.teams, ctx.rosters),
     )
@@ -419,11 +411,11 @@ private fun buildTeamPreview(
     multiplier: BigDecimal,
     isTeamEvent: Boolean,
 ): PreviewTeamScore {
-    val rosterByGolfer = ctx.rostersByTeam[team.id].orEmpty().associateBy { it.golferId }
+    val teamGolferIds = ctx.rostersByTeam[team.id].orEmpty().map { it.golferId }.toSet()
     val golferEarnings =
         matchedCompetitors.mapNotNull { (competitor, golfer) ->
             val resolvedGolfer = golfer ?: return@mapNotNull null
-            val entry = rosterByGolfer[resolvedGolfer.id] ?: return@mapNotNull null
+            if (resolvedGolfer.id !in teamGolferIds) return@mapNotNull null
             if (competitor.position > ctx.numPlaces) return@mapNotNull null
             val numTied = tiedCounts[competitor.position] ?: 1
             val basePayout =
@@ -439,18 +431,15 @@ private fun buildTeamPreview(
             val splits = PayoutTable.splitOwnership(basePayout, owners, floor)
             val ownerPayout = splits[team.id] ?: basePayout
             PreviewGolferScore(
-                golferName = "${resolvedGolfer.firstName} ${resolvedGolfer.lastName}",
                 golferId = resolvedGolfer.id,
                 position = competitor.position,
                 numTied = numTied,
-                ownershipPct = entry.ownershipPct,
                 payout = ownerPayout,
             )
         }
     val topTens = golferEarnings.fold(BigDecimal.ZERO) { acc, score -> acc.add(score.payout) }
     return PreviewTeamScore(
         teamId = team.id,
-        teamName = team.teamName,
         topTenEarnings = topTens,
         golferScores = golferEarnings,
     )

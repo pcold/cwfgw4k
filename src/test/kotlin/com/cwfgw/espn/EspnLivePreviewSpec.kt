@@ -205,7 +205,7 @@ class EspnLivePreviewSpec : FunSpec({
 
         val preview = fixture.previewFor(tournament(pgaTournamentId = "espn-masters")).orFail()
 
-        preview.espnId shouldBe "espn-masters"
+        preview.espnName shouldBe "The Masters"
     }
 
     test("previewForTournament answers NoMatchingEvent for a stale id though the date has a lone event") {
@@ -238,7 +238,7 @@ class EspnLivePreviewSpec : FunSpec({
         fixture.client.fetchCalls shouldContainExactly listOf(START_DATE)
     }
 
-    test("previewForTournament projects per-team earnings + zero-sum weekly +/- across rostered golfers") {
+    test("previewForTournament projects per-team earnings across rostered golfers") {
         val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
         val rory = golfer(RORY_ID, "Rory", "McIlroy", pgaPlayerId = "p2")
         val event =
@@ -264,15 +264,11 @@ class EspnLivePreviewSpec : FunSpec({
 
         val preview = fixture.previewFor(tournament()).orFail()
 
-        preview.espnId shouldBe "401580999"
         // Team A: rostered #1 ($18); Team B: rostered #11 (out of zone, $0).
-        // Zero-sum across 2 teams: A weekly = 18*2-18 = +18; B weekly = 0*2-18 = -18.
         val a = preview.teams.single { it.teamId == TEAM_A_ID }
         val b = preview.teams.single { it.teamId == TEAM_B_ID }
         a.topTenEarnings.compareTo(BigDecimal(18)) shouldBe 0
-        a.weeklyTotal.compareTo(BigDecimal(18)) shouldBe 0
-        b.weeklyTotal.compareTo(BigDecimal(-18)) shouldBe 0
-        a.weeklyTotal.add(b.weeklyTotal).compareTo(BigDecimal.ZERO) shouldBe 0
+        b.topTenEarnings.compareTo(BigDecimal.ZERO) shouldBe 0
     }
 
     test("previewForTournament honors the matched DB tournament's payout multiplier") {
