@@ -2,6 +2,7 @@ package com.cwfgw.db
 
 import com.cwfgw.testing.PostgresHarness
 import com.cwfgw.testing.postgresHarness
+import com.zaxxer.hikari.HikariDataSource
 import io.kotest.assertions.nondeterministic.eventually
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
@@ -11,10 +12,12 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import org.jooq.impl.DSL.condition
 import org.jooq.impl.DSL.table
+import java.sql.Connection
 import kotlin.time.Duration.Companion.seconds
 
 private const val CALLER_THREADS = 2
 private const val CONCURRENT_CALLS = CALLER_THREADS + 1
+private const val CONNECTIONS_HELD_AT_ONCE = CONCURRENT_CALLS + 2
 private const val GATE_LOCK_KEY = 4_127L
 
 /**
@@ -42,6 +45,10 @@ class TransactorDispatchSpec : FunSpec({
 private suspend fun PostgresHarness.assertCallsOutnumberCallerThreads(
     transact: suspend (context(TransactionContext) () -> Unit) -> Unit,
 ) {
+    check(maxPoolSize >= CONNECTIONS_HELD_AT_ONCE) {
+        "a pool of $maxPoolSize cannot hold the gate, $CONCURRENT_CALLS calls and the probe at once"
+    }
+    dataSource.growTo(CONNECTIONS_HELD_AT_ONCE)
     val caller = Dispatchers.Default.limitedParallelism(CALLER_THREADS)
     dataSource.connection.use { gate ->
         gate.autoCommit = false
@@ -56,6 +63,15 @@ private suspend fun PostgresHarness.assertCallsOutnumberCallerThreads(
             calls.joinAll()
         }
     }
+}
+
+/**
+ * Of borrowers that arrive together while HikariCP 7 grows a pool, one can wait out its whole `connectionTimeout`
+ * with the pool under its maximum, so it grows one borrower at a time first. Moving the probe off the pool only
+ * hands that wait to a call.
+ */
+private fun HikariDataSource.growTo(connections: Int) {
+    List(connections) { connection }.forEach(Connection::close)
 }
 
 context(ctx: TransactionContext)
