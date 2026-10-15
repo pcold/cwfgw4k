@@ -16,6 +16,7 @@ import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.seedSeasonRules
 import com.cwfgw.tournaments.CreateTournamentRequest
 import com.cwfgw.tournaments.TournamentRepository
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
@@ -24,6 +25,8 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import org.jooq.exception.DataAccessException
 import java.math.BigDecimal
 import java.util.UUID
 
@@ -104,6 +107,41 @@ class SeasonRepositorySpec : FunSpec({
             created.tieFloor.compareTo(BigDecimal("0.5")) shouldBe 0
             created.sideBetAmount.compareTo(BigDecimal("20")) shouldBe 0
         }
+    }
+
+    test("create past the route guard is refused a negative side-bet amount by the CHECK") {
+        val refusal =
+            shouldThrow<DataAccessException> {
+                tx.update {
+                    repository.create(
+                        CreateSeasonRequest(
+                            leagueId = castlewoodId,
+                            name = "Inverted",
+                            seasonYear = 2026,
+                            sideBetAmount = BigDecimal("-15"),
+                        ),
+                    )
+                }
+            }
+
+        refusal.message shouldContain "seasons_side_bet_amount_non_negative"
+        tx.read { repository.findAll(leagueId = castlewoodId, seasonYear = null) }.shouldBeEmpty()
+    }
+
+    test("create stores a zero side-bet amount, the season that stakes no side bets") {
+        val created =
+            tx.update {
+                repository.create(
+                    CreateSeasonRequest(
+                        leagueId = castlewoodId,
+                        name = "No Side Bets",
+                        seasonYear = 2026,
+                        sideBetAmount = BigDecimal.ZERO,
+                    ),
+                )
+            }
+
+        created.sideBetAmount.signum() shouldBe 0
     }
 
     test("findAll orders by year desc, number desc, created_at desc") {

@@ -183,7 +183,8 @@ CREATE TABLE cwfgw4k.seasons (
     side_bet_amount numeric(10,4) DEFAULT 15 NOT NULL,
     max_teams integer DEFAULT 10 NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT seasons_side_bet_amount_non_negative CHECK ((side_bet_amount >= (0)::numeric))
 );
 
 
