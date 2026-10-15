@@ -222,7 +222,8 @@ sealed interface GolferAssignment {
 
     /**
      * Inside the confirm's transaction: bound to the row holding [espnId] as `pga_player_id`, else written onto
-     * [name]'s only row when that has none, else inserted, with [name] split as an ESPN import splits it.
+     * [name]'s only row when that has none (refused when another pick names that row too), else inserted, with
+     * [name] split as an ESPN import splits it.
      */
     @Serializable
     @SerialName("espn")

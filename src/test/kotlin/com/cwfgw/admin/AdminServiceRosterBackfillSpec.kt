@@ -97,7 +97,8 @@ class AdminServiceRosterBackfillSpec : FunSpec({
         val womble = fullTeam(1, "WOMBLE", espnPick(1, "espn-koivun", "Jackson Koivun"))
         service().confirmRoster(ConfirmRosterRequest(seasonId, listOf(womble))).orFail()
         val inserted = tx.read { GolferRepository().findByPgaPlayerId("espn-koivun") }.shouldNotBeNull()
-        rosterGolferIds(seasonId).filter { it in koivunRows().map(Golfer::id) } shouldContainExactly listOf(inserted.id)
+        val koivunIds = koivunRows().map(Golfer::id)
+        rosterGolferIds(seasonId).filter { it in koivunIds } shouldContainExactly listOf(inserted.id)
         return inserted
     }
 

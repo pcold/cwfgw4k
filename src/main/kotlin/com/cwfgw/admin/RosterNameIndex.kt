@@ -8,7 +8,7 @@ import com.cwfgw.golfers.normalizeName
 
 /**
  * One pool, not ESPN as a fallback after the rows. A row with a `pga_player_id` and an athlete of its name stay
- * Ambiguous, since that row is some other athlete. A name's lone row without one takes the athlete's id on confirm
+ * Ambiguous, since that row is some other athlete. A name's lone row without one takes its one athlete's id on confirm
  * instead, since a second row holding it is the one imports would credit; beside several rows nothing is guessed.
  * An athlete with a blank name is dropped; confirm refuses one.
  */
