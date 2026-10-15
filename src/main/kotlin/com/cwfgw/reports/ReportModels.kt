@@ -29,9 +29,9 @@ data class ReportCellFinish(
  * One cell in the weekly report grid — the intersection of a team
  * (column) and a draft round (row). Carries the picked golfer's
  * tournament result plus rolled-up season-to-date totals so the UI can
- * render the cell without a second lookup. Most fields are nullable
- * because a team may have an empty slot for a round, or the picked
- * golfer may have no result yet (cut, withdrew, no-show).
+ * render the cell without a second lookup. Its nullable fields are null
+ * where a team has an empty slot for a round, or the picked golfer has
+ * no result yet (cut, withdrew, no-show).
  */
 @Serializable
 data class ReportCell(
@@ -147,7 +147,7 @@ data class ReportSideBetRules(
     val rounds: List<Int>,
 )
 
-/** One row of the standings panel beside the report grid (rank ordered by totalCash desc). */
+/** One row of the standings panel beside the report grid, ranked by [ReportTeamColumn.totalCash] descending. */
 @Serializable
 data class StandingsEntry(
     val rank: Int,
