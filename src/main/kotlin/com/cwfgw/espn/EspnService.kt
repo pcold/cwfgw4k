@@ -404,7 +404,6 @@ internal fun buildLivePreviewForEvent(
         espnId = event.espnId,
         completed = event.completed,
         payoutMultiplier = multiplier,
-        totalCompetitors = event.competitors.size,
         teams = teamsWithWeekly.sortedByDescending { it.weeklyTotal },
         isTeamEvent = isTeamEvent,
         leaderboard = buildLivePreviewLeaderboard(matchedCompetitors, ctx.teams, ctx.rosters),
@@ -444,8 +443,6 @@ private fun buildTeamPreview(
                 golferId = resolvedGolfer.id,
                 position = competitor.position,
                 numTied = numTied,
-                scoreToPar = competitor.scoreToPar,
-                basePayout = basePayout,
                 ownershipPct = entry.ownershipPct,
                 payout = ownerPayout,
             )
@@ -454,7 +451,6 @@ private fun buildTeamPreview(
     return PreviewTeamScore(
         teamId = team.id,
         teamName = team.teamName,
-        ownerName = team.ownerName,
         topTenEarnings = topTens,
         golferScores = golferEarnings,
     )
@@ -537,7 +533,6 @@ private fun buildLivePreviewLeaderboard(
                 name = competitor.name,
                 position = competitor.position,
                 scoreToPar = competitor.scoreToPar,
-                thru = competitor.roundScores.takeIf { it.isNotEmpty() }?.let { "${it.size} rounds" },
                 teamNames = golfer?.let { teamNamesByGolfer[it.id] }.orEmpty(),
                 pairKey = competitor.pairKey,
                 roundScores = competitor.roundScores,

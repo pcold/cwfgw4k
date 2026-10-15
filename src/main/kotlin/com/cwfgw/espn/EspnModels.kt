@@ -100,7 +100,6 @@ data class EspnLivePreview(
     val espnId: String,
     val completed: Boolean,
     val payoutMultiplier: BigDecimal,
-    val totalCompetitors: Int,
     val teams: List<PreviewTeamScore>,
     val leaderboard: List<PreviewLeaderboardEntry>,
     val isTeamEvent: Boolean = false,
@@ -110,7 +109,6 @@ data class EspnLivePreview(
 data class PreviewTeamScore(
     val teamId: TeamId,
     val teamName: String,
-    val ownerName: String,
     val topTenEarnings: BigDecimal,
     val golferScores: List<PreviewGolferScore>,
     val weeklyTotal: BigDecimal = BigDecimal.ZERO,
@@ -122,8 +120,6 @@ data class PreviewGolferScore(
     val golferId: GolferId,
     val position: Int,
     val numTied: Int,
-    val scoreToPar: Int?,
-    val basePayout: BigDecimal,
     val ownershipPct: BigDecimal,
     val payout: BigDecimal,
 )
@@ -136,7 +132,6 @@ data class PreviewLeaderboardEntry(
     val name: String,
     val position: Int,
     val scoreToPar: Int?,
-    val thru: String?,
     val teamNames: List<String>,
     val pairKey: String? = null,
     val roundScores: List<Int> = emptyList(),

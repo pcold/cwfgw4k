@@ -41,7 +41,6 @@ private fun preview(
         espnId = espnId,
         completed = false,
         payoutMultiplier = multiplier,
-        totalCompetitors = teams.sumOf { it.golferScores.size },
         teams = teams,
         leaderboard = leaderboard,
         isTeamEvent = isTeamEvent,
@@ -55,7 +54,6 @@ private fun previewTeam(
     PreviewTeamScore(
         teamId = teamId,
         teamName = teamName,
-        ownerName = "Owner $teamName",
         topTenEarnings = golfers.fold(BigDecimal.ZERO) { acc, g -> acc.add(g.payout) },
         golferScores = golfers,
     )
@@ -64,7 +62,6 @@ private fun previewGolfer(
     golferId: GolferId,
     position: Int,
     payout: BigDecimal,
-    scoreToPar: Int? = -10,
     numTied: Int = 1,
 ): PreviewGolferScore =
     PreviewGolferScore(
@@ -72,8 +69,6 @@ private fun previewGolfer(
         golferId = golferId,
         position = position,
         numTied = numTied,
-        scoreToPar = scoreToPar,
-        basePayout = payout,
         ownershipPct = BigDecimal(100),
         payout = payout,
     )
@@ -89,7 +84,6 @@ private fun leaderboardEntry(
         name = name,
         position = position,
         scoreToPar = scoreToPar,
-        thru = null,
         teamNames = teamNames,
         pairKey = pairKey,
     )

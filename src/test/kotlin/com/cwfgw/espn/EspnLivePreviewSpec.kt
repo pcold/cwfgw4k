@@ -265,7 +265,6 @@ class EspnLivePreviewSpec : FunSpec({
         val preview = fixture.previewFor(tournament()).orFail()
 
         preview.espnId shouldBe "401580999"
-        preview.totalCompetitors shouldBe 2
         // Team A: rostered #1 ($18); Team B: rostered #11 (out of zone, $0).
         // Zero-sum across 2 teams: A weekly = 18*2-18 = +18; B weekly = 0*2-18 = -18.
         val a = preview.teams.single { it.teamId == TEAM_A_ID }
