@@ -111,7 +111,6 @@ class TournamentOpsService(
             Result.Ok(updated ?: tournament)
         }
 
-    /** A linked [tournament] imports into itself, never into a match. */
     context(ctx: WriteTransactionContext)
     private fun persistEspnEventsIn(
         tournament: Tournament,
