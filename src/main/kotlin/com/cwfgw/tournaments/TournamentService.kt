@@ -15,18 +15,16 @@ class TournamentService(
      * By finalization, not today's date: a past week stays current until it is finalized (CWF-78). Schedule order is
      * [TournamentRepository.findAll]'s, so the pages' dropdowns and this answer agree on a tie.
      */
-    suspend fun current(seasonId: SeasonId): CurrentTournament =
-        tx.read {
-            val unfinalized =
-                repository.findAll(TournamentFilter(seasonId = seasonId, statuses = UNFINALIZED_STATUSES)).firstOrNull()
-            if (unfinalized != null) {
-                CurrentTournament.Unfinalized(unfinalized.id)
-            } else {
-                repository.findAll(TournamentFilter(seasonId = seasonId)).lastOrNull()
-                    ?.let { latest -> CurrentTournament.SeasonFinalized(latest.id) }
-                    ?: CurrentTournament.NoTournaments
-            }
+    suspend fun current(seasonId: SeasonId): CurrentTournament {
+        val schedule = tx.get { repository.findAll(TournamentFilter(seasonId = seasonId)) }
+        val unfinalized = schedule.firstOrNull { it.status != TournamentStatus.Completed }
+        val latest = schedule.lastOrNull()
+        return when {
+            unfinalized != null -> CurrentTournament.Unfinalized(unfinalized.id)
+            latest != null -> CurrentTournament.SeasonFinalized(latest.id)
+            else -> CurrentTournament.NoTournaments
         }
+    }
 
     suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
         tx.get { repository.findByPgaTournamentId(pgaTournamentId) }

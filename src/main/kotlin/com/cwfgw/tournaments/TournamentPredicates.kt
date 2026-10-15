@@ -13,12 +13,6 @@ import java.time.ZoneId
 val ESPN_SCHEDULE_ZONE: ZoneId = ZoneId.of("America/New_York")
 
 /**
- * Finalized is [TournamentStatus.Completed] alone, as every `status != Completed` check reads it, so a status added
- * later lands here rather than among the finalized.
- */
-internal val UNFINALIZED_STATUSES: Set<TournamentStatus> = TournamentStatus.entries.toSet() - TournamentStatus.Completed
-
-/**
  * Days before [Tournament.startDate] that the tournament becomes eligible
  * for an ESPN live-overlay pull. PGA Tour events typically start
  * Thursday and ESPN publishes tee times / field commitments somewhere
