@@ -17,10 +17,10 @@ class TournamentService(
      */
     suspend fun current(seasonId: SeasonId): CurrentTournament =
         tx.read {
-            val earliestUnfinalized =
+            val unfinalized =
                 repository.findAll(TournamentFilter(seasonId = seasonId, statuses = UNFINALIZED_STATUSES)).firstOrNull()
-            if (earliestUnfinalized != null) {
-                CurrentTournament.Unfinalized(earliestUnfinalized.id)
+            if (unfinalized != null) {
+                CurrentTournament.Unfinalized(unfinalized.id)
             } else {
                 repository.findAll(TournamentFilter(seasonId = seasonId)).lastOrNull()
                     ?.let { latest -> CurrentTournament.SeasonFinalized(latest.id) }
