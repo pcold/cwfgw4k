@@ -5,8 +5,10 @@ import com.cwfgw.seasons.SeasonId
 import com.cwfgw.serialization.LocalDateSerializer
 import com.cwfgw.teams.Team
 import com.cwfgw.tournaments.Tournament
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
 import java.time.LocalDate
 
 /**
@@ -128,7 +130,9 @@ data class PreviewPick(
  * which fields are populated. Adding a future variant (e.g. "FuzzySuggestion")
  * surfaces as a compile error in the consuming `when`.
  */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
+@JsonClassDiscriminator("type")
 sealed interface PickMatch {
     @Serializable
     @SerialName("matched")
@@ -156,8 +160,13 @@ sealed interface PickMatch {
     data object NoMatch : PickMatch
 }
 
-/** A variant per source, not one class with a nullable `golferId` and `espnId`, which could carry both or neither. */
+/**
+ * A variant per source, not one class with a nullable `golferId` and `espnId`, which could carry both or neither.
+ * The `type` tag is how the UI tells an ESPN athlete from an existing row inside [PickMatch.Ambiguous].
+ */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
+@JsonClassDiscriminator("type")
 sealed interface GolferCandidate {
     /** @see GolferCandidate */
     @Serializable
@@ -207,10 +216,12 @@ data class ConfirmedPick(
 /**
  * How to bind a pick to a golfer. `Existing` references a row already in
  * the golfers table; `New` instructs the service to create one as part of
- * the confirm. Sealed + discriminated so the route response carries a
+ * the confirm. Sealed + discriminated so the request body carries a
  * `type` tag and adding a future variant fails compilation in callers.
  */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
+@JsonClassDiscriminator("type")
 sealed interface GolferAssignment {
     @Serializable
     @SerialName("existing")
