@@ -76,9 +76,8 @@ object RosterParser {
                 .mapIndexed { idx, line -> idx + 1 to line }
                 .filter { (_, line) -> line.isNotBlank() }
                 .toList()
-        if (numberedLines.isEmpty()) return Result.Err(RosterParseError.InvalidHeader("Empty input"))
-
-        val (_, headerLine) = numberedLines.first()
+        val (_, headerLine) =
+            numberedLines.firstOrNull() ?: return Result.Err(RosterParseError.InvalidHeader("Empty input"))
         val separator = detectSeparator(headerLine)
         validateHeader(headerLine, separator)?.let { return Result.Err(it) }
 
@@ -137,7 +136,7 @@ object RosterParser {
         if (rawPlayerName.isEmpty()) return RowResult.Err("player_name is empty")
         val playerName = rawPlayerName.toInitCap()
         val ownership =
-            when (val raw = cells.getOrNull(4)?.trim() ?: "") {
+            when (val raw = cells.getOrNull(4)?.trim().orEmpty()) {
                 "" -> MAX_OWNERSHIP
                 else ->
                     raw.toIntOrNull()?.takeIf { it in MIN_OWNERSHIP..MAX_OWNERSHIP }
@@ -178,7 +177,7 @@ object RosterParser {
                 ParsedTeam(
                     teamNumber = row.teamNumber,
                     teamName = row.teamName,
-                    picks = (existing?.picks ?: emptyList()) + row.pick,
+                    picks = existing?.picks.orEmpty() + row.pick,
                 )
         }
         return if (errors.isEmpty()) {

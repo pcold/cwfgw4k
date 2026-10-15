@@ -56,7 +56,7 @@ class ScoringService(
             )
         val perTeamResults =
             teams.map { team ->
-                val roster = rostersByTeam[team.id] ?: emptyList()
+                val roster = rostersByTeam[team.id].orEmpty()
                 val golferScores = roster.mapNotNull { entry -> scoreGolferForTeam(inputs, team.id, entry) }
                 team to golferScores
             }
@@ -81,7 +81,7 @@ class ScoringService(
                 rules = inputs.rules,
                 isTeamEvent = inputs.isTeamEvent,
             )
-        val owners = inputs.ownersByGolfer[entry.golferId] ?: emptyList()
+        val owners = inputs.ownersByGolfer[entry.golferId].orEmpty()
         val floor = inputs.rules.tieFloor.multiply(inputs.multiplier)
         val ownerPayout = PayoutTable.splitOwnership(basePayout, owners, floor)[teamId] ?: basePayout
         val breakdown =

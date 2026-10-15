@@ -312,7 +312,7 @@ internal fun overlayLiveRankings(
     val updatedRankings =
         baseRankings.copy(
             teams = updatedTeams,
-            weeks = baseRankings.weeks + (tournament.week ?: ""),
+            weeks = baseRankings.weeks + tournament.week.orEmpty(),
             tournamentNames = baseRankings.tournamentNames + "${preview.espnName} *",
             live = true,
         )
