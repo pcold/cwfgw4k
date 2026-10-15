@@ -531,6 +531,7 @@ src/main/kotlin/com/cwfgw/
 ├─ scoring/         payout math and finalize-time scoring
 ├─ reports/         report assembly, live overlay, report routes
 ├─ admin/           schedule and roster upload flows
+├─ datahealth/      admin read of golfer rows that score wrongly
 ├─ health/  logging/  debug/   probes, logging setup, thread dump
 └─ seed/            dev-only data seeder, its own entry point (`SeedMain`)
 ```
