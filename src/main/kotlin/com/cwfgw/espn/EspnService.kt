@@ -37,8 +37,8 @@ import java.time.format.DateTimeParseException
 private val log = KotlinLogging.logger {}
 
 /**
- * A named competitor [locateExistingGolferIn] credits to no row becomes a new golfer, unless that golfer would twin
- * a drafted namesake. A team-partner row gets no `pga_player_id`, because its ESPN id is synthetic (`team:X:N`).
+ * A named competitor [locateExistingGolferIn] credits to no row becomes a new golfer, unless names can't tell which
+ * existing row it is. A team-partner row gets no `pga_player_id`, because its ESPN id is synthetic (`team:X:N`).
  */
 @Suppress("LongParameterList")
 class EspnService(
@@ -172,13 +172,14 @@ class EspnService(
         val views =
             tx.read {
                 val context = buildMatchingContextIn(tournament.seasonId, tournamentId)
-                event.competitors.map { competitor ->
+                val matches = event.competitors.map { locateExistingGolferIn(it, context) }.withholdingContestedRows()
+                event.competitors.zip(matches) { competitor, match ->
                     TournamentCompetitorView(
                         espnCompetitorId = competitor.espnId,
                         name = competitor.name,
                         position = competitor.position,
                         isTeamPartner = competitor.isTeamPartner,
-                        linkedGolfer = locateExistingGolferIn(competitor, context).creditedGolfer,
+                        linkedGolfer = match.creditedGolfer,
                         hasOverride = competitor.espnId in context.overrides,
                     )
                 }
@@ -228,10 +229,11 @@ class EspnService(
         competitors: List<EspnCompetitor>,
         context: MatchingContext,
     ): List<Pair<EspnCompetitor, GolferId>> {
-        val leaderboard =
-            competitors.withIndex().associateWith { (_, competitor) -> locateExistingGolferIn(competitor, context) }
+        val matches = competitors.map { locateExistingGolferIn(it, context) }.withholdingContestedRows()
+        val leaderboard = competitors.withIndex().zip(matches).toMap()
         // Confirm inserts and backfills in this order too: a conflicting write waits on the other transaction's
-        // row, so leaderboard order would let an import and a confirm that share athletes deadlock.
+        // row, so leaderboard order would let an import and a confirm that share athletes deadlock. A roster row's
+        // key-share lock on a golfer is not ordered by it, as AdminService's confirm admits of itself.
         val bound =
             leaderboard.entries
                 .sortedBy { (entry, _) -> entry.value.espnId }
@@ -257,14 +259,14 @@ class EspnService(
             }
             is CompetitorMatch.Withheld -> {
                 val espnId = LoggedEspnId(competitor.espnId)
-                val golferIds = match.drafted.map { it.id.value }
+                val golferIds = match.candidates.map { it.id.value }
                 log.warn { "cwfgw4k.espn event=namesake-withheld espn_id=$espnId golfer_ids=$golferIds" }
                 null
             }
         }
 
-    // Null means another writer, concurrent or earlier in this import, gave the row an id or this competitor's id to
-    // another row; findOrCreate then returns that holder, or inserts beside a row that turned out to be a namesake.
+    // Null means a concurrent writer gave the row an id, or this competitor's id to another row; findOrCreate then
+    // returns that holder, or inserts beside a row that turned out to be a namesake.
     context(ctx: WriteTransactionContext)
     private fun backfillIn(
         competitor: EspnCompetitor,
@@ -378,8 +380,8 @@ private sealed interface CompetitorMatch {
     /** [namesake] holds another ESPN id, so it is another golfer however its name reads. */
     data class IdMismatch(val namesake: Golfer) : CompetitorMatch
 
-    /** A new golfer would twin one of the [drafted] namesakes, and none of them can be told apart by name. */
-    data class Withheld(val drafted: List<Golfer>) : CompetitorMatch
+    /** Names can't tell which of [candidates] this competitor is, and a new golfer would twin the one it is. */
+    data class Withheld(val candidates: List<Golfer>) : CompetitorMatch
 }
 
 /** An ESPN athlete id is a public token, never member data, so a log line may carry it. */
@@ -395,6 +397,18 @@ private val CompetitorMatch.creditedGolfer: Golfer?
             is CompetitorMatch.Idless -> golfer
             CompetitorMatch.Unmatched, is CompetitorMatch.IdMismatch, is CompetitorMatch.Withheld -> null
         }
+
+/** Confirm refuses the same contest: neither name says whose the row is, and the loser's new golfer would twin it. */
+private fun List<CompetitorMatch>.withholdingContestedRows(): List<CompetitorMatch> {
+    val claimsPerRow = filterIsInstance<CompetitorMatch.Idless>().groupingBy { it.golfer.id }.eachCount()
+    return map { match ->
+        if (match is CompetitorMatch.Idless && claimsPerRow.getValue(match.golfer.id) > 1) {
+            CompetitorMatch.Withheld(listOf(match.golfer))
+        } else {
+            match
+        }
+    }
+}
 
 /**
  * A partner row skips the full-name step: its name is a surname alone, which would fully match only a
@@ -433,41 +447,40 @@ private fun resolveAthleteByName(
     rosteredGolferIds: Set<GolferId>,
 ): CompetitorMatch =
     when (val byFullName = names.matchFullName(competitor.name)) {
-        is GolferNameMatch.Matched -> claim(competitor, byFullName.golfer)
+        is GolferNameMatch.Matched -> claim(byFullName.golfer)
         is GolferNameMatch.Ambiguous ->
-            preferDrafted(byFullName.candidates, rosteredGolferIds) ?: claimUniqueSurname(competitor, names)
-        GolferNameMatch.NoMatch -> claimUniqueSurname(competitor, names)
+            preferRostered(byFullName.candidates, rosteredGolferIds) ?: creditUniqueSurname(competitor, names)
+        GolferNameMatch.NoMatch -> creditUniqueSurname(competitor, names)
     }
 
 /** Full-name namesakes only: the roster may never break a surname tie for a full-named competitor. */
-private fun preferDrafted(
+private fun preferRostered(
     namesakes: List<Golfer>,
     rosteredGolferIds: Set<GolferId>,
 ): CompetitorMatch? {
-    val drafted = namesakes.filter { it.pgaPlayerId == null && it.id in rosteredGolferIds }
-    if (drafted.isEmpty()) return null
-    return drafted.singleOrNull()?.let(CompetitorMatch::Idless) ?: CompetitorMatch.Withheld(drafted)
+    val rostered = namesakes.filter { it.pgaPlayerId == null && it.id in rosteredGolferIds }
+    if (rostered.isEmpty()) return null
+    return rostered.singleOrNull()?.let(CompetitorMatch::Idless) ?: CompetitorMatch.Withheld(rostered)
 }
 
-private fun claimUniqueSurname(
+/** Never backfilled: a surname match is a guess, and a written id would keep the guess after the real golfer plays. */
+private fun creditUniqueSurname(
     competitor: EspnCompetitor,
     names: GolferNameIndex,
 ): CompetitorMatch =
     when (val bySurname = names.matchSurname(competitor.name)) {
-        is GolferNameMatch.Matched -> claim(competitor, bySurname.golfer)
+        is GolferNameMatch.Matched ->
+            bySurname.golfer.takeIf { it.pgaPlayerId == null }?.let(CompetitorMatch::Credited)
+                ?: CompetitorMatch.IdMismatch(bySurname.golfer)
         is GolferNameMatch.Ambiguous, GolferNameMatch.NoMatch -> CompetitorMatch.Unmatched
     }
 
-/** A blank id is not id-less: the backfill only ever replaces NULL. */
-private fun claim(
-    competitor: EspnCompetitor,
-    namesake: Golfer,
-): CompetitorMatch =
-    when (namesake.pgaPlayerId) {
-        null -> CompetitorMatch.Idless(namesake)
-        competitor.espnId -> CompetitorMatch.Credited(namesake)
-        else -> CompetitorMatch.IdMismatch(namesake)
-    }
+/**
+ * A row holding the competitor's own id was found by id before any name match, so any id here is another's. A blank
+ * id is not id-less: the backfill only ever replaces NULL.
+ */
+private fun claim(namesake: Golfer): CompetitorMatch =
+    if (namesake.pgaPlayerId == null) CompetitorMatch.Idless(namesake) else CompetitorMatch.IdMismatch(namesake)
 
 /**
  * Kept apart from [EspnError] so the overlay's `when` is exhaustive over what a preview can actually
@@ -502,8 +515,9 @@ internal fun buildLivePreviewForEvent(
     val multiplier = tournament.payoutMultiplier
     val isTeamEvent = event.isTeamEvent
 
+    val matches = event.competitors.map { ctx.match(it, tournament.id) }.withholdingContestedRows()
     val matchedCompetitors: List<Pair<EspnCompetitor, Golfer?>> =
-        event.competitors.map { competitor -> competitor to ctx.resolveGolfer(competitor, tournament.id) }
+        event.competitors.zip(matches) { competitor, match -> competitor to match.creditedGolfer }
     val tiedCounts = event.competitors.groupingBy { it.position }.eachCount()
 
     val teamPreviews =
@@ -587,16 +601,6 @@ internal data class LivePreviewContext(
     val numPlaces: Int,
     val overridesByTournament: Map<TournamentId, Map<String, GolferId>>,
 ) {
-    fun resolveGolfer(
-        competitor: EspnCompetitor,
-        tournamentId: TournamentId,
-    ): Golfer? {
-        val override = overridesByTournament[tournamentId]?.get(competitor.espnId)
-        if (override != null) golferById[override]?.let { return it }
-        if (!competitor.isTeamPartner) golferByEspnId[competitor.espnId]?.let { return it }
-        return resolveByName(competitor, golferNames, rosteredGolferIds).creditedGolfer
-    }
-
     companion object {
         fun from(
             allGolfers: List<Golfer>,
@@ -621,6 +625,16 @@ internal data class LivePreviewContext(
                 overridesByTournament = overridesByTournament,
             )
     }
+}
+
+private fun LivePreviewContext.match(
+    competitor: EspnCompetitor,
+    tournamentId: TournamentId,
+): CompetitorMatch {
+    val override = overridesByTournament[tournamentId]?.get(competitor.espnId)
+    if (override != null) golferById[override]?.let { return CompetitorMatch.Credited(it) }
+    if (!competitor.isTeamPartner) golferByEspnId[competitor.espnId]?.let { return CompetitorMatch.Credited(it) }
+    return resolveByName(competitor, golferNames, rosteredGolferIds)
 }
 
 private fun buildLivePreviewLeaderboard(
