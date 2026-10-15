@@ -11,6 +11,7 @@ import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.teams.TeamRepository
+import com.cwfgw.testing.PostgresHarness
 import com.cwfgw.testing.noopTransactionContext
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.seedTournament
@@ -27,13 +28,15 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.withTimeoutOrNull
+import org.jooq.impl.DSL
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -43,7 +46,9 @@ import java.util.concurrent.TimeUnit
 
 /** A holder never released lets go before its waiter's lock_timeout would fire. */
 private const val HOLD_CEILING_MS: Long = LOCK_TIMEOUT_MS - 2_000
-private const val WAITER_PROBE_MS: Long = 300
+
+/** Under [HOLD_CEILING_MS], so the probe gives up before the paused import releases itself. */
+private const val LOCK_WAIT_DEADLINE_MS: Long = HOLD_CEILING_MS - 1_000
 
 /** A roster confirm inserts new athletes in espnId order, so an import inserting them in any other can deadlock it. */
 class EspnServiceCreateOrderSpec : FunSpec({
@@ -81,7 +86,7 @@ class EspnServiceCreateOrderSpec : FunSpec({
 
     test("an import and a confirm inserting the same new athletes both commit rather than deadlock") {
         val tournament = tx.update { checkNotNull(TournamentRepository().findById(seedTournament("evt-401"))) }
-        val hold = InsertHold()
+        val hold = InsertHold(postgres)
         val service =
             testEspnService(
                 client = FakeEspnClient(),
@@ -155,19 +160,19 @@ private class RecordingTournamentRepository(
     }
 }
 
-/** The import stops just after its first golfer insert until [whileHeld] has probed the contender. */
-private class InsertHold {
+/** The import stops just after its first golfer insert until [whileHeld] has seen the contender wait on a lock. */
+private class InsertHold(private val postgres: PostgresHarness) {
     private val inserted = CompletableDeferred<Unit>()
     private val release = CountDownLatch(1)
 
     fun pausing(): GolferRepository = PausingGolferRepository(GolferRepository(), inserted, release)
 
-    /** Fails unless [contender] is still waiting [WAITER_PROBE_MS] after the hold made its insert. */
+    /** Fails unless [contender] blocks on a lock: one that is merely slow never staged the race. */
     suspend fun <T> whileHeld(contender: () -> Deferred<T>): Deferred<T> {
         withTimeout(HOLD_CEILING_MS) { inserted.await() }
         val started = contender()
         try {
-            withTimeoutOrNull(WAITER_PROBE_MS) { started.await() }.shouldBeNull()
+            postgres.awaitLockWait(started) shouldBe true
         } finally {
             release.countDown()
         }
@@ -186,6 +191,21 @@ private class PausingGolferRepository(
         if (inserted.complete(Unit)) release.await(HOLD_CEILING_MS, TimeUnit.MILLISECONDS)
         return golfer
     }
+}
+
+/** The waiter runs through [Transactor], whose connection the spec can't name, so the database scopes the search. */
+private suspend fun PostgresHarness.awaitLockWait(pending: Job): Boolean {
+    val deadline = Instant.now().plusMillis(LOCK_WAIT_DEADLINE_MS)
+    while (!pending.isCompleted && Instant.now().isBefore(deadline)) {
+        val waiting =
+            dsl.fetchExists(
+                DSL.selectOne().from("pg_stat_activity")
+                    .where("datname = current_database() and wait_event_type = 'Lock'"),
+            )
+        if (waiting) return true
+        delay(10)
+    }
+    return false
 }
 
 /** Stands in for `AdminService.resolveEspnGolfers`, which inserts a confirm's new athletes this way. */
