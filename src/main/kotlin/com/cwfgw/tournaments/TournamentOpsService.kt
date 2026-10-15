@@ -41,7 +41,10 @@ class TournamentOpsService(
         }
     }
 
-    /** The row may have changed or gone during the ESPN fetch, so every gate reads it again under the lock. */
+    /**
+     * The row may have changed or gone during the ESPN fetch, so the gates read it again under the lock. [events]
+     * are still the pre-fetch start date's.
+     */
     context(ctx: WriteTransactionContext)
     private fun finalizeLockedIn(
         tournamentId: TournamentId,
@@ -66,8 +69,9 @@ class TournamentOpsService(
 
     suspend fun resetTournament(tournamentId: TournamentId): Result<Tournament, TournamentOpsError> =
         tx.update {
+            // Locked before the deletes, as finalize locks before its upserts: the reverse order deadlocks the two.
             val tournament =
-                tournamentRepository.findById(tournamentId)
+                tournamentRepository.findByIdForUpdate(tournamentId)
                     ?: return@update Result.Err(TournamentOpsError.TournamentNotFound(tournamentId))
 
             val blocking = findLaterCompleted(tournament)

@@ -8,6 +8,7 @@ import com.cwfgw.golfers.GolferId
 import com.cwfgw.jooq.keys.TOURNAMENTS_PGA_TOURNAMENT_ID_KEY
 import com.cwfgw.jooq.tables.records.TournamentResultsRecord
 import com.cwfgw.jooq.tables.records.TournamentsRecord
+import com.cwfgw.jooq.tables.references.SEASONS
 import com.cwfgw.jooq.tables.references.TOURNAMENTS
 import com.cwfgw.jooq.tables.references.TOURNAMENT_RESULTS
 import com.cwfgw.seasons.SeasonId
@@ -23,7 +24,11 @@ interface TournamentRepository {
     context(ctx: TransactionContext)
     fun findById(id: TournamentId): Tournament?
 
-    /** Holds the row until the transaction ends: a second locker, or a season delete cascading here, waits. */
+    /**
+     * Holds the row until the transaction ends, after key-sharing its season row: the order a season delete
+     * cascading here takes them. Locking the tournament alone deadlocks that delete (40P01) once a score insert
+     * needs the season row.
+     */
     context(ctx: WriteTransactionContext)
     fun findByIdForUpdate(id: TournamentId): Tournament?
 
@@ -100,12 +105,20 @@ private class JooqTournamentRepository : TournamentRepository {
             ?.let(::toTournament)
 
     context(ctx: WriteTransactionContext)
-    override fun findByIdForUpdate(id: TournamentId): Tournament? =
-        ctx.dsl.selectFrom(TOURNAMENTS)
+    override fun findByIdForUpdate(id: TournamentId): Tournament? {
+        val seasonId =
+            ctx.dsl.select(TOURNAMENTS.SEASON_ID)
+                .from(TOURNAMENTS)
+                .where(TOURNAMENTS.ID.eq(id.value))
+                .fetchOne(TOURNAMENTS.SEASON_ID)
+                ?: return null
+        ctx.dsl.selectOne().from(SEASONS).where(SEASONS.ID.eq(seasonId)).forKeyShare().execute()
+        return ctx.dsl.selectFrom(TOURNAMENTS)
             .where(TOURNAMENTS.ID.eq(id.value))
             .forUpdate()
             .fetchOne()
             ?.let(::toTournament)
+    }
 
     context(ctx: TransactionContext)
     override fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =

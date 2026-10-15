@@ -51,7 +51,7 @@ class FakeTournamentRepository(
     context(ctx: TransactionContext)
     override fun findById(id: TournamentId): Tournament? = tournaments[id]
 
-    /** Locks nothing: a Fake transaction block is not `suspend`, so no other block can interleave with it. */
+    /** Locks nothing: the lock order is pinned against Postgres, in TournamentFinalizeRaceSpec. */
     context(ctx: WriteTransactionContext)
     override fun findByIdForUpdate(id: TournamentId): Tournament? = tournaments[id]
 
