@@ -63,9 +63,18 @@ private fun AdminError.toDomainError(): DomainError =
         is AdminError.GolferIdsNotFound ->
             DomainError.Validation("golfer ids not found: ${ids.joinToString(", ") { it.value.toString() }}")
         is AdminError.TeamNameTaken ->
-            DomainError.Conflict(
-                "a team name in this roster is repeated in it or already taken in season ${seasonId.value}",
-            )
+            DomainError.Conflict("a team name in this roster is already taken in season ${seasonId.value}")
+        is AdminError.InvalidConfirmedRoster ->
+            DomainError.Validation("invalid roster: " + problems.joinToString("; ") { it.describe() })
+    }
+
+private fun ConfirmedRosterProblem.describe(): String =
+    when (this) {
+        is ConfirmedRosterProblem.RepeatedTeamName -> "team name '$teamName' is used by more than one team"
+        is ConfirmedRosterProblem.RepeatedExistingGolfer ->
+            "team '$teamName' lists golfer ${golferId.value} more than once"
+        is ConfirmedRosterProblem.RepeatedNewGolfer ->
+            "team '$teamName' lists new golfer '$firstName $lastName' more than once"
     }
 
 private fun RosterParseError.flattenMessage(): String =

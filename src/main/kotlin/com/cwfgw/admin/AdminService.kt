@@ -14,6 +14,7 @@ import com.cwfgw.golfers.GolferNameIndex
 import com.cwfgw.golfers.GolferNameMatch
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolferService
+import com.cwfgw.golfers.normalizeName
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonService
@@ -305,6 +306,8 @@ class AdminService(
     suspend fun confirmRoster(request: ConfirmRosterRequest): Result<RosterUploadResult, AdminError> {
         seasonService.get(request.seasonId) ?: return Result.Err(AdminError.SeasonNotFound(request.seasonId))
 
+        val problems = findRosterProblems(request.teams)
+        if (problems.isNotEmpty()) return Result.Err(AdminError.InvalidConfirmedRoster(problems))
         val missingGolferIds = findMissingGolferIds(request.teams)
         if (missingGolferIds.isNotEmpty()) return Result.Err(AdminError.GolferIdsNotFound(missingGolferIds))
         if (request.teams.isEmpty()) {
@@ -438,6 +441,37 @@ class AdminService(
         /** Roster entries created by confirmRoster are draft picks — distinguishes from waiver/trade adds. */
         private const val ROSTER_ACQUIRED_VIA_DRAFT = "draft"
     }
+}
+
+private fun findRosterProblems(teams: List<ConfirmedTeam>): List<ConfirmedRosterProblem> =
+    repeatedTeamNames(teams) + teams.flatMap(::repeatedGolfers)
+
+private fun repeatedTeamNames(teams: List<ConfirmedTeam>): List<ConfirmedRosterProblem> =
+    teams.firstOfEachRepeat(ConfirmedTeam::teamName)
+        .map { team -> ConfirmedRosterProblem.RepeatedTeamName(team.teamName) }
+
+private fun repeatedGolfers(team: ConfirmedTeam): List<ConfirmedRosterProblem> {
+    val assignments = team.picks.map(ConfirmedPick::assignment)
+    val repeatedExisting =
+        assignments.filterIsInstance<GolferAssignment.Existing>()
+            .firstOfEachRepeat(GolferAssignment.Existing::golferId)
+            .map { repeat -> ConfirmedRosterProblem.RepeatedExistingGolfer(team.teamName, repeat.golferId) }
+    val repeatedNew =
+        assignments.filterIsInstance<GolferAssignment.New>()
+            .firstOfEachRepeat { repeat -> normalizeName("${repeat.firstName} ${repeat.lastName}") }
+            .map { repeat ->
+                ConfirmedRosterProblem.RepeatedNewGolfer(
+                    teamName = team.teamName,
+                    firstName = repeat.firstName,
+                    lastName = repeat.lastName,
+                )
+            }
+    return repeatedExisting + repeatedNew
+}
+
+private fun <T, K> List<T>.firstOfEachRepeat(key: (T) -> K): List<T> {
+    val occurrences = groupingBy(key).eachCount()
+    return filter { item -> occurrences.getValue(key(item)) > 1 }.distinctBy(key)
 }
 
 private sealed interface EntryOutcome {

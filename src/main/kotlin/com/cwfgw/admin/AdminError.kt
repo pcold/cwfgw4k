@@ -32,8 +32,30 @@ sealed interface AdminError {
     data class GolferIdsNotFound(val ids: List<GolferId>) : AdminError
 
     /**
-     * A team name in a confirmRoster payload is already taken in the season: by an earlier upload, a
-     * concurrent one, or a team before it in the same payload. The whole roster rolls back.
+     * A team name in a confirmRoster payload is already taken in the season, by an earlier upload or a
+     * concurrent one. The whole roster rolls back. A name the payload repeats is [InvalidConfirmedRoster].
      */
     data class TeamNameTaken(val seasonId: SeasonId) : AdminError
+
+    /** Found before anything is written, every check run so one refusal lists every problem. */
+    data class InvalidConfirmedRoster(val problems: List<ConfirmedRosterProblem>) : AdminError
+}
+
+/** A confirmRoster payload contradicting itself: checks that need no DB read, each a variant here. */
+sealed interface ConfirmedRosterProblem {
+    /** Compared exactly, as `UNIQUE (season_id, team_name)` compares: "BROWN" and "Brown" are two teams. */
+    data class RepeatedTeamName(val teamName: String) : ConfirmedRosterProblem
+
+    /** Both rows would get one `acquired_at = now()` and collide on `UNIQUE (team_id, golfer_id, acquired_at)`. */
+    data class RepeatedExistingGolfer(val teamName: String, val golferId: GolferId) : ConfirmedRosterProblem
+
+    /**
+     * Compared by the preview matcher's normalized full name. The DB would take both, as two golfer rows of one
+     * name, which leaves every later preview of that name Ambiguous.
+     */
+    data class RepeatedNewGolfer(
+        val teamName: String,
+        val firstName: String,
+        val lastName: String,
+    ) : ConfirmedRosterProblem
 }
