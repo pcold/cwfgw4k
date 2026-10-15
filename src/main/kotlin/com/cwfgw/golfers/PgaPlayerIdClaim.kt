@@ -30,8 +30,8 @@ internal sealed interface PgaPlayerIdClaim {
 /**
  * Locks first, in one golfer-id order: each backfill's row as its UPDATE will, and each of [referenced] as the result
  * or roster row the caller inserts next will. Then writes in [PgaPlayerIdClaim.pgaPlayerId] order, one write per id
- * and a backfill over a create. An extension, so no implementation or decorator can reorder either. A row first met
- * as an id's holder is left unlocked: it had its id when found, so no backfill's lock can stand on it.
+ * and a backfill over a create. An extension, so no implementation or decorator can reorder either. A holder a create
+ * finds is left unlocked unless in [referenced]: it had its id when found, so no backfill's lock can stand on it.
  */
 context(ctx: WriteTransactionContext)
 internal fun GolferRepository.findOrCreateAll(
