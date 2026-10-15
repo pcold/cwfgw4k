@@ -116,6 +116,30 @@ class GolferMatchingSpec : FunSpec({
         index.matchSurname("Novák") shouldBe GolferNameMatch.Matched(lastNameOnly)
     }
 
+    context("surnameKey keeps a hyphenated surname whole and looks past a generational suffix") {
+        withData(
+            "Niklas Nørgaard-Petersen" to "norgaard-petersen",
+            "Harold Varner III" to "varner",
+            "Davis Love iii" to "love",
+            "Sam Burns Jr." to "burns",
+            "III" to "iii",
+            "Griffin" to "griffin",
+        ) { (name, key) ->
+            surnameKey(name) shouldBe key
+        }
+    }
+
+    test("a lone second half or suffix is not the unique surname of a longer one") {
+        val norgaardPetersen = golfer("Niklas", "Nørgaard-Petersen")
+        val varner = golfer("Harold", "Varner III")
+        val index = GolferNameIndex(listOf(norgaardPetersen, varner))
+
+        index.matchSurname("Mark Petersen") shouldBe GolferNameMatch.NoMatch
+        index.matchSurname("Davis Love III") shouldBe GolferNameMatch.NoMatch
+        index.matchSurname("Norgaard-Petersen") shouldBe GolferNameMatch.Matched(norgaardPetersen)
+        index.matchSurname("Varner") shouldBe GolferNameMatch.Matched(varner)
+    }
+
     test("a blank name matches nothing, not a blank-named row") {
         val index = GolferNameIndex(listOf(golfer("", "")))
 

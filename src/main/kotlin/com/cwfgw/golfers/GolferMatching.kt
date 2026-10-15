@@ -26,10 +26,22 @@ private val NON_DECOMPOSABLE_LETTERS: Map<String, String> =
  * and "Thorbjorn Olesen". Substitution only, never edit distance: "Tom Kim" must not match "Tim Kim".
  * Lowercasing first is what makes a second pass change nothing.
  */
-internal fun normalizeName(name: String): String {
+internal fun normalizeName(name: String): String = collapseWhitespace(foldLetters(name).replace('-', ' '))
+
+/**
+ * Keeps a hyphenated surname whole and looks past a generational suffix, so a lone "Petersen" or "III" can't
+ * become the unique surname of "Nørgaard-Petersen" or "Harold Varner III".
+ */
+internal fun surnameKey(name: String): String {
+    val words = collapseWhitespace(foldLetters(name)).split(' ')
+    return words.dropLastWhile { it in GENERATIONAL_SUFFIXES }.lastOrNull() ?: words.last()
+}
+
+private val GENERATIONAL_SUFFIXES: Set<String> = setOf("jr", "jr.", "sr", "sr.", "ii", "iii", "iv")
+
+private fun foldLetters(name: String): String {
     val decomposed = Normalizer.normalize(name.lowercase(), Normalizer.Form.NFD).replace(DIACRITICS, "")
-    val folded = NON_DECOMPOSABLE_LETTERS.entries.fold(decomposed) { acc, (from, to) -> acc.replace(from, to) }
-    return collapseWhitespace(folded.replace('-', ' '))
+    return NON_DECOMPOSABLE_LETTERS.entries.fold(decomposed) { acc, (from, to) -> acc.replace(from, to) }
 }
 
 private fun collapseWhitespace(name: String): String = name.replace(WHITESPACE, " ").trim()

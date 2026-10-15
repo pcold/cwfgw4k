@@ -1,17 +1,17 @@
 package com.cwfgw.golfers
 
 /**
- * Both lookups key on the normalized "first last" concatenation, never on the stored columns, so a row split
- * at either space (old ESPN imports cut at the first) is found the same way.
+ * Both lookups key on the "first last" concatenation, never on the stored columns, so a row split at either
+ * space (old ESPN imports cut at the first) is found the same way.
  */
 internal class GolferNameIndex(val golfers: List<Golfer>) {
-    private val byFullName: Map<String, List<Golfer>> = golfers.groupBy { normalizedFullName(it) }
-    private val bySurname: Map<String, List<Golfer>> = golfers.groupBy { lastWord(normalizedFullName(it)) }
+    private val byFullName: Map<String, List<Golfer>> = golfers.groupBy { normalizeName(fullName(it)) }
+    private val bySurname: Map<String, List<Golfer>> = golfers.groupBy { surnameKey(fullName(it)) }
 
     fun matchFullName(name: String): GolferNameMatch = lookUp(byFullName, normalizeName(name))
 
-    /** Compares last words, so a surname-only ESPN partner row ("Griffin") meets "Ben Griffin". */
-    fun matchSurname(name: String): GolferNameMatch = lookUp(bySurname, lastWord(normalizeName(name)))
+    /** Compares surname keys, so a surname-only ESPN partner row ("Griffin") meets "Ben Griffin". */
+    fun matchSurname(name: String): GolferNameMatch = lookUp(bySurname, surnameKey(name))
 
     // A blank key would match every blank-named row; no name is a reason to match nothing.
     private fun lookUp(
@@ -20,9 +20,7 @@ internal class GolferNameIndex(val golfers: List<Golfer>) {
     ): GolferNameMatch = if (key.isEmpty()) GolferNameMatch.NoMatch else GolferNameMatch.among(index[key].orEmpty())
 }
 
-private fun normalizedFullName(golfer: Golfer): String = normalizeName("${golfer.firstName} ${golfer.lastName}")
-
-private fun lastWord(normalizedName: String): String = normalizedName.substringAfterLast(' ')
+private fun fullName(golfer: Golfer): String = "${golfer.firstName} ${golfer.lastName}"
 
 /**
  * Ambiguity is an answer, not an error: ESPN import breaks a surname tie by roster, and roster upload asks the
