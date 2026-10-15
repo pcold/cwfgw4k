@@ -68,6 +68,15 @@ class CreateSeasonViolationSpec : FunSpec({
         request(rules = null).copy(sideBetAmount = BigDecimal.ZERO).violation().shouldBeNull()
     }
 
+    test("an empty or all-space name is BlankName") {
+        request(rules = null).copy(name = "").violation() shouldBe CreateSeasonViolation.BlankName
+        request(rules = null).copy(name = "   ").violation() shouldBe CreateSeasonViolation.BlankName
+    }
+
+    test("a tab-only name has no violation, since btrim in the CHECK trims spaces only") {
+        request(rules = null).copy(name = "\t").violation().shouldBeNull()
+    }
+
     test("POST /api/v1/seasons refuses a violation with 400, its message, and no season written") {
         val fake = FakeSeasonRepository()
         authenticatedApiTest({ seasonService = SeasonService(fake, FakeTransactor()) }) { client ->
@@ -133,6 +142,20 @@ class CreateSeasonViolationSpec : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.body<ErrorBody>().error shouldBe "side bet amount must not be negative"
+        }
+    }
+
+    test("POST /api/v1/seasons refuses a blank name with 400, its message, and no season written") {
+        authenticatedApiTest { client ->
+            val response =
+                client.post("/api/v1/seasons") {
+                    contentType(ContentType.Application.Json)
+                    setBody(request(rules = null).copy(name = "   "))
+                }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.body<ErrorBody>().error shouldBe "season name must not be blank"
+            client.get("/api/v1/seasons").body<List<Season>>().shouldBeEmpty()
         }
     }
 })
