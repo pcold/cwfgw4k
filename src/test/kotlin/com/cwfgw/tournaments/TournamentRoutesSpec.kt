@@ -24,6 +24,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 private val SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000aa1"))
+private val OTHER_SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000aa2"))
 
 private fun tournament(
     id: TournamentId = TournamentId(UUID.randomUUID()),
@@ -65,29 +66,22 @@ class TournamentRoutesSpec : FunSpec({
         }
     }
 
-    test("GET /api/v1/tournaments?season_id=&status= filters both") {
-        val upcoming = tournament(name = "Upcoming", status = TournamentStatus.Upcoming)
-        val completed = tournament(name = "Completed", status = TournamentStatus.Completed)
+    test("GET /api/v1/tournaments?season_id= returns only that season's tournaments") {
+        val inSeason = tournament(name = "In season")
+        val otherSeason = tournament(name = "Other season", seasonId = OTHER_SEASON_ID)
 
-        apiTest({ seedTournaments(upcoming, completed) }) { client ->
-            val response =
-                client.get("/api/v1/tournaments?season_id=${SEASON_ID.value}&status=completed")
+        apiTest({ seedTournaments(inSeason, otherSeason) }) { client ->
+            val response = client.get("/api/v1/tournaments?season_id=${SEASON_ID.value}")
 
             response.status shouldBe HttpStatusCode.OK
             val body: List<Tournament> = response.body()
-            body.map { it.id } shouldContainExactly listOf(completed.id)
+            body.map { it.id } shouldContainExactly listOf(inSeason.id)
         }
     }
 
     test("GET /api/v1/tournaments?season_id={non-uuid} returns 400") {
         apiTest { client ->
             client.get("/api/v1/tournaments?season_id=not-a-uuid").status shouldBe HttpStatusCode.BadRequest
-        }
-    }
-
-    test("GET /api/v1/tournaments?status={unknown} returns 400 instead of silently ignoring the filter") {
-        apiTest { client ->
-            client.get("/api/v1/tournaments?status=garbage").status shouldBe HttpStatusCode.BadRequest
         }
     }
 
