@@ -164,6 +164,23 @@ class EspnServiceNamesakeSpec : FunSpec({
         tx.update { service().persistImportIn(tournament, event) }
         tx.read { tournaments.getResults(tournament.id) }.map { it.golferId } shouldContainExactly listOf(drafted.id)
     }
+
+    test("the competitor listing links neither a namesake holding another ESPN id nor a withheld competitor") {
+        val tournament = seededTournament()
+        tx.update {
+            golfers.create(golferRequest("Scottie", "Scheffler", pgaPlayerId = "espn-other"))
+            val teamId = seedTeams(tournament.seasonId).first()
+            List(2) { golfers.create(golferRequest("John", "Smith")) }
+                .forEach { TeamRepository().addToRoster(teamId, AddToRosterRequest(it.id)) }
+        }
+        val event = masters(competitor("espn-1", "Scottie Scheffler"), competitor("espn-4", "John Smith"))
+        val client = FakeEspnClient(tournamentsByDate = mapOf(tournament.startDate to listOf(event)))
+
+        val listing = service(client).listCompetitorsForLinking(tournament.id).orFail()
+
+        listing.competitors.map { it.espnCompetitorId to it.linkedGolfer } shouldContainExactly
+            listOf("espn-1" to null, "espn-4" to null)
+    }
 })
 
 private fun CapturedLogs.warnings(): List<String> =
