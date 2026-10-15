@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { skipToken, useQuery, type QueryKey, type UseQueryResult } from '@tanstack/react-query';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 
+/** @see useLiveOverlayQuery */
 export interface LiveOverlayState {
   eligible: boolean;
   liveChecked: boolean;
@@ -12,6 +13,7 @@ interface LiveEligibleResponse {
   liveEligible: boolean;
 }
 
+/** @see useLiveOverlayQuery */
 export interface LiveOverlayQuery<T> {
   query: UseQueryResult<T>;
   overlay: LiveOverlayState;
