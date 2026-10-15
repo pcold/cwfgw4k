@@ -16,6 +16,7 @@ import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import java.util.UUID
 
@@ -30,7 +31,39 @@ class GolferRepositoryContractSpec : FunSpec({
 
     runContract("Postgres", golferContract) { ContractSubject(tx, GolferRepository(), PostgresSeeds(tx)) }
     runContract("fake", golferContract) { ContractSubject(FakeTransactor(), FakeGolferRepository(), FakeSeeds) }
+    runContract("Postgres", tombstoneContract) {
+        val golfers = TombstoningGolfers(GolferRepository()) { id -> tx.update { seedTombstone(id) } }
+        ContractSubject(tx, golfers, PostgresSeeds(tx))
+    }
+    runContract("fake", tombstoneContract) {
+        val fake = FakeGolferRepository()
+        ContractSubject(FakeTransactor(), TombstoningGolfers(fake, fake::tombstone), FakeSeeds)
+    }
 })
+
+/** The repository has no tombstone write, so each side brings the one its specs seed with. */
+private class TombstoningGolfers(
+    val golfers: GolferRepository,
+    val tombstone: suspend (GolferId) -> Unit,
+)
+
+private val tombstoneContract: List<ContractCase<TombstoningGolfers>> =
+    listOf(
+        ContractCase("findLinkable leaves out a tombstone that findAll and findById still answer") {
+            val (live, retired) =
+                tx.update {
+                    repository.golfers.create(SCHEFFLER) to
+                        repository.golfers.create(CreateGolferRequest(firstName = "Scottie", lastName = "Schefler"))
+                }
+            repository.tombstone(retired.id)
+
+            tx.get { repository.golfers.findLinkable(search = "scottie") }.map { it.id } shouldContainExactly
+                listOf(live.id)
+            tx.get { repository.golfers.findAll(search = "scottie") }.map { it.id } shouldContainExactlyInAnyOrder
+                listOf(live.id, retired.id)
+            tx.get { repository.golfers.findById(retired.id) }?.tombstonedAt.shouldNotBeNull()
+        },
+    )
 
 private val golferContract: List<ContractCase<GolferRepository>> =
     listOf(

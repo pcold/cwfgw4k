@@ -1,5 +1,5 @@
-import type { CreateGolferRequest, Golfer } from '../types';
-import { getJson, postJson } from './core';
+import type { Golfer } from '../types';
+import { getJson } from './core';
 
 export const golfersApi = {
   golfers: (search?: string): Promise<Golfer[]> => {
@@ -8,5 +8,4 @@ export const golfersApi = {
     const qs = params.toString();
     return getJson<Golfer[]>(`/golfers${qs ? `?${qs}` : ''}`);
   },
-  createGolfer: (input: CreateGolferRequest): Promise<Golfer> => postJson<Golfer>('/golfers', input),
 };

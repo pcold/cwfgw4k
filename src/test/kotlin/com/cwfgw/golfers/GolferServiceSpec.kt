@@ -1,9 +1,9 @@
 package com.cwfgw.golfers
 
 import com.cwfgw.testing.FakeTransactor
-import com.cwfgw.testing.orFail
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import java.time.Instant
@@ -47,19 +47,12 @@ class GolferServiceSpec : FunSpec({
         service.get(GolferId(UUID.randomUUID())).shouldBeNull()
     }
 
-    test("create delegates to the repo") {
-        val newId = GolferId(UUID.fromString("00000000-0000-0000-0000-0000000000aa"))
-        val newTime = Instant.parse("2026-03-15T12:00:00Z")
-        val fake = FakeGolferRepository(idFactory = { newId }, clock = { newTime })
-        val service = GolferService(fake, FakeTransactor())
+    test("listLinkable leaves out a tombstone that list keeps for name matching") {
+        val rory = golfer(firstName = "Rory", lastName = "McIlroy")
+        val tombstone = golfer(firstName = "Rory", lastName = "Mcilroy").copy(tombstonedAt = Instant.EPOCH)
+        val service = GolferService(FakeGolferRepository(initial = listOf(rory, tombstone)), FakeTransactor())
 
-        val created =
-            service.create(
-                CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler", worldRanking = 1),
-            ).orFail()
-
-        created.id shouldBe newId
-        created.updatedAt shouldBe newTime
-        service.get(newId) shouldBe created
+        service.listLinkable(search = "rory").map { it.id } shouldContainExactly listOf(rory.id)
+        service.list(search = "rory").map { it.id } shouldContainExactlyInAnyOrder listOf(rory.id, tombstone.id)
     }
 })

@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreOwnerChange, queryKeys } from '@/shared/api/queryKeys';
+import { FIELD_CLASS, FieldShell, TextField } from '@/shared/components/formFields';
 import ModalShell from '@/shared/components/ModalShell';
 import { QueryState } from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
@@ -116,16 +117,17 @@ function CompetitorRow({
   disabled,
 }: CompetitorRowProps) {
   const queryClient = useQueryClient();
-  const [draftGolferId, setDraftGolferId] = useState<string>(
-    competitor.linkedGolfer?.id ?? '',
-  );
+  // Null until picked, and again once a write's refetch lands, so the select shows the server's link.
+  const [pickedGolferId, setPickedGolferId] = useState<string | null>(null);
+  const draftGolferId = pickedGolferId ?? competitor.linkedGolfer?.id ?? '';
   const [creating, setCreating] = useState(false);
 
   // The live overlay resolves ESPN competitors through these links on the server, so every read
   // that can carry the overlay is affected, not only the scoreboard's own report.
-  function invalidateAffected() {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.tournamentCompetitors.byTournament(tournamentId) });
+  async function invalidateAffected(): Promise<void> {
     invalidateAfterScoreOwnerChange(queryClient, { type: 'season', seasonId });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.tournamentCompetitors.byTournament(tournamentId) });
+    setPickedGolferId(null);
   }
 
   const saveMutation = useMutation({
@@ -143,23 +145,13 @@ function CompetitorRow({
     onSuccess: invalidateAffected,
   });
 
-  // Chained: create the placeholder golfer (no pgaPlayerId so future imports
-  // don't auto-match against ESPN ids), then immediately pin this row to the
-  // new golfer. The two writes are sequential — if upsert fails the new
-  // golfer remains in the DB and the admin can pick them from the dropdown.
   const createMutation = useMutation({
-    mutationFn: async (input: { firstName: string; lastName: string }) => {
-      const created = await api.createGolfer(input);
-      await api.upsertTournamentPlayerOverride(tournamentId, {
-        espnCompetitorId: competitor.espnCompetitorId,
-        golferId: created.id,
-      });
-      return created;
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.golfers.list() });
-      invalidateAffected();
+    mutationFn: (name: string) =>
+      api.createGolferAndLink(tournamentId, { espnCompetitorId: competitor.espnCompetitorId, name }),
+    onSuccess: async () => {
       setCreating(false);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.golfers.list() });
+      await invalidateAffected();
     },
   });
 
@@ -169,14 +161,15 @@ function CompetitorRow({
   const pending = saveMutation.isPending || clearMutation.isPending || createMutation.isPending;
   const hasChange = draftGolferId !== '' && draftGolferId !== competitor.linkedGolfer?.id;
 
-  const sortedGolfers = useMemo(
-    () =>
-      [...golfers].sort((a, b) => {
-        const last = a.lastName.localeCompare(b.lastName);
-        return last !== 0 ? last : a.firstName.localeCompare(b.firstName);
-      }),
-    [golfers],
-  );
+  const linkedGolfer = competitor.linkedGolfer;
+  const sortedGolfers = useMemo(() => {
+    // The list leaves tombstones out, but a row may still link one, and the select must not read it as unlinked.
+    const choices = linkedGolfer && !golfers.some((g) => g.id === linkedGolfer.id) ? [...golfers, linkedGolfer] : [...golfers];
+    return choices.sort((a, b) => {
+      const last = a.lastName.localeCompare(b.lastName);
+      return last !== 0 ? last : a.firstName.localeCompare(b.firstName);
+    });
+  }, [golfers, linkedGolfer]);
 
   const selectId = `golfer-select-${competitor.espnCompetitorId}`;
 
@@ -197,23 +190,23 @@ function CompetitorRow({
             </span>
           ) : null}
         </div>
-        <label htmlFor={selectId} className="block text-xs text-ink-muted">
-          Link to golfer
-        </label>
-        <select
-          id={selectId}
-          value={draftGolferId}
-          disabled={disabled || pending}
-          onChange={(e) => setDraftGolferId(e.target.value)}
-          className="bg-surface-raised border border-control-border rounded px-2 py-1 text-sm w-full max-w-sm disabled:opacity-50"
-        >
-          <option value="">— unlinked —</option>
-          {sortedGolfers.map((golfer) => (
-            <option key={golfer.id} value={golfer.id}>
-              {golfer.lastName}, {golfer.firstName}
-            </option>
-          ))}
-        </select>
+        {/* Not SelectField: its placeholder is disabled, and "unlinked" must stay a value the admin can pick. */}
+        <FieldShell id={selectId} label="Link to golfer" error={undefined} width="max-w-sm">
+          <select
+            id={selectId}
+            value={draftGolferId}
+            disabled={disabled || pending}
+            onChange={(e) => setPickedGolferId(e.target.value)}
+            className={`${FIELD_CLASS} disabled:opacity-50`}
+          >
+            <option value="">— unlinked —</option>
+            {sortedGolfers.map((golfer) => (
+              <option key={golfer.id} value={golfer.id}>
+                {golfer.lastName}, {golfer.firstName}
+              </option>
+            ))}
+          </select>
+        </FieldShell>
         {errorMessage ? (
           <p role="alert" className="text-semantic-danger-strong text-xs">
             {errorMessage}
@@ -222,9 +215,9 @@ function CompetitorRow({
         {!disabled ? (
           creating ? (
             <NewGolferInlineForm
-              competitorName={competitor.name}
+              competitor={competitor}
               pending={createMutation.isPending}
-              onSubmit={(input) => createMutation.mutate(input)}
+              onSubmit={(name) => createMutation.mutate(name)}
               onCancel={() => setCreating(false)}
             />
           ) : (
@@ -264,55 +257,36 @@ function CompetitorRow({
 }
 
 interface NewGolferInlineFormProps {
-  competitorName: string;
+  competitor: TournamentCompetitorView;
   pending: boolean;
-  onSubmit: (input: { firstName: string; lastName: string }) => void;
+  onSubmit: (name: string) => void;
   onCancel: () => void;
 }
 
-function NewGolferInlineForm({
-  competitorName,
-  pending,
-  onSubmit,
-  onCancel,
-}: NewGolferInlineFormProps) {
-  const initial = splitCompetitorName(competitorName);
-  const [firstName, setFirstName] = useState(initial.firstName);
-  const [lastName, setLastName] = useState(initial.lastName);
-  const valid = firstName.trim().length > 0 && lastName.trim().length > 0;
+function NewGolferInlineForm({ competitor, pending, onSubmit, onCancel }: NewGolferInlineFormProps) {
+  const [editedName, setEditedName] = useState<string | null>(null);
+  const name = editedName ?? competitor.name;
+  const trimmed = name.trim();
 
   return (
     <div className="border border-hairline rounded p-2 space-y-2 bg-surface-raised/50">
       <p className="text-xs text-ink-muted">
-        Creates a new golfer with no ESPN id and pins this competitor to them.
+        Creates a new golfer with no ESPN id and pins this competitor to them. Give a first and a last name.
       </p>
-      <div className="flex gap-2 flex-wrap">
-        <label className="text-xs text-ink-muted flex flex-col">
-          First name
-          <input
-            type="text"
-            value={firstName}
-            disabled={pending}
-            onChange={(e) => setFirstName(e.target.value)}
-            className="bg-surface-raised border border-control-border rounded px-2 py-1 text-sm text-ink-strong disabled:opacity-50"
-          />
-        </label>
-        <label className="text-xs text-ink-muted flex flex-col">
-          Last name
-          <input
-            type="text"
-            value={lastName}
-            disabled={pending}
-            onChange={(e) => setLastName(e.target.value)}
-            className="bg-surface-raised border border-control-border rounded px-2 py-1 text-sm text-ink-strong disabled:opacity-50"
-          />
-        </label>
-      </div>
+      <TextField
+        id={`new-golfer-name-${competitor.espnCompetitorId}`}
+        label="Golfer name"
+        value={name}
+        error={undefined}
+        width="max-w-sm"
+        disabled={pending}
+        onChange={setEditedName}
+      />
       <div className="flex gap-2 items-center">
         <button
           type="button"
-          disabled={!valid || pending}
-          onClick={() => onSubmit({ firstName: firstName.trim(), lastName: lastName.trim() })}
+          disabled={trimmed.length === 0 || pending}
+          onClick={() => onSubmit(trimmed)}
           className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary text-xs px-3 py-1 rounded font-medium"
         >
           {pending ? 'Creating…' : 'Create & link'}
@@ -328,21 +302,6 @@ function NewGolferInlineForm({
       </div>
     </div>
   );
-}
-
-// ESPN partner rows arrive last-name-only ("Fitzpatrick"); regular rows are
-// "First Last" ("Alex Fitzpatrick"). Split on the LAST whitespace so compound
-// first names ("Min Woo Lee" → "Min Woo" / "Lee") behave sensibly. The admin
-// can edit either field afterward.
-function splitCompetitorName(name: string): { firstName: string; lastName: string } {
-  const trimmed = name.trim();
-  if (trimmed.length === 0) return { firstName: '', lastName: '' };
-  const lastSpace = trimmed.lastIndexOf(' ');
-  if (lastSpace < 0) return { firstName: '', lastName: trimmed };
-  return {
-    firstName: trimmed.slice(0, lastSpace).trim(),
-    lastName: trimmed.slice(lastSpace + 1).trim(),
-  };
 }
 
 export default PlayerLinksPanel;

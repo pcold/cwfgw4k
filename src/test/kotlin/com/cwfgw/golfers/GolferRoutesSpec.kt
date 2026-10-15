@@ -1,19 +1,13 @@
 package com.cwfgw.golfers
 
-import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
-import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.seedGolfers
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
 import io.ktor.client.request.get
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.contentType
 import java.time.Instant
 import java.util.UUID
 
@@ -61,49 +55,11 @@ class GolferRoutesSpec : FunSpec({
         }
     }
 
-    test("POST /api/v1/golfers creates the golfer and returns 201") {
-        val newId = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000222"))
-        val newTime = Instant.parse("2026-03-15T12:00:00Z")
-        val fake = FakeGolferRepository(idFactory = { newId }, clock = { newTime })
+    test("GET /api/v1/golfers leaves out a tombstone, which no admin may link") {
+        apiTest({ seedGolfers(RORY, TIGER.copy(tombstonedAt = Instant.parse("2026-10-15T00:00:00Z"))) }) { client ->
+            val golfers: List<Golfer> = client.get("/api/v1/golfers").body()
 
-        authenticatedApiTest({ golferService = GolferService(fake, FakeTransactor()) }) { client ->
-            val response =
-                client.post("/api/v1/golfers") {
-                    contentType(ContentType.Application.Json)
-                    setBody(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler", worldRanking = 1))
-                }
-
-            response.status shouldBe HttpStatusCode.Created
-            val created: Golfer = response.body()
-            created.id shouldBe newId
-            created.firstName shouldBe "Scottie"
-            created.updatedAt shouldBe newTime
-        }
-    }
-
-    test("POST /api/v1/golfers returns 409 when another golfer already holds the pga player id") {
-        val fake = FakeGolferRepository(initial = listOf(RORY))
-
-        authenticatedApiTest({ golferService = GolferService(fake, FakeTransactor()) }) { client ->
-            val response =
-                client.post("/api/v1/golfers") {
-                    contentType(ContentType.Application.Json)
-                    setBody(CreateGolferRequest(pgaPlayerId = RORY.pgaPlayerId, firstName = "Rory", lastName = "M"))
-                }
-
-            response.status shouldBe HttpStatusCode.Conflict
-        }
-    }
-
-    test("POST /api/v1/golfers returns 401 without an authenticated session") {
-        apiTest { client ->
-            val response =
-                client.post("/api/v1/golfers") {
-                    contentType(ContentType.Application.Json)
-                    setBody(CreateGolferRequest(firstName = "Anon", lastName = "Anon"))
-                }
-
-            response.status shouldBe HttpStatusCode.Unauthorized
+            golfers.map { it.id } shouldContainExactly listOf(RORY.id)
         }
     }
 })

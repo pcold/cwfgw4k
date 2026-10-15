@@ -1,7 +1,10 @@
 package com.cwfgw.tournamentLinks
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.Transactor
+import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.golfers.GolferName
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.result.Result
 import com.cwfgw.tournaments.TournamentId
@@ -40,16 +43,29 @@ class TournamentLinkService(
         request: UpsertTournamentPlayerOverrideRequest,
     ): Result<TournamentPlayerOverride, TournamentLinkError> =
         tx.update {
-            val tournament =
-                tournamentRepository.findById(tournamentId)
-                    ?: return@update Result.Err(TournamentLinkError.TournamentNotFound(tournamentId))
-            if (tournament.status == TournamentStatus.Completed) {
-                return@update Result.Err(TournamentLinkError.TournamentFinalized(tournamentId))
+            lockedTournamentError(tournamentId)?.let { return@update Result.Err(it) }
+            val golfer =
+                golferRepository.findById(request.golferId)
+                    ?: return@update Result.Err(TournamentLinkError.GolferNotFound(request.golferId))
+            if (golfer.tombstonedAt != null) {
+                return@update Result.Err(TournamentLinkError.GolferTombstoned(golfer.id))
             }
-            if (golferRepository.findById(request.golferId) == null) {
-                return@update Result.Err(TournamentLinkError.GolferNotFound(request.golferId))
-            }
-            Result.Ok(repository.upsert(tournamentId, request.espnCompetitorId, request.golferId))
+            Result.Ok(repository.upsert(tournamentId, request.espnCompetitorId, golfer.id))
+        }
+
+    /** One transaction, so a refused link leaves no golfer behind for an admin to find and wonder about. */
+    suspend fun createGolferAndLink(
+        tournamentId: TournamentId,
+        request: CreateLinkedGolferRequest,
+    ): Result<TournamentPlayerOverride, TournamentLinkError> =
+        tx.update {
+            lockedTournamentError(tournamentId)?.let { return@update Result.Err(it) }
+            val name =
+                GolferName.splitName(request.name)?.takeIf { it.firstName.isNotEmpty() }
+                    ?: return@update Result.Err(TournamentLinkError.GolferNameIncomplete(request.name))
+            val golfer =
+                golferRepository.create(CreateGolferRequest(firstName = name.firstName, lastName = name.lastName))
+            Result.Ok(repository.upsert(tournamentId, request.espnCompetitorId, golfer.id))
         }
 
     suspend fun delete(
@@ -57,12 +73,16 @@ class TournamentLinkService(
         espnCompetitorId: String,
     ): Result<Boolean, TournamentLinkError> =
         tx.update {
-            val tournament =
-                tournamentRepository.findById(tournamentId)
-                    ?: return@update Result.Err(TournamentLinkError.TournamentNotFound(tournamentId))
-            if (tournament.status == TournamentStatus.Completed) {
-                return@update Result.Err(TournamentLinkError.TournamentFinalized(tournamentId))
-            }
+            lockedTournamentError(tournamentId)?.let { return@update Result.Err(it) }
             Result.Ok(repository.delete(tournamentId, espnCompetitorId))
         }
+
+    context(ctx: TransactionContext)
+    private fun lockedTournamentError(tournamentId: TournamentId): TournamentLinkError? {
+        val tournament =
+            tournamentRepository.findById(tournamentId) ?: return TournamentLinkError.TournamentNotFound(tournamentId)
+        return TournamentLinkError.TournamentFinalized(tournamentId).takeIf {
+            tournament.status == TournamentStatus.Completed
+        }
+    }
 }

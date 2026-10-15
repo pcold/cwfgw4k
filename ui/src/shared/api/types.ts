@@ -362,18 +362,6 @@ export interface CleanSeasonResult {
   tournamentsReset: number;
 }
 
-// Mirrors backend com.cwfgw.golfers.CreateGolferRequest. POST /api/v1/golfers.
-// `pgaPlayerId` is intentionally omitted on the create-from-link-panel path —
-// these are placeholder partners (e.g., the "other" Fitzpatrick at Zurich)
-// that don't have an ESPN id and shouldn't get auto-matched on future imports.
-export interface CreateGolferRequest {
-  firstName: string;
-  lastName: string;
-  pgaPlayerId?: string | null;
-  country?: string | null;
-  worldRanking?: number | null;
-}
-
 // Mirrors backend com.cwfgw.golfers.Golfer. Returned by GET /api/v1/golfers.
 export interface Golfer {
   id: string;
@@ -396,6 +384,12 @@ export interface TournamentPlayerOverride {
 export interface UpsertTournamentPlayerOverrideRequest {
   espnCompetitorId: string;
   golferId: string;
+}
+
+// Mirrors backend com.cwfgw.tournamentLinks.CreateLinkedGolferRequest. The server splits `name`, as an import would.
+export interface CreateLinkedGolferRequest {
+  espnCompetitorId: string;
+  name: string;
 }
 
 // One ESPN competitor row for the admin link-management UI. `linkedGolfer` is

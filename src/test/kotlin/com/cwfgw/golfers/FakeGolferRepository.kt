@@ -31,6 +31,9 @@ class FakeGolferRepository(
     }
 
     context(ctx: TransactionContext)
+    override fun findLinkable(search: String?): List<Golfer> = findAll(search).filter { it.tombstonedAt == null }
+
+    context(ctx: TransactionContext)
     override fun findById(id: GolferId): Golfer? = store[id]
 
     context(ctx: TransactionContext)
@@ -68,6 +71,11 @@ class FakeGolferRepository(
         val row = store[id]?.takeIf { it.pgaPlayerId == null } ?: return null
         if (findByPgaPlayerId(pgaPlayerId) != null) return null
         return row.copy(pgaPlayerId = pgaPlayerId).also { store[id] = it }
+    }
+
+    /** @see com.cwfgw.testing.seedTombstone */
+    fun tombstone(id: GolferId) {
+        store[id] = checkNotNull(store[id]) { "no golfer $id to tombstone" }.copy(tombstonedAt = clock())
     }
 
     private fun Golfer.matchesSearch(term: String?): Boolean {

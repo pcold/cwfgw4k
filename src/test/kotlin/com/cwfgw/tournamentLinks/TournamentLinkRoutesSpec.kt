@@ -16,6 +16,7 @@ import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
+import com.cwfgw.testing.regularUserApiTest
 import com.cwfgw.testing.shouldBeRefused
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournaments.FakeTournamentRepository
@@ -24,6 +25,7 @@ import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentService
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import io.ktor.client.call.body
@@ -205,6 +207,87 @@ class TournamentLinkRoutesSpec : FunSpec({
                     setBody(UpsertTournamentPlayerOverrideRequest("abc-123", ghost))
                 }
             response.status shouldBe HttpStatusCode.BadRequest
+        }
+    }
+
+    test("POST /admin/tournaments/{id}/player-overrides is refused for a tombstoned golfer") {
+        val tombstone = golfer().copy(tombstonedAt = Instant.parse("2026-10-15T00:00:00Z"))
+        authenticatedApiTest(fixture(golfers = listOf(tombstone))) { client ->
+            val response =
+                client.post("/api/v1/admin/tournaments/${TOURNAMENT_ID.value}/player-overrides") {
+                    contentType(ContentType.Application.Json)
+                    setBody(UpsertTournamentPlayerOverrideRequest("abc-123", tombstone.id))
+                }
+            response.shouldBeRefused("golfer_tombstoned")
+        }
+    }
+
+    test("POST /admin/tournaments/{id}/player-overrides/new-golfer returns 401 without an authenticated session") {
+        apiTest(fixture()) { client ->
+            val response =
+                client.post("/api/v1/admin/tournaments/${TOURNAMENT_ID.value}/player-overrides/new-golfer") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CreateLinkedGolferRequest("abc-123", "Alex Fitzpatrick"))
+                }
+            response.status shouldBe HttpStatusCode.Unauthorized
+        }
+    }
+
+    test("POST /admin/tournaments/{id}/player-overrides/new-golfer rejects a regular user with 403") {
+        regularUserApiTest(fixture(golfers = emptyList())) { client ->
+            val response =
+                client.post("/api/v1/admin/tournaments/${TOURNAMENT_ID.value}/player-overrides/new-golfer") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CreateLinkedGolferRequest("abc-123", "Alex Fitzpatrick"))
+                }
+            response.status shouldBe HttpStatusCode.Forbidden
+        }
+    }
+
+    test("POST /admin/tournaments/{id}/player-overrides/new-golfer creates the golfer and links it in one call") {
+        authenticatedApiTest(fixture(golfers = emptyList())) { client ->
+            val response =
+                client.post("/api/v1/admin/tournaments/${TOURNAMENT_ID.value}/player-overrides/new-golfer") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CreateLinkedGolferRequest("abc-123", "Alex Fitzpatrick"))
+                }
+            response.status shouldBe HttpStatusCode.Created
+            val link: TournamentPlayerOverride = response.body()
+            link.tournamentId shouldBe TOURNAMENT_ID
+            link.espnCompetitorId shouldBe "abc-123"
+
+            val created = client.get("/api/v1/golfers").body<List<Golfer>>().single()
+            created.id shouldBe link.golferId
+            (created.firstName to created.lastName) shouldBe ("Alex" to "Fitzpatrick")
+        }
+    }
+
+    test("POST /admin/tournaments/{id}/player-overrides/new-golfer returns 400 for a name with no first name") {
+        authenticatedApiTest(fixture(golfers = emptyList())) { client ->
+            val response =
+                client.post("/api/v1/admin/tournaments/${TOURNAMENT_ID.value}/player-overrides/new-golfer") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CreateLinkedGolferRequest("team:t1:1", "Fitzpatrick"))
+                }
+            response.status shouldBe HttpStatusCode.BadRequest
+            client.get("/api/v1/golfers").body<List<Golfer>>().shouldBeEmpty()
+        }
+    }
+
+    test("POST /admin/tournaments/{id}/player-overrides/new-golfer is refused when the tournament is finalized") {
+        val configure =
+            fixture(
+                tournaments = listOf(tournament(FINALIZED_TOURNAMENT_ID, status = TournamentStatus.Completed)),
+                golfers = emptyList(),
+            )
+        authenticatedApiTest(configure) { client ->
+            val response =
+                client.post("/api/v1/admin/tournaments/${FINALIZED_TOURNAMENT_ID.value}/player-overrides/new-golfer") {
+                    contentType(ContentType.Application.Json)
+                    setBody(CreateLinkedGolferRequest("abc-123", "Alex Fitzpatrick"))
+                }
+            response.shouldBeRefused("tournament_finalized")
+            client.get("/api/v1/golfers").body<List<Golfer>>().shouldBeEmpty()
         }
     }
 

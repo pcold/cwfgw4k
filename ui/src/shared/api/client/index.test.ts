@@ -581,27 +581,16 @@ describe('api client', () => {
     expect(requestInit(call).method).toBe('DELETE');
   });
 
-  it('createGolfer() POSTs a snake_case body to /api/v1/golfers', async () => {
+  it('createGolferAndLink() POSTs a snake_case body to the new-golfer endpoint', async () => {
     fetchMock.mockResolvedValueOnce(
-      mockJson({
-        id: 'g-99',
-        pga_player_id: null,
-        first_name: 'Alex',
-        last_name: 'Fitzpatrick',
-        country: null,
-        world_ranking: null,
-        active: true,
-        updated_at: '2026-04-29T00:00:00Z',
-      }),
+      mockJson({ tournament_id: 'tn-1', espn_competitor_id: 'abc', golfer_id: 'g-99' }),
     );
-    const result = await api.createGolfer({ firstName: 'Alex', lastName: 'Fitzpatrick' });
+    const result = await api.createGolferAndLink('tn-1', { espnCompetitorId: 'abc', name: 'Alex Fitzpatrick' });
     const call = nth(fetchMock.mock.calls, 0);
-    expect(call[0]).toBe('/api/v1/golfers');
+    expect(call[0]).toBe('/api/v1/admin/tournaments/tn-1/player-overrides/new-golfer');
     expect(requestInit(call).method).toBe('POST');
-    const body = jsonBody(call);
-    expect(body).toEqual({ first_name: 'Alex', last_name: 'Fitzpatrick' });
-    expect(result.firstName).toBe('Alex');
-    expect(result.pgaPlayerId).toBeNull();
+    expect(jsonBody(call)).toEqual({ espn_competitor_id: 'abc', name: 'Alex Fitzpatrick' });
+    expect(result.golferId).toBe('g-99');
   });
 });
 

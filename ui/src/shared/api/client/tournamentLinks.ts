@@ -1,4 +1,5 @@
 import type {
+  CreateLinkedGolferRequest,
   TournamentCompetitorListing,
   TournamentPlayerOverride,
   UpsertTournamentPlayerOverrideRequest,
@@ -14,6 +15,11 @@ export const tournamentLinksApi = {
   ): Promise<TournamentPlayerOverride> =>
     postJson<TournamentPlayerOverride>(
       `/admin/tournaments/${encodeURIComponent(tournamentId)}/player-overrides`,
+      body,
+    ),
+  createGolferAndLink: (tournamentId: string, body: CreateLinkedGolferRequest): Promise<TournamentPlayerOverride> =>
+    postJson<TournamentPlayerOverride>(
+      `/admin/tournaments/${encodeURIComponent(tournamentId)}/player-overrides/new-golfer`,
       body,
     ),
   // 404 is treated as "already cleared" by the panel — the caller maps it.
