@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRules, formatSideBetRounds, parseSideBetRounds } from './rulesInput';
+import { buildRules, formatSideBetRounds, isReadableSideBetRounds, parseSideBetRounds } from './rulesInput';
 
 describe('formatSideBetRounds', () => {
   it('writes the rounds in the comma-separated form parseSideBetRounds reads back', () => {
@@ -23,6 +23,16 @@ describe('parseSideBetRounds', () => {
 
   it('returns an empty array for an empty string', () => {
     expect(parseSideBetRounds('')).toEqual([]);
+  });
+});
+
+describe('isReadableSideBetRounds', () => {
+  it.each(['5,6,7,8', ' 1 , 2 ', '', '5,,6'])('reads %j whole', (input) => {
+    expect(isReadableSideBetRounds(input)).toBe(true);
+  });
+
+  it.each(['five', '5-8', '5 6 7 8', '5,six', '1.5', '-1'])('refuses %j, which would parse to fewer rounds', (input) => {
+    expect(isReadableSideBetRounds(input)).toBe(false);
   });
 });
 
