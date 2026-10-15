@@ -10,6 +10,7 @@ import com.cwfgw.teams.RosterEntryId
 import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.orFail
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.FakeTournamentRepository
@@ -77,6 +78,19 @@ class EspnSurnameGuessSpec : FunSpec({
         import.resultGolferIds("evt-a") shouldContainExactly listOf(joeBloggs.id, import.golferWithId("2").id)
     }
 
+    test("a surname guess yields the row a team partner's surname is credited in another event") {
+        val joeBloggs = idlessGolfer("Joe", "Bloggs")
+        val import = SurnameGuessImport(joeBloggs)
+
+        import.persist(
+            event("evt-team", competitor("9001", "Bloggs", isTeamPartner = true)),
+            event("evt-a", competitor("2", "Jim Bloggs")),
+        )
+
+        import.resultGolferIds("evt-team") shouldContainExactly listOf(joeBloggs.id)
+        import.resultGolferIds("evt-a") shouldContainExactly listOf(import.golferWithId("2").id)
+    }
+
     test("two athletes guessing one id-less row are both withheld, and nothing is written") {
         val joeBloggs = idlessGolfer("Joe", "Bloggs")
         val import = SurnameGuessImport(joeBloggs)
@@ -107,6 +121,23 @@ class EspnSurnameGuessSpec : FunSpec({
         import.resultGolferIds("evt-a") shouldContainExactly listOf(joeBloggs.id)
         import.resultGolferIds("evt-b") shouldContainExactly listOf(joeBloggs.id)
         import.allGolfers() shouldContainExactly listOf(joeBloggs)
+    }
+
+    test("the competitor listing links a surname guess to nothing on the row another competitor's full name names") {
+        val joeBloggs = idlessGolfer("Joe", "Bloggs")
+        val tournament = tournament("evt-a")
+        val event = event("evt-a", competitor("1", "Joe Bloggs"), competitor("2", "Jim Bloggs"))
+        val service =
+            testEspnService(
+                client = FakeEspnClient(tournamentsByDate = mapOf(tournament.startDate to listOf(event))),
+                golferRepository = FakeGolferRepository(initial = listOf(joeBloggs)),
+                tournamentRepository = FakeTournamentRepository(initial = listOf(tournament)),
+            )
+
+        val listing = service.listCompetitorsForLinking(tournament.id).orFail()
+
+        listing.competitors.map { it.espnCompetitorId to it.linkedGolfer?.id } shouldContainExactly
+            listOf("1" to joeBloggs.id, "2" to null)
     }
 
     test("the live preview pays a surname guess nothing on the rostered row another competitor's full name names") {
@@ -221,6 +252,7 @@ private fun competitor(
     espnId: String,
     name: String,
     position: Int = espnId.toInt(),
+    isTeamPartner: Boolean = false,
 ): EspnCompetitor =
     EspnCompetitor(
         espnId = espnId,
@@ -232,7 +264,7 @@ private fun competitor(
         roundScores = emptyList(),
         position = position,
         status = EspnStatus.Active,
-        isTeamPartner = false,
+        isTeamPartner = isTeamPartner,
         pairKey = null,
     )
 

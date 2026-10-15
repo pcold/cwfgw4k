@@ -437,7 +437,7 @@ private fun List<MatchedEvent>.settlingSurnameGuessesAcrossEvents(): List<Matche
 
 /** Reads every claim before any is settled, so a guess withheld here never counts as a claim on its row. */
 private class SurnameGuessSettlement(located: List<Pair<EspnCompetitor, CompetitorMatch>>) {
-    private val claimantIds = espnIdsPerRow(located) { match -> match.claimedRows }
+    private val claimantIds = espnIdsPerRow(located, CompetitorMatch::claimedRows)
     private val guesserIds = espnIdsPerRow(located) { match -> listOfNotNull(match.guessedRow) }
 
     fun settle(
