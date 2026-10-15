@@ -151,10 +151,12 @@ sealed interface PickMatch {
 /** A variant per source, not one class with a nullable `golferId` and `espnId`, which could carry both or neither. */
 @Serializable
 sealed interface GolferCandidate {
+    /** @see GolferCandidate */
     @Serializable
     @SerialName("existing")
     data class Existing(val golferId: GolferId, val name: String) : GolferCandidate
 
+    /** @see PickMatch.MatchedEspn */
     @Serializable
     @SerialName("espn")
     data class Espn(val espnId: String, val name: String) : GolferCandidate

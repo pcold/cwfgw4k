@@ -7,8 +7,8 @@ import com.cwfgw.golfers.GolferNameMatch
 import com.cwfgw.golfers.normalizeName
 
 /**
- * One pool, not ESPN as a fallback after the rows: a name both carry stays Ambiguous, as it was when the preview
- * persisted the athletes before matching. An athlete with a blank name is dropped, since confirm could not split it.
+ * One pool, not ESPN as a fallback after the rows: a name both carry stays Ambiguous for the operator, since the row
+ * may be that athlete entered by hand or a namesake. An athlete with a blank name is dropped; confirm refuses one.
  */
 internal class RosterNameIndex(
     private val golfers: GolferNameIndex,
