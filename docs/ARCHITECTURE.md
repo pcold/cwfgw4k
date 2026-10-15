@@ -278,23 +278,27 @@ by this status (see [Live overlay](#live-overlay)).
 1. Read the tournament. Fetch ESPN's scoreboard for its start date, outside any transaction. ESPN unreachable
    answers 502.
 2. In one `update`, re-read the tournament under its season's lock and then its own, so a finalize or reset of
-   any tournament in the season waits, and one deleted during the fetch answers 404. Refuse
-   `tournament_start_date_changed` if its start date moved during the fetch, and `tournament_out_of_order` if an
-   earlier tournament in the season is still `upcoming` or `in_progress`.
+   any tournament in the season waits, and one deleted during the fetch answers 404. Refuse `tournament_finalized`
+   if it is already `completed` (reset it first), `tournament_start_date_changed` if its start date moved during
+   the fetch, and `tournament_out_of_order` if an earlier tournament in the season is still `upcoming` or
+   `in_progress`.
 3. Import results. A linked tournament imports only its own ESPN event (a no-op if the scoreboard lacks it). An
-   unlinked one locks, then imports into, each tournament that a completed event on that scoreboard matches by
-   ESPN id.
+   unlinked one locks each tournament that a completed event on that scoreboard matches by ESPN id, then imports
+   only into those in its own season that are not `completed` and that no `upcoming` or `in_progress` tournament
+   precedes, other than the ones this finalize writes. Any other match is skipped with a WARN
+   `cwfgw4k.finalize event=match-skipped`.
 4. The tournament becomes `completed` only if ESPN marks the event completed; the import also syncs
    `is_team_event` (`EspnService.syncTournamentFromEventIn`).
 5. Compute and upsert fantasy scores ([§7](#7-scoring-and-payouts)).
 
-Re-finalizing a completed tournament is not blocked; it re-imports and upserts the scores again.
-
 **Reset** refuses when a later tournament in the season is completed, so results are always unwound newest
-first. **Season clean-results** resets the whole season at once.
+first. **Season clean-results** resets the whole season at once. Both take the same season lock first, as does an
+admin `PUT` that changes a tournament's status or start date, so none of them lands between a finalize's order
+check and its commit.
 
 Pinned by `TournamentOpsServiceSpec`, `TournamentOpsServiceFinalizeRollbackSpec`,
-`TournamentOpsServiceResetSpec`, `TournamentFinalizeRaceSpec` and `TournamentSiblingRaceSpec`.
+`TournamentOpsServiceResetSpec`, `TournamentFinalizeRaceSpec`, `TournamentSiblingRaceSpec` and
+`TournamentSeasonLockRaceSpec`.
 
 ## 7. Scoring and Payouts
 

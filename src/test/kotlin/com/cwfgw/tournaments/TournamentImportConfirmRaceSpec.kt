@@ -102,12 +102,28 @@ private data class SeededRace(
 context(ctx: WriteTransactionContext)
 private fun seedRace(): SeededRace {
     val unlinked = checkNotNull(TournamentRepository().findById(seedTournament()))
-    seedTournament(pgaTournamentId = FIRST_EVENT_ESPN_ID)
-    val second = checkNotNull(TournamentRepository().findById(seedTournament(pgaTournamentId = SECOND_EVENT_ESPN_ID)))
+    seedMatch(unlinked, FIRST_EVENT_ESPN_ID)
+    val second = seedMatch(unlinked, SECOND_EVENT_ESPN_ID)
     val confirmSeason = checkNotNull(TournamentRepository().findById(seedTournament())).seasonId
     val fleetwood = GolferRepository().create(CreateGolferRequest(firstName = "Tommy", lastName = "Fleetwood"))
     return SeededRace(unlinked = unlinked, second = second, confirmSeason = confirmSeason, fleetwood = fleetwood.id)
 }
+
+/** In [unlinked]'s season and week: an unlinked finalize imports into no other season. */
+context(ctx: WriteTransactionContext)
+private fun seedMatch(
+    unlinked: Tournament,
+    espnId: String,
+): Tournament =
+    TournamentRepository().create(
+        CreateTournamentRequest(
+            name = "Event $espnId",
+            seasonId = unlinked.seasonId,
+            startDate = START_DATE,
+            endDate = START_DATE.plusDays(3),
+            pgaTournamentId = espnId,
+        ),
+    )
 
 private object ConfirmPicks {
     val FLEETWOOD_AND_ABERG: List<ConfirmedPick> =

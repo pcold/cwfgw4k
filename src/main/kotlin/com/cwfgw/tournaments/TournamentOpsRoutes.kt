@@ -51,6 +51,11 @@ private fun TournamentOpsError.toDomainError(): DomainError =
                 "the start date moved from $fetchedFor to $startDate while ESPN was read; finalize again",
                 code = "tournament_start_date_changed",
             )
+        is TournamentOpsError.TournamentFinalized ->
+            DomainError.Refused(
+                "tournament ${id.value} is already finalized; reset it to finalize again",
+                code = "tournament_finalized",
+            )
         is TournamentOpsError.UpstreamUnavailable -> DomainError.BadGateway(failure.summary)
     }
 

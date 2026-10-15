@@ -29,18 +29,22 @@ interface TournamentRepository {
 
     /**
      * Locks the season row before the tournament, the order a season delete's cascade takes both. NO KEY UPDATE runs
-     * one finalize or reset per season at a time, so each sees the other's sibling writes. Admin edits and a season
-     * clean-results take no season lock, and an FK insert's key-share stays free.
+     * one finalize, reset, schedule edit or season clean-results per season at a time, so each sees the others'
+     * sibling writes. An FK insert's key-share stays free.
      */
     context(ctx: WriteTransactionContext)
     fun findByIdForUpdate(id: TournamentId): Tournament?
+
+    /** @see findByIdForUpdate */
+    context(ctx: WriteTransactionContext)
+    fun lockSeason(seasonId: SeasonId)
 
     context(ctx: TransactionContext)
     fun findByPgaTournamentId(pgaTournamentId: String): Tournament?
 
     /**
      * Locks in id order: an id never changes, where a start date can between two lockers' reads. Their seasons go
-     * unlocked, since a NO KEY UPDATE on them deadlocks two finalizes importing into each other's season.
+     * unlocked, since a NO KEY UPDATE on them deadlocks two unlinked finalizes matching into each other's season.
      */
     context(ctx: WriteTransactionContext)
     fun findByPgaTournamentIdsForUpdate(pgaTournamentIds: Collection<String>): List<Tournament>
@@ -141,12 +145,17 @@ private class JooqTournamentRepository : TournamentRepository {
                 .where(TOURNAMENTS.ID.eq(id.value))
                 .fetchOne(TOURNAMENTS.SEASON_ID)
                 ?: return null
-        ctx.dsl.selectOne().from(SEASONS).where(SEASONS.ID.eq(seasonId)).forNoKeyUpdate().execute()
+        lockSeason(SeasonId(seasonId))
         return ctx.dsl.selectFrom(TOURNAMENTS)
             .where(TOURNAMENTS.ID.eq(id.value))
             .forUpdate()
             .fetchOne()
             ?.let(::toTournament)
+    }
+
+    context(ctx: WriteTransactionContext)
+    override fun lockSeason(seasonId: SeasonId) {
+        ctx.dsl.selectOne().from(SEASONS).where(SEASONS.ID.eq(seasonId.value)).forNoKeyUpdate().execute()
     }
 
     context(ctx: TransactionContext)

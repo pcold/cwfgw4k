@@ -58,6 +58,10 @@ class TournamentOpsService(
             tournamentRepository.findByIdForUpdate(tournamentId)
                 ?: return Result.Err(TournamentOpsError.TournamentNotFound(tournamentId))
 
+        if (tournament.status == TournamentStatus.Completed) {
+            return Result.Err(TournamentOpsError.TournamentFinalized(tournamentId))
+        }
+
         if (tournament.startDate != fetchedFor) {
             return Result.Err(TournamentOpsError.StartDateChanged(fetchedFor, tournament.startDate))
         }
@@ -99,10 +103,6 @@ class TournamentOpsService(
             Result.Ok(updated ?: tournament)
         }
 
-    /**
-     * An unlinked tournament's matches are all locked before any import, so a reset of one waits for it. Their own
-     * seasons' order is never checked: a match may be completed while an earlier sibling of it is still upcoming.
-     */
     context(ctx: WriteTransactionContext)
     private fun persistEspnEventsIn(
         tournament: Tournament,
@@ -114,12 +114,44 @@ class TournamentOpsService(
             return
         }
         val completed = events.filter { it.completed }
-        val matchedByEspnId =
-            tournamentRepository.findByPgaTournamentIdsForUpdate(completed.map { it.espnId })
-                .associateBy { it.pgaTournamentId }
-        val imports = completed.mapNotNull { event -> matchedByEspnId[event.espnId]?.let { EventImport(it, event) } }
+        val matches = tournamentRepository.findByPgaTournamentIdsForUpdate(completed.map { it.espnId })
+        val importableByEspnId = findImportableMatches(tournament, matches).associateBy { it.pgaTournamentId }
+        val imports =
+            completed.mapNotNull { event -> importableByEspnId[event.espnId]?.let { EventImport(it, event) } }
         espnService.persistImportsIn(imports)
     }
+
+    /**
+     * Only [unlinked]'s own season is ordered by the season lock it holds, so a match elsewhere is skipped, not
+     * written. A match is gated as its own finalize would be, counting this finalize's other writes as done.
+     */
+    context(ctx: TransactionContext)
+    private fun findImportableMatches(
+        unlinked: Tournament,
+        matches: List<Tournament>,
+    ): List<Tournament> {
+        val finalizing = matches.map { it.id }.toSet() + unlinked.id
+        return matches.filter { match ->
+            val skip = findMatchSkip(unlinked, match, finalizing) ?: return@filter true
+            val unlinkedId = unlinked.id.value
+            val matchId = match.id.value
+            log.warn { "cwfgw4k.finalize event=match-skipped reason=$skip tournament_id=$unlinkedId match_id=$matchId" }
+            false
+        }
+    }
+
+    context(ctx: TransactionContext)
+    private fun findMatchSkip(
+        unlinked: Tournament,
+        match: Tournament,
+        finalizing: Set<TournamentId>,
+    ): MatchSkip? =
+        when {
+            match.seasonId != unlinked.seasonId -> MatchSkip.OtherSeason
+            match.status == TournamentStatus.Completed -> MatchSkip.Completed
+            findEarlierUnfinalized(match).any { it.id !in finalizing } -> MatchSkip.OutOfOrder
+            else -> null
+        }
 
     /**
      * Sound only under findByIdForUpdate's season lock, without which a sibling's finalize or reset can commit after
@@ -146,6 +178,9 @@ class TournamentOpsService(
             ),
         )
 }
+
+/** Logged by name as a skip's `reason=`, so a rename changes what a search of the logs matches. */
+private enum class MatchSkip { OtherSeason, Completed, OutOfOrder }
 
 /**
  * Thrown, not returned, from `tx.update`: the block commits on any normal return, an Err included, so only a

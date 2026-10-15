@@ -228,6 +228,25 @@ class TournamentOpsRoutesSpec : FunSpec({
         }
     }
 
+    test("POST /api/v1/tournaments/{id}/finalize is refused when the tournament is already completed") {
+        val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.Completed)
+        val configure =
+            opsFixture(
+                initialTournaments = listOf(masters),
+                espnByDate =
+                    mapOf(
+                        LocalDate.parse("2026-04-09") to
+                            listOf(emptyEspnEvent("espn-${MASTERS_ID.value}", "Masters")),
+                    ),
+            )
+
+        authenticatedApiTest(configure) { client ->
+            val response = client.post("/api/v1/tournaments/${MASTERS_ID.value}/finalize")
+            response.shouldBeRefused("tournament_finalized")
+            response.bodyAsText().shouldContain("tournament ${MASTERS_ID.value} is already finalized")
+        }
+    }
+
     test("POST /api/v1/tournaments/{non-uuid}/finalize returns 400") {
         authenticatedApiTest(opsFixture()) { client ->
             val response = client.post("/api/v1/tournaments/not-a-uuid/finalize")

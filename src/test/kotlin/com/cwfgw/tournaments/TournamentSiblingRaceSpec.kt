@@ -88,7 +88,7 @@ class TournamentSiblingRaceSpec : FunSpec({
         }
     }
 
-    test("an unlinked finalize holds the sibling it imports into, so that sibling's reset clears the import after") {
+    test("an unlinked finalize holds the season it imports into, so a sibling's reset clears the import after") {
         val (unlinked, sibling) = tx.update { seedUnlinkedWithSibling() }
         val pause = Pause()
         val pausedFinalize = opsService(tx, golferRepository = pause.afterGolferFindAll())
@@ -248,13 +248,21 @@ private fun seedConsecutiveWeeks(): Pair<Tournament, Tournament> {
     return checkNotNull(TournamentRepository().update(earlier.id, completed)) to later
 }
 
-/** Two seasons: a sibling in another league's season is held by no season lock the unlinked finalize takes. */
+/** The sibling shares the unlinked tournament's season and week: an unlinked finalize imports into no other season. */
 context(ctx: WriteTransactionContext)
 private fun seedUnlinkedWithSibling(): Pair<Tournament, Tournament> {
     val unlinked = checkNotNull(TournamentRepository().findById(seedTournament()))
-    val sibling = seedLinkedEvent()
-    val completed = UpdateTournamentRequest(status = TournamentStatus.Completed)
-    return unlinked to checkNotNull(TournamentRepository().update(sibling.id, completed))
+    val sibling =
+        TournamentRepository().create(
+            CreateTournamentRequest(
+                name = "Zurich Classic",
+                seasonId = unlinked.seasonId,
+                startDate = unlinked.startDate,
+                endDate = unlinked.endDate,
+                pgaTournamentId = EVENT_ESPN_ID,
+            ),
+        )
+    return unlinked to sibling
 }
 
 private fun finalScoreboard(): EspnTournament =

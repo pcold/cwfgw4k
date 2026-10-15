@@ -42,6 +42,8 @@ private val SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000
 private val SONY_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b02"))
 private val MASTERS_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b01"))
 private val PGA_CHAMPIONSHIP_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b03"))
+private val ZURICH_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b04"))
+private val OTHER_SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000bbb"))
 
 private fun tournament(
     id: TournamentId,
@@ -85,10 +87,13 @@ private fun espnEvent(
         isTeamEvent = false,
     )
 
-private fun espnLeader(espnId: String): EspnCompetitor =
+private fun espnLeader(
+    espnId: String,
+    name: String = "Scottie Scheffler",
+): EspnCompetitor =
     EspnCompetitor(
         espnId = espnId,
-        name = "Scottie Scheffler",
+        name = name,
         order = 1,
         scoreStr = "-10",
         scoreToPar = -10,
@@ -97,6 +102,26 @@ private fun espnLeader(espnId: String): EspnCompetitor =
         position = 1,
         status = EspnStatus.Active,
         isTeamPartner = false,
+        pairKey = null,
+    )
+
+private fun winningResult(
+    tournamentId: TournamentId,
+    golferId: GolferId,
+): TournamentResult =
+    TournamentResult(
+        id = TournamentResultId(UUID.randomUUID()),
+        tournamentId = tournamentId,
+        golferId = golferId,
+        position = 1,
+        scoreToPar = -10,
+        totalStrokes = 270,
+        earnings = null,
+        round1 = null,
+        round2 = null,
+        round3 = null,
+        round4 = null,
+        madeCut = true,
         pairKey = null,
     )
 
@@ -275,6 +300,121 @@ class TournamentOpsServiceSpec : FunSpec({
             fixture.tournamentRepo.getResults(SONY_ID).map { it.position } shouldContainExactly listOf(1)
             fixture.tournamentRepo.getResults(PGA_CHAMPIONSHIP_ID).shouldBeEmpty()
             fixture.tournamentRepo.getResults(MASTERS_ID).shouldBeEmpty()
+        }
+    }
+
+    test("finalizeTournament refuses a completed tournament, leaving the results it was finalized with") {
+        val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.Completed)
+        val finalizedWith = winningResult(MASTERS_ID, GolferId(UUID.randomUUID()))
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(masters),
+                initialResults = listOf(finalizedWith),
+                espnByDate =
+                    mapOf(
+                        LocalDate.parse("2026-04-09") to
+                            listOf(espnEvent("espn-${MASTERS_ID.value}", "Masters", listOf(espnLeader("e1")))),
+                    ),
+            )
+        val before = with(noopTransactionContext) { fixture.tournamentRepo.getResults(MASTERS_ID) }
+
+        fixture.service.finalizeTournament(MASTERS_ID) shouldBe
+            Result.Err(TournamentOpsError.TournamentFinalized(MASTERS_ID))
+
+        with(noopTransactionContext) {
+            fixture.tournamentRepo.getResults(MASTERS_ID) shouldBe before
+            fixture.golferRepo.findByPgaPlayerId("e1") shouldBe null
+        }
+    }
+
+    test("finalizeTournament of an unlinked tournament skips a match in another season or already completed") {
+        val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", pgaTournamentId = null)
+        val sony = tournament(SONY_ID, "Sony Open", "2026-05-01").copy(seasonId = OTHER_SEASON_ID)
+        val pgaChampionship =
+            tournament(PGA_CHAMPIONSHIP_ID, "PGA Championship", "2026-05-14", status = TournamentStatus.Completed)
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(masters, sony, pgaChampionship),
+                espnByDate =
+                    mapOf(
+                        LocalDate.parse("2026-04-09") to
+                            listOf(
+                                espnEvent("espn-${SONY_ID.value}", "Sony Open", listOf(espnLeader("e1"))),
+                                espnEvent(
+                                    "espn-${PGA_CHAMPIONSHIP_ID.value}",
+                                    "PGA Championship",
+                                    listOf(espnLeader("e2")),
+                                ),
+                            ),
+                    ),
+            )
+
+        fixture.service.finalizeTournament(MASTERS_ID).orFail()
+
+        with(noopTransactionContext) {
+            fixture.tournamentRepo.getResults(SONY_ID).shouldBeEmpty()
+            fixture.tournamentRepo.findById(SONY_ID)?.status shouldBe TournamentStatus.Upcoming
+            fixture.tournamentRepo.getResults(PGA_CHAMPIONSHIP_ID).shouldBeEmpty()
+        }
+    }
+
+    test("finalizeTournament of an unlinked tournament skips a match behind an unfinalized sibling it doesn't import") {
+        val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", pgaTournamentId = null)
+        val sony = tournament(SONY_ID, "Sony Open", "2026-05-01")
+        val zurich = tournament(ZURICH_ID, "Zurich Classic", "2026-05-07", pgaTournamentId = null)
+        val pgaChampionship = tournament(PGA_CHAMPIONSHIP_ID, "PGA Championship", "2026-05-14")
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(masters, sony, zurich, pgaChampionship),
+                espnByDate =
+                    mapOf(
+                        LocalDate.parse("2026-04-09") to
+                            listOf(
+                                espnEvent("espn-${SONY_ID.value}", "Sony Open", listOf(espnLeader("e1"))),
+                                espnEvent(
+                                    "espn-${PGA_CHAMPIONSHIP_ID.value}",
+                                    "PGA Championship",
+                                    listOf(espnLeader("e2")),
+                                ),
+                            ),
+                    ),
+            )
+
+        fixture.service.finalizeTournament(MASTERS_ID).orFail()
+
+        with(noopTransactionContext) {
+            fixture.tournamentRepo.getResults(SONY_ID).map { it.position } shouldContainExactly listOf(1)
+            fixture.tournamentRepo.getResults(PGA_CHAMPIONSHIP_ID).shouldBeEmpty()
+            fixture.tournamentRepo.findById(PGA_CHAMPIONSHIP_ID)?.status shouldBe TournamentStatus.Upcoming
+        }
+    }
+
+    test("finalizeTournament of an unlinked tournament imports a match behind only another match it imports") {
+        val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09", pgaTournamentId = null)
+        val sony = tournament(SONY_ID, "Sony Open", "2026-05-01")
+        val pgaChampionship = tournament(PGA_CHAMPIONSHIP_ID, "PGA Championship", "2026-05-14")
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(masters, sony, pgaChampionship),
+                espnByDate =
+                    mapOf(
+                        LocalDate.parse("2026-04-09") to
+                            listOf(
+                                espnEvent("espn-${SONY_ID.value}", "Sony Open", listOf(espnLeader("e1"))),
+                                espnEvent(
+                                    "espn-${PGA_CHAMPIONSHIP_ID.value}",
+                                    "PGA Championship",
+                                    listOf(espnLeader("e2", name = "Rory McIlroy")),
+                                ),
+                            ),
+                    ),
+            )
+
+        fixture.service.finalizeTournament(MASTERS_ID).orFail()
+
+        with(noopTransactionContext) {
+            fixture.tournamentRepo.getResults(SONY_ID).map { it.position } shouldContainExactly listOf(1)
+            fixture.tournamentRepo.getResults(PGA_CHAMPIONSHIP_ID).map { it.position } shouldContainExactly listOf(1)
         }
     }
 
