@@ -131,8 +131,7 @@ class TournamentOpsService(
             val event =
                 findLinkedEvent(events, tournament)
                     ?: return ImportedEvents(matches = emptyList(), warnings = emptyList())
-            val warnings = espnService.persistImportIn(tournament, event)
-            return ImportedEvents(matches = emptyList(), warnings = listOf(warnings))
+            return ImportedEvents(matches = emptyList(), warnings = espnService.persistImportIn(tournament, event))
         }
         val completed = events.filter { it.completed }
         val matches = tournamentRepository.findByPgaTournamentIdsForUpdate(completed.map { it.espnId })

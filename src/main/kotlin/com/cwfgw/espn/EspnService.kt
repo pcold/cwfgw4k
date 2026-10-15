@@ -199,12 +199,11 @@ class EspnService(
     }
 
     /** @see persistImportsIn */
-    @Suppress("ForbiddenMethodCall") // single(): persistImportsIn answers one warning per import it is given
     context(ctx: WriteTransactionContext)
     internal fun persistImportIn(
         tournament: Tournament,
         event: EspnTournament,
-    ): EspnImportWarnings = persistImportsIn(listOf(EventImport(tournament, event))).single()
+    ): List<EspnImportWarnings> = persistImportsIn(listOf(EventImport(tournament, event)))
 
     /**
      * Writes into the caller's transaction so finalize persists the import and the scores atomically. Every event is
