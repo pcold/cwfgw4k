@@ -59,18 +59,19 @@ class TournamentFinalizeRaceSpec : FunSpec({
         tx.get { GolferRepository().findByPgaPlayerId(UNSEEN_RUNNER_UP_ESPN_ID) }.shouldBeNull()
     }
 
-    test("a second finalize waits for the first's transaction, then re-finalizes over it") {
+    test("a second finalize waits for the first's transaction, then refuses the tournament it completed") {
         val event = tx.update { seedRosteredEvent() }
         val hold = LockHold()
 
-        val outcomes =
+        val (first, second) =
             coroutineScope {
                 val first = async { opsService(tx, event, hold.pausing()).finalizeTournament(event.id) }
                 val second = hold.whileHeld { async { opsService(tx, event).finalizeTournament(event.id) } }
-                listOf(first.await(), second.await())
+                first.await() to second.await()
             }
 
-        outcomes.map { it.orFail().status } shouldBe listOf(TournamentStatus.Completed, TournamentStatus.Completed)
+        first.orFail().status shouldBe TournamentStatus.Completed
+        second shouldBe Result.Err(TournamentOpsError.TournamentFinalized(event.id))
         tx.get { TournamentRepository().getResults(event.id) } shouldHaveSize 2
         tx.get { GolferRepository().findByPgaPlayerId(UNSEEN_RUNNER_UP_ESPN_ID) }?.lastName shouldBe "McIlroy"
         tx.get { ScoringRepository().getScores(event.seasonId, event.id) } shouldHaveSize 1

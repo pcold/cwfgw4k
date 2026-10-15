@@ -31,6 +31,12 @@ sealed interface TournamentOpsError {
      */
     data class StartDateChanged(val fetchedFor: LocalDate, val startDate: LocalDate) : TournamentOpsError
 
+    /**
+     * Finalize only: results upsert on `(tournament_id, golfer_id)`, so a second import leaves a row whose credit
+     * has since moved in place and paid. Reset is the way back.
+     */
+    data class TournamentFinalized(val id: TournamentId) : TournamentOpsError
+
     /** ESPN was unreachable (or returned non-2xx) during the import step of finalize. */
     data class UpstreamUnavailable(val failure: EspnUpstreamFailure) : TournamentOpsError
 

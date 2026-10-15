@@ -34,8 +34,14 @@ class TournamentService(
             Result.Ok(repository.create(request))
         }
 
+    /** A status or start date is what finalize's and reset's sibling-order checks read, under the season lock. */
     suspend fun update(
         id: TournamentId,
         request: UpdateTournamentRequest,
-    ): Tournament? = tx.update { repository.update(id, request) }
+    ): Tournament? =
+        tx.update {
+            val changesSiblingOrder = request.status != null || request.startDate != null
+            if (changesSiblingOrder && repository.findByIdForUpdate(id) == null) return@update null
+            repository.update(id, request)
+        }
 }

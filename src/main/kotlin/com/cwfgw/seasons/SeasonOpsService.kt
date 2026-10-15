@@ -27,6 +27,7 @@ class SeasonOpsService(
      */
     suspend fun cleanSeasonResults(seasonId: SeasonId): CleanSeasonResult? =
         tx.update {
+            tournamentRepository.lockSeason(seasonId)
             val season = seasonRepository.findById(seasonId) ?: return@update null
 
             log.info { "Cleaning all results for season '${season.name}'..." }
