@@ -3,11 +3,16 @@ package com.cwfgw.teams
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.testing.POSTGRES_UUID_ORDER
 import com.cwfgw.testing.fakeTableOf
 import com.cwfgw.testing.uniqueViolation
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.Instant
 import java.util.UUID
+
+/** `ownership_pct` is numeric(5,2): Postgres answers two places whatever the request carried. */
+private const val OWNERSHIP_SCALE = 2
 
 private val teamOrdering: Comparator<Team> =
     compareBy<Team, Int?>(nullsLast()) { it.teamNumber }
@@ -69,7 +74,9 @@ class FakeTeamRepository(
         val teamIdsInSeason = teams.values.filter { it.seasonId == seasonId }.map { it.id }.toSet()
         return rosters.values
             .filter { it.teamId in teamIdsInSeason }
-            .sortedWith(compareBy<RosterEntry> { it.teamId.value }.then(rosterOrdering))
+            .sortedWith(
+                compareBy(POSTGRES_UUID_ORDER) { entry: RosterEntry -> entry.teamId.value }.then(rosterOrdering),
+            )
     }
 
     context(ctx: WriteTransactionContext)
@@ -84,7 +91,8 @@ class FakeTeamRepository(
                 golferId = request.golferId,
                 acquiredVia = request.acquiredVia ?: "free_agent",
                 draftRound = request.draftRound,
-                ownershipPct = request.ownershipPct ?: BigDecimal("100.00"),
+                ownershipPct =
+                    (request.ownershipPct ?: BigDecimal(100)).setScale(OWNERSHIP_SCALE, RoundingMode.HALF_UP),
                 acquiredAt = clock(),
                 isActive = true,
             )
