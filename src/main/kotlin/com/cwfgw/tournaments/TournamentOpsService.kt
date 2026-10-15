@@ -12,6 +12,7 @@ import com.cwfgw.result.getOrElse
 import com.cwfgw.scoring.ScoringError
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
+import com.cwfgw.scoring.WeeklyScoreResult
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.LocalDate
 
@@ -72,12 +73,19 @@ class TournamentOpsService(
         }
 
         log.info { "Finalizing tournament '${tournament.name}' (${tournament.id.value})..." }
-        persistEspnEventsIn(tournament, events)
-        scoringService.calculateScoresIn(tournament.seasonId, tournamentId)
-            .getOrElse { throw FinalizeAborted(it.toOpsError(tournament)) }
+        val matches = persistEspnEventsIn(tournament, events)
+        // The import completes each match, which its own finalize then refuses: a match not scored here stays
+        // unscored until a reset.
+        (matches + tournament).forEach { scoreIn(it) }
         log.info { "Finalized '${tournament.name}'" }
         return Result.Ok(tournamentRepository.findById(tournamentId) ?: tournament)
     }
+
+    /** Takes no season or tournament lock: finalize already holds each one it scores, in season → tournament order. */
+    context(ctx: WriteTransactionContext)
+    private fun scoreIn(tournament: Tournament): WeeklyScoreResult =
+        scoringService.calculateScoresIn(tournament.seasonId, tournament.id)
+            .getOrElse { throw FinalizeAborted(it.toOpsError(tournament)) }
 
     suspend fun resetTournament(tournamentId: TournamentId): Result<Tournament, TournamentOpsError> =
         tx.update {
@@ -107,11 +115,11 @@ class TournamentOpsService(
     private fun persistEspnEventsIn(
         tournament: Tournament,
         events: List<EspnTournament>,
-    ) {
+    ): List<Tournament> {
         if (tournament.pgaTournamentId != null) {
-            val event = findLinkedEvent(events, tournament) ?: return
+            val event = findLinkedEvent(events, tournament) ?: return emptyList()
             espnService.persistImportIn(tournament, event)
-            return
+            return emptyList()
         }
         val completed = events.filter { it.completed }
         val matches = tournamentRepository.findByPgaTournamentIdsForUpdate(completed.map { it.espnId })
@@ -119,6 +127,7 @@ class TournamentOpsService(
         val imports =
             completed.mapNotNull { event -> importableByEspnId[event.espnId]?.let { EventImport(it, event) } }
         espnService.persistImportsIn(imports)
+        return imports.map(EventImport::tournament)
     }
 
     /**
