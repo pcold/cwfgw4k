@@ -59,7 +59,7 @@ sealed interface ConfirmedRosterProblem {
         val lastName: String,
     ) : ConfirmedRosterProblem
 
-    /** @see RepeatedExistingGolfer */
+    /** One `espnId` resolves to one golfer row, so both picks collide as [RepeatedExistingGolfer]'s do. */
     data class RepeatedEspnGolfer(val teamName: String, val espnId: String) : ConfirmedRosterProblem
 
     /** No surname to store. The preview never offers such an athlete, so only a hand-built payload carries one. */
