@@ -47,8 +47,8 @@ data class Tournament(
 )
 
 /**
- * The tournament a season's pages open on, with the default `type` discriminator. A variant per case, not a nullable
- * id beside an `allFinalized` flag, which could claim a finalized season with no tournament in it.
+ * Serialized with the default `type` discriminator. A variant per case, not a nullable id beside an `allFinalized`
+ * flag, which could claim a finalized season with no tournament in it.
  */
 @Serializable
 sealed interface CurrentTournament {
