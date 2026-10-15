@@ -285,8 +285,8 @@ by this status (see [Live overlay](#live-overlay)).
 3. Import results. A linked tournament imports only its own ESPN event (a no-op if the scoreboard lacks it). An
    unlinked one locks each tournament that a completed event on that scoreboard matches by ESPN id, then imports
    only into those in its own season that are not `completed` and that no `upcoming` or `in_progress` tournament
-   precedes, not counting the unlinked tournament or its other matches. Any other match is skipped with a WARN
-   `cwfgw4k.finalize event=match-skipped`.
+   precedes. The unlinked tournament itself stays unfinalized (step 4), so a match starting after it is skipped
+   too. Every skip logs a WARN `cwfgw4k.finalize event=match-skipped`.
 4. The tournament becomes `completed` only if ESPN marks the event completed; the import also syncs
    `is_team_event` (`EspnService.syncTournamentFromEventIn`).
 5. Compute and upsert fantasy scores ([§7](#7-scoring-and-payouts)).

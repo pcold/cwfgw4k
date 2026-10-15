@@ -29,8 +29,8 @@ interface TournamentRepository {
 
     /**
      * Locks the season row before the tournament, the order a season delete's cascade takes both. NO KEY UPDATE runs
-     * one finalize, reset, schedule edit or season clean-results per season at a time, so each sees the others'
-     * sibling writes. An FK insert's key-share stays free.
+     * one finalize, reset, status or start-date PUT, or season clean-results per season at a time, so each sees the
+     * others' sibling writes. An FK insert's key-share stays free, so a tournament create does not wait.
      */
     context(ctx: WriteTransactionContext)
     fun findByIdForUpdate(id: TournamentId): Tournament?

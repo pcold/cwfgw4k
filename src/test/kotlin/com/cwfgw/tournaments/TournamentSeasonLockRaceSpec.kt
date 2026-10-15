@@ -47,6 +47,7 @@ private const val EVENT_ESPN_ID = "401580999"
 private const val FINISHER_ESPN_ID = "9478"
 private val EVENT_WEEK: LocalDate = LocalDate.parse("2026-04-23")
 private val EARLIER_WEEK: LocalDate = LocalDate.parse("2026-04-16")
+private val LATER_WEEK: LocalDate = LocalDate.parse("2026-04-30")
 
 /** A holder never released lets go before its waiter's lock_timeout would fire. */
 private const val HOLD_CEILING_MS: Long = LOCK_TIMEOUT_MS - 2_000
@@ -88,6 +89,21 @@ class TournamentSeasonLockRaceSpec : FunSpec({
 
             val reopened = checkNotNull(put.await())
             finalize.await() shouldBe Result.Err(TournamentOpsError.OutOfOrder(Action.Finalize, listOf(reopened)))
+            waited.shouldBeTrue()
+        }
+    }
+
+    test("a finalize waits for a PUT moving an upcoming week before it, then refuses as out of order") {
+        val (moving, event) = tx.update { seedWeekAfter() }
+        val pause = WriterPause()
+        val moveEarlier = UpdateTournamentRequest(startDate = EARLIER_WEEK, endDate = EARLIER_WEEK.plusDays(3))
+
+        coroutineScope {
+            val put = async { TournamentService(pause.afterUpdate(), tx).update(moving.id, moveEarlier) }
+            val (finalize, waited) = pause.contend(postgres) { async { opsService(tx).finalizeTournament(event.id) } }
+
+            val moved = checkNotNull(put.await())
+            finalize.await() shouldBe Result.Err(TournamentOpsError.OutOfOrder(Action.Finalize, listOf(moved)))
             waited.shouldBeTrue()
         }
     }
@@ -256,6 +272,22 @@ private fun seedEarlierWeek(later: Tournament): Tournament =
             endDate = EARLIER_WEEK.plusDays(3),
         ),
     )
+
+/** The scoreboard's event, and an upcoming week after it in its season. */
+context(ctx: WriteTransactionContext)
+private fun seedWeekAfter(): Pair<Tournament, Tournament> {
+    val event = seedLinkedEvent()
+    val after =
+        TournamentRepository().create(
+            CreateTournamentRequest(
+                name = "Zurich Classic",
+                seasonId = event.seasonId,
+                startDate = LATER_WEEK,
+                endDate = LATER_WEEK.plusDays(3),
+            ),
+        )
+    return after to event
+}
 
 private data class ForeignSeason(val earlier: Tournament, val match: Tournament)
 

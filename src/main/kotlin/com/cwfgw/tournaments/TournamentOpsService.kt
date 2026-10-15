@@ -123,18 +123,19 @@ class TournamentOpsService(
 
     /**
      * Only [unlinked]'s own season is ordered by the season lock it holds, so a match elsewhere is skipped, not
-     * written. A match is gated as its own finalize would be, counting [unlinked] and the other matches as done.
+     * written. A match is gated as its own finalize would be, and [unlinked] stays unfinalized, so a match starting
+     * after it is skipped.
      */
     context(ctx: TransactionContext)
     private fun findImportableMatches(
         unlinked: Tournament,
         matches: List<Tournament>,
     ): List<Tournament> {
-        val finalizing = matches.map { it.id }.toSet() + unlinked.id
+        if (matches.isEmpty()) return emptyList()
         val unfinalized =
             tournamentRepository.findAll(TournamentFilter(seasonId = unlinked.seasonId, statuses = UNFINALIZED))
         return matches.filter { match ->
-            val skip = findMatchSkip(unlinked, match, unfinalized, finalizing) ?: return@filter true
+            val skip = findMatchSkip(unlinked, match, unfinalized) ?: return@filter true
             val unlinkedId = unlinked.id.value
             val matchId = match.id.value
             log.warn { "cwfgw4k.finalize event=match-skipped reason=$skip tournament_id=$unlinkedId match_id=$matchId" }
@@ -177,12 +178,11 @@ private fun findMatchSkip(
     unlinked: Tournament,
     match: Tournament,
     unfinalized: List<Tournament>,
-    finalizing: Set<TournamentId>,
 ): MatchSkip? =
     when {
         match.seasonId != unlinked.seasonId -> MatchSkip.OtherSeason
         match.status == TournamentStatus.Completed -> MatchSkip.Completed
-        unfinalized.any { it.startDate < match.startDate && it.id !in finalizing } -> MatchSkip.OutOfOrder
+        unfinalized.any { it.startDate < match.startDate } -> MatchSkip.OutOfOrder
         else -> null
     }
 
