@@ -194,12 +194,12 @@ describe('RulesPage', () => {
     expect(screen.getByText('$15')).toBeInTheDocument();
   });
 
-  it('says a season with no side-bet rounds has no side bets, and lists no races', async () => {
+  it('says no round carries a side bet for a season with no side-bet rounds, and lists no races', async () => {
     seasonRulesMock.mockResolvedValue({ ...defaultRules, sideBetRounds: [] });
     tournamentsMock.mockResolvedValue([]);
     renderWithProviders(<RulesPage />);
 
-    expect(await screen.findByText('This season has no side bets.')).toBeInTheDocument();
+    expect(await screen.findByText('No draft round carries a side bet this season.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Side Bets' })).toBeInTheDocument();
     expect(screen.queryByText(/season-long races/i)).not.toBeInTheDocument();
   });
