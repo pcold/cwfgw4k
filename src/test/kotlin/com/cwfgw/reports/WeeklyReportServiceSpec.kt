@@ -43,6 +43,7 @@ import io.kotest.inspectors.forAll
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
@@ -1653,6 +1654,28 @@ class WeeklyReportServiceSpec : FunSpec({
         // First-place finish on multiplier=1.0 → $18 base payout for one rostering team.
         row.totalEarnings.compareTo(BigDecimal(18)) shouldBe 0
         row.teamName shouldBe TEAM_A.teamName
+    }
+
+    test("getPlayerRankings with live=true through the tournament in play says live=false when ESPN has no event") {
+        val mastersInProgress =
+            tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09", week = "15")
+                .copy(status = TournamentStatus.InProgress, pgaTournamentId = "espn-masters")
+        val fixture = Fixture(initialTournaments = listOf(mastersInProgress), initialTeams = listOf(TEAM_A, TEAM_B))
+
+        val rankings =
+            fixture.service.getPlayerRankings(SEASON_ID, throughTournamentId = MASTERS_ID, live = true).orFail()
+
+        fixture.espnClient.fetchCalls.shouldNotBeEmpty()
+        rankings.live shouldBe false
+    }
+
+    test("getPlayerRankings with live=true through a completed tournament says live=false") {
+        val sony = tournamentFixture(SONY_ID, "Sony Open", "2026-01-15")
+        val fixture = Fixture(initialTournaments = listOf(sony), initialTeams = listOf(TEAM_A, TEAM_B))
+
+        val rankings = fixture.service.getPlayerRankings(SEASON_ID, throughTournamentId = SONY_ID, live = true).orFail()
+
+        rankings.live shouldBe false
     }
 
     test("getPlayerRankings sorts rows by earnings desc, then top-tens desc, then name asc") {

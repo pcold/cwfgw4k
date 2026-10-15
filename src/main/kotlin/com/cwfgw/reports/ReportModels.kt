@@ -229,6 +229,8 @@ data class WeeklyReport(
     val standingsOrder: List<StandingsEntry>,
     val live: Boolean? = null,
     val liveLeaderboard: List<LiveLeaderboardEntry> = emptyList(),
+    /** @see Rankings.liveEligible */
+    val liveEligible: Boolean = false,
 ) {
     val cashTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::totalCash))
     val sideBetTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::sideBets))
@@ -264,6 +266,11 @@ data class Rankings(
     val weeks: List<String>,
     val tournamentNames: List<String>,
     val live: Boolean? = null,
+    /**
+     * Whether a `live=true` request for the same selection would ask ESPN: set from the candidate list the overlay
+     * itself folds, so the UI's toggle cannot offer what the overlay would refuse. [live] says whether ESPN answered.
+     */
+    val liveEligible: Boolean = false,
 )
 
 /** One top-10 finish in a golfer's season history. */
