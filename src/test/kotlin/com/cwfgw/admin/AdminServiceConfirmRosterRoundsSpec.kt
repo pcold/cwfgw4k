@@ -131,4 +131,4 @@ private fun newPick(
     firstName: String,
     lastName: String,
 ): ConfirmedPick =
-    ConfirmedPick(round = round, ownershipPct = 100, assignment = GolferAssignment.New(firstName, lastName))
+    ConfirmedPick(round = round, ownershipPct = 100, assignment = GolferAssignment.New("$firstName $lastName"))

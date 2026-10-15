@@ -395,7 +395,7 @@ class AdminRoutesSpec : FunSpec({
         authenticatedApiTest(adminFixture()) { client ->
             val picks =
                 listOf(1, 2).map { round ->
-                    ConfirmedPick(round = round, ownershipPct = 100, assignment = GolferAssignment.New("Tom", "Kim"))
+                    ConfirmedPick(round = round, ownershipPct = 100, assignment = GolferAssignment.New("Tom Kim"))
                 }
             val response =
                 client.post("/api/v1/admin/roster/confirm") {
@@ -406,6 +406,20 @@ class AdminRoutesSpec : FunSpec({
 
             response.status shouldBe HttpStatusCode.BadRequest
             response.bodyAsString().shouldContain("team 'BROWN' lists new golfer 'Tom Kim'")
+        }
+    }
+
+    test("POST /api/v1/admin/roster/confirm returns 400 naming a new golfer pick with a blank name") {
+        authenticatedApiTest(adminFixture()) { client ->
+            val blank = ConfirmedPick(round = 2, ownershipPct = 100, assignment = GolferAssignment.New(" "))
+            val response =
+                client.post("/api/v1/admin/roster/confirm") {
+                    contentType(ContentType.Application.Json)
+                    setBody(ConfirmRosterRequest(seasonId = SEASON_ID, teams = listOf(fullTeam(1, "BROWN", blank))))
+                }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.bodyAsString().shouldContain("team 'BROWN' gives its round 2 new golfer a blank name")
         }
     }
 
@@ -451,7 +465,7 @@ class AdminRoutesSpec : FunSpec({
     test("POST /api/v1/admin/roster/confirm returns 400 naming a pick in a round outside the draft") {
         authenticatedApiTest(adminFixture()) { client ->
             val roundNine =
-                ConfirmedPick(round = 9, ownershipPct = 100, assignment = GolferAssignment.New("Tom", "Kim"))
+                ConfirmedPick(round = 9, ownershipPct = 100, assignment = GolferAssignment.New("Tom Kim"))
             val response =
                 client.post("/api/v1/admin/roster/confirm") {
                     contentType(ContentType.Application.Json)
@@ -466,8 +480,8 @@ class AdminRoutesSpec : FunSpec({
 
     test("POST /api/v1/admin/roster/confirm returns 400 naming a round one team picks twice") {
         authenticatedApiTest(adminFixture()) { client ->
-            val tomKim = ConfirmedPick(round = 3, ownershipPct = 100, assignment = GolferAssignment.New("Tom", "Kim"))
-            val minWooLee = tomKim.copy(assignment = GolferAssignment.New("Min Woo", "Lee"))
+            val tomKim = ConfirmedPick(round = 3, ownershipPct = 100, assignment = GolferAssignment.New("Tom Kim"))
+            val minWooLee = tomKim.copy(assignment = GolferAssignment.New("Min Woo Lee"))
             val response =
                 client.post("/api/v1/admin/roster/confirm") {
                     contentType(ContentType.Application.Json)

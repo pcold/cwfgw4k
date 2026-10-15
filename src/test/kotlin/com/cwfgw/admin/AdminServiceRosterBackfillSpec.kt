@@ -221,7 +221,7 @@ private class OnceStaleGolferRepository(
 }
 
 private fun newGolfer(request: CreateGolferRequest): GolferAssignment.New =
-    GolferAssignment.New(firstName = request.firstName, lastName = request.lastName)
+    GolferAssignment.New(name = "${request.firstName} ${request.lastName}")
 
 private fun espnPick(
     round: Int,

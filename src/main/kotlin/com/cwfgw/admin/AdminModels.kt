@@ -216,9 +216,10 @@ sealed interface GolferAssignment {
     @SerialName("existing")
     data class Existing(val golferId: GolferId) : GolferAssignment
 
+    /** Inserted with [name] split as an ESPN import splits it. */
     @Serializable
     @SerialName("new")
-    data class New(val firstName: String, val lastName: String) : GolferAssignment
+    data class New(val name: String) : GolferAssignment
 
     /**
      * Inside the confirm's transaction: bound to the row holding [espnId] as `pga_player_id`, else written onto

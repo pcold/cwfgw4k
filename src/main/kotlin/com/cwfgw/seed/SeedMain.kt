@@ -14,7 +14,6 @@ import com.cwfgw.buildHttpClient
 import com.cwfgw.buildServices
 import com.cwfgw.config.AppConfig
 import com.cwfgw.db.Database
-import com.cwfgw.golfers.GolferName
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.result.Result
@@ -162,10 +161,7 @@ private fun pickAssignment(
         is PickMatch.MatchedEspn -> GolferAssignment.Espn(espnId = match.espnId, name = match.golferName)
         is PickMatch.MatchedBackfill -> GolferAssignment.Espn(espnId = match.espnId, name = match.golferName)
         is PickMatch.Ambiguous -> match.candidates.first().toAssignment()
-        PickMatch.NoMatch -> {
-            val name = GolferName.splitName(playerName) ?: error("RosterParser let a blank player name through")
-            GolferAssignment.New(firstName = name.firstName, lastName = name.lastName)
-        }
+        PickMatch.NoMatch -> GolferAssignment.New(name = playerName)
     }
 
 /**

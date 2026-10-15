@@ -129,7 +129,7 @@ class AdminServiceConfirmRosterRepeatsSpec : FunSpec({
                 ),
             )
 
-        result shouldBe refusal(ConfirmedRosterProblem.RepeatedNewGolfer("BROWN", "Byeong-Hun", "An"))
+        result shouldBe refusal(ConfirmedRosterProblem.RepeatedNewGolfer("BROWN", "Byeong-Hun An"))
         golfersWritten().shouldBeEmpty()
     }
 
@@ -180,7 +180,7 @@ class AdminServiceConfirmRosterRepeatsSpec : FunSpec({
             listOf(
                 ConfirmedRosterProblem.RepeatedTeamName("BROWN"),
                 ConfirmedRosterProblem.RepeatedExistingGolfer("BROWN", scottie.id),
-                ConfirmedRosterProblem.RepeatedNewGolfer("BROWN", "Tom", "Kim"),
+                ConfirmedRosterProblem.RepeatedNewGolfer("BROWN", "Tom Kim"),
             )
     }
 })
@@ -195,7 +195,7 @@ private fun newPick(
     firstName: String,
     lastName: String,
 ): ConfirmedPick =
-    ConfirmedPick(round = round, ownershipPct = 100, assignment = GolferAssignment.New(firstName, lastName))
+    ConfirmedPick(round = round, ownershipPct = 100, assignment = GolferAssignment.New("$firstName $lastName"))
 
 private fun refusal(problem: ConfirmedRosterProblem): Result<RosterUploadResult, AdminError> =
     Result.Err(AdminError.InvalidConfirmedRoster(listOf(problem)))

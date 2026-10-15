@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { QueryKey } from '@tanstack/react-query';
 import type { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
-import type { PickMatch, RosterPreview } from '@/shared/api/types';
+import type { PickMatch, RosterConfirmTeamInput, RosterPreview } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
 import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
@@ -100,6 +100,16 @@ function espnPreview(match: PickMatch): RosterPreview {
   };
 }
 
+/** Fails naming the blocked encoding, rather than as a missing team several lines later. */
+function encodedTeams(
+  preview: RosterPreview,
+  selections: Readonly<Record<string, string>>,
+): RosterConfirmTeamInput[] {
+  const teams = buildConfirmTeams(preview, selections);
+  if (teams === null) throw new Error('Expected every pick to encode, but an ambiguous pick sits on the placeholder.');
+  return teams;
+}
+
 describe('buildConfirmTeams', () => {
   it('maps matched, ambiguous selection, and no_match picks correctly', () => {
     const preview = samplePreview();
@@ -126,22 +136,22 @@ describe('buildConfirmTeams', () => {
           {
             round: 3,
             ownershipPct: 75,
-            assignment: { type: 'new', firstName: 'Brand', lastName: 'New' },
+            assignment: { type: 'new', name: 'Brand New' },
           },
         ],
       },
     ]);
   });
 
-  it('treats a "none" selection as create-new with the input name split into first/last', () => {
+  it('treats a "none" selection as create-new with the whole input name', () => {
     const preview = samplePreview();
     const selections: Record<string, string> = {
       '1|2|Cam Smith': 'none',
       '1|3|Brand New': '',
     };
-    const teams = buildConfirmTeams(preview, selections);
+    const teams = encodedTeams(preview, selections);
     expect(nth(teams, 0).picks[1]).toMatchObject({
-      assignment: { type: 'new', firstName: 'Cam', lastName: 'Smith' },
+      assignment: { type: 'new', name: 'Cam Smith' },
     });
   });
 
@@ -151,7 +161,7 @@ describe('buildConfirmTeams', () => {
       espnId: 'espn-9478',
       golferName: 'Scottie Scheffler',
     });
-    const teams = buildConfirmTeams(preview, {});
+    const teams = encodedTeams(preview, {});
     expect(nth(nth(teams, 0).picks, 0).assignment).toEqual({
       type: 'espn',
       espnId: 'espn-9478',
@@ -165,7 +175,7 @@ describe('buildConfirmTeams', () => {
       espnId: 'espn-9478',
       golferName: 'Scottie Scheffler',
     });
-    const teams = buildConfirmTeams(preview, {});
+    const teams = encodedTeams(preview, {});
     expect(nth(nth(teams, 0).picks, 0).assignment).toEqual({
       type: 'espn',
       espnId: 'espn-9478',
@@ -181,7 +191,7 @@ describe('buildConfirmTeams', () => {
         { type: 'espn', espnId: 'espn-9478', name: 'Scottie Scheffler' },
       ],
     });
-    const teams = buildConfirmTeams(preview, { '1|1|Scottie Scheffler': 'espn:espn-9478' });
+    const teams = encodedTeams(preview, { '1|1|Scottie Scheffler': 'espn:espn-9478' });
     expect(nth(nth(teams, 0).picks, 0).assignment).toEqual({
       type: 'espn',
       espnId: 'espn-9478',
@@ -189,7 +199,7 @@ describe('buildConfirmTeams', () => {
     });
   });
 
-  it('puts the whole name in firstName when the input has no space', () => {
+  it("sends a no_match pick's whole name, for the server to split", () => {
     const preview: RosterPreview = {
       totalPicks: 1,
       matchedCount: 0,
@@ -200,17 +210,18 @@ describe('buildConfirmTeams', () => {
           teamNumber: 1,
           teamName: 'BROWN',
           picks: [
-            { round: 1, playerName: 'Madonna', ownershipPct: 100, match: { type: 'no_match' } },
+            { round: 1, playerName: 'Byeong Hun An', ownershipPct: 100, match: { type: 'no_match' } },
           ],
         },
       ],
     };
-    const teams = buildConfirmTeams(preview, { '1|1|Madonna': '' });
-    expect(nth(nth(teams, 0).picks, 0).assignment).toEqual({
-      type: 'new',
-      firstName: 'Madonna',
-      lastName: '',
-    });
+    const teams = encodedTeams(preview, {});
+    expect(nth(nth(teams, 0).picks, 0).assignment).toEqual({ type: 'new', name: 'Byeong Hun An' });
+  });
+
+  it('encodes nothing while an ambiguous pick sits on the placeholder', () => {
+    expect(buildConfirmTeams(samplePreview(), { '1|2|Cam Smith': '' })).toBeNull();
+    expect(buildConfirmTeams(samplePreview(), {})).toBeNull();
   });
 });
 
@@ -277,6 +288,31 @@ describe('UploadRostersSection', () => {
     const resultRegion = screen.getByText('Rosters Created').parentElement;
     if (!resultRegion) throw new Error('the Rosters Created heading has no region around it');
     expect(within(resultRegion).getByText(/BROWN/)).toBeInTheDocument();
+  });
+
+  it('holds confirm, saying why, until each ambiguous pick has a choice', async () => {
+    previewRosterMock.mockResolvedValue(samplePreview());
+
+    const user = userEvent.setup();
+    renderWithProviders(<UploadRostersSection />, { withLeagueSeasonProvider: false });
+
+    await waitFor(() => {
+      expect(screen.getByText('2026 Spring')).toBeInTheDocument();
+    });
+    await uploadRosterFile(user, 'TEAM 1 BROWN\n1 SCHEFFLER');
+    await user.click(screen.getByRole('button', { name: /Match Players with ESPN/i }));
+
+    const confirm = await screen.findByRole('button', { name: /Confirm & Create Teams/i });
+    const reason = /Select a player, or None of these, for each ambiguous pick to confirm/;
+    expect(confirm).toBeDisabled();
+    expect(screen.getByText(reason)).toBeVisible();
+    expect(confirm).toHaveAccessibleDescription(reason);
+
+    await user.selectOptions(screen.getByLabelText(/Golfer match for Cam Smith/i), 'None of these (create new)');
+
+    expect(confirm).toBeEnabled();
+    expect(screen.queryByText(reason)).not.toBeInTheDocument();
+    expect(confirm).not.toHaveAccessibleDescription();
   });
 
   it('offers an ESPN athlete as a new golfer and confirms the chosen one as an espn assignment', async () => {
@@ -374,6 +410,7 @@ describe('UploadRostersSection', () => {
       await uploadRosterFile(user, 'TEAM 1 BROWN\n1 SCHEFFLER');
       await user.click(screen.getByRole('button', { name: /Match Players with ESPN/i }));
       const confirm = await screen.findByRole('button', { name: /Confirm & Create Teams/i });
+      await user.selectOptions(screen.getByLabelText(/Golfer match for Cam Smith/i), 'existing:g-100');
       expect(fetcher).toHaveBeenCalledTimes(1);
       await user.click(confirm);
 

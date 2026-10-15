@@ -57,19 +57,21 @@ sealed interface ConfirmedRosterProblem {
 
     /**
      * Compared by the preview matcher's normalized full name. The DB would take both, as two golfer rows of one
-     * name, which leaves every later preview of that name Ambiguous.
+     * name, which leaves every later preview of that name Ambiguous. [name] is whitespace-collapsed, as stored.
      */
-    data class RepeatedNewGolfer(
-        val teamName: String,
-        val firstName: String,
-        val lastName: String,
-    ) : ConfirmedRosterProblem
+    data class RepeatedNewGolfer(val teamName: String, val name: String) : ConfirmedRosterProblem
 
     /** One `espnId` resolves to one golfer row, so both picks collide as [RepeatedExistingGolfer]'s do. */
     data class RepeatedEspnGolfer(val teamName: String, val espnId: String) : ConfirmedRosterProblem
 
     /** No surname to store. The preview never offers such an athlete, so only a hand-built payload carries one. */
     data class BlankEspnGolferName(val teamName: String, val espnId: String) : ConfirmedRosterProblem
+
+    /**
+     * As [BlankEspnGolferName], named by [round] as a new golfer has no id, and never also a [RepeatedNewGolfer]. The
+     * roster parser refuses a blank name.
+     */
+    data class BlankNewGolferName(val teamName: String, val round: Int) : ConfirmedRosterProblem
 
     /** One per round however many picks name it, so it is never also a [RepeatedRound]. */
     data class RoundOutOfRange(val teamName: String, val round: Int) : ConfirmedRosterProblem
