@@ -58,4 +58,13 @@ sealed interface ConfirmedRosterProblem {
         val firstName: String,
         val lastName: String,
     ) : ConfirmedRosterProblem
+
+    /** One per round however many picks name it, so it is never also a [RepeatedRound]. */
+    data class RoundOutOfRange(val teamName: String, val round: Int) : ConfirmedRosterProblem
+
+    /** @see DRAFT_ROUNDS */
+    data class RepeatedRound(val teamName: String, val round: Int) : ConfirmedRosterProblem
+
+    /** Ascending, every absent round of the team in one problem rather than one each. */
+    data class MissingRounds(val teamName: String, val rounds: List<Int>) : ConfirmedRosterProblem
 }

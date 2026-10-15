@@ -89,19 +89,17 @@ class AdminServiceConfirmRosterSpec : FunSpec({
     test("Existing-only assignments persist team + roster atomically") {
         val service = newService()
         val sid = seasonId()
-        val scottie =
+        val golfers =
             runBlocking {
                 tx.update {
-                    golferRepo.create(
-                        CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"),
-                    )
+                    DRAFT_ROUNDS.map { round ->
+                        golferRepo.create(CreateGolferRequest(firstName = "Round", lastName = "Golfer$round"))
+                    }
                 }
             }
-        val rory =
-            runBlocking {
-                tx.update {
-                    golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
-                }
+        val picks =
+            DRAFT_ROUNDS.zip(golfers) { round, golfer ->
+                ConfirmedPick(round = round, ownershipPct = 75, assignment = GolferAssignment.Existing(golfer.id))
             }
 
         val result =
@@ -109,26 +107,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
                 service.confirmRoster(
                     ConfirmRosterRequest(
                         seasonId = sid,
-                        teams =
-                            listOf(
-                                ConfirmedTeam(
-                                    teamNumber = 1,
-                                    teamName = "BROWN",
-                                    picks =
-                                        listOf(
-                                            ConfirmedPick(
-                                                round = 1,
-                                                ownershipPct = 75,
-                                                assignment = GolferAssignment.Existing(scottie.id),
-                                            ),
-                                            ConfirmedPick(
-                                                round = 2,
-                                                ownershipPct = 50,
-                                                assignment = GolferAssignment.Existing(rory.id),
-                                            ),
-                                        ),
-                                ),
-                            ),
+                        teams = listOf(ConfirmedTeam(teamNumber = 1, teamName = "BROWN", picks = picks)),
                     ),
                 )
             }
@@ -140,8 +119,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
         team.teamName shouldBe "BROWN"
 
         val roster = runBlocking { tx.read { teamRepo().findRostersBySeason(sid) } }.filter { it.teamId == team.id }
-        roster shouldHaveSize 2
-        roster.map { it.golferId } shouldContainExactly listOf(scottie.id, rory.id)
+        roster.map { it.golferId } shouldContainExactly golfers.map { it.id }
     }
 
     test("New assignments insert fresh golfers and link them to the roster in one transaction") {
@@ -155,18 +133,14 @@ class AdminServiceConfirmRosterSpec : FunSpec({
                         seasonId = sid,
                         teams =
                             listOf(
-                                ConfirmedTeam(
-                                    teamNumber = 1,
-                                    teamName = "BROWN",
-                                    picks =
-                                        listOf(
-                                            ConfirmedPick(
-                                                round = 1,
-                                                ownershipPct = 100,
-                                                assignment =
-                                                    GolferAssignment.New("Scottie", "Scheffler"),
-                                            ),
-                                        ),
+                                fullTeam(
+                                    number = 1,
+                                    name = "BROWN",
+                                    ConfirmedPick(
+                                        round = 1,
+                                        ownershipPct = 100,
+                                        assignment = GolferAssignment.New("Scottie", "Scheffler"),
+                                    ),
                                 ),
                             ),
                     ),
@@ -174,12 +148,12 @@ class AdminServiceConfirmRosterSpec : FunSpec({
             }
 
         val body = result.orFail()
-        body.golfersCreated shouldBe 1
+        body.golfersCreated shouldBe DRAFT_ROUNDS.count()
         val created =
             runBlocking { tx.read { golferRepo.findAll(search = null) } }
                 .single { it.firstName == "Scottie" && it.lastName == "Scheffler" }
         runBlocking { tx.read { teamRepo().findRostersBySeason(sid) } }
-            .single { it.teamId == body.teams.single().id }
+            .single { it.teamId == body.teams.single().id && it.draftRound == 1 }
             .golferId shouldBe created.id
     }
 
@@ -209,24 +183,16 @@ class AdminServiceConfirmRosterSpec : FunSpec({
                         seasonId = sid,
                         teams =
                             listOf(
-                                ConfirmedTeam(
-                                    teamNumber = 1,
-                                    teamName = "BROWN",
-                                    picks =
-                                        listOf(
-                                            ConfirmedPick(
-                                                round = 1,
-                                                ownershipPct = 100,
-                                                assignment =
-                                                    GolferAssignment.New("First", "Golfer"),
-                                            ),
-                                        ),
+                                fullTeam(
+                                    number = 1,
+                                    name = "BROWN",
+                                    ConfirmedPick(
+                                        round = 1,
+                                        ownershipPct = 100,
+                                        assignment = GolferAssignment.New("First", "Golfer"),
+                                    ),
                                 ),
-                                ConfirmedTeam(
-                                    teamNumber = 2,
-                                    teamName = "WOMBLE",
-                                    picks = emptyList(),
-                                ),
+                                fullTeam(number = 2, name = "WOMBLE"),
                             ),
                     ),
                 )

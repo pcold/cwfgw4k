@@ -443,8 +443,14 @@ class AdminService(
     }
 }
 
+/**
+ * Every team needs exactly one pick in each: the weekly ledger counts one pick per round into topTens but every
+ * pick into the pot, so any other shape stops it summing to zero. Must agree with `WeeklyReportService`'s copy.
+ */
+internal val DRAFT_ROUNDS: IntRange = 1..8
+
 private fun findRosterProblems(teams: List<ConfirmedTeam>): List<ConfirmedRosterProblem> =
-    repeatedTeamNames(teams) + teams.flatMap(::repeatedGolfers)
+    repeatedTeamNames(teams) + teams.flatMap(::repeatedGolfers) + teams.flatMap(::draftRoundProblems)
 
 private fun repeatedTeamNames(teams: List<ConfirmedTeam>): List<ConfirmedRosterProblem> =
     teams.firstOfEachRepeat(ConfirmedTeam::teamName)
@@ -467,6 +473,23 @@ private fun repeatedGolfers(team: ConfirmedTeam): List<ConfirmedRosterProblem> {
                 )
             }
     return repeatedExisting + repeatedNew
+}
+
+private fun draftRoundProblems(team: ConfirmedTeam): List<ConfirmedRosterProblem> {
+    val rounds = team.picks.map(ConfirmedPick::round)
+    val outOfRange =
+        rounds.filterNot { it in DRAFT_ROUNDS }
+            .distinct()
+            .map { round -> ConfirmedRosterProblem.RoundOutOfRange(team.teamName, round) }
+    val repeated =
+        rounds.filter { it in DRAFT_ROUNDS }
+            .firstOfEachRepeat { it }
+            .map { round -> ConfirmedRosterProblem.RepeatedRound(team.teamName, round) }
+    val missing =
+        DRAFT_ROUNDS.filterNot { it in rounds }
+            .takeIf { it.isNotEmpty() }
+            ?.let { absent -> ConfirmedRosterProblem.MissingRounds(team.teamName, absent) }
+    return outOfRange + repeated + listOfNotNull(missing)
 }
 
 private fun <T, K> List<T>.firstOfEachRepeat(key: (T) -> K): List<T> {
