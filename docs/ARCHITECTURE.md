@@ -424,8 +424,11 @@ the Monday before a Thursday start.
 
 When a report is requested with `live=true`, `reports/LiveOverlayService.kt` fetches each candidate's
 leaderboard, scores it with the same payout rules, and overlays the result on the persisted report without
-writing anything. Rankings gain a column per live candidate; player rankings fold in the live payouts. A
-completed tournament selected in the weekly report is never overlaid.
+writing anything. A candidate previews only the ESPN event whose id is its `pga_tournament_id`, the rule finalize
+imports by (`EspnService.findLinkedEvent`), so an unlinked or stale-id tournament previews nothing until it is
+linked. The preview pays a team event by ESPN's flag, which finalize's import writes over the row. Rankings gain
+a column per live candidate; player rankings fold in the live payouts. A completed tournament selected in the
+weekly report is never overlaid.
 
 **Fallback.** If ESPN does not answer, answers non-200, or answers 200 with a body that does not parse, the
 overlay logs a WARN and skips that candidate, so a full outage returns the persisted report unchanged
@@ -535,5 +538,6 @@ shared code in `shared/`.
   reads back as the default rounds, so a side-bet amount of 0 is the only way to turn the bets off.
 - **A pick outside rounds 1–8, or a second pick in one round (CWF-195).** Upload accepts it, and the report's
   ledger then stops being zero-sum (see Weekly ledger).
-- **A shared ESPN-event resolver (CWF-179).** Finalize, schedule preview and the competitors route each match a
-  tournament to its ESPN event their own way.
+- **A shared ESPN-event resolver (CWF-179).** The live preview and the competitors route resolve a tournament's
+  ESPN event through `EspnService.findLinkedEvent`; finalize applies the same exact-id rule inline and does not
+  call it yet.
