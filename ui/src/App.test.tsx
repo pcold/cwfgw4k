@@ -46,21 +46,28 @@ vi.mock('@/shared/api/client', () => ({
 }));
 
 describe('App', () => {
-  // Both the desktop nav and (when open) the mobile hamburger nav end up in the DOM,
-  // so queries use getAllByRole / the mobile container when a single hit is needed.
+  // The mobile menu mounts inside the navigation landmark only once opened, so a query within
+  // that landmark before the hamburger is clicked sees the desktop links alone.
 
-  it('renders all primary nav links', () => {
+  it('renders the site heading', () => {
     renderWithProviders(<App />, { withLeagueSeasonProvider: false });
 
     expect(screen.getByRole('heading', { name: 'CWFG' })).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: /Scoreboard/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: /Weekly Report/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: /Team Standings/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: /Player Rankings/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: /Rosters/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: /Late Row Bets/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: /Rules/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: /Admin/i }).length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ['Scoreboard', '/scoreboard'],
+    ['Report', '/report'],
+    ['Standings', '/rankings'],
+    ['Players', '/player-rankings'],
+    ['Rosters', '/rosters'],
+    ['Bets', '/late-row-bets'],
+    ['Rules', '/rules'],
+  ])('links the %s nav item to %s', (label, path) => {
+    renderWithProviders(<App />, { withLeagueSeasonProvider: false });
+
+    const navigation = screen.getByRole('navigation');
+    expect(within(navigation).getByRole('link', { name: label })).toHaveAttribute('href', path);
   });
 
   it('toggles the mobile hamburger menu and lets the user follow a link', async () => {
@@ -74,9 +81,28 @@ describe('App', () => {
     const mobileNav = container.querySelector('#mobile-nav') as HTMLElement;
     expect(mobileNav).not.toBeNull();
 
-    await user.click(within(mobileNav).getByRole('link', { name: /Team Standings/i }));
+    await user.click(within(mobileNav).getByRole('link', { name: 'Standings' }));
     expect(await screen.findByText(/No leagues configured/i)).toBeInTheDocument();
     // Closes itself after navigation
     expect(container.querySelector('#mobile-nav')).toBeNull();
+  });
+
+  it('keeps Admin out of the main nav and the mobile menu', async () => {
+    const user = userEvent.setup();
+    const { container } = renderWithProviders(<App />, { withLeagueSeasonProvider: false });
+
+    expect(within(screen.getByRole('navigation')).queryByRole('link', { name: /admin/i })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: /Open navigation menu/i }));
+    const mobileNav = container.querySelector('#mobile-nav') as HTMLElement;
+    expect(within(mobileNav).getByRole('link', { name: 'Rules' })).toBeInTheDocument();
+    expect(within(mobileNav).queryByRole('link', { name: /admin/i })).toBeNull();
+  });
+
+  it('links Admin from the site footer to its unchanged path', () => {
+    renderWithProviders(<App />, { withLeagueSeasonProvider: false });
+
+    const footer = screen.getByRole('contentinfo');
+    expect(within(footer).getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
   });
 });
