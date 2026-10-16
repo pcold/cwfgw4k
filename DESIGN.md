@@ -39,7 +39,6 @@ colors:
   semantic-warning: "#fdc700"
   semantic-warning-ink: "#ffdf20"
   semantic-warning-border: "#d08700"
-  semantic-danger-tint: "#82181a"
   semantic-danger: "#ffa2a2"
   semantic-danger-hover: "#ffc9c9"
   semantic-danger-strong: "#ffa2a2"
@@ -258,7 +257,7 @@ Each family takes only the rungs it uses. `-tint` is a wash, always at an opacit
 
 - **Success** — `{colors.semantic-success-tint}` (green-900) washes a rostered golfer's leaderboard row (`/10`) and the tournament-complete banner (`/30`); `{colors.semantic-success-soft}` (green-700) borders that banner; `{colors.semantic-success}` (green-400) is a bottom-line gain, a side-bet winner's payout in the report grid, a rostered golfer's team on the leaderboard, the rule amounts on the Rules page and success messages; `{colors.semantic-success-ink}` (green-300) is the complete banner's text.
 - **Warning** — `{colors.semantic-warning-tint}` (yellow-900) washes the in-progress banner (`/40`) and the skipped-rows and player-links notices (`/30`); `{colors.semantic-warning-soft}` (yellow-700) borders them, and at `/50` fills the weekly report's LIVE chip; `{colors.semantic-warning}` (yellow-400) marks an ambiguous or skipped count and the multipliers on the Rules page; `{colors.semantic-warning-ink}` (yellow-300) is the text on those washes; `{colors.semantic-warning-border}` (yellow-600) borders the select for an ambiguous roster match.
-- **Danger** — `{colors.semantic-danger-tint}` (red-900) is defined but no surface draws it; `{colors.semantic-danger}` (red-300) is a bottom-line loss, field errors and failed loads; `{colors.semantic-danger-hover}` (red-200) is a Remove link hovered; `{colors.semantic-danger-strong}` (red-300, the same step) is an action error beside the scoreboard's buttons and in the player-links panel; `{colors.semantic-danger-fill}` (red-600) and `{colors.semantic-danger-fill-hover}` (red-700) are the destructive admin buttons — Reset, Clean, Delete; `{colors.semantic-danger-border}` (red-500) borders an invalid payout-multiplier input.
+- **Danger** — `{colors.semantic-danger}` (red-300) is a bottom-line loss, field errors and failed loads; `{colors.semantic-danger-hover}` (red-200) is a Remove link hovered; `{colors.semantic-danger-strong}` (red-300, the same step) is an action error beside the scoreboard's buttons and in the player-links panel; `{colors.semantic-danger-fill}` (red-600) and `{colors.semantic-danger-fill-hover}` (red-700) are the destructive admin buttons — Reset, Clean, Delete; `{colors.semantic-danger-border}` (red-500) borders an invalid payout-multiplier input.
 - **Info** — `{colors.semantic-info-fill}` (blue-600) and `{colors.semantic-info-fill-hover}` (blue-700) are secondary actions beside a primary one — Preview on the roster upload, Manage player links on the scoreboard, Save link in the player-links panel; `{colors.semantic-info}` (blue-400) and `{colors.semantic-info-hover}` (blue-300) are text buttons and an informational count; `{colors.semantic-info-soft}` (blue-700) fills the manual-override chip, and `{colors.semantic-info-ink}` (blue-100) is its text.
 
 ### Report grids
