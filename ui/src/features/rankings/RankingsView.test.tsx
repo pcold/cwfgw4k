@@ -98,4 +98,24 @@ describe('RankingsView', () => {
     render(<RankingsView rankings={buildRankings()} />);
     expect(screen.getByText(/3 weeks played/i)).toBeInTheDocument();
   });
+
+  it('colours only Total Cash by sign, and leaves Subtotal and Late Row Bets in the table ink', () => {
+    render(<RankingsView rankings={buildRankings()} />);
+    const aces = screen.getByRole('row', { name: /Aces/ });
+    const birdies = screen.getByRole('row', { name: /Birdies/ });
+    expect(within(aces).getByText('+$150')).toHaveClass('text-semantic-success');
+    expect(within(birdies).getByText('\u2212$35')).toHaveClass('text-semantic-danger');
+    expect(within(aces).getByText('+$120.00').className).not.toMatch(/text-semantic-|text-ink-soft/);
+    expect(within(birdies).getByText('\u2212$15.00').className).not.toMatch(/text-semantic-|text-ink-soft/);
+  });
+
+  it('mutes a Total Cash that rounds to $0, and tones the summary chips by the sign they print', () => {
+    const [aces, ...rest] = buildRankings().teams;
+    if (!aces) throw new Error('fixture has no first team');
+    render(<RankingsView rankings={buildRankings({ teams: [{ ...aces, totalCash: -0.4 }, ...rest] })} />);
+    expect(within(screen.getByRole('row', { name: /Aces/ })).getByText('$0')).toHaveClass('text-ink-soft');
+    expect(screen.getByText('Won').nextSibling).toHaveClass('text-semantic-success');
+    expect(screen.getByText('Lost').nextSibling).toHaveClass('text-semantic-danger');
+    expect(screen.getByText('Net').nextSibling).toHaveClass('text-ink-soft');
+  });
 });

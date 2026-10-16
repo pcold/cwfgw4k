@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import type { WeeklyReport } from '@/shared/api/types';
-import { formatDollarsAndCents } from '@/shared/util/money';
+import { formatDollarsAndCents, moneyToneClass } from '@/shared/util/money';
 import ColumnHeaderFilter, {
   type ColumnHeaderFilterOption,
 } from '@/shared/components/ColumnHeaderFilter';
@@ -16,18 +16,6 @@ import {
 
 const ALL = '';
 const UNDRAFTED = '__undrafted__';
-
-function rowTint(weeklyTotal: number): string {
-  if (weeklyTotal > 0) return 'bg-semantic-success-tint/10';
-  if (weeklyTotal < 0) return 'bg-semantic-danger-tint/10';
-  return '';
-}
-
-function signColor(value: number): string {
-  if (value > 0) return 'text-semantic-success';
-  if (value < 0) return 'text-semantic-danger';
-  return 'text-ink-muted';
-}
 
 interface Props {
   report: WeeklyReport;
@@ -55,6 +43,9 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
     return leaderboard.filter((entry) => hasPlayerOn(entry, leaderboardTeamFilter));
   }, [leaderboard, leaderboardTeamFilter]);
   const isCompleted = tournament.status === 'completed';
+  const won = formatDollarsAndCents(weeklyTotals.won);
+  const lost = formatDollarsAndCents(weeklyTotals.lost);
+  const net = formatDollarsAndCents(weeklyTotals.net);
   const statusBanner = isCompleted
     ? 'Results finalized'
     : 'Tournament in progress — scores are live estimates';
@@ -93,50 +84,53 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
             </tr>
           </thead>
           <tbody className="divide-y divide-hairline-soft">
-            {teams.map((team, i) => (
-              <tr key={team.teamId} className={`hover:bg-surface-card/60 ${rowTint(team.weeklyTotal)}`}>
-                <td className="px-4 py-3 text-ink-soft">{i + 1}</td>
-                <td className="px-4 py-3 font-medium text-ink uppercase">{team.teamName}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-ink-secondary">
-                  {formatDollarsAndCents(team.topTenEarnings)}
-                </td>
-                <td
-                  className={`px-4 py-3 text-right tabular-nums font-semibold ${signColor(team.weeklyTotal)}`}
-                >
-                  {formatDollarsAndCents(team.weeklyTotal)}
-                </td>
-                <td className="px-4 py-3">
-                  {team.golferScores.length === 0 ? (
-                    <span className="text-ink-faint">—</span>
-                  ) : (
-                    team.golferScores.map((g) => {
-                      const golferId = g.golferId;
-                      return (
-                      <span key={`${team.teamId}-${golferId ?? g.golferName}`} className="inline-block mr-3 text-xs">
-                        {onGolferClick && golferId ? (
-                          <button
-                            type="button"
-                            onClick={() => onGolferClick(golferId)}
-                            className="text-ink-secondary hover:underline cursor-pointer bg-transparent border-0 p-0"
-                          >
-                            {g.golferName}
-                          </button>
-                        ) : (
-                          <span className="text-ink-secondary">{g.golferName}</span>
-                        )}{' '}
-                        {g.tied ? <span className="text-ink-soft">T</span> : null}
-                        <span className="text-ink-muted">{g.position ?? '?'}</span>{' '}
-                        <span className="text-semantic-success tabular-nums">{formatDollarsAndCents(g.payout)}</span>
-                        {g.ownershipPct < 100 ? (
-                          <span className="text-ink-soft"> ({g.ownershipPct}%)</span>
-                        ) : null}
-                      </span>
-                      );
-                    })
-                  )}
-                </td>
-              </tr>
-            ))}
+            {teams.map((team, i) => {
+              const weeklyTotal = formatDollarsAndCents(team.weeklyTotal);
+              return (
+                <tr key={team.teamId} className="hover:bg-surface-card/60">
+                  <td className="px-4 py-3 text-ink-soft tabular-nums">{i + 1}</td>
+                  <td className="px-4 py-3 font-medium text-ink uppercase">{team.teamName}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-ink-secondary">
+                    {formatDollarsAndCents(team.topTenEarnings)}
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-right tabular-nums font-semibold ${moneyToneClass(weeklyTotal)}`}
+                  >
+                    {weeklyTotal}
+                  </td>
+                  <td className="px-4 py-3">
+                    {team.golferScores.length === 0 ? (
+                      <span className="text-ink-faint">—</span>
+                    ) : (
+                      team.golferScores.map((g) => {
+                        const golferId = g.golferId;
+                        return (
+                        <span key={`${team.teamId}-${golferId ?? g.golferName}`} className="inline-block mr-3 text-xs">
+                          {onGolferClick && golferId ? (
+                            <button
+                              type="button"
+                              onClick={() => onGolferClick(golferId)}
+                              className="text-ink-secondary hover:underline cursor-pointer bg-transparent border-0 p-0"
+                            >
+                              {g.golferName}
+                            </button>
+                          ) : (
+                            <span className="text-ink-secondary">{g.golferName}</span>
+                          )}{' '}
+                          {g.tied ? <span className="text-ink-soft">T</span> : null}
+                          <span className="text-ink-muted">{g.position ?? '?'}</span>{' '}
+                          <span className="tabular-nums">{formatDollarsAndCents(g.payout)}</span>
+                          {g.ownershipPct < 100 ? (
+                            <span className="text-ink-soft"> ({g.ownershipPct}%)</span>
+                          ) : null}
+                        </span>
+                        );
+                      })
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -144,20 +138,20 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
       <div className="flex flex-wrap gap-3 text-sm">
         <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
           <span className="text-ink-soft">Won</span>
-          <span className="font-semibold text-semantic-success tabular-nums">
-            {formatDollarsAndCents(weeklyTotals.won)}
+          <span className={`font-semibold tabular-nums ${moneyToneClass(won)}`}>
+            {won}
           </span>
         </div>
         <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
           <span className="text-ink-soft">Lost</span>
-          <span className="font-semibold text-semantic-danger tabular-nums">
-            {formatDollarsAndCents(weeklyTotals.lost)}
+          <span className={`font-semibold tabular-nums ${moneyToneClass(lost)}`}>
+            {lost}
           </span>
         </div>
         <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
           <span className="text-ink-soft">Net</span>
-          <span className={`font-semibold tabular-nums ${signColor(weeklyTotals.net)}`}>
-            {formatDollarsAndCents(weeklyTotals.net)}
+          <span className={`font-semibold tabular-nums ${moneyToneClass(net)}`}>
+            {net}
           </span>
         </div>
       </div>
@@ -202,7 +196,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
                       key={playerNames(entry)}
                       className={entry.rostered ? 'bg-semantic-success-tint/10' : ''}
                     >
-                      <td className="px-3 py-2 text-ink-muted">{entry.position}</td>
+                      <td className="px-3 py-2 text-ink-muted tabular-nums">{entry.position}</td>
                       <td className="px-3 py-2 text-ink">{playerNames(entry)}</td>
                       <td
                         className={`px-3 py-2 text-xs ${entry.rostered ? 'text-semantic-success uppercase' : 'text-ink-faint'}`}

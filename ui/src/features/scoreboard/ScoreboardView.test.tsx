@@ -369,4 +369,31 @@ describe('ScoreboardView', () => {
     expect(screen.getByText('undrafted / undrafted')).toHaveClass('text-ink-faint');
     expect(screen.getByText('undrafted / undrafted').closest('tr')).not.toHaveClass('bg-semantic-success-tint/10');
   });
+
+  it('colours Weekly +/- by the sign its cents print, and leaves the row and its other money plain', () => {
+    render(
+      <ScoreboardView
+        report={report({
+          teams: [
+            team({ teamId: 't-1', teamName: 'Aces', weeklyTotal: 0.4 }),
+            team({ teamId: 't-2', teamName: 'Birdies', weeklyTotal: -0.01 }),
+          ],
+        })}
+      />,
+    );
+    const aces = screen.getByRole('row', { name: /Aces/ });
+    const birdies = screen.getByRole('row', { name: /Birdies/ });
+    expect(within(aces).getByText('+$0.40')).toHaveClass('text-semantic-success');
+    expect(within(birdies).getByText('\u2212$0.01')).toHaveClass('text-semantic-danger');
+    expect(aces.className).not.toMatch(/bg-semantic-/);
+    expect(birdies.className).not.toMatch(/bg-semantic-/);
+    expect(within(aces).getByText('+$50.00').className).not.toMatch(/text-semantic-|text-ink-soft/);
+  });
+
+  it('tones the won, lost and net chips by the sign they print, a zero Won gray', () => {
+    render(<ScoreboardView report={report({ weeklyTotals: { won: 0, lost: -66, net: -66 } })} />);
+    expect(screen.getByText('Won').nextSibling).toHaveClass('text-ink-soft');
+    expect(screen.getByText('Lost').nextSibling).toHaveClass('text-semantic-danger');
+    expect(screen.getByText('Net').nextSibling).toHaveClass('text-semantic-danger');
+  });
 });

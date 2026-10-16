@@ -283,4 +283,42 @@ describe('WeeklyReportView', () => {
     expect(screen.queryByRole('button', { name: /NotClickable/ })).not.toBeInTheDocument();
     expect(screen.getByText(/NotClickable/)).toBeInTheDocument();
   });
+
+  it('colours only TOTAL CASH by sign, and leaves the rows above it in the table ink', () => {
+    render(
+      <WeeklyReportView
+        report={report({
+          sideBetRules: TWENTY_ON_ROUNDS_TWO_AND_THREE,
+          teams: [team(), team({ teamId: 't-2', teamName: 'Birdies', totalCash: -0.4 })],
+        })}
+      />,
+    );
+    const summaryRow = (label: string): HTMLElement => {
+      const found = screen
+        .getAllByRole('row')
+        .find((r) => within(r).queryAllByRole('cell')[0]?.textContent === label);
+      if (!found) throw new Error(`no summary row labelled ${label}`);
+      return found;
+    };
+    const totalCash = summaryRow('TOTALCASH');
+    expect(within(totalCash).getByText('+$170')).toHaveClass('text-semantic-success');
+    expect(within(totalCash).getByText('$0')).toHaveClass('text-ink-soft');
+    const plainAmounts: readonly [string, string][] = [
+      ['TOP TENS', '+$18.00'],
+      ['**WEEKLY', '+$25.00'],
+      ['SUBTOTAL', '+$125.00'],
+      ['ROWS 2-3', '+$45.00'],
+    ];
+    for (const [label, amount] of plainAmounts) {
+      const cell = within(summaryRow(label)).getAllByText(amount)[0]?.closest('td');
+      expect(cell?.className).not.toMatch(/text-semantic-|text-ink-soft/);
+    }
+  });
+
+  it('tones the won, lost and net chips by the sign they print, a zero Won gray', () => {
+    render(<WeeklyReportView report={report({ cashTotals: { won: 0, lost: -2, net: -2 } })} />);
+    expect(screen.getByText('Won').nextSibling).toHaveClass('text-ink-soft');
+    expect(screen.getByText('Lost').nextSibling).toHaveClass('text-semantic-danger');
+    expect(screen.getByText('Net').nextSibling).toHaveClass('text-semantic-danger');
+  });
 });

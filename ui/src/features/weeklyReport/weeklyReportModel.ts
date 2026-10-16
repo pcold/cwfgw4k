@@ -14,12 +14,6 @@ export function teamCellsByRound(team: ReportTeamColumn): Map<number, ReportCell
   return byRound;
 }
 
-export function signTextClass(value: number): string {
-  if (value > 0) return 'text-semantic-success';
-  if (value < 0) return 'text-semantic-danger';
-  return 'text-ink-soft';
-}
-
 export function roundCellBg(hasEarnings: boolean, isSideBetWinner: boolean): string {
   if (isSideBetWinner) return 'bg-side-bet-winner';
   if (hasEarnings) return 'bg-gold-bright';

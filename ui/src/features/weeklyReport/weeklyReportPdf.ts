@@ -7,7 +7,7 @@ import type {
   StandingsEntry,
   WeeklyReport,
 } from '@/shared/api/types';
-import { formatUnsignedDollarsAndCents } from '@/shared/util/money';
+import { formatUnsignedDollarsAndCents, moneyTone, type MoneyTone } from '@/shared/util/money';
 import {
   ROUNDS,
   isSeasonReport,
@@ -64,11 +64,11 @@ function roundCell(
   return { content: cellContent(cell, showSeasonFooter), styles };
 }
 
-function signColor(value: number): RGB {
-  if (value > 0) return COLOR_POSITIVE;
-  if (value < 0) return COLOR_NEGATIVE;
-  return COLOR_MUTED;
-}
+const MONEY_TONE_COLOR: Readonly<Record<MoneyTone, RGB>> = {
+  up: COLOR_POSITIVE,
+  down: COLOR_NEGATIVE,
+  even: COLOR_MUTED,
+};
 
 function summaryLabelCell(label: string, bg: RGB, bold: boolean): CellDef {
   return {
@@ -103,7 +103,7 @@ function subtotalCell(team: ReportTeamColumn): CellDef {
     content: `${formatPdfDollarsAndCents(team.subtotal)}\n(${formatPdfDollarsAndCents(team.topTenMoney)})`,
     styles: {
       fillColor: COLOR_TOTAL_BG,
-      textColor: signColor(team.subtotal),
+      textColor: COLOR_BLACK,
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
@@ -282,19 +282,14 @@ export function buildWeeklyReportPdf(report: WeeklyReport): jsPDF {
   body.push([
     summaryLabelCell('TOP TENS', COLOR_HIGHLIGHT_BG, true),
     ...teams.map((t) =>
-      summaryValueCell(
-        formatPdfDollarsAndCents(t.topTenEarnings),
-        COLOR_HIGHLIGHT_BG,
-        t.topTenEarnings > 0 ? COLOR_POSITIVE : COLOR_MUTED,
-        true,
-      ),
+      summaryValueCell(formatPdfDollarsAndCents(t.topTenEarnings), COLOR_HIGHLIGHT_BG, COLOR_BLACK, true),
     ),
   ]);
 
   body.push([
     summaryLabelCell(seasonMode ? '*SEASON*' : '*WEEKLY TOTAL*', COLOR_HIGHLIGHT_BG, true),
     ...teams.map((t) =>
-      summaryValueCell(formatPdfDollarsAndCents(t.weeklyTotal), COLOR_HIGHLIGHT_BG, signColor(t.weeklyTotal), true),
+      summaryValueCell(formatPdfDollarsAndCents(t.weeklyTotal), COLOR_HIGHLIGHT_BG, COLOR_BLACK, true),
     ),
   ]);
 
@@ -313,15 +308,16 @@ export function buildWeeklyReportPdf(report: WeeklyReport): jsPDF {
   body.push([
     summaryLabelCell(sideBetRowLabel(report.sideBetRules), COLOR_WHITE, false),
     ...teams.map((t) =>
-      summaryValueCell(formatPdfDollarsAndCents(t.sideBets), COLOR_WHITE, signColor(t.sideBets), false),
+      summaryValueCell(formatPdfDollarsAndCents(t.sideBets), COLOR_WHITE, COLOR_BLACK, false),
     ),
   ]);
 
   body.push([
     summaryLabelCell('ONGOING\nTOTAL CASH', COLOR_TOTAL_BG, true),
-    ...teams.map((t) =>
-      summaryValueCell(formatPdfWholeDollars(t.totalCash), COLOR_TOTAL_BG, signColor(t.totalCash), true),
-    ),
+    ...teams.map((t) => {
+      const totalCash = formatPdfWholeDollars(t.totalCash);
+      return summaryValueCell(totalCash, COLOR_TOTAL_BG, MONEY_TONE_COLOR[moneyTone(totalCash)], true);
+    }),
   ]);
 
   autoTable(doc, {

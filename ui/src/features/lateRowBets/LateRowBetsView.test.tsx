@@ -146,4 +146,22 @@ describe('LateRowBetsView', () => {
     expect(screen.queryByText(/per team in/)).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /Total Late Row Bets/i })).not.toBeInTheDocument();
   });
+
+  it("colours the all-rounds total by sign, and leaves each round's late row bet in the table ink", () => {
+    render(<LateRowBetsView report={report()} />);
+    const totalsSection = screen.getByRole('heading', { name: /Total Late Row Bets/i }).parentElement;
+    if (!totalsSection) throw new Error('the totals heading has no section around it');
+    expect(within(totalsSection).getByText('+$80.00')).toHaveClass('text-semantic-success');
+    expect(within(totalsSection).getByText('\u2212$60.00')).toHaveClass('text-semantic-danger');
+    const roundTwo = screen.getByRole('heading', { name: 'Round 2' }).parentElement;
+    if (!roundTwo) throw new Error('the round heading has no section around it');
+    expect(within(roundTwo).getByText('+$40.00').className).not.toMatch(/text-semantic-|text-ink-soft/);
+  });
+
+  it('tones the won, lost and net chips by the sign they print, a zero Won gray', () => {
+    render(<LateRowBetsView report={report({ sideBetTotals: { won: 0, lost: -2, net: -2 } })} />);
+    expect(screen.getByText('Won').nextSibling).toHaveClass('text-ink-soft');
+    expect(screen.getByText('Lost').nextSibling).toHaveClass('text-semantic-danger');
+    expect(screen.getByText('Net').nextSibling).toHaveClass('text-semantic-danger');
+  });
 });
