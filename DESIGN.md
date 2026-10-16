@@ -205,7 +205,7 @@ The weekly report and the rosters page are laid out like the league's spreadshee
 **Key characteristics:**
 - Dark canvas, no light mode. `index.css` sets `{colors.canvas}` and `{colors.ink}` on `body`.
 - Gray ladder for depth: canvas → card → raised. Only the modal and the error screen cast a shadow.
-- Small type: `text-sm` (14px) body, `text-xs` (12px) for helper text, table heads and the report grids. Inputs and selects are the exception at `text-base` (16px), because iOS zooms the page into a smaller one.
+- Small type: `text-sm` (14px) body, `text-xs` (12px) for helper text, table heads and the report grids. Form fields, toolbar selects and the league/season selects are the exception at `text-base` (16px), because iOS zooms the page into a smaller control. The compact admin inputs, the roster-match select and the column-header filter are still below it.
 - Uppercase `tracking-wider` labels mark structure: table heads, card headings, the league/season picker's labels.
 - Tabular numbers (`tabular-nums` or `font-mono`) on every money column.
 - Corners are `rounded` (4px) on controls and chips, `rounded-lg` (8px) on cards and the modal. Nothing is pill-shaped.
@@ -290,7 +290,7 @@ Each family takes only the rungs it uses. `-tint` is a wash, always at an opacit
 | `{typography.card-heading}` | 14px | 600 | 0.05em, uppercase | `text-sm font-semibold uppercase tracking-wider text-ink-label` | Heading inside a card |
 | `{typography.column-header}` | 12px | 400 | 0.05em, uppercase | `text-xs uppercase tracking-wider` | Table heads, the picker's labels |
 | `{typography.body}` | 14px | 400 | 0 | `text-sm` | Tables, running text |
-| `{typography.control}` | 16px | 400 | 0 | `text-base` | Every input and select |
+| `{typography.control}` | 16px | 400 | 0 | `text-base` | Form fields, toolbar selects, the league/season selects |
 | `{typography.caption}` | 12px | 400 | 0 | `text-xs` | Field labels, helper text, field errors |
 | `{typography.button}` | 14px | 500 | 0 | `text-sm font-medium` | Standard buttons |
 | `{typography.button-compact}` | 12px | 500 | 0 | `text-xs font-medium` | Buttons in a page's header row or a panel row |
@@ -368,7 +368,7 @@ Compact buttons in a header row or panel row (`FINALIZE_BUTTON_CLASS` and `LINKS
 ### Form fields — `ui/src/shared/components/formFields.tsx`
 `FIELD_CLASS` is `bg-surface-raised border border-control-border rounded px-3 py-2 text-base w-full`, built on `CONTROL_CLASS` and shared by `TextField`, `DateField` and `SelectField`. `FieldShell` puts a `block text-xs text-ink-muted mb-1` label above the control and a `mt-1 text-semantic-danger text-xs` error, with `role="alert"`, below it. Size a field with the `width` prop, not by appending a width class.
 
-A select in a page's toolbar rather than a form — the scoreboard's tournament, player rankings' Through — is `PickerRow.tsx`: an uppercase label, then the select one step down on `bg-surface-card` over the same `CONTROL_CLASS`, the outline button's surface, then any trailing controls. The row is `flex-wrap`; below `sm:` the select is `w-full min-w-0 truncate`, so a long tournament name truncates rather than scroll the page sideways. The player-links panel's inline controls are a compact `px-2 py-1` cut of `FIELD_CLASS`.
+A select in a page's toolbar rather than a form — the scoreboard's tournament, player rankings' Through — is `PickerRow.tsx`: an uppercase label, then the select one step down on `bg-surface-card` over the same `CONTROL_CLASS`, the outline button's surface, then any trailing controls. The row is `flex-wrap`; below `sm:` the select is `w-full min-w-0 truncate`, so a long tournament name truncates rather than scroll the page sideways. The admin payout and schedule-multiplier inputs are a compact hand-rolled `px-2 py-1 text-sm`, below 16px.
 
 A table head that filters its column uses `ColumnHeaderFilter.tsx`: a transparent select that inherits the head's colour and turns `{colors.ink-label}` on hover or focus.
 
@@ -410,7 +410,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 - Name a colour by its token: `text-ink-muted`, `bg-surface-card`. A new role gets a token in `ui/src/index.css` and an entry in this file's `colors:` in the same change, plus a row in the contrast table when it colours text.
 - Colour money by sign — success, danger, or a neutral ink for zero — and set it in `tabular-nums` or `font-mono`.
 - Open a data page with the page header: a primary-ink title over a muted caption, underlined in `{colors.hairline}`.
-- Use `FIELD_CLASS` (through `TextField`, `DateField`, `SelectField`, or `FieldShell` for anything else) for every input and select.
+- Use `FIELD_CLASS` (through `TextField`, `DateField`, `SelectField`, or `FieldShell` for anything else) for every form input and select, and `PickerRow` for a page toolbar's select; both build on `CONTROL_CLASS`.
 - Put a wide table in `overflow-x-auto -mx-3 sm:mx-0` with a `min-w-*`, so a phone scrolls the table rather than the page.
 
 ### Don't
@@ -440,6 +440,7 @@ Use these when building UI here:
 - **A primary button:** `bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium`.
 - **A destructive button:** `bg-semantic-danger-fill hover:bg-semantic-danger-fill-hover disabled:bg-disabled text-on-fill px-4 py-2 rounded text-sm font-medium`.
 - **A field:** `TextField` / `SelectField` / `DateField` from `@/shared/components/formFields`; never a hand-rolled input class.
+- **A toolbar select:** `PickerRow` from `@/shared/components/PickerRow`, with the row's other controls as its children.
 - **A page header:** `<header className="border-b border-hairline pb-3">` with `<h2 className="text-xl font-semibold text-primary-ink">` and `<p className="text-xs text-ink-muted">`.
 - **A table head:** `bg-surface-card text-ink-label text-xs uppercase tracking-wider`, body `divide-y divide-hairline-soft`.
 - **A money value:** `font-semibold tabular-nums` plus `text-semantic-success` / `text-semantic-danger` / a neutral ink by sign.
