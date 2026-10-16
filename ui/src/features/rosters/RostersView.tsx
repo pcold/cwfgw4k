@@ -37,7 +37,7 @@ function RostersView({ teams, sideBetRounds, onGolferClick }: Props): ReactNode 
   if (teams.length === 0) {
     return (
       <p className="text-ink-muted text-center py-12">
-        No rosters uploaded yet. Use the Admin tab to upload team rosters.
+        No rosters uploaded yet. Use the Admin link at the bottom of the page to upload team rosters.
       </p>
     );
   }

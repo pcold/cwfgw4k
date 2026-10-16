@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { NavLink, Route, Routes, useLocation } from 'react-router';
+import { Link, NavLink, Route, Routes, useLocation } from 'react-router';
 import WeeklyReportPage from '@/features/weeklyReport/WeeklyReportPage';
 import RankingsPage from '@/features/rankings/RankingsPage';
 import PlayerRankingsPage from '@/features/playerRankings/PlayerRankingsPage';
@@ -14,13 +14,12 @@ import { AuthProvider } from '@/features/auth/AuthContext';
 
 const NAV_ITEMS: Array<{ to: string; label: string }> = [
   { to: '/scoreboard', label: 'Scoreboard' },
-  { to: '/report', label: 'Weekly Report' },
-  { to: '/rankings', label: 'Team Standings' },
-  { to: '/player-rankings', label: 'Player Rankings' },
+  { to: '/report', label: 'Report' },
+  { to: '/rankings', label: 'Standings' },
+  { to: '/player-rankings', label: 'Players' },
   { to: '/rosters', label: 'Rosters' },
-  { to: '/late-row-bets', label: 'Late Row Bets' },
+  { to: '/late-row-bets', label: 'Bets' },
   { to: '/rules', label: 'Rules' },
-  { to: '/admin', label: 'Admin' },
 ];
 
 const MENU_BUTTON_CLASS =
@@ -36,6 +35,18 @@ const mobileLinkClass = ({ isActive }: { isActive: boolean }): string =>
   `block px-4 py-3 rounded text-base font-medium transition ${
     isActive ? 'bg-surface-raised text-ink-strong' : 'text-ink-secondary hover:bg-surface-raised/50 hover:text-ink-strong'
   }`;
+
+function SiteFooter(): ReactNode {
+  return (
+    <footer className="border-t border-hairline bg-surface-card">
+      <div className="max-w-6xl mx-auto px-4 py-3 flex justify-end">
+        <Link to="/admin" className="text-sm font-medium text-ink-muted hover:text-ink-strong">
+          Admin
+        </Link>
+      </div>
+    </footer>
+  );
+}
 
 function App(): ReactNode {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -120,6 +131,8 @@ function App(): ReactNode {
             <Route path="/admin" element={<AdminPage />} />
           </Routes>
         </main>
+
+        <SiteFooter />
       </div>
     </LeagueSeasonProvider>
     </AuthProvider>

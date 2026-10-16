@@ -35,6 +35,7 @@ describe('RostersView', () => {
   it('shows an empty state when there are no teams', () => {
     render(<RostersView teams={[]} sideBetRounds={[]} />);
     expect(screen.getByText(/No rosters uploaded yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/Use the Admin link at the bottom of the page/)).toBeInTheDocument();
   });
 
   it('renders team columns in the order provided', () => {
