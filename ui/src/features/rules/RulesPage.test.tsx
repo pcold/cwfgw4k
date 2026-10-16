@@ -110,6 +110,7 @@ describe('RulesPage', () => {
       screen.getByRole('heading', { name: /Side Bets \(Rounds 6, 7\)/i }),
     ).toBeInTheDocument();
     expect(screen.getByText('$20.00')).toBeInTheDocument();
+    expect(screen.getByText('$2.00')).toBeInTheDocument();
   });
 
   it('lists every tournament in the season schedule with multiplier badges', async () => {
