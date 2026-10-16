@@ -21,7 +21,7 @@ const wholeDollars = new Intl.NumberFormat('en-US', {
 });
 
 /**
- * Display only: the server keeps exact amounts, so a column of these can miss its total by a cent.
+ * Display only: the server keeps exact amounts, so a rounded column can visibly miss its total.
  * Season totals take {@link formatWholeDollars} instead.
  */
 export function formatDollarsAndCents(value: number): string {
