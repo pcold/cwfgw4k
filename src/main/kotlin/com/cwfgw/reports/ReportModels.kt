@@ -262,6 +262,7 @@ data class TeamRanking(
 /** Full rankings response — teams plus the column headers for the series chart. */
 @Serializable
 data class Rankings(
+    /** Ranked by [TeamRanking.totalCash] descending; the UI numbers the standings in the order they arrive. */
     val teams: List<TeamRanking>,
     val weeks: List<String>,
     val tournamentNames: List<String>,
@@ -271,7 +272,10 @@ data class Rankings(
      * itself folds, so the UI's toggle cannot offer what the overlay would refuse. [live] says whether ESPN answered.
      */
     val liveEligible: Boolean = false,
-)
+) {
+    /** A body property for the reason [WeeklyReport] gives its totals. */
+    val cashTotals: WonLostTotals = WonLostTotals.over(teams.map(TeamRanking::totalCash))
+}
 
 /** One top-10 finish in a golfer's season history. */
 @Serializable
