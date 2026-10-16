@@ -7,6 +7,7 @@ import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
+import PickerRow from '@/shared/components/PickerRow';
 import { mutationError } from '@/shared/util/mutationError';
 import {
   defaultScoreboardSelection,
@@ -125,27 +126,15 @@ function ScoreboardPage(): ReactNode {
         }
         return (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <label
-                htmlFor="tournament-select"
-                className="text-xs text-ink-muted uppercase tracking-wider"
-              >
-                Tournament
-              </label>
-              <select
-                id="tournament-select"
-                className="bg-surface-card border border-control-border rounded px-3 py-2 text-sm"
-                value={tournamentId}
-                onChange={(e) => setUserTournamentId(e.target.value)}
-              >
-                {loadedTournaments.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {tournamentLabel(t)}
-                  </option>
-                ))}
-              </select>
+            <PickerRow
+              id="tournament-select"
+              label="Tournament"
+              value={tournamentId}
+              options={loadedTournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) }))}
+              onChange={setUserTournamentId}
+            >
               <LiveOverlayCheckbox state={liveOverlay} id="scoreboard-live-overlay" />
-            </div>
+            </PickerRow>
 
             {finalized ? <FinalizeWarnings finalized={finalized} /> : null}
             <QueryState query={reportQuery} label="scoreboard">

@@ -368,7 +368,7 @@ Compact buttons in a header row or panel row (`FINALIZE_BUTTON_CLASS` and `LINKS
 ### Form fields — `ui/src/shared/components/formFields.tsx`
 `FIELD_CLASS` is `bg-surface-raised border border-control-border rounded px-3 py-2 text-base w-full`, built on `CONTROL_CLASS` and shared by `TextField`, `DateField` and `SelectField`. `FieldShell` puts a `block text-xs text-ink-muted mb-1` label above the control and a `mt-1 text-semantic-danger text-xs` error, with `role="alert"`, below it. Size a field with the `width` prop, not by appending a width class.
 
-A select in a page's toolbar rather than a form — the scoreboard's tournament, player rankings' Through — sits one step down on `bg-surface-card border border-control-border rounded px-3 py-2 text-sm`, the outline button's surface. The player-links panel's inline controls are a compact `px-2 py-1` cut of `FIELD_CLASS`.
+A select in a page's toolbar rather than a form — the scoreboard's tournament, player rankings' Through — is `PickerRow.tsx`: an uppercase label, then the select one step down on `bg-surface-card` over the same `CONTROL_CLASS`, the outline button's surface, then any trailing controls. The row is `flex-wrap`; below `sm:` the select is `w-full min-w-0 truncate`, so a long tournament name truncates rather than scroll the page sideways. The player-links panel's inline controls are a compact `px-2 py-1` cut of `FIELD_CLASS`.
 
 A table head that filters its column uses `ColumnHeaderFilter.tsx`: a transparent select that inherits the head's colour and turns `{colors.ink-label}` on hover or focus.
 
