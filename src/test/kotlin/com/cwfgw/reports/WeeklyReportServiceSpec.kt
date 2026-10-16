@@ -347,6 +347,66 @@ private fun mastersInPlayAfterFinalizedSony(): Fixture {
     )
 }
 
+/** A completed Masters that pays WOMBLE's pick 18 and BROWN's 12, so the standings reverse the teams' own order. */
+private fun mastersWonByTheLastTeamListed(): Fixture {
+    val womblePick = golferFixture("301", "Scottie", "Scheffler")
+    val brownPick = golferFixture("302", "Rory", "McIlroy")
+    return Fixture(
+        initialTournaments = listOf(tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")),
+        initialTeams = listOf(TEAM_A, TEAM_B, TEAM_C),
+        initialGolfers = listOf(womblePick, brownPick),
+        initialRosters =
+            listOf(
+                rosterEntry(TEAM_B.id, womblePick.id, draftRound = 1),
+                rosterEntry(TEAM_A.id, brownPick.id, draftRound = 1),
+            ),
+        initialScores =
+            listOf(
+                scoreFixture(TEAM_B.id, MASTERS_ID, womblePick.id, BigDecimal(18), position = 1),
+                scoreFixture(TEAM_A.id, MASTERS_ID, brownPick.id, BigDecimal(12), position = 2),
+            ),
+    )
+}
+
+/**
+ * A finalized Sony that paid BROWN 18, then a Masters in play whose top two on ESPN are both WOMBLE's,
+ * enough to turn BROWN's lead into a loss once overlaid.
+ */
+private fun sonyLeadOvertakenLive(): Fixture {
+    val brownPick = golferFixture("311", "Scottie", "Scheffler")
+    val wombleLeader = golferFixture("312", "Rory", "McIlroy").copy(pgaPlayerId = "espn-p1")
+    val wombleRunnerUp = golferFixture("313", "Xander", "Schauffele").copy(pgaPlayerId = "espn-p2")
+    val mastersInProgress =
+        tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09", week = "15")
+            .copy(status = TournamentStatus.InProgress, pgaTournamentId = "espn-masters")
+    val liveField =
+        EspnTournament(
+            espnId = "espn-masters",
+            name = "The Masters",
+            completed = false,
+            competitors =
+                listOf(
+                    espnRow(espnId = "espn-p1", name = "Rory McIlroy", position = 1),
+                    espnRow(espnId = "espn-p2", name = "Xander Schauffele", position = 2),
+                ),
+            isTeamEvent = false,
+        )
+    return Fixture(
+        initialTournaments =
+            listOf(tournamentFixture(SONY_ID, "Sony Open", "2026-01-15", week = "2"), mastersInProgress),
+        initialTeams = listOf(TEAM_A, TEAM_B),
+        initialGolfers = listOf(brownPick, wombleLeader, wombleRunnerUp),
+        initialRosters =
+            listOf(
+                rosterEntry(TEAM_A.id, brownPick.id, draftRound = 1),
+                rosterEntry(TEAM_B.id, wombleLeader.id, draftRound = 1),
+                rosterEntry(TEAM_B.id, wombleRunnerUp.id, draftRound = 2),
+            ),
+        initialScores = listOf(scoreFixture(TEAM_A.id, SONY_ID, brownPick.id, BigDecimal(18), position = 1)),
+        espnByDate = mapOf(LocalDate.parse("2026-04-09") to listOf(liveField)),
+    )
+}
+
 /**
  * A completed Zurich in which [pairs] two-man teams share first place. BROWN and WOMBLE each roster one
  * partner of the first pair in round 1.
@@ -1060,6 +1120,47 @@ class WeeklyReportServiceSpec : FunSpec({
 
         rankings.tournamentNames shouldContainExactly listOf("Sony Open")
         rankings.teams.single { it.teamId == TEAM_A.id }.subtotal.compareTo(BigDecimal(18)) shouldBe 0
+    }
+
+    test("getRankings orders teams by totalCash descending, not by the order the season lists them") {
+        val rankings = mastersWonByTheLastTeamListed().service.getRankings(SEASON_ID).orFail()
+
+        rankings.teams.map { it.teamName } shouldContainExactly
+            listOf(TEAM_B.teamName, TEAM_A.teamName, TEAM_C.teamName)
+        rankings.teams.map { it.totalCash.toInt() } shouldContainExactly listOf(24, 6, -30)
+    }
+
+    test("getRankings totals its teams' totalCash into won, lost and net") {
+        val rankings = mastersWonByTheLastTeamListed().service.getRankings(SEASON_ID).orFail()
+
+        rankings.cashTotals.won.compareTo(BigDecimal(30)) shouldBe 0
+        rankings.cashTotals.lost.compareTo(BigDecimal(-30)) shouldBe 0
+        rankings.cashTotals.net.signum() shouldBe 0
+    }
+
+    test("getRankings with live=true orders teams by their overlaid totalCash") {
+        val fixture = sonyLeadOvertakenLive()
+
+        val finalized = fixture.service.getRankings(SEASON_ID, throughTournamentId = MASTERS_ID).orFail()
+        val overlaid = fixture.service.getRankings(SEASON_ID, throughTournamentId = MASTERS_ID, live = true).orFail()
+
+        finalized.teams.map { it.teamName } shouldContainExactly listOf(TEAM_A.teamName, TEAM_B.teamName)
+        overlaid.teams.map { it.teamName } shouldContainExactly listOf(TEAM_B.teamName, TEAM_A.teamName)
+        overlaid.teams.map { it.totalCash.toInt() } shouldContainExactly listOf(12, -12)
+    }
+
+    test("getRankings with live=true totals the overlaid totalCash, not the finalized") {
+        val fixture = sonyLeadOvertakenLive()
+
+        val finalized = fixture.service.getRankings(SEASON_ID, throughTournamentId = MASTERS_ID).orFail()
+        val overlaid = fixture.service.getRankings(SEASON_ID, throughTournamentId = MASTERS_ID, live = true).orFail()
+
+        finalized.cashTotals.won.compareTo(BigDecimal(18)) shouldBe 0
+        finalized.cashTotals.lost.compareTo(BigDecimal(-18)) shouldBe 0
+        overlaid.live shouldBe true
+        overlaid.cashTotals.won.compareTo(BigDecimal(12)) shouldBe 0
+        overlaid.cashTotals.lost.compareTo(BigDecimal(-12)) shouldBe 0
+        overlaid.cashTotals.net.signum() shouldBe 0
     }
 
     // ========== getGolferHistory ==========

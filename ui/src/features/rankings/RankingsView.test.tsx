@@ -35,17 +35,21 @@ function buildRankings(overrides: Partial<Rankings> = {}): Rankings {
     tournamentNames: ['A', 'B', 'C'],
     live: false,
     liveEligible: false,
+    cashTotals: { won: 185, lost: -35, net: 150 },
     ...overrides,
   };
 }
 
 describe('RankingsView', () => {
-  it('sorts teams by totalCash descending', () => {
+  it('numbers the teams in the order the server sent them, without re-sorting by totalCash', () => {
     render(<RankingsView rankings={buildRankings()} />);
     const table = screen.getByRole('table');
     const rows = within(table).getAllByRole('row').slice(1); // drop header row
-    const names = rows.map((row) => within(row).getAllByRole('cell')[1]?.textContent);
-    expect(names).toEqual(['Aces', 'Cuts', 'Birdies']);
+    const ranked = rows.map((row) => {
+      const [rank, name] = within(row).getAllByRole('cell');
+      return `${rank?.textContent ?? ''} ${name?.textContent ?? ''}`;
+    });
+    expect(ranked).toEqual(['1 Aces', '2 Birdies', '3 Cuts']);
   });
 
   it('renders the cumulative totals chart with a legend entry per team', () => {
@@ -76,12 +80,12 @@ describe('RankingsView', () => {
     expect(within(row).getByText('+$1,082')).toBeInTheDocument();
   });
 
-  it('computes the zero-sum won/lost/net summary', () => {
-    render(<RankingsView rankings={buildRankings()} />);
-    // Won = 150 + 35 = 185, Lost = -35, Net = 150
-    expect(screen.getByText('Won').nextSibling).toHaveTextContent(/^\+\$185$/);
-    expect(screen.getByText('Lost').nextSibling).toHaveTextContent(/^\u2212\$35$/);
-    expect(screen.getByText('Net').nextSibling).toHaveTextContent(/^\+\$150$/);
+  it('shows the won, lost and net the server totalled, not a sum of the team rows', () => {
+    const cashTotals = { won: 1234.4, lost: -987.6, net: 246.8 };
+    render(<RankingsView rankings={buildRankings({ cashTotals })} />);
+    expect(screen.getByText('Won').nextSibling).toHaveTextContent(/^\+\$1,234$/);
+    expect(screen.getByText('Lost').nextSibling).toHaveTextContent(/^\u2212\$988$/);
+    expect(screen.getByText('Net').nextSibling).toHaveTextContent(/^\+\$247$/);
   });
 
   it('surfaces the live overlay indicator when enabled', () => {
@@ -112,7 +116,8 @@ describe('RankingsView', () => {
   it('mutes a Total Cash that rounds to $0, and tones the summary chips by the sign they print', () => {
     const [aces, ...rest] = buildRankings().teams;
     if (!aces) throw new Error('fixture has no first team');
-    render(<RankingsView rankings={buildRankings({ teams: [{ ...aces, totalCash: -0.4 }, ...rest] })} />);
+    const cashTotals = { won: 35, lost: -35.4, net: -0.4 };
+    render(<RankingsView rankings={buildRankings({ teams: [{ ...aces, totalCash: -0.4 }, ...rest], cashTotals })} />);
     expect(within(screen.getByRole('row', { name: /Aces/ })).getByText('$0')).toHaveClass('text-ink-soft');
     expect(screen.getByText('Won').nextSibling).toHaveClass('text-semantic-success');
     expect(screen.getByText('Lost').nextSibling).toHaveClass('text-semantic-danger');

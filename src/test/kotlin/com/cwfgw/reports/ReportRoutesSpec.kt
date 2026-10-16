@@ -748,6 +748,24 @@ class ReportRoutesSpec : FunSpec({
         }
     }
 
+    test("GET /api/v1/seasons/{id}/rankings puts the cash totals on the wire") {
+        val brownOutEarnsWomble =
+            reportFixture(
+                initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers =
+                    listOf(golferRow(SCOTTIE_ID, "Scottie", "Scheffler"), golferRow(RORY_ID, "Rory", "McIlroy")),
+                initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, 5), rosterRow(TEAM_B, RORY_ID, 5)),
+                initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
+            )
+        apiTest(brownOutEarnsWomble) { client ->
+            val body = client.get("/api/v1/seasons/${SEASON_ID.value}/rankings").bodyAsText()
+
+            // WOMBLE pays BROWN the 18 its pick earned and the default 15 side bet on round 5.
+            wireTotals(body, "cash_totals") shouldBe mapOf("won" to 33.0, "lost" to -33.0, "net" to 0.0)
+        }
+    }
+
     test("GET /api/v1/seasons/{id}/rankings?through= trims the included tournaments") {
         val sony = tournamentRow(SONY_ID, "Sony Open", "2026-01-15")
         val masters = tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
