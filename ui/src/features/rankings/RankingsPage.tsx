@@ -5,6 +5,7 @@ import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
+import PickerRow from '@/shared/components/PickerRow';
 import {
   ALL_TOURNAMENTS,
   defaultReportSelection,
@@ -54,30 +55,22 @@ function RankingsPage(): ReactNode {
     );
   }
 
+  const tournamentOptions = [
+    { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
+    ...tournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
+  ];
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <label
-          htmlFor="rankings-through-tournament"
-          className="text-xs text-ink-muted uppercase tracking-wider"
-        >
-          Through
-        </label>
-        <select
-          id="rankings-through-tournament"
-          className="bg-surface-card border border-control-border rounded px-3 py-2 text-sm"
-          value={throughTournamentId}
-          onChange={(e) => setThroughOverride(e.target.value)}
-        >
-          <option value={ALL_TOURNAMENTS}>All Tournaments</option>
-          {tournaments.map((t) => (
-            <option key={t.id} value={t.id}>
-              {tournamentLabel(t)}
-            </option>
-          ))}
-        </select>
+      <PickerRow
+        id="rankings-through-tournament"
+        label="Through"
+        value={throughTournamentId}
+        options={tournamentOptions}
+        onChange={setThroughOverride}
+      >
         <LiveOverlayCheckbox state={liveOverlay} id="rankings-live-overlay" />
-      </div>
+      </PickerRow>
 
       <QueryState query={rankingsQuery} label="standings">
         {(rankings) => <RankingsView rankings={rankings} />}

@@ -7,10 +7,16 @@ export interface SelectOption {
 }
 
 /**
+ * `text-base`, not the body's `text-sm`: iOS zooms the page into any control under 16px. The surface and
+ * width are left to the caller, since a form field and a toolbar select differ in both.
+ */
+export const CONTROL_CLASS = 'border border-control-border rounded px-3 py-2 text-base';
+
+/**
  * Its `w-full` fills the field's box, so size a field through `width` rather than appending a width
  * here: two unprefixed widths on one control resolve by stylesheet order, not by class order.
  */
-export const FIELD_CLASS = 'bg-surface-raised border border-control-border rounded px-3 py-2 text-sm w-full';
+export const FIELD_CLASS = `bg-surface-raised ${CONTROL_CLASS} w-full`;
 
 interface FieldShellProps {
   readonly id: string;

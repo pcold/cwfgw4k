@@ -6,6 +6,7 @@ import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
+import PickerRow from '@/shared/components/PickerRow';
 import {
   ALL_TOURNAMENTS,
   defaultReportSelection,
@@ -55,33 +56,25 @@ function PlayerRankingsPage(): ReactNode {
     );
   }
 
+  const tournamentOptions = [
+    { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
+    ...tournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
+  ];
+
   return (
     <>
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-xl font-bold">Player Rankings</h2>
-          <div className="flex items-center gap-3">
-            <label
-              htmlFor="player-rankings-through"
-              className="text-xs text-ink-muted uppercase tracking-wider"
-            >
-              Through
-            </label>
-            <select
-              id="player-rankings-through"
-              className="bg-surface-card border border-control-border rounded px-3 py-2 text-sm"
-              value={throughTournamentId}
-              onChange={(e) => setThroughOverride(e.target.value)}
-            >
-              <option value={ALL_TOURNAMENTS}>All Tournaments</option>
-              {tournaments.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {tournamentLabel(t)}
-                </option>
-              ))}
-            </select>
+          <PickerRow
+            id="player-rankings-through"
+            label="Through"
+            value={throughTournamentId}
+            options={tournamentOptions}
+            onChange={setThroughOverride}
+          >
             <LiveOverlayCheckbox state={liveOverlay} id="player-rankings-live-overlay" />
-          </div>
+          </PickerRow>
         </div>
 
         {tournamentsQuery.isError ? (

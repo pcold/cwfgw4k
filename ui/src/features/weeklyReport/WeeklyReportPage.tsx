@@ -6,6 +6,7 @@ import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
+import PickerRow from '@/shared/components/PickerRow';
 import {
   ALL_TOURNAMENTS,
   defaultReportSelection,
@@ -72,28 +73,20 @@ function WeeklyReportPage(): ReactNode {
     );
   }
 
+  const tournamentOptions = [
+    { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
+    ...tournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
+  ];
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <label
-          htmlFor="weekly-report-tournament"
-          className="text-xs text-ink-muted uppercase tracking-wider"
-        >
-          Tournament
-        </label>
-        <select
-          id="weekly-report-tournament"
-          className="bg-surface-card border border-control-border rounded px-3 py-2 text-sm"
-          value={effectiveId}
-          onChange={(e) => setUserTournamentId(e.target.value)}
-        >
-          <option value={ALL_TOURNAMENTS}>All Tournaments</option>
-          {tournaments.map((t) => (
-            <option key={t.id} value={t.id}>
-              {tournamentLabel(t)}
-            </option>
-          ))}
-        </select>
+      <PickerRow
+        id="weekly-report-tournament"
+        label="Tournament"
+        value={effectiveId}
+        options={tournamentOptions}
+        onChange={setUserTournamentId}
+      >
         <button
           type="button"
           disabled={!reportQuery.data || pdfMutation.isPending}
@@ -108,7 +101,7 @@ function WeeklyReportPage(): ReactNode {
           </span>
         ) : null}
         <LiveOverlayCheckbox state={liveOverlay} id="weekly-report-live-overlay" />
-      </div>
+      </PickerRow>
 
       <QueryState query={reportQuery} label="report">
         {(report) => <WeeklyReportView report={report} onGolferClick={setHistoryGolferId} />}

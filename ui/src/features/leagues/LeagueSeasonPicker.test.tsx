@@ -69,4 +69,13 @@ describe('LeagueSeasonPicker', () => {
     });
     expect(await screen.findByRole('option', { name: '2026 Shadow' })).toBeInTheDocument();
   });
+
+  it('sizes both selects at 16px though the bar is 12px, so iOS does not zoom into them', async () => {
+    renderWithProviders(<LeagueSeasonPicker />);
+
+    const leagueSelect = await screen.findByRole('combobox', { name: /League/i });
+    const seasonSelect = screen.getByRole('combobox', { name: /Season/i });
+    expect(leagueSelect).toHaveClass('text-base');
+    expect(seasonSelect).toHaveClass('text-base');
+  });
 });
