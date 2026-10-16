@@ -87,7 +87,7 @@ describe('RulesPage', () => {
     const payoutRows = within(payoutTable).getAllByRole('row').slice(1);
     expect(payoutRows).toHaveLength(10);
     expect(within(nth(payoutRows, 0)).getByText('1st')).toBeInTheDocument();
-    expect(within(nth(payoutRows, 0)).getByText('$18')).toBeInTheDocument();
+    expect(within(nth(payoutRows, 0)).getByText('+$18.00')).toBeInTheDocument();
     expect(within(nth(payoutRows, 9)).getByText('10th')).toBeInTheDocument();
   });
 
@@ -102,14 +102,14 @@ describe('RulesPage', () => {
 
     renderWithProviders(<RulesPage />);
 
-    await screen.findByText('$25');
+    await screen.findByText('+$25.00');
     const payoutTable = screen.getByRole('table');
     const payoutRows = within(payoutTable).getAllByRole('row').slice(1);
     expect(payoutRows).toHaveLength(3);
     expect(
       screen.getByRole('heading', { name: /Side Bets \(Rounds 6, 7\)/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText('$20')).toBeInTheDocument();
+    expect(screen.getByText('+$20.00')).toBeInTheDocument();
   });
 
   it('lists every tournament in the season schedule with multiplier badges', async () => {
@@ -191,7 +191,7 @@ describe('RulesPage', () => {
     expect(
       await screen.findByRole('heading', { name: /Side Bets \(Rounds 5, 6, 7, 8\)/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText('$15')).toBeInTheDocument();
+    expect(screen.getByText('+$15.00')).toBeInTheDocument();
   });
 
   it('says no round carries a side bet for a season with no side-bet rounds, and lists no races', async () => {
