@@ -140,7 +140,7 @@ describe('PlayerRankingsPage', () => {
     const scheffler = within(nth(dataRows, 0)).getAllByRole('cell');
     expect(scheffler[1]).toHaveTextContent('Scottie Scheffler');
     expect(scheffler[2]).toHaveTextContent('2');
-    expect(scheffler[3]).toHaveTextContent('$30');
+    expect(scheffler[3]).toHaveTextContent('+$30.00');
     expect(scheffler[4]).toHaveTextContent('Aces');
     expect(scheffler[5]).toHaveTextContent('1');
 
@@ -170,13 +170,13 @@ describe('PlayerRankingsPage', () => {
     renderWithProviders(<PlayerRankingsPage />);
     await screen.findByText('Scottie Scheffler');
     expect(within(nth(screen.getAllByRole('row'), 1)).getAllByRole('cell')[3]).toHaveTextContent(
-      '$30.00',
+      '+$30.00',
     );
 
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-a');
 
-    await screen.findByText('$18.00');
+    await screen.findByText('+$18.00');
     expect(playerRankingsMock).toHaveBeenCalledWith('sn-1', false, 'tn-a');
   });
 

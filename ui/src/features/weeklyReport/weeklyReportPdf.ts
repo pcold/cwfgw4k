@@ -7,7 +7,7 @@ import type {
   StandingsEntry,
   WeeklyReport,
 } from '@/shared/api/types';
-import { formatMoney } from '@/shared/util/money';
+import { formatUnsignedDollarsAndCents } from '@/shared/util/money';
 import {
   ROUNDS,
   isSeasonReport,
@@ -16,7 +16,13 @@ import {
   sideBetWinnersByRound,
   teamCellsByRound,
 } from './weeklyReportModel';
-import { cellContent, formatDateRange, pdfFilename } from './weeklyReportPdfModel';
+import {
+  cellContent,
+  formatDateRange,
+  formatPdfDollarsAndCents,
+  formatPdfWholeDollars,
+  pdfFilename,
+} from './weeklyReportPdfModel';
 
 type RGB = [number, number, number];
 
@@ -94,7 +100,7 @@ function summaryValueCell(text: string, bg: RGB, color: RGB, bold: boolean): Cel
 
 function subtotalCell(team: ReportTeamColumn): CellDef {
   return {
-    content: `${formatMoney(team.subtotal)}\n($${team.topTenMoney.toFixed(2)})`,
+    content: `${formatPdfDollarsAndCents(team.subtotal)}\n(${formatPdfDollarsAndCents(team.topTenMoney)})`,
     styles: {
       fillColor: COLOR_TOTAL_BG,
       textColor: signColor(team.subtotal),
@@ -108,7 +114,7 @@ function subtotalCell(team: ReportTeamColumn): CellDef {
 
 function roundLabelCell(round: number, sideBetAmount: number | undefined): CellDef {
   const isSideBetRound = sideBetAmount !== undefined;
-  const text = isSideBetRound ? `${round}\n(${formatMoney(sideBetAmount)})` : `${round}`;
+  const text = isSideBetRound ? `${round}\n(${formatUnsignedDollarsAndCents(sideBetAmount)})` : `${round}`;
   return {
     content: text,
     styles: {
@@ -220,12 +226,12 @@ function drawFooter(
   doc.setTextColor(...COLOR_BLACK);
   if (report.undraftedTopTens.length > 0) {
     const parts = report.undraftedTopTens.map(
-      (u) => `${u.name.toUpperCase()} ${formatMoney(u.payout)}`,
+      (u) => `${u.name.toUpperCase()} ${formatPdfDollarsAndCents(u.payout)}`,
     );
     doc.text(`UNDRAFTED TOP TENS: ${parts.join(', ')}`, marginLeft, y);
   }
   const { won, lost } = report.cashTotals;
-  const summary = `+${formatMoney(won)}    ${formatMoney(lost)}`;
+  const summary = `${formatPdfWholeDollars(won)}    ${formatPdfWholeDollars(lost)}`;
   doc.text(summary, pageWidth - marginRight, y, { align: 'right' });
 }
 
@@ -277,7 +283,7 @@ export function buildWeeklyReportPdf(report: WeeklyReport): jsPDF {
     summaryLabelCell('TOP TENS', COLOR_HIGHLIGHT_BG, true),
     ...teams.map((t) =>
       summaryValueCell(
-        formatMoney(t.topTenEarnings),
+        formatPdfDollarsAndCents(t.topTenEarnings),
         COLOR_HIGHLIGHT_BG,
         t.topTenEarnings > 0 ? COLOR_POSITIVE : COLOR_MUTED,
         true,
@@ -288,14 +294,14 @@ export function buildWeeklyReportPdf(report: WeeklyReport): jsPDF {
   body.push([
     summaryLabelCell(seasonMode ? '*SEASON*' : '*WEEKLY TOTAL*', COLOR_HIGHLIGHT_BG, true),
     ...teams.map((t) =>
-      summaryValueCell(formatMoney(t.weeklyTotal), COLOR_HIGHLIGHT_BG, signColor(t.weeklyTotal), true),
+      summaryValueCell(formatPdfDollarsAndCents(t.weeklyTotal), COLOR_HIGHLIGHT_BG, signColor(t.weeklyTotal), true),
     ),
   ]);
 
   body.push([
     summaryLabelCell('PREVIOUS', COLOR_WHITE, false),
     ...teams.map((t) =>
-      summaryValueCell(formatMoney(t.previous), COLOR_WHITE, COLOR_MUTED, false),
+      summaryValueCell(formatPdfDollarsAndCents(t.previous), COLOR_WHITE, COLOR_MUTED, false),
     ),
   ]);
 
@@ -307,14 +313,14 @@ export function buildWeeklyReportPdf(report: WeeklyReport): jsPDF {
   body.push([
     summaryLabelCell(sideBetRowLabel(report.sideBetRules), COLOR_WHITE, false),
     ...teams.map((t) =>
-      summaryValueCell(formatMoney(t.sideBets), COLOR_WHITE, signColor(t.sideBets), false),
+      summaryValueCell(formatPdfDollarsAndCents(t.sideBets), COLOR_WHITE, signColor(t.sideBets), false),
     ),
   ]);
 
   body.push([
     summaryLabelCell('ONGOING\nTOTAL CASH', COLOR_TOTAL_BG, true),
     ...teams.map((t) =>
-      summaryValueCell(formatMoney(t.totalCash), COLOR_TOTAL_BG, signColor(t.totalCash), true),
+      summaryValueCell(formatPdfWholeDollars(t.totalCash), COLOR_TOTAL_BG, signColor(t.totalCash), true),
     ),
   ]);
 

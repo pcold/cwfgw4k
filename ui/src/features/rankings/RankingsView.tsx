@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Rankings, TeamRanking } from '@/shared/api/types';
-import { formatMoney } from '@/shared/util/money';
+import { formatDollarsAndCents, formatWholeDollars } from '@/shared/util/money';
 import RankingsChart from './RankingsChart';
 
 function signColor(value: number): string {
@@ -53,17 +53,17 @@ function RankingsView({ rankings }: Props): ReactNode {
                 <td
                   className={`px-3 py-2 text-right tabular-nums ${signColor(team.subtotal)}`}
                 >
-                  {formatMoney(team.subtotal)}
+                  {formatDollarsAndCents(team.subtotal)}
                 </td>
                 <td
                   className={`px-3 py-2 text-right tabular-nums ${signColor(team.sideBets)}`}
                 >
-                  {formatMoney(team.sideBets)}
+                  {formatDollarsAndCents(team.sideBets)}
                 </td>
                 <td
                   className={`px-3 py-2 text-right tabular-nums font-semibold ${signColor(team.totalCash)}`}
                 >
-                  {formatMoney(team.totalCash, 0)}
+                  {formatWholeDollars(team.totalCash)}
                 </td>
               </tr>
             ))}
@@ -75,19 +75,19 @@ function RankingsView({ rankings }: Props): ReactNode {
         <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
           <span className="text-ink-soft">Won</span>
           <span className="font-semibold text-semantic-success tabular-nums">
-            {formatMoney(totalWon, 0)}
+            {formatWholeDollars(totalWon)}
           </span>
         </div>
         <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
           <span className="text-ink-soft">Lost</span>
           <span className="font-semibold text-semantic-danger tabular-nums">
-            {formatMoney(totalLost, 0)}
+            {formatWholeDollars(totalLost)}
           </span>
         </div>
         <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
           <span className="text-ink-soft">Net</span>
           <span className={`font-semibold tabular-nums ${signColor(net)}`}>
-            {formatMoney(net, 0)}
+            {formatWholeDollars(net)}
           </span>
         </div>
       </div>

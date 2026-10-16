@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { ReportSideBetRules, WeeklyReport } from '@/shared/api/types';
-import { formatMoney } from '@/shared/util/money';
+import { formatDollarsAndCents, formatUnsignedDollarsAndCents } from '@/shared/util/money';
 import { lateRowBetRounds, lateRowBetTeamTotals, type LateRowBetEntry } from './lateRowBetsModel';
 
 function payoutClass(payout: number): string {
@@ -42,12 +42,12 @@ function RoundTable({ round, entries }: RoundTableProps) {
                 <td className="px-2 py-1.5 uppercase">{entry.teamName}</td>
                 <td className="px-2 py-1.5 font-mono">{entry.golferName}</td>
                 <td className="px-2 py-1.5 text-right font-mono">
-                  {formatMoney(entry.cumulativeEarnings)}
+                  {formatDollarsAndCents(entry.cumulativeEarnings)}
                 </td>
                 <td
                   className={`px-2 py-1.5 text-right font-mono font-bold ${payoutClass(entry.payout)}`}
                 >
-                  {formatMoney(entry.payout)}
+                  {formatDollarsAndCents(entry.payout)}
                 </td>
               </tr>
             ))}
@@ -67,7 +67,7 @@ interface RulesNoteProps {
 // Worded to stay true of a tied round, where several teams collect and split
 // what the teams behind them paid.
 function RulesNote({ rules }: RulesNoteProps) {
-  const amount = formatMoney(rules.amountPerTeam);
+  const amount = formatUnsignedDollarsAndCents(rules.amountPerTeam);
   const rounds = ROUND_LIST.format(rules.rounds.map(String));
   const where = rules.rounds.length === 1 ? `draft round ${rounds}` : `each of draft rounds ${rounds}`;
   return (
@@ -121,7 +121,7 @@ function LateRowBetsView({ report }: Props): ReactNode {
                     <td
                       className={`px-2 py-1.5 text-right font-mono font-bold ${signClass(team.sideBets)}`}
                     >
-                      {formatMoney(team.sideBets)}
+                      {formatDollarsAndCents(team.sideBets)}
                     </td>
                   </tr>
                 ))}
@@ -136,19 +136,19 @@ function LateRowBetsView({ report }: Props): ReactNode {
           <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
             <span className="text-ink-soft">Won</span>
             <span className="font-semibold text-semantic-success tabular-nums">
-              {formatMoney(sideBetTotals.won)}
+              {formatDollarsAndCents(sideBetTotals.won)}
             </span>
           </div>
           <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
             <span className="text-ink-soft">Lost</span>
             <span className="font-semibold text-semantic-danger tabular-nums">
-              {formatMoney(sideBetTotals.lost)}
+              {formatDollarsAndCents(sideBetTotals.lost)}
             </span>
           </div>
           <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
             <span className="text-ink-soft">Net</span>
             <span className={`font-semibold tabular-nums ${signClass(sideBetTotals.net)}`}>
-              {formatMoney(sideBetTotals.net)}
+              {formatDollarsAndCents(sideBetTotals.net)}
             </span>
           </div>
         </div>

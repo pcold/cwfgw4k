@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
-import { formatMoney } from '@/shared/util/money';
+import { formatDollarsAndCents } from '@/shared/util/money';
 import ModalShell from './ModalShell';
 
 interface Props {
@@ -48,7 +48,7 @@ function GolferHistoryModal({ seasonId, golferId, onClose }: Props): ReactNode {
               {history.topTens} top 10{history.topTens !== 1 ? 's' : ''}
             </span>
             <span className="text-semantic-success font-mono font-bold">
-              {formatMoney(history.totalEarnings)}
+              {formatDollarsAndCents(history.totalEarnings)}
             </span>
           </div>
           {history.results.length > 0 ? (
@@ -66,7 +66,7 @@ function GolferHistoryModal({ seasonId, golferId, onClose }: Props): ReactNode {
                     <td className="px-2 py-1.5">{r.tournament}</td>
                     <td className="px-2 py-1.5 text-right font-mono">{r.position}</td>
                     <td className="px-2 py-1.5 text-right font-mono text-semantic-success">
-                      {formatMoney(r.earnings)}
+                      {formatDollarsAndCents(r.earnings)}
                     </td>
                   </tr>
                 ))}

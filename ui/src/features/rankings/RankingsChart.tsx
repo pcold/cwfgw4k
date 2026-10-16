@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Rankings } from '@/shared/api/types';
-import { formatMoney } from '@/shared/util/money';
+import { formatWholeDollars } from '@/shared/util/money';
 import {
   buildChartLayout,
   DEFAULT_DIMENSIONS,
@@ -35,7 +35,7 @@ function TeamLine({ line }: LineProps) {
           fill={line.color}
         >
           <title>
-            {`${line.teamName.toUpperCase()} · ${p.tournamentName ?? `Wk ${p.weekLabel}`}: ${formatMoney(p.value, 0)}`}
+            {`${line.teamName.toUpperCase()} · ${p.tournamentName ?? `Wk ${p.weekLabel}`}: ${formatWholeDollars(p.value)}`}
           </title>
         </circle>
       ))}

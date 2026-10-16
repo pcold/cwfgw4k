@@ -188,9 +188,9 @@ describe('ScoreboardView', () => {
         })}
       />,
     );
-    expect(screen.getByText('Won').parentElement).toHaveTextContent('$55');
-    expect(screen.getByText('Lost').parentElement).toHaveTextContent('-$66');
-    expect(screen.getByText('Net').parentElement).toHaveTextContent('-$11');
+    expect(screen.getByText('Won').parentElement).toHaveTextContent('+$55.00');
+    expect(screen.getByText('Lost').parentElement).toHaveTextContent('\u2212$66.00');
+    expect(screen.getByText('Net').parentElement).toHaveTextContent('\u2212$11.00');
   });
 
   it('makes rostered golfer names clickable when onGolferClick is provided', async () => {

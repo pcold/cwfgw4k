@@ -158,8 +158,8 @@ describe('buildWeeklyReportPdf', () => {
 
   it('prints no amount beside any round and a totals row naming none for a season without side bets', () => {
     const drawn = drawnText(buildWeeklyReportPdf(buildFixture({ sideBetRules: null })));
-    const subtotalTopTenMoney = ['($7.50)', '($0.00)', '($0.00)'];
-    expect(drawn.filter((text) => /^\(\$/.test(text))).toEqual(subtotalTopTenMoney);
+    const subtotalTopTenMoney = ['(+$7.50)', '($0)', '($0)'];
+    expect(drawn.filter((text) => /^\(\+?\$/.test(text))).toEqual(subtotalTopTenMoney);
     expect(drawn).toContain('SIDE BETS');
   });
 
@@ -169,7 +169,19 @@ describe('buildWeeklyReportPdf', () => {
       cashTotals: { won: 9, lost: -2, net: 7 },
       sideBetTotals: { won: 55, lost: -66, net: -11 },
     };
-    expect(drawnText(buildWeeklyReportPdf(disagreeing))).toContain('+$9.00    -$2.00');
+    // 0x96 is the en dash in Helvetica's WinAnsi encoding, the PDF's stand-in for U+2212.
+    expect(drawnText(buildWeeklyReportPdf(disagreeing))).toContain('+$9    \x96$2');
+  });
+
+  it('prints the ONGOING TOTAL CASH row in whole dollars and the subtotal in cents', () => {
+    const fixture = buildFixture();
+    const fractional: WeeklyReport = {
+      ...fixture,
+      teams: fixture.teams.map((t) => (t.teamId === 't1' ? { ...t, subtotal: 751.5715, totalCash: -1082.4 } : t)),
+    };
+    const drawn = drawnText(buildWeeklyReportPdf(fractional));
+    expect(drawn).toContain('+$751.57');
+    expect(drawn).toContain('\x96$1,082');
   });
 
   it('builds a PDF when there are no undrafted top-tens', () => {

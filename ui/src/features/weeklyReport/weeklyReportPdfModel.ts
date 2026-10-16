@@ -1,11 +1,25 @@
 import type { ReportCell, Season, WeeklyReport } from '@/shared/api/types';
-import { formatMoney } from '@/shared/util/money';
+import { MINUS_SIGN, formatDollarsAndCents, formatWholeDollars } from '@/shared/util/money';
 import { isSeasonReport } from './weeklyReportModel';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
+
+// Helvetica, a standard PDF font, has no U+2212 in its WinAnsi encoding: jsPDF writes the code point's
+// raw bytes and the reader draws garbage. The en dash is in it, and is within a hair of `+`'s width.
+const PDF_MINUS_SIGN = '\u2013';
+
+/** @see formatDollarsAndCents */
+export function formatPdfDollarsAndCents(value: number): string {
+  return formatDollarsAndCents(value).replace(MINUS_SIGN, PDF_MINUS_SIGN);
+}
+
+/** @see formatWholeDollars */
+export function formatPdfWholeDollars(value: number): string {
+  return formatWholeDollars(value).replace(MINUS_SIGN, PDF_MINUS_SIGN);
+}
 
 export function formatIsoDate(iso: string): string | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
@@ -27,12 +41,12 @@ export function cellContent(cell: ReportCell | undefined, showSeasonFooter: bool
   const ownership = cell.ownershipPct < 100 ? ` (${cell.ownershipPct}%)` : '';
   const name = cell.golferName.toUpperCase() + ownership;
   const earningsLine = cell.earnings > 0
-    ? `${cell.positionStr ?? ''} - ${formatMoney(cell.earnings)}`
+    ? `${cell.positionStr ?? ''} - ${formatPdfDollarsAndCents(cell.earnings)}`
     : '-';
   if (!showSeasonFooter) return `${name}\n${earningsLine}`;
   const cumLine = cell.seasonTopTens > 0
-    ? `${formatMoney(cell.seasonEarnings)} (${cell.seasonTopTens})`
-    : '$0';
+    ? `${formatPdfDollarsAndCents(cell.seasonEarnings)} (${cell.seasonTopTens})`
+    : formatPdfDollarsAndCents(0);
   return `${name}\n${earningsLine}\n${cumLine}`;
 }
 

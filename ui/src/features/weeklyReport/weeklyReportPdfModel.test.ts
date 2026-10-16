@@ -11,6 +11,8 @@ import {
   cellContent,
   formatDateRange,
   formatIsoDate,
+  formatPdfDollarsAndCents,
+  formatPdfWholeDollars,
   pdfFilename,
 } from './weeklyReportPdfModel';
 
@@ -109,6 +111,20 @@ describe('formatDateRange', () => {
   });
 });
 
+describe('formatPdfDollarsAndCents', () => {
+  it('signs a loss with an en dash, which Helvetica can draw, in place of U+2212', () => {
+    expect(formatPdfDollarsAndCents(-1.7785)).toBe('\u2013$1.78');
+    expect(formatPdfDollarsAndCents(751.5715)).toBe('+$751.57');
+  });
+});
+
+describe('formatPdfWholeDollars', () => {
+  it('signs a loss with an en dash, which Helvetica can draw, in place of U+2212', () => {
+    expect(formatPdfWholeDollars(-1082)).toBe('\u2013$1,082');
+    expect(formatPdfWholeDollars(1082)).toBe('+$1,082');
+  });
+});
+
 describe('cellContent', () => {
   it('shows a dash for an empty row', () => {
     expect(cellContent(undefined, true)).toBe('-');
@@ -126,7 +142,7 @@ describe('cellContent', () => {
 
   it('shows the position and earnings when the golfer cashed', () => {
     expect(cellContent(row({ golferName: 'Macintyre', positionStr: 'T4', earnings: 7.5 }), false))
-      .toBe('MACINTYRE\nT4 - $7.50');
+      .toBe('MACINTYRE\nT4 - +$7.50');
   });
 
   it('includes a season-footer line with cumulative earnings and top-tens count', () => {
@@ -137,7 +153,7 @@ describe('cellContent', () => {
       seasonEarnings: 18,
       seasonTopTens: 1,
     });
-    expect(cellContent(r, true)).toBe('GOTTERUP\n1 - $18.00\n$18.00 (1)');
+    expect(cellContent(r, true)).toBe('GOTTERUP\n1 - +$18.00\n+$18.00 (1)');
   });
 
   it('renders the season-footer as "$0" when no season top-tens yet', () => {
