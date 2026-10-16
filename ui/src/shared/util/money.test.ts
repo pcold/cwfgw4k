@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDollarsAndCents, formatWholeDollars } from './money';
+import { formatDollarsAndCents, formatUnsignedDollarsAndCents, formatWholeDollars } from './money';
 
 describe('formatDollarsAndCents', () => {
   it('rounds to cents and signs a gain with a plus', () => {
@@ -34,5 +34,18 @@ describe('formatWholeDollars', () => {
     expect(formatWholeDollars(0)).toBe('$0');
     expect(formatWholeDollars(0.4)).toBe('$0');
     expect(formatWholeDollars(-0.4)).toBe('$0');
+  });
+});
+
+describe('formatUnsignedDollarsAndCents', () => {
+  it('rounds to cents and never signs', () => {
+    expect(formatUnsignedDollarsAndCents(20)).toBe('$20.00');
+    expect(formatUnsignedDollarsAndCents(18.333)).toBe('$18.33');
+    expect(formatUnsignedDollarsAndCents(1500)).toBe('$1,500.00');
+  });
+
+  it('renders zero, and anything that rounds to zero, as "$0" like the signed forms', () => {
+    expect(formatUnsignedDollarsAndCents(0)).toBe('$0');
+    expect(formatUnsignedDollarsAndCents(0.004)).toBe('$0');
   });
 });

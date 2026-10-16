@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { ReportSideBetRules, WeeklyReport } from '@/shared/api/types';
-import { formatDollarsAndCents } from '@/shared/util/money';
+import { formatDollarsAndCents, formatUnsignedDollarsAndCents } from '@/shared/util/money';
 import { lateRowBetRounds, lateRowBetTeamTotals, type LateRowBetEntry } from './lateRowBetsModel';
 
 function payoutClass(payout: number): string {
@@ -67,7 +67,7 @@ interface RulesNoteProps {
 // Worded to stay true of a tied round, where several teams collect and split
 // what the teams behind them paid.
 function RulesNote({ rules }: RulesNoteProps) {
-  const amount = formatDollarsAndCents(rules.amountPerTeam);
+  const amount = formatUnsignedDollarsAndCents(rules.amountPerTeam);
   const rounds = ROUND_LIST.format(rules.rounds.map(String));
   const where = rules.rounds.length === 1 ? `draft round ${rounds}` : `each of draft rounds ${rounds}`;
   return (

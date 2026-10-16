@@ -152,7 +152,7 @@ describe('buildWeeklyReportPdf', () => {
 
   it("prints the season's own side-bet amount beside its rounds and names them in the totals row", () => {
     const drawn = drawnText(buildWeeklyReportPdf(buildFixture()));
-    expect(drawn.filter((text) => text === '(+$20.00)')).toHaveLength(SIDE_BET_RULES.rounds.length);
+    expect(drawn.filter((text) => text === '($20.00)')).toHaveLength(SIDE_BET_RULES.rounds.length);
     expect(drawn).toContain('ROWS 2-3');
   });
 

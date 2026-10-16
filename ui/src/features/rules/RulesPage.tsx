@@ -5,7 +5,7 @@ import { queryKeys } from '@/shared/api/queryKeys';
 import type { SeasonRules, Tournament } from '@/shared/api/types';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState } from '@/shared/components/QueryState';
-import { formatDollarsAndCents } from '@/shared/util/money';
+import { formatUnsignedDollarsAndCents } from '@/shared/util/money';
 import { ordinal } from './rulesModel';
 
 function RulesPage(): ReactNode {
@@ -89,7 +89,7 @@ function RulesView({ rules }: RulesViewProps): ReactNode {
               // eslint-disable-next-line react/no-array-index-key -- a payout row is its finishing position.
               <tr key={i}>
                 <td className="py-0.5">{ordinal(i + 1)}</td>
-                <td className="text-right">{formatDollarsAndCents(amount)}</td>
+                <td className="text-right">{formatUnsignedDollarsAndCents(amount)}</td>
               </tr>
             ))}
           </tbody>
@@ -104,7 +104,10 @@ function RulesView({ rules }: RulesViewProps): ReactNode {
           <li>Tied positions average the payouts across all tied slots</li>
           <li>
             Minimum payout of{' '}
-            <span className="text-semantic-success font-semibold">{formatDollarsAndCents(rules.tieFloor)}</span> per player
+            <span className="text-semantic-success font-semibold">
+              {formatUnsignedDollarsAndCents(rules.tieFloor)}
+            </span>{' '}
+            per player
             for any tie that overlaps the payout zone
           </li>
         </ul>
@@ -148,7 +151,9 @@ function RulesView({ rules }: RulesViewProps): ReactNode {
             </li>
             <li>
               Winner collects{' '}
-              <span className="text-semantic-success font-semibold">{formatDollarsAndCents(rules.sideBetAmount)}</span>{' '}
+              <span className="text-semantic-success font-semibold">
+                {formatUnsignedDollarsAndCents(rules.sideBetAmount)}
+              </span>{' '}
               from every other team
             </li>
             <li>Side bet is not active if all entries are at $0</li>

@@ -90,8 +90,8 @@ describe('LateRowBetsView', () => {
     render(<LateRowBetsView report={report()} />);
     expect(
       screen.getByText(
-        "+$20.00 per team in each of draft rounds 2 and 3. Every team behind a round's highest " +
-          'cumulative earner pays +$20.00; teams tied for the highest split what was paid.',
+        "$20.00 per team in each of draft rounds 2 and 3. Every team behind a round's highest " +
+          'cumulative earner pays $20.00; teams tied for the highest split what was paid.',
       ),
     ).toBeInTheDocument();
   });
@@ -100,7 +100,7 @@ describe('LateRowBetsView', () => {
     render(
       <LateRowBetsView report={report({ sideBetRules: { amountPerTeam: 12.5, rounds: [7] } })} />,
     );
-    expect(screen.getByText(/^\+\$12\.50 per team in draft round 7\./)).toBeInTheDocument();
+    expect(screen.getByText(/^\$12\.50 per team in draft round 7\./)).toBeInTheDocument();
   });
 
   it('renders a section per side-bet round', () => {

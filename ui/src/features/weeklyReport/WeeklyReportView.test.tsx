@@ -134,9 +134,9 @@ describe('WeeklyReportView', () => {
 
   it("shows the season's own side-bet amount beside its rounds and beside no other", () => {
     render(<WeeklyReportView report={report({ sideBetRules: TWENTY_ON_ROUNDS_TWO_AND_THREE })} />);
-    expect(screen.getAllByText('(+$20.00)')).toHaveLength(2);
-    expect(within(roundRow(2)).getByText('(+$20.00)')).toBeInTheDocument();
-    expect(within(roundRow(3)).getByText('(+$20.00)')).toBeInTheDocument();
+    expect(screen.getAllByText('($20.00)')).toHaveLength(2);
+    expect(within(roundRow(2)).getByText('($20.00)')).toBeInTheDocument();
+    expect(within(roundRow(3)).getByText('($20.00)')).toBeInTheDocument();
     expect(within(roundRow(5)).queryByText(/\(\$/)).not.toBeInTheDocument();
   });
 

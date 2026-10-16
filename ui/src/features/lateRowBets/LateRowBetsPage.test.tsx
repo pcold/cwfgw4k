@@ -312,7 +312,7 @@ describe('LateRowBetsPage', () => {
     renderWithProviders(<LateRowBetsPage />);
 
     expect(
-      await screen.findByText(/^\+\$20\.00 per team in each of draft rounds 2 and 3\./),
+      await screen.findByText(/^\$20\.00 per team in each of draft rounds 2 and 3\./),
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Round 3' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Round 5' })).not.toBeInTheDocument();

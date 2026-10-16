@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
-import { formatDollarsAndCents, formatWholeDollars } from '@/shared/util/money';
+import { formatDollarsAndCents, formatUnsignedDollarsAndCents, formatWholeDollars } from '@/shared/util/money';
 import {
   ROUNDS,
   isSeasonReport,
@@ -193,7 +193,7 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
                   <td className="border border-hairline px-1 py-1 text-center font-bold text-ink-muted sticky left-0 z-10 bg-surface-card">
                     <div>{round}</div>
                     {sideBetAmount === undefined ? null : (
-                      <div className="text-xs font-normal">({formatDollarsAndCents(sideBetAmount)})</div>
+                      <div className="text-xs font-normal">({formatUnsignedDollarsAndCents(sideBetAmount)})</div>
                     )}
                   </td>
                   {teamsByRound.map(({ team, cells }) => (

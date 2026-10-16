@@ -7,6 +7,7 @@ import type {
   StandingsEntry,
   WeeklyReport,
 } from '@/shared/api/types';
+import { formatUnsignedDollarsAndCents } from '@/shared/util/money';
 import {
   ROUNDS,
   isSeasonReport,
@@ -113,7 +114,7 @@ function subtotalCell(team: ReportTeamColumn): CellDef {
 
 function roundLabelCell(round: number, sideBetAmount: number | undefined): CellDef {
   const isSideBetRound = sideBetAmount !== undefined;
-  const text = isSideBetRound ? `${round}\n(${formatPdfDollarsAndCents(sideBetAmount)})` : `${round}`;
+  const text = isSideBetRound ? `${round}\n(${formatUnsignedDollarsAndCents(sideBetAmount)})` : `${round}`;
   return {
     content: text,
     styles: {
