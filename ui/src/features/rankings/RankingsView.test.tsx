@@ -65,12 +65,23 @@ describe('RankingsView', () => {
     expect(screen.getByText(/No ranking history yet/i)).toBeInTheDocument();
   });
 
+  it('shows Total Cash in whole dollars and the subtotal and late row bets in cents', () => {
+    const [aces, ...rest] = buildRankings().teams;
+    if (!aces) throw new Error('fixture has no first team');
+    const fractional = { ...aces, subtotal: 751.5715, sideBets: -1.7785, totalCash: 1082.4 };
+    render(<RankingsView rankings={buildRankings({ teams: [fractional, ...rest] })} />);
+    const row = screen.getByRole('row', { name: /Aces/ });
+    expect(within(row).getByText('+$751.57')).toBeInTheDocument();
+    expect(within(row).getByText('\u2212$1.78')).toBeInTheDocument();
+    expect(within(row).getByText('+$1,082')).toBeInTheDocument();
+  });
+
   it('computes the zero-sum won/lost/net summary', () => {
     render(<RankingsView rankings={buildRankings()} />);
     // Won = 150 + 35 = 185, Lost = -35, Net = 150
-    expect(screen.getByText('Won').nextSibling).toHaveTextContent('+$185');
-    expect(screen.getByText('Lost').nextSibling).toHaveTextContent('\u2212$35');
-    expect(screen.getByText('Net').nextSibling).toHaveTextContent('+$150');
+    expect(screen.getByText('Won').nextSibling).toHaveTextContent(/^\+\$185$/);
+    expect(screen.getByText('Lost').nextSibling).toHaveTextContent(/^\u2212\$35$/);
+    expect(screen.getByText('Net').nextSibling).toHaveTextContent(/^\+\$150$/);
   });
 
   it('surfaces the live overlay indicator when enabled', () => {

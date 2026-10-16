@@ -173,6 +173,17 @@ describe('buildWeeklyReportPdf', () => {
     expect(drawnText(buildWeeklyReportPdf(disagreeing))).toContain('+$9    \x96$2');
   });
 
+  it('prints the ONGOING TOTAL CASH row in whole dollars and the subtotal in cents', () => {
+    const fixture = buildFixture();
+    const fractional: WeeklyReport = {
+      ...fixture,
+      teams: fixture.teams.map((t) => (t.teamId === 't1' ? { ...t, subtotal: 751.5715, totalCash: -1082.4 } : t)),
+    };
+    const drawn = drawnText(buildWeeklyReportPdf(fractional));
+    expect(drawn).toContain('+$751.57');
+    expect(drawn).toContain('\x96$1,082');
+  });
+
   it('builds a PDF when there are no undrafted top-tens', () => {
     const doc = buildWeeklyReportPdf(buildFixture({ undraftedLen: 0 }));
     const blob: Blob = doc.output('blob');

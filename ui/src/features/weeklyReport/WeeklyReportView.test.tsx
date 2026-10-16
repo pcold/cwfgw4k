@@ -236,6 +236,12 @@ describe('WeeklyReportView', () => {
     expect(within(round3).getByText('—')).toBeInTheDocument();
   });
 
+  it('shows the TOTAL CASH row in whole dollars and the subtotal in cents', () => {
+    render(<WeeklyReportView report={report({ teams: [team({ subtotal: 751.5715, totalCash: 1082.4 })] })} />);
+    expect(screen.getByText('+$751.57')).toBeInTheDocument();
+    expect(screen.getByText('+$1,082')).toBeInTheDocument();
+  });
+
   it("displays the report's cash totals, which are not a sum over its teams", () => {
     const disagreeing = report({
       teams: [
@@ -246,9 +252,9 @@ describe('WeeklyReportView', () => {
       sideBetTotals: { won: 55, lost: -66, net: -11 },
     });
     render(<WeeklyReportView report={disagreeing} />);
-    expect(screen.getByText('Won').nextSibling).toHaveTextContent('+$9');
-    expect(screen.getByText('Lost').nextSibling).toHaveTextContent('\u2212$2');
-    expect(screen.getByText('Net').nextSibling).toHaveTextContent('+$7');
+    expect(screen.getByText('Won').nextSibling).toHaveTextContent(/^\+\$9$/);
+    expect(screen.getByText('Lost').nextSibling).toHaveTextContent(/^\u2212\$2$/);
+    expect(screen.getByText('Net').nextSibling).toHaveTextContent(/^\+\$7$/);
   });
 
   it('makes round-cell golfer names clickable when onGolferClick is provided', async () => {
