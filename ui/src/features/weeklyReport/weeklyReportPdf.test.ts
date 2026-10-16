@@ -152,14 +152,14 @@ describe('buildWeeklyReportPdf', () => {
 
   it("prints the season's own side-bet amount beside its rounds and names them in the totals row", () => {
     const drawn = drawnText(buildWeeklyReportPdf(buildFixture()));
-    expect(drawn.filter((text) => text === '($20.00)')).toHaveLength(SIDE_BET_RULES.rounds.length);
+    expect(drawn.filter((text) => text === '(+$20.00)')).toHaveLength(SIDE_BET_RULES.rounds.length);
     expect(drawn).toContain('ROWS 2-3');
   });
 
   it('prints no amount beside any round and a totals row naming none for a season without side bets', () => {
     const drawn = drawnText(buildWeeklyReportPdf(buildFixture({ sideBetRules: null })));
-    const subtotalTopTenMoney = ['($7.50)', '($0.00)', '($0.00)'];
-    expect(drawn.filter((text) => /^\(\$/.test(text))).toEqual(subtotalTopTenMoney);
+    const subtotalTopTenMoney = ['(+$7.50)', '($0)', '($0)'];
+    expect(drawn.filter((text) => /^\(\+?\$/.test(text))).toEqual(subtotalTopTenMoney);
     expect(drawn).toContain('SIDE BETS');
   });
 
@@ -169,7 +169,8 @@ describe('buildWeeklyReportPdf', () => {
       cashTotals: { won: 9, lost: -2, net: 7 },
       sideBetTotals: { won: 55, lost: -66, net: -11 },
     };
-    expect(drawnText(buildWeeklyReportPdf(disagreeing))).toContain('+$9.00    -$2.00');
+    // 0x96 is the en dash in Helvetica's WinAnsi encoding, the PDF's stand-in for U+2212.
+    expect(drawnText(buildWeeklyReportPdf(disagreeing))).toContain('+$9    \x96$2');
   });
 
   it('builds a PDF when there are no undrafted top-tens', () => {
