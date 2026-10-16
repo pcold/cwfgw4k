@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatDollarsAndCents, formatUnsignedDollarsAndCents, formatWholeDollars } from './money';
+import {
+  formatDollarsAndCents,
+  formatUnsignedDollarsAndCents,
+  formatWholeDollars,
+  moneyTone,
+  moneyToneClass,
+} from './money';
 
 describe('formatDollarsAndCents', () => {
   it('rounds to cents and signs a gain with a plus', () => {
@@ -47,5 +53,43 @@ describe('formatUnsignedDollarsAndCents', () => {
   it('renders zero, and anything that rounds to zero, as "$0" like the signed forms', () => {
     expect(formatUnsignedDollarsAndCents(0)).toBe('$0');
     expect(formatUnsignedDollarsAndCents(0.004)).toBe('$0');
+  });
+});
+
+describe('moneyTone', () => {
+  it('is even exactly where the cents formatter prints "$0", and signed from the first cent', () => {
+    expect(moneyTone(formatDollarsAndCents(0))).toBe('even');
+    expect(moneyTone(formatDollarsAndCents(0.004))).toBe('even');
+    expect(moneyTone(formatDollarsAndCents(-0.004))).toBe('even');
+    expect(moneyTone(formatDollarsAndCents(0.01))).toBe('up');
+    expect(moneyTone(formatDollarsAndCents(-0.01))).toBe('down');
+  });
+
+  it('is even exactly where the whole-dollar formatter prints "$0", and signed from the first dollar', () => {
+    expect(moneyTone(formatWholeDollars(0.4))).toBe('even');
+    expect(moneyTone(formatWholeDollars(-0.49))).toBe('even');
+    expect(moneyTone(formatWholeDollars(0.5))).toBe('up');
+    expect(moneyTone(formatWholeDollars(-0.5))).toBe('down');
+  });
+
+  it('keeps a cents amount that a whole-dollar rounding would zero signed', () => {
+    expect(moneyTone(formatDollarsAndCents(0.4))).toBe('up');
+    expect(moneyTone(formatDollarsAndCents(-0.4))).toBe('down');
+  });
+
+  it('reads a PDF en dash as a loss like the screen minus', () => {
+    expect(moneyTone('\u2013$80')).toBe('down');
+  });
+
+  it('gives an unsigned amount no tone', () => {
+    expect(moneyTone(formatUnsignedDollarsAndCents(20))).toBe('even');
+  });
+});
+
+describe('moneyToneClass', () => {
+  it('colours a gain and a loss, and mutes an even amount', () => {
+    expect(moneyToneClass('+$1')).toBe('text-semantic-success');
+    expect(moneyToneClass('\u2212$1')).toBe('text-semantic-danger');
+    expect(moneyToneClass('$0')).toBe('text-ink-soft');
   });
 });
