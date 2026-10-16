@@ -90,8 +90,8 @@ describe('LateRowBetsView', () => {
     render(<LateRowBetsView report={report()} />);
     expect(
       screen.getByText(
-        "$20.00 per team in each of draft rounds 2 and 3. Every team behind a round's highest " +
-          'cumulative earner pays $20.00; teams tied for the highest split what was paid.',
+        "+$20.00 per team in each of draft rounds 2 and 3. Every team behind a round's highest " +
+          'cumulative earner pays +$20.00; teams tied for the highest split what was paid.',
       ),
     ).toBeInTheDocument();
   });
@@ -100,7 +100,7 @@ describe('LateRowBetsView', () => {
     render(
       <LateRowBetsView report={report({ sideBetRules: { amountPerTeam: 12.5, rounds: [7] } })} />,
     );
-    expect(screen.getByText(/^\$12\.50 per team in draft round 7\./)).toBeInTheDocument();
+    expect(screen.getByText(/^\+\$12\.50 per team in draft round 7\./)).toBeInTheDocument();
   });
 
   it('renders a section per side-bet round', () => {
@@ -134,9 +134,9 @@ describe('LateRowBetsView', () => {
       sideBetTotals: { won: 9, lost: -2, net: 7 },
     });
     render(<LateRowBetsView report={disagreeing} />);
-    expect(screen.getByText('Won').nextSibling).toHaveTextContent('$9.00');
-    expect(screen.getByText('Lost').nextSibling).toHaveTextContent('-$2.00');
-    expect(screen.getByText('Net').nextSibling).toHaveTextContent('$7.00');
+    expect(screen.getByText('Won').nextSibling).toHaveTextContent('+$9.00');
+    expect(screen.getByText('Lost').nextSibling).toHaveTextContent('\u2212$2.00');
+    expect(screen.getByText('Net').nextSibling).toHaveTextContent('+$7.00');
   });
 
   it('says a season that stakes nothing on side bets has none, and shows no rules or totals', () => {

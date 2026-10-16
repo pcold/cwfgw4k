@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import type { WeeklyReport } from '@/shared/api/types';
-import { formatMoney } from '@/shared/util/money';
+import { formatDollarsAndCents } from '@/shared/util/money';
 import ColumnHeaderFilter, {
   type ColumnHeaderFilterOption,
 } from '@/shared/components/ColumnHeaderFilter';
@@ -16,11 +16,6 @@ import {
 
 const ALL = '';
 const UNDRAFTED = '__undrafted__';
-
-function formatSigned(value: number): string {
-  if (value > 0) return `+${formatMoney(value)}`;
-  return formatMoney(value);
-}
 
 function rowTint(weeklyTotal: number): string {
   if (weeklyTotal > 0) return 'bg-semantic-success-tint/10';
@@ -103,12 +98,12 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
                 <td className="px-4 py-3 text-ink-soft">{i + 1}</td>
                 <td className="px-4 py-3 font-medium text-ink uppercase">{team.teamName}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-ink-secondary">
-                  {formatMoney(team.topTenEarnings)}
+                  {formatDollarsAndCents(team.topTenEarnings)}
                 </td>
                 <td
                   className={`px-4 py-3 text-right tabular-nums font-semibold ${signColor(team.weeklyTotal)}`}
                 >
-                  {formatSigned(team.weeklyTotal)}
+                  {formatDollarsAndCents(team.weeklyTotal)}
                 </td>
                 <td className="px-4 py-3">
                   {team.golferScores.length === 0 ? (
@@ -131,7 +126,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
                         )}{' '}
                         {g.tied ? <span className="text-ink-soft">T</span> : null}
                         <span className="text-ink-muted">{g.position ?? '?'}</span>{' '}
-                        <span className="text-semantic-success tabular-nums">{formatMoney(g.payout)}</span>
+                        <span className="text-semantic-success tabular-nums">{formatDollarsAndCents(g.payout)}</span>
                         {g.ownershipPct < 100 ? (
                           <span className="text-ink-soft"> ({g.ownershipPct}%)</span>
                         ) : null}
@@ -150,19 +145,19 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
         <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
           <span className="text-ink-soft">Won</span>
           <span className="font-semibold text-semantic-success tabular-nums">
-            {formatMoney(weeklyTotals.won)}
+            {formatDollarsAndCents(weeklyTotals.won)}
           </span>
         </div>
         <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
           <span className="text-ink-soft">Lost</span>
           <span className="font-semibold text-semantic-danger tabular-nums">
-            {formatMoney(weeklyTotals.lost)}
+            {formatDollarsAndCents(weeklyTotals.lost)}
           </span>
         </div>
         <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
           <span className="text-ink-soft">Net</span>
           <span className={`font-semibold tabular-nums ${signColor(weeklyTotals.net)}`}>
-            {formatMoney(weeklyTotals.net)}
+            {formatDollarsAndCents(weeklyTotals.net)}
           </span>
         </div>
       </div>

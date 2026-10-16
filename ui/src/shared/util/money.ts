@@ -1,26 +1,43 @@
-// Mirrors the legacy Alpine UI `fmtMoney` so numeric output matches across
-// both UIs during the migration. When `decimals` is omitted, auto-detects 2/3/4
-// decimals so half-dollar ownership splits (e.g. $18.50, $18.333) don't round.
-//
-//   formatMoney(0)         === '$0'
-//   formatMoney(120)       === '$120.00'
-//   formatMoney(-80)       === '-$80.00'
-//   formatMoney(18.333)    === '$18.333'
-//   formatMoney(120, 0)    === '$120'
-//   formatMoney(-80, 0)    === '-$80'
-export function formatMoney(value: number, decimals?: number): string {
-  const n = Number(value);
-  if (n === 0) return '$0';
-  const sign = n < 0 ? '-' : '';
-  const abs = Math.abs(n);
-  const digits = decimals ?? pickDecimals(abs);
-  return `${sign}$${abs.toFixed(digits)}`;
+/**
+ * U+2212, set where `Intl` writes an ASCII hyphen, so that a signed column's `+` and `−` are the
+ * same width. A surface whose font has no glyph for it substitutes its own.
+ */
+export const MINUS_SIGN = '−';
+
+const ZERO = '$0';
+
+const dollarsAndCents = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  signDisplay: 'exceptZero',
+});
+
+const wholeDollars = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  signDisplay: 'exceptZero',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+/**
+ * Display only: the server keeps exact amounts, so a column of these can miss its total by a cent.
+ * Season totals take {@link formatWholeDollars} instead.
+ */
+export function formatDollarsAndCents(value: number): string {
+  return formatSigned(dollarsAndCents, value);
 }
 
-function pickDecimals(abs: number): number {
-  const cents = abs * 100;
-  if (Math.abs(cents - Math.round(cents)) < 0.001) return 2;
-  const mils = abs * 1000;
-  if (Math.abs(mils - Math.round(mils)) < 0.001) return 3;
-  return 4;
+/** @see formatDollarsAndCents */
+export function formatWholeDollars(value: number): string {
+  return formatSigned(wholeDollars, value);
+}
+
+// `exceptZero` leaves the sign off exactly when the value rounds to zero, which is when the
+// whole string collapses to `$0` rather than `$0.00`.
+function formatSigned(format: Intl.NumberFormat, value: number): string {
+  const parts = format.formatToParts(value);
+  const signed = parts.some((part) => part.type === 'plusSign' || part.type === 'minusSign');
+  if (!signed) return ZERO;
+  return parts.map((part) => (part.type === 'minusSign' ? MINUS_SIGN : part.value)).join('');
 }

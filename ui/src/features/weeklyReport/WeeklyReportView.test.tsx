@@ -134,9 +134,9 @@ describe('WeeklyReportView', () => {
 
   it("shows the season's own side-bet amount beside its rounds and beside no other", () => {
     render(<WeeklyReportView report={report({ sideBetRules: TWENTY_ON_ROUNDS_TWO_AND_THREE })} />);
-    expect(screen.getAllByText('($20.00)')).toHaveLength(2);
-    expect(within(roundRow(2)).getByText('($20.00)')).toBeInTheDocument();
-    expect(within(roundRow(3)).getByText('($20.00)')).toBeInTheDocument();
+    expect(screen.getAllByText('(+$20.00)')).toHaveLength(2);
+    expect(within(roundRow(2)).getByText('(+$20.00)')).toBeInTheDocument();
+    expect(within(roundRow(3)).getByText('(+$20.00)')).toBeInTheDocument();
     expect(within(roundRow(5)).queryByText(/\(\$/)).not.toBeInTheDocument();
   });
 
@@ -246,9 +246,9 @@ describe('WeeklyReportView', () => {
       sideBetTotals: { won: 55, lost: -66, net: -11 },
     });
     render(<WeeklyReportView report={disagreeing} />);
-    expect(screen.getByText('Won').nextSibling).toHaveTextContent('$9.00');
-    expect(screen.getByText('Lost').nextSibling).toHaveTextContent('-$2.00');
-    expect(screen.getByText('Net').nextSibling).toHaveTextContent('$7.00');
+    expect(screen.getByText('Won').nextSibling).toHaveTextContent('+$9');
+    expect(screen.getByText('Lost').nextSibling).toHaveTextContent('\u2212$2');
+    expect(screen.getByText('Net').nextSibling).toHaveTextContent('+$7');
   });
 
   it('makes round-cell golfer names clickable when onGolferClick is provided', async () => {

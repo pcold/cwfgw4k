@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { formatMoney } from '@/shared/util/money';
+import { formatDollarsAndCents } from '@/shared/util/money';
 import ColumnHeaderFilter, {
   type ColumnHeaderFilterOption,
 } from '@/shared/components/ColumnHeaderFilter';
@@ -131,7 +131,7 @@ function PlayerRankingsView({ players, live, onGolferClick }: Props): ReactNode 
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">{player.topTens}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-semantic-success">
-                      {formatMoney(player.totalEarnings, 2)}
+                      {formatDollarsAndCents(player.totalEarnings)}
                     </td>
                     <td className="px-3 py-2 text-ink-secondary">
                       {player.teamName ? (

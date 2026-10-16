@@ -382,7 +382,7 @@ describe('WeeklyReportPage', () => {
     renderWithProviders(<WeeklyReportPage />);
 
     expect(await screen.findByText('ROWS 2-3')).toBeInTheDocument();
-    expect(screen.getAllByText('($20.00)')).toHaveLength(2);
+    expect(screen.getAllByText('(+$20.00)')).toHaveLength(2);
   });
 
   it('renders the grid of a report cached before the rules were sent, naming no rounds or amount', async () => {

@@ -68,9 +68,9 @@ describe('RankingsView', () => {
   it('computes the zero-sum won/lost/net summary', () => {
     render(<RankingsView rankings={buildRankings()} />);
     // Won = 150 + 35 = 185, Lost = -35, Net = 150
-    expect(screen.getByText('Won').nextSibling).toHaveTextContent('$185');
-    expect(screen.getByText('Lost').nextSibling).toHaveTextContent('-$35');
-    expect(screen.getByText('Net').nextSibling).toHaveTextContent('$150');
+    expect(screen.getByText('Won').nextSibling).toHaveTextContent('+$185');
+    expect(screen.getByText('Lost').nextSibling).toHaveTextContent('\u2212$35');
+    expect(screen.getByText('Net').nextSibling).toHaveTextContent('+$150');
   });
 
   it('surfaces the live overlay indicator when enabled', () => {
