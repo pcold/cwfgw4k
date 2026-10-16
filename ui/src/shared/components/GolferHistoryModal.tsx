@@ -2,13 +2,18 @@ import type { ReactNode } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
-import { formatDollarsAndCents } from '@/shared/util/money';
+import { formatDollarsAndCents, moneyToneClass } from '@/shared/util/money';
 import ModalShell from './ModalShell';
 
 interface Props {
   seasonId: string | null;
   golferId: string | null;
   onClose: () => void;
+}
+
+function SeasonEarnings({ value }: { value: number }) {
+  const amount = formatDollarsAndCents(value);
+  return <span className={`font-mono font-bold ${moneyToneClass(amount)}`}>{amount}</span>;
 }
 
 function GolferHistoryModal({ seasonId, golferId, onClose }: Props): ReactNode {
@@ -47,9 +52,7 @@ function GolferHistoryModal({ seasonId, golferId, onClose }: Props): ReactNode {
             <span>
               {history.topTens} top 10{history.topTens !== 1 ? 's' : ''}
             </span>
-            <span className="text-semantic-success font-mono font-bold">
-              {formatDollarsAndCents(history.totalEarnings)}
-            </span>
+            <SeasonEarnings value={history.totalEarnings} />
           </div>
           {history.results.length > 0 ? (
             <table className="w-full text-sm">
@@ -65,7 +68,7 @@ function GolferHistoryModal({ seasonId, golferId, onClose }: Props): ReactNode {
                   <tr key={r.tournament} className="border-t border-hairline">
                     <td className="px-2 py-1.5">{r.tournament}</td>
                     <td className="px-2 py-1.5 text-right font-mono">{r.position}</td>
-                    <td className="px-2 py-1.5 text-right font-mono text-semantic-success">
+                    <td className="px-2 py-1.5 text-right font-mono">
                       {formatDollarsAndCents(r.earnings)}
                     </td>
                   </tr>

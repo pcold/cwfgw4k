@@ -1,6 +1,11 @@
 import type { ReactNode } from 'react';
 import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
-import { formatDollarsAndCents, formatUnsignedDollarsAndCents, formatWholeDollars } from '@/shared/util/money';
+import {
+  formatDollarsAndCents,
+  formatUnsignedDollarsAndCents,
+  formatWholeDollars,
+  moneyToneClass,
+} from '@/shared/util/money';
 import {
   ROUNDS,
   isSeasonReport,
@@ -9,7 +14,6 @@ import {
   sideBetAmountByRound,
   sideBetRowLabel,
   sideBetWinnersByRound,
-  signTextClass,
   teamCellsByRound,
 } from './weeklyReportModel';
 
@@ -117,11 +121,12 @@ function SummaryRow({
   );
 }
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+function StatCard({ label, value }: { label: string; value: number }) {
+  const amount = formatWholeDollars(value);
   return (
     <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
       <span className="text-ink-soft">{label}</span>
-      <span className={`font-semibold tabular-nums ${color}`}>{formatWholeDollars(value)}</span>
+      <span className={`font-semibold tabular-nums ${moneyToneClass(amount)}`}>{amount}</span>
     </div>
   );
 }
@@ -219,7 +224,6 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
               rowClass={highlightRow}
               borderClass={highlightBorder}
               labelBgClass="bg-surface-raised"
-              cellClass={(t) => (t.topTenEarnings > 0 ? 'text-semantic-success' : 'text-ink-soft')}
               cellContent={(t) => formatDollarsAndCents(t.topTenEarnings)}
             />
 
@@ -229,7 +233,6 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
               rowClass={highlightRow}
               borderClass={highlightBorder}
               labelBgClass="bg-surface-raised"
-              cellClass={(t) => signTextClass(t.weeklyTotal)}
               cellContent={(t) => formatDollarsAndCents(t.weeklyTotal)}
             />
 
@@ -250,7 +253,6 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
               rowClass={highlightRow}
               borderClass={highlightBorder}
               labelBgClass="bg-surface-raised"
-              cellClass={(t) => signTextClass(t.subtotal)}
               cellContent={(t) => (
                 <>
                   <div>{formatDollarsAndCents(t.subtotal)}</div>
@@ -268,7 +270,6 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
               borderClass={subBorder}
               labelBgClass="bg-surface-card"
               labelClass="text-ink-muted"
-              cellClass={(t) => signTextClass(t.sideBets)}
               cellContent={(t) => formatDollarsAndCents(t.sideBets)}
             />
 
@@ -289,8 +290,10 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
               borderClass="border border-gold/50"
               labelBgClass="bg-gold-tint"
               py="py-2"
-              cellClass={(t) => signTextClass(t.totalCash)}
-              cellContent={(t) => formatWholeDollars(t.totalCash)}
+              cellContent={(t) => {
+                const totalCash = formatWholeDollars(t.totalCash);
+                return <span className={moneyToneClass(totalCash)}>{totalCash}</span>;
+              }}
             />
           </tbody>
         </table>
@@ -309,9 +312,9 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
 
       {teams.length > 0 ? (
         <div className="flex flex-wrap gap-3 text-sm">
-          <StatCard label="Won" value={cashTotals.won} color="text-semantic-success" />
-          <StatCard label="Lost" value={cashTotals.lost} color="text-semantic-danger" />
-          <StatCard label="Net" value={cashTotals.net} color={signTextClass(cashTotals.net)} />
+          <StatCard label="Won" value={cashTotals.won} />
+          <StatCard label="Lost" value={cashTotals.lost} />
+          <StatCard label="Net" value={cashTotals.net} />
         </div>
       ) : null}
     </section>

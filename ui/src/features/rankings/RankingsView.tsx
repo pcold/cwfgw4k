@@ -1,13 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Rankings, TeamRanking } from '@/shared/api/types';
-import { formatDollarsAndCents, formatWholeDollars } from '@/shared/util/money';
+import { formatDollarsAndCents, formatWholeDollars, moneyToneClass } from '@/shared/util/money';
 import RankingsChart from './RankingsChart';
-
-function signColor(value: number): string {
-  if (value > 0) return 'text-semantic-success';
-  if (value < 0) return 'text-semantic-danger';
-  return 'text-ink-muted';
-}
 
 interface Props {
   rankings: Rankings;
@@ -23,6 +17,9 @@ function RankingsView({ rankings }: Props): ReactNode {
   const totalWon = sumWhere(sorted, (t) => t.totalCash > 0);
   const totalLost = sumWhere(sorted, (t) => t.totalCash < 0);
   const net = totalWon + totalLost;
+  const wonText = formatWholeDollars(totalWon);
+  const lostText = formatWholeDollars(totalLost);
+  const netText = formatWholeDollars(net);
 
   return (
     <section className="space-y-6">
@@ -46,27 +43,26 @@ function RankingsView({ rankings }: Props): ReactNode {
             </tr>
           </thead>
           <tbody className="divide-y divide-hairline-soft">
-            {sorted.map((team, index) => (
-              <tr key={team.teamId} className="hover:bg-surface-card/60">
-                <td className="px-3 py-2 text-ink-soft">{index + 1}</td>
-                <td className="px-3 py-2 font-medium text-ink uppercase">{team.teamName}</td>
-                <td
-                  className={`px-3 py-2 text-right tabular-nums ${signColor(team.subtotal)}`}
-                >
-                  {formatDollarsAndCents(team.subtotal)}
-                </td>
-                <td
-                  className={`px-3 py-2 text-right tabular-nums ${signColor(team.sideBets)}`}
-                >
-                  {formatDollarsAndCents(team.sideBets)}
-                </td>
-                <td
-                  className={`px-3 py-2 text-right tabular-nums font-semibold ${signColor(team.totalCash)}`}
-                >
-                  {formatWholeDollars(team.totalCash)}
-                </td>
-              </tr>
-            ))}
+            {sorted.map((team, index) => {
+              const totalCash = formatWholeDollars(team.totalCash);
+              return (
+                <tr key={team.teamId} className="hover:bg-surface-card/60">
+                  <td className="px-3 py-2 text-ink-soft tabular-nums">{index + 1}</td>
+                  <td className="px-3 py-2 font-medium text-ink uppercase">{team.teamName}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {formatDollarsAndCents(team.subtotal)}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {formatDollarsAndCents(team.sideBets)}
+                  </td>
+                  <td
+                    className={`px-3 py-2 text-right tabular-nums font-semibold ${moneyToneClass(totalCash)}`}
+                  >
+                    {totalCash}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -74,20 +70,20 @@ function RankingsView({ rankings }: Props): ReactNode {
       <div className="flex flex-wrap gap-3 text-sm">
         <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
           <span className="text-ink-soft">Won</span>
-          <span className="font-semibold text-semantic-success tabular-nums">
-            {formatWholeDollars(totalWon)}
+          <span className={`font-semibold tabular-nums ${moneyToneClass(wonText)}`}>
+            {wonText}
           </span>
         </div>
         <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
           <span className="text-ink-soft">Lost</span>
-          <span className="font-semibold text-semantic-danger tabular-nums">
-            {formatWholeDollars(totalLost)}
+          <span className={`font-semibold tabular-nums ${moneyToneClass(lostText)}`}>
+            {lostText}
           </span>
         </div>
         <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
           <span className="text-ink-soft">Net</span>
-          <span className={`font-semibold tabular-nums ${signColor(net)}`}>
-            {formatWholeDollars(net)}
+          <span className={`font-semibold tabular-nums ${moneyToneClass(netText)}`}>
+            {netText}
           </span>
         </div>
       </div>

@@ -60,7 +60,6 @@
   --color-semantic-warning-ink: var(--color-yellow-300);
   --color-semantic-warning-border: var(--color-yellow-600);
 
-  --color-semantic-danger-tint: var(--color-red-900);
   --color-semantic-danger: var(--color-red-300);
   --color-semantic-danger-hover: var(--color-red-200);
   /* Ties `semantic-danger`, which red-400 left below AA; red-200 is the step that would set it apart again. */

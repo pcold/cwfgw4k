@@ -135,6 +135,19 @@ function drawnText(doc: jsPDF): string[] {
     .map((text) => text.replace(/\\([()\\])/g, '$1'));
 }
 
+// The fill colour each string is drawn in: the operands of the last `g` or `rg` before its `Tj`.
+function drawnInk(doc: jsPDF): Map<string, string> {
+  const ink = new Map<string, string>();
+  let fill = '';
+  for (const line of doc.output().split('\n')) {
+    const colour = /^([\d. ]+) r?g$/.exec(line)?.[1];
+    if (colour !== undefined) fill = colour;
+    const text = /^\((.*)\) Tj$/.exec(line)?.[1];
+    if (text !== undefined) ink.set(text, fill);
+  }
+  return ink;
+}
+
 describe('buildWeeklyReportPdf', () => {
   it('builds a non-empty PDF for a per-tournament report with earnings, side-bet winners, and undrafted top-tens', () => {
     const doc = buildWeeklyReportPdf(buildFixture());
@@ -188,5 +201,29 @@ describe('buildWeeklyReportPdf', () => {
     const doc = buildWeeklyReportPdf(buildFixture({ undraftedLen: 0 }));
     const blob: Blob = doc.output('blob');
     expect(blob.size).toBeGreaterThan(100);
+  });
+
+  it('colours only ONGOING TOTAL CASH by sign, and draws the rows above it in the label ink', () => {
+    const ink = drawnInk(buildWeeklyReportPdf(buildFixture()));
+    const label = ink.get('TOTAL CASH');
+    expect(ink.get('+$95')).not.toBe(label);
+    expect(ink.get('\x96$55')).not.toBe(label);
+    expect(ink.get('+$95')).not.toBe(ink.get('\x96$55'));
+    for (const amount of ['+$7.50', '+$50.00', '+$40.00', '\x96$40.00', '\x96$20.00']) {
+      expect(ink.get(amount)).toBe(label);
+    }
+  });
+
+  it('tones a total cash that rounds to $0 as even, and one that rounds to a loss as down', () => {
+    const fixture = buildFixture();
+    const nearZero: WeeklyReport = {
+      ...fixture,
+      teams: fixture.teams.map((t) => ({ ...t, totalCash: t.teamId === 't1' ? -0.49 : -0.5 })),
+    };
+    const ink = drawnInk(buildWeeklyReportPdf(nearZero));
+    const loss = drawnInk(buildWeeklyReportPdf(fixture)).get('\x96$55');
+    expect(ink.get('\x96$1')).toBe(loss);
+    expect(ink.get('$0')).not.toBe(loss);
+    expect(ink.get('$0')).not.toBe(ink.get('TOTAL CASH'));
   });
 });

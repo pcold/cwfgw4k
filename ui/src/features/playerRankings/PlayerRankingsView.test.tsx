@@ -251,4 +251,18 @@ describe('PlayerRankingsView', () => {
     expect(rows).toHaveLength(1);
     expect(within(nth(rows, 0)).getByText('Aces R1')).toBeInTheDocument();
   });
+
+  it('tones each season Earnings total by the sign it prints, a zero gray', () => {
+    render(
+      <PlayerRankingsView
+        players={[
+          r({ key: 'g:g-1', name: 'Earner', totalEarnings: 50 }),
+          r({ key: 'g:g-2', golferId: 'g-2', name: 'Blank', totalEarnings: 0.004 }),
+        ]}
+        live={false}
+      />,
+    );
+    expect(screen.getByText('+$50.00')).toHaveClass('text-semantic-success');
+    expect(screen.getByText('$0')).toHaveClass('text-ink-soft');
+  });
 });

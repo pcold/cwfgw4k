@@ -121,4 +121,15 @@ describe('GolferHistoryModal', () => {
       expect(screen.getByRole('alert')).toHaveTextContent(/Failed to load golfer history/i);
     });
   });
+
+  it('tones the season total in the header and leaves each tournament payout in the table ink', async () => {
+    golferHistoryMock.mockResolvedValue(sampleHistory);
+    renderWithProviders(
+      <GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={() => {}} />,
+      { withLeagueSeasonProvider: false },
+    );
+
+    expect(await screen.findByText('+$240.00')).toHaveClass('text-semantic-success');
+    expect(screen.getByText('+$120.00').className).not.toMatch(/text-semantic-|text-ink-soft/);
+  });
 });

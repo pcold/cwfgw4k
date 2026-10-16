@@ -49,6 +49,31 @@ export function formatUnsignedDollarsAndCents(value: number): string {
   return formatted === '$0.00' ? ZERO : formatted;
 }
 
+/** @see moneyTone */
+export type MoneyTone = 'up' | 'down' | 'even';
+
+/**
+ * Takes the formatted text, not the number, so the tone is decided at the column's own precision: a
+ * cents column's `+$0.40` is `up` where a whole-dollar rounding would call it `even`. Reads the sign a
+ * signed formatter or its PDF twin puts before the `$` — a minus of either glyph is `down`.
+ */
+export function moneyTone(display: string): MoneyTone {
+  if (display.startsWith('+')) return 'up';
+  if (display.startsWith('$')) return 'even';
+  return 'down';
+}
+
+const MONEY_TONE_CLASS: Readonly<Record<MoneyTone, string>> = {
+  up: 'text-semantic-success',
+  down: 'text-semantic-danger',
+  even: 'text-ink-soft',
+};
+
+/** Only a surface's bottom line takes it; every other money cell keeps its table's ink. */
+export function moneyToneClass(display: string): string {
+  return MONEY_TONE_CLASS[moneyTone(display)];
+}
+
 // `exceptZero` leaves the sign off exactly when the value rounds to zero, which is when the
 // whole string collapses to `$0` rather than `$0.00`.
 function formatSigned(format: Intl.NumberFormat, value: number): string {

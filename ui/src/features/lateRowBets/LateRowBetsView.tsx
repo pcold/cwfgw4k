@@ -1,19 +1,11 @@
 import type { ReactNode } from 'react';
 import type { ReportSideBetRules, WeeklyReport } from '@/shared/api/types';
-import { formatDollarsAndCents, formatUnsignedDollarsAndCents } from '@/shared/util/money';
+import {
+  formatDollarsAndCents,
+  formatUnsignedDollarsAndCents,
+  moneyToneClass,
+} from '@/shared/util/money';
 import { lateRowBetRounds, lateRowBetTeamTotals, type LateRowBetEntry } from './lateRowBetsModel';
-
-function payoutClass(payout: number): string {
-  if (payout > 0) return 'text-semantic-success';
-  if (payout < 0) return 'text-semantic-danger';
-  return 'text-ink-soft';
-}
-
-function signClass(value: number): string {
-  if (value > 0) return 'text-semantic-success';
-  if (value < 0) return 'text-semantic-danger';
-  return 'text-ink-soft';
-}
 
 interface RoundTableProps {
   round: number;
@@ -44,9 +36,7 @@ function RoundTable({ round, entries }: RoundTableProps) {
                 <td className="px-2 py-1.5 text-right font-mono">
                   {formatDollarsAndCents(entry.cumulativeEarnings)}
                 </td>
-                <td
-                  className={`px-2 py-1.5 text-right font-mono font-bold ${payoutClass(entry.payout)}`}
-                >
+                <td className="px-2 py-1.5 text-right font-mono font-bold">
                   {formatDollarsAndCents(entry.payout)}
                 </td>
               </tr>
@@ -86,6 +76,9 @@ function LateRowBetsView({ report }: Props): ReactNode {
   const rounds = lateRowBetRounds(report);
   const totals = lateRowBetTeamTotals(report);
   const { sideBetTotals } = report;
+  const won = formatDollarsAndCents(sideBetTotals.won);
+  const lost = formatDollarsAndCents(sideBetTotals.lost);
+  const net = formatDollarsAndCents(sideBetTotals.net);
 
   if (rounds.length === 0) {
     return <p className="text-ink-soft text-sm">This season has no late row bets.</p>;
@@ -115,16 +108,17 @@ function LateRowBetsView({ report }: Props): ReactNode {
                 </tr>
               </thead>
               <tbody>
-                {totals.map((team) => (
-                  <tr key={team.teamId} className="border-t border-hairline">
-                    <td className="px-2 py-1.5 uppercase">{team.teamName}</td>
-                    <td
-                      className={`px-2 py-1.5 text-right font-mono font-bold ${signClass(team.sideBets)}`}
-                    >
-                      {formatDollarsAndCents(team.sideBets)}
-                    </td>
-                  </tr>
-                ))}
+                {totals.map((team) => {
+                  const total = formatDollarsAndCents(team.sideBets);
+                  return (
+                    <tr key={team.teamId} className="border-t border-hairline">
+                      <td className="px-2 py-1.5 uppercase">{team.teamName}</td>
+                      <td className={`px-2 py-1.5 text-right font-mono font-bold ${moneyToneClass(total)}`}>
+                        {total}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -135,20 +129,20 @@ function LateRowBetsView({ report }: Props): ReactNode {
         <div className="flex flex-wrap gap-3 text-sm">
           <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
             <span className="text-ink-soft">Won</span>
-            <span className="font-semibold text-semantic-success tabular-nums">
-              {formatDollarsAndCents(sideBetTotals.won)}
+            <span className={`font-semibold tabular-nums ${moneyToneClass(won)}`}>
+              {won}
             </span>
           </div>
           <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
             <span className="text-ink-soft">Lost</span>
-            <span className="font-semibold text-semantic-danger tabular-nums">
-              {formatDollarsAndCents(sideBetTotals.lost)}
+            <span className={`font-semibold tabular-nums ${moneyToneClass(lost)}`}>
+              {lost}
             </span>
           </div>
           <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
             <span className="text-ink-soft">Net</span>
-            <span className={`font-semibold tabular-nums ${signClass(sideBetTotals.net)}`}>
-              {formatDollarsAndCents(sideBetTotals.net)}
+            <span className={`font-semibold tabular-nums ${moneyToneClass(net)}`}>
+              {net}
             </span>
           </div>
         </div>

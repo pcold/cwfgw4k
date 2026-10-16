@@ -15,7 +15,6 @@ import {
   sideBetAmountByRound,
   sideBetRowLabel,
   sideBetWinnersByRound,
-  signTextClass,
   teamCellsByRound,
 } from './weeklyReportModel';
 
@@ -160,18 +159,6 @@ describe('teamCellsByRound', () => {
     expect(map.get(2)?.golferName).toBe('Golfer 2');
     expect(map.get(5)?.golferName).toBe('Golfer 5');
     expect(map.has(1)).toBe(false);
-  });
-});
-
-describe('signTextClass', () => {
-  it('returns the green class for positive amounts', () => {
-    expect(signTextClass(100)).toBe('text-semantic-success');
-  });
-  it('returns the red class for negative amounts', () => {
-    expect(signTextClass(-1)).toBe('text-semantic-danger');
-  });
-  it('returns the muted class for zero', () => {
-    expect(signTextClass(0)).toBe('text-ink-soft');
   });
 });
 
