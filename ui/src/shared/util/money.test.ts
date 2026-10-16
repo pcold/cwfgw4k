@@ -9,7 +9,7 @@ describe('formatDollarsAndCents', () => {
   });
 
   it('signs a loss with a true minus, U+2212, not a hyphen', () => {
-    expect(formatDollarsAndCents(-1.7785)).toBe('−$1.78');
+    expect(formatDollarsAndCents(-1.7785)).toBe('\u2212$1.78');
   });
 
   it('groups thousands', () => {
@@ -27,7 +27,7 @@ describe('formatWholeDollars', () => {
   it('rounds to whole dollars and groups thousands', () => {
     expect(formatWholeDollars(1082)).toBe('+$1,082');
     expect(formatWholeDollars(120.75)).toBe('+$121');
-    expect(formatWholeDollars(-80.4)).toBe('−$80');
+    expect(formatWholeDollars(-80.4)).toBe('\u2212$80');
   });
 
   it('renders zero, and anything that rounds to zero, as an unsigned "$0"', () => {
