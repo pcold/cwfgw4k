@@ -24,7 +24,8 @@ type Backdrop = string | Wash;
 // WCAG 2.2 §1.4.3. The large-text carve-out (3:1) is not taken: no more than a page heading could claim it.
 const AA_NORMAL_TEXT = 4.5;
 
-// The scoreboard's tinted team and leaderboard rows, and the weekly report's cash-total row.
+// The scoreboard's rostered leaderboard row and the weekly report's cash-total row. No surface draws
+// DANGER_ROW since the scoreboard's team-row wash went; it leaves with its token.
 const SUCCESS_ROW: Wash = { token: 'semantic-success-tint', percent: 10, over: 'canvas' };
 const DANGER_ROW: Wash = { token: 'semantic-danger-tint', percent: 10, over: 'canvas' };
 const CASH_TOTAL_ROW: Wash = { token: 'gold-soft', percent: 30, over: 'canvas' };
