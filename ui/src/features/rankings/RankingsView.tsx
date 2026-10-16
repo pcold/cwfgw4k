@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { Rankings, TeamRanking } from '@/shared/api/types';
+import type { Rankings } from '@/shared/api/types';
 import { formatDollarsAndCents, formatWholeDollars, moneyToneClass } from '@/shared/util/money';
 import RankingsChart from './RankingsChart';
 
@@ -7,19 +7,10 @@ interface Props {
   rankings: Rankings;
 }
 
-function sumWhere(teams: TeamRanking[], predicate: (t: TeamRanking) => boolean): number {
-  return teams.filter(predicate).reduce((acc, t) => acc + t.totalCash, 0);
-}
-
 function RankingsView({ rankings }: Props): ReactNode {
-  const sorted = [...rankings.teams].sort((a, b) => b.totalCash - a.totalCash);
-  const sortedRankings: Rankings = { ...rankings, teams: sorted };
-  const totalWon = sumWhere(sorted, (t) => t.totalCash > 0);
-  const totalLost = sumWhere(sorted, (t) => t.totalCash < 0);
-  const net = totalWon + totalLost;
-  const wonText = formatWholeDollars(totalWon);
-  const lostText = formatWholeDollars(totalLost);
-  const netText = formatWholeDollars(net);
+  const wonText = formatWholeDollars(rankings.cashTotals.won);
+  const lostText = formatWholeDollars(rankings.cashTotals.lost);
+  const netText = formatWholeDollars(rankings.cashTotals.net);
 
   return (
     <section className="space-y-6">
@@ -43,7 +34,7 @@ function RankingsView({ rankings }: Props): ReactNode {
             </tr>
           </thead>
           <tbody className="divide-y divide-hairline-soft">
-            {sorted.map((team, index) => {
+            {rankings.teams.map((team, index) => {
               const totalCash = formatWholeDollars(team.totalCash);
               return (
                 <tr key={team.teamId} className="hover:bg-surface-card/60">
@@ -88,7 +79,7 @@ function RankingsView({ rankings }: Props): ReactNode {
         </div>
       </div>
 
-      <RankingsChart rankings={sortedRankings} />
+      <RankingsChart rankings={rankings} />
     </section>
   );
 }

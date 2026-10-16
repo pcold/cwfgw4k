@@ -33,6 +33,7 @@ function buildRankings(overrides: Partial<Rankings> = {}): Rankings {
     tournamentNames: ['Sample Open', 'Major', 'Invitational'],
     live: false,
     liveEligible: false,
+    cashTotals: { won: 150, lost: -35, net: 115 },
     ...overrides,
   };
 }

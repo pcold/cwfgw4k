@@ -144,12 +144,15 @@ export interface TeamRanking {
 }
 
 export interface Rankings {
+  /** Best `totalCash` first. Number the standings in this order; never re-sort. */
   teams: TeamRanking[];
   weeks: string[];
   tournamentNames: string[];
   live: boolean | null;
   /** Whether a `live` request for this selection would overlay ESPN. Show the toggle on it; never re-derive it. */
   liveEligible: boolean;
+  /** @see WeeklyReport.cashTotals */
+  cashTotals: WonLostTotals;
 }
 
 export interface PlayerRankingsRow {

@@ -70,6 +70,7 @@ const rankings: Rankings = {
   tournamentNames: ['A', 'B', 'C'],
   live: false,
   liveEligible: false,
+  cashTotals: { won: 150, lost: 0, net: 150 },
 };
 
 function answerLiveEligibleThrough(...eligibleIds: string[]): void {
