@@ -2,7 +2,7 @@
  * U+2212, set where `Intl` writes an ASCII hyphen, so that a signed column's `+` and `−` are the
  * same width. A surface whose font has no glyph for it substitutes its own.
  */
-export const MINUS_SIGN = '−';
+export const MINUS_SIGN = '\u2212';
 
 const ZERO = '$0';
 
