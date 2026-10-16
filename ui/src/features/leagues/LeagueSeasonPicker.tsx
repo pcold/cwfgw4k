@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { seasonLabel } from '@/shared/util/season';
 
+const SELECT_CLASS = 'bg-surface-raised border border-control-border rounded px-2 py-2 text-base flex-1 sm:flex-initial';
+
 function LeagueSeasonPicker(): ReactNode {
   const ctx = useLeagueSeason();
 
@@ -17,7 +19,7 @@ function LeagueSeasonPicker(): ReactNode {
           <select
             value={ctx.leagueId ?? ''}
             onChange={(e) => ctx.setLeagueId(e.target.value)}
-            className="bg-surface-raised border border-control-border rounded px-2 py-2 flex-1 sm:flex-initial"
+            className={SELECT_CLASS}
           >
             {ctx.leagues.map((lg) => (
               <option key={lg.id} value={lg.id}>
@@ -35,7 +37,7 @@ function LeagueSeasonPicker(): ReactNode {
             value={ctx.seasonId ?? ''}
             onChange={(e) => ctx.setSeasonId(e.target.value)}
             disabled={!ctx.seasons || ctx.seasons.length === 0}
-            className="bg-surface-raised border border-control-border rounded px-2 py-2 flex-1 sm:flex-initial disabled:opacity-50"
+            className={`${SELECT_CLASS} disabled:opacity-50`}
           >
             {(ctx.seasons ?? []).map((s) => (
               <option key={s.id} value={s.id}>

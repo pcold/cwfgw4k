@@ -240,6 +240,25 @@ describe('SelectField', () => {
     expect(select.validity.valueMissing).toBe(true);
   });
 
+  it('sizes the select at 16px so iOS does not zoom the page into it', () => {
+    renderWithProviders(
+      <SelectField
+        id="relationship"
+        label="Relationship"
+        value=""
+        error={undefined}
+        placeholder="Select a relationship"
+        options={[{ value: 'spouse', label: 'Spouse' }]}
+        onChange={vi.fn()}
+      />,
+      NO_PROVIDERS,
+    );
+
+    const select = screen.getByLabelText('Relationship');
+    expect(select).toHaveClass('text-base');
+    expect(select).not.toHaveClass('text-sm');
+  });
+
   it('reports the picked option by its value', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();

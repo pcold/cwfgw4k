@@ -99,6 +99,12 @@ typography:
     fontWeight: 400
     lineHeight: 1.43
     letterSpacing: 0
+  control:
+    fontFamily: System Sans
+    fontSize: 16px
+    fontWeight: 400
+    lineHeight: 1.50
+    letterSpacing: 0
   caption:
     fontFamily: System Sans
     fontSize: 12px
@@ -160,7 +166,7 @@ components:
   field:
     backgroundColor: "{colors.surface-raised}"
     borderColor: "{colors.control-border}"
-    typography: "{typography.body}"
+    typography: "{typography.control}"
     rounded: "{rounded.sm}"
     padding: 8px 12px
   card:
@@ -199,7 +205,7 @@ The weekly report and the rosters page are laid out like the league's spreadshee
 **Key characteristics:**
 - Dark canvas, no light mode. `index.css` sets `{colors.canvas}` and `{colors.ink}` on `body`.
 - Gray ladder for depth: canvas → card → raised. Only the modal and the error screen cast a shadow.
-- Small type: `text-sm` (14px) body, `text-xs` (12px) for helper text, table heads and the report grids.
+- Small type: `text-sm` (14px) body, `text-xs` (12px) for helper text, table heads and the report grids. Inputs and selects are the exception at `text-base` (16px), because iOS zooms the page into a smaller one.
 - Uppercase `tracking-wider` labels mark structure: table heads, card headings, the league/season picker's labels.
 - Tabular numbers (`tabular-nums` or `font-mono`) on every money column.
 - Corners are `rounded` (4px) on controls and chips, `rounded-lg` (8px) on cards and the modal. Nothing is pill-shaped.
@@ -283,7 +289,8 @@ Each family takes only the rungs it uses. `-tint` is a wash, always at an opacit
 | `{typography.modal-title}` | 18px | 700 | 0 | `text-lg font-bold` | Modal header |
 | `{typography.card-heading}` | 14px | 600 | 0.05em, uppercase | `text-sm font-semibold uppercase tracking-wider text-ink-label` | Heading inside a card |
 | `{typography.column-header}` | 12px | 400 | 0.05em, uppercase | `text-xs uppercase tracking-wider` | Table heads, the picker's labels |
-| `{typography.body}` | 14px | 400 | 0 | `text-sm` | Tables, running text, fields |
+| `{typography.body}` | 14px | 400 | 0 | `text-sm` | Tables, running text |
+| `{typography.control}` | 16px | 400 | 0 | `text-base` | Every input and select |
 | `{typography.caption}` | 12px | 400 | 0 | `text-xs` | Field labels, helper text, field errors |
 | `{typography.button}` | 14px | 500 | 0 | `text-sm font-medium` | Standard buttons |
 | `{typography.button-compact}` | 12px | 500 | 0 | `text-xs font-medium` | Buttons in a page's header row or a panel row |
@@ -337,7 +344,7 @@ A `{colors.surface-card}` bar with a `{colors.hairline}` bottom border. The CWFG
 - Below `lg:`, a 44px (`w-11 h-11`) menu button opens a stacked list; its links are `px-4 py-3 rounded text-base font-medium`, idle `text-ink-secondary`.
 
 ### League / season picker — `ui/src/features/leagues/LeagueSeasonPicker.tsx`
-A bar under the nav: `bg-surface-card/60 border-b border-hairline`, two labelled selects. Labels are `text-ink-soft font-medium uppercase tracking-wider`; selects are `bg-surface-raised border border-control-border rounded`. Stacks one per row below `sm:`.
+A bar under the nav: `bg-surface-card/60 border-b border-hairline`, two labelled selects. Labels are `text-ink-soft font-medium uppercase tracking-wider`; selects are `bg-surface-raised border border-control-border rounded text-base`. Stacks one per row below `sm:`.
 
 ### Page header — `ScoreboardView.tsx`, `WeeklyReportView.tsx`, `RankingsView.tsx`, `PlayerRankingsView.tsx`, `RostersView.tsx`
 `<header className="border-b border-hairline pb-3">` holding a `{typography.page-title}` in `{colors.primary-ink}` and a `text-xs text-ink-muted` line beneath it. The Admin, Rules and Late Row Bets pages title themselves `text-xl font-bold` in the inherited `{colors.ink}` instead, and Player Rankings carries such a title above its controls as well as the view's header beneath them.
@@ -359,7 +366,7 @@ A bar under the nav: `bg-surface-card/60 border-b border-hairline`, two labelled
 Compact buttons in a header row or panel row (`FINALIZE_BUTTON_CLASS` and `LINKS_BUTTON_CLASS` in `ScoreboardPage.tsx`, `SAVE_LINK_BUTTON_CLASS`) drop to `px-3 py-1 text-xs`. A disabled filled button switches to `{colors.disabled}`; a disabled outline or text button takes `disabled:opacity-50`.
 
 ### Form fields — `ui/src/shared/components/formFields.tsx`
-`FIELD_CLASS` is `bg-surface-raised border border-control-border rounded px-3 py-2 text-sm w-full`, shared by `TextField`, `DateField` and `SelectField`. `FieldShell` puts a `block text-xs text-ink-muted mb-1` label above the control and a `mt-1 text-semantic-danger text-xs` error, with `role="alert"`, below it. Size a field with the `width` prop, not by appending a width class.
+`FIELD_CLASS` is `bg-surface-raised border border-control-border rounded px-3 py-2 text-base w-full`, built on `CONTROL_CLASS` and shared by `TextField`, `DateField` and `SelectField`. `FieldShell` puts a `block text-xs text-ink-muted mb-1` label above the control and a `mt-1 text-semantic-danger text-xs` error, with `role="alert"`, below it. Size a field with the `width` prop, not by appending a width class.
 
 A select in a page's toolbar rather than a form — the scoreboard's tournament, player rankings' Through — sits one step down on `bg-surface-card border border-control-border rounded px-3 py-2 text-sm`, the outline button's surface. The player-links panel's inline controls are a compact `px-2 py-1` cut of `FIELD_CLASS`.
 
