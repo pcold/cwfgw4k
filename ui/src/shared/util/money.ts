@@ -49,6 +49,7 @@ export function formatUnsignedDollarsAndCents(value: number): string {
   return formatted === '$0.00' ? ZERO : formatted;
 }
 
+/** @see moneyTone */
 export type MoneyTone = 'up' | 'down' | 'even';
 
 /**

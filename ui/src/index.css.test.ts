@@ -37,7 +37,7 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
   'ink-strong': ['surface-card', 'surface-raised'],
   ink: ['canvas', 'surface-card', 'surface-raised', 'gold-tint', SUCCESS_ROW, DANGER_ROW],
   'ink-body': ['surface-card', 'surface-raised', 'side-bet-winner'],
-  'ink-secondary': ['canvas', 'surface-card', 'surface-raised', SUCCESS_ROW, DANGER_ROW],
+  'ink-secondary': ['canvas', 'surface-card', 'surface-raised', DANGER_ROW],
   'ink-label': ['surface-card', 'surface-raised'],
   'ink-muted': [
     'canvas',
@@ -46,8 +46,8 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
     SUCCESS_ROW,
     DANGER_ROW,
   ],
-  'ink-soft': ['canvas', 'surface-card', 'surface-raised', 'side-bet-winner', SUCCESS_ROW, DANGER_ROW, CASH_TOTAL_ROW],
-  'ink-faint': ['canvas', 'surface-card', SUCCESS_ROW, DANGER_ROW],
+  'ink-soft': ['canvas', 'surface-card', 'surface-raised', 'side-bet-winner', DANGER_ROW, CASH_TOTAL_ROW],
+  'ink-faint': ['canvas', 'surface-card', DANGER_ROW],
   'on-primary': ['primary', 'primary-hover'],
   'on-fill': [
     'semantic-danger-fill',
