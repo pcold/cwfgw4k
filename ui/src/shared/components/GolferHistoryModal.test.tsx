@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import type { GolferHistory } from '@/shared/api/types';
 import GolferHistoryModal from './GolferHistoryModal';
 
@@ -131,5 +132,16 @@ describe('GolferHistoryModal', () => {
 
     expect(await screen.findByText('+$240.00')).toHaveClass('text-semantic-success');
     expect(screen.getByText('+$120.00').className).not.toMatch(/text-semantic-|text-ink-soft/);
+  });
+
+  it('sets every column head in the shared column-header type', async () => {
+    golferHistoryMock.mockResolvedValue(sampleHistory);
+    renderWithProviders(
+      <GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={() => {}} />,
+      { withLeagueSeasonProvider: false },
+    );
+
+    await screen.findByText('Sample Open');
+    expectSharedColumnHeads(1);
   });
 });

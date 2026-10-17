@@ -4,6 +4,7 @@ import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import { formatDollarsAndCents, moneyToneClass } from '@/shared/util/money';
 import ModalShell from './ModalShell';
+import { COLUMN_HEADER_CLASS } from './columnHeader';
 
 interface Props {
   seasonId: string | null;
@@ -56,7 +57,7 @@ function GolferHistoryModal({ seasonId, golferId, onClose }: Props): ReactNode {
           </div>
           {history.results.length > 0 ? (
             <table className="w-full text-sm">
-              <thead className="text-ink-muted text-xs uppercase">
+              <thead className={COLUMN_HEADER_CLASS}>
                 <tr>
                   <th className="text-left px-2 py-1">Tournament</th>
                   <th className="text-right px-2 py-1">Place</th>

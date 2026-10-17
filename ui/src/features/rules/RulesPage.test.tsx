@@ -3,6 +3,7 @@ import { screen, within } from '@testing-library/react';
 import type { api } from '@/shared/api/client';
 import { nth } from '@/shared/test/nth';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import type { League, Season, SeasonRules, Tournament } from '@/shared/api/types';
 import RulesPage from './RulesPage';
 
@@ -239,5 +240,13 @@ describe('RulesPage', () => {
     leaguesMock.mockRejectedValue(new Error('network down'));
     renderWithProviders(<RulesPage />);
     expect(await screen.findByText(/Failed to load leagues/i)).toBeInTheDocument();
+  });
+
+  it('sets every column head in the shared column-header type', async () => {
+    tournamentsMock.mockResolvedValue([]);
+    renderWithProviders(<RulesPage />);
+
+    await screen.findByRole('heading', { name: /Weekly Payouts/i });
+    expectSharedColumnHeads(1);
   });
 });

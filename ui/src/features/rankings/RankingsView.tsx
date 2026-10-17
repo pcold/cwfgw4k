@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Rankings } from '@/shared/api/types';
+import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import { formatDollarsAndCents, formatWholeDollars, moneyToneClass } from '@/shared/util/money';
 import RankingsChart from './RankingsChart';
 
@@ -16,8 +17,8 @@ function RankingsView({ rankings }: Props): ReactNode {
     <section className="space-y-6">
       <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="min-w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs uppercase tracking-wider text-ink-soft">
+          <thead className={COLUMN_HEADER_CLASS}>
+            <tr className="text-left">
               <th className="px-3 py-2 w-12">#</th>
               <th className="px-3 py-2">Team</th>
               <th className="px-3 py-2 text-right">Subtotal</th>

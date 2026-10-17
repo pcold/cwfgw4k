@@ -5,6 +5,7 @@ import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/ty
 import { nth } from '@/shared/test/nth';
 import { makeLeaderboardEntry, makeWonLostTotals } from '@/shared/test/fixtures';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import ScoreboardView from './ScoreboardView';
 
 function row(overrides: Partial<ReportCell> = {}): ReportCell {
@@ -412,5 +413,10 @@ describe('ScoreboardView', () => {
     expect(screen.getByText('Won').nextSibling).toHaveClass('text-ink-soft');
     expect(screen.getByText('Lost').nextSibling).toHaveClass('text-semantic-danger');
     expect(screen.getByText('Net').nextSibling).toHaveClass('text-semantic-danger');
+  });
+
+  it('sets every column head in the shared column-header type', () => {
+    render(<ScoreboardView report={report({ liveLeaderboard: [tiger] })} />);
+    expectSharedColumnHeads(2);
   });
 });

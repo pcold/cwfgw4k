@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import type { Rankings } from '@/shared/api/types';
+import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import RankingsView from './RankingsView';
 
 function buildRankings(overrides: Partial<Rankings> = {}): Rankings {
@@ -107,5 +108,10 @@ describe('RankingsView', () => {
     expect(screen.getByText('Won').nextSibling).toHaveClass('text-semantic-success');
     expect(screen.getByText('Lost').nextSibling).toHaveClass('text-semantic-danger');
     expect(screen.getByText('Net').nextSibling).toHaveClass('text-ink-soft');
+  });
+
+  it('sets every column head in the shared column-header type', () => {
+    render(<RankingsView rankings={buildRankings()} />);
+    expectSharedColumnHeads(1);
   });
 });
