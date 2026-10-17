@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
+import { screen, waitFor, waitForElementToBeRemoved, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
@@ -132,6 +132,12 @@ function buildReport(name: string): WeeklyReport {
   };
 }
 
+function titleRow(subtitle: HTMLElement): HTMLElement {
+  const header = subtitle.closest('header');
+  if (!header) throw new Error('the subtitle sits outside the page title');
+  return header;
+}
+
 function golfer(id: string, firstName: string, lastName: string): Golfer {
   return {
     id,
@@ -231,7 +237,7 @@ describe('ScoreboardPage', () => {
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
-    expect(await screen.findByRole('heading', { name: /Current Open/i })).toBeInTheDocument();
+    expect(await screen.findByText('Current Open · Week 9')).toBeInTheDocument();
     await waitFor(() => {
       expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-active', true);
     });
@@ -250,7 +256,7 @@ describe('ScoreboardPage', () => {
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
-    expect(await screen.findByRole('heading', { name: /Latest Open/i })).toBeInTheDocument();
+    expect(await screen.findByText('Latest Open · Week 9')).toBeInTheDocument();
     await waitFor(() => {
       // Every tournament is completed → live overlay is suppressed.
       expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-latest', false);
@@ -278,7 +284,7 @@ describe('ScoreboardPage', () => {
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
-    expect(await screen.findByRole('heading', { name: /Next Week Open/i })).toBeInTheDocument();
+    expect(await screen.findByText('Next Week Open · Week 9')).toBeInTheDocument();
     expect(screen.getByLabelText<HTMLSelectElement>(/Tournament/i).value).toBe('tn-active-b');
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-active-b', true);
     expect(tournamentReportMock).not.toHaveBeenCalledWith('sn-1', 'tn-active', expect.anything());
@@ -340,11 +346,11 @@ describe('ScoreboardPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
-    await screen.findByRole('heading', { name: /Current Open/i });
+    await screen.findByText('Current Open · Week 9');
     const select = screen.getByLabelText(/Tournament/i);
     await user.selectOptions(select, 'tn-completed');
 
-    expect(await screen.findByRole('heading', { name: /Sample Open/i })).toBeInTheDocument();
+    expect(await screen.findByText('Sample Open · Week 9')).toBeInTheDocument();
     // The user switched to a completed tournament → live overlay is suppressed.
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-completed', false);
   });
@@ -371,7 +377,7 @@ describe('ScoreboardPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
-    await screen.findByRole('heading', { name: /Current Open/i });
+    await screen.findByText('Current Open · Week 9');
     await waitFor(() => {
       expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-active', true);
     });
@@ -379,9 +385,7 @@ describe('ScoreboardPage', () => {
     const select = screen.getByLabelText(/Tournament/i);
     await user.selectOptions(select, 'tn-active-b');
 
-    expect(
-      await screen.findByRole('heading', { name: /Opposite Field Open/i }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Opposite Field Open · Week 9')).toBeInTheDocument();
     await waitFor(() => {
       expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-active-b', true);
     });
@@ -409,13 +413,13 @@ describe('ScoreboardPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
-    await screen.findByRole('heading', { name: /Current Open/i });
+    await screen.findByText('Current Open · Week 9');
     expect(screen.queryByRole('checkbox', { name: /Live overlay/i })).not.toBeInTheDocument();
     expect(tournamentReportMock).not.toHaveBeenCalledWith('sn-1', 'tn-active', true);
 
     await user.selectOptions(screen.getByLabelText(/Tournament/i), 'tn-next');
 
-    expect(await screen.findByRole('heading', { name: /Next Week Open/i })).toBeInTheDocument();
+    expect(await screen.findByText('Next Week Open · Week 9')).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: /Live overlay/i })).toBeChecked();
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-next', true);
   });
@@ -700,7 +704,7 @@ describe('ScoreboardPage', () => {
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
-    await screen.findByRole('heading', { name: /Current Open/i });
+    await screen.findByText('Current Open · Week 10');
     expect(
       screen.queryByRole('button', { name: /Finalize Results/i }),
     ).not.toBeInTheDocument();
@@ -721,10 +725,37 @@ describe('ScoreboardPage', () => {
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
-    await screen.findByRole('heading', { name: /Sample Open/i });
+    await screen.findByText('Sample Open · Week 9');
     expect(
       screen.queryByRole('button', { name: /Finalize Results/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it('marks a completed tournament FINAL in the title row', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([completedTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-completed' });
+    tournamentReportMock.mockResolvedValue(buildReport('Sample Open'));
+
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    const subtitle = await screen.findByText('Sample Open · Week 9');
+    expect(within(titleRow(subtitle)).getByText('Final')).toHaveClass('bg-chrome');
+  });
+
+  it('marks the tournament LIVE, not final, when the server overlaid ESPN', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
+    tournamentReportMock.mockResolvedValue({ ...buildReport('Current Open'), live: true, liveEligible: true });
+
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    const subtitle = await screen.findByText('Current Open · Week 9');
+    expect(within(titleRow(subtitle)).getByText('Live')).toHaveClass('bg-primary');
+    expect(screen.queryByText('Final')).not.toBeInTheDocument();
   });
 
   it('shows an error message when the report fails to load', async () => {
@@ -798,7 +829,7 @@ describe('ScoreboardPage', () => {
     });
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
-    await screen.findByRole('heading', { name: /Current Open/i });
+    await screen.findByText('Current Open · Week 10');
 
     expect(
       screen.queryByRole('button', { name: /Manage player links/i }),

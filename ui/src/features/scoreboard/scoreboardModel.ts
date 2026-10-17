@@ -2,6 +2,7 @@ import type {
   LiveLeaderboardEntry,
   ReportCell,
   ReportTeamColumn,
+  ReportTournamentInfo,
   WeeklyReport,
 } from '@/shared/api/types';
 
@@ -94,4 +95,9 @@ export function formatScoreToPar(score: number | null): string {
   if (score === null) return '—';
   if (score === 0) return 'E';
   return score > 0 ? `+${score}` : `${score}`;
+}
+
+export function scoreboardSubtitle(tournament: ReportTournamentInfo): string {
+  const payout = tournament.payoutMultiplier !== 1 ? [`${tournament.payoutMultiplier}x payout`] : [];
+  return [tournament.name, `Week ${tournament.week ?? '?'}`, ...payout].filter(Boolean).join(' · ');
 }

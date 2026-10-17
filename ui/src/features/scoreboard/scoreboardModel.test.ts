@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
+import type { ReportCell, ReportTeamColumn, ReportTournamentInfo, WeeklyReport } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
 import { makeLeaderboardEntry, makeWonLostTotals } from '@/shared/test/fixtures';
 import {
@@ -8,6 +8,7 @@ import {
   hasUndraftedPlayer,
   leaderboardTeamNames,
   playerNames,
+  scoreboardSubtitle,
   scoreboardTeams,
   teamLabel,
 } from './scoreboardModel';
@@ -226,5 +227,26 @@ describe('formatScoreToPar', () => {
   });
   it('passes negative values through', () => {
     expect(formatScoreToPar(-7)).toBe('-7');
+  });
+});
+
+describe('scoreboardSubtitle', () => {
+  const tournament: ReportTournamentInfo = {
+    name: 'Sample Open',
+    startDate: '2026-03-01',
+    endDate: '2026-03-04',
+    status: 'completed',
+    payoutMultiplier: 1,
+    week: '9',
+  };
+
+  it('names the tournament and its week', () => {
+    expect(scoreboardSubtitle(tournament)).toBe('Sample Open · Week 9');
+  });
+  it('adds the payout multiplier when the week pays more than once', () => {
+    expect(scoreboardSubtitle({ ...tournament, payoutMultiplier: 2 })).toBe('Sample Open · Week 9 · 2x payout');
+  });
+  it('leaves out a missing name and marks a missing week', () => {
+    expect(scoreboardSubtitle({ ...tournament, name: null, week: null })).toBe('Week ?');
   });
 });
