@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PlayerRankingsRow } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
+import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import PlayerRankingsView from './PlayerRankingsView';
 
@@ -259,5 +260,10 @@ describe('PlayerRankingsView', () => {
     );
     expect(screen.getByText('+$50.00')).toHaveClass('text-semantic-success');
     expect(screen.getByText('$0')).toHaveClass('text-ink-soft');
+  });
+
+  it('sets every column head in the shared column-header type', () => {
+    render(<PlayerRankingsView players={[r({})]} />);
+    expectSharedColumnHeads(1);
   });
 });

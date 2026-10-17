@@ -5,6 +5,7 @@ import ColumnHeaderFilter, {
 } from '@/shared/components/ColumnHeaderFilter';
 import type { PlayerRankingsRow } from '@/shared/api/types';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 
 interface Props {
   players: PlayerRankingsRow[];
@@ -70,8 +71,8 @@ function PlayerRankingsView({ players, onGolferClick }: Props): ReactNode {
     <section className="space-y-4">
       <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="min-w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs uppercase tracking-wider text-ink-soft">
+          <thead className={COLUMN_HEADER_CLASS}>
+            <tr className="text-left">
               <th className="px-3 py-2 w-12">#</th>
               <th className="px-3 py-2">Player</th>
               <th className="px-3 py-2 text-right">Top 10s</th>

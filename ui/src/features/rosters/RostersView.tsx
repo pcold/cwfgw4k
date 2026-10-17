@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { RosterPick, RosterTeam } from '@/shared/api/types';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 
 interface Props {
   teams: RosterTeam[];
@@ -52,8 +53,8 @@ function RostersView({ teams, sideBetRounds, onGolferClick }: Props): ReactNode 
     <section className="space-y-6">
       <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="w-full text-xs border-collapse">
-          <thead>
-            <tr className="bg-gold text-on-gold font-bold">
+          <thead className={COLUMN_HEADER_CLASS}>
+            <tr className="bg-gold text-on-gold">
               <th className="border border-hairline-strong px-1 py-1.5 w-10 sm:w-12 text-center sticky left-0 z-20 bg-gold">
                 RD
               </th>
@@ -63,7 +64,7 @@ function RostersView({ teams, sideBetRounds, onGolferClick }: Props): ReactNode 
                   className="border border-hairline-strong px-1 py-1.5 text-center min-w-[100px]"
                 >
                   <div>{team.teamNumber ?? i + 1}</div>
-                  <div className="text-xs uppercase">{team.teamName}</div>
+                  <div>{team.teamName}</div>
                 </th>
               ))}
             </tr>

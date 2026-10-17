@@ -12,6 +12,7 @@ import type {
 import { nth } from '@/shared/test/nth';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import WeeklyReportView from './WeeklyReportView';
 
 function row(round: number, overrides: Partial<ReportCell> = {}): ReportCell {
@@ -317,5 +318,10 @@ describe('WeeklyReportView', () => {
     expect(screen.getByText('Won').nextSibling).toHaveClass('text-ink-soft');
     expect(screen.getByText('Lost').nextSibling).toHaveClass('text-semantic-danger');
     expect(screen.getByText('Net').nextSibling).toHaveClass('text-semantic-danger');
+  });
+
+  it('sets every column head in the shared column-header type', () => {
+    render(<WeeklyReportView report={report()} />);
+    expectSharedColumnHeads(1);
   });
 });

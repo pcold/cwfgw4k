@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { RosterTeam } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import RostersView from './RostersView';
 
 function pick(round: number, name: string, pct = 100, id = `g-${round}-${name}`) {
@@ -135,5 +136,10 @@ describe('RostersView', () => {
     };
     render(<RostersView teams={[unique]} sideBetRounds={[]} />);
     expect(screen.queryByText(/Shared Players:/i)).not.toBeInTheDocument();
+  });
+
+  it('sets every column head in the shared column-header type', () => {
+    render(<RostersView teams={[aces, birdies]} sideBetRounds={[]} />);
+    expectSharedColumnHeads(1);
   });
 });

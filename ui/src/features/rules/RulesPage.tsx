@@ -6,6 +6,7 @@ import type { SeasonRules, Tournament } from '@/shared/api/types';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState } from '@/shared/components/QueryState';
 import PageTitle from '@/shared/components/PageTitle';
+import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import { formatUnsignedDollarsAndCents } from '@/shared/util/money';
 import { ordinal } from './rulesModel';
@@ -87,8 +88,8 @@ function RulesView({ rules }: RulesViewProps): ReactNode {
           players earn payouts:
         </p>
         <table className="w-full max-w-xs text-sm">
-          <thead>
-            <tr className="text-ink-muted border-b border-hairline">
+          <thead className={COLUMN_HEADER_CLASS}>
+            <tr className="border-b border-hairline">
               <th className="text-left py-1">Position</th>
               <th className="text-right py-1">Payout</th>
             </tr>

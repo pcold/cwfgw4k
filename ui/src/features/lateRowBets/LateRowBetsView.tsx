@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { ReportSideBetRules, WeeklyReport } from '@/shared/api/types';
+import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import {
   formatDollarsAndCents,
   formatUnsignedDollarsAndCents,
@@ -20,8 +21,8 @@ function RoundTable({ round, entries }: RoundTableProps) {
       </h3>
       <div className="overflow-x-auto -mx-2 sm:mx-0">
         <table className="w-full text-xs min-w-[480px]">
-          <thead>
-            <tr className="text-ink-muted">
+          <thead className={COLUMN_HEADER_CLASS}>
+            <tr>
               <th className="text-left px-2 py-1">Team</th>
               <th className="text-left px-2 py-1">Golfer</th>
               <th className="text-right px-2 py-1">Cumulative $</th>
@@ -101,8 +102,8 @@ function LateRowBetsView({ report }: Props): ReactNode {
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
-              <thead>
-                <tr className="text-ink-muted">
+              <thead className={COLUMN_HEADER_CLASS}>
+                <tr>
                   <th className="text-left px-2 py-1">Team</th>
                   <th className="text-right px-2 py-1">Total</th>
                 </tr>

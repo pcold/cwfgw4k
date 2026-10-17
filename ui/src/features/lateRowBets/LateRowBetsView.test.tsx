@@ -7,6 +7,7 @@ import type {
   WeeklyReport,
 } from '@/shared/api/types';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
+import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import LateRowBetsView from './LateRowBetsView';
 
 function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
@@ -163,5 +164,10 @@ describe('LateRowBetsView', () => {
     expect(screen.getByText('Won').nextSibling).toHaveClass('text-ink-soft');
     expect(screen.getByText('Lost').nextSibling).toHaveClass('text-semantic-danger');
     expect(screen.getByText('Net').nextSibling).toHaveClass('text-semantic-danger');
+  });
+
+  it('sets every column head in the shared column-header type', () => {
+    render(<LateRowBetsView report={report()} />);
+    expectSharedColumnHeads(3);
   });
 });

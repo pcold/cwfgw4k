@@ -5,6 +5,7 @@ import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeSeason } from '@/shared/test/fixtures';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import UploadScheduleSection from './UploadScheduleSection';
 
 const leaguesMock = vi.fn<typeof api.leagues>();
@@ -241,5 +242,25 @@ describe('UploadScheduleSection', () => {
 
     expect(await screen.findByText(/Every candidate was removed/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Confirm Import/i })).toBeDisabled();
+  });
+
+  it('sets every column head in the shared column-header type', async () => {
+    previewSeasonScheduleMock.mockResolvedValue({
+      entries: [buildPreviewEntry({ espnEventId: 'e-1', name: 'The Masters', week: '15' })],
+      skipped: [],
+    });
+    confirmSeasonScheduleMock.mockResolvedValue({
+      created: [buildTournament({ id: 't-2', name: 'The Masters', week: '15' })],
+      skipped: [],
+    });
+
+    const user = userEvent.setup();
+    await previewSchedule(user);
+    const confirm = await screen.findByRole('button', { name: /Confirm Import/i });
+    expectSharedColumnHeads(1);
+    await user.click(confirm);
+
+    await screen.findByLabelText('Payout multiplier for The Masters');
+    expectSharedColumnHeads(1);
   });
 });
