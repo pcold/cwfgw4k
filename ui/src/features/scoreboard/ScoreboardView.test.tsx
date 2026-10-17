@@ -473,7 +473,7 @@ describe('ScoreboardView', () => {
 
     const card = screen.getByRole('heading', { name: 'Leaderboard' }).closest('.bg-surface-card');
     const columns = card?.parentElement;
-    expect(columns).toHaveClass('grid', 'xl:grid-cols-[minmax(0,11fr)_minmax(0,10fr)]');
+    expect(columns).toHaveClass('grid', 'grid-cols-1', 'xl:grid-cols-[minmax(0,5fr)_minmax(0,4fr)]');
     expect(columns?.firstElementChild).toContainElement(nth(screen.getAllByRole('table'), 0));
     expect(columns?.lastElementChild).toBe(card);
   });

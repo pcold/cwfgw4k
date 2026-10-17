@@ -28,8 +28,8 @@ const GOLFER_BUTTON_CLASS = `text-ink-secondary hover:underline cursor-pointer b
 // Spelled as on the standings' card rows, which keep theirs private.
 const CARD_CELL_CLASS = 'px-3 py-2 bg-surface-card';
 
-// Below `xl` the two columns stack, the team table first.
-const TWO_COLUMN_CLASS = 'grid gap-6 xl:grid-cols-[minmax(0,11fr)_minmax(0,10fr)] xl:gap-8 xl:items-start';
+// `grid-cols-1`, not the implicit track, which grows to a table's min-width and scrolls a phone's page sideways.
+const TWO_COLUMN_CLASS = 'grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,5fr)_minmax(0,4fr)] xl:items-start';
 
 interface GolferLineProps {
   team: ScoreboardTeam;
@@ -177,12 +177,12 @@ function LeaderboardCard({ leaderboard, tournamentName }: LeaderboardCardProps):
         {tournamentName ? <span className="text-sm uppercase tracking-wider truncate">{tournamentName}</span> : null}
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] text-sm">
+        <table className="w-full min-w-[480px] text-sm">
           <thead className={COLUMN_HEADER_CLASS}>
             <tr>
-              <th className="px-3 py-2 text-left">Pos</th>
-              <th className="px-3 py-2 text-left">Player</th>
-              <th className="px-3 py-2 text-left">
+              <th className="pl-3 pr-2 py-2 text-left">Pos</th>
+              <th className="px-2 py-2 text-left">Player</th>
+              <th className="px-2 py-2 text-left">
                 <ColumnHeaderFilter
                   ariaLabel="Filter leaderboard by team"
                   value={teamFilter}
@@ -190,12 +190,12 @@ function LeaderboardCard({ leaderboard, tournamentName }: LeaderboardCardProps):
                   options={teamOptions}
                 />
               </th>
-              <th className="px-3 py-2 text-right">Score</th>
-              <th className="px-3 py-2 text-right">R1</th>
-              <th className="px-3 py-2 text-right">R2</th>
-              <th className="px-3 py-2 text-right">R3</th>
-              <th className="px-3 py-2 text-right">R4</th>
-              <th className="px-3 py-2 text-right">Tot</th>
+              <th className="px-2 py-2 text-right">Score</th>
+              <th className="px-2 py-2 text-right">R1</th>
+              <th className="px-2 py-2 text-right">R2</th>
+              <th className="px-2 py-2 text-right">R3</th>
+              <th className="px-2 py-2 text-right">R4</th>
+              <th className="pl-2 pr-3 py-2 text-right">Tot</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-hairline-soft">
@@ -208,20 +208,20 @@ function LeaderboardCard({ leaderboard, tournamentName }: LeaderboardCardProps):
             ) : (
               filteredLeaderboard.map((entry) => (
                 <tr key={playerNames(entry)}>
-                  <td className="px-3 py-2 text-ink-muted tabular-nums">{entry.position}</td>
-                  <td className="px-3 py-2 text-ink">{playerNames(entry)}</td>
-                  <td className="px-3 py-2">
+                  <td className="pl-3 pr-2 py-2 text-ink-muted tabular-nums">{entry.position}</td>
+                  <td className="px-2 py-2 text-ink">{playerNames(entry)}</td>
+                  <td className="px-2 py-2">
                     <TeamChips entry={entry} />
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                  <td className="px-2 py-2 text-right tabular-nums font-semibold">
                     {formatScoreToPar(entry.scoreToPar)}
                   </td>
                   {[0, 1, 2, 3].map((idx) => (
-                    <td key={idx} className="px-3 py-2 text-right tabular-nums text-ink-muted">
+                    <td key={idx} className="px-2 py-2 text-right tabular-nums text-ink-muted">
                       {entry.roundScores[idx] ?? '—'}
                     </td>
                   ))}
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                  <td className="pl-2 pr-3 py-2 text-right tabular-nums font-semibold">
                     {entry.totalStrokes ?? '—'}
                   </td>
                 </tr>
