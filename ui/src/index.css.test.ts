@@ -246,7 +246,7 @@ const themeScale = (pattern: RegExp, toValue: (raw: string) => number): Readonly
 const themeTextSizesPx = themeScale(/--text-([\w-]+):\s*([\d.]+)rem;/g, (rem) => Number(rem) * 16);
 const themeFontWeights = themeScale(/--font-weight-([\w-]+):\s*(\d+);/g, Number);
 
-// The value a utility in the class string sets on the theme's scale; 0 when none does.
+// The largest value a utility in the class string sets on the theme's scale; 0 when none does.
 const scaleValueIn = (typeClass: string, prefix: 'text-' | 'font-', scale: ReadonlyMap<string, number>): number =>
   Math.max(
     0,
@@ -275,6 +275,11 @@ describe('the large-text carve-out', () => {
   it.each(LARGE_TEXT_PAIRS)('sets bold type of at least 18.66px where $label', (pair) => {
     expect(scaleValueIn(pair.typeClass, 'font-', themeFontWeights)).toBeGreaterThanOrEqual(BOLD_WEIGHT);
     expect(scaleValueIn(pair.typeClass, 'text-', themeTextSizesPx)).toBeGreaterThanOrEqual(LARGE_BOLD_TEXT_MIN_PX);
+  });
+
+  // The size check reads unprefixed utilities only, so a `max-sm:text-sm` would shrink the figure past it.
+  it.each(LARGE_TEXT_PAIRS)('sets one type at every breakpoint and state where $label', (pair) => {
+    expect(pair.typeClass.split(/\s+/).filter((utility) => utility.includes(':'))).toEqual([]);
   });
 });
 

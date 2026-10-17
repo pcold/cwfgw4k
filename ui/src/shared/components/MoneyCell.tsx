@@ -1,6 +1,5 @@
 import type { ReactElement } from 'react';
-import type { MoneyTone } from '@/shared/util/money';
-import { moneyTone } from '@/shared/util/money';
+import { moneyTone, type MoneyTone } from '@/shared/util/money';
 
 /**
  * White on the up fill is 4.40:1, which passes only as large text: bold and at least 18.66px. The contrast

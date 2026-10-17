@@ -22,11 +22,11 @@ describe('PositionCell', () => {
     [1, ['bg-gold', 'text-on-gold'], ['bg-position-fill', 'text-on-fill']],
     [2, ['bg-position-fill', 'text-on-fill'], ['bg-gold', 'text-on-gold']],
     [13, ['bg-position-fill', 'text-on-fill'], ['bg-gold', 'text-on-gold']],
-  ] as const)('fills position %i with its tone, in the condensed bold number', (position, tone, otherTone) => {
+  ] as const)('fills position %i with its tone, in the condensed bold number', (position, tone, otherTones) => {
     renderInRow(<PositionCell position={position} />);
 
     const cell = screen.getByRole('cell', { name: String(position) });
     expect(cell).toHaveClass(...tone, 'rounded-l', 'font-display', 'font-bold');
-    expect(cell).not.toHaveClass(...otherTone);
+    expect(cell).not.toHaveClass(...otherTones);
   });
 });

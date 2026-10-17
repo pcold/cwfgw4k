@@ -101,6 +101,8 @@ describe('RankingsView', () => {
     const aceCells = within(screen.getByRole('row', { name: /Aces/ }));
     expect(aceCells.getByText('+$120.00').className).not.toMatch(/text-semantic-|text-ink-soft|bg-money-/);
     expect(aceCells.getByText('+$30.00').className).not.toMatch(/text-semantic-|text-ink-soft|bg-money-/);
+    const birdieCells = within(screen.getByRole('row', { name: /Birdies/ }));
+    expect(birdieCells.getByText('\u2212$15.00').className).not.toMatch(/text-semantic-|text-ink-soft|bg-money-/);
   });
 
   it('boxes the first position in gold and every other in navy', () => {
