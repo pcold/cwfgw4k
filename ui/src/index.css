@@ -99,6 +99,24 @@
   --color-on-gold-earnings: var(--color-green-800);
 
   --color-side-bet-winner: var(--color-red-100);
+
+  --font-sans:
+    "Saira Variable", "Saira Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Arial scaled to Saira's width and line box, so text holds its place while the webfont swaps in. */
+@font-face {
+  font-family: "Saira Fallback";
+  src: local("Arial");
+  size-adjust: 104.24%;
+  ascent-override: 108.88%;
+  descent-override: 42.11%;
+  line-gap-override: 0%;
+}
+
+/* The PM's condensed display type; a fallback without a width axis sets it at its own width. */
+@utility font-display {
+  font-stretch: 75%;
 }
 
 html,
@@ -111,11 +129,4 @@ body {
   margin: 0;
   background-color: var(--color-canvas);
   color: var(--color-ink);
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
 }

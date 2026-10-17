@@ -60,64 +60,77 @@ colors:
   side-bet-winner: "#ffe2e2"
 
 typography:
+  display:
+    fontFamily: Saira
+    fontStretch: 75%
   brand-mark:
-    fontFamily: System Sans
+    fontFamily: Saira
+    fontStretch: 100%
     fontSize: 18px
     fontWeight: 700
     lineHeight: 1.56
     letterSpacing: 0.025em
   page-title:
-    fontFamily: System Sans
+    fontFamily: Saira
+    fontStretch: 100%
     fontSize: 20px
     fontWeight: 600
     lineHeight: 1.40
     letterSpacing: 0
   modal-title:
-    fontFamily: System Sans
+    fontFamily: Saira
+    fontStretch: 100%
     fontSize: 18px
     fontWeight: 700
     lineHeight: 1.56
     letterSpacing: 0
   card-heading:
-    fontFamily: System Sans
+    fontFamily: Saira
+    fontStretch: 100%
     fontSize: 14px
     fontWeight: 600
     lineHeight: 1.43
     letterSpacing: 0.05em
     textTransform: uppercase
   column-header:
-    fontFamily: System Sans
+    fontFamily: Saira
+    fontStretch: 100%
     fontSize: 12px
     fontWeight: 400
     lineHeight: 1.33
     letterSpacing: 0.05em
     textTransform: uppercase
   body:
-    fontFamily: System Sans
+    fontFamily: Saira
+    fontStretch: 100%
     fontSize: 14px
     fontWeight: 400
     lineHeight: 1.43
     letterSpacing: 0
   control:
-    fontFamily: System Sans
+    fontFamily: Saira
+    fontStretch: 100%
     fontSize: 16px
     fontWeight: 400
     lineHeight: 1.50
     letterSpacing: 0
   caption:
-    fontFamily: System Sans
+    fontFamily: Saira
+    fontStretch: 100%
     fontSize: 12px
     fontWeight: 400
     lineHeight: 1.33
     letterSpacing: 0
   button:
-    fontFamily: System Sans
+    fontFamily: Saira
+    fontStretch: 100%
     fontSize: 14px
     fontWeight: 500
     lineHeight: 1.43
     letterSpacing: 0
   button-compact:
-    fontFamily: System Sans
+    fontFamily: Saira
+    fontStretch: 100%
     fontSize: 12px
     fontWeight: 500
     lineHeight: 1.33

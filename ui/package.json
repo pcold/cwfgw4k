@@ -14,6 +14,7 @@
     "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {
+    "@fontsource-variable/saira": "^5.3.0",
     "@tanstack/react-query": "^5.104.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",

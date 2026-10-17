@@ -254,3 +254,19 @@ describe("DESIGN.md's colors", () => {
     expect(referenced.filter((token) => !declaredTokens.includes(token))).toEqual([]);
   });
 });
+
+const fontStretchOf = (source: string, block: RegExp, where: string): string => {
+  const match = source.match(block);
+  if (match === null) {
+    throw new Error(`${where} sets no font-stretch`);
+  }
+  return captured(match, 1);
+};
+
+describe("DESIGN.md's typography", () => {
+  it('gives display the width the font-display utility sets', () => {
+    expect(fontStretchOf(designMd, /^ {2}display:\n(?: {4}.*\n)*? {4}fontStretch:\s*(\S+)$/m, 'DESIGN.md display')).toBe(
+      fontStretchOf(indexCss, /@utility font-display\s*\{[^}]*font-stretch:\s*([^;]+);/, 'index.css font-display'),
+    );
+  });
+});

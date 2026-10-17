@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router';
 import ErrorBoundary from '@/shared/components/ErrorBoundary';
 import App from './App';
+import '@fontsource-variable/saira/wdth.css';
+import '@fontsource-variable/saira/wdth-italic.css';
 import './index.css';
 
 const queryClient = new QueryClient({
