@@ -213,7 +213,7 @@ components:
 
 Castlewood Fantasy Golf is read almost entirely as tables: the week's scoreboard, the weekly report grid, team standings, player rankings, rosters. The design exists to make those tables legible and to make money read at a glance.
 
-The palette is **Tour Broadcast**, and the app is **light only**. The page is `{colors.canvas}` (the brand sky), between a top nav and a footer on `{colors.chrome}` (the brand navy); cards and table heads are `{colors.surface-card}` (white); form controls and highlighted rows are `{colors.surface-raised}`, the canvas's sky again. Text is the brand navy (`{colors.ink}`), with its muted slate blue (`{colors.ink-muted}`) for labels and captions.
+The palette is **Tour Broadcast**, and the app is **light only**. The page is `{colors.canvas}` (the brand sky), between a top nav and a footer on `{colors.chrome}` (the brand navy); cards and the scoreboard's table heads are `{colors.surface-card}` (white); form controls, highlighted rows and the admin schedule's table heads are `{colors.surface-raised}`, the canvas's sky again. Every other table head has no fill. Text is the brand navy (`{colors.ink}`), with its muted slate blue (`{colors.ink-muted}`) for labels and captions.
 
 The one brand colour is red: `{colors.primary}` (the brand red) fills primary buttons, the block behind the CASTLEWOOD FG mark and the LIVE chip. The brand red is 4.25:1 on the canvas, so it is a fill; type takes the darker step, `{colors.primary-ink}` (red-700). Page titles are navy, so a title never shares a hex with a loss.
 
@@ -237,7 +237,7 @@ The contrast table in `ui/src/index.css.test.ts` pins every text token at WCAG A
 
 ### Surface
 - **Canvas** (`{colors.canvas}`, the brand sky #e8eef7): the page background, and the thin spacer rows between blocks of the weekly report grid.
-- **Surface Card** (`{colors.surface-card}`, white): every card, table heads, the money summary chips, the modal panel, the active nav link. At `/60` it is the row hover on list tables.
+- **Surface Card** (`{colors.surface-card}`, white): every card, the scoreboard's table heads, the money summary chips, the modal panel, the active nav link. At `/60` it is the row hover on list tables.
 - **Surface Raised** (`{colors.surface-raised}`, the brand sky): form fields, the neutral tag chip, the report grid's highlighted row. It is the canvas's colour, so it reads as raised only inside a white card.
 - **Surface Raised Hover** (`{colors.surface-raised-hover}`, the brand line #d5deeb): a raised button hovered — the Admin page's logout button and the roster file input's button.
 - **Overlay** (`{colors.overlay}`, black): the modal scrim, at `/60`.
@@ -358,7 +358,7 @@ Tokens only re-colour what the dark theme drew; the component treatment (CWF-231
 | Level | Treatment | Use |
 |---|---|---|
 | 0 | `{colors.canvas}` | The page |
-| 1 | `{colors.surface-card}`, no border, no shadow | Cards, table heads, summary chips |
+| 1 | `{colors.surface-card}`, no border, no shadow | Cards, the scoreboard's table heads, summary chips |
 | 2 | `{colors.surface-raised}` | Fields, chips, the report's highlighted row |
 | 3 | `{colors.surface-card}` + `{colors.hairline-strong}` border + `{elevation.modal}` (`shadow-xl`) over `{colors.overlay}`/60 | The modal panel, and the error screen's card |
 
