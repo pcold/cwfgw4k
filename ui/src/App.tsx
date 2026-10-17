@@ -23,19 +23,21 @@ const NAV_ITEMS: Array<{ to: string; label: string }> = [
   { to: '/rules', label: 'Rules' },
 ];
 
+const ON_CHROME_IDLE_CLASS = 'text-on-chrome-muted hover:text-on-chrome';
+const NAV_LABEL_CLASS = 'font-display font-semibold uppercase tracking-wider';
+
 const MENU_BUTTON_CLASS =
-  'lg:hidden inline-flex items-center justify-center w-11 h-11 rounded ' +
-  'text-ink-secondary hover:text-ink-strong hover:bg-surface-raised';
+  `lg:hidden self-center inline-flex items-center justify-center w-11 h-11 rounded ${ON_CHROME_IDLE_CLASS}`;
+
+const navLinkTone = (isActive: boolean): string =>
+  isActive ? 'bg-surface-card text-ink-strong' : ON_CHROME_IDLE_CLASS;
 
 const desktopLinkClass = ({ isActive }: { isActive: boolean }): string =>
-  `px-3 py-2 rounded text-sm font-medium transition ${
-    isActive ? 'bg-surface-raised text-ink-strong' : 'text-ink-muted hover:text-ink-strong'
-  }`;
+  `inline-flex items-center ${TAP_TARGET_CLASS} px-3 rounded text-sm ${NAV_LABEL_CLASS} transition ${navLinkTone(isActive)}`;
 
+// `py-3` on a `text-base` line clears 44px by itself, so the menu's links need no TAP_TARGET_CLASS.
 const mobileLinkClass = ({ isActive }: { isActive: boolean }): string =>
-  `block px-4 py-3 rounded text-base font-medium transition ${
-    isActive ? 'bg-surface-raised text-ink-strong' : 'text-ink-secondary hover:bg-surface-raised/50 hover:text-ink-strong'
-  }`;
+  `block px-4 py-3 rounded text-base ${NAV_LABEL_CLASS} transition ${navLinkTone(isActive)}`;
 
 function SiteFooter(): ReactNode {
   return (
@@ -66,11 +68,16 @@ function App(): ReactNode {
     <AuthProvider>
     <LeagueSeasonProvider>
       <div className="min-h-screen bg-canvas text-ink">
-        <nav className="bg-surface-card border-b border-hairline">
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-            <h1 className="text-lg font-bold text-primary-ink tracking-wide">CWFG</h1>
+        <nav className="bg-chrome">
+          <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 min-h-14 flex justify-between gap-4">
+            {/* The block's skew would slant the italic face twice, so the text is skewed back. */}
+            <h1 className="flex items-center px-5 bg-primary -skew-x-12">
+              <span className="skew-x-12 font-display italic font-extrabold text-xl uppercase tracking-wide text-on-primary">
+                Castlewood FG
+              </span>
+            </h1>
 
-            <div className="hidden lg:flex gap-1">
+            <div className="hidden lg:flex items-center gap-1">
               {NAV_ITEMS.map((item) => (
                 <NavLink key={item.to} to={item.to} className={desktopLinkClass}>
                   {item.label}
@@ -107,9 +114,9 @@ function App(): ReactNode {
           {mobileNavOpen ? (
             <div
               id="mobile-nav"
-              className="lg:hidden border-t border-hairline bg-surface-card"
+              className="lg:hidden"
             >
-              <div className="max-w-6xl mx-auto px-2 py-2 flex flex-col gap-1">
+              <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 pb-3 flex flex-col gap-1">
                 {NAV_ITEMS.map((item) => (
                   <NavLink key={item.to} to={item.to} className={mobileLinkClass}>
                     {item.label}

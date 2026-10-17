@@ -53,7 +53,23 @@ describe('App', () => {
   it('renders the site heading', () => {
     renderWithProviders(<App />, { withLeagueSeasonProvider: false });
 
-    expect(screen.getByRole('heading', { name: 'CWFG' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Castlewood FG' })).toBeInTheDocument();
+  });
+
+  it("marks the current page's nav link, and only that one, as the current page", () => {
+    renderWithProviders(<App />, { initialPath: '/rankings', withLeagueSeasonProvider: false });
+
+    const navigation = screen.getByRole('navigation');
+    expect(within(navigation).getByRole('link', { name: 'Standings' })).toHaveAttribute('aria-current', 'page');
+    expect(within(navigation).getByRole('link', { name: 'Scoreboard' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('gives every desktop nav link the tap-target height, its text centred in it', () => {
+    renderWithProviders(<App />, { withLeagueSeasonProvider: false });
+
+    for (const link of within(screen.getByRole('navigation')).getAllByRole('link')) {
+      expect(link).toHaveClass(TAP_TARGET_CLASS, 'inline-flex', 'items-center');
+    }
   });
 
   it.each([
