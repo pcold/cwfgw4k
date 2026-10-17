@@ -3,6 +3,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import ErrorBoundary from './ErrorBoundary';
+import { TAP_TARGET_CLASS } from './formFields';
 
 function Boom(): never {
   throw new Error('render exploded');
@@ -80,5 +81,17 @@ describe('ErrorBoundary', () => {
     );
 
     expect(screen.getByRole('link', { name: /back to the scoreboard/i })).toHaveAttribute('href', '/');
+  });
+
+  it('gives the reload button and the scoreboard link the tap-target height', () => {
+    renderWithProviders(
+      <ErrorBoundary>
+        <Boom />
+      </ErrorBoundary>,
+      { withLeagueSeasonProvider: false },
+    );
+
+    expect(screen.getByRole('button', { name: /reload/i })).toHaveClass(TAP_TARGET_CLASS);
+    expect(screen.getByRole('link', { name: /back to the scoreboard/i })).toHaveClass(TAP_TARGET_CLASS, 'flex', 'items-center');
   });
 });

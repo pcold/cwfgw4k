@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react';
+import { TAP_TARGET_CLASS } from './formFields';
 
 /** Unconditional: a modal covers the viewport at every width. */
 export const MODAL_SCROLL_LOCK_CLASS = 'overflow-hidden';
@@ -152,7 +153,7 @@ export default function ModalShell({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="text-ink-muted hover:text-ink-strong text-xl leading-none px-2"
+            className={`text-ink-muted hover:text-ink-strong text-xl leading-none px-2 ${TAP_TARGET_CLASS}`}
           >
             ×
           </button>

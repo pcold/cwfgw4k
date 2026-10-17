@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import { DateField, FieldShell, SelectField, TextField } from './formFields';
+import { DateField, FieldShell, SelectField, TAP_TARGET_CLASS, TextField } from './formFields';
 
 const NO_PROVIDERS = { withLeagueSeasonProvider: false };
 
@@ -278,5 +278,32 @@ describe('SelectField', () => {
     await user.selectOptions(screen.getByLabelText('Relationship'), 'Spouse');
 
     expect(onChange).toHaveBeenCalledWith('spouse');
+  });
+});
+
+describe('TAP_TARGET_CLASS', () => {
+  // jsdom has no layout, so the class is the only place the 44px a phone thumb needs can be held.
+  it('is 44px tall, and every field control carries it', () => {
+    renderWithProviders(
+      <>
+        <TextField id="name" label="Name" value="" error={undefined} onChange={vi.fn()} />
+        <DateField id="dob" label="Date of birth" value="" error={undefined} onChange={vi.fn()} />
+        <SelectField
+          id="relationship"
+          label="Relationship"
+          value=""
+          error={undefined}
+          placeholder="Select a relationship"
+          options={[{ value: 'spouse', label: 'Spouse' }]}
+          onChange={vi.fn()}
+        />
+      </>,
+      NO_PROVIDERS,
+    );
+
+    expect(TAP_TARGET_CLASS).toBe('min-h-11');
+    for (const label of ['Name', 'Date of birth', 'Relationship']) {
+      expect(screen.getByLabelText(label)).toHaveClass(TAP_TARGET_CLASS);
+    }
   });
 });

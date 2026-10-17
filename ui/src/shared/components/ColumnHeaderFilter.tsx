@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { TAP_TARGET_CLASS } from './formFields';
+
 export interface ColumnHeaderFilterOption {
   value: string;
   label: string;
@@ -18,7 +20,7 @@ interface Props {
 // component just renders the control consistently across tables.
 function ColumnHeaderFilter({ ariaLabel, value, onChange, options, className }: Props): ReactNode {
   const base =
-    'bg-transparent text-xs uppercase tracking-wider text-inherit hover:text-ink-label ' +
+    `bg-transparent text-base uppercase tracking-wider text-inherit hover:text-ink-label ${TAP_TARGET_CLASS} ` +
     'focus:text-ink-label focus:outline-none cursor-pointer -ml-1 pr-1';
   return (
     <select

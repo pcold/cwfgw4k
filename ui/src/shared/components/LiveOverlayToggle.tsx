@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { skipToken, useQuery, type QueryKey, type UseQueryResult } from '@tanstack/react-query';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
+import { TAP_TARGET_CLASS } from './formFields';
 
 /** @see useLiveOverlayQuery */
 export interface LiveOverlayState {
@@ -54,7 +55,7 @@ export function LiveOverlayCheckbox({ state, id }: LiveOverlayCheckboxProps): Re
   return (
     <label
       htmlFor={id}
-      className="flex items-center gap-2 cursor-pointer text-xs text-ink-muted"
+      className={`flex items-center gap-2 ${TAP_TARGET_CLASS} cursor-pointer text-xs text-ink-muted`}
     >
       <input
         id={id}

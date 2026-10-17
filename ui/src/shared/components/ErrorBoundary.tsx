@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react';
+import { TAP_TARGET_CLASS } from './formFields';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -9,7 +10,7 @@ interface ErrorBoundaryState {
 }
 
 const RELOAD_BUTTON_CLASS =
-  'mt-6 bg-primary hover:bg-primary-hover text-on-primary px-4 py-2 rounded text-sm font-medium';
+  `mt-6 bg-primary hover:bg-primary-hover text-on-primary px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`;
 
 /**
  * Render throws only; `QueryState` owns fetch failures. A class because error catching has no hook.
@@ -38,7 +39,10 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
           </button>
           {/* A plain anchor, not a router Link: the boundary sits outside the router. The way out when this URL
               crashes on every load. */}
-          <a href="/" className="mt-4 block text-sm text-ink-muted hover:text-ink-strong">
+          <a
+            href="/"
+            className={`mt-4 flex items-center justify-center ${TAP_TARGET_CLASS} text-sm text-ink-muted hover:text-ink-strong`}
+          >
             Back to the scoreboard
           </a>
         </div>

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import App from './App';
 
 vi.mock('@/shared/api/client', () => ({
@@ -104,5 +105,12 @@ describe('App', () => {
 
     const footer = screen.getByRole('contentinfo');
     expect(within(footer).getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
+  });
+
+  it('gives the footer Admin link the tap-target height, its text centred in it', () => {
+    renderWithProviders(<App />, { withLeagueSeasonProvider: false });
+
+    const footer = screen.getByRole('contentinfo');
+    expect(within(footer).getByRole('link', { name: 'Admin' })).toHaveClass(TAP_TARGET_CLASS, 'inline-flex', 'items-center');
   });
 });
