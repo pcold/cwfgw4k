@@ -273,13 +273,13 @@ tasks.named("compileKotlin") {
     dependsOn(generateJooq)
 }
 
-// dev.detekt 2.0.0-alpha.6, the version benrollio pins: an alpha, but a build-time analyzer whose
+// dev.detekt 2.0.0-alpha.6: an alpha, but a build-time analyzer whose
 // failure mode is a broken build rather than broken production. Move to 2.0.0 stable when it ships.
 detekt {
     buildUponDefaultConfig = true
     allRules = false
     config.setFrom(files("$rootDir/detekt.yml"))
-    // What main raised when the rule set moved to benrollio's and when its cwfgw rules were ported. It only
+    // What main raised when the current rule set and its cwfgw rules were adopted. It only
     // shrinks: regenerate it with `./gradlew :detektBaseline` after a fix, never to admit a new finding.
     baseline = file("$rootDir/detekt-baseline.xml")
     ignoreFailures = false
