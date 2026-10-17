@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreOwnerChange, queryKeys } from '@/shared/api/queryKeys';
 import Button from '@/shared/components/Button';
+import Chip from '@/shared/components/Chip';
 import { FIELD_CLASS, FieldShell, TAP_TARGET_CLASS, TextField } from '@/shared/components/formFields';
 import ModalShell from '@/shared/components/ModalShell';
 import { QueryState } from '@/shared/components/QueryState';
@@ -178,16 +179,8 @@ function CompetitorRow({
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-ink-strong text-sm font-medium">{competitor.name}</span>
           <span className="text-xs text-ink-muted">pos {competitor.position}</span>
-          {competitor.isTeamPartner ? (
-            <span className="text-xs uppercase tracking-wider bg-surface-raised text-ink-body rounded px-1.5 py-0.5">
-              partner
-            </span>
-          ) : null}
-          {competitor.hasOverride ? (
-            <span className="text-xs uppercase tracking-wider bg-surface-raised text-ink-body rounded px-1.5 py-0.5">
-              manual override
-            </span>
-          ) : null}
+          {competitor.isTeamPartner ? <Chip variant="neutral">partner</Chip> : null}
+          {competitor.hasOverride ? <Chip variant="neutral">manual override</Chip> : null}
         </div>
         {/* Not SelectField: its placeholder is disabled, and "unlinked" must stay a value the admin can pick. */}
         <FieldShell id={selectId} label="Link to golfer" error={undefined} width="max-w-sm">

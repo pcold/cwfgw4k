@@ -66,6 +66,7 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
     'secondary',
     'secondary-hover',
     'position-fill',
+    'header-band',
     'money-down-fill',
     'money-even-fill',
   ],

@@ -34,6 +34,7 @@ colors:
   secondary-hover: "#13305a"
   disabled: "#90a1b9"
   position-fill: "#0a1d38"
+  header-band: "#0a1d38"
   semantic-success-tint: "#00c950"
   semantic-success-soft: "#0f8a4f"
   semantic-success: "#016630"
@@ -317,11 +318,12 @@ These two inks are light, so they are for a `{colors.chrome}` fill alone; on the
 - **Primary Control** (`{colors.primary-control}`, the brand red): the checked colour of a native checkbox (`accent-primary-control`), today only the live-overlay toggle.
 
 ### Neutral fills
-- **On Fill** (`{colors.on-fill}`, white): text on the secondary, danger, position and money fills.
+- **On Fill** (`{colors.on-fill}`, white): text on the secondary, danger, position, header-band and money fills.
 - **Secondary** (`{colors.secondary}`, the brand navy): every secondary button — Download PDF, Log out, Manage player links, Save link, the roster upload's Match Players with ESPN and Back buttons, and Cancel in a form modal. There is one secondary fill: a muted one beside it would leave no rule for choosing between them.
 - **Secondary Hover** (`{colors.secondary-hover}`, the brand secondary navy): that fill, hovered.
 - **Disabled** (`{colors.disabled}`, slate-400): every filled button while disabled (`disabled:bg-disabled`). Its label is exempt from the contrast floor.
 - **Position Fill** (`{colors.position-fill}`, the brand navy): the position box of every standings row but the first. Not `{colors.secondary}`, a button's fill, nor `{colors.chrome}`, the bar's; 16.86:1 under white.
+- **Header Band** (`{colors.header-band}`, the brand navy): the band that opens a table card, today the scoreboard's leaderboard. Not `{colors.chrome}`, the bar's, nor `{colors.secondary}`, a button's; 16.86:1 under white.
 
 ### Semantic
 
@@ -498,8 +500,8 @@ A `flex flex-wrap gap-3 text-sm` row of `bg-surface-card rounded px-3 py-2` chip
 ### Banners — `ScoreboardView.tsx`, `UploadScheduleSection.tsx` (`SKIPPED_BANNER_CLASS`), `PlayerLinksPanel.tsx`
 `px-3 py-2` (scoreboard `px-4 py-2`) `border rounded`, in one of two pairs: complete is `bg-semantic-success-tint/30 border-semantic-success-soft text-semantic-success-ink`; in progress or needing attention is `bg-semantic-warning-tint/30` (`/40` on the scoreboard) `border-semantic-warning-soft text-semantic-warning-ink`.
 
-### Chips — `PlayerLinksPanel.tsx`
-`text-xs rounded px-1.5 py-0.5`, uppercase with `tracking-wider` in the player-links panel. Every chip, partner and manual override alike, is neutral: `bg-surface-raised text-ink-body`, told apart by its label. A page's status is the status chip above, not one of these.
+### Chips — `ui/src/shared/components/Chip.tsx`
+`Chip` is `inline-flex rounded border px-1.5 py-0.5 text-xs uppercase tracking-wider whitespace-nowrap`, in one of two variants told apart by shape, never by tone. `neutral` is `bg-surface-raised text-ink-body` with a transparent border: the player-links panel's partner and manual-override chips. `outlined` has no fill, a `{colors.hairline-strong}` border and `{colors.ink-muted}` text, for something absent. Like `Button`, it takes no `className`. A page's status is the status chip above, not one of these.
 
 ### Loading and errors — `ui/src/shared/components/QueryState.tsx`, `ErrorBoundary.tsx`
 `QueryState` renders `Loading {label}…` in `{colors.ink-muted}` and `Failed to load {label}: …` in `{colors.semantic-danger}`, as plain paragraphs. `ErrorBoundary` replaces the app with a centred `max-w-md` card at level 3 (see Elevation), a `text-2xl font-bold` heading and a primary Reload button.
