@@ -59,9 +59,12 @@ describe('App', () => {
   it("marks the current page's nav link, and only that one, as the current page", () => {
     renderWithProviders(<App />, { initialPath: '/rankings', withLeagueSeasonProvider: false });
 
-    const navigation = screen.getByRole('navigation');
-    expect(within(navigation).getByRole('link', { name: 'Standings' })).toHaveAttribute('aria-current', 'page');
-    expect(within(navigation).getByRole('link', { name: 'Scoreboard' })).not.toHaveAttribute('aria-current');
+    const currentLinks = within(screen.getByRole('navigation'))
+      .getAllByRole('link')
+      .filter((link) => link.hasAttribute('aria-current'));
+    expect(currentLinks.map((link) => [link.textContent, link.getAttribute('aria-current')])).toEqual([
+      ['Standings', 'page'],
+    ]);
   });
 
   it('gives every desktop nav link the tap-target height, its text centred in it', () => {
