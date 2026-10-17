@@ -201,7 +201,7 @@ components:
 
 Castlewood Fantasy Golf is read almost entirely as tables: the week's scoreboard, the weekly report grid, team standings, player rankings, rosters. The design exists to make those tables legible and to make money read at a glance.
 
-The palette is **Tour Broadcast**, and the app is **light only**. The page is `{colors.canvas}` (the brand sky), between a top nav and a footer on `{colors.chrome}` (the brand navy); cards are `{colors.surface-card}` (white); form controls and highlighted rows are `{colors.surface-raised}`, the canvas's sky again. No table head has a fill. Text is the brand navy (`{colors.ink}`), with its muted slate blue (`{colors.ink-muted}`) for labels and captions.
+The palette is **Tour Broadcast**, and the app is **light only**. The page is `{colors.canvas}` (the brand sky), between a top nav and a footer on `{colors.chrome}` (the brand navy); cards are `{colors.surface-card}` (white); form controls and highlighted rows are `{colors.surface-raised}`, the canvas's sky again. No table head has a fill but the report grids' gold row. Text is the brand navy (`{colors.ink}`), with its muted slate blue (`{colors.ink-muted}`) for labels and captions.
 
 The one brand colour is red: `{colors.primary}` (the brand red) fills primary buttons, the block behind the CASTLEWOOD FG mark and the LIVE chip. The brand red is 4.25:1 on the canvas, so it is a fill; type takes the darker step, `{colors.primary-ink}` (red-700). Page titles are navy, so a title never shares a hex with a loss.
 
@@ -249,7 +249,7 @@ These two inks are light, so they are for a `{colors.chrome}` fill alone; on the
 - **Ink Body** (`{colors.ink-body}`, the brand navy): golfer names inside the report and roster grid cells, and the neutral tag chip's text.
 - **Ink Secondary** (`{colors.ink-secondary}`, the brand secondary navy #13305a): running text on the Rules page, golfer names and the Top 10 Earnings column on the scoreboard.
 - **Ink Label** (`{colors.ink-label}`, the brand muted blue #4a5f80): uppercase card headings, every table head but the report grids' gold row, a column-filter select on hover or focus.
-- **Ink Muted** (`{colors.ink-muted}`, the brand muted blue #4a5f80): helper and caption text — field labels, the subtitle under a page title, loading messages, chart axis labels (`fill-ink-muted`) — and every text button.
+- **Ink Muted** (`{colors.ink-muted}`, the brand muted blue #4a5f80): helper and caption text — field labels, the subtitle under a page title, loading messages, chart axis labels (`fill-ink-muted`) — and every text button but a Remove link, which is `{colors.semantic-danger}`.
 - **Ink Soft** (`{colors.ink-soft}`, the brand muted blue #4a5f80): rank numbers, the labels on the money summary chips, empty-state lines, the picker's labels, a bottom-line amount that prints as `$0`, and in the report grid the dash for a pick that earned nothing and the top-ten line under SUBTOTAL.
 - **Ink Faint** (`{colors.ink-faint}`, the brand muted blue #4a5f80): the em dash in an empty cell, the `/` between a shared player's owners on the rosters page, the owner column of an unrostered golfer on the scoreboard's leaderboard.
 
