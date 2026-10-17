@@ -41,7 +41,7 @@ function AdminPage(): ReactNode {
             onClick={() => {
               void logout();
             }}
-            className={`bg-surface-raised hover:bg-surface-raised-hover text-ink-strong px-3 py-1.5 rounded text-sm ${TAP_TARGET_CLASS}`}
+            className={`bg-secondary hover:bg-secondary-hover text-on-fill px-3 py-1.5 rounded text-sm ${TAP_TARGET_CLASS}`}
           >
             Log out
           </button>

@@ -13,7 +13,7 @@ import type {
 } from '@/shared/api/types';
 
 const SAVE_LINK_BUTTON_CLASS =
-  'bg-semantic-info-fill hover:bg-semantic-info-fill-hover disabled:bg-disabled text-on-fill ' +
+  'bg-secondary hover:bg-secondary-hover disabled:bg-disabled text-on-fill ' +
   `text-xs px-3 py-1 rounded font-medium ${TAP_TARGET_CLASS}`;
 
 const CREATE_LINK_BUTTON_CLASS =
@@ -191,7 +191,7 @@ function CompetitorRow({
             </span>
           ) : null}
           {competitor.hasOverride ? (
-            <span className="text-xs uppercase tracking-wider bg-semantic-info-soft text-semantic-info-ink rounded px-1.5 py-0.5">
+            <span className="text-xs uppercase tracking-wider bg-surface-raised text-ink-body rounded px-1.5 py-0.5">
               manual override
             </span>
           ) : null}
@@ -231,7 +231,7 @@ function CompetitorRow({
               type="button"
               disabled={pending}
               onClick={() => setCreating(true)}
-              className={`text-semantic-info hover:text-semantic-info-hover text-xs underline disabled:opacity-50 ${TAP_TARGET_CLASS}`}
+              className={`text-ink-muted hover:text-ink-strong text-xs underline disabled:opacity-50 ${TAP_TARGET_CLASS}`}
             >
               + Create new golfer & link
             </button>

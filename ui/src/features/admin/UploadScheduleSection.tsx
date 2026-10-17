@@ -212,7 +212,7 @@ function SchedulePreview({
 
       {entries.length > 0 ? (
         <table className="w-full text-sm mb-4">
-          <thead className={`bg-surface-raised ${COLUMN_HEADER_CLASS}`}>
+          <thead className={COLUMN_HEADER_CLASS}>
             <tr>
               <th className="px-3 py-2 text-left">Wk</th>
               <th className="px-3 py-2 text-left">Tournament</th>
@@ -307,7 +307,7 @@ function ImportResult({ created, skipped, onRowSaved }: ImportResultProps) {
 
       {created.length > 0 ? (
         <table className="w-full text-sm">
-          <thead className={`bg-surface-raised ${COLUMN_HEADER_CLASS}`}>
+          <thead className={COLUMN_HEADER_CLASS}>
             <tr>
               <th className="px-3 py-2 text-left">Wk</th>
               <th className="px-3 py-2 text-left">Tournament</th>

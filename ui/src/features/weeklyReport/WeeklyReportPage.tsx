@@ -26,8 +26,8 @@ function downloadPdf(report: WeeklyReport, season: Season | null): Promise<void>
 }
 
 const DOWNLOAD_BUTTON_CLASS =
-  'bg-surface-card border border-control-border rounded px-3 py-2 text-sm hover:bg-surface-raised ' +
-  `disabled:opacity-50 disabled:cursor-not-allowed ${TAP_TARGET_CLASS}`;
+  'bg-secondary hover:bg-secondary-hover disabled:bg-disabled text-on-fill rounded px-3 py-2 text-sm ' +
+  `disabled:cursor-not-allowed ${TAP_TARGET_CLASS}`;
 
 function WeeklyReportPage(): ReactNode {
   const { seasonId, seasons } = useLeagueSeason();

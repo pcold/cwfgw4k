@@ -29,7 +29,7 @@ const FINALIZE_BUTTON_CLASS =
   `font-medium whitespace-nowrap ${TAP_TARGET_CLASS}`;
 
 const LINKS_BUTTON_CLASS =
-  'bg-semantic-info-fill hover:bg-semantic-info-fill-hover text-on-fill px-3 py-1 rounded text-xs ' +
+  'bg-secondary hover:bg-secondary-hover text-on-fill px-3 py-1 rounded text-xs ' +
   `font-medium whitespace-nowrap ${TAP_TARGET_CLASS}`;
 
 function ScoreboardPage(): ReactNode {

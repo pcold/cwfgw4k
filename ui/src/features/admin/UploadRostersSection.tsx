@@ -34,7 +34,7 @@ const ROSTER_FILE_INPUT_CLASS =
   `file:bg-surface-raised file:text-ink hover:file:bg-surface-raised-hover ${TAP_TARGET_CLASS}`;
 
 const PREVIEW_BUTTON_CLASS =
-  'bg-semantic-info-fill hover:bg-semantic-info-fill-hover disabled:bg-disabled text-on-fill ' +
+  'bg-secondary hover:bg-secondary-hover disabled:bg-disabled text-on-fill ' +
   `px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`;
 
 const CONFIRM_BUTTON_CLASS =
@@ -471,7 +471,7 @@ function RosterResultView({ result }: { result: RosterConfirmResult }) {
         </div>
         <div>
           <span className="text-ink-muted">New Golfers:</span>
-          <span className="text-semantic-info font-bold ml-1">{result.golfersCreated}</span>
+          <span className="text-ink-strong font-bold ml-1">{result.golfersCreated}</span>
         </div>
       </div>
       <div className="flex flex-wrap gap-2 text-xs">
