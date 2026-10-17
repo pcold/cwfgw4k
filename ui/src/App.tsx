@@ -41,11 +41,11 @@ const mobileLinkClass = ({ isActive }: { isActive: boolean }): string =>
 
 function SiteFooter(): ReactNode {
   return (
-    <footer className="border-t border-hairline bg-surface-card">
-      <div className="max-w-6xl mx-auto px-4 py-3 flex justify-end">
+    <footer className="bg-chrome">
+      <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 py-1.5 flex justify-end">
         <Link
           to="/admin"
-          className={`inline-flex items-center ${TAP_TARGET_CLASS} text-sm font-medium text-ink-muted hover:text-ink-strong`}
+          className={`inline-flex items-center ${TAP_TARGET_CLASS} px-3 rounded text-sm ${NAV_LABEL_CLASS} ${ON_CHROME_IDLE_CLASS}`}
         >
           Admin
         </Link>
