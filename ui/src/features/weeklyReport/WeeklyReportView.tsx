@@ -197,7 +197,7 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
             })}
 
             <tr>
-              <td colSpan={teams.length + 1} className="h-1 bg-canvas" />
+              <td colSpan={teams.length + 1} className="h-1 bg-surface-card" />
             </tr>
 
             <SummaryRow
@@ -256,7 +256,7 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
             />
 
             <tr>
-              <td colSpan={teams.length + 1} className="h-1 bg-canvas" />
+              <td colSpan={teams.length + 1} className="h-1 bg-surface-card" />
             </tr>
 
             <SummaryRow

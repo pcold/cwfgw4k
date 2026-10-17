@@ -68,7 +68,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
 
       <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="w-full text-sm min-w-[500px]">
-          <thead className={`bg-surface-card ${COLUMN_HEADER_CLASS}`}>
+          <thead className={COLUMN_HEADER_CLASS}>
             <tr>
               <th className="px-4 py-3 text-left">#</th>
               <th className="px-4 py-3 text-left">Team</th>
@@ -157,7 +157,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
           </h3>
           <div className="overflow-x-auto -mx-3 sm:mx-0">
             <table className="w-full text-sm min-w-[640px]">
-              <thead className={`bg-surface-card ${COLUMN_HEADER_CLASS}`}>
+              <thead className={COLUMN_HEADER_CLASS}>
                 <tr>
                   <th className="px-3 py-2 text-left">Pos</th>
                   <th className="px-3 py-2 text-left">Player</th>
