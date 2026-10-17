@@ -21,9 +21,8 @@
 }
 
 /*
- * Names are benrollio DESIGN.md `colors:` keys wherever the role matches. Tokens sharing a step hold
- * different roles, so never merge them. index.css.test.ts resolves each alias to a ramp step or a
- * `--brand-*` hex; a literal it cannot.
+ * Tokens sharing a step hold different roles, so never merge them. index.css.test.ts resolves each
+ * alias to a ramp step or a `--brand-*` hex; a literal it cannot.
  */
 @theme {
   --color-canvas: var(--brand-sky);
@@ -62,7 +61,7 @@
   --color-disabled: var(--color-slate-400);
 
   /*
-   * As in benrollio, the bare base is status text and `-ink` sits on the family's own wash. The brand red
+   * The bare base is status text and `-ink` sits on the family's own wash. The brand red
    * and green fail as text on canvas, so the text takes a darker step; `-fill` is chosen by its white label.
    */
   --color-semantic-success-tint: var(--color-green-500);
