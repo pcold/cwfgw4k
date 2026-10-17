@@ -3,7 +3,10 @@ import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
+import PageTitle from '@/shared/components/PageTitle';
 import PickerRow from '@/shared/components/PickerRow';
+import StatusChip, { statusChipVariant } from '@/shared/components/StatusChip';
+import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import {
   ALL_TOURNAMENTS,
@@ -45,28 +48,27 @@ function LateRowBetsPage(): ReactNode {
               : api.tournamentReport(seasonId, effectiveId, live),
   });
 
-  if (leaguesGate) return leaguesGate;
-  if (tournaments === undefined || effectiveId === null) {
+  function renderBody(): ReactNode {
+    if (leaguesGate) return leaguesGate;
+    if (tournaments === undefined || effectiveId === null) {
+      return (
+        <QueryState query={tournamentsQuery} label="tournaments">
+          {() => (
+            <QueryState query={currentQuery} label="current tournament">
+              {() => null}
+            </QueryState>
+          )}
+        </QueryState>
+      );
+    }
+
+    const tournamentOptions = [
+      { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
+      ...tournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
+    ];
+
     return (
-      <QueryState query={tournamentsQuery} label="tournaments">
-        {() => (
-          <QueryState query={currentQuery} label="current tournament">
-            {() => null}
-          </QueryState>
-        )}
-      </QueryState>
-    );
-  }
-
-  const tournamentOptions = [
-    { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
-    ...tournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
-  ];
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-bold">Late Row Bets</h2>
+      <>
         <PickerRow
           id="late-row-bets-through"
           label="Through"
@@ -74,11 +76,26 @@ function LateRowBetsPage(): ReactNode {
           options={tournamentOptions}
           onChange={setUserTournamentId}
         />
-      </div>
 
-      <QueryState query={reportQuery} label="report">
-        {(report) => <LateRowBetsView report={report} />}
-      </QueryState>
+        <QueryState query={reportQuery} label="report">
+          {(report) => <LateRowBetsView report={report} />}
+        </QueryState>
+      </>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <PageTitle
+        title="Late Row Bets"
+        actions={
+          <>
+            <StatusChip variant={statusChipVariant(reportQuery.data)} />
+            <LeagueSeasonPicker />
+          </>
+        }
+      />
+      {renderBody()}
     </div>
   );
 }
