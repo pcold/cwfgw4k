@@ -23,7 +23,7 @@ function RankingsView({ rankings }: Props): ReactNode {
         <table className="min-w-full text-sm border-separate border-spacing-y-1">
           <thead className={COLUMN_HEADER_CLASS}>
             <tr className="text-left">
-              <th className="px-3 py-2 w-12 text-center">#</th>
+              <th className="px-3 py-2 w-14 text-center">#</th>
               <th className="px-3 py-2">Team</th>
               <th className="px-3 py-2 text-right">Subtotal</th>
               <th className="px-3 py-2 text-right">Late Row Bets</th>
@@ -34,7 +34,7 @@ function RankingsView({ rankings }: Props): ReactNode {
             {rankings.teams.map((team, index) => (
               <tr key={team.teamId} className="h-11">
                 <PositionCell position={index + 1} />
-                <td className={`${CARD_CELL_CLASS} font-display font-bold text-base uppercase text-ink`}>
+                <td className={`${CARD_CELL_CLASS} font-display font-bold text-lg uppercase text-ink`}>
                   {team.teamName}
                 </td>
                 <td className={`${CARD_CELL_CLASS} text-right tabular-nums`}>{formatDollarsAndCents(team.subtotal)}</td>
