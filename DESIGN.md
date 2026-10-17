@@ -503,7 +503,7 @@ Use these when building UI here:
 - **A tap target:** append `TAP_TARGET_CLASS` from `@/shared/components/formFields` to any button, link, select or input; a link adds `inline-flex items-center`.
 - **A toolbar select:** `PickerRow` from `@/shared/components/PickerRow`, with the row's other controls as its children.
 - **A page title:** `<PageTitle title="…" subtitle="…" actions={<><StatusChip variant={statusChipVariant(query.data)} /><LeagueSeasonPicker /></>} />`, outside the page's loading gates.
-- **A table head:** `<thead className={COLUMN_HEADER_CLASS}>` from `@/shared/components/columnHeader`, with no type on its rows or cells; body `divide-y divide-hairline-soft`.
+- **A table head:** `<thead className={COLUMN_HEADER_CLASS}>` from `@/shared/components/columnHeader`, with no type on its rows or cells but an ink its fill needs, as the gold row's `text-on-gold`; body `divide-y divide-hairline-soft`.
 - **A money value:** `tabular-nums`, or `font-mono` in the grids; a bottom-line amount adds `moneyToneClass` of the text it prints and keeps its table's weight.
 - **A modal:** `FormModal` for a form, `ModalShell` when the body waits on a query.
 
