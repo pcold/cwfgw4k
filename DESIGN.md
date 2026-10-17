@@ -9,6 +9,9 @@ colors:
   surface-raised: "#e8eef7"
   surface-raised-hover: "#d5deeb"
   overlay: "#000000"
+  chrome: "#0a1d38"
+  on-chrome: "#ffffff"
+  on-chrome-muted: "#cad5e2"
   hairline-soft: "#d5deeb"
   hairline: "#d5deeb"
   hairline-strong: "#90a1b9"
@@ -234,6 +237,13 @@ The contrast table in `ui/src/index.css.test.ts` pins every text token at WCAG A
 - **Surface Raised** (`{colors.surface-raised}`, the brand sky): form fields, the active nav item, the neutral tag chip, the report grid's highlighted row. It is the canvas's colour, so it reads as raised only inside a white card.
 - **Surface Raised Hover** (`{colors.surface-raised-hover}`, the brand line #d5deeb): a raised button hovered — the Admin page's logout button and the roster file input's button.
 - **Overlay** (`{colors.overlay}`, black): the modal scrim, at `/60`.
+
+### Chrome
+- **Chrome** (`{colors.chrome}`, the brand navy): the bar behind the top nav and the footer.
+- **On Chrome** (`{colors.on-chrome}`, white): a nav or footer link hovered.
+- **On Chrome Muted** (`{colors.on-chrome-muted}`, slate-300): an idle nav or footer link, and the menu button.
+
+These two inks are light, so they are for `{colors.chrome}` alone; on the canvas or a card they fail the contrast floor.
 
 ### Lines
 - **Hairline Soft** (`{colors.hairline-soft}`, the brand line): row dividers (`divide-y`) inside the scoreboard, standings and player-rankings tables.
