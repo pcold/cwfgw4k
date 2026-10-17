@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import sairaWidthFaces from '@fontsource-variable/saira/wdth.css?raw';
 import tailwindTheme from 'tailwindcss/theme.css?raw';
 import designMd from '../../DESIGN.md?raw';
 import indexCss from './index.css?raw';
@@ -37,7 +38,7 @@ const REPORT_ROW_HOVERED: Wash = { token: 'surface-card', percent: 80, over: 'ca
 // blend's luminance lies between theirs, so it contrasts no less than the weaker of the two.
 const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
   'ink-strong': ['surface-card', 'surface-raised', 'surface-raised-hover'],
-  ink: ['canvas', 'surface-card', 'surface-raised', 'gold-tint', SUCCESS_ROW],
+  ink: ['canvas', 'surface-card', 'surface-raised', 'surface-raised-hover', 'gold-tint', SUCCESS_ROW],
   'ink-body': ['surface-card', 'surface-raised', 'side-bet-winner', SIDE_BET_ROUND_ROW, REPORT_ROW_HOVERED],
   'ink-secondary': ['canvas', 'surface-card', 'surface-raised'],
   'ink-label': ['surface-card', 'surface-raised'],
@@ -268,5 +269,16 @@ describe("DESIGN.md's typography", () => {
     expect(fontStretchOf(designMd, /^ {2}display:\n(?: {4}.*\n)*? {4}fontStretch:\s*(\S+)$/m, 'DESIGN.md display')).toBe(
       fontStretchOf(indexCss, /@utility font-display\s*\{[^}]*font-stretch:\s*([^;]+);/, 'index.css font-display'),
     );
+  });
+});
+
+describe("index.css's sans font", () => {
+  it('leads with the family the Saira faces main.tsx imports declare', () => {
+    const declared = sairaWidthFaces.match(/font-family:\s*'([^']+)'/);
+    const sans = indexCss.match(/--font-sans:\s*"([^"]+)"/);
+    if (declared === null || sans === null) {
+      throw new Error('Either the Saira faces or --font-sans names no family');
+    }
+    expect(captured(sans, 1)).toBe(captured(declared, 1));
   });
 });
