@@ -45,6 +45,7 @@ interface StatusChipProps {
   readonly variant: StatusChipVariant | null;
 }
 
+/** @see statusChipVariant */
 function StatusChip({ variant }: StatusChipProps): ReactNode {
   if (variant === null) return null;
   return <span className={`${CHIP_CLASS} ${VARIANT_CLASS[variant]}`}>{VARIANT_LABEL[variant]}</span>;

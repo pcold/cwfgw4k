@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 interface PageTitleProps {
   readonly title: string;
   readonly subtitle?: ReactNode;
-  /** The status chip and the league/season picker. Below `sm:` they wrap onto a line of their own. */
+  /** Right-aligned page controls; below `sm:` they wrap onto a line of their own. */
   readonly actions?: ReactNode;
 }
 

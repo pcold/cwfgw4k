@@ -151,13 +151,21 @@ describe('App', () => {
     expect(within(footer).getByRole('link', { name: 'Admin' })).toHaveClass(TAP_TARGET_CLASS, 'inline-flex', 'items-center');
   });
 
-  it("puts the league and season picker in the page's title row, and nowhere else", async () => {
+  it.each([
+    ['/scoreboard', 'Scoreboard'],
+    ['/report', 'Weekly Report'],
+    ['/rankings', 'Team Standings'],
+    ['/player-rankings', 'Player Rankings'],
+    ['/rosters', 'Team Rosters'],
+    ['/late-row-bets', 'Late Row Bets'],
+    ['/rules', 'Season Rules'],
+  ])("puts the league and season picker in %s's title row, and nowhere else", async (path, title) => {
     vi.mocked(api.leagues).mockResolvedValueOnce([league]);
     vi.mocked(api.seasons).mockResolvedValueOnce([season]);
-    renderWithProviders(<App />, { initialPath: '/rosters', withLeagueSeasonProvider: false });
+    renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
 
     const leagueSelect = await screen.findByRole('combobox', { name: 'League' });
-    const titleRow = pageTitleRow(screen.getByRole('heading', { name: 'Team Rosters' }));
+    const titleRow = pageTitleRow(screen.getByRole('heading', { level: 2, name: title }));
     expect(titleRow).toContainElement(leagueSelect);
     expect(within(titleRow).getByRole('combobox', { name: 'Season' })).toBeInTheDocument();
     expect(screen.getAllByRole('combobox', { name: /^(League|Season)$/ })).toHaveLength(2);

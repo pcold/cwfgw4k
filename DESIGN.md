@@ -225,7 +225,7 @@ The weekly report and the rosters page are laid out like the league's spreadshee
 - Light canvas, no dark mode. `index.css` sets `{colors.canvas}` and `{colors.ink}` on `body`.
 - White on sky for depth: cards are white on the sky canvas, and raised controls are sky again inside them. Only the modal and the error screen cast a shadow.
 - Small type: `text-sm` (14px) body, `text-xs` (12px) for helper text, table heads and the report grids. Every select and text input is the exception at `text-base` (16px), because iOS zooms the page into a smaller control. The roster file input stays `text-sm`: iOS opens a picker for it rather than zooming.
-- Uppercase `tracking-wider` labels mark structure: nav links, page titles, table heads, card headings, the league/season picker's labels.
+- Uppercase `tracking-wider` labels mark structure: nav links, table heads, card headings, the league/season picker's labels.
 - Tabular numbers (`tabular-nums` or `font-mono`) on every money and count column. The Rules page's payout schedule does not have them yet.
 - Corners are `rounded` (4px) on controls and chips, `rounded-lg` (8px) on cards and the modal. Nothing is pill-shaped.
 
@@ -322,7 +322,7 @@ Tokens only re-colour what the dark theme drew; the component treatment (CWF-231
 |---|---|---|---|---|---|
 | `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links, the footer link, page titles, the status chip |
 | `{typography.brand-mark}` | 20px | 800 | 0.025em, italic, uppercase | `font-display italic font-extrabold text-xl uppercase tracking-wide` | The CASTLEWOOD FG mark in the nav |
-| `{typography.page-title}` | 24px, 30px from `sm:` | 800 | 0, italic, uppercase | `font-display italic font-extrabold uppercase text-2xl sm:text-3xl text-ink-strong` | The `h2` of every page, in `PageTitle` |
+| `{typography.page-title}` | 24px, 30px from `sm:` | 800 | 0, italic, uppercase | `font-display italic font-extrabold uppercase text-2xl sm:text-3xl leading-tight text-ink-strong` | The `h2` of every page, in `PageTitle` |
 | `{typography.modal-title}` | 18px | 700 | 0 | `text-lg font-bold` | Modal header |
 | `{typography.card-heading}` | 14px | 600 | 0.05em, uppercase | `text-sm font-semibold uppercase tracking-wider text-ink-label` | Heading inside a card |
 | `{typography.column-header}` | 12px | 400 | 0.05em, uppercase | `text-xs uppercase tracking-wider` | Table heads, the picker's labels |
@@ -334,7 +334,7 @@ Tokens only re-colour what the dark theme drew; the component treatment (CWF-231
 | `{typography.report-figure}` | 12px | 400 | 0 | `font-mono` in a `text-xs` table | Money in the weekly report grid |
 
 ### Principles
-- **Weights in use are 400, 500, 600, 700 and 800.** `font-semibold` is the emphasis weight in tables (team totals, money chips) and the nav links' weight; `font-bold` marks modal titles, the report grids' header and total rows; `font-extrabold` is the brand mark's and the page titles'.
+- **Weights in use are 400, 500, 600, 700 and 800.** `font-semibold` is the emphasis weight in tables (team totals, money chips) and the nav links' weight; `font-bold` marks modal titles, the status chip, the report grids' header and total rows; `font-extrabold` is the brand mark's and the page titles'.
 - **Uppercase is structure, not emphasis.** Nav links, page titles, table heads, card headings and team names in tables are uppercase; body text never is.
 - **Numbers line up.** A column of money uses `tabular-nums` (list tables) or `font-mono` (the weekly report grid, late row bets), right-aligned in list tables and centred in the grid.
 
@@ -385,9 +385,9 @@ A `{colors.chrome}` bar, `min-h-14`, with no border. On the left, the brand mark
 A `{colors.chrome}` bar matching the nav, `py-1.5`, holding the Admin link alone at the right: the nav's label and idle ink, `inline-flex items-center` plus `TAP_TARGET_CLASS`, `px-3 rounded text-sm`.
 
 ### Page title — `ui/src/shared/components/PageTitle.tsx`
-Every page opens with one: a `<header>` holding the page's only `h2` in `{typography.page-title}` (the `h1` is the brand mark), an optional `text-sm text-ink-muted` subtitle under it, and on the right an `actions` slot. It is `flex flex-wrap items-center justify-between`; below `sm:` the actions take a line of their own under the title. A Page renders it outside its loading gates, so the title holds still while the data loads or the season changes. The title is static text; what varies — a tournament's name, its week, a count — goes in the subtitle.
+Every page opens with one: a `<header>` holding the page's only `h2` in `{typography.page-title}` (the `h1` is the brand mark), an optional `text-sm text-ink-muted` subtitle under it, and on the right an `actions` slot. It is `flex flex-wrap items-center justify-between`; below `sm:` the actions take a line of their own under the title. A Page renders it outside its data's loading gates, so the title holds still while the data loads or the season changes; Admin, which has no title until the session check confirms a login, is the exception. The title is static text; what varies — a tournament's name, its week, a count — goes in the subtitle.
 
-The actions slot holds the page's status chip, then the league/season picker; Admin puts its Log out button there instead. No rule sits under the header.
+The actions slot holds the status chip on a page whose response carries one (Scoreboard, Weekly Report, Standings, Players, Late Row Bets), then the league/season picker; Admin puts its Log out button there instead. No rule sits under the header.
 
 ### League / season picker — `ui/src/features/leagues/LeagueSeasonPicker.tsx`
 Lives in the page title's actions, not in a bar of its own: a page that reads the selected season passes `<LeagueSeasonPicker />`, and a page that doesn't (Admin) shows none. Two labelled selects in a `flex flex-wrap` row; labels are `text-xs text-ink-soft font-medium uppercase tracking-wider`, selects `bg-surface-raised border border-control-border rounded text-base` with `TAP_TARGET_CLASS`.
@@ -468,7 +468,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 - Set condensed display type with `font-display`, never a raw `font-stretch`.
 - Name a colour by its token: `text-ink-muted`, `bg-surface-card`. A new role gets a token in `ui/src/index.css` and an entry in this file's `colors:` in the same change, plus a row in the contrast table when it colours text.
 - Keep green for a gain. Colour only a surface's bottom-line money, through `moneyToneClass` on the text it prints; leave every other amount in the table's ink. Set all money in `tabular-nums` or `font-mono`.
-- Open every page with `PageTitle`, the status chip and the league/season picker in its actions; never a hand-rolled `h2`.
+- Open every page with `PageTitle`, its actions holding the status chip where the response has one, then the league/season picker on every page but Admin; never a hand-rolled `h2`.
 - Use `FIELD_CLASS` (through `TextField`, `DateField`, `SelectField`, or `FieldShell` for anything else) for every form input and select, and `PickerRow` for a page toolbar's select; both build on `CONTROL_CLASS`.
 - Put a wide table in `overflow-x-auto -mx-3 sm:mx-0` with a `min-w-*`, so a phone scrolls the table rather than the page.
 - Give every button, link, select, input and click handler `TAP_TARGET_CLASS`. A link also needs `flex items-center` (or `inline-flex`), or its text sits at the top of the 44px; a checkbox gives it to its label.
@@ -484,7 +484,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 
 | Breakpoint | Behavior |
 |---|---|
-| Below `sm:` (<640px) | Page padding `px-3 py-4`. Wide tables scroll edge to edge. The title's actions — status chip and picker — wrap onto a line under the title, and the picker's selects take a row each. Rankings chart 220px tall. Modal panels take 92vw. |
+| Below `sm:` (<640px) | Page padding `px-3 py-4`. Wide tables scroll edge to edge. The title's actions wrap onto a line under the title, and the picker's selects take a row each. Rankings chart 220px tall. Modal panels take 92vw. |
 | `sm:` to `lg:` (640–1024px) | Padding `px-4 py-6`; tables scroll inside the page margin. The actions sit at the title's right while they fit. Chart 320px. The nav is still the menu button. |
 | `lg:` and up (≥1024px) | The nav shows its links inline, each 44px tall, and hides the menu button. Chart 400px. |
 
