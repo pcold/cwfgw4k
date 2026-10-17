@@ -217,7 +217,7 @@ The one brand colour is red: `{colors.primary}` (the brand red) fills primary bu
 
 Only the bottom line reads by sign: Total Cash on the standings and the weekly report, Weekly +/- on the scoreboard, the late row bets total, a golfer's season earnings, and the Won, Lost and Net chips. `{colors.semantic-success}` (green-800) is a gain, `{colors.semantic-danger}` (red-700) a loss, and `{colors.ink-soft}` an amount that prints as `$0`. Every other signed amount keeps its table's ink, so the colour points at the number that settles the row; the one exception is a payout in the report grid's pick cells, which takes the cell's state colour (see On Gold Earnings). `moneyTone` reads the sign from the formatted text, so a cents column and a whole-dollar column each tone at the precision they show. Among amounts, green means a gain and nothing else; the greens that are not money are a known gap (see Known gaps on the light canvas).
 
-The weekly report and the rosters page are laid out like the league's spreadsheet, and they keep its gold: a `{colors.gold}` (the brand gold) header row, `{colors.gold-bright}` (yellow-100) cells for a pick that earned a payout, and a gold-washed TOTAL CASH row. Gold is a fill, never text: the brand gold is 1.44:1 on white.
+The weekly report and the rosters page are laid out like the league's spreadsheet, and they keep its gold: a `{colors.gold}` (the brand gold) header row, `{colors.gold-bright}` (yellow-100) cells for a pick that earned a payout, and a gold-washed TOTAL CASH row. Gold is a fill, never text: the brand gold is 1.4:1 on white.
 
 **Key characteristics:**
 - Light canvas, no dark mode. `index.css` sets `{colors.canvas}` and `{colors.ink}` on `body`.
@@ -299,7 +299,7 @@ Tokens only re-colour what the dark theme drew; the component treatment (CWF-231
 - **Red is both brand and loss.** Primary buttons are the brand red; page titles, destructive buttons and losses are red-700. Beside a loss, a primary button can read as a warning, and a title is the same hex as a loss.
 - **Green outside money.** `{colors.semantic-success}` still colours success messages, exact roster matches, a rostered golfer's team and row wash on the leaderboard, the Rules page's amounts and the complete banner. Green is meant for gains alone.
 - **White on the brand green is 4.40:1**, below AA for normal text. Money cells filled brand green pass only as large text (24px, or 18.66px bold).
-- **Control borders are 1.36:1 on white.** A field on a card shows by its sky fill; WCAG 1.4.11 asks 3:1 of a control's boundary.
+- **Control borders are 1.4:1 on white.** A field on a card shows by its sky fill; WCAG 1.4.11 asks 3:1 of a control's boundary.
 - **Raised is the canvas.** A raised element straight on the page (the Admin page's Log out button) has no visible fill, and the report grid's spacer rows match its highlighted rows.
 - **Info is off-palette.** Its blue fills and text have no counterpart in the brand palette.
 
@@ -460,7 +460,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 ### Don't
 - Don't use a Tailwind shade, a hex, a ramp variable or a `--brand-*` palette variable in a component (`text-gray-400`, `#fff`, `var(--color-gray-400)`, `var(--brand-red)`). `PALETTE_RESTRICTIONS` in `ui/eslint.config.js` fails the lint on each.
 - Don't merge two tokens because they share a step today (`ink` and `ink-strong`, `ink-soft` and `ink-faint`, `surface-raised` and `canvas`). They hold different roles and move separately.
-- Don't use gold as text: the brand gold is 1.44:1 on white. Outside the report grids it waits on the leader and "you" highlights.
+- Don't use gold as text: the brand gold is 1.4:1 on white. Outside the report grids it waits on the leader and "you" highlights.
 - Don't add shadows to cards or borders to them. White on sky carries depth; the modal is the only floating surface.
 - Don't add a dark theme piecemeal: the ink steps are chosen for the light canvas and the contrast table only measures that.
 
