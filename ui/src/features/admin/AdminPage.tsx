@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '@/features/auth/AuthContext';
 import LoginModal from '@/features/auth/LoginModal';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import PageTitle from '@/shared/components/PageTitle';
 import CreateLeagueSection from './CreateLeagueSection';
 import CreateSeasonSection from './CreateSeasonSection';
 import UploadScheduleSection from './UploadScheduleSection';
@@ -31,10 +32,10 @@ function AdminPage(): ReactNode {
 
   return (
     <section className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Admin</h2>
-        <div className="flex items-center gap-3 text-sm text-ink-muted">
-          {username ? <span>Signed in as {username}</span> : null}
+      <PageTitle
+        title="Admin"
+        subtitle={username ? `Signed in as ${username}` : undefined}
+        actions={
           <button
             type="button"
             onClick={() => {
@@ -44,8 +45,8 @@ function AdminPage(): ReactNode {
           >
             Log out
           </button>
-        </div>
-      </div>
+        }
+      />
       <CreateLeagueSection />
       <CreateSeasonSection />
       <UploadScheduleSection />
