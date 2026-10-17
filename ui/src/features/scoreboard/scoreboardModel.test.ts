@@ -246,6 +246,9 @@ describe('scoreboardSubtitle', () => {
   it('adds the payout multiplier when it is not one', () => {
     expect(scoreboardSubtitle({ ...tournament, payoutMultiplier: 2 })).toBe('Sample Open · Week 9 · 2x payouts');
   });
+  it('names a payout multiplier below one, since it changes the money as much as one above', () => {
+    expect(scoreboardSubtitle({ ...tournament, payoutMultiplier: 0.5 })).toBe('Sample Open · Week 9 · 0.5x payouts');
+  });
   it('leaves out a missing name and marks a missing week', () => {
     expect(scoreboardSubtitle({ ...tournament, name: null, week: null })).toBe('Week ?');
   });
