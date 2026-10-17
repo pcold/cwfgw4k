@@ -10,6 +10,7 @@ import type {
 import { makeWonLostTotals } from '@/shared/test/fixtures';
 import {
   isSeasonReport,
+  reportSubtitle,
   roundCellBg,
   roundTextColor,
   sideBetAmountByRound,
@@ -179,5 +180,34 @@ describe('roundTextColor', () => {
     expect(roundTextColor(true, false)).toBe('text-on-gold');
     expect(roundTextColor(true, true)).toBe('text-ink-body');
     expect(roundTextColor(false, false)).toBe('text-ink-body');
+  });
+});
+
+describe('reportSubtitle', () => {
+  const event: WeeklyReport = {
+    ...reportScoped('tournament', 'completed'),
+    tournament: {
+      name: 'Players Championship',
+      startDate: '2026-03-12',
+      endDate: '2026-03-15',
+      status: 'completed',
+      payoutMultiplier: 2,
+      week: '11',
+    },
+  };
+
+  it('names the tournament, its dates and a payout multiplier other than one', () => {
+    expect(reportSubtitle(event)).toBe('Players Championship · 2026-03-12 – 2026-03-15 · 2x payouts');
+  });
+  it('names a payout multiplier below one, since it changes the money as much as one above', () => {
+    const halved = { ...event, tournament: { ...event.tournament, payoutMultiplier: 0.5 } };
+    expect(reportSubtitle(halved)).toBe('Players Championship · 2026-03-12 – 2026-03-15 · 0.5x payouts');
+  });
+  it('says the season report holds the season totals', () => {
+    const season = { ...reportScoped('season'), tournament: { ...event.tournament, name: 'All Tournaments', payoutMultiplier: 1 } };
+    expect(reportSubtitle(season)).toBe('All Tournaments · Season totals');
+  });
+  it('leaves out the parts the report lacks', () => {
+    expect(reportSubtitle(reportScoped('tournament'))).toBe('');
   });
 });

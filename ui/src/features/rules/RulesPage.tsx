@@ -5,6 +5,8 @@ import { queryKeys } from '@/shared/api/queryKeys';
 import type { SeasonRules, Tournament } from '@/shared/api/types';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState } from '@/shared/components/QueryState';
+import PageTitle from '@/shared/components/PageTitle';
+import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import { formatUnsignedDollarsAndCents } from '@/shared/util/money';
 import { ordinal } from './rulesModel';
 
@@ -21,43 +23,50 @@ function RulesPage(): ReactNode {
     queryFn: seasonId === null ? skipToken : () => api.tournaments(seasonId),
   });
 
-  if (leaguesLoading) return <p className="text-ink-muted">Loading leagues…</p>;
-  if (leaguesError)
-    return <p className="text-semantic-danger">Failed to load leagues: {String(leaguesError)}</p>;
+  function renderBody(): ReactNode {
+    if (leaguesLoading) return <p className="text-ink-muted">Loading leagues…</p>;
+    if (leaguesError)
+      return <p className="text-semantic-danger">Failed to load leagues: {String(leaguesError)}</p>;
+
+    return (
+      <>
+        <div className="bg-surface-card rounded-lg p-6">
+          <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
+            The Draft
+          </h3>
+          <ul className="text-ink-secondary space-y-1 text-sm list-disc list-inside">
+            <li>Snake draft, each team drafts PGA Tour players</li>
+            <li>
+              Players can be split between teams with ownership percentages (earnings divided
+              proportionally)
+            </li>
+          </ul>
+        </div>
+
+        <QueryState query={rulesQuery} label="season rules">
+          {(rules) => <RulesView rules={rules} />}
+        </QueryState>
+
+        <div className="bg-surface-card rounded-lg p-6">
+          <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
+            Season Schedule
+          </h3>
+          <p className="text-ink-secondary text-sm mb-3">
+            Tournaments on the season calendar. A highlighted multiplier means payouts are
+            boosted for that week (e.g. 2x for majors).
+          </p>
+          <QueryState query={tournamentsQuery} label="schedule">
+            {(tournaments) => <ScheduleList tournaments={tournaments} />}
+          </QueryState>
+        </div>
+      </>
+    );
+  }
 
   return (
     <section className="space-y-6">
-      <h2 className="text-xl font-bold">Season Rules</h2>
-
-      <div className="bg-surface-card rounded-lg p-6">
-        <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
-          The Draft
-        </h3>
-        <ul className="text-ink-secondary space-y-1 text-sm list-disc list-inside">
-          <li>Snake draft, each team drafts PGA Tour players</li>
-          <li>
-            Players can be split between teams with ownership percentages (earnings divided
-            proportionally)
-          </li>
-        </ul>
-      </div>
-
-      <QueryState query={rulesQuery} label="season rules">
-        {(rules) => <RulesView rules={rules} />}
-      </QueryState>
-
-      <div className="bg-surface-card rounded-lg p-6">
-        <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
-          Season Schedule
-        </h3>
-        <p className="text-ink-secondary text-sm mb-3">
-          Tournaments on the season calendar. A highlighted multiplier means payouts are
-          boosted for that week (e.g. 2x for majors).
-        </p>
-        <QueryState query={tournamentsQuery} label="schedule">
-          {(tournaments) => <ScheduleList tournaments={tournaments} />}
-        </QueryState>
-      </div>
+      <PageTitle title="Season Rules" actions={<LeagueSeasonPicker />} />
+      {renderBody()}
     </section>
   );
 }

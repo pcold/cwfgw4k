@@ -58,16 +58,6 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
 
   return (
     <section className="space-y-6">
-      <header className="border-b border-hairline pb-3">
-        <h2 className="text-xl font-semibold text-primary-ink">
-          {tournament.name ?? 'Scoreboard'}
-        </h2>
-        <p className="text-xs text-ink-muted">
-          Week {tournament.week ?? '?'}
-          {tournament.payoutMultiplier !== 1 ? ` · ${tournament.payoutMultiplier}x payout` : ''}
-        </p>
-      </header>
-
       <div
         className={`px-4 py-2 border rounded text-sm flex items-center justify-between gap-3 ${bannerClass}`}
       >

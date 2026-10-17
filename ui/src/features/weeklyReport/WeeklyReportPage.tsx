@@ -6,7 +6,10 @@ import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
+import PageTitle from '@/shared/components/PageTitle';
 import PickerRow from '@/shared/components/PickerRow';
+import StatusChip, { statusChipVariant } from '@/shared/components/StatusChip';
+import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import {
   ALL_TOURNAMENTS,
   defaultReportSelection,
@@ -16,6 +19,7 @@ import {
 import type { Season, WeeklyReport } from '@/shared/api/types';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import WeeklyReportView from './WeeklyReportView';
+import { reportSubtitle } from './weeklyReportModel';
 
 function downloadPdf(report: WeeklyReport, season: Season | null): Promise<void> {
   return import('./weeklyReportPdf').then((m) => m.downloadWeeklyReportPdf(report, season));
@@ -61,52 +65,70 @@ function WeeklyReportPage(): ReactNode {
             : api.tournamentReport(seasonId, effectiveId, live),
   );
 
-  if (leaguesGate) return leaguesGate;
-  if (tournaments === undefined || effectiveId === null) {
+  function renderBody(): ReactNode {
+    if (leaguesGate) return leaguesGate;
+    if (tournaments === undefined || effectiveId === null) {
+      return (
+        <QueryState query={tournamentsQuery} label="tournaments">
+          {() => (
+            <QueryState query={currentQuery} label="current tournament">
+              {() => null}
+            </QueryState>
+          )}
+        </QueryState>
+      );
+    }
+
+    const tournamentOptions = [
+      { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
+      ...tournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
+    ];
+
     return (
-      <QueryState query={tournamentsQuery} label="tournaments">
-        {() => (
-          <QueryState query={currentQuery} label="current tournament">
-            {() => null}
-          </QueryState>
-        )}
-      </QueryState>
+      <>
+        <PickerRow
+          id="weekly-report-tournament"
+          label="Tournament"
+          value={effectiveId}
+          options={tournamentOptions}
+          onChange={setUserTournamentId}
+        >
+          <button
+            type="button"
+            disabled={!reportQuery.data || pdfMutation.isPending}
+            onClick={() => reportQuery.data && pdfMutation.mutate(reportQuery.data)}
+            className={DOWNLOAD_BUTTON_CLASS}
+          >
+            Download PDF
+          </button>
+          {pdfMutation.isError ? (
+            <span role="alert" className="text-semantic-danger text-sm">
+              Failed to generate PDF: {String(pdfMutation.error)}
+            </span>
+          ) : null}
+          <LiveOverlayCheckbox state={liveOverlay} id="weekly-report-live-overlay" />
+        </PickerRow>
+
+        <QueryState query={reportQuery} label="report">
+          {(report) => <WeeklyReportView report={report} onGolferClick={setHistoryGolferId} />}
+        </QueryState>
+      </>
     );
   }
 
-  const tournamentOptions = [
-    { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
-    ...tournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
-  ];
-
   return (
     <div className="space-y-4">
-      <PickerRow
-        id="weekly-report-tournament"
-        label="Tournament"
-        value={effectiveId}
-        options={tournamentOptions}
-        onChange={setUserTournamentId}
-      >
-        <button
-          type="button"
-          disabled={!reportQuery.data || pdfMutation.isPending}
-          onClick={() => reportQuery.data && pdfMutation.mutate(reportQuery.data)}
-          className={DOWNLOAD_BUTTON_CLASS}
-        >
-          Download PDF
-        </button>
-        {pdfMutation.isError ? (
-          <span role="alert" className="text-semantic-danger text-sm">
-            Failed to generate PDF: {String(pdfMutation.error)}
-          </span>
-        ) : null}
-        <LiveOverlayCheckbox state={liveOverlay} id="weekly-report-live-overlay" />
-      </PickerRow>
-
-      <QueryState query={reportQuery} label="report">
-        {(report) => <WeeklyReportView report={report} onGolferClick={setHistoryGolferId} />}
-      </QueryState>
+      <PageTitle
+        title="Weekly Report"
+        subtitle={reportQuery.data ? reportSubtitle(reportQuery.data) : undefined}
+        actions={
+          <>
+            <StatusChip variant={statusChipVariant(reportQuery.data)} />
+            <LeagueSeasonPicker />
+          </>
+        }
+      />
+      {renderBody()}
       <GolferHistoryModal
         seasonId={seasonId}
         golferId={historyGolferId}

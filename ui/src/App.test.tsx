@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { api } from '@/shared/api/client';
+import type { League, Season } from '@/shared/api/types';
+import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import App from './App';
@@ -40,11 +43,26 @@ vi.mock('@/shared/api/client', () => ({
       live: false,
     }),
     rosters: vi.fn().mockResolvedValue([]),
+    seasonRules: vi.fn().mockReturnValue(new Promise(() => {})),
     tournaments: vi.fn().mockResolvedValue([]),
     tournamentReport: vi.fn().mockResolvedValue(null),
   },
   ApiError: class ApiError extends Error {},
 }));
+
+const league: League = { id: 'lg-1', name: 'Test League', createdAt: '2026-01-01T00:00:00Z' };
+const season: Season = {
+  id: 'sn-1',
+  leagueId: 'lg-1',
+  name: 'Season 1',
+  seasonYear: 2026,
+  seasonNumber: 1,
+  tieFloor: 1,
+  sideBetAmount: 15,
+  maxTeams: 13,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+};
 
 describe('App', () => {
   // The mobile menu mounts inside the navigation landmark only once opened, so a query within
@@ -131,5 +149,25 @@ describe('App', () => {
 
     const footer = screen.getByRole('contentinfo');
     expect(within(footer).getByRole('link', { name: 'Admin' })).toHaveClass(TAP_TARGET_CLASS, 'inline-flex', 'items-center');
+  });
+
+  it.each([
+    ['/scoreboard', 'Scoreboard'],
+    ['/report', 'Weekly Report'],
+    ['/rankings', 'Team Standings'],
+    ['/player-rankings', 'Player Rankings'],
+    ['/rosters', 'Team Rosters'],
+    ['/late-row-bets', 'Late Row Bets'],
+    ['/rules', 'Season Rules'],
+  ])("puts the league and season picker in %s's title row, and nowhere else", async (path, title) => {
+    vi.mocked(api.leagues).mockResolvedValueOnce([league]);
+    vi.mocked(api.seasons).mockResolvedValueOnce([season]);
+    renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
+
+    const leagueSelect = await screen.findByRole('combobox', { name: 'League' });
+    const titleRow = pageTitleRow(screen.getByRole('heading', { level: 2, name: title }));
+    expect(titleRow).toContainElement(leagueSelect);
+    expect(within(titleRow).getByRole('combobox', { name: 'Season' })).toBeInTheDocument();
+    expect(screen.getAllByRole('combobox', { name: /^(League|Season)$/ })).toHaveLength(2);
   });
 });

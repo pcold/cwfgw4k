@@ -87,11 +87,6 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
 }
 
 describe('ScoreboardView', () => {
-  it('renders the tournament name as the heading', () => {
-    render(<ScoreboardView report={report()} />);
-    expect(screen.getByRole('heading', { name: /Sample Open/i })).toBeInTheDocument();
-  });
-
   it('shows the "Results finalized" banner for completed tournaments', () => {
     render(<ScoreboardView report={report()} />);
     expect(screen.getByText(/Results finalized/i)).toBeInTheDocument();

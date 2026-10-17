@@ -88,21 +88,6 @@ describe('RankingsView', () => {
     expect(screen.getByText('Net').nextSibling).toHaveTextContent(/^\+\$247$/);
   });
 
-  it('surfaces the live overlay indicator when enabled', () => {
-    render(<RankingsView rankings={buildRankings({ live: true })} />);
-    expect(screen.getByText(/live overlay on/i)).toBeInTheDocument();
-  });
-
-  it('omits the live indicator by default', () => {
-    render(<RankingsView rankings={buildRankings()} />);
-    expect(screen.queryByText(/live overlay on/i)).not.toBeInTheDocument();
-  });
-
-  it('shows the number of weeks played', () => {
-    render(<RankingsView rankings={buildRankings()} />);
-    expect(screen.getByText(/3 weeks played/i)).toBeInTheDocument();
-  });
-
   it('colours only Total Cash by sign, and leaves Subtotal and Late Row Bets in the table ink', () => {
     render(<RankingsView rankings={buildRankings()} />);
     const aces = screen.getByRole('row', { name: /Aces/ });

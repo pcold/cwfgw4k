@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
+import { screen, waitFor, waitForElementToBeRemoved, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import QueryAnswered from '@/shared/test/QueryAnswered';
+import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
 import type { League, Season, Tournament, WeeklyReport } from '@/shared/api/types';
-import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import LateRowBetsPage from './LateRowBetsPage';
 
 const leaguesMock = vi.fn<typeof api.leagues>();
@@ -148,8 +148,8 @@ describe('LateRowBetsPage', () => {
 
     renderWithProviders(<LateRowBetsPage />);
 
-    expect(await screen.findByRole('heading', { name: 'Late Row Bets' })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Round 2' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Late Row Bets' })).toBeInTheDocument();
     expect(seasonReportMock).toHaveBeenCalledWith('sn-1');
     expect(tournamentReportMock).not.toHaveBeenCalled();
   });
@@ -171,6 +171,26 @@ describe('LateRowBetsPage', () => {
     await user.selectOptions(screen.getByLabelText(/Through/i), '');
 
     await waitFor(() => expect(seasonReportMock).toHaveBeenCalledWith('sn-1'));
+  });
+
+  it('marks the bets LIVE in the title row through a tournament the server overlaid', async () => {
+    const overlaid = buildReport();
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([{ ...tournament, status: 'in_progress' }]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-1' });
+    tournamentReportMock.mockResolvedValue({
+      ...overlaid,
+      scope: 'tournament',
+      live: true,
+      tournament: { ...overlaid.tournament, status: 'in_progress' },
+    });
+
+    renderWithProviders(<LateRowBetsPage />);
+
+    await screen.findByRole('heading', { name: 'Round 2' });
+    const title = screen.getByRole('heading', { name: 'Late Row Bets' });
+    expect(within(pageTitleRow(title)).getByText('Live')).toHaveClass('bg-primary');
   });
 
   it('opens on the tournament the server names, not the first unfinalized one in the list', async () => {
@@ -217,12 +237,7 @@ describe('LateRowBetsPage', () => {
     );
 
     const user = userEvent.setup();
-    renderWithProviders(
-      <>
-        <LeagueSeasonPicker />
-        <LateRowBetsPage />
-      </>,
-    );
+    renderWithProviders(<LateRowBetsPage />);
 
     await user.selectOptions(await screen.findByLabelText(/Through/i), spring.id);
     await waitFor(() => expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true));

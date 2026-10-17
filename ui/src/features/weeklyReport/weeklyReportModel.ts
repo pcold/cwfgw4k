@@ -53,3 +53,12 @@ export function sideBetRowLabel(rules: ReportSideBetRules | null): string {
 export function isSeasonReport(report: WeeklyReport): boolean {
   return report.scope === 'season';
 }
+
+export function reportSubtitle(report: WeeklyReport): string {
+  const { name, startDate, endDate, payoutMultiplier } = report.tournament;
+  const span = isSeasonReport(report)
+    ? 'Season totals'
+    : `${startDate ?? ''}${endDate ? ` – ${endDate}` : ''}`;
+  const payout = payoutMultiplier !== 1 ? [`${payoutMultiplier}x payouts`] : [];
+  return [name, span, ...payout].filter(Boolean).join(' · ');
+}

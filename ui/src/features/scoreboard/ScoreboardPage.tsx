@@ -7,7 +7,10 @@ import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
+import PageTitle from '@/shared/components/PageTitle';
 import PickerRow from '@/shared/components/PickerRow';
+import StatusChip, { statusChipVariant } from '@/shared/components/StatusChip';
+import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import { mutationError } from '@/shared/util/mutationError';
 import {
   defaultScoreboardSelection,
@@ -19,6 +22,7 @@ import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import FinalizeWarnings from './FinalizeWarnings';
 import PlayerLinksPanel from './PlayerLinksPanel';
 import ScoreboardView from './ScoreboardView';
+import { scoreboardSubtitle } from './scoreboardModel';
 
 const FINALIZE_BUTTON_CLASS =
   'bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-3 py-1 rounded text-xs ' +
@@ -110,59 +114,77 @@ function ScoreboardPage(): ReactNode {
     );
   }
 
-  if (leaguesGate) return leaguesGate;
+  function renderBody(): ReactNode {
+    if (leaguesGate) return leaguesGate;
+
+    return (
+      <QueryState query={tournamentsQuery} label="tournaments">
+        {(loadedTournaments) => {
+          if (loadedTournaments.length === 0) {
+            return <p className="text-ink-muted">No tournaments scheduled for this season.</p>;
+          }
+          if (tournamentId === null) {
+            return (
+              <QueryState query={currentQuery} label="current tournament">
+                {() => null}
+              </QueryState>
+            );
+          }
+          return (
+            <div className="space-y-4">
+              <PickerRow
+                id="tournament-select"
+                label="Tournament"
+                value={tournamentId}
+                options={loadedTournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) }))}
+                onChange={setUserTournamentId}
+              >
+                <LiveOverlayCheckbox state={liveOverlay} id="scoreboard-live-overlay" />
+              </PickerRow>
+
+              {finalized ? <FinalizeWarnings finalized={finalized} /> : null}
+              <QueryState query={reportQuery} label="scoreboard">
+                {(report) => (
+                  <ScoreboardView
+                    report={report}
+                    finalizeSlot={buildFinalizeSlot(report)}
+                    onGolferClick={setHistoryGolferId}
+                  />
+                )}
+              </QueryState>
+              <GolferHistoryModal
+                seasonId={seasonId}
+                golferId={historyGolferId}
+                onClose={() => setHistoryGolferId(null)}
+              />
+              {linksPanelOpen && isAdmin && tournamentId && seasonId ? (
+                <PlayerLinksPanel
+                  tournamentId={tournamentId}
+                  seasonId={seasonId}
+                  onClose={() => setLinksPanelOpen(false)}
+                />
+              ) : null}
+            </div>
+          );
+        }}
+      </QueryState>
+    );
+  }
 
   return (
-    <QueryState query={tournamentsQuery} label="tournaments">
-      {(loadedTournaments) => {
-        if (loadedTournaments.length === 0) {
-          return <p className="text-ink-muted">No tournaments scheduled for this season.</p>;
+    <div className="space-y-4">
+      <PageTitle
+        title="Scoreboard"
+        subtitle={reportQuery.data ? scoreboardSubtitle(reportQuery.data.tournament) : undefined}
+        actions={
+          <>
+            <StatusChip variant={statusChipVariant(reportQuery.data)} />
+            <LeagueSeasonPicker />
+          </>
         }
-        if (tournamentId === null) {
-          return (
-            <QueryState query={currentQuery} label="current tournament">
-              {() => null}
-            </QueryState>
-          );
-        }
-        return (
-          <div className="space-y-4">
-            <PickerRow
-              id="tournament-select"
-              label="Tournament"
-              value={tournamentId}
-              options={loadedTournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) }))}
-              onChange={setUserTournamentId}
-            >
-              <LiveOverlayCheckbox state={liveOverlay} id="scoreboard-live-overlay" />
-            </PickerRow>
-
-            {finalized ? <FinalizeWarnings finalized={finalized} /> : null}
-            <QueryState query={reportQuery} label="scoreboard">
-              {(report) => (
-                <ScoreboardView
-                  report={report}
-                  finalizeSlot={buildFinalizeSlot(report)}
-                  onGolferClick={setHistoryGolferId}
-                />
-              )}
-            </QueryState>
-            <GolferHistoryModal
-              seasonId={seasonId}
-              golferId={historyGolferId}
-              onClose={() => setHistoryGolferId(null)}
-            />
-            {linksPanelOpen && isAdmin && tournamentId && seasonId ? (
-              <PlayerLinksPanel
-                tournamentId={tournamentId}
-                seasonId={seasonId}
-                onClose={() => setLinksPanelOpen(false)}
-              />
-            ) : null}
-          </div>
-        );
-      }}
-    </QueryState>
+      />
+      {renderBody()}
+    </div>
   );
 }
 

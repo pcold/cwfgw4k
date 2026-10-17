@@ -14,14 +14,6 @@ function RankingsView({ rankings }: Props): ReactNode {
 
   return (
     <section className="space-y-6">
-      <header className="border-b border-hairline pb-3">
-        <h2 className="text-xl font-semibold text-primary-ink">Team Standings</h2>
-        <p className="text-xs text-ink-muted">
-          {rankings.weeks.length} weeks played
-          {rankings.live ? ' · live overlay on' : ''}
-        </p>
-      </header>
-
       <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="min-w-full text-sm">
           <thead>

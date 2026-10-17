@@ -6,7 +6,10 @@ import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
+import PageTitle from '@/shared/components/PageTitle';
 import PickerRow from '@/shared/components/PickerRow';
+import StatusChip, { statusChipVariant } from '@/shared/components/StatusChip';
+import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import {
   ALL_TOURNAMENTS,
   defaultReportSelection,
@@ -43,39 +46,39 @@ function PlayerRankingsPage(): ReactNode {
       : (live) => api.playerRankings(seasonId, live, throughTournamentId || undefined),
   );
 
-  if (leaguesGate) return leaguesGate;
-  if (tournaments === undefined || throughTournamentId === null) {
+  const playerRankings = playerRankingsQuery.data;
+  const qualifyingCount = playerRankings?.players.length ?? 0;
+
+  function renderBody(): ReactNode {
+    if (leaguesGate) return leaguesGate;
+    if (tournaments === undefined || throughTournamentId === null) {
+      return (
+        <QueryState query={tournamentsQuery} label="tournaments">
+          {() => (
+            <QueryState query={currentQuery} label="current tournament">
+              {() => null}
+            </QueryState>
+          )}
+        </QueryState>
+      );
+    }
+
+    const tournamentOptions = [
+      { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
+      ...tournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
+    ];
+
     return (
-      <QueryState query={tournamentsQuery} label="tournaments">
-        {() => (
-          <QueryState query={currentQuery} label="current tournament">
-            {() => null}
-          </QueryState>
-        )}
-      </QueryState>
-    );
-  }
-
-  const tournamentOptions = [
-    { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
-    ...tournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
-  ];
-
-  return (
-    <>
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-bold">Player Rankings</h2>
-          <PickerRow
-            id="player-rankings-through"
-            label="Through"
-            value={throughTournamentId}
-            options={tournamentOptions}
-            onChange={setThroughOverride}
-          >
-            <LiveOverlayCheckbox state={liveOverlay} id="player-rankings-live-overlay" />
-          </PickerRow>
-        </div>
+      <>
+        <PickerRow
+          id="player-rankings-through"
+          label="Through"
+          value={throughTournamentId}
+          options={tournamentOptions}
+          onChange={setThroughOverride}
+        >
+          <LiveOverlayCheckbox state={liveOverlay} id="player-rankings-live-overlay" />
+        </PickerRow>
 
         {tournamentsQuery.isError ? (
           <p className="text-semantic-danger">
@@ -88,12 +91,26 @@ function PlayerRankingsPage(): ReactNode {
         ) : playerRankingsQuery.isLoading ? (
           <p className="text-ink-muted">Loading player rankings…</p>
         ) : (
-          <PlayerRankingsView
-            players={playerRankingsQuery.data?.players ?? []}
-            live={playerRankingsQuery.data?.live ?? false}
-            onGolferClick={setHistoryGolferId}
-          />
+          <PlayerRankingsView players={playerRankings?.players ?? []} onGolferClick={setHistoryGolferId} />
         )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-4">
+        <PageTitle
+          title="Player Rankings"
+          subtitle={qualifyingCount > 0 ? `${qualifyingCount} players with at least one top 10` : undefined}
+          actions={
+            <>
+              <StatusChip variant={statusChipVariant(playerRankings)} />
+              <LeagueSeasonPicker />
+            </>
+          }
+        />
+        {renderBody()}
       </div>
       <GolferHistoryModal
         seasonId={seasonId}

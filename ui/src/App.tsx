@@ -8,7 +8,6 @@ import ScoreboardPage from '@/features/scoreboard/ScoreboardPage';
 import LateRowBetsPage from '@/features/lateRowBets/LateRowBetsPage';
 import RulesPage from '@/features/rules/RulesPage';
 import AdminPage from '@/features/admin/AdminPage';
-import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import { LeagueSeasonProvider } from '@/features/leagues/LeagueSeasonContext';
 import { AuthProvider } from '@/features/auth/AuthContext';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
@@ -126,8 +125,6 @@ function App(): ReactNode {
             </div>
           ) : null}
         </nav>
-
-        <LeagueSeasonPicker />
 
         <main className="max-w-screen-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
           <Routes>

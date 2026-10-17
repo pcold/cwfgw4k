@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router';
 import type { api } from '@/shared/api/client';
@@ -7,6 +7,7 @@ import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { ApiError } from '@/shared/api/client';
 import { notifySessionExpired } from '@/shared/api/sessionExpiry';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import AdminPage from './AdminPage';
 
 const authMeMock = vi.fn<typeof api.authMe>();
@@ -178,6 +179,19 @@ describe('AdminPage', () => {
       expect(logoutMock).toHaveBeenCalled();
     });
     expect(await screen.findByRole('dialog', { name: /Admin Login/i })).toBeInTheDocument();
+  });
+
+  it('puts Log out in the title row, and no league or season picker', async () => {
+    authMeMock.mockResolvedValue(adminUser);
+    renderWithProviders(<AdminPage />, {
+      withAuthProvider: true,
+      withLeagueSeasonProvider: false,
+    });
+
+    const titleRow = pageTitleRow(await screen.findByRole('heading', { level: 2, name: 'Admin' }));
+
+    expect(within(titleRow).getByRole('button', { name: 'Log out' })).toBeInTheDocument();
+    expect(within(titleRow).queryByRole('combobox')).toBeNull();
   });
 
   // No season rules are served here, so the season form never mounts; CreateSeasonSection.test pins it.

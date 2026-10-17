@@ -50,10 +50,6 @@ function RostersView({ teams, sideBetRounds, onGolferClick }: Props): ReactNode 
 
   return (
     <section className="space-y-6">
-      <header className="border-b border-hairline pb-3">
-        <h2 className="text-xl font-semibold text-primary-ink">Team Rosters</h2>
-      </header>
-
       <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="w-full text-xs border-collapse">
           <thead>

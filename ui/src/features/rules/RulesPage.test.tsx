@@ -75,9 +75,7 @@ describe('RulesPage', () => {
     tournamentsMock.mockResolvedValue([]);
     renderWithProviders(<RulesPage />);
 
-    expect(
-      await screen.findByRole('heading', { name: /Season Rules/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Season Rules/i })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: /Weekly Payouts/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /The Draft/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Zero-Sum Scoring/i })).toBeInTheDocument();
@@ -232,7 +230,7 @@ describe('RulesPage', () => {
 
     renderWithProviders(<RulesPage />);
 
-    expect(await screen.findByRole('heading', { name: /Season Rules/i })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /The Draft/i })).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(seasonRulesMock).not.toHaveBeenCalled();
   });

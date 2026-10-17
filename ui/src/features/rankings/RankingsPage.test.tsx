@@ -4,9 +4,9 @@ import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import QueryAnswered from '@/shared/test/QueryAnswered';
+import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import type { League, Rankings, Season, Tournament } from '@/shared/api/types';
-import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import RankingsPage from './RankingsPage';
 
 const leaguesMock = vi.fn<typeof api.leagues>();
@@ -97,7 +97,8 @@ describe('RankingsPage', () => {
 
     renderWithProviders(<RankingsPage />);
 
-    expect(await screen.findByRole('heading', { name: /Team Standings/i })).toBeInTheDocument();
+    const subtitle = await screen.findByText('3 weeks played');
+    expect(pageTitleRow(subtitle)).toContainElement(screen.getByRole('heading', { name: /Team Standings/i }));
     const table = screen.getByRole('table');
     expect(within(table).getByText('Aces')).toBeInTheDocument();
     expect(rankingsMock).toHaveBeenCalledWith('sn-1', false, undefined);
@@ -113,7 +114,7 @@ describe('RankingsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<RankingsPage />);
 
-    await screen.findByRole('heading', { name: /Team Standings/i });
+    await screen.findByText('3 weeks played');
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-7');
 
@@ -139,7 +140,7 @@ describe('RankingsPage', () => {
 
     renderWithProviders(<RankingsPage />);
 
-    await screen.findByRole('heading', { name: /Team Standings/i });
+    await screen.findByText('3 weeks played');
     expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', true, 'tn-upcoming');
   });
 
@@ -154,7 +155,7 @@ describe('RankingsPage', () => {
 
     renderWithProviders(<RankingsPage />);
 
-    await screen.findByRole('heading', { name: /Team Standings/i });
+    await screen.findByText('3 weeks played');
     expect(screen.getByLabelText<HTMLSelectElement>(/Through/i).value).toBe('tn-8');
     expect(rankingsMock).toHaveBeenCalledWith('sn-1', true, 'tn-8');
     expect(rankingsMock).not.toHaveBeenCalledWith('sn-1', expect.anything(), 'tn-7');
@@ -185,12 +186,7 @@ describe('RankingsPage', () => {
     );
 
     const user = userEvent.setup();
-    renderWithProviders(
-      <>
-        <LeagueSeasonPicker />
-        <RankingsPage />
-      </>,
-    );
+    renderWithProviders(<RankingsPage />);
 
     await user.selectOptions(await screen.findByLabelText(/Through/i), spring.id);
     await waitFor(() => expect(rankingsMock).toHaveBeenCalledWith('sn-1', false, 'tn-7'));
@@ -277,7 +273,7 @@ describe('RankingsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<RankingsPage />);
 
-    await screen.findByRole('heading', { name: /Team Standings/i });
+    await screen.findByText('3 weeks played');
     expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', true, 'tn-7');
     expect(screen.getByRole('checkbox', { name: /Live overlay/i })).toBeChecked();
 
@@ -299,7 +295,7 @@ describe('RankingsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<RankingsPage />);
 
-    await screen.findByRole('heading', { name: /Team Standings/i });
+    await screen.findByText('3 weeks played');
     expect(screen.queryByRole('checkbox', { name: /Live overlay/i })).not.toBeInTheDocument();
     expect(rankingsMock).not.toHaveBeenCalledWith('sn-1', true, 'tn-7');
 
@@ -307,6 +303,32 @@ describe('RankingsPage', () => {
 
     expect(await screen.findByRole('checkbox', { name: /Live overlay/i })).toBeChecked();
     expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', true, 'tn-12');
+  });
+
+  it('marks the standings LIVE when the server overlaid them', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([{ ...tournament, status: 'in_progress' }]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-7' });
+    rankingsMock.mockResolvedValue({ ...rankings, live: true, liveEligible: true });
+
+    renderWithProviders(<RankingsPage />);
+
+    const subtitle = await screen.findByText('3 weeks played');
+    expect(within(pageTitleRow(subtitle)).getByText('Live')).toHaveClass('bg-primary');
+  });
+
+  it('shows no status chip on standings the server did not overlay', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([tournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-7' });
+    rankingsMock.mockResolvedValue(rankings);
+
+    renderWithProviders(<RankingsPage />);
+
+    await screen.findByText('3 weeks played');
+    expect(screen.queryByText(/^(Live|Final|Upcoming)$/)).not.toBeInTheDocument();
   });
 
   it('shows an error message when rankings fail to load', async () => {
