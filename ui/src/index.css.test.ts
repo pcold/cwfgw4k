@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import sairaWidthFaces from '@fontsource-variable/saira/wdth.css?raw';
 import tailwindTheme from 'tailwindcss/theme.css?raw';
+import { MONEY_FIGURE_CLASS } from '@/shared/components/MoneyCell';
 import designMd from '../../DESIGN.md?raw';
 import indexCss from './index.css?raw';
 
@@ -22,8 +23,12 @@ interface Wash {
 
 type Backdrop = string | Wash;
 
-// WCAG 2.2 §1.4.3. The large-text carve-out (3:1) is not taken: no more than a page heading could claim it.
+// WCAG 2.2 §1.4.3. Its large-text floor is taken once, in LARGE_TEXT_PAIRS: the up money box keeps the brand green,
+// 4.40:1 under white, so its figure must be bold and at least 14pt (18.66px). Every other pair clears 4.5.
 const AA_NORMAL_TEXT = 4.5;
+const AA_LARGE_TEXT = 3;
+const LARGE_BOLD_TEXT_MIN_PX = (14 * 96) / 72;
+const BOLD_WEIGHT = 700;
 // WCAG 2.2 §1.4.11, for the line that bounds a control rather than a glyph.
 const NON_TEXT_CONTRAST = 3;
 
@@ -60,6 +65,9 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
     'semantic-danger-fill-hover',
     'secondary',
     'secondary-hover',
+    'position-fill',
+    'money-down-fill',
+    'money-even-fill',
   ],
   'primary-ink': ['canvas', 'surface-card'],
   'semantic-success': [
@@ -221,6 +229,33 @@ const pairsOf = (table: Readonly<Record<string, readonly Backdrop[]>>): readonly
 const measure = (pair: ContrastPair): number =>
   contrastRatio(resolveToken(pair.foreground), resolveBackdrop(pair.backdrop));
 
+/** The class that sets the pair's type rides along, since only that type earns the lower floor. */
+interface LargeTextPair extends ContrastPair {
+  readonly typeClass: string;
+}
+
+const LARGE_TEXT_PAIRS: readonly LargeTextPair[] = [
+  { foreground: 'on-fill', backdrop: 'money-up-fill', label: 'on-fill on money-up-fill', typeClass: MONEY_FIGURE_CLASS },
+];
+
+const themeScale = (pattern: RegExp, toValue: (raw: string) => number): ReadonlyMap<string, number> =>
+  new Map(
+    [...tailwindTheme.matchAll(pattern)].map((match): [string, number] => [captured(match, 1), toValue(captured(match, 2))]),
+  );
+
+const themeTextSizesPx = themeScale(/--text-([\w-]+):\s*([\d.]+)rem;/g, (rem) => Number(rem) * 16);
+const themeFontWeights = themeScale(/--font-weight-([\w-]+):\s*(\d+);/g, Number);
+
+// The largest value a utility in the class string sets on the theme's scale; 0 when none does.
+const scaleValueIn = (typeClass: string, prefix: 'text-' | 'font-', scale: ReadonlyMap<string, number>): number =>
+  Math.max(
+    0,
+    ...typeClass
+      .split(/\s+/)
+      .filter((utility) => utility.startsWith(prefix))
+      .map((utility) => scale.get(utility.slice(prefix.length)) ?? 0),
+  );
+
 describe('the text tokens declared in index.css', () => {
   // Without this the table goes quiet rather than red: a new text colour would simply have no row.
   it('name the backdrops of every text colour a component sets', () => {
@@ -229,6 +264,22 @@ describe('the text tokens declared in index.css', () => {
 
   it.each(pairsOf(TEXT_BACKDROPS))('clear AA for normal text where $label', (pair) => {
     expect(measure(pair)).toBeGreaterThanOrEqual(AA_NORMAL_TEXT);
+  });
+});
+
+describe('the large-text carve-out', () => {
+  it.each(LARGE_TEXT_PAIRS)('clears AA for large text where $label', (pair) => {
+    expect(measure(pair)).toBeGreaterThanOrEqual(AA_LARGE_TEXT);
+  });
+
+  it.each(LARGE_TEXT_PAIRS)('sets bold type of at least 18.66px where $label', (pair) => {
+    expect(scaleValueIn(pair.typeClass, 'font-', themeFontWeights)).toBeGreaterThanOrEqual(BOLD_WEIGHT);
+    expect(scaleValueIn(pair.typeClass, 'text-', themeTextSizesPx)).toBeGreaterThanOrEqual(LARGE_BOLD_TEXT_MIN_PX);
+  });
+
+  // The size check reads unprefixed utilities only, so a `max-sm:text-sm` would shrink the figure past it.
+  it.each(LARGE_TEXT_PAIRS)('sets one type at every breakpoint and state where $label', (pair) => {
+    expect(pair.typeClass.split(/\s+/).filter((utility) => utility.includes(':'))).toEqual([]);
   });
 });
 
