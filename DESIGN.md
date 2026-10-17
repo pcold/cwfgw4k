@@ -277,11 +277,11 @@ The weekly report and the rosters page are laid out like the league's spreadshee
 
 Every colour below is a `--color-<name>` token in the `@theme` block of `ui/src/index.css`, and every token there has an entry here; `ui/src/index.css.test.ts` fails when the two disagree, by name or by value. Each value is an alias: to a Tailwind ramp step, named after it, or to one of the brand hexes, which `index.css` declares as `--brand-*` in `:root` so Tailwind makes no utility of them. Components use the token (`bg-surface-card`), never the step (`bg-gray-800`) or the palette variable (`var(--brand-navy)`); the lint rejects both.
 
-The contrast table in `ui/src/index.css.test.ts` pins every text token at WCAG AA (4.5:1) on each backdrop it sits on, with one exception: white on `{colors.money-up-fill}` is 4.40:1, so it is held to the large-text floor (3:1) instead, and the same file fails if `MONEY_FIGURE_CLASS` drops below bold 18.66px. That floor is why four inks share the brand muted blue (slate-500, the step that would set `{colors.ink-faint}` apart, is 4.08:1 on the canvas), and why status text takes a darker step than the brand red and green: each ink step holds a role, not a brightness rank. The same file pins `{colors.control-border}` at WCAG 1.4.11's 3:1 against a field's fill and each surface a field sits on.
+The contrast table in `ui/src/index.css.test.ts` pins every text token at WCAG AA (4.5:1) on each backdrop it sits on, with one exception: white on `{colors.money-up-fill}` is 4.40:1, so it is held to the large-text floor (3:1) instead, and the same file fails if `MONEY_FIGURE_CLASS` drops below bold 18.66px. The AA floor is why four inks share the brand muted blue (slate-500, the step that would set `{colors.ink-faint}` apart, is 4.08:1 on the canvas), and why status text takes a darker step than the brand red and green: each ink step holds a role, not a brightness rank. The same file pins `{colors.control-border}` at WCAG 1.4.11's 3:1 against a field's fill and each surface a field sits on.
 
 ### Surface
 - **Canvas** (`{colors.canvas}`, the brand sky #e8eef7): the page background.
-- **Surface Card** (`{colors.surface-card}`, white): every card, the money summary chips, the modal panel, the active nav link, the cells of the standings' card rows, the thin spacer rows between blocks of the weekly report grid. At `/60` it is the row hover on the scoreboard and player-rankings tables.
+- **Surface Card** (`{colors.surface-card}`, white): every card, the money summary chips, the modal panel, the active nav link, the cells between the boxes of the standings' card rows, the thin spacer rows between blocks of the weekly report grid. At `/60` it is the row hover on the scoreboard and player-rankings tables.
 - **Surface Raised** (`{colors.surface-raised}`, the brand sky): form fields, the neutral tag chips, the report grid's highlighted row. It is the canvas's colour, so it reads as raised only inside a white card.
 - **Surface Raised Hover** (`{colors.surface-raised-hover}`, the brand line #d5deeb): the roster file input's button, hovered.
 - **Overlay** (`{colors.overlay}`, black): the modal scrim, at `/60`.
@@ -342,7 +342,7 @@ Each family takes only the rungs it uses. `-tint` is a wash, always at an opacit
 - **Side Bet Winner** (`{colors.side-bet-winner}`, red-100): the weekly-report cell of the pick that won that round's side bet. It overrides gold-bright; its text drops back to `{colors.ink-body}`.
 
 ### Known gaps on the light canvas
-Tokens only re-colour what the dark theme drew; the component treatment (CWF-231 the app chrome, CWF-232 the tables) has begun with the standings' card rows, and these are the gaps it has to close.
+Tokens only re-colour what the dark theme drew; the component treatment has restyled the app chrome (CWF-231) and begun on the tables (CWF-232) with the standings' card rows, and these are the gaps it has to close.
 - **Red is both brand and loss.** Primary buttons and the LIVE chip are the brand red; destructive buttons and losses are red-700, and so is the standings' loss box, never the brand red. Beside a loss, a primary button can still read as a warning.
 - **Green outside money.** `{colors.semantic-success}` still colours success messages, exact roster matches, a rostered golfer's team and row wash on the leaderboard, the Rules page's amounts and the complete banner. Green is meant for gains alone.
 
@@ -361,7 +361,7 @@ Tokens only re-colour what the dark theme drew; the component treatment (CWF-231
 
 | Token | Size | Weight | Tracking | Classes | Where |
 |---|---|---|---|---|---|
-| `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links, the footer link, page titles, the status chip, table heads, the standings' card rows |
+| `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links, the footer link, page titles, the status chip, table heads, the standings' team names and position and money boxes |
 | `{typography.brand-mark}` | 20px | 800 | 0.025em, italic, uppercase | `font-display italic font-extrabold text-xl uppercase tracking-wide` | The CASTLEWOOD FG mark in the nav |
 | `{typography.page-title}` | 24px, 30px from `sm:` | 800 | 0, italic, uppercase | `font-display italic font-extrabold uppercase text-2xl sm:text-3xl leading-tight text-ink-strong` | The `h2` of every page, in `PageTitle` |
 | `{typography.modal-title}` | 18px | 700 | 0 | `text-lg font-bold` | Modal header |
@@ -550,7 +550,7 @@ Use these when building UI here:
 - **A tap target:** append `TAP_TARGET_CLASS` from `@/shared/components/formFields` to any text button, link, select or input (`Button` carries its own); a link adds `inline-flex items-center`.
 - **A toolbar select:** `PickerRow` from `@/shared/components/PickerRow`, with the row's other controls as its children.
 - **A page title:** `<PageTitle title="…" subtitle="…" actions={<><StatusChip variant={statusChipVariant(query.data)} /><LeagueSeasonPicker /></>} />`, outside the page's loading gates.
-- **A table head:** `<thead className={COLUMN_HEADER_CLASS}>` from `@/shared/components/columnHeader`, with no type on its rows or cells but an ink its fill needs, as the gold row's `text-on-gold`; body `divide-y divide-hairline-soft`.
+- **A table head:** `<thead className={COLUMN_HEADER_CLASS}>` from `@/shared/components/columnHeader`, with no type on its rows or cells but an ink its fill needs, as the gold row's `text-on-gold`; body `divide-y divide-hairline-soft`, or for card rows a `border-separate border-spacing-y-1` table (see List tables).
 - **A money value:** `tabular-nums`, or `font-mono` in the grids; a bottom-line amount adds `moneyToneClass` of the text it prints and keeps its table's weight, or in a card row is a `<MoneyCell display={…} />`.
 - **A modal:** `FormModal` for a form, `ModalShell` when the body waits on a query.
 
