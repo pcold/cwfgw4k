@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '@/features/auth/AuthContext';
 import LoginModal from '@/features/auth/LoginModal';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import CreateLeagueSection from './CreateLeagueSection';
 import CreateSeasonSection from './CreateSeasonSection';
 import UploadScheduleSection from './UploadScheduleSection';
@@ -39,7 +40,7 @@ function AdminPage(): ReactNode {
             onClick={() => {
               void logout();
             }}
-            className="bg-surface-raised hover:bg-surface-raised-hover text-ink-strong px-3 py-1.5 rounded text-sm"
+            className={`bg-surface-raised hover:bg-surface-raised-hover text-ink-strong px-3 py-1.5 rounded text-sm ${TAP_TARGET_CLASS}`}
           >
             Log out
           </button>

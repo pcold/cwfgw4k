@@ -14,7 +14,7 @@ import type {
   RosterPreviewTeam,
   Season,
 } from '@/shared/api/types';
-import { FieldShell, SelectField } from '@/shared/components/formFields';
+import { FieldShell, SelectField, TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
 import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
@@ -31,11 +31,20 @@ const CONFIRM_BLOCKED_ID = 'roster-confirm-blocked';
 
 const ROSTER_FILE_INPUT_CLASS =
   'block w-full text-sm text-ink-secondary file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 ' +
-  'file:bg-surface-raised file:text-ink hover:file:bg-surface-raised-hover';
+  `file:bg-surface-raised file:text-ink hover:file:bg-surface-raised-hover ${TAP_TARGET_CLASS}`;
 
 const PREVIEW_BUTTON_CLASS =
   'bg-semantic-info-fill hover:bg-semantic-info-fill-hover disabled:bg-disabled text-on-fill ' +
-  'px-4 py-2 rounded text-sm font-medium';
+  `px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`;
+
+const CONFIRM_BUTTON_CLASS =
+  'bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm ' +
+  `font-medium ${TAP_TARGET_CLASS}`;
+
+// CONTROL_CLASS's sizing without CONTROL_CLASS: its border colour and the warning one would tie, settled by
+// stylesheet order rather than class order.
+const MATCH_SELECT_CLASS =
+  `bg-surface-raised border border-semantic-warning-border rounded px-3 py-2 text-base ${TAP_TARGET_CLASS}`;
 
 // Prefixed by source, since a golfer id and an ESPN id share no namespace.
 function candidateValue(candidate: GolferCandidate): string {
@@ -392,7 +401,7 @@ function RosterReviewStep({
                           onChange={(e) =>
                             onSelectionChange(team.teamNumber, pick, e.target.value)
                           }
-                          className="bg-surface-raised border border-semantic-warning-border rounded px-2 py-1 text-xs"
+                          className={MATCH_SELECT_CLASS}
                         >
                           <option value="">-- select player --</option>
                           {match.candidates.map((c) => (
@@ -423,14 +432,14 @@ function RosterReviewStep({
           }}
           disabled={confirming || !confirmTeams}
           aria-describedby={confirmTeams ? undefined : CONFIRM_BLOCKED_ID}
-          className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium"
+          className={CONFIRM_BUTTON_CLASS}
         >
           {confirming ? 'Creating...' : 'Confirm & Create Teams'}
         </button>
         <button
           type="button"
           onClick={onBack}
-          className="bg-secondary hover:bg-secondary-hover text-on-fill px-4 py-2 rounded text-sm font-medium"
+          className={`bg-secondary hover:bg-secondary-hover text-on-fill px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`}
         >
           Back
         </button>

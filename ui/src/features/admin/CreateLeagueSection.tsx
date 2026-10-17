@@ -3,8 +3,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type { League } from '@/shared/api/types';
-import { TextField } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS, TextField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
+
+const CREATE_BUTTON_CLASS =
+  'bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm ' +
+  `font-medium ${TAP_TARGET_CLASS}`;
 
 function CreateLeagueSection(): ReactNode {
   const queryClient = useQueryClient();
@@ -45,7 +49,7 @@ function CreateLeagueSection(): ReactNode {
           type="button"
           onClick={() => createMutation.mutate(name.trim())}
           disabled={disabled}
-          className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium"
+          className={CREATE_BUTTON_CLASS}
         >
           {createMutation.isPending ? 'Creating...' : 'Create League'}
         </button>

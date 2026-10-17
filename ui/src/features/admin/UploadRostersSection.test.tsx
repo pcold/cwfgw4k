@@ -9,6 +9,7 @@ import { nth } from '@/shared/test/nth';
 import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeSeason } from '@/shared/test/fixtures';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import UploadRostersSection, { buildConfirmTeams } from './UploadRostersSection';
 
 const leaguesMock = vi.fn<typeof api.leagues>();
@@ -461,5 +462,27 @@ describe('UploadRostersSection', () => {
     expect(
       screen.getByRole('button', { name: /Match Players with ESPN/i }),
     ).toBeInTheDocument();
+  });
+
+  it("holds the review step's controls to the tap-target height, its match select at 16px", async () => {
+    previewRosterMock.mockResolvedValue(samplePreview());
+
+    const user = userEvent.setup();
+    renderWithProviders(<UploadRostersSection />, { withLeagueSeasonProvider: false });
+
+    await waitFor(() => {
+      expect(screen.getByText('2026 Spring')).toBeInTheDocument();
+    });
+    await user.selectOptions(screen.getByLabelText(/^Season$/), 'sn-1');
+    await uploadRosterFile(user, 'TEAM 1 BROWN');
+    await user.click(screen.getByRole('button', { name: /Match Players with ESPN/i }));
+
+    await screen.findByRole('button', { name: /Confirm & Create Teams/i });
+    for (const button of screen.getAllByRole('button')) {
+      expect(button).toHaveClass(TAP_TARGET_CLASS);
+    }
+    const matchSelect = screen.getByLabelText(/Golfer match for Cam Smith/i);
+    expect(matchSelect).toHaveClass('text-base', TAP_TARGET_CLASS);
+    expect(matchSelect).not.toHaveClass('text-xs');
   });
 });
