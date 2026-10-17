@@ -305,7 +305,8 @@ What stays in the UI:
   disagree, one of them is wrong; fix it rather than add a third variant.
 - **MUST** name a colour by its role token from the `@theme` block in
   `src/index.css` — `text-ink-muted`, `text-semantic-danger` — never by a
-  shade such as `text-gray-400`, a hex, or a ramp variable;
+  shade such as `text-gray-400`, a hex, a ramp variable, or a `--brand-*`
+  palette variable;
   `PALETTE_RESTRICTIONS` in `eslint.config.js` fails the lint on each. The
   tokens carry DESIGN.md's `colors:` names. A role no token names gets a
   token there first, plus a DESIGN.md `colors:` entry (`src/index.css.test.ts`

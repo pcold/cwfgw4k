@@ -57,6 +57,8 @@ const RAW_VALUE_LINES: readonly string[] = [
   "export const arbitraryClass = 'rounded bg-[#1f2937]';",
   'export const variableClass = (size: string): string => `${size} text-(--color-gray-400)`;',
   "export const rampVariable = 'var(--color-gray-400)';",
+  "export const brandVariable = 'var(--brand-navy)';",
+  'export const brandClass = (size: string): string => `${size} bg-(--brand-red)`;',
 ];
 const RAW_VALUE_JSX_LINE = 'export const Axis = () => <line stroke="#9ca3af" />;';
 /* eslint-enable no-restricted-syntax */

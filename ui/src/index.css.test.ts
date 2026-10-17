@@ -6,7 +6,7 @@ import indexCss from './index.css?raw';
 /**
  * Nothing else reads a colour token's value, so a shade that fails WCAG contrast passes typecheck, lint
  * and every component test. This resolves the chain the browser does: `index.css` aliases each token to
- * a ramp step, and `tailwindcss/theme.css` holds the OKLCH value that ships.
+ * a ramp step, whose OKLCH value `tailwindcss/theme.css` holds, or to a `--brand-*` hex it declares itself.
  */
 
 /** 8-bit sRGB, the space WCAG's relative luminance is defined over. */
@@ -87,9 +87,10 @@ const productionSources = import.meta.glob<string>(['./**/*.{ts,tsx}', '!./**/*.
   eager: true,
 });
 
-const TOKEN_ALIAS_PATTERN = /--color-([\w-]+):\s*var\(--color-([\w-]+)\)/g;
-const RAMP_OKLCH_PATTERN = /--color-([\w-]+):\s*oklch\(([\d.]+)%\s+([\d.]+)\s+([\d.]+)\)/g;
-const RAMP_HEX_PATTERN = /--color-([\w-]+):\s*#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/g;
+const TOKEN_ALIAS_PATTERN = /--color-([\w-]+):\s*var\(--((?:color|brand)-[\w-]+)\)/g;
+const RAMP_OKLCH_PATTERN = /--(color-[\w-]+):\s*oklch\(([\d.]+)%\s+([\d.]+)\s+([\d.]+)\)/g;
+const RAMP_HEX_PATTERN = /--(color-[\w-]+):\s*#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/g;
+const BRAND_HEX_PATTERN = /--(brand-[\w-]+):\s*#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/g;
 const TEXT_CLASS_PATTERN = /(?<![\w-])((?:[\w-]+:)*)text-([\w-]+)/g;
 
 // `noUncheckedIndexedAccess` types each group as possibly missing; `!` is banned and a `?? ''` would
@@ -142,30 +143,31 @@ const contrastRatio = (foreground: Srgb, background: Srgb): number => {
   return (Math.max(ink, surface) + 0.05) / (Math.min(ink, surface) + 0.05);
 };
 
-const rampStepOf: ReadonlyMap<string, string> = new Map(
+// Token to the variable it aliases, prefix kept: `color-gray-900` or `brand-navy`.
+const aliasOf: ReadonlyMap<string, string> = new Map(
   [...indexCss.matchAll(TOKEN_ALIAS_PATTERN)].map((match): [string, string] => [captured(match, 1), captured(match, 2)]),
 );
 
-const rampColours = ((): ReadonlyMap<string, Srgb> => {
+const paletteColours = ((): ReadonlyMap<string, Srgb> => {
   const colours = new Map<string, Srgb>();
   for (const match of tailwindTheme.matchAll(RAMP_OKLCH_PATTERN)) {
     const lightness = Number(captured(match, 2)) / 100;
     colours.set(captured(match, 1), oklchToSrgb(lightness, Number(captured(match, 3)), Number(captured(match, 4))));
   }
-  for (const match of tailwindTheme.matchAll(RAMP_HEX_PATTERN)) {
+  for (const match of [...tailwindTheme.matchAll(RAMP_HEX_PATTERN), ...indexCss.matchAll(BRAND_HEX_PATTERN)]) {
     colours.set(captured(match, 1), hexToSrgb(captured(match, 2)));
   }
   return colours;
 })();
 
 const resolveToken = (token: string): Srgb => {
-  const rampStep = rampStepOf.get(token);
-  if (rampStep === undefined) {
-    throw new Error(`index.css declares no --color-${token}, or aliases it to something other than a ramp step`);
+  const variable = aliasOf.get(token);
+  if (variable === undefined) {
+    throw new Error(`index.css declares no --color-${token}, or aliases it to neither a ramp step nor a brand colour`);
   }
-  const colour = rampColours.get(rampStep);
+  const colour = paletteColours.get(variable);
   if (colour === undefined) {
-    throw new Error(`tailwindcss/theme.css declares no --color-${rampStep}, which --color-${token} aliases`);
+    throw new Error(`Neither tailwindcss/theme.css nor index.css declares --${variable}, which --color-${token} aliases`);
   }
   return colour;
 };
@@ -191,7 +193,7 @@ const textTokensInUse: ReadonlySet<string> = new Set(
     [...source.matchAll(TEXT_CLASS_PATTERN)]
       .filter((match) => !captured(match, 0).includes('disabled:'))
       .map((match) => captured(match, 2))
-      .filter((token) => rampStepOf.has(token)),
+      .filter((token) => aliasOf.has(token)),
   ),
 );
 
@@ -239,7 +241,7 @@ describe("DESIGN.md's colors", () => {
     expect(designColorEntries.map((entry) => entry.token).sort()).toEqual([...declaredTokens].sort());
   });
 
-  it.each(designColorEntries)('give $token the hex its ramp step resolves to', (entry) => {
+  it.each(designColorEntries)('give $token the hex its alias resolves to', (entry) => {
     expect(entry.value).toBe(`"${toHex(resolveToken(entry.token))}"`);
   });
 

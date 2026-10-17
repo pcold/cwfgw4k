@@ -6,8 +6,24 @@
 @source not "../CLAUDE.md";
 
 /*
- * Names are benrollio DESIGN.md `colors:` keys wherever the role matches. Tokens sharing a ramp step hold
- * different roles, so never merge them. index.css.test.ts resolves each ramp alias; a literal it cannot.
+ * The PM's Tour Broadcast hexes, kept exact: navy and sky have no Tailwind step. Outside `--color-*` so
+ * Tailwind makes no utility of them, and the lint bans `--brand-*` in components: a role token aliases them.
+ */
+:root {
+  --brand-navy: #0a1d38;
+  --brand-navy-secondary: #13305a;
+  --brand-sky: #e8eef7;
+  --brand-line: #d5deeb;
+  --brand-muted: #4a5f80;
+  --brand-red: #d7263d;
+  --brand-green: #0f8a4f;
+  --brand-gold: #ffd23f;
+}
+
+/*
+ * Names are benrollio DESIGN.md `colors:` keys wherever the role matches. Tokens sharing a step hold
+ * different roles, so never merge them. index.css.test.ts resolves each alias to a ramp step or a
+ * `--brand-*` hex; a literal it cannot.
  */
 @theme {
   --color-canvas: var(--color-gray-900);
