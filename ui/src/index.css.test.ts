@@ -27,14 +27,18 @@ const AA_NORMAL_TEXT = 4.5;
 // The scoreboard's rostered leaderboard row and the weekly report's cash-total row.
 const SUCCESS_ROW: Wash = { token: 'semantic-success-tint', percent: 10, over: 'canvas' };
 const CASH_TOTAL_ROW: Wash = { token: 'gold-soft', percent: 30, over: 'canvas' };
+// The rosters page's side-bet round rows, and a weekly-report round row hovered.
+const SIDE_BET_ROUND_ROW: Wash = { token: 'surface-card', percent: 70, over: 'canvas' };
+const REPORT_ROW_HOVERED: Wash = { token: 'surface-card', percent: 80, over: 'canvas' };
 
 // Where each text token renders, from the call sites, inherited colour included. Hover fills are listed
 // because the label stays put; disabled controls are not, since §1.4.3 exempts an inactive component.
-// A wash of one listed backdrop over a darker one needs no row: light ink contrasts more on the blend.
+// A wash between two backdrops an ink is listed on needs no row: on these near-neutral surfaces the
+// blend's luminance lies between theirs, so it contrasts no less than the weaker of the two.
 const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
-  'ink-strong': ['surface-card', 'surface-raised'],
+  'ink-strong': ['surface-card', 'surface-raised', 'surface-raised-hover'],
   ink: ['canvas', 'surface-card', 'surface-raised', 'gold-tint', SUCCESS_ROW],
-  'ink-body': ['surface-card', 'surface-raised', 'side-bet-winner'],
+  'ink-body': ['surface-card', 'surface-raised', 'side-bet-winner', SIDE_BET_ROUND_ROW, REPORT_ROW_HOVERED],
   'ink-secondary': ['canvas', 'surface-card', 'surface-raised'],
   'ink-label': ['surface-card', 'surface-raised'],
   'ink-muted': [
