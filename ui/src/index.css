@@ -88,7 +88,7 @@
   --color-semantic-danger-fill-hover: var(--color-red-800);
   --color-semantic-danger-border: var(--color-red-500);
 
-  /* The report grids' gold: header rows, the cash-total row, and a cell that earned a payout. A fill: 1.4:1 on white. */
+  /* The report grids' gold: header rows, the cash-total row, and a cell that earned a payout. A fill: 1.44:1 on white. */
   --color-gold-tint: var(--color-yellow-200);
   --color-gold-soft: var(--brand-gold);
   --color-gold: var(--brand-gold);
