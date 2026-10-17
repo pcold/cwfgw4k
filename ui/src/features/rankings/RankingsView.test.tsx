@@ -105,6 +105,16 @@ describe('RankingsView', () => {
     expect(birdieCells.getByText('\u2212$15.00').className).not.toMatch(/text-semantic-|text-ink-soft|bg-money-/);
   });
 
+  it('sets each team as a white card between its position and money boxes, with no row hover', () => {
+    renderWithProviders(<RankingsView rankings={buildRankings()} />, NO_PROVIDERS);
+    expect(screen.getByRole('table')).toHaveClass('border-separate', 'border-spacing-y-1');
+    const row = screen.getByRole('row', { name: /Aces/ });
+    expect(row).toHaveClass('h-11');
+    expect(row.className).not.toMatch(/hover:/);
+    const [, name, subtotal, sideBets] = within(row).getAllByRole('cell');
+    for (const cardCell of [name, subtotal, sideBets]) expect(cardCell).toHaveClass('bg-surface-card');
+  });
+
   it('boxes the first position in gold and every other in navy', () => {
     renderWithProviders(<RankingsView rankings={buildRankings()} />, NO_PROVIDERS);
     const positions = within(screen.getByRole('table'))
