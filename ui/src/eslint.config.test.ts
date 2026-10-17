@@ -75,7 +75,7 @@ const FILLED_BUTTON_FILL_JSX_LINE = 'export const Back = () => <button className
 // The brand mark and the LIVE chip fill with the brand red; the rest would match a pattern missing a lookaround.
 const NON_BUTTON_FILL_LINES: readonly string[] = [
   "export const markClass = 'bg-primary text-on-primary';",
-  "export const ruleClass = 'border-secondary text-semantic-danger';",
+  "export const fadeClass = 'from-bg-secondary';",
   "export const tintClass = 'bg-secondary-tint';",
   "export const dangerTintClass = 'bg-semantic-danger-fill-soft';",
 ];
@@ -159,7 +159,7 @@ describe.each(GOVERNED_FILES)("eslint.config.js over '%s'", (hostFile) => {
 });
 
 describe('the `as` ban in eslint.config.js', () => {
-  it.each([PRODUCTION_FILE, CLIENT_FILE])('reports every cast in %s', async (hostFile) => {
+  it.each([PRODUCTION_FILE, CLIENT_FILE, BUTTON_FILE])('reports every cast in %s', async (hostFile) => {
     const messages = await lintFixture(CAST_LINES, hostFile);
 
     expect(reportedLines(messages, 'no-restricted-syntax', CAST_LINES)).toEqual(CAST_LINES);

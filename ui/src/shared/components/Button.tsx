@@ -21,7 +21,7 @@ const TONE_CLASS: Readonly<Record<ButtonTone, string>> = {
   danger: 'bg-semantic-danger-fill hover:bg-semantic-danger-fill-hover text-on-fill',
 };
 
-/** `compact` sits in a header row or panel row; `TAP_TARGET_CLASS` still holds it at 44px tall. */
+/** `compact` sits in a header, panel or table row; `TAP_TARGET_CLASS` still holds it at 44px tall. */
 const SIZE_CLASS: Readonly<Record<ButtonSize, string>> = {
   regular: 'px-4 py-2 text-sm',
   compact: 'px-3 py-1 text-xs',
@@ -40,7 +40,8 @@ interface ButtonProps {
 
 /**
  * Every filled button in the app; a text button stays a plain `<button>`. No `className`, so the fill and
- * padding come from here alone — ESLint fails a filled tone's background spelled anywhere else.
+ * padding come from here alone. ESLint fails every hover fill and the secondary and danger fills outside this
+ * file and tests; bare `bg-primary` stays open for the brand mark and the LIVE chip.
  */
 export default function Button({
   tone,

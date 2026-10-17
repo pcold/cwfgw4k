@@ -45,7 +45,7 @@ describe('Button', () => {
     expect(screen.getByRole('button', { name: 'Log in' })).toHaveAttribute('type', 'submit');
   });
 
-  it('appends its layout class after the tone and size', () => {
+  it('adds its layout class beside the tone and size', () => {
     renderWithProviders(<Button tone="danger" size="regular" layout="whitespace-nowrap">Delete</Button>, NO_PROVIDERS);
 
     expect(screen.getByRole('button', { name: 'Delete' })).toHaveClass('whitespace-nowrap', 'bg-semantic-danger-fill');

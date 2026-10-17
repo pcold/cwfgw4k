@@ -314,7 +314,7 @@ Tokens only re-colour what the dark theme drew; the component treatment (CWF-231
 | `{typography.control}` | 16px | 400 | 0 | `text-base` | Form fields, toolbar selects, the league/season selects, the column-header filter |
 | `{typography.caption}` | 12px | 400 | 0 | `text-xs` | Field labels, helper text, field errors |
 | `{typography.button}` | 14px | 500 | 0 | `text-sm font-medium` | `Button`'s `regular` size |
-| `{typography.button-compact}` | 12px | 500 | 0 | `text-xs font-medium` | `Button`'s `compact` size: a page's header row, a panel row, a table row |
+| `{typography.button-compact}` | 12px | 500 | 0 | `text-xs font-medium` | `Button`'s `compact` size: the scoreboard's tournament header, a panel row, a table row |
 | `{typography.report-figure}` | 12px | 400 | 0 | `font-mono` in a `text-xs` table | Money in the weekly report grid |
 
 ### Principles
@@ -392,7 +392,7 @@ Lives in the page title's actions, not in a bar of its own: a page that reads th
 `bg-surface-card rounded-lg p-6` (`p-4` for the chart and late-row-bet tables), no border, no shadow. A card opens with a `{typography.card-heading}` (`mb-4`, or `mb-3` over a table or chart).
 
 ### Buttons — `ui/src/shared/components/Button.tsx`
-Every filled button is a `Button`, picked by `tone` and `size`. It takes no `className`, only a `layout` from a closed list, so a call site cannot add a second fill or padding; `FILLED_BUTTON_RESTRICTIONS` in `ui/eslint.config.js` fails a filled tone's fill spelled outside `Button.tsx`. A text button stays a plain `<button>`.
+Every filled button is a `Button`, picked by `tone` and `size`. It takes no `className`, only a `layout` from a closed list, so a call site cannot add a second fill or padding; `FILLED_BUTTON_RESTRICTIONS` in `ui/eslint.config.js` fails every hover fill and the secondary and danger fills outside `Button.tsx` and tests; bare `bg-primary` stays open for the brand mark and the LIVE chip. A text button stays a plain `<button>`.
 
 | Variant | Classes | Example |
 |---|---|---|
@@ -401,7 +401,7 @@ Every filled button is a `Button`, picked by `tone` and `size`. It takes no `cla
 | `tone="danger"` | `bg-semantic-danger-fill hover:bg-semantic-danger-fill-hover text-on-fill` | Reset Results, Clean Results, Delete Season |
 | Text | `text-ink-muted hover:text-ink-strong text-xs` | `CreateSeasonSection.tsx`, `PlayerLinksPanel.tsx` |
 
-Every tone adds `rounded font-medium disabled:bg-disabled` and its size: `size="regular"` is `px-4 py-2 text-sm`, and `size="compact"` is `px-3 py-1 text-xs`, for a button in a header row, a panel row or a table row (Finalize Results and Manage player links on the scoreboard, Save link, the schedule import's Save). A disabled filled button switches to `{colors.disabled}`; a disabled text button takes `disabled:opacity-50`.
+Every tone adds `rounded font-medium disabled:bg-disabled` and its size: `size="regular"` is `px-4 py-2 text-sm`, and `size="compact"` is `px-3 py-1 text-xs`, for a button in the scoreboard's tournament header, a panel row or a table row (Finalize Results and Manage player links, Save link and Create & link in the player-links panel, the schedule import's Save). A disabled filled button switches to `{colors.disabled}`; a disabled text button takes `disabled:opacity-50`.
 
 Every button, every tone and size included, carries `TAP_TARGET_CLASS` (`min-h-11`, 44px) from `formFields.tsx`; `Button` adds it itself. The compact padding narrows a button; it never makes it shorter than a thumb.
 
@@ -454,7 +454,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 - Open every page with `PageTitle`, its actions holding the status chip where the response has one, then the league/season picker on every page but Admin; never a hand-rolled `h2`.
 - Use `FIELD_CLASS` (through `TextField`, `DateField`, `SelectField`, or `FieldShell` for anything else) for every form input and select, and `PickerRow` for a page toolbar's select; both build on `CONTROL_CLASS`.
 - Put a wide table in `overflow-x-auto -mx-3 sm:mx-0` with a `min-w-*`, so a phone scrolls the table rather than the page.
-- Give every button, link, select, input and click handler `TAP_TARGET_CLASS`. A link also needs `flex items-center` (or `inline-flex`), or its text sits at the top of the 44px; a checkbox gives it to its label.
+- Give every button, link, select, input and click handler `TAP_TARGET_CLASS` (`Button` carries its own). A link also needs `flex items-center` (or `inline-flex`), or its text sits at the top of the 44px; a checkbox gives it to its label.
 
 ### Don't
 - Don't use a Tailwind shade, a hex, a ramp variable or a `--brand-*` palette variable in a component (`text-gray-400`, `#fff`, `var(--color-gray-400)`, `var(--brand-red)`). `PALETTE_RESTRICTIONS` in `ui/eslint.config.js` fails the lint on each.
