@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeSeason } from '@/shared/test/fixtures';
 import { ApiError } from '@/shared/api/client';
@@ -100,6 +101,17 @@ describe('CreateSeasonSection', () => {
 
     await user.click(screen.getByRole('button', { name: /- Remove last/i }));
     expect(screen.getAllByLabelText(/^Payout \d+$/)).toHaveLength(3);
+  });
+
+  it('holds the payout inputs and the form buttons to the tap-target height, the payouts at 16px', async () => {
+    renderWithProviders(<CreateSeasonSection />, { withLeagueSeasonProvider: false });
+
+    for (const payout of await screen.findAllByLabelText(/^Payout \d+$/)) {
+      expect(payout).toHaveClass('text-base', TAP_TARGET_CLASS);
+    }
+    for (const name of [/\+ Add place/i, /- Remove last/i, /^Create Season$/i]) {
+      expect(screen.getByRole('button', { name })).toHaveClass(TAP_TARGET_CLASS);
+    }
   });
 
   it('shows the reason the server refuses a season', async () => {

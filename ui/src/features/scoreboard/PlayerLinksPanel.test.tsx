@@ -177,12 +177,12 @@ describe('PlayerLinksPanel', () => {
 
     const partnerRow = (await screen.findByText('Fitzpatrick')).closest('li');
     if (!partnerRow) throw new Error('partner row not found');
-    await user.click(within(partnerRow as HTMLElement).getByRole('button', { name: /Create new golfer/i }));
+    await user.click(within(partnerRow).getByRole('button', { name: /Create new golfer/i }));
 
     for (const control of [...screen.getAllByRole('button'), ...screen.getAllByRole('combobox')]) {
       expect(control).toHaveClass(TAP_TARGET_CLASS);
     }
-    expect(within(partnerRow as HTMLElement).getByLabelText(/Golfer name/i)).toHaveClass(TAP_TARGET_CLASS);
+    expect(within(partnerRow).getByLabelText(/Golfer name/i)).toHaveClass(TAP_TARGET_CLASS);
   });
 
   it('renders one row per competitor and tags the manual-override row', async () => {

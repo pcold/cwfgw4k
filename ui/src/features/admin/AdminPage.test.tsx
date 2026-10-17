@@ -180,7 +180,8 @@ describe('AdminPage', () => {
     expect(await screen.findByRole('dialog', { name: /Admin Login/i })).toBeInTheDocument();
   });
 
-  it('holds every control on the signed-in page to the tap-target height, and every field to 16px', async () => {
+  // No season rules are served here, so the season form never mounts; CreateSeasonSection.test pins it.
+  it('holds every control the signed-in page renders to the tap-target height, and every field to 16px', async () => {
     authMeMock.mockResolvedValue(adminUser);
     renderWithProviders(<AdminPage />, {
       withAuthProvider: true,
@@ -190,7 +191,6 @@ describe('AdminPage', () => {
 
     const fields = [
       ...screen.getAllByRole('textbox'),
-      ...screen.queryAllByRole('spinbutton'),
       ...screen.queryAllByRole('combobox'),
     ];
     for (const control of [...screen.getAllByRole('button'), ...fields]) {
