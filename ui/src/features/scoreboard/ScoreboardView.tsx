@@ -130,7 +130,11 @@ function MoneySummary({ totals }: { totals: WonLostTotals }): ReactNode {
   );
 }
 
-function TeamChips({ entry }: { entry: LiveLeaderboardEntry }): ReactNode {
+interface TeamChipsProps {
+  entry: LiveLeaderboardEntry;
+}
+
+function TeamChips({ entry }: TeamChipsProps): ReactNode {
   return (
     <div className="flex flex-wrap gap-1">
       {leaderboardTeamChips(entry).map((chip) => {

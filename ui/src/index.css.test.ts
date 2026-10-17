@@ -47,7 +47,7 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
   ink: ['canvas', 'surface-card', 'surface-raised', 'surface-raised-hover', 'gold-tint'],
   'ink-body': ['surface-card', 'surface-raised', 'side-bet-winner', SIDE_BET_ROUND_ROW, REPORT_ROW_HOVERED],
   'ink-secondary': ['canvas', 'surface-card', 'surface-raised'],
-  'ink-label': ['surface-card', 'surface-raised'],
+  'ink-label': ['canvas', 'surface-card', 'surface-raised'],
   'ink-muted': [
     'canvas',
     'surface-card',

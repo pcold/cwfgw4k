@@ -276,6 +276,7 @@ describe('ScoreboardView', () => {
   it('hides the leaderboard section when the server sent no rows, whatever the cells hold', () => {
     renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [] })} />, NO_PROVIDERS);
     expect(screen.queryByRole('heading', { name: /Leaderboard/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('table').closest('.grid')).toBeNull();
   });
 
   it('filters the leaderboard to rostered golfers on the selected team', async () => {
@@ -466,6 +467,17 @@ describe('ScoreboardView', () => {
     expect(band).toHaveClass('bg-header-band', 'text-on-fill');
     expect(band).toHaveTextContent(/^LeaderboardSample Open$/);
     expect(band?.parentElement).toHaveClass('bg-surface-card');
+  });
+
+  it('opens the band with the heading alone when the tournament has no name', () => {
+    const unnamed = report({ liveLeaderboard: [tiger] });
+    renderWithProviders(
+      <ScoreboardView report={{ ...unnamed, tournament: { ...unnamed.tournament, name: null } }} />,
+      NO_PROVIDERS,
+    );
+
+    const band = screen.getByRole('heading', { name: 'Leaderboard' }).parentElement;
+    expect(band?.children).toHaveLength(1);
   });
 
   it('sets the teams beside the leaderboard card from xl, the teams first', () => {

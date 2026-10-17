@@ -17,7 +17,7 @@ interface ChipProps {
 }
 
 /**
- * Told apart by its label, never by a tone: an outline marks what is absent (an undrafted golfer), and a page's
+ * Told apart by shape and label, never by a tone: an outline marks what is absent (an undrafted golfer), and a page's
  * status is `StatusChip`, not one of these. No `className`, so a caller can't add a fill.
  */
 function Chip({ variant, children }: ChipProps): ReactNode {

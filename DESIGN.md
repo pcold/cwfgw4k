@@ -350,7 +350,7 @@ Each family takes only the rungs it uses. `-tint` is a wash, always at an opacit
 
 ### Known gaps on the light canvas
 Tokens only re-colour what the dark theme drew; the component treatment has restyled the app chrome (CWF-231) and begun on the tables (CWF-232) with the standings' and scoreboard's card rows, and these are the gaps it has to close.
-- **Red is both brand and loss.** Primary buttons and the LIVE chip are the brand red; destructive buttons and losses are red-700, and so is the standings' loss box, never the brand red. Beside a loss, a primary button can still read as a warning.
+- **Red is both brand and loss.** Primary buttons and the LIVE chip are the brand red; destructive buttons and losses are red-700, and so are the standings' and scoreboard's loss boxes, never the brand red. Beside a loss, a primary button can still read as a warning.
 - **Green outside money.** `{colors.semantic-success}` still colours success messages, exact roster matches, the Rules page's amounts and the complete banner. Green is meant for gains alone.
 
 ### Outside the token set
@@ -368,7 +368,7 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 
 | Token | Size | Weight | Tracking | Classes | Where |
 |---|---|---|---|---|---|
-| `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links, the footer link, page titles, the status chip, table heads, the standings' team names and position and money boxes |
+| `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links, the footer link, page titles, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes |
 | `{typography.brand-mark}` | 20px | 800 | 0.025em, italic, uppercase | `font-display italic font-extrabold text-xl uppercase tracking-wide` | The CASTLEWOOD FG mark in the nav |
 | `{typography.page-title}` | 24px, 30px from `sm:` | 800 | 0, italic, uppercase | `font-display italic font-extrabold uppercase text-2xl sm:text-3xl leading-tight text-ink-strong` | The `h2` of every page, in `PageTitle` |
 | `{typography.modal-title}` | 18px | 700 | 0 | `text-lg font-bold` | Modal header |
@@ -385,7 +385,7 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 | `{typography.money-figure}` | 20px | 700 | 0 | `MONEY_FIGURE_CLASS`: `font-display font-bold text-xl tabular-nums` | `MoneyCell`; bold and at least 18.66px, or white on the up fill fails contrast |
 
 ### Principles
-- **Weights in use are 400, 500, 600, 700 and 800.** `font-semibold` is the emphasis weight in tables (team totals, money chips, the leaderboard's Score and Tot) and the nav links' weight; `font-bold` marks modal titles, the status chip, the report grids' total rows, the standings' and scoreboard's team names and boxes, and table heads take it as a `th`'s default; `font-extrabold` is the brand mark's and the page titles'.
+- **Weights in use are 400, 500, 600, 700 and 800.** `font-semibold` is the emphasis weight in tables (money chips, the leaderboard's Score and Tot) and the nav links' weight; `font-bold` marks modal titles, the status chip, the report grids' total rows, the standings' and scoreboard's team names and boxes, and table heads take it as a `th`'s default; `font-extrabold` is the brand mark's and the page titles'.
 - **Uppercase is structure, not emphasis.** Nav links, page titles, table heads, card headings and team names in tables are uppercase; body text never is.
 - **Numbers line up.** A column of money uses `tabular-nums` (list tables) or `font-mono` (the weekly report grid, late row bets), right-aligned in list tables and centred in the grid.
 
@@ -401,7 +401,7 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 - **Forms**: fields in a `flex flex-wrap items-end gap-4` row inside a card; a form modal stacks them with `space-y-3`.
 
 ### Containers
-- List tables and report grids sit in `overflow-x-auto -mx-3 sm:mx-0`, so on a phone they scroll sideways edge to edge. The scoreboard's two tables also set a floor (`min-w-[500px]` teams, `min-w-[480px]` leaderboard) so their columns don't crush first; at a 1280px viewport each column is wider than its floor, so neither scrolls.
+- List tables and report grids sit in `overflow-x-auto -mx-3 sm:mx-0`, so on a phone they scroll sideways edge to edge. A table card's table scrolls inside the card, `overflow-x-auto` alone, since a bleed would cut the card's rounded edge. The scoreboard's two tables also set a floor (`min-w-[500px]` teams, `min-w-[480px]` leaderboard) so their columns don't crush first; at a 1280px viewport each column is wider than its floor, so neither scrolls.
 - From `xl` the scoreboard sets its teams and the leaderboard side by side, `grid-cols-[minmax(0,5fr)_minmax(0,4fr)]` at `gap-6`, the money summary chips under the teams; the split gives a two-golfer line room in its team cell. Below `xl` the two stack in a `grid-cols-1`, since an implicit track grows to a table's floor and scrolls the page on a phone.
 - The report grids pin the first column (`sticky left-0`) so the round label stays visible while the teams scroll.
 
@@ -411,7 +411,7 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 |---|---|---|
 | 0 | `{colors.canvas}` | The page |
 | 1 | `{colors.surface-card}`, no border, no shadow | Cards, summary chips, the standings' and scoreboard's card rows, the report grid's spacer rows |
-| 2 | `{colors.surface-raised}` | Fields, chips, the report's highlighted row |
+| 2 | `{colors.surface-raised}` | Fields, neutral chips, the report's highlighted row |
 | 3 | `{colors.surface-card}` + `{colors.hairline-strong}` border + `{elevation.modal}` (`shadow-xl`) over `{colors.overlay}`/60 | The modal panel, and the error screen's card |
 
 White cards on the sky canvas carry depth without shadows, and a raised control is sky again inside its white card. The `{colors.chrome}` nav and footer frame the levels rather than sit on one. `shadow-xl` appears only on the two floating panels.
@@ -509,7 +509,7 @@ A `flex flex-wrap gap-3 text-sm` row of `bg-surface-card rounded px-3 py-2` chip
 `px-3 py-2` (scoreboard `px-4 py-2`) `border rounded`, in one of two pairs: complete is `bg-semantic-success-tint/30 border-semantic-success-soft text-semantic-success-ink`; in progress or needing attention is `bg-semantic-warning-tint/30` (`/40` on the scoreboard) `border-semantic-warning-soft text-semantic-warning-ink`.
 
 ### Chips — `ui/src/shared/components/Chip.tsx`
-`Chip` is `inline-flex rounded border px-1.5 py-0.5 text-xs uppercase tracking-wider whitespace-nowrap`, in one of two variants told apart by shape, never by tone. `neutral` is `bg-surface-raised text-ink-body` with a transparent border: the player-links panel's partner and manual-override chips, and a team on the leaderboard. `outlined` has no fill, a `{colors.hairline-strong}` border and `{colors.ink-muted}` text, for something absent: the leaderboard's UNDRAFTED. A leaderboard row has a chip per team each player is on, in player order, so a split golfer shows every team and a pair one chip per partner; a rostered row takes no tone of its own. Like `Button`, it takes no `className`. A page's status is the status chip above, not one of these.
+`Chip` is `inline-flex rounded border px-1.5 py-0.5 text-xs uppercase tracking-wider whitespace-nowrap`, in one of two variants told apart by shape and label, never by tone. `neutral` is `bg-surface-raised text-ink-body` with a transparent border: the player-links panel's partner and manual-override chips, and a team on the leaderboard. `outlined` has no fill, a `{colors.hairline-strong}` border and `{colors.ink-muted}` text, for something absent: the leaderboard's UNDRAFTED. A leaderboard row has a chip per team each player is on, in player order, so a split golfer shows every team and a pair one chip per partner; a rostered row takes no tone of its own. Like `Button`, it takes no `className`. A page's status is the status chip above, not one of these.
 
 ### Loading and errors — `ui/src/shared/components/QueryState.tsx`, `ErrorBoundary.tsx`
 `QueryState` renders `Loading {label}…` in `{colors.ink-muted}` and `Failed to load {label}: …` in `{colors.semantic-danger}`, as plain paragraphs. `ErrorBoundary` replaces the app with a centred `max-w-md` card at level 3 (see Elevation), a `text-2xl font-bold` heading and a primary Reload button.
