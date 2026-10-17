@@ -31,6 +31,11 @@
   --color-surface-raised-hover: var(--brand-line);
   --color-overlay: var(--color-black);
 
+  /* The navy bar behind the nav and footer. Its inks are light, so on any other surface they fail contrast. */
+  --color-chrome: var(--brand-navy);
+  --color-on-chrome: var(--color-white);
+  --color-on-chrome-muted: var(--color-slate-300);
+
   --color-hairline-soft: var(--brand-line);
   --color-hairline: var(--brand-line);
   --color-hairline-strong: var(--color-slate-400);

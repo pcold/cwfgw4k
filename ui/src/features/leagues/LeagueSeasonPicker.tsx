@@ -13,7 +13,9 @@ function LeagueSeasonPicker(): ReactNode {
 
   return (
     <div className="bg-surface-card/60 border-b border-hairline">
-      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-4 text-xs">
+      <div
+        className="max-w-screen-2xl mx-auto px-3 sm:px-4 py-2 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-4 text-xs"
+      >
         <label className="flex items-center gap-2 w-full sm:w-auto">
           <span className="text-ink-soft font-medium uppercase tracking-wider w-16 shrink-0">
             League

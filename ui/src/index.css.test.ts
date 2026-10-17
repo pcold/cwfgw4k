@@ -50,6 +50,8 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
   ],
   'ink-soft': ['canvas', 'surface-card', 'surface-raised', 'side-bet-winner', CASH_TOTAL_ROW],
   'ink-faint': ['canvas', 'surface-card'],
+  'on-chrome': ['chrome'],
+  'on-chrome-muted': ['chrome'],
   'on-primary': ['primary', 'primary-hover'],
   'on-fill': [
     'semantic-danger-fill',
