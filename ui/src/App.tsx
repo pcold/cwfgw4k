@@ -11,6 +11,7 @@ import AdminPage from '@/features/admin/AdminPage';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import { LeagueSeasonProvider } from '@/features/leagues/LeagueSeasonContext';
 import { AuthProvider } from '@/features/auth/AuthContext';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 
 const NAV_ITEMS: Array<{ to: string; label: string }> = [
   { to: '/scoreboard', label: 'Scoreboard' },
@@ -40,7 +41,10 @@ function SiteFooter(): ReactNode {
   return (
     <footer className="border-t border-hairline bg-surface-card">
       <div className="max-w-6xl mx-auto px-4 py-3 flex justify-end">
-        <Link to="/admin" className="text-sm font-medium text-ink-muted hover:text-ink-strong">
+        <Link
+          to="/admin"
+          className={`inline-flex items-center ${TAP_TARGET_CLASS} text-sm font-medium text-ink-muted hover:text-ink-strong`}
+        >
           Admin
         </Link>
       </div>

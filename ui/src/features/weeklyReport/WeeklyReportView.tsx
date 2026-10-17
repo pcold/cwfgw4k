@@ -6,6 +6,7 @@ import {
   formatWholeDollars,
   moneyToneClass,
 } from '@/shared/util/money';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import {
   ROUNDS,
   isSeasonReport,
@@ -56,7 +57,7 @@ function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick }: R
       <button
         type="button"
         onClick={() => onGolferClick(golferId)}
-        className={`font-semibold truncate ${text} bg-transparent border-0 p-0 hover:underline cursor-pointer`}
+        className={`font-semibold truncate ${text} bg-transparent border-0 p-0 hover:underline cursor-pointer ${TAP_TARGET_CLASS}`}
       >
         {cell.golferName}
         {ownership}

@@ -3,11 +3,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type { Season, SeasonRules } from '@/shared/api/types';
-import { FIELD_CLASS, FieldShell, TextField } from '@/shared/components/formFields';
+import { CONTROL_CLASS, FIELD_CLASS, FieldShell, TAP_TARGET_CLASS, TextField } from '@/shared/components/formFields';
 import { QueryState } from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
 import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
 import { buildRules, formatSideBetRounds, isReadableSideBetRounds } from './rulesInput';
+
+const CREATE_BUTTON_CLASS =
+  'bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm ' +
+  `font-medium ${TAP_TARGET_CLASS}`;
 
 function CreateSeasonSection(): ReactNode {
   const defaultsQuery = useQuery({
@@ -122,7 +126,7 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
                 aria-label={`Payout ${i + 1}`}
                 value={amt}
                 onChange={(e) => updatePayout(i, e.target.value)}
-                className="bg-surface-raised border border-control-border rounded px-2 py-1 text-sm w-16"
+                className={`bg-surface-raised ${CONTROL_CLASS} ${TAP_TARGET_CLASS} w-16`}
               />
             </div>
           ))}
@@ -132,14 +136,14 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
             <button
               type="button"
               onClick={() => setEditedPayouts([...payouts, '0'])}
-              className="text-xs text-semantic-info hover:text-semantic-info-hover"
+              className={`text-xs text-semantic-info hover:text-semantic-info-hover ${TAP_TARGET_CLASS}`}
             >
               + Add place
             </button>
             <button
               type="button"
               onClick={() => setEditedPayouts(payouts.length > 1 ? payouts.slice(0, -1) : payouts)}
-              className="text-xs text-semantic-danger hover:text-semantic-danger-hover ml-2"
+              className={`text-xs text-semantic-danger hover:text-semantic-danger-hover ml-2 ${TAP_TARGET_CLASS}`}
             >
               - Remove last
             </button>
@@ -188,7 +192,7 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
           type="button"
           onClick={() => createMutation.mutate()}
           disabled={disabled}
-          className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium"
+          className={CREATE_BUTTON_CLASS}
         >
           {createMutation.isPending ? 'Creating...' : 'Create Season'}
         </button>

@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { seasonLabel } from '@/shared/util/season';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 
-const SELECT_CLASS = 'bg-surface-raised border border-control-border rounded px-2 py-2 text-base flex-1 sm:flex-initial';
+const SELECT_CLASS =
+  `bg-surface-raised border border-control-border rounded px-2 py-2 text-base ${TAP_TARGET_CLASS} flex-1 sm:flex-initial`;
 
 function LeagueSeasonPicker(): ReactNode {
   const ctx = useLeagueSeason();

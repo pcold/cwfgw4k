@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { RosterPick, RosterTeam } from '@/shared/api/types';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 
 interface Props {
   teams: RosterTeam[];
@@ -13,6 +14,9 @@ interface SharedPlayer {
 }
 
 const ROUNDS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+
+const GOLFER_BUTTON_CLASS =
+  `font-semibold text-ink-body truncate bg-transparent border-0 p-0 hover:underline cursor-pointer ${TAP_TARGET_CLASS}`;
 
 function pickFor(team: RosterTeam, round: number): RosterPick | undefined {
   return team.picks.find((p) => p.round === round);
@@ -89,7 +93,7 @@ function RostersView({ teams, sideBetRounds, onGolferClick }: Props): ReactNode 
                             <button
                               type="button"
                               onClick={() => onGolferClick(pick.golferId)}
-                              className="font-semibold text-ink-body truncate bg-transparent border-0 p-0 hover:underline cursor-pointer"
+                              className={GOLFER_BUTTON_CLASS}
                             >
                               {pick.golferName}
                             </button>

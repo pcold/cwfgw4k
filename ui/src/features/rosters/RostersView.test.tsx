@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { RosterTeam } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import RostersView from './RostersView';
 
 function pick(round: number, name: string, pct = 100, id = `g-${round}-${name}`) {
@@ -111,6 +112,12 @@ describe('RostersView', () => {
     render(<RostersView teams={[aces]} sideBetRounds={[]} onGolferClick={onGolferClick} />);
     await user.click(screen.getByRole('button', { name: 'Scottie Scheffler' }));
     expect(onGolferClick).toHaveBeenCalledWith('g-1-Scottie Scheffler');
+  });
+
+  it('gives each pick name the tap-target height', () => {
+    render(<RostersView teams={[aces]} sideBetRounds={[]} onGolferClick={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Scottie Scheffler' })).toHaveClass(TAP_TARGET_CLASS);
   });
 
   it('renders pick names as plain text when no onGolferClick is provided', () => {

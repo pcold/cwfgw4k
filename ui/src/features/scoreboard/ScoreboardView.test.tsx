@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
 import { makeLeaderboardEntry, makeWonLostTotals } from '@/shared/test/fixtures';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import ScoreboardView from './ScoreboardView';
 
 function row(overrides: Partial<ReportCell> = {}): ReportCell {
@@ -211,6 +212,27 @@ describe('ScoreboardView', () => {
     );
     await user.click(screen.getByRole('button', { name: 'TeamGolfer' }));
     expect(onGolferClick).toHaveBeenCalledWith('g-42');
+  });
+
+  it('gives each golfer name the tap-target height, however many share the cell', () => {
+    render(
+      <ScoreboardView
+        report={report({
+          teams: [
+            team({
+              cells: [
+                row({ golferId: 'g-1', golferName: 'FirstGolfer' }),
+                row({ round: 2, golferId: 'g-2', golferName: 'SecondGolfer' }),
+              ],
+            }),
+          ],
+        })}
+        onGolferClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'FirstGolfer' })).toHaveClass(TAP_TARGET_CLASS);
+    expect(screen.getByRole('button', { name: 'SecondGolfer' })).toHaveClass(TAP_TARGET_CLASS);
   });
 
   it('renders golfer names as plain text when no onGolferClick is provided', () => {

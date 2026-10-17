@@ -6,6 +6,7 @@ import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { ApiError } from '@/shared/api/client';
 import { notifySessionExpired } from '@/shared/api/sessionExpiry';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import AdminPage from './AdminPage';
 
 const authMeMock = vi.fn<typeof api.authMe>();
@@ -177,6 +178,28 @@ describe('AdminPage', () => {
       expect(logoutMock).toHaveBeenCalled();
     });
     expect(await screen.findByRole('dialog', { name: /Admin Login/i })).toBeInTheDocument();
+  });
+
+  // No season rules are served here, so the season form never mounts; CreateSeasonSection.test pins it.
+  it('holds every control the signed-in page renders to the tap-target height, and every field to 16px', async () => {
+    authMeMock.mockResolvedValue(adminUser);
+    renderWithProviders(<AdminPage />, {
+      withAuthProvider: true,
+      withLeagueSeasonProvider: false,
+    });
+    await screen.findByRole('heading', { name: 'Admin' });
+
+    const fields = [
+      ...screen.getAllByRole('textbox'),
+      ...screen.queryAllByRole('combobox'),
+    ];
+    for (const control of [...screen.getAllByRole('button'), ...fields]) {
+      expect(control).toHaveClass(TAP_TARGET_CLASS);
+    }
+    for (const field of fields) {
+      expect(field).toHaveClass('text-base');
+    }
+    expect(screen.getByLabelText(/Roster file/i)).toHaveClass(TAP_TARGET_CLASS);
   });
 
   // The client reports a mid-session 401 through `sessionExpiry`, which this file leaves real.

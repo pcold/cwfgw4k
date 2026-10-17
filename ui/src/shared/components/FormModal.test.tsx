@@ -4,6 +4,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import FormModal from './FormModal';
+import { TAP_TARGET_CLASS } from './formFields';
 
 interface Overrides {
   readonly isPending?: boolean;
@@ -78,5 +79,12 @@ describe('FormModal', () => {
     renderModal();
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('gives both footer buttons the tap-target height', () => {
+    renderModal();
+
+    expect(screen.getByRole('button', { name: 'Log In' })).toHaveClass(TAP_TARGET_CLASS);
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveClass(TAP_TARGET_CLASS);
   });
 });

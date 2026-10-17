@@ -4,6 +4,7 @@ import { formatDollarsAndCents, moneyToneClass } from '@/shared/util/money';
 import ColumnHeaderFilter, {
   type ColumnHeaderFilterOption,
 } from '@/shared/components/ColumnHeaderFilter';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import {
   formatScoreToPar,
   hasPlayerOn,
@@ -16,6 +17,8 @@ import {
 
 const ALL = '';
 const UNDRAFTED = '__undrafted__';
+
+const GOLFER_BUTTON_CLASS = `text-ink-secondary hover:underline cursor-pointer bg-transparent border-0 p-0 ${TAP_TARGET_CLASS}`;
 
 interface Props {
   report: WeeklyReport;
@@ -110,7 +113,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
                             <button
                               type="button"
                               onClick={() => onGolferClick(golferId)}
-                              className="text-ink-secondary hover:underline cursor-pointer bg-transparent border-0 p-0"
+                              className={GOLFER_BUTTON_CLASS}
                             >
                               {g.golferName}
                             </button>

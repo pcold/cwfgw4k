@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { TAP_TARGET_CLASS } from './formFields';
 import ModalShell, { MODAL_SCROLL_LOCK_CLASS } from './ModalShell';
 
 /**
@@ -81,6 +82,12 @@ describe('ModalShell', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Close' }));
 
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('gives the Close control the tap-target height', () => {
+    renderShell(vi.fn(), false);
+
+    expect(screen.getByRole('button', { name: 'Close' })).toHaveClass(TAP_TARGET_CLASS);
   });
 
   it('moves focus into the dialog when it opens', async () => {

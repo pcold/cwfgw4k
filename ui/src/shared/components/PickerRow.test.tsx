@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { TAP_TARGET_CLASS } from './formFields';
 import PickerRow from './PickerRow';
 
 const NO_PROVIDERS = { withLeagueSeasonProvider: false };
@@ -50,5 +51,14 @@ describe('PickerRow', () => {
     expect(select.parentElement).toHaveClass('flex', 'flex-wrap');
     expect(select).toHaveClass('w-full', 'min-w-0', 'truncate', 'sm:w-auto', 'text-base');
     expect(select).not.toHaveClass('text-sm');
+  });
+
+  it('holds the select to the tap-target height', () => {
+    renderWithProviders(
+      <PickerRow id="through" label="Through" value="all" options={OPTIONS} onChange={vi.fn()} />,
+      NO_PROVIDERS,
+    );
+
+    expect(screen.getByRole('combobox', { name: 'Through' })).toHaveClass(TAP_TARGET_CLASS);
   });
 });

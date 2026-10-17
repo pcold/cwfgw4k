@@ -1,5 +1,13 @@
 import type { FormEvent, ReactElement, ReactNode } from 'react';
+import { TAP_TARGET_CLASS } from './formFields';
 import ModalShell from './ModalShell';
+
+const SUBMIT_BUTTON_CLASS =
+  'bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium ' +
+  `flex-1 ${TAP_TARGET_CLASS}`;
+
+const CANCEL_BUTTON_CLASS =
+  `bg-secondary hover:bg-secondary-hover text-on-fill px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`;
 
 interface FormModalProps {
   readonly title: string;
@@ -37,14 +45,14 @@ export default function FormModal({
           <button
             type="submit"
             disabled={isPending}
-            className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium flex-1"
+            className={SUBMIT_BUTTON_CLASS}
           >
             {submitLabel}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="bg-secondary hover:bg-secondary-hover text-on-fill px-4 py-2 rounded text-sm font-medium"
+            className={CANCEL_BUTTON_CLASS}
           >
             Cancel
           </button>

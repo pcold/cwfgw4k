@@ -4,6 +4,7 @@ import ColumnHeaderFilter, {
   type ColumnHeaderFilterOption,
 } from '@/shared/components/ColumnHeaderFilter';
 import type { PlayerRankingsRow } from '@/shared/api/types';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 
 interface Props {
   players: PlayerRankingsRow[];
@@ -121,7 +122,7 @@ function PlayerRankingsView({ players, live, onGolferClick }: Props): ReactNode 
                       {clickable ? (
                         <button
                           type="button"
-                          className="text-left hover:text-primary-ink hover:underline"
+                          className={`text-left hover:text-primary-ink hover:underline ${TAP_TARGET_CLASS}`}
                           onClick={() => clickable.onGolferClick(clickable.golferId)}
                         >
                           {player.name}

@@ -10,7 +10,7 @@ import type {
   SeasonSchedulePreviewResult,
   Tournament,
 } from '@/shared/api/types';
-import { DateField, FieldShell, SelectField } from '@/shared/components/formFields';
+import { DateField, FieldShell, SelectField, TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
 import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
@@ -19,9 +19,13 @@ const SKIPPED_BANNER_CLASS =
   'mb-4 px-3 py-2 bg-semantic-warning-tint/30 border border-semantic-warning-soft rounded ' +
   'text-semantic-warning-ink text-xs';
 
+const IMPORT_BUTTON_CLASS =
+  'bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm ' +
+  `font-medium ${TAP_TARGET_CLASS}`;
+
 const SAVE_MULTIPLIER_BUTTON_CLASS =
   'bg-primary hover:bg-primary-hover disabled:bg-surface-raised disabled:text-ink-soft text-on-primary ' +
-  'px-3 py-1 rounded';
+  `px-3 py-1 rounded ${TAP_TARGET_CLASS}`;
 
 function toConfirmedEntry(entry: PreviewedTournament): ConfirmedTournamentEntry {
   return { espnEventId: entry.espnEventId, name: entry.name, startDate: entry.startDate, endDate: entry.endDate };
@@ -132,7 +136,7 @@ function UploadScheduleSection(): ReactNode {
           type="button"
           onClick={() => previewMutation.mutate()}
           disabled={previewDisabled}
-          className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium"
+          className={IMPORT_BUTTON_CLASS}
         >
           {previewMutation.isPending ? 'Fetching…' : 'Preview Import'}
         </button>
@@ -227,7 +231,7 @@ function SchedulePreview({
                   <button
                     type="button"
                     onClick={() => onRemove(entry.espnEventId)}
-                    className="text-semantic-danger hover:text-semantic-danger-hover"
+                    className={`text-semantic-danger hover:text-semantic-danger-hover ${TAP_TARGET_CLASS}`}
                   >
                     Remove
                   </button>
@@ -247,7 +251,7 @@ function SchedulePreview({
           type="button"
           onClick={onConfirm}
           disabled={confirmPending || entries.length === 0}
-          className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium"
+          className={IMPORT_BUTTON_CLASS}
         >
           {confirmPending ? 'Confirming…' : 'Confirm Import'}
         </button>
@@ -352,6 +356,8 @@ function TournamentRow({ tournament, onSaved }: TournamentRowProps) {
     draftValue !== tournament.payoutMultiplier;
   const invalid = draftMultiplier.trim() !== '' && (!Number.isFinite(draftValue) || draftValue <= 0);
   const multiplierError = invalid ? 'Enter a number greater than 0' : undefined;
+  // The input hand-rolls CONTROL_CLASS's sizing: that class's border colour and this one would tie, settled
+  // by stylesheet order rather than class order.
   const multiplierBorder = invalid ? 'border-semantic-danger-border' : 'border-control-border';
   const multiplierId = `multiplier-${tournament.id}`;
   const errorMessage = mutationError(updateMutation.error);
@@ -379,7 +385,7 @@ function TournamentRow({ tournament, onSaved }: TournamentRowProps) {
             onChange={(e) => setDraftMultiplier(e.target.value)}
             aria-invalid={multiplierError !== undefined}
             aria-describedby={multiplierError !== undefined ? `${multiplierId}-error` : undefined}
-            className={`bg-surface-raised border ${multiplierBorder} rounded px-2 py-1 text-sm w-20 text-right`}
+            className={`bg-surface-raised border ${multiplierBorder} rounded px-3 py-2 text-base ${TAP_TARGET_CLASS} w-20 text-right`}
           />
         </FieldShell>
       </td>
