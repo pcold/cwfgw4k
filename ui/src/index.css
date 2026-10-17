@@ -60,11 +60,12 @@
   --color-primary-ink: var(--color-red-700);
   --color-primary-control: var(--brand-red);
 
-  /* Text on the secondary and semantic fills; `on-primary` holds the same white for the primary one. */
+  /* Text on the secondary, semantic, position and money fills; `on-primary` is the same white for the primary one. */
   --color-on-fill: var(--color-white);
   --color-secondary: var(--brand-navy);
   --color-secondary-hover: var(--brand-navy-secondary);
   --color-disabled: var(--color-slate-400);
+  --color-position-fill: var(--brand-navy);
 
   /*
    * The bare base is status text and `-ink` sits on the family's own wash. The brand red
@@ -88,7 +89,18 @@
   --color-semantic-danger-fill-hover: var(--color-red-800);
   --color-semantic-danger-border: var(--color-red-500);
 
-  /* The report grids' gold: header rows, the cash-total row, and a cell that earned a payout. A fill: 1.44:1 on white. */
+  /*
+   * A bottom line's box, one per `moneyTone`; not the button fills on the same steps. White on the up fill is 4.40:1,
+   * so its figure must stay large text (index.css.test.ts).
+   */
+  --color-money-up-fill: var(--brand-green);
+  --color-money-down-fill: var(--color-red-700);
+  --color-money-even-fill: var(--brand-muted);
+
+  /*
+   * The report grids' gold (header rows, the cash-total row, a cell that earned a payout) and the leader's
+   * position box. A fill: 1.44:1 on white.
+   */
   --color-gold-tint: var(--color-yellow-200);
   --color-gold-soft: var(--brand-gold);
   --color-gold: var(--brand-gold);
