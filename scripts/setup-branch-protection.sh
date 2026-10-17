@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Apply branch protection to `main`, mirroring the benrollio baseline.
+# Apply branch protection to `main`.
 #
 # GitHub stores the live protection state server-side, not in the repo — this
 # script is the in-repo record of the intended config and the one-shot command

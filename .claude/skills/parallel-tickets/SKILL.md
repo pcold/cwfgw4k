@@ -7,9 +7,9 @@ description: Run several Linear tickets in parallel through isolated git worktre
 
 Coordinating several tickets at once is mostly a scheduling problem, not a coding
 one. The failure mode is not a bad diff — it is two agents editing the same file,
-or an agent that reports success without evidence. This skill is benrollio's
-contract for it, adapted to this repo; the incidents it cites happened there,
-and are kept where the rule they justify applies here too.
+or an agent that reports success without evidence. This skill is the contract
+for it; some incidents it cites predate this repo, and are kept where the rule
+they justify applies here too.
 
 You are the **coordinator**. Subagents implement and self-review; you plan the
 waves, run the verification gate, and open the PRs.

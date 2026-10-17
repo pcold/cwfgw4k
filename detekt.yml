@@ -4,7 +4,7 @@
 cwfgw:
   KDocLength:
     active: true
-    # Production only, as in benrollio, whose sweeps that brought KDoc under budget never reached tests.
+    # Production only: the sweeps that brought KDoc under budget never reached tests.
     excludes: ['**/src/test/**']
   UnsafeMessageInterpolation:
     active: true
@@ -138,7 +138,7 @@ complexity:
   LongMethod:
     active: true
     allowedLines: 50
-  # benrollio's calibration: a repository insert's one-parameter-per-column, and a service's
+  # Calibrated for a repository insert's one-parameter-per-column, and a service's
   # one-constructor-parameter-per-repository under Cross-repo flows. Exceptions are suppressed at the declaration.
   LongParameterList:
     active: true
