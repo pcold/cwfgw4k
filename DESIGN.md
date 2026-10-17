@@ -101,9 +101,9 @@ typography:
     textTransform: uppercase
   column-header:
     fontFamily: Saira
-    fontStretch: 100%
+    fontStretch: 75%
     fontSize: 12px
-    fontWeight: 400
+    fontWeight: 700
     lineHeight: 1.33
     letterSpacing: 0.05em
     textTransform: uppercase
@@ -260,7 +260,7 @@ These two inks are light, so they are for a `{colors.chrome}` fill alone; on the
 - **Ink** (`{colors.ink}`, the brand navy): the default text colour, set on `body` and the app root; team names in the scoreboard and standings tables.
 - **Ink Body** (`{colors.ink-body}`, the brand navy): golfer names inside the report and roster grid cells, and the neutral tag chip's text.
 - **Ink Secondary** (`{colors.ink-secondary}`, the brand secondary navy #13305a): running text on the Rules page, golfer names and the Top 10 Earnings column on the scoreboard.
-- **Ink Label** (`{colors.ink-label}`, the brand muted blue #4a5f80): uppercase card headings, the scoreboard's table heads, a column-filter select on hover or focus.
+- **Ink Label** (`{colors.ink-label}`, the brand muted blue #4a5f80): uppercase card headings, every table head but the report grids' gold row, a column-filter select on hover or focus.
 - **Ink Muted** (`{colors.ink-muted}`, the brand muted blue #4a5f80): helper and caption text — field labels, the subtitle under a page title, loading messages, chart axis labels (`fill-ink-muted`).
 - **Ink Soft** (`{colors.ink-soft}`, the brand muted blue #4a5f80): rank numbers, the labels on the money summary chips, empty-state lines, the picker's labels, a bottom-line amount that prints as `$0`, and in the report grid the dash for a pick that earned nothing and the top-ten line under SUBTOTAL.
 - **Ink Faint** (`{colors.ink-faint}`, the brand muted blue #4a5f80): the em dash in an empty cell, the `/` between a shared player's owners on the rosters page, the owner column of an unrostered golfer on the scoreboard's leaderboard.
@@ -313,19 +313,19 @@ Tokens only re-colour what the dark theme drew; the component treatment (CWF-231
 
 ### Font family
 - **Saira** — the brand face, self-hosted from `@fontsource-variable/saira` (width and weight axes, upright and italic) through the imports in `ui/src/main.tsx`. `--font-sans` in `ui/src/index.css` leads with it, so Tailwind's preflight sets it on `html` and every text style inherits it at 100% width. Behind it come `Saira Fallback`, Arial scaled to Saira's metrics so text holds its place while the webfont swaps in, then the system stack.
-- **Display** — the `font-display` utility in `ui/src/index.css` sets `font-stretch: 75%`, the condensed width for the nav, titles, team names and numbers. Today the brand mark, the nav links, the footer link, page titles and the status chip use it. A fallback face has no width axis and sets it at its own width.
+- **Display** — the `font-display` utility in `ui/src/index.css` sets `font-stretch: 75%`, the condensed width for the nav, titles, team names and numbers. Today the brand mark, the nav links, the footer link, page titles, the status chip and table heads use it. A fallback face has no width axis and sets it at its own width.
 - **System Mono** — Tailwind's `font-mono`. The weekly report grid's money figures, late row bets' golfer names and amounts, the golfer-history modal's place and money columns, and the ESPN week and event names on the schedule import.
 
 ### Hierarchy
 
 | Token | Size | Weight | Tracking | Classes | Where |
 |---|---|---|---|---|---|
-| `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links, the footer link, page titles, the status chip |
+| `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links, the footer link, page titles, the status chip, table heads |
 | `{typography.brand-mark}` | 20px | 800 | 0.025em, italic, uppercase | `font-display italic font-extrabold text-xl uppercase tracking-wide` | The CASTLEWOOD FG mark in the nav |
 | `{typography.page-title}` | 24px, 30px from `sm:` | 800 | 0, italic, uppercase | `font-display italic font-extrabold uppercase text-2xl sm:text-3xl leading-tight text-ink-strong` | The `h2` of every page, in `PageTitle` |
 | `{typography.modal-title}` | 18px | 700 | 0 | `text-lg font-bold` | Modal header |
 | `{typography.card-heading}` | 14px | 600 | 0.05em, uppercase | `text-sm font-semibold uppercase tracking-wider text-ink-label` | Heading inside a card |
-| `{typography.column-header}` | 12px | 400 | 0.05em, uppercase | `text-xs uppercase tracking-wider` | Table heads, the picker's labels |
+| `{typography.column-header}` | 12px | 700, a `th`'s default | 0.05em, uppercase | `font-display text-xs uppercase tracking-wider text-ink-label` | `COLUMN_HEADER_CLASS` in `columnHeader.ts`, on the `<thead>` of every table: the scoreboard and its leaderboard, standings, players, late row bets, the Rules payouts, the report and roster grids, the schedule import, golfer history |
 | `{typography.body}` | 14px | 400 | 0 | `text-sm` | Tables, running text |
 | `{typography.control}` | 16px | 400 | 0 | `text-base` | Form fields, toolbar selects, the league/season selects, the column-header filter |
 | `{typography.caption}` | 12px | 400 | 0 | `text-xs` | Field labels, helper text, field errors |
@@ -334,7 +334,7 @@ Tokens only re-colour what the dark theme drew; the component treatment (CWF-231
 | `{typography.report-figure}` | 12px | 400 | 0 | `font-mono` in a `text-xs` table | Money in the weekly report grid |
 
 ### Principles
-- **Weights in use are 400, 500, 600, 700 and 800.** `font-semibold` is the emphasis weight in tables (team totals, money chips) and the nav links' weight; `font-bold` marks modal titles, the status chip, the report grids' header and total rows; `font-extrabold` is the brand mark's and the page titles'.
+- **Weights in use are 400, 500, 600, 700 and 800.** `font-semibold` is the emphasis weight in tables (team totals, money chips) and the nav links' weight; `font-bold` marks modal titles, the status chip, the report grids' total rows, and table heads take it as a `th`'s default; `font-extrabold` is the brand mark's and the page titles'.
 - **Uppercase is structure, not emphasis.** Nav links, page titles, table heads, card headings and team names in tables are uppercase; body text never is.
 - **Numbers line up.** A column of money uses `tabular-nums` (list tables) or `font-mono` (the weekly report grid, late row bets), right-aligned in list tables and centred in the grid.
 
@@ -427,17 +427,17 @@ Every button, every variant and the compact ones included, adds `TAP_TARGET_CLAS
 
 A select in a page's toolbar rather than a form — the scoreboard's tournament, player rankings' Through — is `PickerRow.tsx`: an uppercase label, then the select on `bg-surface-card`, the outline button's surface rather than a field's raised one, over the same `CONTROL_CLASS` and `TAP_TARGET_CLASS`, then any trailing controls. The row is `flex-wrap`; below `sm:` the select is `w-full min-w-0 truncate`, so a long tournament name truncates rather than scroll the page sideways. The admin payout input is `CONTROL_CLASS` at `w-16`. The schedule-multiplier input and the roster-match select copy its sizing by hand: each has a border colour of its own, and two border colours would tie on stylesheet order.
 
-A table head that filters its column uses `ColumnHeaderFilter.tsx`: a transparent, borderless select that inherits the head's colour and turns `{colors.ink-label}` on hover or focus. It is `text-base` with `TAP_TARGET_CLASS` inside the `text-xs` head, so its column is as wide as its longest option at 16px.
+A table head that filters its column uses `ColumnHeaderFilter.tsx`: a transparent, borderless select that inherits the head's family, weight, tracking and colour and turns `{colors.ink-label}` on hover or focus. It restates `uppercase`, because a browser resets a select's text-transform. It is `text-base` with `TAP_TARGET_CLASS` inside the `text-xs` head, so its column is as wide as its longest option at 16px.
 
 ### Modal — `ui/src/shared/components/ModalShell.tsx`, `FormModal.tsx`
 A fixed scrim `bg-overlay/60`, centring a panel `bg-surface-card rounded-lg shadow-xl border border-hairline-strong`, capped at `max-h-[90dvh]` and scrolling inside. Header `px-5 py-4 border-b border-hairline` with a `{typography.modal-title}` and a 44px-tall `×` close button; body `px-5 py-4`. Widths are `form` (22rem) and `detail` (28rem), each capped at 92vw, and `wide` (`w-full max-w-3xl`). `FormModal` adds a primary submit stretched with `flex-1` and a secondary Cancel. Focus is trapped while open, and Escape closes it.
 
 ### List tables — `ScoreboardView.tsx`, `RankingsView.tsx`, `PlayerRankingsView.tsx`
-`text-sm`, full width. Head on the scoreboard: `bg-surface-card text-ink-label text-xs uppercase tracking-wider`; standings and player rankings drop the fill and use `text-ink-soft`. Body: `divide-y divide-hairline-soft`, rows `hover:bg-surface-card/60`. A row holding a golfer-name button is at least 44px: the button's `TAP_TARGET_CLASS`, plus the cell's own padding. A row with nothing to tap keeps the dense padding and has no minimum.
+`text-sm`, full width. Head: `{typography.column-header}`, on a `bg-surface-card` fill on the scoreboard and none on standings and player rankings. Body: `divide-y divide-hairline-soft`, rows `hover:bg-surface-card/60`. A row holding a golfer-name button is at least 44px: the button's `TAP_TARGET_CLASS`, plus the cell's own padding. A row with nothing to tap keeps the dense padding and has no minimum.
 
 ### Report grids — `ui/src/features/weeklyReport/WeeklyReportView.tsx`, `ui/src/features/rosters/RostersView.tsx`
 One column per team, one row per draft round, `text-xs border-collapse`, every cell bordered — in `{colors.hairline}` unless a row below says otherwise.
-- Header row: `bg-gold text-on-gold font-bold` with `border-hairline-strong`; team names uppercase.
+- Header row: `{typography.column-header}` on the `<thead>`, and `bg-gold text-on-gold` with `border-hairline-strong` on its row, whose `text-on-gold` holds over the head's ink.
 - Round rows: `bg-surface-card`; the round label is sticky, `font-bold text-ink-muted`. On the rosters page a side-bet round dims to `bg-surface-card/70`.
 - A golfer name in a round cell is a button carrying `TAP_TARGET_CLASS`, so a round row is 44px plus the cell's padding and its other lines; the summary rows, with nothing to tap, stay dense.
 - Weekly-report cell: `{colors.gold-bright}` with `{colors.on-gold}` text when the pick earned, `{colors.side-bet-winner}` when it won the round's side bet, otherwise no fill. `roundCellBg` and `roundTextColor` in `weeklyReportModel.ts` decide which.
@@ -503,7 +503,7 @@ Use these when building UI here:
 - **A tap target:** append `TAP_TARGET_CLASS` from `@/shared/components/formFields` to any button, link, select or input; a link adds `inline-flex items-center`.
 - **A toolbar select:** `PickerRow` from `@/shared/components/PickerRow`, with the row's other controls as its children.
 - **A page title:** `<PageTitle title="…" subtitle="…" actions={<><StatusChip variant={statusChipVariant(query.data)} /><LeagueSeasonPicker /></>} />`, outside the page's loading gates.
-- **A table head:** `bg-surface-card text-ink-label text-xs uppercase tracking-wider`, body `divide-y divide-hairline-soft`.
+- **A table head:** `<thead className={COLUMN_HEADER_CLASS}>` from `@/shared/components/columnHeader`, with no type on its rows or cells; body `divide-y divide-hairline-soft`.
 - **A money value:** `tabular-nums`, or `font-mono` in the grids; a bottom-line amount adds `moneyToneClass` of the text it prints and keeps its table's weight.
 - **A modal:** `FormModal` for a form, `ModalShell` when the body waits on a query.
 
