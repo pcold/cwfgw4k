@@ -92,12 +92,6 @@ function roundRow(round: number): HTMLElement {
 }
 
 describe('WeeklyReportView', () => {
-  it('renders the tournament header with payout multiplier', () => {
-    render(<WeeklyReportView report={report()} />);
-    expect(screen.getByRole('heading', { name: /Players Championship/i })).toBeInTheDocument();
-    expect(screen.getByText(/2x payouts/)).toBeInTheDocument();
-  });
-
   it('renders a column header per team', () => {
     render(
       <WeeklyReportView
@@ -182,7 +176,6 @@ describe('WeeklyReportView', () => {
     render(<WeeklyReportView report={seasonReport} />);
     expect(screen.getByText('**SEASON')).toBeInTheDocument();
     expect(screen.queryByText('**WEEKLY')).not.toBeInTheDocument();
-    expect(screen.getByText(/Season totals/i)).toBeInTheDocument();
   });
 
   it('shows the season-to-date line under each cell only on a tournament report', () => {
@@ -194,16 +187,6 @@ describe('WeeklyReportView', () => {
 
     render(<WeeklyReportView report={report({ scope: 'season', teams })} />);
     expect(screen.queryByText(/\(2\)/)).not.toBeInTheDocument();
-  });
-
-  it('shows the LIVE badge when the report is live', () => {
-    render(<WeeklyReportView report={report({ live: true })} />);
-    expect(screen.getByText(/LIVE — projected standings/i)).toBeInTheDocument();
-  });
-
-  it('omits the LIVE badge by default', () => {
-    render(<WeeklyReportView report={report()} />);
-    expect(screen.queryByText(/LIVE/i)).not.toBeInTheDocument();
   });
 
   it('renders the undrafted top tens callout when present', () => {

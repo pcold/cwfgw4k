@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
+import { screen, waitFor, waitForElementToBeRemoved, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import QueryAnswered from '@/shared/test/QueryAnswered';
+import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
 import type { League, Season, Tournament, WeeklyReport } from '@/shared/api/types';
-import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import WeeklyReportPage from './WeeklyReportPage';
 import type { downloadWeeklyReportPdf } from './weeklyReportPdf';
@@ -171,7 +171,7 @@ describe('WeeklyReportPage', () => {
 
     renderWithProviders(<WeeklyReportPage />);
 
-    expect(await screen.findByRole('heading', { name: /All Tournaments/i })).toBeInTheDocument();
+    expect(await screen.findByText('All Tournaments · Season totals')).toBeInTheDocument();
     expect(seasonReportMock).toHaveBeenCalledWith('sn-1');
     expect(tournamentReportMock).not.toHaveBeenCalled();
   });
@@ -188,14 +188,14 @@ describe('WeeklyReportPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<WeeklyReportPage />);
 
-    expect(await screen.findByRole('heading', { name: /Sample Open/i })).toBeInTheDocument();
+    expect(await screen.findByText('Sample Open · 2026-03-01 – 2026-03-04')).toBeInTheDocument();
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
     expect(screen.getByRole('checkbox', { name: /Live overlay/i })).toBeChecked();
 
     const select = screen.getByLabelText(/Tournament/i);
     await user.selectOptions(select, '');
 
-    expect(await screen.findByRole('heading', { name: /All Tournaments/i })).toBeInTheDocument();
+    expect(await screen.findByText('All Tournaments · Season totals')).toBeInTheDocument();
     expect(seasonReportMock).toHaveBeenCalledWith('sn-1');
     expect(screen.queryByRole('checkbox', { name: /Live overlay/i })).not.toBeInTheDocument();
   });
@@ -209,7 +209,7 @@ describe('WeeklyReportPage', () => {
 
     renderWithProviders(<WeeklyReportPage />);
 
-    expect(await screen.findByRole('heading', { name: /All Tournaments/i })).toBeInTheDocument();
+    expect(await screen.findByText('All Tournaments · Season totals')).toBeInTheDocument();
     expect(seasonReportMock).toHaveBeenCalledWith('sn-1');
     expect(tournamentReportMock).not.toHaveBeenCalled();
   });
@@ -231,7 +231,7 @@ describe('WeeklyReportPage', () => {
 
     renderWithProviders(<WeeklyReportPage />);
 
-    expect(await screen.findByRole('heading', { name: /Second Open/i })).toBeInTheDocument();
+    expect(await screen.findByText('Second Open · 2026-03-01 – 2026-03-04')).toBeInTheDocument();
     expect(screen.getByLabelText<HTMLSelectElement>(/Tournament/i).value).toBe('tn-2');
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-2', true);
     expect(tournamentReportMock).not.toHaveBeenCalledWith('sn-1', 'tn-1', expect.anything());
@@ -265,12 +265,7 @@ describe('WeeklyReportPage', () => {
     );
 
     const user = userEvent.setup();
-    renderWithProviders(
-      <>
-        <LeagueSeasonPicker />
-        <WeeklyReportPage />
-      </>,
-    );
+    renderWithProviders(<WeeklyReportPage />);
 
     await user.selectOptions(await screen.findByLabelText(/Tournament/i), spring.id);
     await waitFor(() => expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', false));
@@ -401,6 +396,38 @@ describe('WeeklyReportPage', () => {
     expect(screen.queryByText(/^\(\$/)).not.toBeInTheDocument();
   });
 
+  it.each([
+    { state: 'LIVE', overrides: { live: true, liveEligible: true }, status: 'in_progress', chip: 'Live' },
+    { state: 'FINAL', overrides: {}, status: 'completed', chip: 'Final' },
+    { state: 'UPCOMING', overrides: {}, status: 'upcoming', chip: 'Upcoming' },
+  ])('chips a $status tournament $state in the title row', async ({ overrides, status, chip }) => {
+    const event = { ...tournament, status };
+    const report = buildReport('Sample Open', 'tn-1');
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([event]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-1' });
+    tournamentReportMock.mockResolvedValue({ ...report, ...overrides, tournament: { ...report.tournament, status } });
+
+    renderWithProviders(<WeeklyReportPage />);
+
+    const subtitle = await screen.findByText('Sample Open · 2026-03-01 – 2026-03-04');
+    expect(within(pageTitleRow(subtitle)).getByText(chip)).toBeInTheDocument();
+  });
+
+  it('chips nothing on the season report, whose tournament has no status', async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([tournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-1' });
+    seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
+
+    renderWithProviders(<WeeklyReportPage />);
+
+    await screen.findByText('All Tournaments · Season totals');
+    expect(screen.queryByText(/^(Live|Final|Upcoming)$/)).not.toBeInTheDocument();
+  });
+
   it('enables the Download PDF button once the report loads', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
@@ -411,7 +438,7 @@ describe('WeeklyReportPage', () => {
     renderWithProviders(<WeeklyReportPage />);
 
     const button = await screen.findByRole('button', { name: /Download PDF/i });
-    await screen.findByRole('heading', { name: /All Tournaments/i });
+    await screen.findByText('All Tournaments · Season totals');
     expect(button).toBeEnabled();
     expect(button).toHaveClass(TAP_TARGET_CLASS);
   });
@@ -441,7 +468,7 @@ describe('WeeklyReportPage', () => {
 
     const user = userEvent.setup();
     renderWithProviders(<WeeklyReportPage />);
-    await screen.findByRole('heading', { name: /All Tournaments/i });
+    await screen.findByText('All Tournaments · Season totals');
     const button = screen.getByRole('button', { name: /Download PDF/i });
     await user.click(button);
 
@@ -461,7 +488,7 @@ describe('WeeklyReportPage', () => {
 
     const user = userEvent.setup();
     renderWithProviders(<WeeklyReportPage />);
-    await screen.findByRole('heading', { name: /All Tournaments/i });
+    await screen.findByText('All Tournaments · Season totals');
     const button = screen.getByRole('button', { name: /Download PDF/i });
     await user.click(button);
     await screen.findByRole('alert');

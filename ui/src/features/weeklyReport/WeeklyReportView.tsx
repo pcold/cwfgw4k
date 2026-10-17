@@ -138,7 +138,7 @@ interface Props {
 }
 
 function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
-  const { tournament, teams, undraftedTopTens, sideBetDetail, cashTotals } = report;
+  const { teams, undraftedTopTens, sideBetDetail, cashTotals } = report;
   const seasonMode = isSeasonReport(report);
   const showSeasonFooter = !seasonMode;
   const winnersByRound = sideBetWinnersByRound(sideBetDetail);
@@ -152,26 +152,6 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
 
   return (
     <section className="space-y-4">
-      <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-hairline pb-3">
-        <div>
-          <h2 className="text-xl font-semibold text-primary-ink">
-            {tournament.name ?? 'Weekly Report'}
-          </h2>
-          <p className="text-xs text-ink-muted">
-            {seasonMode
-              ? 'Season totals'
-              : `${tournament.startDate ?? ''}${tournament.endDate ? ` – ${tournament.endDate}` : ''}`}
-            {tournament.payoutMultiplier > 1 ? ` · ${tournament.payoutMultiplier}x payouts` : ''}
-            {tournament.status ? ` · ${tournament.status}` : ''}
-          </p>
-        </div>
-        {report.live ? (
-          <span className="text-xs bg-semantic-warning-soft/50 text-semantic-warning-ink px-2 py-0.5 rounded">
-            LIVE — projected standings
-          </span>
-        ) : null}
-      </header>
-
       <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="w-full text-xs border-collapse">
           <thead>
