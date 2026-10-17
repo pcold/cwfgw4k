@@ -313,8 +313,8 @@ Tokens only re-colour what the dark theme drew; the component treatment (CWF-231
 | `{typography.body}` | 14px | 400 | 0 | `text-sm` | Tables, running text |
 | `{typography.control}` | 16px | 400 | 0 | `text-base` | Form fields, toolbar selects, the league/season selects, the column-header filter |
 | `{typography.caption}` | 12px | 400 | 0 | `text-xs` | Field labels, helper text, field errors |
-| `{typography.button}` | 14px | 500 | 0 | `text-sm font-medium` | Standard buttons |
-| `{typography.button-compact}` | 12px | 500 | 0 | `text-xs font-medium` | Buttons in a page's header row or a panel row |
+| `{typography.button}` | 14px | 500 | 0 | `text-sm font-medium` | `Button`'s `regular` size |
+| `{typography.button-compact}` | 12px | 500 | 0 | `text-xs font-medium` | `Button`'s `compact` size: a page's header row, a panel row, a table row |
 | `{typography.report-figure}` | 12px | 400 | 0 | `font-mono` in a `text-xs` table | Money in the weekly report grid |
 
 ### Principles
@@ -391,17 +391,19 @@ Lives in the page title's actions, not in a bar of its own: a page that reads th
 ### Card — admin sections, `RulesPage.tsx`, `RankingsChart.tsx`, `LateRowBetsView.tsx`
 `bg-surface-card rounded-lg p-6` (`p-4` for the chart and late-row-bet tables), no border, no shadow. A card opens with a `{typography.card-heading}` (`mb-4`, or `mb-3` over a table or chart).
 
-### Buttons
+### Buttons — `ui/src/shared/components/Button.tsx`
+Every filled button is a `Button`, picked by `tone` and `size`. It takes no `className`, only a `layout` from a closed list, so a call site cannot add a second fill or padding; `FILLED_BUTTON_RESTRICTIONS` in `ui/eslint.config.js` fails a filled tone's fill spelled outside `Button.tsx`. A text button stays a plain `<button>`.
+
 | Variant | Classes | Example |
 |---|---|---|
-| Primary | `bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium` | Form submit in `FormModal.tsx`, Create in `CreateLeagueSection.tsx` |
-| Secondary | `bg-secondary hover:bg-secondary-hover disabled:bg-disabled text-on-fill …` | Cancel in `FormModal.tsx`, `DOWNLOAD_BUTTON_CLASS` in `WeeklyReportPage.tsx`, Log out in `AdminPage.tsx`, `LINKS_BUTTON_CLASS` in `ScoreboardPage.tsx`, `SAVE_LINK_BUTTON_CLASS` in `PlayerLinksPanel.tsx`, `PREVIEW_BUTTON_CLASS` in `UploadRostersSection.tsx` |
-| Danger | `bg-semantic-danger-fill hover:bg-semantic-danger-fill-hover disabled:bg-disabled text-on-fill …` | `RESET_BUTTON_CLASS` in `ResetTournamentSection.tsx`; Clean and Delete Season |
+| `tone="primary"` | `bg-primary hover:bg-primary-hover text-on-primary` | Form submit in `FormModal.tsx`, Create League, Confirm Import, Finalize Results, Reload in `ErrorBoundary.tsx` |
+| `tone="secondary"` | `bg-secondary hover:bg-secondary-hover text-on-fill` | Cancel in `FormModal.tsx`, Download PDF, Log out, Manage player links, Save link, Match Players with ESPN |
+| `tone="danger"` | `bg-semantic-danger-fill hover:bg-semantic-danger-fill-hover text-on-fill` | Reset Results, Clean Results, Delete Season |
 | Text | `text-ink-muted hover:text-ink-strong text-xs` | `CreateSeasonSection.tsx`, `PlayerLinksPanel.tsx` |
 
-Compact buttons in a header row or panel row (`FINALIZE_BUTTON_CLASS` and `LINKS_BUTTON_CLASS` in `ScoreboardPage.tsx`, `SAVE_LINK_BUTTON_CLASS`) drop to `px-3 py-1 text-xs`. A disabled filled button switches to `{colors.disabled}`; a disabled text button takes `disabled:opacity-50`.
+Every tone adds `rounded font-medium disabled:bg-disabled` and its size: `size="regular"` is `px-4 py-2 text-sm`, and `size="compact"` is `px-3 py-1 text-xs`, for a button in a header row, a panel row or a table row (Finalize Results and Manage player links on the scoreboard, Save link, the schedule import's Save). A disabled filled button switches to `{colors.disabled}`; a disabled text button takes `disabled:opacity-50`.
 
-Every button, every variant and the compact ones included, adds `TAP_TARGET_CLASS` (`min-h-11`, 44px) from `formFields.tsx`. The compact padding narrows a button; it never makes it shorter than a thumb.
+Every button, every tone and size included, carries `TAP_TARGET_CLASS` (`min-h-11`, 44px) from `formFields.tsx`; `Button` adds it itself. The compact padding narrows a button; it never makes it shorter than a thumb.
 
 ### Form fields — `ui/src/shared/components/formFields.tsx`
 `FIELD_CLASS` is `bg-surface-raised border border-control-border rounded px-3 py-2 text-base min-h-11 w-full`, built on `CONTROL_CLASS` and `TAP_TARGET_CLASS` and shared by `TextField`, `DateField` and `SelectField`. `FieldShell` puts a `block text-xs text-ink-muted mb-1` label above the control and a `mt-1 text-semantic-danger text-xs` error, with `role="alert"`, below it. Size a field with the `width` prop, not by appending a width class.
@@ -478,11 +480,9 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 Use these when building UI here:
 
 - **A card:** `bg-surface-card rounded-lg p-6`, opening with `<h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">`.
-- **A primary button:** `bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`.
-- **A secondary button:** `bg-secondary hover:bg-secondary-hover disabled:bg-disabled text-on-fill px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`.
-- **A destructive button:** `bg-semantic-danger-fill hover:bg-semantic-danger-fill-hover disabled:bg-disabled text-on-fill px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`.
+- **A filled button:** `<Button tone="primary" size="regular">` from `@/shared/components/Button`, with `tone="secondary"` or `tone="danger"` for the other fills and `size="compact"` in a header, panel or table row; never a hand-rolled fill.
 - **A field:** `TextField` / `SelectField` / `DateField` from `@/shared/components/formFields`; never a hand-rolled input class.
-- **A tap target:** append `TAP_TARGET_CLASS` from `@/shared/components/formFields` to any button, link, select or input; a link adds `inline-flex items-center`.
+- **A tap target:** append `TAP_TARGET_CLASS` from `@/shared/components/formFields` to any text button, link, select or input (`Button` carries its own); a link adds `inline-flex items-center`.
 - **A toolbar select:** `PickerRow` from `@/shared/components/PickerRow`, with the row's other controls as its children.
 - **A page title:** `<PageTitle title="…" subtitle="…" actions={<><StatusChip variant={statusChipVariant(query.data)} /><LeagueSeasonPicker /></>} />`, outside the page's loading gates.
 - **A table head:** `<thead className={COLUMN_HEADER_CLASS}>` from `@/shared/components/columnHeader`, with no type on its rows or cells but an ink its fill needs, as the gold row's `text-on-gold`; body `divide-y divide-hairline-soft`.
