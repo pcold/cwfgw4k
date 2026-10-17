@@ -1,8 +1,12 @@
 import type { ReactNode } from 'react';
 import type { Rankings } from '@/shared/api/types';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
+import MoneyCell from '@/shared/components/MoneyCell';
+import PositionCell from '@/shared/components/PositionCell';
 import { formatDollarsAndCents, formatWholeDollars, moneyToneClass } from '@/shared/util/money';
 import RankingsChart from './RankingsChart';
+
+const CARD_CELL_CLASS = 'px-3 py-2 bg-surface-card';
 
 interface Props {
   rankings: Rankings;
@@ -16,37 +20,28 @@ function RankingsView({ rankings }: Props): ReactNode {
   return (
     <section className="space-y-6">
       <div className="overflow-x-auto -mx-3 sm:mx-0">
-        <table className="min-w-full text-sm">
+        <table className="min-w-full text-sm border-separate border-spacing-y-1">
           <thead className={COLUMN_HEADER_CLASS}>
             <tr className="text-left">
-              <th className="px-3 py-2 w-12">#</th>
+              <th className="px-3 py-2 w-12 text-center">#</th>
               <th className="px-3 py-2">Team</th>
               <th className="px-3 py-2 text-right">Subtotal</th>
               <th className="px-3 py-2 text-right">Late Row Bets</th>
-              <th className="px-3 py-2 text-right">Total Cash</th>
+              <th className="px-3 py-2 w-36 text-right">Total Cash</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-hairline-soft">
-            {rankings.teams.map((team, index) => {
-              const totalCash = formatWholeDollars(team.totalCash);
-              return (
-                <tr key={team.teamId} className="hover:bg-surface-card/60">
-                  <td className="px-3 py-2 text-ink-soft tabular-nums">{index + 1}</td>
-                  <td className="px-3 py-2 font-medium text-ink uppercase">{team.teamName}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {formatDollarsAndCents(team.subtotal)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {formatDollarsAndCents(team.sideBets)}
-                  </td>
-                  <td
-                    className={`px-3 py-2 text-right tabular-nums font-semibold ${moneyToneClass(totalCash)}`}
-                  >
-                    {totalCash}
-                  </td>
-                </tr>
-              );
-            })}
+          <tbody>
+            {rankings.teams.map((team, index) => (
+              <tr key={team.teamId} className="h-11">
+                <PositionCell position={index + 1} />
+                <td className={`${CARD_CELL_CLASS} font-display font-bold text-base uppercase text-ink`}>
+                  {team.teamName}
+                </td>
+                <td className={`${CARD_CELL_CLASS} text-right tabular-nums`}>{formatDollarsAndCents(team.subtotal)}</td>
+                <td className={`${CARD_CELL_CLASS} text-right tabular-nums`}>{formatDollarsAndCents(team.sideBets)}</td>
+                <MoneyCell display={formatWholeDollars(team.totalCash)} />
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>

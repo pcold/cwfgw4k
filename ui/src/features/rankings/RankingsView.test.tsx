@@ -89,22 +89,32 @@ describe('RankingsView', () => {
     expect(screen.getByText('Net').nextSibling).toHaveTextContent(/^\+\$247$/);
   });
 
-  it('colours only Total Cash by sign, and leaves Subtotal and Late Row Bets in the table ink', () => {
-    render(<RankingsView rankings={buildRankings()} />);
-    const aces = screen.getByRole('row', { name: /Aces/ });
-    const birdies = screen.getByRole('row', { name: /Birdies/ });
-    expect(within(aces).getByText('+$150')).toHaveClass('text-semantic-success');
-    expect(within(birdies).getByText('\u2212$35')).toHaveClass('text-semantic-danger');
-    expect(within(aces).getByText('+$120.00').className).not.toMatch(/text-semantic-|text-ink-soft/);
-    expect(within(birdies).getByText('\u2212$15.00').className).not.toMatch(/text-semantic-|text-ink-soft/);
+  it('fills each Total Cash box with the tone of its sign, and leaves Subtotal and Late Row Bets in the table ink', () => {
+    const [aces, birdies, cuts] = buildRankings().teams;
+    if (!aces || !birdies || !cuts) throw new Error('fixture has fewer than three teams');
+    render(<RankingsView rankings={buildRankings({ teams: [aces, birdies, { ...cuts, totalCash: 0.4 }] })} />);
+    expect(within(screen.getByRole('row', { name: /Aces/ })).getByText('+$150')).toHaveClass('bg-money-up-fill');
+    expect(within(screen.getByRole('row', { name: /Birdies/ })).getByText('\u2212$35')).toHaveClass('bg-money-down-fill');
+    expect(within(screen.getByRole('row', { name: /Cuts/ })).getByText('$0')).toHaveClass('bg-money-even-fill');
+    const aceCells = within(screen.getByRole('row', { name: /Aces/ }));
+    expect(aceCells.getByText('+$120.00').className).not.toMatch(/text-semantic-|text-ink-soft|bg-money-/);
+    expect(aceCells.getByText('+$30.00').className).not.toMatch(/text-semantic-|text-ink-soft|bg-money-/);
   });
 
-  it('mutes a Total Cash that rounds to $0, and tones the summary chips by the sign they print', () => {
-    const [aces, ...rest] = buildRankings().teams;
-    if (!aces) throw new Error('fixture has no first team');
+  it('boxes the first position in gold and every other in navy', () => {
+    render(<RankingsView rankings={buildRankings()} />);
+    const positions = within(screen.getByRole('table'))
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => within(row).getAllByRole('cell')[0]);
+    expect(positions[0]).toHaveClass('bg-gold');
+    expect(positions[1]).toHaveClass('bg-position-fill');
+    expect(positions[2]).toHaveClass('bg-position-fill');
+  });
+
+  it('tones the summary chips by the sign they print, muting one that rounds to $0', () => {
     const cashTotals = { won: 35, lost: -35.4, net: -0.4 };
-    render(<RankingsView rankings={buildRankings({ teams: [{ ...aces, totalCash: -0.4 }, ...rest], cashTotals })} />);
-    expect(within(screen.getByRole('row', { name: /Aces/ })).getByText('$0')).toHaveClass('text-ink-soft');
+    render(<RankingsView rankings={buildRankings({ cashTotals })} />);
     expect(screen.getByText('Won').nextSibling).toHaveClass('text-semantic-success');
     expect(screen.getByText('Lost').nextSibling).toHaveClass('text-semantic-danger');
     expect(screen.getByText('Net').nextSibling).toHaveClass('text-ink-soft');
