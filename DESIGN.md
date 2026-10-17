@@ -340,7 +340,7 @@ Table cells are square. No component is pill-shaped (`rounded-full`), and no cor
 ### Top nav — `ui/src/App.tsx`
 A `{colors.surface-card}` bar with a `{colors.hairline}` bottom border. The CWFG mark (`{typography.brand-mark}`, `{colors.primary-ink}`) on the left; at `lg:` and up, a row of links on the right.
 - Desktop link: `px-3 py-2 rounded text-sm font-medium`; idle `text-ink-muted hover:text-ink-strong`, active `bg-surface-raised text-ink-strong`.
-- Below `lg:`, a 44px (`w-11 h-11`) menu button opens a stacked list; its links are `px-4 py-3 rounded text-base font-medium`, idle `text-ink-secondary`.
+- Below `lg:`, a 44px (`w-11 h-11`) menu button opens a stacked list; its links are `px-4 py-3 rounded text-base font-medium`, idle `text-ink-secondary`. They clear 44px on that padding (48px) without `TAP_TARGET_CLASS`; the desktop links are 36px, below the tap target.
 
 ### League / season picker — `ui/src/features/leagues/LeagueSeasonPicker.tsx`
 A bar under the nav: `bg-surface-card/60 border-b border-hairline`, two labelled selects. Labels are `text-ink-soft font-medium uppercase tracking-wider`; selects are `bg-surface-raised border border-control-border rounded text-base`. Stacks one per row below `sm:`.
@@ -377,13 +377,13 @@ A table head that filters its column uses `ColumnHeaderFilter.tsx`: a transparen
 A fixed scrim `bg-overlay/60`, centring a panel `bg-surface-card rounded-lg shadow-xl border border-hairline-strong`, capped at `max-h-[90dvh]` and scrolling inside. Header `px-5 py-4 border-b border-hairline` with a `{typography.modal-title}` and a 44px-tall `×` close button; body `px-5 py-4`. Widths are `form` (22rem) and `detail` (28rem), each capped at 92vw, and `wide` (`w-full max-w-3xl`). `FormModal` adds a primary submit stretched with `flex-1` and a secondary Cancel. Focus is trapped while open, and Escape closes it.
 
 ### List tables — `ScoreboardView.tsx`, `RankingsView.tsx`, `PlayerRankingsView.tsx`
-`text-sm`, full width. Head on the scoreboard: `bg-surface-card text-ink-label text-xs uppercase tracking-wider`; standings and player rankings drop the fill and use `text-ink-soft`. Body: `divide-y divide-hairline-soft`, rows `hover:bg-surface-card/60`. A row is as tall as its tap target: where a cell holds a golfer-name button, that button's `TAP_TARGET_CLASS` sets the row's height. A row with nothing to tap keeps the dense padding.
+`text-sm`, full width. Head on the scoreboard: `bg-surface-card text-ink-label text-xs uppercase tracking-wider`; standings and player rankings drop the fill and use `text-ink-soft`. Body: `divide-y divide-hairline-soft`, rows `hover:bg-surface-card/60`. A row holding a golfer-name button is at least 44px: the button's `TAP_TARGET_CLASS`, plus the cell's own padding. A row with nothing to tap keeps the dense padding and has no minimum.
 
 ### Report grids — `ui/src/features/weeklyReport/WeeklyReportView.tsx`, `ui/src/features/rosters/RostersView.tsx`
 One column per team, one row per draft round, `text-xs border-collapse`, every cell bordered — in `{colors.hairline}` unless a row below says otherwise.
 - Header row: `bg-gold text-on-gold font-bold` with `border-hairline-strong`; team names uppercase.
 - Round rows: `bg-surface-card`; the round label is sticky, `font-bold text-ink-muted`. On the rosters page a side-bet round dims to `bg-surface-card/70`.
-- A golfer name in a round cell is a button carrying `TAP_TARGET_CLASS`, so the round row grows to 44px; the summary rows, with nothing to tap, stay dense.
+- A golfer name in a round cell is a button carrying `TAP_TARGET_CLASS`, so a round row is 44px plus the cell's padding and its other lines; the summary rows, with nothing to tap, stay dense.
 - Weekly-report cell: `{colors.gold-bright}` with `{colors.on-gold}` text when the pick earned, `{colors.side-bet-winner}` when it won the round's side bet, otherwise no fill. `roundCellBg` and `roundTextColor` in `weeklyReportModel.ts` decide which.
 - Summary rows: `bg-surface-raised font-bold` with `border-hairline-strong` for highlighted totals, `bg-surface-card` for sub-rows, separated by `h-1 bg-canvas` spacer rows.
 - TOTAL CASH row: `bg-gold-soft/30 font-bold text-sm`, borders `border-gold/50`, label cell `bg-gold-tint`, amounts coloured by sign — the only summary row coloured by sign.
@@ -414,7 +414,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 - Open a data page with the page header: a primary-ink title over a muted caption, underlined in `{colors.hairline}`.
 - Use `FIELD_CLASS` (through `TextField`, `DateField`, `SelectField`, or `FieldShell` for anything else) for every form input and select, and `PickerRow` for a page toolbar's select; both build on `CONTROL_CLASS`.
 - Put a wide table in `overflow-x-auto -mx-3 sm:mx-0` with a `min-w-*`, so a phone scrolls the table rather than the page.
-- Give every button, link, select, input and click handler `TAP_TARGET_CLASS`. A link also needs `flex items-center` (or `inline-flex`), or its text sits at the top of the 44px; a checkbox gives it to its label.
+- Give every button, link, select, input and click handler `TAP_TARGET_CLASS`. The nav is the exception; see Top nav. A link also needs `flex items-center` (or `inline-flex`), or its text sits at the top of the 44px; a checkbox gives it to its label.
 
 ### Don't
 - Don't use a Tailwind shade, a hex, or a ramp variable in a component (`text-gray-400`, `#fff`, `var(--color-gray-400)`). `PALETTE_RESTRICTIONS` in `ui/eslint.config.js` fails the lint on each.
@@ -431,7 +431,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 | `sm:` to `lg:` (640–1024px) | Padding `px-4 py-6`; tables scroll inside the page margin. Picker selects sit in one row. Chart 320px. The nav is still the menu button. |
 | `lg:` and up (≥1024px) | The nav shows its links inline and hides the menu button. Chart 400px. |
 
-- The menu button is 44px square (`w-11 h-11`), the same height `TAP_TARGET_CLASS` gives every other target.
+- The menu button is 44px square (`w-11 h-11`), and the menu's links clear 44px on their own padding.
 - Report grids keep their round column sticky at every width; only the team columns scroll.
 - Modal height caps at `90dvh`, not `vh`: mobile `vh` ignores the on-screen keyboard and pushes the footer off-screen.
 
@@ -440,10 +440,10 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 Use these when building UI here:
 
 - **A card:** `bg-surface-card rounded-lg p-6`, opening with `<h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">`.
-- **A primary button:** `bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium`.
-- **A destructive button:** `bg-semantic-danger-fill hover:bg-semantic-danger-fill-hover disabled:bg-disabled text-on-fill px-4 py-2 rounded text-sm font-medium`.
+- **A primary button:** `bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`.
+- **A destructive button:** `bg-semantic-danger-fill hover:bg-semantic-danger-fill-hover disabled:bg-disabled text-on-fill px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`.
 - **A field:** `TextField` / `SelectField` / `DateField` from `@/shared/components/formFields`; never a hand-rolled input class.
-- **A tap target:** append `TAP_TARGET_CLASS` from `@/shared/components/formFields` to any button, link, select or input; a link adds `inline-flex items-center`.
+- **A tap target:** append `TAP_TARGET_CLASS` from `@/shared/components/formFields` to any button, link, select or input outside the nav; a link adds `inline-flex items-center`.
 - **A toolbar select:** `PickerRow` from `@/shared/components/PickerRow`, with the row's other controls as its children.
 - **A page header:** `<header className="border-b border-hairline pb-3">` with `<h2 className="text-xl font-semibold text-primary-ink">` and `<p className="text-xs text-ink-muted">`.
 - **A table head:** `bg-surface-card text-ink-label text-xs uppercase tracking-wider`, body `divide-y divide-hairline-soft`.
