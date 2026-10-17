@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreOwnerChange, queryKeys } from '@/shared/api/queryKeys';
+import Button from '@/shared/components/Button';
 import { FIELD_CLASS, FieldShell, TAP_TARGET_CLASS, TextField } from '@/shared/components/formFields';
 import ModalShell from '@/shared/components/ModalShell';
 import { QueryState } from '@/shared/components/QueryState';
@@ -11,14 +12,6 @@ import type {
   TournamentCompetitorListing,
   TournamentCompetitorView,
 } from '@/shared/api/types';
-
-const SAVE_LINK_BUTTON_CLASS =
-  'bg-secondary hover:bg-secondary-hover disabled:bg-disabled text-on-fill ' +
-  `text-xs px-3 py-1 rounded font-medium ${TAP_TARGET_CLASS}`;
-
-const CREATE_LINK_BUTTON_CLASS =
-  'bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary text-xs px-3 py-1 rounded font-medium ' +
-  TAP_TARGET_CLASS;
 
 interface PlayerLinksPanelProps {
   tournamentId: string;
@@ -239,14 +232,14 @@ function CompetitorRow({
         ) : null}
       </div>
       <div className="flex flex-col gap-1 sm:items-end">
-        <button
-          type="button"
+        <Button
+          tone="secondary"
+          size="compact"
           disabled={disabled || pending || !hasChange}
           onClick={() => saveMutation.mutate(draftGolferId)}
-          className={SAVE_LINK_BUTTON_CLASS}
         >
           {saveMutation.isPending ? 'Saving…' : 'Save link'}
-        </button>
+        </Button>
         {competitor.hasOverride ? (
           <button
             type="button"
@@ -289,14 +282,14 @@ function NewGolferInlineForm({ competitor, pending, onSubmit, onCancel }: NewGol
         onChange={setEditedName}
       />
       <div className="flex gap-2 items-center">
-        <button
-          type="button"
+        <Button
+          tone="primary"
+          size="compact"
           disabled={trimmed.length === 0 || pending}
           onClick={() => onSubmit(trimmed)}
-          className={CREATE_LINK_BUTTON_CLASS}
         >
           {pending ? 'Creating…' : 'Create & link'}
-        </button>
+        </Button>
         <button
           type="button"
           disabled={pending}

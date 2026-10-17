@@ -121,6 +121,20 @@ const PALETTE_RESTRICTIONS = [
   { selector: `Literal[value=/${COLOR_LITERAL_PATTERN}/]`, message: RAW_COLOR_VALUE_MESSAGE },
 ];
 
+// A filled button's fill comes from `Button` alone, so a tone's fill or hover fill spelled elsewhere fails. Bare
+// `bg-primary` stays open: the brand mark and the LIVE chip fill with the brand red without being buttons.
+const FILLED_BUTTON_FILL_PATTERN =
+  '(?<![\\w-])bg-(?:primary-hover|secondary(?:-hover)?|semantic-danger-fill(?:-hover)?)(?![\\w-])';
+
+const FILLED_BUTTON_FILL_MESSAGE =
+  'Render a filled button with `Button` from src/shared/components/Button.tsx, which owns every tone and size ' +
+  '(DESIGN.md → Buttons), rather than spelling its fill.';
+
+const FILLED_BUTTON_RESTRICTIONS = [
+  { selector: `Literal[value=/${FILLED_BUTTON_FILL_PATTERN}/]`, message: FILLED_BUTTON_FILL_MESSAGE },
+  { selector: `TemplateElement[value.raw=/${FILLED_BUTTON_FILL_PATTERN}/]`, message: FILLED_BUTTON_FILL_MESSAGE },
+];
+
 export default tseslint.config(
   { ignores: ['dist', 'coverage', 'test-report', 'node_modules'] },
   js.configs.recommended,
@@ -182,13 +196,21 @@ export default tseslint.config(
         'error',
         { selector: AS_CAST_SELECTOR, message: AS_CAST_MESSAGE },
         ...PALETTE_RESTRICTIONS,
+        ...FILLED_BUTTON_RESTRICTIONS,
       ],
+    },
+  },
+  {
+    // The one file that spells the filled fills. The `as` ban and the palette are restated, as for tests.
+    files: ['src/shared/components/Button.tsx'],
+    rules: {
+      'no-restricted-syntax': ['error', { selector: AS_CAST_SELECTOR, message: AS_CAST_MESSAGE }, ...PALETTE_RESTRICTIONS],
     },
   },
   {
     // `no-restricted-syntax` replaces rather than merges across blocks, so the `as` ban and the
     // palette are restated here or every test file loses them. `no-restricted-imports` is never
-    // restated, so it carries over.
+    // restated, so it carries over. The filled-button ban is left out: a test pins the fill it expects.
     files: ['**/*.test.{ts,tsx}'],
     plugins: { vitest, 'testing-library': testingLibrary },
     rules: {
@@ -223,6 +245,7 @@ export default tseslint.config(
             '(ui/CLAUDE.md). Any other cast belongs behind a type guard.',
         },
         ...PALETTE_RESTRICTIONS,
+        ...FILLED_BUTTON_RESTRICTIONS,
       ],
     },
   },

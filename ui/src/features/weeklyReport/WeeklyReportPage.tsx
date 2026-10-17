@@ -17,17 +17,13 @@ import {
   tournamentLabel,
 } from '@/shared/util/tournament';
 import type { Season, WeeklyReport } from '@/shared/api/types';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import Button from '@/shared/components/Button';
 import WeeklyReportView from './WeeklyReportView';
 import { reportSubtitle } from './weeklyReportModel';
 
 function downloadPdf(report: WeeklyReport, season: Season | null): Promise<void> {
   return import('./weeklyReportPdf').then((m) => m.downloadWeeklyReportPdf(report, season));
 }
-
-const DOWNLOAD_BUTTON_CLASS =
-  'bg-secondary hover:bg-secondary-hover disabled:bg-disabled text-on-fill rounded px-3 py-2 text-sm ' +
-  `disabled:cursor-not-allowed ${TAP_TARGET_CLASS}`;
 
 function WeeklyReportPage(): ReactNode {
   const { seasonId, seasons } = useLeagueSeason();
@@ -93,14 +89,14 @@ function WeeklyReportPage(): ReactNode {
           options={tournamentOptions}
           onChange={setUserTournamentId}
         >
-          <button
-            type="button"
+          <Button
+            tone="secondary"
+            size="regular"
             disabled={!reportQuery.data || pdfMutation.isPending}
             onClick={() => reportQuery.data && pdfMutation.mutate(reportQuery.data)}
-            className={DOWNLOAD_BUTTON_CLASS}
           >
             Download PDF
-          </button>
+          </Button>
           {pdfMutation.isError ? (
             <span role="alert" className="text-semantic-danger text-sm">
               Failed to generate PDF: {String(pdfMutation.error)}

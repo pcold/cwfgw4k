@@ -10,6 +10,7 @@ import type {
   SeasonSchedulePreviewResult,
   Tournament,
 } from '@/shared/api/types';
+import Button from '@/shared/components/Button';
 import { DateField, FieldShell, SelectField, TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import { mutationError } from '@/shared/util/mutationError';
@@ -19,14 +20,6 @@ import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
 const SKIPPED_BANNER_CLASS =
   'mb-4 px-3 py-2 bg-semantic-warning-tint/30 border border-semantic-warning-soft rounded ' +
   'text-semantic-warning-ink text-xs';
-
-const IMPORT_BUTTON_CLASS =
-  'bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm ' +
-  `font-medium ${TAP_TARGET_CLASS}`;
-
-const SAVE_MULTIPLIER_BUTTON_CLASS =
-  'bg-primary hover:bg-primary-hover disabled:bg-surface-raised disabled:text-ink-soft text-on-primary ' +
-  `px-3 py-1 rounded ${TAP_TARGET_CLASS}`;
 
 function toConfirmedEntry(entry: PreviewedTournament): ConfirmedTournamentEntry {
   return { espnEventId: entry.espnEventId, name: entry.name, startDate: entry.startDate, endDate: entry.endDate };
@@ -133,14 +126,9 @@ function UploadScheduleSection(): ReactNode {
       </div>
 
       <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => previewMutation.mutate()}
-          disabled={previewDisabled}
-          className={IMPORT_BUTTON_CLASS}
-        >
+        <Button tone="primary" size="regular" onClick={() => previewMutation.mutate()} disabled={previewDisabled}>
           {previewMutation.isPending ? 'Fetching…' : 'Preview Import'}
-        </button>
+        </Button>
         {previewErrorMessage ? (
           <span role="alert" className="text-semantic-danger text-sm">
             {previewErrorMessage}
@@ -248,14 +236,9 @@ function SchedulePreview({
       )}
 
       <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={onConfirm}
-          disabled={confirmPending || entries.length === 0}
-          className={IMPORT_BUTTON_CLASS}
-        >
+        <Button tone="primary" size="regular" onClick={onConfirm} disabled={confirmPending || entries.length === 0}>
           {confirmPending ? 'Confirming…' : 'Confirm Import'}
-        </button>
+        </Button>
         {confirmErrorMessage ? (
           <span role="alert" className="text-semantic-danger text-sm">
             {confirmErrorMessage}
@@ -392,14 +375,14 @@ function TournamentRow({ tournament, onSaved }: TournamentRowProps) {
       </td>
       <td className="px-3 py-2 text-xs">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <Button
+            tone="primary"
+            size="compact"
             onClick={() => updateMutation.mutate()}
             disabled={!dirty || invalid || updateMutation.isPending}
-            className={SAVE_MULTIPLIER_BUTTON_CLASS}
           >
             {updateMutation.isPending ? 'Saving…' : 'Save'}
-          </button>
+          </Button>
           {errorMessage ? (
             <span role="alert" className="text-semantic-danger">
               {errorMessage}

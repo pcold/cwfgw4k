@@ -3,12 +3,9 @@ import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/reac
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreChange, queryKeys } from '@/shared/api/queryKeys';
 import type { League, Season, Tournament } from '@/shared/api/types';
-import { SelectField, TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import Button from '@/shared/components/Button';
+import { SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
-
-const RESET_BUTTON_CLASS =
-  'bg-semantic-danger-fill hover:bg-semantic-danger-fill-hover disabled:bg-disabled text-on-fill ' +
-  `px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`;
 
 function ResetTournamentSection(): ReactNode {
   const queryClient = useQueryClient();
@@ -91,14 +88,9 @@ function ResetTournamentSection(): ReactNode {
           width="w-full sm:w-80"
           onChange={setTournamentId}
         />
-        <button
-          type="button"
-          onClick={onReset}
-          disabled={resetMutation.isPending || !tournamentId}
-          className={RESET_BUTTON_CLASS}
-        >
+        <Button tone="danger" size="regular" onClick={onReset} disabled={resetMutation.isPending || !tournamentId}>
           {resetMutation.isPending ? 'Resetting...' : 'Reset Results'}
-        </button>
+        </Button>
       </div>
       {resetMutation.data ? (
         <span className="block mt-3 text-sm text-semantic-success">

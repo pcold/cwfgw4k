@@ -18,19 +18,11 @@ import {
   tournamentLabel,
 } from '@/shared/util/tournament';
 import type { WeeklyReport } from '@/shared/api/types';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import Button from '@/shared/components/Button';
 import FinalizeWarnings from './FinalizeWarnings';
 import PlayerLinksPanel from './PlayerLinksPanel';
 import ScoreboardView from './ScoreboardView';
 import { scoreboardSubtitle } from './scoreboardModel';
-
-const FINALIZE_BUTTON_CLASS =
-  'bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-3 py-1 rounded text-xs ' +
-  `font-medium whitespace-nowrap ${TAP_TARGET_CLASS}`;
-
-const LINKS_BUTTON_CLASS =
-  'bg-secondary hover:bg-secondary-hover text-on-fill px-3 py-1 rounded text-xs ' +
-  `font-medium whitespace-nowrap ${TAP_TARGET_CLASS}`;
 
 function ScoreboardPage(): ReactNode {
   const { seasonId } = useLeagueSeason();
@@ -92,23 +84,20 @@ function ScoreboardPage(): ReactNode {
           </span>
         ) : null}
         {showLinks ? (
-          <button
-            type="button"
-            onClick={() => setLinksPanelOpen(true)}
-            className={LINKS_BUTTON_CLASS}
-          >
+          <Button tone="secondary" size="compact" layout="whitespace-nowrap" onClick={() => setLinksPanelOpen(true)}>
             Manage player links
-          </button>
+          </Button>
         ) : null}
         {showFinalize ? (
-          <button
-            type="button"
+          <Button
+            tone="primary"
+            size="compact"
+            layout="whitespace-nowrap"
             onClick={() => finalizeMutation.mutate(tournamentId)}
             disabled={finalizeMutation.isPending}
-            className={FINALIZE_BUTTON_CLASS}
           >
             {finalizeMutation.isPending ? 'Finalizing…' : 'Finalize Results'}
-          </button>
+          </Button>
         ) : null}
       </div>
     );

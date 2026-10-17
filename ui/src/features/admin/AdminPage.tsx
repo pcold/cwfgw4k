@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '@/features/auth/AuthContext';
 import LoginModal from '@/features/auth/LoginModal';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import Button from '@/shared/components/Button';
 import PageTitle from '@/shared/components/PageTitle';
 import CreateLeagueSection from './CreateLeagueSection';
 import CreateSeasonSection from './CreateSeasonSection';
@@ -36,15 +36,15 @@ function AdminPage(): ReactNode {
         title="Admin"
         subtitle={username ? `Signed in as ${username}` : undefined}
         actions={
-          <button
-            type="button"
+          <Button
+            tone="secondary"
+            size="regular"
             onClick={() => {
               void logout();
             }}
-            className={`bg-secondary hover:bg-secondary-hover text-on-fill px-3 py-1.5 rounded text-sm ${TAP_TARGET_CLASS}`}
           >
             Log out
-          </button>
+          </Button>
         }
       />
       <CreateLeagueSection />

@@ -1,13 +1,6 @@
 import type { FormEvent, ReactElement, ReactNode } from 'react';
-import { TAP_TARGET_CLASS } from './formFields';
+import Button from './Button';
 import ModalShell from './ModalShell';
-
-const SUBMIT_BUTTON_CLASS =
-  'bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium ' +
-  `flex-1 ${TAP_TARGET_CLASS}`;
-
-const CANCEL_BUTTON_CLASS =
-  `bg-secondary hover:bg-secondary-hover text-on-fill px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`;
 
 interface FormModalProps {
   readonly title: string;
@@ -42,20 +35,12 @@ export default function FormModal({
         )}
 
         <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={isPending}
-            className={SUBMIT_BUTTON_CLASS}
-          >
+          <Button tone="primary" size="regular" layout="flex-1" type="submit" disabled={isPending}>
             {submitLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className={CANCEL_BUTTON_CLASS}
-          >
+          </Button>
+          <Button tone="secondary" size="regular" onClick={onClose}>
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </ModalShell>

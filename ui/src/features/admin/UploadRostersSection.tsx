@@ -14,6 +14,7 @@ import type {
   RosterPreviewTeam,
   Season,
 } from '@/shared/api/types';
+import Button from '@/shared/components/Button';
 import { FieldShell, SelectField, TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
@@ -32,14 +33,6 @@ const CONFIRM_BLOCKED_ID = 'roster-confirm-blocked';
 const ROSTER_FILE_INPUT_CLASS =
   'block w-full text-sm text-ink-secondary file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 ' +
   `file:bg-surface-raised file:text-ink hover:file:bg-surface-raised-hover ${TAP_TARGET_CLASS}`;
-
-const PREVIEW_BUTTON_CLASS =
-  'bg-secondary hover:bg-secondary-hover disabled:bg-disabled text-on-fill ' +
-  `px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`;
-
-const CONFIRM_BUTTON_CLASS =
-  'bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm ' +
-  `font-medium ${TAP_TARGET_CLASS}`;
 
 // CONTROL_CLASS's sizing without CONTROL_CLASS: its border colour and the warning one would tie, settled by
 // stylesheet order rather than class order.
@@ -276,14 +269,9 @@ function RosterInputStep({
       </div>
 
       <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={disabled}
-          className={PREVIEW_BUTTON_CLASS}
-        >
+        <Button tone="secondary" size="regular" onClick={onSubmit} disabled={disabled}>
           {submitting ? 'Matching...' : 'Match Players with ESPN'}
-        </button>
+        </Button>
         {errorMessage ? (
           <span role="alert" className="text-semantic-danger text-sm">
             {errorMessage}
@@ -425,24 +413,20 @@ function RosterReviewStep({
       ))}
 
       <div className="flex items-center gap-4 mt-4">
-        <button
-          type="button"
+        <Button
+          tone="primary"
+          size="regular"
           onClick={() => {
             if (confirmTeams) onConfirm(confirmTeams);
           }}
           disabled={confirming || !confirmTeams}
           aria-describedby={confirmTeams ? undefined : CONFIRM_BLOCKED_ID}
-          className={CONFIRM_BUTTON_CLASS}
         >
           {confirming ? 'Creating...' : 'Confirm & Create Teams'}
-        </button>
-        <button
-          type="button"
-          onClick={onBack}
-          className={`bg-secondary hover:bg-secondary-hover text-on-fill px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`}
-        >
+        </Button>
+        <Button tone="secondary" size="regular" onClick={onBack}>
           Back
-        </button>
+        </Button>
         {confirmTeams ? null : (
           <span id={CONFIRM_BLOCKED_ID} className="text-ink-muted text-xs">
             Select a player, or None of these, for each ambiguous pick to confirm.
