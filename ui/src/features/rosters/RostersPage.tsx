@@ -5,6 +5,8 @@ import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
+import PageTitle from '@/shared/components/PageTitle';
+import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import RostersView from './RostersView';
 
 function RostersPage(): ReactNode {
@@ -24,25 +26,26 @@ function RostersPage(): ReactNode {
   // Only shades rows, so the grid neither waits on the rules nor fails with them.
   const sideBetRounds = rulesQuery.data?.sideBetRounds ?? [];
 
-  if (leaguesGate) return leaguesGate;
-
   return (
-    <>
-      <QueryState query={rostersQuery} label="rosters">
-        {(teams) => (
-          <RostersView
-            teams={teams}
-            sideBetRounds={sideBetRounds}
-            onGolferClick={setHistoryGolferId}
-          />
-        )}
-      </QueryState>
+    <div className="space-y-4">
+      <PageTitle title="Team Rosters" actions={<LeagueSeasonPicker />} />
+      {leaguesGate ?? (
+        <QueryState query={rostersQuery} label="rosters">
+          {(teams) => (
+            <RostersView
+              teams={teams}
+              sideBetRounds={sideBetRounds}
+              onGolferClick={setHistoryGolferId}
+            />
+          )}
+        </QueryState>
+      )}
       <GolferHistoryModal
         seasonId={seasonId}
         golferId={historyGolferId}
         onClose={() => setHistoryGolferId(null)}
       />
-    </>
+    </div>
   );
 }
 

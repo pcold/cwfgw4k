@@ -96,8 +96,8 @@ describe('RostersPage', () => {
 
     renderWithProviders(<RostersPage />);
 
-    expect(await screen.findByRole('heading', { name: /Team Rosters/i })).toBeInTheDocument();
-    expect(screen.getByText('Scottie Scheffler')).toBeInTheDocument();
+    expect(await screen.findByText('Scottie Scheffler')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Team Rosters/i })).toBeInTheDocument();
     expect(rostersMock).toHaveBeenCalledWith('sn-1');
   });
 
