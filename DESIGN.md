@@ -223,7 +223,7 @@ The weekly report and the rosters page are laid out like the league's spreadshee
 - Light canvas, no dark mode. `index.css` sets `{colors.canvas}` and `{colors.ink}` on `body`.
 - White on sky for depth: cards are white on the sky canvas, and raised controls are sky again inside them. Only the modal and the error screen cast a shadow.
 - Small type: `text-sm` (14px) body, `text-xs` (12px) for helper text, table heads and the report grids. Every select and text input is the exception at `text-base` (16px), because iOS zooms the page into a smaller control. The roster file input stays `text-sm`: iOS opens a picker for it rather than zooming.
-- Uppercase `tracking-wider` labels mark structure: table heads, card headings, the league/season picker's labels.
+- Uppercase `tracking-wider` labels mark structure: nav links, table heads, card headings, the league/season picker's labels.
 - Tabular numbers (`tabular-nums` or `font-mono`) on every money and count column. The Rules page's payout schedule does not have them yet.
 - Corners are `rounded` (4px) on controls and chips, `rounded-lg` (8px) on cards and the modal. Nothing is pill-shaped.
 
@@ -242,7 +242,7 @@ The contrast table in `ui/src/index.css.test.ts` pins every text token at WCAG A
 
 ### Chrome
 - **Chrome** (`{colors.chrome}`, the brand navy): the bar behind the top nav and the footer.
-- **On Chrome** (`{colors.on-chrome}`, white): a nav or footer link hovered.
+- **On Chrome** (`{colors.on-chrome}`, white): a nav or footer link, or the menu button, hovered.
 - **On Chrome Muted** (`{colors.on-chrome-muted}`, slate-300): an idle nav or footer link, and the menu button.
 
 These two inks are light, so they are for `{colors.chrome}` alone; on the canvas or a card they fail the contrast floor.
