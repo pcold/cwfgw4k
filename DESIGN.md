@@ -262,7 +262,7 @@ These two inks are light, so they are for a `{colors.chrome}` fill alone; on the
 
 ### Neutral fills
 - **On Fill** (`{colors.on-fill}`, white): text on the secondary and danger fills.
-- **Secondary** (`{colors.secondary}`, the brand navy): every secondary button — Download PDF, Log out, Manage player links, Save link, the roster upload's Preview and back-out buttons, and Cancel in a form modal. There is one secondary fill: a muted one beside it would leave no rule for choosing between them.
+- **Secondary** (`{colors.secondary}`, the brand navy): every secondary button — Download PDF, Log out, Manage player links, Save link, the roster upload's Match Players with ESPN and Back buttons, and Cancel in a form modal. There is one secondary fill: a muted one beside it would leave no rule for choosing between them.
 - **Secondary Hover** (`{colors.secondary-hover}`, the brand secondary navy): that fill, hovered.
 - **Disabled** (`{colors.disabled}`, slate-400): every filled button while disabled (`disabled:bg-disabled`). Its label is exempt from the contrast floor.
 
