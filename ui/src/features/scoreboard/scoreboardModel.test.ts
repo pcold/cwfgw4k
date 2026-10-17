@@ -243,8 +243,8 @@ describe('scoreboardSubtitle', () => {
   it('names the tournament and its week', () => {
     expect(scoreboardSubtitle(tournament)).toBe('Sample Open · Week 9');
   });
-  it('adds the payout multiplier when the week pays more than once', () => {
-    expect(scoreboardSubtitle({ ...tournament, payoutMultiplier: 2 })).toBe('Sample Open · Week 9 · 2x payout');
+  it('adds the payout multiplier when it is not one', () => {
+    expect(scoreboardSubtitle({ ...tournament, payoutMultiplier: 2 })).toBe('Sample Open · Week 9 · 2x payouts');
   });
   it('leaves out a missing name and marks a missing week', () => {
     expect(scoreboardSubtitle({ ...tournament, name: null, week: null })).toBe('Week ?');

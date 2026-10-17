@@ -98,6 +98,6 @@ export function formatScoreToPar(score: number | null): string {
 }
 
 export function scoreboardSubtitle(tournament: ReportTournamentInfo): string {
-  const payout = tournament.payoutMultiplier !== 1 ? [`${tournament.payoutMultiplier}x payout`] : [];
+  const payout = tournament.payoutMultiplier !== 1 ? [`${tournament.payoutMultiplier}x payouts`] : [];
   return [tournament.name, `Week ${tournament.week ?? '?'}`, ...payout].filter(Boolean).join(' · ');
 }

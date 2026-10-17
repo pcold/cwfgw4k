@@ -196,8 +196,12 @@ describe('reportSubtitle', () => {
     },
   };
 
-  it('names the tournament, its dates and a payout multiplier above one', () => {
+  it('names the tournament, its dates and a payout multiplier other than one', () => {
     expect(reportSubtitle(event)).toBe('Players Championship · 2026-03-12 – 2026-03-15 · 2x payouts');
+  });
+  it('names a payout multiplier below one, since it changes the money as much as one above', () => {
+    const halved = { ...event, tournament: { ...event.tournament, payoutMultiplier: 0.5 } };
+    expect(reportSubtitle(halved)).toBe('Players Championship · 2026-03-12 – 2026-03-15 · 0.5x payouts');
   });
   it('says the season report holds the season totals', () => {
     const season = { ...reportScoped('season'), tournament: { ...event.tournament, name: 'All Tournaments', payoutMultiplier: 1 } };

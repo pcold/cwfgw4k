@@ -59,6 +59,6 @@ export function reportSubtitle(report: WeeklyReport): string {
   const span = isSeasonReport(report)
     ? 'Season totals'
     : `${startDate ?? ''}${endDate ? ` – ${endDate}` : ''}`;
-  const payout = payoutMultiplier > 1 ? [`${payoutMultiplier}x payouts`] : [];
+  const payout = payoutMultiplier !== 1 ? [`${payoutMultiplier}x payouts`] : [];
   return [name, span, ...payout].filter(Boolean).join(' · ');
 }
