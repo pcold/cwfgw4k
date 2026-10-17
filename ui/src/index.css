@@ -6,84 +6,116 @@
 @source not "../CLAUDE.md";
 
 /*
- * Names are benrollio DESIGN.md `colors:` keys wherever the role matches. Tokens sharing a ramp step hold
- * different roles, so never merge them. index.css.test.ts resolves each ramp alias; a literal it cannot.
+ * The Tour Broadcast hexes, kept exact: navy and sky have no Tailwind step. Outside `--color-*` so
+ * Tailwind makes no utility of them, and the lint bans `--brand-*` in components: a role token aliases them.
+ */
+:root {
+  --brand-navy: #0a1d38;
+  --brand-navy-secondary: #13305a;
+  --brand-sky: #e8eef7;
+  --brand-line: #d5deeb;
+  --brand-muted: #4a5f80;
+  --brand-red: #d7263d;
+  --brand-green: #0f8a4f;
+  --brand-gold: #ffd23f;
+}
+
+/*
+ * Tokens sharing a step hold different roles, so never merge them. index.css.test.ts resolves each
+ * alias to a ramp step or a `--brand-*` hex; a literal it cannot.
  */
 @theme {
-  --color-canvas: var(--color-gray-900);
-  --color-surface-card: var(--color-gray-800);
-  --color-surface-raised: var(--color-gray-700);
-  --color-surface-raised-hover: var(--color-gray-600);
+  --color-canvas: var(--brand-sky);
+  --color-surface-card: var(--color-white);
+  --color-surface-raised: var(--brand-sky);
+  --color-surface-raised-hover: var(--brand-line);
   --color-overlay: var(--color-black);
 
-  --color-hairline-soft: var(--color-gray-800);
-  --color-hairline: var(--color-gray-700);
-  --color-hairline-strong: var(--color-gray-600);
-  --color-control-border: var(--color-gray-600);
+  --color-hairline-soft: var(--brand-line);
+  --color-hairline: var(--brand-line);
+  --color-hairline-strong: var(--color-slate-400);
+  --color-control-border: var(--brand-line);
 
-  /* On a dark canvas a lower ramp step is the higher-contrast ink, so `-strong` is the lighter one. */
-  --color-ink-strong: var(--color-white);
-  --color-ink: var(--color-gray-100);
-  --color-ink-body: var(--color-gray-200);
-  --color-ink-secondary: var(--color-gray-300);
-  --color-ink-label: var(--color-gray-300);
-  --color-ink-muted: var(--color-gray-400);
-  /* Lighter than `ink-muted`: it also sits on surface-raised and side-bet-winner, where gray-400 is below AA. */
-  --color-ink-soft: var(--color-gray-300);
-  /* Same shade as `ink-muted`: gray-500 is below AA even on canvas. */
-  --color-ink-faint: var(--color-gray-400);
+  /* On a light canvas the darker step is the higher-contrast ink, so `-strong` is never lighter than `ink`. */
+  --color-ink-strong: var(--brand-navy);
+  --color-ink: var(--brand-navy);
+  --color-ink-body: var(--brand-navy);
+  --color-ink-secondary: var(--brand-navy-secondary);
+  --color-ink-label: var(--brand-muted);
+  --color-ink-muted: var(--brand-muted);
+  --color-ink-soft: var(--brand-muted);
+  /* Not slate-500, which is 4.08:1 on canvas. */
+  --color-ink-faint: var(--brand-muted);
 
-  --color-primary: var(--color-green-700);
-  --color-primary-hover: var(--color-green-800);
+  --color-primary: var(--brand-red);
+  --color-primary-hover: var(--color-red-700);
   --color-on-primary: var(--color-white);
-  --color-primary-ink: var(--color-green-400);
-  --color-primary-control: var(--color-green-500);
+  /* red-700, not the brand red, which is 4.25:1 on canvas and so a fill. */
+  --color-primary-ink: var(--color-red-700);
+  --color-primary-control: var(--brand-red);
 
   /* Text on the secondary and semantic fills; `on-primary` holds the same white for the primary one. */
   --color-on-fill: var(--color-white);
-  --color-secondary: var(--color-gray-600);
-  --color-secondary-hover: var(--color-gray-500);
-  --color-disabled: var(--color-gray-600);
+  --color-secondary: var(--brand-muted);
+  --color-secondary-hover: var(--brand-navy-secondary);
+  --color-disabled: var(--color-slate-400);
 
   /*
-   * As in benrollio, the bare base is status text and `-ink` sits on the family's own wash. A dark
-   * canvas pulls that text off the button fill's step, so the fill takes `-fill` rather than the base.
+   * The bare base is status text and `-ink` sits on the family's own wash. The brand red
+   * and green fail as text on canvas, so the text takes a darker step; `-fill` is chosen by its white label.
    */
-  --color-semantic-success-tint: var(--color-green-900);
-  --color-semantic-success-soft: var(--color-green-700);
-  --color-semantic-success: var(--color-green-400);
-  --color-semantic-success-ink: var(--color-green-300);
+  --color-semantic-success-tint: var(--color-green-500);
+  --color-semantic-success-soft: var(--brand-green);
+  --color-semantic-success: var(--color-green-800);
+  --color-semantic-success-ink: var(--color-green-900);
 
-  --color-semantic-warning-tint: var(--color-yellow-900);
-  --color-semantic-warning-soft: var(--color-yellow-700);
-  --color-semantic-warning: var(--color-yellow-400);
-  --color-semantic-warning-ink: var(--color-yellow-300);
+  --color-semantic-warning-tint: var(--color-yellow-400);
+  --color-semantic-warning-soft: var(--color-yellow-500);
+  --color-semantic-warning: var(--color-yellow-800);
+  --color-semantic-warning-ink: var(--color-yellow-900);
   --color-semantic-warning-border: var(--color-yellow-600);
 
-  --color-semantic-danger: var(--color-red-300);
-  --color-semantic-danger-hover: var(--color-red-200);
-  /* Ties `semantic-danger`, which red-400 left below AA; red-200 is the step that would set it apart again. */
-  --color-semantic-danger-strong: var(--color-red-300);
-  --color-semantic-danger-fill: var(--color-red-600);
-  --color-semantic-danger-fill-hover: var(--color-red-700);
+  --color-semantic-danger: var(--color-red-700);
+  --color-semantic-danger-hover: var(--color-red-800);
+  --color-semantic-danger-strong: var(--color-red-800);
+  --color-semantic-danger-fill: var(--color-red-700);
+  --color-semantic-danger-fill-hover: var(--color-red-800);
   --color-semantic-danger-border: var(--color-red-500);
 
-  --color-semantic-info-soft: var(--color-blue-700);
-  --color-semantic-info: var(--color-blue-400);
-  --color-semantic-info-hover: var(--color-blue-300);
-  --color-semantic-info-ink: var(--color-blue-100);
+  --color-semantic-info-soft: var(--color-blue-100);
+  --color-semantic-info: var(--color-blue-700);
+  --color-semantic-info-hover: var(--color-blue-800);
+  --color-semantic-info-ink: var(--color-blue-800);
   --color-semantic-info-fill: var(--color-blue-600);
   --color-semantic-info-fill-hover: var(--color-blue-700);
 
-  /* The report grids' gold: header rows, the cash-total row, and a cell that earned a payout. */
-  --color-gold-tint: var(--color-yellow-900);
-  --color-gold-soft: var(--color-yellow-700);
-  --color-gold: var(--color-yellow-600);
-  --color-gold-bright: var(--color-yellow-300);
-  --color-on-gold: var(--color-black);
+  /* The report grids' gold: header rows, the cash-total row, and a cell that earned a payout. A fill: 1.4:1 on white. */
+  --color-gold-tint: var(--color-yellow-200);
+  --color-gold-soft: var(--brand-gold);
+  --color-gold: var(--brand-gold);
+  --color-gold-bright: var(--color-yellow-100);
+  --color-on-gold: var(--brand-navy);
   --color-on-gold-earnings: var(--color-green-800);
 
-  --color-side-bet-winner: var(--color-red-800);
+  --color-side-bet-winner: var(--color-red-100);
+
+  --font-sans:
+    "Saira Variable", "Saira Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Arial scaled to Saira's width and line box, so text holds its place while the webfont swaps in. */
+@font-face {
+  font-family: "Saira Fallback";
+  src: local("Arial");
+  size-adjust: 104.24%;
+  ascent-override: 108.88%;
+  descent-override: 42.11%;
+  line-gap-override: 0%;
+}
+
+/* A fallback face without a width axis sets this at its own width. */
+@utility font-display {
+  font-stretch: 75%;
 }
 
 html,
@@ -96,11 +128,4 @@ body {
   margin: 0;
   background-color: var(--color-canvas);
   color: var(--color-ink);
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
 }

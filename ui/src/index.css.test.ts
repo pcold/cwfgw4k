@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import sairaWidthFaces from '@fontsource-variable/saira/wdth.css?raw';
 import tailwindTheme from 'tailwindcss/theme.css?raw';
 import designMd from '../../DESIGN.md?raw';
 import indexCss from './index.css?raw';
@@ -6,7 +7,7 @@ import indexCss from './index.css?raw';
 /**
  * Nothing else reads a colour token's value, so a shade that fails WCAG contrast passes typecheck, lint
  * and every component test. This resolves the chain the browser does: `index.css` aliases each token to
- * a ramp step, and `tailwindcss/theme.css` holds the OKLCH value that ships.
+ * a ramp step, whose OKLCH value `tailwindcss/theme.css` holds, or to a `--brand-*` hex it declares itself.
  */
 
 /** 8-bit sRGB, the space WCAG's relative luminance is defined over. */
@@ -27,14 +28,18 @@ const AA_NORMAL_TEXT = 4.5;
 // The scoreboard's rostered leaderboard row and the weekly report's cash-total row.
 const SUCCESS_ROW: Wash = { token: 'semantic-success-tint', percent: 10, over: 'canvas' };
 const CASH_TOTAL_ROW: Wash = { token: 'gold-soft', percent: 30, over: 'canvas' };
+// The rosters page's side-bet round rows, and a weekly-report round row hovered.
+const SIDE_BET_ROUND_ROW: Wash = { token: 'surface-card', percent: 70, over: 'canvas' };
+const REPORT_ROW_HOVERED: Wash = { token: 'surface-card', percent: 80, over: 'canvas' };
 
 // Where each text token renders, from the call sites, inherited colour included. Hover fills are listed
 // because the label stays put; disabled controls are not, since §1.4.3 exempts an inactive component.
-// A wash of one listed backdrop over a darker one needs no row: light ink contrasts more on the blend.
+// A wash between two backdrops an ink is listed on needs no row: on these near-neutral surfaces the
+// blend's luminance lies between theirs, so it contrasts no less than the weaker of the two.
 const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
-  'ink-strong': ['surface-card', 'surface-raised'],
-  ink: ['canvas', 'surface-card', 'surface-raised', 'gold-tint', SUCCESS_ROW],
-  'ink-body': ['surface-card', 'surface-raised', 'side-bet-winner'],
+  'ink-strong': ['surface-card', 'surface-raised', 'surface-raised-hover'],
+  ink: ['canvas', 'surface-card', 'surface-raised', 'surface-raised-hover', 'gold-tint', SUCCESS_ROW],
+  'ink-body': ['surface-card', 'surface-raised', 'side-bet-winner', SIDE_BET_ROUND_ROW, REPORT_ROW_HOVERED],
   'ink-secondary': ['canvas', 'surface-card', 'surface-raised'],
   'ink-label': ['surface-card', 'surface-raised'],
   'ink-muted': [
@@ -87,9 +92,10 @@ const productionSources = import.meta.glob<string>(['./**/*.{ts,tsx}', '!./**/*.
   eager: true,
 });
 
-const TOKEN_ALIAS_PATTERN = /--color-([\w-]+):\s*var\(--color-([\w-]+)\)/g;
-const RAMP_OKLCH_PATTERN = /--color-([\w-]+):\s*oklch\(([\d.]+)%\s+([\d.]+)\s+([\d.]+)\)/g;
-const RAMP_HEX_PATTERN = /--color-([\w-]+):\s*#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/g;
+const TOKEN_ALIAS_PATTERN = /--color-([\w-]+):\s*var\(--((?:color|brand)-[\w-]+)\)/g;
+const RAMP_OKLCH_PATTERN = /--(color-[\w-]+):\s*oklch\(([\d.]+)%\s+([\d.]+)\s+([\d.]+)\)/g;
+const RAMP_HEX_PATTERN = /--(color-[\w-]+):\s*#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/g;
+const BRAND_HEX_PATTERN = /--(brand-[\w-]+):\s*#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/g;
 const TEXT_CLASS_PATTERN = /(?<![\w-])((?:[\w-]+:)*)text-([\w-]+)/g;
 
 // `noUncheckedIndexedAccess` types each group as possibly missing; `!` is banned and a `?? ''` would
@@ -142,30 +148,31 @@ const contrastRatio = (foreground: Srgb, background: Srgb): number => {
   return (Math.max(ink, surface) + 0.05) / (Math.min(ink, surface) + 0.05);
 };
 
-const rampStepOf: ReadonlyMap<string, string> = new Map(
+// Token to the variable it aliases, prefix kept: `color-gray-900` or `brand-navy`.
+const aliasOf: ReadonlyMap<string, string> = new Map(
   [...indexCss.matchAll(TOKEN_ALIAS_PATTERN)].map((match): [string, string] => [captured(match, 1), captured(match, 2)]),
 );
 
-const rampColours = ((): ReadonlyMap<string, Srgb> => {
+const paletteColours = ((): ReadonlyMap<string, Srgb> => {
   const colours = new Map<string, Srgb>();
   for (const match of tailwindTheme.matchAll(RAMP_OKLCH_PATTERN)) {
     const lightness = Number(captured(match, 2)) / 100;
     colours.set(captured(match, 1), oklchToSrgb(lightness, Number(captured(match, 3)), Number(captured(match, 4))));
   }
-  for (const match of tailwindTheme.matchAll(RAMP_HEX_PATTERN)) {
+  for (const match of [...tailwindTheme.matchAll(RAMP_HEX_PATTERN), ...indexCss.matchAll(BRAND_HEX_PATTERN)]) {
     colours.set(captured(match, 1), hexToSrgb(captured(match, 2)));
   }
   return colours;
 })();
 
 const resolveToken = (token: string): Srgb => {
-  const rampStep = rampStepOf.get(token);
-  if (rampStep === undefined) {
-    throw new Error(`index.css declares no --color-${token}, or aliases it to something other than a ramp step`);
+  const variable = aliasOf.get(token);
+  if (variable === undefined) {
+    throw new Error(`index.css declares no --color-${token}, or aliases it to neither a ramp step nor a brand colour`);
   }
-  const colour = rampColours.get(rampStep);
+  const colour = paletteColours.get(variable);
   if (colour === undefined) {
-    throw new Error(`tailwindcss/theme.css declares no --color-${rampStep}, which --color-${token} aliases`);
+    throw new Error(`Neither tailwindcss/theme.css nor index.css declares --${variable}, which --color-${token} aliases`);
   }
   return colour;
 };
@@ -191,7 +198,7 @@ const textTokensInUse: ReadonlySet<string> = new Set(
     [...source.matchAll(TEXT_CLASS_PATTERN)]
       .filter((match) => !captured(match, 0).includes('disabled:'))
       .map((match) => captured(match, 2))
-      .filter((token) => rampStepOf.has(token)),
+      .filter((token) => aliasOf.has(token)),
   ),
 );
 
@@ -239,12 +246,39 @@ describe("DESIGN.md's colors", () => {
     expect(designColorEntries.map((entry) => entry.token).sort()).toEqual([...declaredTokens].sort());
   });
 
-  it.each(designColorEntries)('give $token the hex its ramp step resolves to', (entry) => {
+  it.each(designColorEntries)('give $token the hex its alias resolves to', (entry) => {
     expect(entry.value).toBe(`"${toHex(resolveToken(entry.token))}"`);
   });
 
   it('are the only colours its prose references', () => {
     const referenced = [...designMd.matchAll(/\{colors\.([\w-]+)\}/g)].map((match) => captured(match, 1));
     expect(referenced.filter((token) => !declaredTokens.includes(token))).toEqual([]);
+  });
+});
+
+const fontStretchOf = (source: string, block: RegExp, where: string): string => {
+  const match = source.match(block);
+  if (match === null) {
+    throw new Error(`${where} sets no font-stretch`);
+  }
+  return captured(match, 1);
+};
+
+describe("DESIGN.md's typography", () => {
+  it('gives display the width the font-display utility sets', () => {
+    expect(fontStretchOf(designMd, /^ {2}display:\n(?: {4}.*\n)*? {4}fontStretch:\s*(\S+)$/m, 'DESIGN.md display')).toBe(
+      fontStretchOf(indexCss, /@utility font-display\s*\{[^}]*font-stretch:\s*([^;]+);/, 'index.css font-display'),
+    );
+  });
+});
+
+describe("index.css's sans font", () => {
+  it('leads with the family the Saira faces main.tsx imports declare', () => {
+    const declared = sairaWidthFaces.match(/font-family:\s*'([^']+)'/);
+    const sans = indexCss.match(/--font-sans:\s*"([^"]+)"/);
+    if (declared === null || sans === null) {
+      throw new Error('Either the Saira faces or --font-sans names no family');
+    }
+    expect(captured(sans, 1)).toBe(captured(declared, 1));
   });
 });

@@ -93,10 +93,11 @@ const RAW_COLOR_PATTERN = `(?<![\\w-])(?:${COLOR_UTILITY_PREFIXES})-${COLOR_SHAD
 
 const COLOR_FUNCTION = '(?:rgba?|hsla?|hwb|oklch|oklab|lab|lch|color-mix|color)\\(';
 
-// An arbitrary-value utility (`bg-[#1f2937]`, `text-(--color-gray-400)`) or a ramp variable anywhere.
+// An arbitrary-value utility (`bg-[#1f2937]`, `text-(--color-gray-400)`), or a ramp or brand-palette variable
+// anywhere: index.css aliases the role tokens to `--brand-*`, which is a palette, not a role.
 const RAW_COLOR_VALUE_PATTERN =
   `(?:(?<![\\w-])(?:${COLOR_UTILITY_PREFIXES})-[\\[(](?:#|${COLOR_FUNCTION}|color:|var\\(--color-|--color-)` +
-  `|--color-${COLOR_SHADE}(?![\\w-]))`;
+  `|--color-${COLOR_SHADE}(?![\\w-])|--brand-[a-z])`;
 
 // Anchored to the whole string, so `'#root'` and prose that mentions `rgb(` stay out.
 const COLOR_LITERAL_PATTERN = `^\\s*(?:#[0-9a-fA-F]{3,8}|${COLOR_FUNCTION}.*)\\s*$`;
@@ -107,7 +108,8 @@ const RAW_COLOR_MESSAGE =
 
 const RAW_COLOR_VALUE_MESSAGE =
   "Name the colour with a token from src/index.css's `@theme` block (ui/CLAUDE.md → Styling): a utility " +
-  'such as `fill-ink-muted`, or `var(--color-ink-muted)` where only a value fits, never a hex or ramp variable.';
+  'such as `fill-ink-muted`, or `var(--color-ink-muted)` where only a value fits, never a hex, a ramp variable ' +
+  'or a `--brand-*` palette variable.';
 
 // Every Literal and TemplateElement, not only `className`: hoisted class constants, the model helpers
 // that return a class name, and SVG paint attributes hold colours too. The anchoring keeps prose out.
