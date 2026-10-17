@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react';
+import Button from './Button';
 import { TAP_TARGET_CLASS } from './formFields';
 
 interface ErrorBoundaryProps {
@@ -8,9 +9,6 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   hasCrashed: boolean;
 }
-
-const RELOAD_BUTTON_CLASS =
-  `mt-6 bg-primary hover:bg-primary-hover text-on-primary px-4 py-2 rounded text-sm font-medium ${TAP_TARGET_CLASS}`;
 
 /**
  * Render throws only; `QueryState` owns fetch failures. A class because error catching has no hook.
@@ -34,9 +32,9 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
           <p className="mt-2 text-sm text-ink-muted">
             CWFG hit an unexpected error and could not finish loading this screen. Reloading usually clears it.
           </p>
-          <button type="button" className={RELOAD_BUTTON_CLASS} onClick={() => window.location.reload()}>
+          <Button tone="primary" size="regular" layout="mt-6" onClick={() => window.location.reload()}>
             Reload
-          </button>
+          </Button>
           {/* A plain anchor, not a router Link: the boundary sits outside the router. The way out when this URL
               crashes on every load. */}
           <a

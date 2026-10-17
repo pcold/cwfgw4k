@@ -3,15 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type { Season, SeasonRules } from '@/shared/api/types';
+import Button from '@/shared/components/Button';
 import { CONTROL_CLASS, FIELD_CLASS, FieldShell, TAP_TARGET_CLASS, TextField } from '@/shared/components/formFields';
 import { QueryState } from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
 import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
 import { buildRules, formatSideBetRounds, isReadableSideBetRounds } from './rulesInput';
-
-const CREATE_BUTTON_CLASS =
-  'bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm ' +
-  `font-medium ${TAP_TARGET_CLASS}`;
 
 function CreateSeasonSection(): ReactNode {
   const defaultsQuery = useQuery({
@@ -188,14 +185,9 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
       </div>
 
       <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => createMutation.mutate()}
-          disabled={disabled}
-          className={CREATE_BUTTON_CLASS}
-        >
+        <Button tone="primary" size="regular" onClick={() => createMutation.mutate()} disabled={disabled}>
           {createMutation.isPending ? 'Creating...' : 'Create Season'}
-        </button>
+        </Button>
         {success ? <span className="text-semantic-success text-sm">{success}</span> : null}
         {errorMessage ? (
           <span role="alert" className="text-semantic-danger text-sm">

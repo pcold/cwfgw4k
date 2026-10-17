@@ -21,7 +21,8 @@ const COLD_START_TIMEOUT_MS = 120_000;
 const PRODUCTION_FILE = 'src/main.tsx';
 const TEST_FILE = 'src/App.test.tsx';
 const CLIENT_FILE = 'src/shared/api/client/core.ts';
-const GOVERNED_FILES: readonly string[] = [PRODUCTION_FILE, TEST_FILE, CLIENT_FILE];
+const BUTTON_FILE = 'src/shared/components/Button.tsx';
+const GOVERNED_FILES: readonly string[] = [PRODUCTION_FILE, TEST_FILE, CLIENT_FILE, BUTTON_FILE];
 
 const BANNED_IMPORT_LINES: readonly string[] = [
   "import { debounce } from 'lodash';",
@@ -61,7 +62,23 @@ const RAW_VALUE_LINES: readonly string[] = [
   'export const brandClass = (size: string): string => `${size} bg-(--brand-red)`;',
 ];
 const RAW_VALUE_JSX_LINE = 'export const Axis = () => <line stroke="#9ca3af" />;';
+const FILLED_BUTTON_FILL_LINES: readonly string[] = [
+  "export const saveClass = 'bg-primary hover:bg-primary-hover text-on-primary';",
+  'export const backClass = (size: string): string => `bg-secondary ${size}`;',
+  "export const cancelClass = 'hover:bg-secondary-hover';",
+  "export const deleteClass = 'bg-semantic-danger-fill text-on-fill';",
+  'export const resetClass = (size: string): string => `${size} hover:bg-semantic-danger-fill-hover`;',
+];
+const FILLED_BUTTON_FILL_JSX_LINE = 'export const Back = () => <button className="bg-secondary px-4" />;';
 /* eslint-enable no-restricted-syntax */
+
+// The brand mark and the LIVE chip fill with the brand red; the rest would match a pattern missing a lookaround.
+const NON_BUTTON_FILL_LINES: readonly string[] = [
+  "export const markClass = 'bg-primary text-on-primary';",
+  "export const ruleClass = 'border-secondary text-semantic-danger';",
+  "export const tintClass = 'bg-secondary-tint';",
+  "export const dangerTintClass = 'bg-semantic-danger-fill-soft';",
+];
 
 // Each line would be reported by a pattern missing its lookbehind or lookahead.
 const NON_UTILITY_LINES: readonly string[] = [
@@ -79,6 +96,12 @@ const NON_UTILITY_LINES: readonly string[] = [
 const paletteReports = (messages: readonly Linter.LintMessage[], lines: readonly string[]): readonly (string | undefined)[] =>
   messages
     .filter((message) => message.ruleId === 'no-restricted-syntax' && message.message.includes('@theme'))
+    .map((message) => lines[message.line - 1]);
+
+// Matched on `Button.tsx`, the module the message names, so a rewording does not empty the filter.
+const fillReports = (messages: readonly Linter.LintMessage[], lines: readonly string[]): readonly (string | undefined)[] =>
+  messages
+    .filter((message) => message.ruleId === 'no-restricted-syntax' && message.message.includes('Button.tsx'))
     .map((message) => lines[message.line - 1]);
 
 const reportedLines = (
@@ -166,5 +189,28 @@ describe('the `as` ban in eslint.config.js', () => {
     const messages = await lintFixture(CLIENT_BOUNDARY_LINES, PRODUCTION_FILE);
 
     expect(reportedLines(messages, 'no-restricted-syntax', CLIENT_BOUNDARY_LINES)).toEqual([BOUNDARY_CAST_LINE]);
+  });
+});
+
+describe('the filled-button ban in eslint.config.js', () => {
+  const fillLines = [...FILLED_BUTTON_FILL_LINES, FILLED_BUTTON_FILL_JSX_LINE];
+
+  it.each([PRODUCTION_FILE, CLIENT_FILE])("reports every filled tone's fill spelled in %s", async (hostFile) => {
+    const lines = hostFile.endsWith('.tsx') ? fillLines : FILLED_BUTTON_FILL_LINES;
+    const messages = await lintFixture(lines, hostFile);
+
+    expect(fillReports(messages, lines)).toEqual(lines);
+  });
+
+  it('leaves a brand-red fill that is not a button, and lookalike utilities, alone', async () => {
+    const messages = await lintFixture(NON_BUTTON_FILL_LINES, PRODUCTION_FILE);
+
+    expect(reportedLines(messages, 'no-restricted-syntax', NON_BUTTON_FILL_LINES)).toEqual([]);
+  });
+
+  it.each([BUTTON_FILE, TEST_FILE])('grants %s the fills', async (hostFile) => {
+    const messages = await lintFixture(fillLines, hostFile);
+
+    expect(fillReports(messages, fillLines)).toEqual([]);
   });
 });
