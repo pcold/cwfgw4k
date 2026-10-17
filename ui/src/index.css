@@ -37,7 +37,7 @@
   --color-hairline-strong: var(--color-slate-400);
   --color-control-border: var(--brand-line);
 
-  /* On a light canvas the darker step is the higher-contrast ink; `-strong` shares navy with `ink` today. */
+  /* On a light canvas the darker step is the higher-contrast ink, so `-strong` is never lighter than `ink`. */
   --color-ink-strong: var(--brand-navy);
   --color-ink: var(--brand-navy);
   --color-ink-body: var(--brand-navy);
@@ -45,7 +45,7 @@
   --color-ink-label: var(--brand-muted);
   --color-ink-muted: var(--brand-muted);
   --color-ink-soft: var(--brand-muted);
-  /* Same shade as `ink-muted`: slate-500 is 4.08:1 on canvas. */
+  /* Not slate-500, which is 4.08:1 on canvas. */
   --color-ink-faint: var(--brand-muted);
 
   --color-primary: var(--brand-red);

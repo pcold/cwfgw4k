@@ -210,7 +210,7 @@ The palette is the PM's **Tour Broadcast**, and the app is **light only**. The p
 
 The one brand colour is red: `{colors.primary}` (the PM's red) fills primary buttons, and `{colors.primary-ink}` (red-700) colours the CWFG mark and the title of each data page. The PM's red is 4.25:1 on the canvas, so it is a fill; type takes the darker step.
 
-Only the bottom line reads by sign: Total Cash on the standings and the weekly report, Weekly +/- on the scoreboard, the late row bets total, a golfer's season earnings, and the Won, Lost and Net chips. `{colors.semantic-success}` (green-800) is a gain, `{colors.semantic-danger}` (red-700) a loss, and `{colors.ink-soft}` an amount that prints as `$0`. Every other signed amount keeps its table's ink, so the colour points at the number that settles the row; the one exception is a payout in the report grid's pick cells, which takes the cell's state colour (see On Gold Earnings). `moneyTone` reads the sign from the formatted text, so a cents column and a whole-dollar column each tone at the precision they show. Green means a gain and nothing else.
+Only the bottom line reads by sign: Total Cash on the standings and the weekly report, Weekly +/- on the scoreboard, the late row bets total, a golfer's season earnings, and the Won, Lost and Net chips. `{colors.semantic-success}` (green-800) is a gain, `{colors.semantic-danger}` (red-700) a loss, and `{colors.ink-soft}` an amount that prints as `$0`. Every other signed amount keeps its table's ink, so the colour points at the number that settles the row; the one exception is a payout in the report grid's pick cells, which takes the cell's state colour (see On Gold Earnings). `moneyTone` reads the sign from the formatted text, so a cents column and a whole-dollar column each tone at the precision they show. Among amounts, green means a gain and nothing else; the greens that are not money are a known gap (see Known gaps on the light canvas).
 
 The weekly report and the rosters page are laid out like the league's spreadsheet, and they keep its gold: a `{colors.gold}` (the PM's gold) header row, `{colors.gold-bright}` (yellow-100) cells for a pick that earned a payout, and a gold-washed TOTAL CASH row. Gold is a fill, never text: the PM's gold is 1.4:1 on white.
 
@@ -284,7 +284,8 @@ Each family takes only the rungs it uses. `-tint` is a wash, always at an opacit
 
 ### Known gaps on the light canvas
 Tokens only re-colour what the dark theme drew; the PM's component treatment (CWF-231 the app chrome, CWF-232 the tables) is still to come, and these are the gaps it has to close.
-- **Three reds.** Primary buttons are the PM's red; destructive buttons and losses are red-700. Beside a loss, a primary button can read as a warning.
+- **Red is both brand and loss.** Primary buttons are the PM's red; page titles, destructive buttons and losses are red-700. Beside a loss, a primary button can read as a warning, and a title is the same hex as a loss.
+- **Green outside money.** `{colors.semantic-success}` still colours success messages, exact roster matches, a rostered golfer's team and row wash on the leaderboard, the Rules page's amounts and the complete banner. The PM keeps green for gains.
 - **White on the PM's green is 4.40:1**, below AA for normal text. The PM's green money cells pass only as large text (24px, or 18.66px bold).
 - **Control borders are 1.4:1 on white.** A field on a card shows by its sky fill; WCAG 1.4.11 asks 3:1 of a control's boundary.
 - **Raised is the canvas.** A raised element straight on the page (the Admin page's Log out button) has no visible fill, and the report grid's spacer rows match its highlighted rows.
@@ -292,7 +293,7 @@ Tokens only re-colour what the dark theme drew; the PM's component treatment (CW
 
 ### Outside the token set
 - **Rankings chart lines** — `CHART_COLORS` in `ui/src/features/rankings/rankingsChartModel.ts` is a 13-hex series palette, one per team. It identifies a series rather than holding a role, so it carries a lint waiver instead of tokens. It was picked against the old dark canvas and has not been re-checked on white.
-- **PDF export** — `ui/src/features/weeklyReport/weeklyReportPdf.ts` prints a light-background report with its own RGB constants, still in the old green brand. Paper is not the screen; nothing here applies to it.
+- **PDF export** — `ui/src/features/weeklyReport/weeklyReportPdf.ts` prints a light-background report with its own RGB constants, not yet re-checked against the Tour Broadcast palette. Paper is not the screen; nothing here applies to it.
 
 ## Typography
 
