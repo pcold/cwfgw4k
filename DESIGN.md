@@ -204,7 +204,7 @@ The weekly report and the rosters page are laid out like the league's spreadshee
 **Key characteristics:**
 - Dark canvas, no light mode. `index.css` sets `{colors.canvas}` and `{colors.ink}` on `body`.
 - Gray ladder for depth: canvas → card → raised. Only the modal and the error screen cast a shadow.
-- Small type: `text-sm` (14px) body, `text-xs` (12px) for helper text, table heads and the report grids. Form fields, toolbar selects and the league/season selects are the exception at `text-base` (16px), because iOS zooms the page into a smaller control. The compact admin inputs, the roster-match select and the column-header filter are still below it.
+- Small type: `text-sm` (14px) body, `text-xs` (12px) for helper text, table heads and the report grids. Every select and text input is the exception at `text-base` (16px), because iOS zooms the page into a smaller control. The roster file input stays `text-sm`: iOS opens a picker for it rather than zooming.
 - Uppercase `tracking-wider` labels mark structure: table heads, card headings, the league/season picker's labels.
 - Tabular numbers (`tabular-nums` or `font-mono`) on every money and count column. The Rules page's payout schedule does not have them yet.
 - Corners are `rounded` (4px) on controls and chips, `rounded-lg` (8px) on cards and the modal. Nothing is pill-shaped.
@@ -289,7 +289,7 @@ Each family takes only the rungs it uses. `-tint` is a wash, always at an opacit
 | `{typography.card-heading}` | 14px | 600 | 0.05em, uppercase | `text-sm font-semibold uppercase tracking-wider text-ink-label` | Heading inside a card |
 | `{typography.column-header}` | 12px | 400 | 0.05em, uppercase | `text-xs uppercase tracking-wider` | Table heads, the picker's labels |
 | `{typography.body}` | 14px | 400 | 0 | `text-sm` | Tables, running text |
-| `{typography.control}` | 16px | 400 | 0 | `text-base` | Form fields, toolbar selects, the league/season selects |
+| `{typography.control}` | 16px | 400 | 0 | `text-base` | Form fields, toolbar selects, the league/season selects, the column-header filter |
 | `{typography.caption}` | 12px | 400 | 0 | `text-xs` | Field labels, helper text, field errors |
 | `{typography.button}` | 14px | 500 | 0 | `text-sm font-medium` | Standard buttons |
 | `{typography.button-compact}` | 12px | 500 | 0 | `text-xs font-medium` | Buttons in a page's header row or a panel row |
@@ -364,23 +364,26 @@ A bar under the nav: `bg-surface-card/60 border-b border-hairline`, two labelled
 
 Compact buttons in a header row or panel row (`FINALIZE_BUTTON_CLASS` and `LINKS_BUTTON_CLASS` in `ScoreboardPage.tsx`, `SAVE_LINK_BUTTON_CLASS`) drop to `px-3 py-1 text-xs`. A disabled filled button switches to `{colors.disabled}`; a disabled outline or text button takes `disabled:opacity-50`.
 
+Every button, every variant and the compact ones included, adds `TAP_TARGET_CLASS` (`min-h-11`, 44px) from `formFields.tsx`. The compact padding narrows a button; it never makes it shorter than a thumb.
+
 ### Form fields — `ui/src/shared/components/formFields.tsx`
-`FIELD_CLASS` is `bg-surface-raised border border-control-border rounded px-3 py-2 text-base w-full`, built on `CONTROL_CLASS` and shared by `TextField`, `DateField` and `SelectField`. `FieldShell` puts a `block text-xs text-ink-muted mb-1` label above the control and a `mt-1 text-semantic-danger text-xs` error, with `role="alert"`, below it. Size a field with the `width` prop, not by appending a width class.
+`FIELD_CLASS` is `bg-surface-raised border border-control-border rounded px-3 py-2 text-base min-h-11 w-full`, built on `CONTROL_CLASS` and `TAP_TARGET_CLASS` and shared by `TextField`, `DateField` and `SelectField`. `FieldShell` puts a `block text-xs text-ink-muted mb-1` label above the control and a `mt-1 text-semantic-danger text-xs` error, with `role="alert"`, below it. Size a field with the `width` prop, not by appending a width class.
 
-A select in a page's toolbar rather than a form — the scoreboard's tournament, player rankings' Through — is `PickerRow.tsx`: an uppercase label, then the select one step down on `bg-surface-card` over the same `CONTROL_CLASS`, the outline button's surface, then any trailing controls. The row is `flex-wrap`; below `sm:` the select is `w-full min-w-0 truncate`, so a long tournament name truncates rather than scroll the page sideways. The admin payout and schedule-multiplier inputs are a compact hand-rolled `px-2 py-1 text-sm`, below 16px.
+A select in a page's toolbar rather than a form — the scoreboard's tournament, player rankings' Through — is `PickerRow.tsx`: an uppercase label, then the select one step down on `bg-surface-card` over the same `CONTROL_CLASS` and `TAP_TARGET_CLASS`, the outline button's surface, then any trailing controls. The row is `flex-wrap`; below `sm:` the select is `w-full min-w-0 truncate`, so a long tournament name truncates rather than scroll the page sideways. The admin payout input is `CONTROL_CLASS` at `w-16`. The schedule-multiplier input and the roster-match select copy its sizing by hand: each has a border colour of its own, and two border colours would tie on stylesheet order.
 
-A table head that filters its column uses `ColumnHeaderFilter.tsx`: a transparent select that inherits the head's colour and turns `{colors.ink-label}` on hover or focus.
+A table head that filters its column uses `ColumnHeaderFilter.tsx`: a transparent, borderless select that inherits the head's colour and turns `{colors.ink-label}` on hover or focus. It is `text-base` with `TAP_TARGET_CLASS` inside the `text-xs` head, so its column is as wide as its longest option at 16px.
 
 ### Modal — `ui/src/shared/components/ModalShell.tsx`, `FormModal.tsx`
-A fixed scrim `bg-overlay/60`, centring a panel `bg-surface-card rounded-lg shadow-xl border border-hairline-strong`, capped at `max-h-[90dvh]` and scrolling inside. Header `px-5 py-4 border-b border-hairline` with a `{typography.modal-title}` and a `×` close button; body `px-5 py-4`. Widths are `form` (22rem) and `detail` (28rem), each capped at 92vw, and `wide` (`w-full max-w-3xl`). `FormModal` adds a primary submit stretched with `flex-1` and a secondary Cancel. Focus is trapped while open, and Escape closes it.
+A fixed scrim `bg-overlay/60`, centring a panel `bg-surface-card rounded-lg shadow-xl border border-hairline-strong`, capped at `max-h-[90dvh]` and scrolling inside. Header `px-5 py-4 border-b border-hairline` with a `{typography.modal-title}` and a 44px-tall `×` close button; body `px-5 py-4`. Widths are `form` (22rem) and `detail` (28rem), each capped at 92vw, and `wide` (`w-full max-w-3xl`). `FormModal` adds a primary submit stretched with `flex-1` and a secondary Cancel. Focus is trapped while open, and Escape closes it.
 
 ### List tables — `ScoreboardView.tsx`, `RankingsView.tsx`, `PlayerRankingsView.tsx`
-`text-sm`, full width. Head on the scoreboard: `bg-surface-card text-ink-label text-xs uppercase tracking-wider`; standings and player rankings drop the fill and use `text-ink-soft`. Body: `divide-y divide-hairline-soft`, rows `hover:bg-surface-card/60`.
+`text-sm`, full width. Head on the scoreboard: `bg-surface-card text-ink-label text-xs uppercase tracking-wider`; standings and player rankings drop the fill and use `text-ink-soft`. Body: `divide-y divide-hairline-soft`, rows `hover:bg-surface-card/60`. A row is as tall as its tap target: where a cell holds a golfer-name button, that button's `TAP_TARGET_CLASS` sets the row's height. A row with nothing to tap keeps the dense padding.
 
 ### Report grids — `ui/src/features/weeklyReport/WeeklyReportView.tsx`, `ui/src/features/rosters/RostersView.tsx`
 One column per team, one row per draft round, `text-xs border-collapse`, every cell bordered — in `{colors.hairline}` unless a row below says otherwise.
 - Header row: `bg-gold text-on-gold font-bold` with `border-hairline-strong`; team names uppercase.
 - Round rows: `bg-surface-card`; the round label is sticky, `font-bold text-ink-muted`. On the rosters page a side-bet round dims to `bg-surface-card/70`.
+- A golfer name in a round cell is a button carrying `TAP_TARGET_CLASS`, so the round row grows to 44px; the summary rows, with nothing to tap, stay dense.
 - Weekly-report cell: `{colors.gold-bright}` with `{colors.on-gold}` text when the pick earned, `{colors.side-bet-winner}` when it won the round's side bet, otherwise no fill. `roundCellBg` and `roundTextColor` in `weeklyReportModel.ts` decide which.
 - Summary rows: `bg-surface-raised font-bold` with `border-hairline-strong` for highlighted totals, `bg-surface-card` for sub-rows, separated by `h-1 bg-canvas` spacer rows.
 - TOTAL CASH row: `bg-gold-soft/30 font-bold text-sm`, borders `border-gold/50`, label cell `bg-gold-tint`, amounts coloured by sign — the only summary row coloured by sign.
@@ -398,7 +401,7 @@ A `flex flex-wrap gap-3 text-sm` row of `bg-surface-card rounded px-3 py-2` chip
 `QueryState` renders `Loading {label}…` in `{colors.ink-muted}` and `Failed to load {label}: …` in `{colors.semantic-danger}`, as plain paragraphs. `ErrorBoundary` replaces the app with a centred `max-w-md` card at level 3 (see Elevation), a `text-2xl font-bold` heading and a primary Reload button.
 
 ### Live overlay toggle — `ui/src/shared/components/LiveOverlayToggle.tsx`
-A native checkbox, `accent-primary-control w-4 h-4`, labelled `text-xs text-ink-muted`. It renders only while the selected tournament is in the season's current week.
+A native checkbox, `accent-primary-control w-4 h-4`, inside a `text-xs text-ink-muted` label carrying `TAP_TARGET_CLASS`: the box is too small to hit, so the label is the target. It renders only while the selected tournament is in the season's current week.
 
 ### Rankings chart — `ui/src/features/rankings/RankingsChart.tsx`
 An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fill-ink-muted`, one line per team in `CHART_COLORS` (see Outside the token set), and a `text-xs text-ink-muted` legend. Height steps `h-[220px] sm:h-[320px] lg:h-[400px]`.
@@ -411,6 +414,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 - Open a data page with the page header: a primary-ink title over a muted caption, underlined in `{colors.hairline}`.
 - Use `FIELD_CLASS` (through `TextField`, `DateField`, `SelectField`, or `FieldShell` for anything else) for every form input and select, and `PickerRow` for a page toolbar's select; both build on `CONTROL_CLASS`.
 - Put a wide table in `overflow-x-auto -mx-3 sm:mx-0` with a `min-w-*`, so a phone scrolls the table rather than the page.
+- Give every button, link, select, input and click handler `TAP_TARGET_CLASS`. A link also needs `flex items-center` (or `inline-flex`), or its text sits at the top of the 44px; a checkbox gives it to its label.
 
 ### Don't
 - Don't use a Tailwind shade, a hex, or a ramp variable in a component (`text-gray-400`, `#fff`, `var(--color-gray-400)`). `PALETTE_RESTRICTIONS` in `ui/eslint.config.js` fails the lint on each.
@@ -427,7 +431,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 | `sm:` to `lg:` (640–1024px) | Padding `px-4 py-6`; tables scroll inside the page margin. Picker selects sit in one row. Chart 320px. The nav is still the menu button. |
 | `lg:` and up (≥1024px) | The nav shows its links inline and hides the menu button. Chart 400px. |
 
-- The menu button is 44px square, the touch target the rest of the nav is sized around.
+- The menu button is 44px square (`w-11 h-11`), the same height `TAP_TARGET_CLASS` gives every other target.
 - Report grids keep their round column sticky at every width; only the team columns scroll.
 - Modal height caps at `90dvh`, not `vh`: mobile `vh` ignores the on-screen keyboard and pushes the footer off-screen.
 
@@ -439,6 +443,7 @@ Use these when building UI here:
 - **A primary button:** `bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary px-4 py-2 rounded text-sm font-medium`.
 - **A destructive button:** `bg-semantic-danger-fill hover:bg-semantic-danger-fill-hover disabled:bg-disabled text-on-fill px-4 py-2 rounded text-sm font-medium`.
 - **A field:** `TextField` / `SelectField` / `DateField` from `@/shared/components/formFields`; never a hand-rolled input class.
+- **A tap target:** append `TAP_TARGET_CLASS` from `@/shared/components/formFields` to any button, link, select or input; a link adds `inline-flex items-center`.
 - **A toolbar select:** `PickerRow` from `@/shared/components/PickerRow`, with the row's other controls as its children.
 - **A page header:** `<header className="border-b border-hairline pb-3">` with `<h2 className="text-xl font-semibold text-primary-ink">` and `<p className="text-xs text-ink-muted">`.
 - **A table head:** `bg-surface-card text-ink-label text-xs uppercase tracking-wider`, body `divide-y divide-hairline-soft`.
