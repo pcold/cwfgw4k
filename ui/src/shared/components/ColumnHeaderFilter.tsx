@@ -19,8 +19,8 @@ interface Props {
 // "" — is the default filter state). Callers own the filter state and predicate; this
 // component just renders the control consistently across tables.
 function ColumnHeaderFilter({ ariaLabel, value, onChange, options, className }: Props): ReactNode {
-  // The head's family, weight and tracking reach a select through the preflight's `font: inherit`, but the
-  // browser resets a select's text-transform, so `uppercase` is restated here.
+  // The preflight makes a select inherit the head's font and tracking, but not its text-transform, which the
+  // browser resets, so `uppercase` is restated here.
   const base =
     `bg-transparent text-base uppercase text-inherit hover:text-ink-label ${TAP_TARGET_CLASS} ` +
     'focus:text-ink-label focus:outline-none cursor-pointer -ml-1 pr-1';
