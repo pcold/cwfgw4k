@@ -21,7 +21,7 @@ function r(overrides: Partial<PlayerRankingsRow>): PlayerRankingsRow {
 
 describe('PlayerRankingsView', () => {
   it('shows an empty state when no players qualify', () => {
-    render(<PlayerRankingsView players={[]} live={false} />);
+    render(<PlayerRankingsView players={[]} />);
     expect(screen.getByText(/No players with a top 10 finish yet/i)).toBeInTheDocument();
   });
 
@@ -32,7 +32,6 @@ describe('PlayerRankingsView', () => {
           r({ key: 'g:g-1', name: 'Scottie Scheffler', topTens: 3, totalEarnings: 50, teamName: 'Aces', draftRound: 1 }),
           r({ key: 'u:Phil', golferId: null, name: 'P. Mickelson', topTens: 1, totalEarnings: 8, teamName: null, draftRound: null }),
         ]}
-        live={false}
       />,
     );
 
@@ -54,18 +53,12 @@ describe('PlayerRankingsView', () => {
     expect(second.getByText('—')).toBeInTheDocument();
   });
 
-  it('shows the live overlay note when live is true', () => {
-    render(<PlayerRankingsView players={[r({})]} live />);
-    expect(screen.getByText(/live overlay on/i)).toBeInTheDocument();
-  });
-
   it('makes drafted player names clickable when onGolferClick is provided', async () => {
     const onGolferClick = vi.fn();
     const user = userEvent.setup();
     render(
       <PlayerRankingsView
         players={[r({ golferId: 'g-42', name: 'Clickable' })]}
-        live={false}
         onGolferClick={onGolferClick}
       />,
     );
@@ -77,7 +70,6 @@ describe('PlayerRankingsView', () => {
     render(
       <PlayerRankingsView
         players={[r({ golferId: 'g-42', name: 'Clickable' })]}
-        live={false}
         onGolferClick={vi.fn()}
       />,
     );
@@ -89,7 +81,6 @@ describe('PlayerRankingsView', () => {
     render(
       <PlayerRankingsView
         players={[r({ key: 'u:Phil', golferId: null, name: 'P. Mickelson' })]}
-        live={false}
         onGolferClick={vi.fn()}
       />,
     );
@@ -98,7 +89,7 @@ describe('PlayerRankingsView', () => {
   });
 
   it('renders names as plain text when no onGolferClick is provided', () => {
-    render(<PlayerRankingsView players={[r({})]} live={false} />);
+    render(<PlayerRankingsView players={[r({})]} />);
     expect(screen.queryByRole('button', { name: 'Scottie Scheffler' })).not.toBeInTheDocument();
     expect(screen.getByText('Scottie Scheffler')).toBeInTheDocument();
   });
@@ -112,7 +103,6 @@ describe('PlayerRankingsView', () => {
           r({ key: 'g:g-2', name: 'Rory McIlroy', teamName: 'Birdies' }),
           r({ key: 'u:Phil', golferId: null, name: 'P. Mickelson', teamName: null }),
         ]}
-        live={false}
       />,
     );
 
@@ -133,7 +123,6 @@ describe('PlayerRankingsView', () => {
           r({ key: 'g:g-1', name: 'Scottie Scheffler', teamName: 'Aces' }),
           r({ key: 'u:Phil', golferId: null, name: 'P. Mickelson', teamName: null }),
         ]}
-        live={false}
       />,
     );
 
@@ -145,7 +134,7 @@ describe('PlayerRankingsView', () => {
   });
 
   it('omits the Undrafted option when no undrafted players are present', () => {
-    render(<PlayerRankingsView players={[r({ teamName: 'Aces' })]} live={false} />);
+    render(<PlayerRankingsView players={[r({ teamName: 'Aces' })]} />);
     expect(screen.queryByRole('option', { name: 'Undrafted' })).not.toBeInTheDocument();
   });
 
@@ -154,7 +143,6 @@ describe('PlayerRankingsView', () => {
     render(
       <PlayerRankingsView
         players={[r({ key: 'g:g-1', name: 'Scottie Scheffler', teamName: 'Aces' })]}
-        live={false}
       />,
     );
     // Add a team to the option list first - only Aces is a real option, so pick it then switch back.
@@ -174,7 +162,6 @@ describe('PlayerRankingsView', () => {
           r({ key: 'g:3', teamName: 'Birdies' }),
           r({ key: 'g:4', teamName: 'Aces' }),
         ]}
-        live={false}
       />,
     );
 
@@ -194,7 +181,6 @@ describe('PlayerRankingsView', () => {
           r({ key: 'g:2', name: 'R3 Guy', teamName: 'Birdies', draftRound: 3 }),
           r({ key: 'u:Phil', golferId: null, name: 'Undrafted Guy', teamName: null, draftRound: null }),
         ]}
-        live={false}
       />,
     );
 
@@ -213,7 +199,6 @@ describe('PlayerRankingsView', () => {
           r({ key: 'g:1', name: 'Drafted', teamName: 'Aces', draftRound: 2 }),
           r({ key: 'u:Phil', golferId: null, name: 'Not Drafted', teamName: null, draftRound: null }),
         ]}
-        live={false}
       />,
     );
 
@@ -233,7 +218,6 @@ describe('PlayerRankingsView', () => {
           r({ key: 'g:3', draftRound: 3 }),
           r({ key: 'g:4', draftRound: 1 }),
         ]}
-        live={false}
       />,
     );
 
@@ -253,7 +237,6 @@ describe('PlayerRankingsView', () => {
           r({ key: 'g:2', name: 'Aces R2', teamName: 'Aces', draftRound: 2 }),
           r({ key: 'g:3', name: 'Birdies R1', teamName: 'Birdies', draftRound: 1 }),
         ]}
-        live={false}
       />,
     );
 
@@ -272,7 +255,6 @@ describe('PlayerRankingsView', () => {
           r({ key: 'g:g-1', name: 'Earner', totalEarnings: 50 }),
           r({ key: 'g:g-2', golferId: 'g-2', name: 'Blank', totalEarnings: 0.004 }),
         ]}
-        live={false}
       />,
     );
     expect(screen.getByText('+$50.00')).toHaveClass('text-semantic-success');

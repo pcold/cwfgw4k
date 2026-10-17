@@ -13,7 +13,6 @@ import type {
   Season,
   Tournament,
 } from '@/shared/api/types';
-import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import PlayerRankingsPage from './PlayerRankingsPage';
 
 const leaguesMock = vi.fn<typeof api.leagues>();
@@ -130,9 +129,8 @@ describe('PlayerRankingsPage', () => {
 
     renderWithProviders(<PlayerRankingsPage />);
 
-    expect(
-      await screen.findByRole('heading', { name: /Player Rankings/i }),
-    ).toBeInTheDocument();
+    const subtitle = await screen.findByText('2 players with at least one top 10');
+    expect(subtitle.closest('header')).toContainElement(screen.getByRole('heading', { name: /Player Rankings/i }));
     const rows = await screen.findAllByRole('row');
     const dataRows = rows.slice(1);
     expect(dataRows).toHaveLength(2);
@@ -241,12 +239,7 @@ describe('PlayerRankingsPage', () => {
     );
 
     const user = userEvent.setup();
-    renderWithProviders(
-      <>
-        <LeagueSeasonPicker />
-        <PlayerRankingsPage />
-      </>,
-    );
+    renderWithProviders(<PlayerRankingsPage />);
 
     await user.selectOptions(await screen.findByLabelText(/Through/i), spring.id);
     await waitFor(() => expect(playerRankingsMock).toHaveBeenCalledWith('sn-1', false, 'tn-a'));
@@ -355,6 +348,21 @@ describe('PlayerRankingsPage', () => {
     expect(
       await screen.findByText(/No players with a top 10 finish yet/i),
     ).toBeInTheDocument();
+  });
+
+  it('titles the page once, and marks it LIVE when the server overlaid the rankings', async () => {
+    const inProgress = tournament({ id: 'tn-a', name: 'Open A', status: 'in_progress' });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([inProgress]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-a' });
+    playerRankingsMock.mockResolvedValue(rankings({ players: [row({})], live: true, liveEligible: true }));
+
+    renderWithProviders(<PlayerRankingsPage />);
+
+    const subtitle = await screen.findByText('1 players with at least one top 10');
+    expect(screen.getAllByRole('heading', { name: /Player Rankings/i })).toHaveLength(1);
+    expect(within(subtitle.closest('header') ?? document.body).getByText('Live')).toHaveClass('bg-primary');
   });
 
   it('surfaces an error when the player-rankings query fails', async () => {

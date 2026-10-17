@@ -8,14 +8,13 @@ import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 
 interface Props {
   players: PlayerRankingsRow[];
-  live: boolean;
   onGolferClick?: (golferId: string) => void;
 }
 
 const ALL = '';
 const UNDRAFTED = '__undrafted__';
 
-function PlayerRankingsView({ players, live, onGolferClick }: Props): ReactNode {
+function PlayerRankingsView({ players, onGolferClick }: Props): ReactNode {
   const [teamFilter, setTeamFilter] = useState<string>(ALL);
   const [roundFilter, setRoundFilter] = useState<string>(ALL);
 
@@ -69,14 +68,6 @@ function PlayerRankingsView({ players, live, onGolferClick }: Props): ReactNode 
 
   return (
     <section className="space-y-4">
-      <header className="border-b border-hairline pb-3">
-        <h2 className="text-xl font-semibold text-primary-ink">Player Rankings</h2>
-        <p className="text-xs text-ink-muted">
-          {players.length} players with at least one top 10
-          {live ? ' · live overlay on' : ''}
-        </p>
-      </header>
-
       <div className="overflow-x-auto -mx-3 sm:mx-0">
         <table className="min-w-full text-sm">
           <thead>
