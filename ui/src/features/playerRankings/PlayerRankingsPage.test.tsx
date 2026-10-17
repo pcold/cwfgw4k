@@ -5,6 +5,7 @@ import type { api } from '@/shared/api/client';
 import { nth } from '@/shared/test/nth';
 import { queryKeys } from '@/shared/api/queryKeys';
 import QueryAnswered from '@/shared/test/QueryAnswered';
+import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import type {
   League,
@@ -130,7 +131,7 @@ describe('PlayerRankingsPage', () => {
     renderWithProviders(<PlayerRankingsPage />);
 
     const subtitle = await screen.findByText('2 players with at least one top 10');
-    expect(subtitle.closest('header')).toContainElement(screen.getByRole('heading', { name: /Player Rankings/i }));
+    expect(pageTitleRow(subtitle)).toContainElement(screen.getByRole('heading', { name: /Player Rankings/i }));
     const rows = await screen.findAllByRole('row');
     const dataRows = rows.slice(1);
     expect(dataRows).toHaveLength(2);
@@ -362,7 +363,7 @@ describe('PlayerRankingsPage', () => {
 
     const subtitle = await screen.findByText('1 players with at least one top 10');
     expect(screen.getAllByRole('heading', { name: /Player Rankings/i })).toHaveLength(1);
-    expect(within(subtitle.closest('header') ?? document.body).getByText('Live')).toHaveClass('bg-primary');
+    expect(within(pageTitleRow(subtitle)).getByText('Live')).toHaveClass('bg-primary');
   });
 
   it('surfaces an error when the player-rankings query fails', async () => {

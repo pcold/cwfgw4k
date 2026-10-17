@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import QueryAnswered from '@/shared/test/QueryAnswered';
+import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import type { League, Rankings, Season, Tournament } from '@/shared/api/types';
 import RankingsPage from './RankingsPage';
@@ -97,7 +98,7 @@ describe('RankingsPage', () => {
     renderWithProviders(<RankingsPage />);
 
     const subtitle = await screen.findByText('3 weeks played');
-    expect(subtitle.closest('header')).toContainElement(screen.getByRole('heading', { name: /Team Standings/i }));
+    expect(pageTitleRow(subtitle)).toContainElement(screen.getByRole('heading', { name: /Team Standings/i }));
     const table = screen.getByRole('table');
     expect(within(table).getByText('Aces')).toBeInTheDocument();
     expect(rankingsMock).toHaveBeenCalledWith('sn-1', false, undefined);
@@ -313,9 +314,8 @@ describe('RankingsPage', () => {
 
     renderWithProviders(<RankingsPage />);
 
-    await screen.findByText('3 weeks played');
-    const header = screen.getByRole('heading', { name: /Team Standings/i }).closest('header');
-    expect(within(header ?? document.body).getByText('Live')).toHaveClass('bg-primary');
+    const subtitle = await screen.findByText('3 weeks played');
+    expect(within(pageTitleRow(subtitle)).getByText('Live')).toHaveClass('bg-primary');
   });
 
   it('shows no status chip on standings the server did not overlay', async () => {

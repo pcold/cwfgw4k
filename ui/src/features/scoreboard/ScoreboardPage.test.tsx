@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import OpenQuery from '@/shared/test/OpenQuery';
+import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
 import type {
@@ -130,12 +131,6 @@ function buildReport(name: string): WeeklyReport {
     weeklyTotals: makeWonLostTotals(),
     weeklyStandings: ['team-1'],
   };
-}
-
-function titleRow(subtitle: HTMLElement): HTMLElement {
-  const header = subtitle.closest('header');
-  if (!header) throw new Error('the subtitle sits outside the page title');
-  return header;
 }
 
 function golfer(id: string, firstName: string, lastName: string): Golfer {
@@ -741,7 +736,7 @@ describe('ScoreboardPage', () => {
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
     const subtitle = await screen.findByText('Sample Open · Week 9');
-    expect(within(titleRow(subtitle)).getByText('Final')).toHaveClass('bg-chrome');
+    expect(within(pageTitleRow(subtitle)).getByText('Final')).toHaveClass('bg-chrome');
   });
 
   it('marks the tournament LIVE, not final, when the server overlaid ESPN', async () => {
@@ -754,7 +749,7 @@ describe('ScoreboardPage', () => {
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
     const subtitle = await screen.findByText('Current Open · Week 9');
-    expect(within(titleRow(subtitle)).getByText('Live')).toHaveClass('bg-primary');
+    expect(within(pageTitleRow(subtitle)).getByText('Live')).toHaveClass('bg-primary');
     expect(screen.queryByText('Final')).not.toBeInTheDocument();
   });
 
