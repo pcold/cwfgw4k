@@ -6,7 +6,7 @@
 @source not "../CLAUDE.md";
 
 /*
- * The PM's Tour Broadcast hexes, kept exact: navy and sky have no Tailwind step. Outside `--color-*` so
+ * The Tour Broadcast hexes, kept exact: navy and sky have no Tailwind step. Outside `--color-*` so
  * Tailwind makes no utility of them, and the lint bans `--brand-*` in components: a role token aliases them.
  */
 :root {
@@ -51,7 +51,7 @@
   --color-primary: var(--brand-red);
   --color-primary-hover: var(--color-red-700);
   --color-on-primary: var(--color-white);
-  /* red-700, not the brand red, which is 4.25:1 on canvas: the PM's red is a fill. */
+  /* red-700, not the brand red, which is 4.25:1 on canvas and so a fill. */
   --color-primary-ink: var(--color-red-700);
   --color-primary-control: var(--brand-red);
 
@@ -114,7 +114,7 @@
   line-gap-override: 0%;
 }
 
-/* The PM's condensed display type; a fallback without a width axis sets it at its own width. */
+/* A fallback face without a width axis sets this at its own width. */
 @utility font-display {
   font-stretch: 75%;
 }
