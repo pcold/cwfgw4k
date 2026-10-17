@@ -37,4 +37,13 @@ describe('ColumnHeaderFilter', () => {
     expect(select).not.toHaveClass('text-xs');
     expect(select).not.toHaveClass('border');
   });
+
+  it('restates uppercase, which a browser resets on a select inside the column head', () => {
+    renderWithProviders(
+      <ColumnHeaderFilter ariaLabel="Filter by team" value="" onChange={vi.fn()} options={OPTIONS} />,
+      NO_PROVIDERS,
+    );
+
+    expect(screen.getByRole('combobox', { name: 'Filter by team' })).toHaveClass('uppercase');
+  });
 });
