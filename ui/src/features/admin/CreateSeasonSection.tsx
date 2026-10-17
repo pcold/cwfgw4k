@@ -136,7 +136,7 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
             <button
               type="button"
               onClick={() => setEditedPayouts([...payouts, '0'])}
-              className={`text-xs text-semantic-info hover:text-semantic-info-hover ${TAP_TARGET_CLASS}`}
+              className={`text-xs text-ink-muted hover:text-ink-strong ${TAP_TARGET_CLASS}`}
             >
               + Add place
             </button>

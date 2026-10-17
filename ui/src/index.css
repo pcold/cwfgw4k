@@ -39,7 +39,8 @@
   --color-hairline-soft: var(--brand-line);
   --color-hairline: var(--brand-line);
   --color-hairline-strong: var(--color-slate-400);
-  --color-control-border: var(--brand-line);
+  /* Not the brand line the hairlines share: 1.36:1 on white, and a field on the canvas shows by its border alone. */
+  --color-control-border: var(--color-slate-500);
 
   /* On a light canvas the darker step is the higher-contrast ink, so `-strong` is never lighter than `ink`. */
   --color-ink-strong: var(--brand-navy);
@@ -61,7 +62,7 @@
 
   /* Text on the secondary and semantic fills; `on-primary` holds the same white for the primary one. */
   --color-on-fill: var(--color-white);
-  --color-secondary: var(--brand-muted);
+  --color-secondary: var(--brand-navy);
   --color-secondary-hover: var(--brand-navy-secondary);
   --color-disabled: var(--color-slate-400);
 
@@ -86,13 +87,6 @@
   --color-semantic-danger-fill: var(--color-red-700);
   --color-semantic-danger-fill-hover: var(--color-red-800);
   --color-semantic-danger-border: var(--color-red-500);
-
-  --color-semantic-info-soft: var(--color-blue-100);
-  --color-semantic-info: var(--color-blue-700);
-  --color-semantic-info-hover: var(--color-blue-800);
-  --color-semantic-info-ink: var(--color-blue-800);
-  --color-semantic-info-fill: var(--color-blue-600);
-  --color-semantic-info-fill-hover: var(--color-blue-700);
 
   /* The report grids' gold: header rows, the cash-total row, and a cell that earned a payout. A fill: 1.4:1 on white. */
   --color-gold-tint: var(--color-yellow-200);

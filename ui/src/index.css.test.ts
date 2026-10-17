@@ -24,6 +24,8 @@ type Backdrop = string | Wash;
 
 // WCAG 2.2 §1.4.3. The large-text carve-out (3:1) is not taken: no more than a page heading could claim it.
 const AA_NORMAL_TEXT = 4.5;
+// WCAG 2.2 §1.4.11, for the line that bounds a control rather than a glyph.
+const NON_TEXT_CONTRAST = 3;
 
 // The scoreboard's rostered leaderboard row and the weekly report's cash-total row.
 const SUCCESS_ROW: Wash = { token: 'semantic-success-tint', percent: 10, over: 'canvas' };
@@ -37,7 +39,7 @@ const REPORT_ROW_HOVERED: Wash = { token: 'surface-card', percent: 80, over: 'ca
 // A wash between two backdrops an ink is listed on needs no row: on these near-neutral surfaces the
 // blend's luminance lies between theirs, so it contrasts no less than the weaker of the two.
 const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
-  'ink-strong': ['surface-card', 'surface-raised', 'surface-raised-hover'],
+  'ink-strong': ['canvas', 'surface-card'],
   ink: ['canvas', 'surface-card', 'surface-raised', 'surface-raised-hover', 'gold-tint', SUCCESS_ROW],
   'ink-body': ['surface-card', 'surface-raised', 'side-bet-winner', SIDE_BET_ROUND_ROW, REPORT_ROW_HOVERED],
   'ink-secondary': ['canvas', 'surface-card', 'surface-raised'],
@@ -56,8 +58,6 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
   'on-fill': [
     'semantic-danger-fill',
     'semantic-danger-fill-hover',
-    'semantic-info-fill',
-    'semantic-info-fill-hover',
     'secondary',
     'secondary-hover',
   ],
@@ -80,11 +80,14 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
   'semantic-danger': ['canvas', 'surface-card', 'surface-raised', CASH_TOTAL_ROW],
   'semantic-danger-hover': ['surface-card'],
   'semantic-danger-strong': ['surface-card'],
-  'semantic-info': ['surface-card'],
-  'semantic-info-hover': ['surface-card'],
-  'semantic-info-ink': ['semantic-info-soft'],
   'on-gold': ['gold', 'gold-bright'],
   'on-gold-earnings': ['gold-bright'],
+};
+
+// A field's border against its own fill and against each surface a field sits on: a white card, and the canvas
+// under the league/season picker, where the fill matches the page and the border is the only boundary.
+const BOUNDARY_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
+  'control-border': ['canvas', 'surface-card', 'surface-raised'],
 };
 
 // Names alone cannot say which tokens are text: `semantic-danger` is, `semantic-danger-fill` is not.
@@ -204,13 +207,19 @@ const textTokensInUse: ReadonlySet<string> = new Set(
   ),
 );
 
-const declaredPairs: readonly { readonly ink: string; readonly backdrop: Backdrop; readonly label: string }[] =
-  Object.entries(TEXT_BACKDROPS).flatMap(([ink, backdrops]) =>
-    backdrops.map((backdrop) => ({ ink, backdrop, label: `${ink} on ${describeBackdrop(backdrop)}` })),
+interface ContrastPair {
+  readonly foreground: string;
+  readonly backdrop: Backdrop;
+  readonly label: string;
+}
+
+const pairsOf = (table: Readonly<Record<string, readonly Backdrop[]>>): readonly ContrastPair[] =>
+  Object.entries(table).flatMap(([foreground, backdrops]) =>
+    backdrops.map((backdrop) => ({ foreground, backdrop, label: `${foreground} on ${describeBackdrop(backdrop)}` })),
   );
 
-const measure = (pair: (typeof declaredPairs)[number]): number =>
-  contrastRatio(resolveToken(pair.ink), resolveBackdrop(pair.backdrop));
+const measure = (pair: ContrastPair): number =>
+  contrastRatio(resolveToken(pair.foreground), resolveBackdrop(pair.backdrop));
 
 describe('the text tokens declared in index.css', () => {
   // Without this the table goes quiet rather than red: a new text colour would simply have no row.
@@ -218,8 +227,14 @@ describe('the text tokens declared in index.css', () => {
     expect([...textTokensInUse].sort()).toEqual(Object.keys(TEXT_BACKDROPS).sort());
   });
 
-  it.each(declaredPairs)('clear AA for normal text where $label', (pair) => {
+  it.each(pairsOf(TEXT_BACKDROPS))('clear AA for normal text where $label', (pair) => {
     expect(measure(pair)).toBeGreaterThanOrEqual(AA_NORMAL_TEXT);
+  });
+});
+
+describe('the control boundaries declared in index.css', () => {
+  it.each(pairsOf(BOUNDARY_BACKDROPS))('clear 3:1 for a non-text boundary where $label', (pair) => {
+    expect(measure(pair)).toBeGreaterThanOrEqual(NON_TEXT_CONTRAST);
   });
 });
 
