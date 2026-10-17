@@ -6,11 +6,11 @@ import {
   formatScoreToPar,
   hasPlayerOn,
   hasUndraftedPlayer,
+  leaderboardTeamChips,
   leaderboardTeamNames,
   playerNames,
   scoreboardSubtitle,
   scoreboardTeams,
-  teamLabel,
 } from './scoreboardModel';
 
 function row(overrides: Partial<ReportCell> = {}): ReportCell {
@@ -165,13 +165,19 @@ describe('leaderboard labels', () => {
     expect(playerNames(pair)).toBe('McIlroy / Lowry');
   });
 
-  it('labels each partner in player order, an undrafted one as "undrafted"', () => {
-    expect(teamLabel(pair)).toBe('undrafted / PAYRAY');
+  it('gives each partner its own chips in player order, an undrafted one an undrafted chip', () => {
+    expect(leaderboardTeamChips(pair)).toEqual([
+      { kind: 'undrafted', key: 'McIlroy:undrafted' },
+      { kind: 'team', key: 'Lowry:PAYRAY', teamName: 'PAYRAY' },
+    ]);
   });
 
-  it('names every team rostering a golfer split across them', () => {
+  it('gives a golfer split across teams one chip per team', () => {
     const split = makeLeaderboardEntry({ players: [{ name: 'Rahm', teamNames: ['Aces', 'Birdies'] }] });
-    expect(teamLabel(split)).toBe('Aces / Birdies');
+    expect(leaderboardTeamChips(split)).toEqual([
+      { kind: 'team', key: 'Rahm:Aces', teamName: 'Aces' },
+      { kind: 'team', key: 'Rahm:Birdies', teamName: 'Birdies' },
+    ]);
   });
 });
 

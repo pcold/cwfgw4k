@@ -1,6 +1,9 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import type { WeeklyReport } from '@/shared/api/types';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
+import type { LiveLeaderboardEntry, WeeklyReport, WonLostTotals } from '@/shared/api/types';
 import { formatDollarsAndCents, moneyToneClass } from '@/shared/util/money';
+import Chip from '@/shared/components/Chip';
+import MoneyCell from '@/shared/components/MoneyCell';
+import PositionCell from '@/shared/components/PositionCell';
 import ColumnHeaderFilter, {
   type ColumnHeaderFilterOption,
 } from '@/shared/components/ColumnHeaderFilter';
@@ -10,16 +13,226 @@ import {
   formatScoreToPar,
   hasPlayerOn,
   hasUndraftedPlayer,
+  leaderboardTeamChips,
   leaderboardTeamNames,
   playerNames,
   scoreboardTeams,
-  teamLabel,
+  type ScoreboardTeam,
 } from './scoreboardModel';
 
 const ALL = '';
 const UNDRAFTED = '__undrafted__';
 
 const GOLFER_BUTTON_CLASS = `text-ink-secondary hover:underline cursor-pointer bg-transparent border-0 p-0 ${TAP_TARGET_CLASS}`;
+
+// Spelled as on the standings' card rows, which keep theirs private.
+const CARD_CELL_CLASS = 'px-3 py-2 bg-surface-card';
+
+// Below `xl` the two columns stack, the team table first.
+const TWO_COLUMN_CLASS = 'grid gap-6 xl:grid-cols-[minmax(0,11fr)_minmax(0,10fr)] xl:gap-8 xl:items-start';
+
+interface GolferLineProps {
+  team: ScoreboardTeam;
+  onGolferClick?: (golferId: string) => void;
+}
+
+// Each golfer's name, finish and payout keep to one line, so a wrap falls only between golfers.
+function GolferLine({ team, onGolferClick }: GolferLineProps): ReactNode {
+  if (team.golferScores.length === 0) return null;
+  return (
+    <div className="text-sm text-ink-muted">
+      {team.golferScores.map((golfer, index) => {
+        const { golferId } = golfer;
+        return (
+          <Fragment key={golferId ?? golfer.golferName}>
+            {index > 0 ? ' · ' : null}
+            <span className="whitespace-nowrap">
+              {onGolferClick && golferId ? (
+                <button type="button" onClick={() => onGolferClick(golferId)} className={GOLFER_BUTTON_CLASS}>
+                  {golfer.golferName}
+                </button>
+              ) : (
+                <span className="text-ink-secondary">{golfer.golferName}</span>
+              )}{' '}
+              {golfer.tied ? 'T' : null}
+              {golfer.position ?? '?'} <span className="tabular-nums">{formatDollarsAndCents(golfer.payout)}</span>
+              {golfer.ownershipPct < 100 ? ` (${golfer.ownershipPct}%)` : null}
+            </span>
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+interface TeamTableProps {
+  teams: readonly ScoreboardTeam[];
+  onGolferClick?: (golferId: string) => void;
+}
+
+function TeamTable({ teams, onGolferClick }: TeamTableProps): ReactNode {
+  return (
+    <div className="overflow-x-auto -mx-3 sm:mx-0">
+      <table className="w-full min-w-[500px] text-sm border-separate border-spacing-y-1">
+        <thead className={COLUMN_HEADER_CLASS}>
+          <tr className="text-left">
+            <th className="px-3 py-2 w-14 text-center">#</th>
+            <th className="px-3 py-2">Team</th>
+            <th className="px-3 py-2 text-right">Top 10 Earnings</th>
+            <th className="px-3 py-2 w-36 text-right">Weekly +/-</th>
+          </tr>
+        </thead>
+        <tbody>
+          {teams.map((team, index) => (
+            <tr key={team.teamId} className="h-11">
+              <PositionCell position={index + 1} />
+              <td className={CARD_CELL_CLASS}>
+                <div className="font-display font-bold text-lg uppercase text-ink">{team.teamName}</div>
+                <GolferLine team={team} onGolferClick={onGolferClick} />
+              </td>
+              <td className={`${CARD_CELL_CLASS} text-right tabular-nums text-ink-secondary`}>
+                {formatDollarsAndCents(team.topTenEarnings)}
+              </td>
+              <MoneyCell display={formatDollarsAndCents(team.weeklyTotal)} />
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function MoneySummary({ totals }: { totals: WonLostTotals }): ReactNode {
+  const won = formatDollarsAndCents(totals.won);
+  const lost = formatDollarsAndCents(totals.lost);
+  const net = formatDollarsAndCents(totals.net);
+  return (
+    <div className="flex flex-wrap gap-3 text-sm">
+      <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
+        <span className="text-ink-soft">Won</span>
+        <span className={`font-semibold tabular-nums ${moneyToneClass(won)}`}>
+          {won}
+        </span>
+      </div>
+      <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
+        <span className="text-ink-soft">Lost</span>
+        <span className={`font-semibold tabular-nums ${moneyToneClass(lost)}`}>
+          {lost}
+        </span>
+      </div>
+      <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
+        <span className="text-ink-soft">Net</span>
+        <span className={`font-semibold tabular-nums ${moneyToneClass(net)}`}>
+          {net}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function TeamChips({ entry }: { entry: LiveLeaderboardEntry }): ReactNode {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {leaderboardTeamChips(entry).map((chip) => {
+        switch (chip.kind) {
+          case 'team':
+            return <Chip key={chip.key} variant="neutral">{chip.teamName}</Chip>;
+          case 'undrafted':
+            return <Chip key={chip.key} variant="outlined">Undrafted</Chip>;
+          default:
+            return chip satisfies never;
+        }
+      })}
+    </div>
+  );
+}
+
+interface LeaderboardCardProps {
+  leaderboard: readonly LiveLeaderboardEntry[];
+  tournamentName: string | null;
+}
+
+function LeaderboardCard({ leaderboard, tournamentName }: LeaderboardCardProps): ReactNode {
+  const [teamFilter, setTeamFilter] = useState<string>(ALL);
+
+  const teamOptions = useMemo<ColumnHeaderFilterOption[]>(
+    () => [
+      { value: ALL, label: 'Team' },
+      ...leaderboardTeamNames(leaderboard).map((name) => ({ value: name, label: name })),
+      ...(leaderboard.some(hasUndraftedPlayer) ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
+    ],
+    [leaderboard],
+  );
+
+  const filteredLeaderboard = useMemo(() => {
+    if (teamFilter === ALL) return leaderboard;
+    if (teamFilter === UNDRAFTED) return leaderboard.filter(hasUndraftedPlayer);
+    return leaderboard.filter((entry) => hasPlayerOn(entry, teamFilter));
+  }, [leaderboard, teamFilter]);
+
+  return (
+    <div className="bg-surface-card rounded-lg">
+      <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-t-lg bg-header-band text-on-fill">
+        <h3 className="text-sm font-semibold uppercase tracking-wider">Leaderboard</h3>
+        {tournamentName ? <span className="text-sm uppercase tracking-wider truncate">{tournamentName}</span> : null}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-sm">
+          <thead className={COLUMN_HEADER_CLASS}>
+            <tr>
+              <th className="px-3 py-2 text-left">Pos</th>
+              <th className="px-3 py-2 text-left">Player</th>
+              <th className="px-3 py-2 text-left">
+                <ColumnHeaderFilter
+                  ariaLabel="Filter leaderboard by team"
+                  value={teamFilter}
+                  onChange={setTeamFilter}
+                  options={teamOptions}
+                />
+              </th>
+              <th className="px-3 py-2 text-right">Score</th>
+              <th className="px-3 py-2 text-right">R1</th>
+              <th className="px-3 py-2 text-right">R2</th>
+              <th className="px-3 py-2 text-right">R3</th>
+              <th className="px-3 py-2 text-right">R4</th>
+              <th className="px-3 py-2 text-right">Tot</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-hairline-soft">
+            {filteredLeaderboard.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="px-3 py-6 text-center text-ink-soft italic">
+                  No players match this filter.
+                </td>
+              </tr>
+            ) : (
+              filteredLeaderboard.map((entry) => (
+                <tr key={playerNames(entry)}>
+                  <td className="px-3 py-2 text-ink-muted tabular-nums">{entry.position}</td>
+                  <td className="px-3 py-2 text-ink">{playerNames(entry)}</td>
+                  <td className="px-3 py-2">
+                    <TeamChips entry={entry} />
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                    {formatScoreToPar(entry.scoreToPar)}
+                  </td>
+                  {[0, 1, 2, 3].map((idx) => (
+                    <td key={idx} className="px-3 py-2 text-right tabular-nums text-ink-muted">
+                      {entry.roundScores[idx] ?? '—'}
+                    </td>
+                  ))}
+                  <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                    {entry.totalStrokes ?? '—'}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 interface Props {
   report: WeeklyReport;
@@ -30,32 +243,14 @@ interface Props {
 function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNode {
   const teams = scoreboardTeams(report);
   const { tournament, weeklyTotals, liveLeaderboard: leaderboard } = report;
-  const [leaderboardTeamFilter, setLeaderboardTeamFilter] = useState<string>(ALL);
-
-  const leaderboardTeamOptions = useMemo<ColumnHeaderFilterOption[]>(
-    () => [
-      { value: ALL, label: 'Team' },
-      ...leaderboardTeamNames(leaderboard).map((name) => ({ value: name, label: name })),
-      ...(leaderboard.some(hasUndraftedPlayer) ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
-    ],
-    [leaderboard],
-  );
-
-  const filteredLeaderboard = useMemo(() => {
-    if (leaderboardTeamFilter === ALL) return leaderboard;
-    if (leaderboardTeamFilter === UNDRAFTED) return leaderboard.filter(hasUndraftedPlayer);
-    return leaderboard.filter((entry) => hasPlayerOn(entry, leaderboardTeamFilter));
-  }, [leaderboard, leaderboardTeamFilter]);
   const isCompleted = tournament.status === 'completed';
-  const won = formatDollarsAndCents(weeklyTotals.won);
-  const lost = formatDollarsAndCents(weeklyTotals.lost);
-  const net = formatDollarsAndCents(weeklyTotals.net);
   const statusBanner = isCompleted
     ? 'Results finalized'
     : 'Tournament in progress — scores are live estimates';
   const bannerClass = isCompleted
     ? 'bg-semantic-success-tint/30 border-semantic-success-soft text-semantic-success-ink'
     : 'bg-semantic-warning-tint/40 border-semantic-warning-soft text-semantic-warning-ink';
+  const hasLeaderboard = leaderboard.length > 0;
 
   return (
     <section className="space-y-6">
@@ -66,156 +261,13 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
         {!isCompleted && finalizeSlot ? finalizeSlot : null}
       </div>
 
-      <div className="overflow-x-auto -mx-3 sm:mx-0">
-        <table className="w-full text-sm min-w-[500px]">
-          <thead className={COLUMN_HEADER_CLASS}>
-            <tr>
-              <th className="px-4 py-3 text-left">#</th>
-              <th className="px-4 py-3 text-left">Team</th>
-              <th className="px-4 py-3 text-right">Top 10 Earnings</th>
-              <th className="px-4 py-3 text-right">Weekly +/-</th>
-              <th className="px-4 py-3 text-left">Golfers in Top 10</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-hairline-soft">
-            {teams.map((team, i) => {
-              const weeklyTotal = formatDollarsAndCents(team.weeklyTotal);
-              return (
-                <tr key={team.teamId} className="hover:bg-surface-card/60">
-                  <td className="px-4 py-3 text-ink-soft tabular-nums">{i + 1}</td>
-                  <td className="px-4 py-3 font-medium text-ink uppercase">{team.teamName}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-ink-secondary">
-                    {formatDollarsAndCents(team.topTenEarnings)}
-                  </td>
-                  <td
-                    className={`px-4 py-3 text-right tabular-nums font-semibold ${moneyToneClass(weeklyTotal)}`}
-                  >
-                    {weeklyTotal}
-                  </td>
-                  <td className="px-4 py-3">
-                    {team.golferScores.length === 0 ? (
-                      <span className="text-ink-faint">—</span>
-                    ) : (
-                      team.golferScores.map((g) => {
-                        const golferId = g.golferId;
-                        return (
-                        <span key={`${team.teamId}-${golferId ?? g.golferName}`} className="inline-block mr-3 text-xs">
-                          {onGolferClick && golferId ? (
-                            <button
-                              type="button"
-                              onClick={() => onGolferClick(golferId)}
-                              className={GOLFER_BUTTON_CLASS}
-                            >
-                              {g.golferName}
-                            </button>
-                          ) : (
-                            <span className="text-ink-secondary">{g.golferName}</span>
-                          )}{' '}
-                          {g.tied ? <span className="text-ink-soft">T</span> : null}
-                          <span className="text-ink-muted">{g.position ?? '?'}</span>{' '}
-                          <span className="tabular-nums">{formatDollarsAndCents(g.payout)}</span>
-                          {g.ownershipPct < 100 ? (
-                            <span className="text-ink-soft"> ({g.ownershipPct}%)</span>
-                          ) : null}
-                        </span>
-                        );
-                      })
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className={hasLeaderboard ? TWO_COLUMN_CLASS : undefined}>
+        <div className="space-y-6">
+          <TeamTable teams={teams} onGolferClick={onGolferClick} />
+          <MoneySummary totals={weeklyTotals} />
+        </div>
+        {hasLeaderboard ? <LeaderboardCard leaderboard={leaderboard} tournamentName={tournament.name} /> : null}
       </div>
-
-      <div className="flex flex-wrap gap-3 text-sm">
-        <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
-          <span className="text-ink-soft">Won</span>
-          <span className={`font-semibold tabular-nums ${moneyToneClass(won)}`}>
-            {won}
-          </span>
-        </div>
-        <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
-          <span className="text-ink-soft">Lost</span>
-          <span className={`font-semibold tabular-nums ${moneyToneClass(lost)}`}>
-            {lost}
-          </span>
-        </div>
-        <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
-          <span className="text-ink-soft">Net</span>
-          <span className={`font-semibold tabular-nums ${moneyToneClass(net)}`}>
-            {net}
-          </span>
-        </div>
-      </div>
-
-      {leaderboard.length > 0 ? (
-        <div>
-          <h3 className="text-xs font-semibold text-ink-soft uppercase tracking-wider mb-2">
-            Leaderboard
-          </h3>
-          <div className="overflow-x-auto -mx-3 sm:mx-0">
-            <table className="w-full text-sm min-w-[640px]">
-              <thead className={COLUMN_HEADER_CLASS}>
-                <tr>
-                  <th className="px-3 py-2 text-left">Pos</th>
-                  <th className="px-3 py-2 text-left">Player</th>
-                  <th className="px-3 py-2 text-left">
-                    <ColumnHeaderFilter
-                      ariaLabel="Filter leaderboard by team"
-                      value={leaderboardTeamFilter}
-                      onChange={setLeaderboardTeamFilter}
-                      options={leaderboardTeamOptions}
-                    />
-                  </th>
-                  <th className="px-3 py-2 text-right">Score</th>
-                  <th className="px-3 py-2 text-right">R1</th>
-                  <th className="px-3 py-2 text-right">R2</th>
-                  <th className="px-3 py-2 text-right">R3</th>
-                  <th className="px-3 py-2 text-right">R4</th>
-                  <th className="px-3 py-2 text-right">Tot</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-hairline-soft">
-                {filteredLeaderboard.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="px-3 py-6 text-center text-ink-soft italic">
-                      No players match this filter.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredLeaderboard.map((entry) => (
-                    <tr
-                      key={playerNames(entry)}
-                      className={entry.rostered ? 'bg-semantic-success-tint/10' : ''}
-                    >
-                      <td className="px-3 py-2 text-ink-muted tabular-nums">{entry.position}</td>
-                      <td className="px-3 py-2 text-ink">{playerNames(entry)}</td>
-                      <td
-                        className={`px-3 py-2 text-xs ${entry.rostered ? 'text-semantic-success uppercase' : 'text-ink-faint'}`}
-                      >
-                        {teamLabel(entry)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {formatScoreToPar(entry.scoreToPar)}
-                      </td>
-                      {[0, 1, 2, 3].map((idx) => (
-                        <td key={idx} className="px-3 py-2 text-right tabular-nums text-ink-muted">
-                          {entry.roundScores[idx] ?? '—'}
-                        </td>
-                      ))}
-                      <td className="px-3 py-2 text-right tabular-nums font-semibold">
-                        {entry.totalStrokes ?? '—'}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }

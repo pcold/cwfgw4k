@@ -60,20 +60,21 @@ export function scoreboardTeams(report: WeeklyReport): ScoreboardTeam[] {
 }
 
 const PARTNER_SEPARATOR = ' / ';
-const UNDRAFTED_LABEL = 'undrafted';
 
 export function playerNames(entry: LiveLeaderboardEntry): string {
   return entry.players.map((player) => player.name).join(PARTNER_SEPARATOR);
 }
 
-// One label per player, in player order. A split golfer's teams take the same separator, so a pair's
-// label lines up under its names only while neither partner is split.
-export function teamLabel(entry: LiveLeaderboardEntry): string {
-  return entry.players
-    .map((player) =>
-      player.teamNames.length > 0 ? player.teamNames.join(PARTNER_SEPARATOR) : UNDRAFTED_LABEL,
-    )
-    .join(PARTNER_SEPARATOR);
+export type LeaderboardTeamChip =
+  | { readonly kind: 'team'; readonly key: string; readonly teamName: string }
+  | { readonly kind: 'undrafted'; readonly key: string };
+
+export function leaderboardTeamChips(entry: LiveLeaderboardEntry): LeaderboardTeamChip[] {
+  return entry.players.flatMap((player): LeaderboardTeamChip[] =>
+    player.teamNames.length > 0
+      ? player.teamNames.map((teamName) => ({ kind: 'team', key: `${player.name}:${teamName}`, teamName }))
+      : [{ kind: 'undrafted', key: `${player.name}:undrafted` }],
+  );
 }
 
 export function leaderboardTeamNames(leaderboard: readonly LiveLeaderboardEntry[]): string[] {
