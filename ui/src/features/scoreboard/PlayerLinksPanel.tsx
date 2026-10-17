@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreOwnerChange, queryKeys } from '@/shared/api/queryKeys';
-import { FIELD_CLASS, FieldShell, TextField } from '@/shared/components/formFields';
+import { FIELD_CLASS, FieldShell, TAP_TARGET_CLASS, TextField } from '@/shared/components/formFields';
 import ModalShell from '@/shared/components/ModalShell';
 import { QueryState } from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
@@ -14,7 +14,11 @@ import type {
 
 const SAVE_LINK_BUTTON_CLASS =
   'bg-semantic-info-fill hover:bg-semantic-info-fill-hover disabled:bg-disabled text-on-fill ' +
-  'text-xs px-3 py-1 rounded font-medium';
+  `text-xs px-3 py-1 rounded font-medium ${TAP_TARGET_CLASS}`;
+
+const CREATE_LINK_BUTTON_CLASS =
+  'bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary text-xs px-3 py-1 rounded font-medium ' +
+  TAP_TARGET_CLASS;
 
 interface PlayerLinksPanelProps {
   tournamentId: string;
@@ -227,7 +231,7 @@ function CompetitorRow({
               type="button"
               disabled={pending}
               onClick={() => setCreating(true)}
-              className="text-semantic-info hover:text-semantic-info-hover text-xs underline disabled:opacity-50"
+              className={`text-semantic-info hover:text-semantic-info-hover text-xs underline disabled:opacity-50 ${TAP_TARGET_CLASS}`}
             >
               + Create new golfer & link
             </button>
@@ -248,7 +252,7 @@ function CompetitorRow({
             type="button"
             disabled={disabled || pending}
             onClick={() => clearMutation.mutate()}
-            className="text-ink-muted hover:text-semantic-danger-hover text-xs disabled:opacity-50"
+            className={`text-ink-muted hover:text-semantic-danger-hover text-xs disabled:opacity-50 ${TAP_TARGET_CLASS}`}
           >
             {clearMutation.isPending ? 'Clearing…' : 'Clear override'}
           </button>
@@ -289,7 +293,7 @@ function NewGolferInlineForm({ competitor, pending, onSubmit, onCancel }: NewGol
           type="button"
           disabled={trimmed.length === 0 || pending}
           onClick={() => onSubmit(trimmed)}
-          className="bg-primary hover:bg-primary-hover disabled:bg-disabled text-on-primary text-xs px-3 py-1 rounded font-medium"
+          className={CREATE_LINK_BUTTON_CLASS}
         >
           {pending ? 'Creating…' : 'Create & link'}
         </button>
@@ -297,7 +301,7 @@ function NewGolferInlineForm({ competitor, pending, onSubmit, onCancel }: NewGol
           type="button"
           disabled={pending}
           onClick={onCancel}
-          className="text-ink-muted hover:text-ink-strong text-xs disabled:opacity-50"
+          className={`text-ink-muted hover:text-ink-strong text-xs disabled:opacity-50 ${TAP_TARGET_CLASS}`}
         >
           Cancel
         </button>

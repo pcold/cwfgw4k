@@ -11,6 +11,7 @@ import type {
 } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import WeeklyReportView from './WeeklyReportView';
 
 function row(round: number, overrides: Partial<ReportCell> = {}): ReportCell {
@@ -270,6 +271,19 @@ describe('WeeklyReportView', () => {
     );
     await user.click(screen.getByRole('button', { name: /Clickable/ }));
     expect(onGolferClick).toHaveBeenCalledWith('g-99');
+  });
+
+  it('gives each round-cell golfer name the tap-target height', () => {
+    render(
+      <WeeklyReportView
+        report={report({
+          teams: [team({ cells: [row(1, { golferId: 'g-99', golferName: 'Clickable' })] })],
+        })}
+        onGolferClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /Clickable/ })).toHaveClass(TAP_TARGET_CLASS);
   });
 
   it('renders golfer names as plain text when no onGolferClick is provided', () => {

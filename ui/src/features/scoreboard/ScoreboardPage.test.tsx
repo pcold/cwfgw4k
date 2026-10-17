@@ -16,6 +16,7 @@ import type {
   Tournament,
   WeeklyReport,
 } from '@/shared/api/types';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import ScoreboardPage from './ScoreboardPage';
 
 const leaguesMock = vi.fn<typeof api.leagues>();
@@ -459,6 +460,7 @@ describe('ScoreboardPage', () => {
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
     const button = await screen.findByRole('button', { name: /Finalize Results/i });
+    expect(button).toHaveClass(TAP_TARGET_CLASS);
     await user.click(button);
     await waitFor(() => {
       expect(finalizeMock).toHaveBeenCalledWith('tn-active');
@@ -763,6 +765,7 @@ describe('ScoreboardPage', () => {
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
     const button = await screen.findByRole('button', { name: /Manage player links/i });
+    expect(button).toHaveClass(TAP_TARGET_CLASS);
     await user.click(button);
 
     expect(await screen.findByRole('dialog', { name: /Manage player links/i })).toBeInTheDocument();

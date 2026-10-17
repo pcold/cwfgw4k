@@ -8,6 +8,7 @@ import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
 import type { League, Season, Tournament, WeeklyReport } from '@/shared/api/types';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import WeeklyReportPage from './WeeklyReportPage';
 import type { downloadWeeklyReportPdf } from './weeklyReportPdf';
 
@@ -412,6 +413,7 @@ describe('WeeklyReportPage', () => {
     const button = await screen.findByRole('button', { name: /Download PDF/i });
     await screen.findByRole('heading', { name: /All Tournaments/i });
     expect(button).toBeEnabled();
+    expect(button).toHaveClass(TAP_TARGET_CLASS);
   });
 
   it('leaves the Download PDF button disabled while the report is loading', async () => {

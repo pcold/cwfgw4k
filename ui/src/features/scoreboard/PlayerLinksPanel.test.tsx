@@ -10,6 +10,7 @@ import type {
   Golfer,
   TournamentCompetitorListing,
 } from '@/shared/api/types';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import PlayerLinksPanel from './PlayerLinksPanel';
 
 const competitorsMock = vi.fn<typeof api.tournamentCompetitors>();
@@ -167,6 +168,21 @@ describe('PlayerLinksPanel', () => {
     playerRankingsMock.mockReset();
     dataHealthMock.mockReset();
     golfersMock.mockResolvedValue([mattGolfer, alexGolfer, otherGolfer]);
+  });
+
+  it('holds every control in a row, the inline new-golfer form included, to the tap-target height', async () => {
+    competitorsMock.mockResolvedValue(buildListing());
+    const user = userEvent.setup();
+    renderPanel();
+
+    const partnerRow = (await screen.findByText('Fitzpatrick')).closest('li');
+    if (!partnerRow) throw new Error('partner row not found');
+    await user.click(within(partnerRow as HTMLElement).getByRole('button', { name: /Create new golfer/i }));
+
+    for (const control of [...screen.getAllByRole('button'), ...screen.getAllByRole('combobox')]) {
+      expect(control).toHaveClass(TAP_TARGET_CLASS);
+    }
+    expect(within(partnerRow as HTMLElement).getByLabelText(/Golfer name/i)).toHaveClass(TAP_TARGET_CLASS);
   });
 
   it('renders one row per competitor and tags the manual-override row', async () => {

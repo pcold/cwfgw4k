@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PlayerRankingsRow } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
+import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import PlayerRankingsView from './PlayerRankingsView';
 
 function r(overrides: Partial<PlayerRankingsRow>): PlayerRankingsRow {
@@ -70,6 +71,18 @@ describe('PlayerRankingsView', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Clickable' }));
     expect(onGolferClick).toHaveBeenCalledWith('g-42');
+  });
+
+  it('gives each drafted player name the tap-target height', () => {
+    render(
+      <PlayerRankingsView
+        players={[r({ golferId: 'g-42', name: 'Clickable' })]}
+        live={false}
+        onGolferClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Clickable' })).toHaveClass(TAP_TARGET_CLASS);
   });
 
   it('does not render undrafted players as buttons even when onGolferClick is provided', () => {
