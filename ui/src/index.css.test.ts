@@ -44,13 +44,14 @@ const REPORT_ROW_HOVERED: Wash = { token: 'surface-card', percent: 80, over: 'ca
 // blend's luminance lies between theirs, so it contrasts no less than the weaker of the two.
 const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
   'ink-strong': ['canvas', 'surface-card'],
-  ink: ['canvas', 'surface-card', 'surface-raised', 'surface-raised-hover', 'gold-tint'],
+  ink: ['canvas', 'surface-card', 'surface-raised', 'surface-raised-hover', 'gold-tint', 'late-row-leader'],
   'ink-body': ['surface-card', 'surface-raised', 'side-bet-winner', SIDE_BET_ROUND_ROW, REPORT_ROW_HOVERED],
   'ink-secondary': ['canvas', 'surface-card', 'surface-raised'],
   'ink-label': ['canvas', 'surface-card', 'surface-raised'],
   'ink-muted': [
     'canvas',
     'surface-card',
+    'late-row-leader',
     { token: 'surface-raised', percent: 50, over: 'surface-card' },
   ],
   'ink-soft': ['canvas', 'surface-card', 'surface-raised', 'side-bet-winner', CASH_TOTAL_ROW],

@@ -111,6 +111,8 @@
   --color-on-gold-earnings: var(--color-green-800);
 
   --color-side-bet-winner: var(--color-red-100);
+  /* A report-grid cell whose pick leads its late-row round; a fill, edged in `gold`. */
+  --color-late-row-leader: var(--color-yellow-100);
 
   --font-sans:
     "Saira Variable", "Saira Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;

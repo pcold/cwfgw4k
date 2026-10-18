@@ -60,6 +60,7 @@ colors:
   on-gold: "#0a1d38"
   on-gold-earnings: "#016630"
   side-bet-winner: "#ffe2e2"
+  late-row-leader: "#fef9c2"
 
 typography:
   display:
