@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import autoTable, { type CellDef, type RowInput, type Styles } from 'jspdf-autotable';
+import autoTable, { type Cell, type CellDef, type RowInput } from 'jspdf-autotable';
 import type {
   ReportCell,
   ReportTeamColumn,
@@ -26,105 +26,131 @@ import {
 
 type RGB = [number, number, number];
 
-const COLOR_HEADER_BG: RGB = [234, 179, 8];
-const COLOR_HIGHLIGHT_BG: RGB = [229, 231, 235];
-const COLOR_TOTAL_BG: RGB = [254, 240, 138];
-const COLOR_EARNINGS_BG: RGB = [253, 224, 71];
-const COLOR_SIDEBET_BG: RGB = [153, 27, 27];
-const COLOR_WHITE: RGB = [255, 255, 255];
-const COLOR_BLACK: RGB = [0, 0, 0];
-const COLOR_MUTED: RGB = [107, 114, 128];
-const COLOR_POSITIVE: RGB = [22, 101, 52];
-const COLOR_NEGATIVE: RGB = [153, 27, 27];
+/** @see PDF_COLOURS */
+export type PdfColourToken =
+  | 'header-band'
+  | 'on-fill'
+  | 'ink'
+  | 'ink-muted'
+  | 'ink-soft'
+  | 'hairline'
+  | 'gold'
+  | 'late-row-leader'
+  | 'money-up-fill'
+  | 'money-down-fill'
+  | 'money-even-fill'
+  | 'semantic-success'
+  | 'semantic-danger';
 
-function roundCell(
-  cell: ReportCell | undefined,
-  isSideBetWinner: boolean,
-  showSeasonFooter: boolean,
-): CellDef {
-  const hasEarnings = !!cell && cell.earnings > 0;
-  const styles: Partial<Styles> = {
-    fontSize: 6,
-    halign: 'center',
-    valign: 'top',
-    cellPadding: 1.5,
-  };
-  if (isSideBetWinner) {
-    styles.fillColor = COLOR_SIDEBET_BG;
-    styles.textColor = COLOR_WHITE;
-    styles.fontStyle = 'bold';
-  } else if (hasEarnings) {
-    styles.fillColor = COLOR_EARNINGS_BG;
-    styles.textColor = COLOR_BLACK;
-    styles.fontStyle = 'bold';
-  } else {
-    styles.fillColor = COLOR_WHITE;
-    styles.textColor = COLOR_BLACK;
-  }
-  return { content: cellContent(cell, showSeasonFooter), styles };
-}
-
-const MONEY_TONE_COLOR: Readonly<Record<MoneyTone, RGB>> = {
-  up: COLOR_POSITIVE,
-  down: COLOR_NEGATIVE,
-  even: COLOR_MUTED,
+/**
+ * Print copies, keyed by the role token each copies: jsPDF takes RGB, and an oklch token resolves only in CSS.
+ * weeklyReportPdf.test.ts pins each to its token.
+ */
+export const PDF_COLOURS: Readonly<Record<PdfColourToken, RGB>> = {
+  'header-band': [10, 29, 56],
+  'on-fill': [255, 255, 255],
+  ink: [10, 29, 56],
+  'ink-muted': [74, 95, 128],
+  'ink-soft': [74, 95, 128],
+  hairline: [213, 222, 235],
+  gold: [255, 210, 63],
+  'late-row-leader': [254, 249, 194],
+  'money-up-fill': [15, 138, 79],
+  'money-down-fill': [193, 0, 7],
+  'money-even-fill': [74, 95, 128],
+  'semantic-success': [1, 102, 48],
+  'semantic-danger': [193, 0, 7],
 };
 
-function summaryLabelCell(label: string, bg: RGB, bold: boolean): CellDef {
+const MONEY_TONE_FILL: Readonly<Record<MoneyTone, PdfColourToken>> = {
+  up: 'money-up-fill',
+  down: 'money-down-fill',
+  even: 'money-even-fill',
+};
+
+/** The inks `moneyToneClass` gives the screen's Won and Lost chips; the two must change together. */
+const MONEY_TONE_INK: Readonly<Record<MoneyTone, PdfColourToken>> = {
+  up: 'semantic-success',
+  down: 'semantic-danger',
+  even: 'ink-soft',
+};
+
+const ROUND_COLUMN_WIDTH = 52;
+const FOOTER_TOTALS_GAP = '    ';
+const CELL_PADDING = 1.5;
+const LEADER_EDGE_WIDTH = 2;
+// White on the up fill is 4.40:1, which WCAG passes only as large text: bold and at least 14pt.
+const TOTAL_CASH_FONT_SIZE = 14;
+
+type Emphasis = 'bold' | 'normal';
+
+function roundCell(cell: ReportCell | undefined, isLateRowLeader: boolean, showSeasonFooter: boolean): CellDef {
+  const earned = !!cell && cell.earnings > 0;
   return {
-    content: label,
+    content: cellContent(cell, showSeasonFooter),
     styles: {
-      fillColor: bg,
-      textColor: COLOR_BLACK,
-      fontStyle: bold ? 'bold' : 'normal',
+      fontSize: 6,
       halign: 'center',
-      valign: 'middle',
-      fontSize: 7,
+      valign: 'top',
+      // The gold edge is drawn over the cell's left side, so the text keeps clear of it.
+      cellPadding: isLateRowLeader
+        ? [CELL_PADDING, CELL_PADDING, CELL_PADDING, CELL_PADDING + LEADER_EDGE_WIDTH]
+        : CELL_PADDING,
+      fillColor: isLateRowLeader ? PDF_COLOURS['late-row-leader'] : false,
+      textColor: PDF_COLOURS[earned ? 'ink' : 'ink-muted'],
+      fontStyle: earned ? 'bold' : 'normal',
     },
   };
 }
 
-function summaryValueCell(text: string, bg: RGB, color: RGB, bold: boolean): CellDef {
+function cornerCell(label: string): CellDef {
+  return { content: label, styles: { fillColor: false, textColor: PDF_COLOURS['ink-muted'] } };
+}
+
+function teamHeadCell(text: string): CellDef {
+  return { content: text, styles: { fillColor: PDF_COLOURS['header-band'], textColor: PDF_COLOURS['on-fill'] } };
+}
+
+function summaryLabelCell(label: string, ink: PdfColourToken, emphasis: Emphasis): CellDef {
   return {
-    content: text,
-    styles: {
-      fillColor: bg,
-      textColor: color,
-      fontStyle: bold ? 'bold' : 'normal',
-      halign: 'center',
-      valign: 'middle',
-      fontSize: 7,
-    },
+    content: label,
+    styles: { textColor: PDF_COLOURS[ink], fontStyle: emphasis, halign: 'right', fontSize: 7 },
   };
+}
+
+function summaryValueCell(text: string, ink: PdfColourToken, emphasis: Emphasis): CellDef {
+  return { content: text, styles: { textColor: PDF_COLOURS[ink], fontStyle: emphasis, fontSize: 7 } };
 }
 
 function subtotalCell(team: ReportTeamColumn): CellDef {
+  return summaryValueCell(
+    `${formatPdfDollarsAndCents(team.subtotal)}\n(${formatPdfDollarsAndCents(team.topTenMoney)})`,
+    'ink',
+    'bold',
+  );
+}
+
+function totalCashCell(team: ReportTeamColumn): CellDef {
+  const totalCash = formatPdfWholeDollars(team.totalCash);
   return {
-    content: `${formatPdfDollarsAndCents(team.subtotal)}\n(${formatPdfDollarsAndCents(team.topTenMoney)})`,
+    content: totalCash,
     styles: {
-      fillColor: COLOR_TOTAL_BG,
-      textColor: COLOR_BLACK,
+      fillColor: PDF_COLOURS[MONEY_TONE_FILL[moneyTone(totalCash)]],
+      textColor: PDF_COLOURS['on-fill'],
       fontStyle: 'bold',
-      halign: 'center',
-      valign: 'middle',
-      fontSize: 7,
+      fontSize: TOTAL_CASH_FONT_SIZE,
     },
   };
 }
 
+// Autotable styles a cell as a whole, so a late round's tag and stake take the number's bold ink.
 function roundLabelCell(round: number, sideBetAmount: number | undefined): CellDef {
-  const isSideBetRound = sideBetAmount !== undefined;
-  const text = isSideBetRound ? `${round}\n(${formatUnsignedDollarsAndCents(sideBetAmount)})` : `${round}`;
+  const text = sideBetAmount === undefined
+    ? `${round}`
+    : `${round}\nLATE ROW\n(${formatUnsignedDollarsAndCents(sideBetAmount)})`;
   return {
     content: text,
-    styles: {
-      fillColor: isSideBetRound ? COLOR_SIDEBET_BG : COLOR_HEADER_BG,
-      textColor: isSideBetRound ? COLOR_WHITE : COLOR_BLACK,
-      fontStyle: 'bold',
-      halign: 'center',
-      valign: 'middle',
-      fontSize: 7,
-    },
+    styles: { textColor: PDF_COLOURS.ink, fontStyle: 'bold', fontSize: 7 },
   };
 }
 
@@ -140,9 +166,9 @@ function drawHeader(
   const pageWidth = doc.internal.pageSize.getWidth();
   const usableWidth = pageWidth - marginLeft - marginRight;
 
-  doc.setFillColor(...COLOR_HEADER_BG);
+  doc.setFillColor(...PDF_COLOURS['header-band']);
   doc.rect(marginLeft, startY, 140, 42, 'F');
-  doc.setTextColor(...COLOR_BLACK);
+  doc.setTextColor(...PDF_COLOURS['on-fill']);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   const weekLabel = tournament.week ?? '';
@@ -156,10 +182,10 @@ function drawHeader(
   const standingsWidth = 440;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.setTextColor(...COLOR_BLACK);
+  doc.setTextColor(...PDF_COLOURS.ink);
   const centerX = marginLeft + 140 + (usableWidth - 140 - standingsWidth) / 2;
   doc.text(tournament.name ?? '', centerX, startY + 16, { align: 'center' });
-  if (tournament.payoutMultiplier > 1) {
+  if (tournament.payoutMultiplier !== 1) {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'italic');
     doc.text(`${tournament.payoutMultiplier}x payouts`, centerX, startY + 30, { align: 'center' });
@@ -179,7 +205,7 @@ function drawStandings(
 ): void {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.setTextColor(...COLOR_BLACK);
+  doc.setTextColor(...PDF_COLOURS.ink);
   const heading = weekLabel ? `STANDINGS THRU WEEK ${weekLabel}` : 'STANDINGS';
   doc.text(heading, x, y + 8);
 
@@ -223,16 +249,20 @@ function drawFooter(
   const pageWidth = doc.internal.pageSize.getWidth();
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.setTextColor(...COLOR_BLACK);
+  doc.setTextColor(...PDF_COLOURS['ink-soft']);
   if (report.undraftedTopTens.length > 0) {
     const parts = report.undraftedTopTens.map(
       (u) => `${u.name.toUpperCase()} ${formatPdfDollarsAndCents(u.payout)}`,
     );
     doc.text(`UNDRAFTED TOP TENS: ${parts.join(', ')}`, marginLeft, y);
   }
-  const { won, lost } = report.cashTotals;
-  const summary = `${formatPdfWholeDollars(won)}    ${formatPdfWholeDollars(lost)}`;
-  doc.text(summary, pageWidth - marginRight, y, { align: 'right' });
+  const won = formatPdfWholeDollars(report.cashTotals.won);
+  const lost = formatPdfWholeDollars(report.cashTotals.lost);
+  const right = pageWidth - marginRight;
+  doc.setTextColor(...PDF_COLOURS[MONEY_TONE_INK[moneyTone(lost)]]);
+  doc.text(lost, right, y, { align: 'right' });
+  doc.setTextColor(...PDF_COLOURS[MONEY_TONE_INK[moneyTone(won)]]);
+  doc.text(won, right - doc.getTextWidth(`${FOOTER_TOTALS_GAP}${lost}`), y, { align: 'right' });
 }
 
 export function downloadWeeklyReportPdf(report: WeeklyReport, season: Season | null): void {
@@ -255,96 +285,82 @@ export function buildWeeklyReportPdf(report: WeeklyReport): jsPDF {
   const teamsByRound = teams.map((t) => ({ team: t, rows: teamCellsByRound(t) }));
 
   const head: RowInput[] = [
-    [
-      summaryLabelCell('TEAM #', COLOR_HEADER_BG, true),
-      ...teams.map((_, i) =>
-        summaryValueCell(String(i + 1), COLOR_HEADER_BG, COLOR_BLACK, true),
-      ),
-    ],
-    [
-      summaryLabelCell('ROW #', COLOR_HEADER_BG, true),
-      ...teams.map((t) =>
-        summaryValueCell(t.teamName.toUpperCase(), COLOR_HEADER_BG, COLOR_BLACK, true),
-      ),
-    ],
+    [cornerCell('TEAM #'), ...teams.map((_, i) => teamHeadCell(String(i + 1)))],
+    [cornerCell('ROW #'), ...teams.map((t) => teamHeadCell(t.teamName.toUpperCase()))],
   ];
 
+  const lateRowLeaders = new Set<Cell['raw']>();
   const body: RowInput[] = [];
   for (const round of ROUNDS) {
     const winners = winnersByRound.get(round) ?? new Set<string>();
     const cells: CellDef[] = [roundLabelCell(round, sideBetAmounts.get(round))];
     for (const { team, rows } of teamsByRound) {
-      cells.push(roundCell(rows.get(round), winners.has(team.teamId), showSeasonFooter));
+      const isLateRowLeader = winners.has(team.teamId);
+      const cell = roundCell(rows.get(round), isLateRowLeader, showSeasonFooter);
+      if (isLateRowLeader) lateRowLeaders.add(cell);
+      cells.push(cell);
     }
     body.push(cells);
   }
 
   body.push([
-    summaryLabelCell('TOP TENS', COLOR_HIGHLIGHT_BG, true),
-    ...teams.map((t) =>
-      summaryValueCell(formatPdfDollarsAndCents(t.topTenEarnings), COLOR_HIGHLIGHT_BG, COLOR_BLACK, true),
-    ),
+    summaryLabelCell('TOP TENS', 'ink', 'bold'),
+    ...teams.map((t) => summaryValueCell(formatPdfDollarsAndCents(t.topTenEarnings), 'ink', 'bold')),
   ]);
 
   body.push([
-    summaryLabelCell(seasonMode ? '*SEASON*' : '*WEEKLY TOTAL*', COLOR_HIGHLIGHT_BG, true),
-    ...teams.map((t) =>
-      summaryValueCell(formatPdfDollarsAndCents(t.weeklyTotal), COLOR_HIGHLIGHT_BG, COLOR_BLACK, true),
-    ),
+    summaryLabelCell(seasonMode ? '*SEASON*' : '*WEEKLY TOTAL*', 'ink', 'bold'),
+    ...teams.map((t) => summaryValueCell(formatPdfDollarsAndCents(t.weeklyTotal), 'ink', 'bold')),
   ]);
 
   body.push([
-    summaryLabelCell('PREVIOUS', COLOR_WHITE, false),
-    ...teams.map((t) =>
-      summaryValueCell(formatPdfDollarsAndCents(t.previous), COLOR_WHITE, COLOR_MUTED, false),
-    ),
+    summaryLabelCell('PREVIOUS', 'ink-muted', 'normal'),
+    ...teams.map((t) => summaryValueCell(formatPdfDollarsAndCents(t.previous), 'ink-muted', 'normal')),
   ]);
+
+  body.push([summaryLabelCell('SUBTOTAL', 'ink', 'bold'), ...teams.map(subtotalCell)]);
 
   body.push([
-    summaryLabelCell('SUBTOTAL', COLOR_TOTAL_BG, true),
-    ...teams.map(subtotalCell),
+    summaryLabelCell(sideBetRowLabel(report.sideBetRules), 'ink', 'normal'),
+    ...teams.map((t) => summaryValueCell(formatPdfDollarsAndCents(t.sideBets), 'ink', 'normal')),
   ]);
 
-  body.push([
-    summaryLabelCell(sideBetRowLabel(report.sideBetRules), COLOR_WHITE, false),
-    ...teams.map((t) =>
-      summaryValueCell(formatPdfDollarsAndCents(t.sideBets), COLOR_WHITE, COLOR_BLACK, false),
-    ),
-  ]);
+  body.push([summaryLabelCell('ONGOING\nTOTAL CASH', 'ink', 'bold'), ...teams.map(totalCashCell)]);
 
-  body.push([
-    summaryLabelCell('ONGOING\nTOTAL CASH', COLOR_TOTAL_BG, true),
-    ...teams.map((t) => {
-      const totalCash = formatPdfWholeDollars(t.totalCash);
-      return summaryValueCell(totalCash, COLOR_TOTAL_BG, MONEY_TONE_COLOR[moneyTone(totalCash)], true);
-    }),
-  ]);
-
+  // Even widths, so every TOTAL CASH box keeps room for a four-figure total at its large-text size.
+  const tableWidth = doc.internal.pageSize.getWidth() - marginLeft - marginRight;
+  const teamColumnWidth = (tableWidth - ROUND_COLUMN_WIDTH) / teams.length;
   autoTable(doc, {
     head,
     body,
     startY: headerBottom,
     margin: { left: marginLeft, right: marginRight, bottom: 28 },
     theme: 'grid',
-    tableLineColor: COLOR_BLACK,
+    tableLineColor: PDF_COLOURS.hairline,
     tableLineWidth: 0.3,
     styles: {
       font: 'helvetica',
       fontSize: 6,
-      cellPadding: 1.5,
-      lineColor: COLOR_BLACK,
+      cellPadding: CELL_PADDING,
+      fillColor: false,
+      textColor: PDF_COLOURS.ink,
+      lineColor: PDF_COLOURS.hairline,
       lineWidth: 0.3,
       valign: 'middle',
       halign: 'center',
       overflow: 'linebreak',
     },
-    headStyles: {
-      fillColor: COLOR_HEADER_BG,
-      textColor: COLOR_BLACK,
-      fontStyle: 'bold',
-      fontSize: 7,
+    headStyles: { fontStyle: 'bold', fontSize: 7 },
+    columnStyles: Object.fromEntries([
+      [0, { cellWidth: ROUND_COLUMN_WIDTH }],
+      ...teams.map((_, i): [number, { cellWidth: number }] => [i + 1, { cellWidth: teamColumnWidth }]),
+    ]),
+    // Autotable strokes all four sides of a cell in one colour, so the gold edge is a strip laid over the left one.
+    didDrawCell: ({ cell }) => {
+      if (!lateRowLeaders.has(cell.raw)) return;
+      doc.setFillColor(...PDF_COLOURS.gold);
+      doc.rect(cell.x, cell.y, LEADER_EDGE_WIDTH, cell.height, 'F');
     },
-    columnStyles: { 0: { cellWidth: 52 } },
   });
 
   drawFooter(doc, report, marginLeft, marginRight, lastTableFinalY(doc) + 16);

@@ -348,7 +348,7 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 
 ### Outside the token set
 - **Rankings chart lines** — `CHART_COLORS` in `ui/src/features/rankings/rankingsChartModel.ts` is a 13-hex series palette, one per team. It identifies a series rather than holding a role, so it carries a lint waiver instead of tokens. It was picked against the old dark canvas and has not been re-checked on white.
-- **PDF export** — `ui/src/features/weeklyReport/weeklyReportPdf.ts` prints a light-background report with its own RGB constants, not yet re-checked against the Tour Broadcast palette. Paper is not the screen; nothing here applies to it.
+- **PDF export** — `ui/src/features/weeklyReport/weeklyReportPdf.ts` prints the report grid's roles on white paper. jsPDF takes RGB, so `PDF_COLOURS` holds print copies keyed by role token, and `weeklyReportPdf.test.ts` fails when one drifts from `index.css`. Helvetica stands in for Saira.
 
 ## Typography
 
