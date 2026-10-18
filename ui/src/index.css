@@ -66,7 +66,7 @@
   --color-secondary-hover: var(--brand-navy-secondary);
   --color-disabled: var(--color-slate-400);
   --color-position-fill: var(--brand-navy);
-  /* The band opening a table card. Not `chrome`, the bar's, nor `secondary`, a button's. */
+  /* The band opening a table card, and the report grids' team heads. Not `chrome`, the bar's, nor `secondary`, a button's. */
   --color-header-band: var(--brand-navy);
 
   /*
