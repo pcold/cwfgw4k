@@ -81,6 +81,10 @@ const CELL_PADDING = 1.5;
 const LEADER_EDGE_WIDTH = 2;
 // White on the up fill is 4.40:1, which WCAG passes only as large text: bold and at least 14pt.
 const TOTAL_CASH_FONT_SIZE = 14;
+const STANDINGS_COLUMN_COUNT = 4;
+// A full line under the heading's, at 8: beside it, the heading runs into the second column.
+const STANDINGS_FIRST_LINE = 20;
+const STANDINGS_LINE_PITCH = 10;
 
 type Emphasis = 'bold' | 'normal';
 
@@ -191,10 +195,12 @@ function drawHeader(
     doc.text(`${tournament.payoutMultiplier}x payouts`, centerX, startY + 30, { align: 'center' });
   }
 
-  drawStandings(doc, standingsOrder, weekLabel, pageWidth - marginRight - standingsWidth, startY, standingsWidth);
-  return startY + 48;
+  const standingsX = pageWidth - marginRight - standingsWidth;
+  const standingsBottom = drawStandings(doc, standingsOrder, weekLabel, standingsX, startY, standingsWidth);
+  return Math.max(startY + 48, standingsBottom + 6);
 }
 
+// Returns the last entry's baseline, which the header grows to clear.
 function drawStandings(
   doc: jsPDF,
   standings: StandingsEntry[],
@@ -202,29 +208,36 @@ function drawStandings(
   x: number,
   y: number,
   width: number,
-): void {
+): number {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(...PDF_COLOURS.ink);
   const heading = weekLabel ? `STANDINGS THRU WEEK ${weekLabel}` : 'STANDINGS';
   doc.text(heading, x, y + 8);
 
-  const columns: StandingsEntry[][] = [
-    standings.slice(0, 2),
-    standings.slice(2, 6),
-    standings.slice(6, 10),
-    standings.slice(10, 13),
-  ];
+  const columns = standingsColumns(standings);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   const colWidth = width / columns.length;
   columns.forEach((col, idx) => {
     const colX = x + idx * colWidth;
-    const topOffset = idx === 0 ? 20 : 8;
     col.forEach((entry, rowIdx) => {
       const label = `${entry.rank}) ${entry.teamName.toUpperCase()}`;
-      doc.text(label, colX, y + topOffset + rowIdx * 10);
+      doc.text(label, colX, y + STANDINGS_FIRST_LINE + rowIdx * STANDINGS_LINE_PITCH);
     });
+  });
+  const rows = Math.max(1, ...columns.map((col) => col.length));
+  return y + STANDINGS_FIRST_LINE + (rows - 1) * STANDINGS_LINE_PITCH;
+}
+
+// Balanced, so thirteen teams read 4 / 3 / 3 / 3 rather than 4 / 4 / 4 / 1.
+function standingsColumns(standings: readonly StandingsEntry[]): StandingsEntry[][] {
+  const shortLength = Math.floor(standings.length / STANDINGS_COLUMN_COUNT);
+  const longColumns = standings.length % STANDINGS_COLUMN_COUNT;
+  return Array.from({ length: STANDINGS_COLUMN_COUNT }, (_, column) => {
+    const start = column * shortLength + Math.min(column, longColumns);
+    const length = shortLength + (column < longColumns ? 1 : 0);
+    return standings.slice(start, start + length);
   });
 }
 
