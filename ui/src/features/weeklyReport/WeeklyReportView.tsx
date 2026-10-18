@@ -7,17 +7,21 @@ import {
   moneyToneClass,
 } from '@/shared/util/money';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
-import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
+import MoneyCell from '@/shared/components/MoneyCell';
+import ReportGridCell from '@/shared/components/ReportGridCell';
+import ReportGridHead from '@/shared/components/ReportGridHead';
+import ReportGridRoundLabel from '@/shared/components/ReportGridRoundLabel';
+import { REPORT_GRID_TABLE_CLASS } from '@/shared/components/reportGrid';
 import {
   ROUNDS,
   isSeasonReport,
-  roundCellBg,
-  roundTextColor,
   sideBetAmountByRound,
   sideBetRowLabel,
   sideBetWinnersByRound,
   teamCellsByRound,
 } from './weeklyReportModel';
+
+const GOLFER_BUTTON_CLASS = 'truncate text-left bg-transparent border-0 p-0 hover:underline cursor-pointer';
 
 interface RoundCellProps {
   cell: ReportCell | undefined;
@@ -29,20 +33,14 @@ interface RoundCellProps {
 function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick }: RoundCellProps) {
   if (!cell || !cell.golferName) {
     return (
-      <td className="border border-hairline px-1.5 py-1 text-center align-top">
+      <ReportGridCell>
         <span className="text-ink-faint">—</span>
-      </td>
+      </ReportGridCell>
     );
   }
 
   const hasEarnings = cell.earnings > 0;
-  const bg = roundCellBg(hasEarnings, isSideBetWinner);
-  const text = roundTextColor(hasEarnings, isSideBetWinner);
-  const earningsColor = hasEarnings
-    ? isSideBetWinner
-      ? 'text-semantic-success'
-      : 'text-on-gold-earnings'
-    : 'text-ink-soft';
+  const nameTone = hasEarnings ? 'font-bold text-ink' : 'text-ink-muted';
   const ownership = cell.ownershipPct < 100 ? ` (${cell.ownershipPct}%)` : '';
   const earningsLabel = hasEarnings
     ? `${cell.positionStr ?? ''} - ${formatDollarsAndCents(cell.earnings)}`
@@ -58,68 +56,51 @@ function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick }: R
       <button
         type="button"
         onClick={() => onGolferClick(golferId)}
-        className={`font-semibold truncate ${text} bg-transparent border-0 p-0 hover:underline cursor-pointer ${TAP_TARGET_CLASS}`}
+        className={`${GOLFER_BUTTON_CLASS} ${nameTone} ${TAP_TARGET_CLASS}`}
       >
         {cell.golferName}
         {ownership}
       </button>
     ) : (
-      <div className={`font-semibold truncate ${text}`}>
+      <div className={`truncate ${nameTone}`}>
         {cell.golferName}
         {ownership}
       </div>
     );
 
   return (
-    <td className={`border border-hairline px-1.5 py-1 text-center align-top ${bg}`}>
+    <ReportGridCell fill={isSideBetWinner ? 'late-row-leader' : 'plain'}>
       {nameContent}
-      <div className={`font-mono ${earningsColor}`}>{earningsLabel}</div>
-      {showSeasonFooter ? (
-        <div className={`font-semibold ${text}`}>{seasonEarningsLabel}</div>
-      ) : null}
-    </td>
+      <div className="font-mono text-ink-muted">{earningsLabel}</div>
+      {showSeasonFooter ? <div className="font-mono text-ink-muted">{seasonEarningsLabel}</div> : null}
+    </ReportGridCell>
   );
 }
 
 interface SummaryRowProps {
   teams: ReportTeamColumn[];
   label: ReactNode;
-  rowClass: string;
-  borderClass: string;
-  labelBgClass: string;
-  labelClass?: string;
-  cellClass?: (team: ReportTeamColumn) => string;
+  labelClass: string;
+  figureClass?: string;
   cellContent: (team: ReportTeamColumn) => ReactNode;
-  py?: string;
 }
 
-function SummaryRow({
-  teams,
-  label,
-  rowClass,
-  borderClass,
-  labelBgClass,
-  labelClass = '',
-  cellClass,
-  cellContent,
-  py = 'py-1.5',
-}: SummaryRowProps) {
+function SummaryRow({ teams, label, labelClass, figureClass = '', cellContent }: SummaryRowProps) {
   return (
-    <tr className={rowClass}>
-      <td
-        className={`${borderClass} px-1 ${py} text-center text-xs sticky left-0 z-10 ${labelBgClass} ${labelClass}`}
-      >
-        {label}
-      </td>
+    <tr>
+      <SummaryLabel className={labelClass}>{label}</SummaryLabel>
       {teams.map((team) => (
-        <td
-          key={team.teamId}
-          className={`${borderClass} px-1 ${py} text-center font-mono ${cellClass?.(team) ?? ''}`}
-        >
-          {cellContent(team)}
-        </td>
+        <ReportGridCell key={team.teamId}>
+          <div className={`text-right font-mono ${figureClass}`}>{cellContent(team)}</div>
+        </ReportGridCell>
       ))}
     </tr>
+  );
+}
+
+function SummaryLabel({ className, children }: { className: string; children: ReactNode }) {
+  return (
+    <td className={`px-1 py-1.5 text-right align-middle sticky left-0 z-10 bg-canvas ${className}`}>{children}</td>
   );
 }
 
@@ -145,44 +126,24 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
   const winnersByRound = sideBetWinnersByRound(sideBetDetail);
   const sideBetAmounts = sideBetAmountByRound(report.sideBetRules);
   const teamsByRound = teams.map((t) => ({ team: t, cells: teamCellsByRound(t) }));
-
-  const highlightRow = 'bg-surface-raised font-bold';
-  const subRow = 'bg-surface-card';
-  const highlightBorder = 'border border-hairline-strong';
-  const subBorder = 'border border-hairline';
+  const gridTeams = teams.map((team, i) => ({ teamId: team.teamId, number: i + 1, name: team.teamName }));
 
   return (
     <section className="space-y-4">
       <div className="overflow-x-auto -mx-3 sm:mx-0">
-        <table className="w-full text-xs border-collapse">
-          <thead className={COLUMN_HEADER_CLASS}>
-            <tr className="bg-gold text-on-gold">
-              <th className="border border-hairline-strong px-1 py-1.5 w-12 sm:w-16 text-center sticky left-0 z-20 bg-gold">
-                TEAM #
-              </th>
-              {teams.map((team, i) => (
-                <th
-                  key={team.teamId}
-                  className="border border-hairline-strong px-1 py-1.5 text-center min-w-[90px]"
-                >
-                  <div>{i + 1}</div>
-                  <div>{team.teamName}</div>
-                </th>
-              ))}
-            </tr>
-          </thead>
+        <table className={REPORT_GRID_TABLE_CLASS}>
+          <ReportGridHead cornerLabel="TEAM #" teams={gridTeams} />
           <tbody>
             {ROUNDS.map((round) => {
               const winners = winnersByRound.get(round) ?? new Set<string>();
               const sideBetAmount = sideBetAmounts.get(round);
               return (
-                <tr key={round} className="bg-surface-card hover:bg-surface-card/80">
-                  <td className="border border-hairline px-1 py-1 text-center font-bold text-ink-muted sticky left-0 z-10 bg-surface-card">
-                    <div>{round}</div>
+                <tr key={round}>
+                  <ReportGridRoundLabel round={round} lateRow={sideBetAmount !== undefined}>
                     {sideBetAmount === undefined ? null : (
-                      <div className="text-xs font-normal">({formatUnsignedDollarsAndCents(sideBetAmount)})</div>
+                      <div className="text-ink-muted">({formatUnsignedDollarsAndCents(sideBetAmount)})</div>
                     )}
-                  </td>
+                  </ReportGridRoundLabel>
                   {teamsByRound.map(({ team, cells }) => (
                     <RoundCell
                       key={`${team.teamId}-${round}`}
@@ -196,49 +157,43 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
               );
             })}
 
-            <tr>
-              <td colSpan={teams.length + 1} className="h-1 bg-surface-card" />
+            <tr aria-hidden="true">
+              <td colSpan={teams.length + 1} className="h-2" />
             </tr>
 
             <SummaryRow
               teams={teams}
               label="TOP TENS"
-              rowClass={highlightRow}
-              borderClass={highlightBorder}
-              labelBgClass="bg-surface-raised"
+              labelClass="font-bold text-ink"
+              figureClass="font-bold text-ink"
               cellContent={(t) => formatDollarsAndCents(t.topTenEarnings)}
             />
 
             <SummaryRow
               teams={teams}
               label={seasonMode ? '**SEASON' : '**WEEKLY'}
-              rowClass={highlightRow}
-              borderClass={highlightBorder}
-              labelBgClass="bg-surface-raised"
+              labelClass="font-bold text-ink"
+              figureClass="font-bold text-ink"
               cellContent={(t) => formatDollarsAndCents(t.weeklyTotal)}
             />
 
             <SummaryRow
               teams={teams}
               label="PREVIOUS"
-              rowClass={subRow}
-              borderClass={subBorder}
-              labelBgClass="bg-surface-card"
               labelClass="text-ink-muted"
-              cellClass={() => 'text-ink-muted text-xs italic'}
+              figureClass="text-ink-muted italic"
               cellContent={(t) => formatDollarsAndCents(t.previous)}
             />
 
             <SummaryRow
               teams={teams}
               label="SUBTOTAL"
-              rowClass={highlightRow}
-              borderClass={highlightBorder}
-              labelBgClass="bg-surface-raised"
+              labelClass="font-bold text-ink"
+              figureClass="text-ink"
               cellContent={(t) => (
                 <>
-                  <div>{formatDollarsAndCents(t.subtotal)}</div>
-                  <div className="text-ink-soft text-xs font-normal">
+                  <div className="font-bold">{formatDollarsAndCents(t.subtotal)}</div>
+                  <div className="text-ink-muted">
                     {formatDollarsAndCents(t.topTenMoney)} ({t.topTenCount})
                   </div>
                 </>
@@ -248,35 +203,21 @@ function WeeklyReportView({ report, onGolferClick }: Props): ReactNode {
             <SummaryRow
               teams={teams}
               label={sideBetRowLabel(report.sideBetRules)}
-              rowClass={subRow}
-              borderClass={subBorder}
-              labelBgClass="bg-surface-card"
               labelClass="text-ink-muted"
+              figureClass="text-ink"
               cellContent={(t) => formatDollarsAndCents(t.sideBets)}
             />
 
             <tr>
-              <td colSpan={teams.length + 1} className="h-1 bg-surface-card" />
+              <SummaryLabel className="font-bold text-sm text-ink">
+                TOTAL
+                <br />
+                CASH
+              </SummaryLabel>
+              {teams.map((team) => (
+                <MoneyCell key={team.teamId} display={formatWholeDollars(team.totalCash)} shape="standalone" />
+              ))}
             </tr>
-
-            <SummaryRow
-              teams={teams}
-              label={
-                <>
-                  TOTAL
-                  <br />
-                  CASH
-                </>
-              }
-              rowClass="bg-gold-soft/30 font-bold text-sm"
-              borderClass="border border-gold/50"
-              labelBgClass="bg-gold-tint"
-              py="py-2"
-              cellContent={(t) => {
-                const totalCash = formatWholeDollars(t.totalCash);
-                return <span className={moneyToneClass(totalCash)}>{totalCash}</span>;
-              }}
-            />
           </tbody>
         </table>
       </div>
