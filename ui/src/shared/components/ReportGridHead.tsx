@@ -15,7 +15,8 @@ interface ReportGridHeadProps {
 
 /**
  * The sticky corner is filled with the canvas, not left clear, so team heads scroll under it rather than show
- * through. A team head adds to the shared head type only the ink its band needs, `text-on-fill`.
+ * through. A team head keeps the shared head type but for the band's ink, `text-on-fill`, a regular-weight
+ * number and a name a size up.
  */
 export default function ReportGridHead({ cornerLabel, teams }: ReportGridHeadProps): ReactElement {
   return (

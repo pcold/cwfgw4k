@@ -78,11 +78,11 @@ function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick }: R
 }
 
 interface SummaryRowProps {
-  teams: ReportTeamColumn[];
-  label: ReactNode;
-  labelClass: string;
-  figureClass?: string;
-  cellContent: (team: ReportTeamColumn) => ReactNode;
+  readonly teams: readonly ReportTeamColumn[];
+  readonly label: ReactNode;
+  readonly labelClass: string;
+  readonly figureClass?: string;
+  readonly cellContent: (team: ReportTeamColumn) => ReactNode;
 }
 
 function SummaryRow({ teams, label, labelClass, figureClass = '', cellContent }: SummaryRowProps) {
@@ -98,7 +98,12 @@ function SummaryRow({ teams, label, labelClass, figureClass = '', cellContent }:
   );
 }
 
-function SummaryLabel({ className, children }: { className: string; children: ReactNode }) {
+interface SummaryLabelProps {
+  readonly className: string;
+  readonly children: ReactNode;
+}
+
+function SummaryLabel({ className, children }: SummaryLabelProps) {
   return (
     <td className={`px-1 py-1.5 text-right align-middle sticky left-0 z-10 bg-canvas ${className}`}>{children}</td>
   );
