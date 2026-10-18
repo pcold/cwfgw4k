@@ -32,8 +32,7 @@ const BOLD_WEIGHT = 700;
 // WCAG 2.2 §1.4.11, for the line that bounds a control rather than a glyph.
 const NON_TEXT_CONTRAST = 3;
 
-// The scoreboard's rostered leaderboard row and the weekly report's cash-total row.
-const SUCCESS_ROW: Wash = { token: 'semantic-success-tint', percent: 10, over: 'canvas' };
+// The weekly report's cash-total row.
 const CASH_TOTAL_ROW: Wash = { token: 'gold-soft', percent: 30, over: 'canvas' };
 // The rosters page's side-bet round rows, and a weekly-report round row hovered.
 const SIDE_BET_ROUND_ROW: Wash = { token: 'surface-card', percent: 70, over: 'canvas' };
@@ -45,15 +44,14 @@ const REPORT_ROW_HOVERED: Wash = { token: 'surface-card', percent: 80, over: 'ca
 // blend's luminance lies between theirs, so it contrasts no less than the weaker of the two.
 const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
   'ink-strong': ['canvas', 'surface-card'],
-  ink: ['canvas', 'surface-card', 'surface-raised', 'surface-raised-hover', 'gold-tint', SUCCESS_ROW],
+  ink: ['canvas', 'surface-card', 'surface-raised', 'surface-raised-hover', 'gold-tint'],
   'ink-body': ['surface-card', 'surface-raised', 'side-bet-winner', SIDE_BET_ROUND_ROW, REPORT_ROW_HOVERED],
   'ink-secondary': ['canvas', 'surface-card', 'surface-raised'],
-  'ink-label': ['surface-card', 'surface-raised'],
+  'ink-label': ['canvas', 'surface-card', 'surface-raised'],
   'ink-muted': [
     'canvas',
     'surface-card',
     { token: 'surface-raised', percent: 50, over: 'surface-card' },
-    SUCCESS_ROW,
   ],
   'ink-soft': ['canvas', 'surface-card', 'surface-raised', 'side-bet-winner', CASH_TOTAL_ROW],
   'ink-faint': ['canvas', 'surface-card'],
@@ -66,6 +64,7 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
     'secondary',
     'secondary-hover',
     'position-fill',
+    'header-band',
     'money-down-fill',
     'money-even-fill',
   ],
@@ -75,7 +74,6 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
     'surface-card',
     'surface-raised',
     'side-bet-winner',
-    SUCCESS_ROW,
     CASH_TOTAL_ROW,
   ],
   'semantic-success-ink': [{ token: 'semantic-success-tint', percent: 30, over: 'canvas' }],
