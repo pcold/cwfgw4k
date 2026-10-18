@@ -185,7 +185,7 @@ function drawHeader(
   doc.setTextColor(...PDF_COLOURS.ink);
   const centerX = marginLeft + 140 + (usableWidth - 140 - standingsWidth) / 2;
   doc.text(tournament.name ?? '', centerX, startY + 16, { align: 'center' });
-  if (tournament.payoutMultiplier > 1) {
+  if (tournament.payoutMultiplier !== 1) {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'italic');
     doc.text(`${tournament.payoutMultiplier}x payouts`, centerX, startY + 30, { align: 'center' });

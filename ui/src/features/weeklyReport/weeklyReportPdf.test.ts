@@ -276,6 +276,13 @@ describe('buildWeeklyReportPdf', () => {
     expect(drawn).toContain('\x96$1,082');
   });
 
+  it('names a payout multiplier other than one, a halved week included, and omits the multiplier at exactly one', () => {
+    expect(drawnText(buildWeeklyReportPdf(buildFixture({ payoutMultiplier: 0.5 })))).toContain('0.5x payouts');
+    expect(drawnText(buildWeeklyReportPdf(buildFixture({ payoutMultiplier: 2 })))).toContain('2x payouts');
+    const plain = drawnText(buildWeeklyReportPdf(buildFixture({ payoutMultiplier: 1 })));
+    expect(plain.filter((text) => text.endsWith('x payouts'))).toEqual([]);
+  });
+
   it('builds a PDF when there are no undrafted top-tens', () => {
     const doc = buildWeeklyReportPdf(buildFixture({ undraftedLen: 0 }));
     const blob: Blob = doc.output('blob');
