@@ -398,9 +398,13 @@ describe('buildWeeklyReportPdf', () => {
     const teams = Array.from({ length: 13 }, (_, i) => buildTeam(`t${i}`, `Team${i}`));
     const { runs } = drawnPage(buildWeeklyReportPdf(buildFixture({ teams })));
     const headingLine = runs.find((run) => run.text === 'STANDINGS THRU WEEK 1')?.y;
+    const tableTopLine = runs.find((run) => run.text === 'TEAM #')?.y;
     const entries = runs.filter((run) => /^\d+\) TEAM\d+$/.test(run.text));
     expect(headingLine).toBeDefined();
+    expect(tableTopLine).toBeDefined();
     expect(entries.filter((entry) => entry.y >= (headingLine ?? 0))).toEqual([]);
+    // At 8pt, a baseline less than one line above the table's first head row overlaps it.
+    expect(entries.filter((entry) => entry.y - (tableTopLine ?? 0) < 8)).toEqual([]);
     const columnLengths = new Map<number, number>();
     for (const entry of entries) columnLengths.set(entry.x, (columnLengths.get(entry.x) ?? 0) + 1);
     expect([...columnLengths.values()]).toEqual([4, 3, 3, 3]);
