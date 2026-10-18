@@ -5,7 +5,8 @@ export type ReportGridCellFill = 'plain' | 'late-row-leader';
 
 const CELL_CLASS = 'px-2 py-1.5 align-top';
 
-// The gold edge is decorative: the leader's fill alone carries the state, so the edge needs no contrast floor.
+// Emphasis, not the only cue: the fill is 1.07:1 on white and its gold edge 1.44:1, short of a lone cue's 3:1.
+// Late Row Bets prints each round's payouts in text.
 const FILL_CLASS: Readonly<Record<ReportGridCellFill, string>> = {
   plain: 'bg-surface-card',
   'late-row-leader': 'bg-late-row-leader border-l-4 border-gold',

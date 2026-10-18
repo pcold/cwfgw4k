@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: CWFGW4K
-description: "A light, table-first league tracker in the Tour Broadcast palette. A navy bar frames the page top and bottom, a sky canvas holds white cards and table chrome, with sky again for anything you can type into or that is selected, and navy carries the text. One red carries the brand: the brand red fills primary buttons and the slanted CASTLEWOOD FG block and the LIVE chip, and the brand navy fills every secondary button; page titles are navy, italic and condensed. A surface's bottom-line money reads by sign — green won, red lost, muted even — and the two spreadsheet-style grids (weekly report, rosters) head their columns in gold. Saira throughout, condensed to 75% for display type; small sizes, uppercase wide-tracked labels on table heads and card headings."
+description: "A light, table-first league tracker in the Tour Broadcast palette. A navy bar frames the page top and bottom, a sky canvas holds white cards and table chrome, with sky again for anything you can type into or that is selected, and navy carries the text. One red carries the brand: the brand red fills primary buttons and the slanted CASTLEWOOD FG block and the LIVE chip, and the brand navy fills every secondary button; page titles are navy, italic and condensed. A surface's bottom-line money reads by sign — green won, red lost, muted even — and the two spreadsheet-style grids (weekly report, rosters) head their team columns in a navy band. Saira throughout, condensed to 75% for display type; small sizes, uppercase wide-tracked labels on table heads and card headings."
 
 colors:
   canvas: "#e8eef7"
@@ -53,13 +53,8 @@ colors:
   money-up-fill: "#0f8a4f"
   money-down-fill: "#c10007"
   money-even-fill: "#4a5f80"
-  gold-tint: "#fff085"
-  gold-soft: "#ffd23f"
   gold: "#ffd23f"
-  gold-bright: "#fef9c2"
   on-gold: "#0a1d38"
-  on-gold-earnings: "#016630"
-  side-bet-winner: "#ffe2e2"
   late-row-leader: "#fef9c2"
 
 typography:
@@ -213,16 +208,17 @@ components:
     borderColor: "{colors.hairline-strong}"
     rounded: "{rounded.lg}"
     elevation: "{elevation.modal}"
-  report-header-row:
-    backgroundColor: "{colors.gold}"
-    textColor: "{colors.on-gold}"
-    borderColor: "{colors.hairline-strong}"
-  report-cell-earned:
-    backgroundColor: "{colors.gold-bright}"
-    textColor: "{colors.on-gold}"
-  report-cell-side-bet-winner:
-    backgroundColor: "{colors.side-bet-winner}"
-    textColor: "{colors.ink-body}"
+  report-team-head:
+    backgroundColor: "{colors.header-band}"
+    textColor: "{colors.on-fill}"
+    typography: "{typography.column-header}"
+  report-cell:
+    backgroundColor: "{colors.surface-card}"
+    textColor: "{colors.ink}"
+  report-cell-late-row-leader:
+    backgroundColor: "{colors.late-row-leader}"
+    borderColor: "{colors.gold}"
+    textColor: "{colors.ink}"
   position-box:
     backgroundColor: "{colors.position-fill}"
     textColor: "{colors.on-fill}"
@@ -264,13 +260,13 @@ components:
 
 Castlewood Fantasy Golf is read almost entirely as tables: the week's scoreboard, the weekly report grid, team standings, player rankings, rosters. The design exists to make those tables legible and to make money read at a glance.
 
-The palette is **Tour Broadcast**, and the app is **light only**. The page is `{colors.canvas}` (the brand sky), between a top nav and a footer on `{colors.chrome}` (the brand navy); cards are `{colors.surface-card}` (white); form controls and highlighted rows are `{colors.surface-raised}`, the canvas's sky again. No table head has a fill but the report grids' gold row. Text is the brand navy (`{colors.ink}`), with its muted slate blue (`{colors.ink-muted}`) for labels and captions.
+The palette is **Tour Broadcast**, and the app is **light only**. The page is `{colors.canvas}` (the brand sky), between a top nav and a footer on `{colors.chrome}` (the brand navy); cards are `{colors.surface-card}` (white); form controls are `{colors.surface-raised}`, the canvas's sky again. No table head has a fill but the report grids' team heads, on the navy `{colors.header-band}`. Text is the brand navy (`{colors.ink}`), with its muted slate blue (`{colors.ink-muted}`) for labels and captions.
 
 The one brand colour is red: `{colors.primary}` (the brand red) fills primary buttons, the block behind the CASTLEWOOD FG mark and the LIVE chip. The brand red is 4.25:1 on the canvas, so it is a fill; type takes the darker step, `{colors.primary-ink}` (red-700). Page titles are navy, so a title never shares a hex with a loss.
 
-Only the bottom line reads by sign: Total Cash on the standings and the weekly report, Weekly +/- on the scoreboard, the late row bets total, a golfer's season earnings, and the Won, Lost and Net chips. `{colors.semantic-success}` (green-800) is a gain, `{colors.semantic-danger}` (red-700) a loss, and `{colors.ink-soft}` an amount that prints as `$0`. The standings' Total Cash and the scoreboard's Weekly +/- are the exception in kind: a filled box (`MoneyCell`), `{colors.money-up-fill}` (the brand green), `{colors.money-down-fill}` (red-700) or `{colors.money-even-fill}` (the brand muted blue) under a white figure. Every other signed amount keeps its table's ink, so the colour points at the number that settles the row; the one exception is a payout in the report grid's pick cells, which takes the cell's state colour (see On Gold Earnings). `moneyTone` reads the sign from the formatted text, so a cents column and a whole-dollar column each tone at the precision they show. Among amounts, green means a gain and nothing else; the greens that are not money are a known gap (see Known gaps on the light canvas).
+Only the bottom line reads by sign: Total Cash on the standings and the weekly report, Weekly +/- on the scoreboard, the late row bets total, a golfer's season earnings, and the Won, Lost and Net chips. `{colors.semantic-success}` (green-800) is a gain, `{colors.semantic-danger}` (red-700) a loss, and `{colors.ink-soft}` an amount that prints as `$0`. The standings' and the weekly report's Total Cash and the scoreboard's Weekly +/- are the exception in kind: a filled box (`MoneyCell`), `{colors.money-up-fill}` (the brand green), `{colors.money-down-fill}` (red-700) or `{colors.money-even-fill}` (the brand muted blue) under a white figure. Every other signed amount keeps its table's ink, so the colour points at the number that settles the row. `moneyTone` reads the sign from the formatted text, so a cents column and a whole-dollar column each tone at the precision they show. Among amounts, green means a gain and nothing else; the greens that are not money are a known gap (see Known gaps on the light canvas).
 
-The weekly report and the rosters page are laid out like the league's spreadsheet, and they keep its gold: a `{colors.gold}` (the brand gold) header row, `{colors.gold-bright}` (yellow-100) cells for a pick that earned a payout, and a gold-washed TOTAL CASH row. Gold is a fill, never text: the brand gold is 1.44:1 on white.
+The weekly report and the rosters page are laid out like the league's spreadsheet, one column per team and one row per draft round, as separate white cells on the canvas. Gold marks one thing there: the cell of a late-row round's leader. Gold is a fill, never text: the brand gold is 1.44:1 on white.
 
 **Key characteristics:**
 - Light canvas, no dark mode. `index.css` sets `{colors.canvas}` and `{colors.ink}` on `body`.
@@ -288,8 +284,8 @@ The contrast table in `ui/src/index.css.test.ts` pins every text token at WCAG A
 
 ### Surface
 - **Canvas** (`{colors.canvas}`, the brand sky #e8eef7): the page background.
-- **Surface Card** (`{colors.surface-card}`, white): every card, the money summary chips, the modal panel, the active nav link, the cells between the boxes of the standings' and scoreboard's card rows, the scoreboard's leaderboard card, the thin spacer rows between blocks of the weekly report grid. At `/60` it is the row hover on the player-rankings table.
-- **Surface Raised** (`{colors.surface-raised}`, the brand sky): form fields, the neutral tag chips, the report grid's highlighted row. It is the canvas's colour, so it reads as raised only inside a white card.
+- **Surface Card** (`{colors.surface-card}`, white): every card, the money summary chips, the modal panel, the active nav link, the cells between the boxes of the standings' and scoreboard's card rows, the scoreboard's leaderboard card, every cell of the report and roster grids. At `/60` it is the row hover on the player-rankings table.
+- **Surface Raised** (`{colors.surface-raised}`, the brand sky): form fields, the neutral tag chips. It is the canvas's colour, so it reads as raised only inside a white card.
 - **Surface Raised Hover** (`{colors.surface-raised-hover}`, the brand line #d5deeb): the roster file input's button, hovered.
 - **Overlay** (`{colors.overlay}`, black): the modal scrim, at `/60`.
 
@@ -302,18 +298,18 @@ These two inks are light, so they are for a `{colors.chrome}` fill alone; on the
 
 ### Lines
 - **Hairline Soft** (`{colors.hairline-soft}`, the brand line): row dividers (`divide-y`) inside the scoreboard's leaderboard and the player-rankings table.
-- **Hairline** (`{colors.hairline}`, the brand line): report-grid cell borders, the modal header rule, the rankings chart's gridlines (`stroke-hairline`).
-- **Hairline Strong** (`{colors.hairline-strong}`, slate-400): borders on the modal panel and error card, on the report grids' header and highlighted rows, and on the outlined chip.
+- **Hairline** (`{colors.hairline}`, the brand line): the modal header rule, the rankings chart's gridlines (`stroke-hairline`).
+- **Hairline Strong** (`{colors.hairline-strong}`, slate-400): borders on the modal panel and error card, and on the outlined chip.
 - **Control Border** (`{colors.control-border}`, slate-500): the border on every input and select, 4.76:1 on white and 4.08:1 on the canvas. Not the brand line the hairlines keep, which is 1.36:1 on white: a field on the canvas (the league/season picker) has no fill contrast, so its border is its only edge. The brand muted blue also clears 3:1 but draws a field as a heavy box.
 
 ### Text
 - **Ink Strong** (`{colors.ink-strong}`, the brand navy #0a1d38): every page title, the UPCOMING chip's text and outline, the active nav link on its white block, the close button and a text button hovered, a competitor's name in the player-links panel, the counts on the roster upload. On a light canvas the darkest ink is the strongest, so it shares navy with `{colors.ink}`.
-- **Ink** (`{colors.ink}`, the brand navy): the default text colour, set on `body` and the app root; team names in the scoreboard and standings tables, a player's name on the leaderboard, and the standings' Subtotal and Late Row Bets.
-- **Ink Body** (`{colors.ink-body}`, the brand navy): golfer names inside the report and roster grid cells, and the neutral tag chip's text.
+- **Ink** (`{colors.ink}`, the brand navy): the default text colour, set on `body` and the app root; team names in the scoreboard and standings tables, a player's name on the leaderboard, the standings' Subtotal and Late Row Bets, and in the report grid the round numbers, the summary labels and figures, and the name of a pick that earned.
+- **Ink Body** (`{colors.ink-body}`, the brand navy): golfer names inside the roster grid cells, and the neutral tag chip's text.
 - **Ink Secondary** (`{colors.ink-secondary}`, the brand secondary navy #13305a): running text on the Rules page, golfer names and the Top 10 Earnings column on the scoreboard.
-- **Ink Label** (`{colors.ink-label}`, the brand muted blue #4a5f80): uppercase card headings, every table head but the report grids' gold row, a column-filter select on hover or focus.
-- **Ink Muted** (`{colors.ink-muted}`, the brand muted blue #4a5f80): helper and caption text — field labels, the subtitle under a page title, loading messages, chart axis labels (`fill-ink-muted`), the golfer line under a scoreboard team, the leaderboard's positions and round scores, the outlined chip's label — and every text button but a Remove link, which is `{colors.semantic-danger}`.
-- **Ink Soft** (`{colors.ink-soft}`, the brand muted blue #4a5f80): rank numbers in player rankings, the labels on the money summary chips, empty-state lines, the picker's labels, a bottom-line amount that prints as `$0`, and in the report grid the dash for a pick that earned nothing and the top-ten line under SUBTOTAL.
+- **Ink Label** (`{colors.ink-label}`, the brand muted blue #4a5f80): uppercase card headings, every table head but the report grids' team heads, a column-filter select on hover or focus.
+- **Ink Muted** (`{colors.ink-muted}`, the brand muted blue #4a5f80): helper and caption text — field labels, the subtitle under a page title, loading messages, chart axis labels (`fill-ink-muted`), the golfer line under a scoreboard team, the leaderboard's positions and round scores, the outlined chip's label, and in the report grids the Late row tag, a pick's payout lines, the name of a pick that earned nothing, and the PREVIOUS and side-bet rows' labels — and every text button but a Remove link, which is `{colors.semantic-danger}`.
+- **Ink Soft** (`{colors.ink-soft}`, the brand muted blue #4a5f80): rank numbers in player rankings, the labels on the money summary chips, empty-state lines, the picker's labels, a bottom-line amount that prints as `$0`, and the ownership share under a roster pick.
 - **Ink Faint** (`{colors.ink-faint}`, the brand muted blue #4a5f80): the em dash in an empty cell, the `/` between a shared player's owners on the rosters page.
 
 ### Brand
@@ -329,30 +325,26 @@ These two inks are light, so they are for a `{colors.chrome}` fill alone; on the
 - **Secondary Hover** (`{colors.secondary-hover}`, the brand secondary navy): that fill, hovered.
 - **Disabled** (`{colors.disabled}`, slate-400): every filled button while disabled (`disabled:bg-disabled`). Its label is exempt from the contrast floor.
 - **Position Fill** (`{colors.position-fill}`, the brand navy): the position box of every standings and scoreboard row but the first. Not `{colors.secondary}`, a button's fill, nor `{colors.chrome}`, the bar's; 16.86:1 under white.
-- **Header Band** (`{colors.header-band}`, the brand navy): the band that opens a table card, today the scoreboard's leaderboard. Not `{colors.chrome}`, the bar's, nor `{colors.secondary}`, a button's; 16.86:1 under white.
+- **Header Band** (`{colors.header-band}`, the brand navy): the band that opens a table card, today the scoreboard's leaderboard, and each team head of the report grids. Not `{colors.chrome}`, the bar's, nor `{colors.secondary}`, a button's; 16.86:1 under white.
 
 ### Semantic
 
 Each family takes only the rungs it uses. `-tint` is a wash, always at an opacity (`/10` to `/40`); `-soft` is a banner border or a chip fill; the bare name is status text; `-ink` is text on that family's own wash; `-fill` is a solid button. A fill is chosen by its white label and the text by the canvas, so the two are separate tokens even where, as for danger, they land on one step. The brand green and red are fills: as text on the canvas they fall below AA, so a gain and a loss take green-800 and red-700.
 
-- **Success** — `{colors.semantic-success-tint}` (green-500) washes the tournament-complete banner (`/30`) and nothing else; `{colors.semantic-success-soft}` (the brand green #0f8a4f) borders that banner; `{colors.semantic-success}` (green-800) is a bottom-line gain, a side-bet winner's payout in the report grid, the rule amounts on the Rules page and success messages; `{colors.semantic-success-ink}` (green-900) is the complete banner's text.
+- **Success** — `{colors.semantic-success-tint}` (green-500) washes the tournament-complete banner (`/30`) and nothing else; `{colors.semantic-success-soft}` (the brand green #0f8a4f) borders that banner; `{colors.semantic-success}` (green-800) is a bottom-line gain, the rule amounts on the Rules page and success messages; `{colors.semantic-success-ink}` (green-900) is the complete banner's text.
 - **Warning** — `{colors.semantic-warning-tint}` (yellow-400) washes the in-progress banner (`/40`) and the skipped-rows and player-links notices (`/30`); `{colors.semantic-warning-soft}` (yellow-500) borders them; `{colors.semantic-warning}` (yellow-800) marks an ambiguous or skipped count and the multipliers on the Rules page; `{colors.semantic-warning-ink}` (yellow-900) is the text on those washes; `{colors.semantic-warning-border}` (yellow-600) borders the select for an ambiguous roster match.
 - **Danger** — `{colors.semantic-danger}` (red-700) is a bottom-line loss, field errors and failed loads; `{colors.semantic-danger-hover}` (red-800) is a Remove link hovered; `{colors.semantic-danger-strong}` (red-800) is an action error beside the scoreboard's buttons and in the player-links panel; `{colors.semantic-danger-fill}` (red-700) and `{colors.semantic-danger-fill-hover}` (red-800) are the destructive admin buttons — Reset, Clean, Delete; `{colors.semantic-danger-border}` (red-500) borders an invalid payout-multiplier input. Danger is a darker red than `{colors.primary}`, which is the brand red and too light as text on the canvas.
-- **Money** — the standings' Total Cash box and the scoreboard's Weekly +/- box, one fill per `moneyTone`: `{colors.money-up-fill}` (the brand green, 4.40:1 under white, so large text only), `{colors.money-down-fill}` (red-700, 6.42:1) and `{colors.money-even-fill}` (the brand muted blue, 6.48:1). Not `{colors.semantic-danger-fill}` on the same step: that is the destructive button's fill, and `FILLED_BUTTON_RESTRICTIONS` keeps it in `Button.tsx`.
+- **Money** — the standings' and the weekly report's Total Cash box and the scoreboard's Weekly +/- box, one fill per `moneyTone`: `{colors.money-up-fill}` (the brand green, 4.40:1 under white, so large text only), `{colors.money-down-fill}` (red-700, 6.42:1) and `{colors.money-even-fill}` (the brand muted blue, 6.48:1). Not `{colors.semantic-danger-fill}` on the same step: that is the destructive button's fill, and `FILLED_BUTTON_RESTRICTIONS` keeps it in `Button.tsx`.
 
 ### Report grids
-- **Gold** (`{colors.gold}`, the brand gold #ffd23f): the header row of the weekly report and roster grids, including its sticky first cell; at `/50` the cell borders of the TOTAL CASH row; the position box of the standings' and scoreboard's first row.
-- **Gold Bright** (`{colors.gold-bright}`, yellow-100): a weekly-report cell whose pick earned a payout.
-- **Gold Soft** (`{colors.gold-soft}`, the brand gold): the TOTAL CASH row's wash, at `/30` over the canvas.
-- **Gold Tint** (`{colors.gold-tint}`, yellow-200): the TOTAL CASH row's label cell.
-- **On Gold** (`{colors.on-gold}`, the brand navy): header text on `{colors.gold}`, the leader's position number, and golfer names on `{colors.gold-bright}`.
-- **On Gold Earnings** (`{colors.on-gold-earnings}`, green-800): the payout amount inside a `{colors.gold-bright}` cell.
-- **Side Bet Winner** (`{colors.side-bet-winner}`, red-100): the weekly-report cell of the pick that won that round's side bet. It overrides gold-bright; its text drops back to `{colors.ink-body}`.
+- **Gold** (`{colors.gold}`, the brand gold #ffd23f): the left edge of a late-row leader's cell, and the position box of the standings' and scoreboard's first row.
+- **On Gold** (`{colors.on-gold}`, the brand navy): the leader's position number on `{colors.gold}`.
+- **Late Row Leader** (`{colors.late-row-leader}`, yellow-100): the weekly-report cell of every pick that leads its late-row round, ties included. Its text keeps the cell's inks: `{colors.ink}` 15.69:1, `{colors.ink-muted}` 6.03:1. At 1.07:1 on white it is emphasis, not the only cue; Late Row Bets prints the payouts.
 
 ### Known gaps on the light canvas
-Tokens only re-colour what the dark theme drew; the component treatment has restyled the app chrome (CWF-231) and begun on the tables (CWF-232) with the standings' and scoreboard's card rows, and these are the gaps it has to close.
+Tokens only re-colour what the dark theme drew; the component treatment has restyled the app chrome (CWF-231) and begun on the tables (CWF-232) with the standings' and scoreboard's card rows and the report grids, and these are the gaps it has to close.
 - **Red is both brand and loss.** Primary buttons and the LIVE chip are the brand red; destructive buttons and losses are red-700, and so are the standings' and scoreboard's loss boxes, never the brand red. Beside a loss, a primary button can still read as a warning.
-- **Green outside money.** `{colors.semantic-success}` still colours success messages, exact roster matches, the Rules page's amounts and the complete banner. Green is meant for gains alone.
+- **Green outside money.** `{colors.semantic-success}` still colours success messages, exact roster matches, the Rules page's amounts and the complete banner; the report grid's payouts no longer take it. Green is meant for gains alone.
 
 ### Outside the token set
 - **Rankings chart lines** — `CHART_COLORS` in `ui/src/features/rankings/rankingsChartModel.ts` is a 13-hex series palette, one per team. It identifies a series rather than holding a role, so it carries a lint waiver instead of tokens. It was picked against the old dark canvas and has not been re-checked on white.
@@ -362,14 +354,14 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 
 ### Font family
 - **Saira** — the brand face, self-hosted from `@fontsource-variable/saira` (width and weight axes, upright and italic) through the imports in `ui/src/main.tsx`. `--font-sans` in `ui/src/index.css` leads with it, so Tailwind's preflight sets it on `html` and every text style inherits it at 100% width. Behind it come `Saira Fallback`, Arial scaled to Saira's metrics so text holds its place while the webfont swaps in, then the system stack.
-- **Display** — the `font-display` utility in `ui/src/index.css` sets `font-stretch: 75%`, the condensed width for the nav, titles, team names and numbers. Today the brand mark, the nav links, the footer link, page titles, the status chip, table heads, and the standings' and scoreboard's team names and position and money boxes use it. A fallback face has no width axis and sets it at its own width.
+- **Display** — the `font-display` utility in `ui/src/index.css` sets `font-stretch: 75%`, the condensed width for the nav, titles, team names and numbers. Today the brand mark, the nav links, the footer link, page titles, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes, and the report grids' round numbers and Late row tag use it. A fallback face has no width axis and sets it at its own width.
 - **System Mono** — Tailwind's `font-mono`. The weekly report grid's money figures, late row bets' golfer names and amounts, the golfer-history modal's place and money columns, and the ESPN week and event names on the schedule import.
 
 ### Hierarchy
 
 | Token | Size | Weight | Tracking | Classes | Where |
 |---|---|---|---|---|---|
-| `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links, the footer link, page titles, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes |
+| `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links, the footer link, page titles, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes, the report grids' round numbers and Late row tag |
 | `{typography.brand-mark}` | 20px | 800 | 0.025em, italic, uppercase | `font-display italic font-extrabold text-xl uppercase tracking-wide` | The CASTLEWOOD FG mark in the nav |
 | `{typography.page-title}` | 24px, 30px from `sm:` | 800 | 0, italic, uppercase | `font-display italic font-extrabold uppercase text-2xl sm:text-3xl leading-tight text-ink-strong` | The `h2` of every page, in `PageTitle` |
 | `{typography.modal-title}` | 18px | 700 | 0 | `text-lg font-bold` | Modal header |
@@ -380,15 +372,15 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 | `{typography.caption}` | 12px | 400 | 0 | `text-xs` | Field labels, helper text, field errors |
 | `{typography.button}` | 14px | 500 | 0 | `text-sm font-medium` | `Button`'s `regular` size |
 | `{typography.button-compact}` | 12px | 500 | 0 | `text-xs font-medium` | `Button`'s `compact` size: the scoreboard's tournament header, a panel row, a table row |
-| `{typography.report-figure}` | 12px | 400 | 0 | `font-mono` in a `text-xs` table | Money in the weekly report grid |
+| `{typography.report-figure}` | 12px | 400 | 0 | `font-mono` in a `text-xs` table | Money in the weekly report grid but TOTAL CASH, a `MoneyCell` |
 | `{typography.card-row-name}` | 18px | 700 | 0, uppercase | `font-display font-bold text-lg uppercase text-ink` | A team name in a standings or scoreboard card row |
 | `{typography.position-figure}` | 18px | 700 | 0 | `font-display font-bold text-lg tabular-nums` | `PositionCell` |
 | `{typography.money-figure}` | 20px | 700 | 0 | `MONEY_FIGURE_CLASS`: `font-display font-bold text-xl tabular-nums` | `MoneyCell`; bold and at least 18.66px, or white on the up fill fails contrast |
 
 ### Principles
-- **Weights in use are 400, 500, 600, 700 and 800.** `font-semibold` is the emphasis weight in tables (money chips, the leaderboard's Score and Tot) and the nav links' weight; `font-bold` marks modal titles, the status chip, the report grids' total rows, the standings' and scoreboard's team names and boxes, and table heads take it as a `th`'s default; `font-extrabold` is the brand mark's and the page titles'.
+- **Weights in use are 400, 500, 600, 700 and 800.** `font-semibold` is the emphasis weight in tables (money chips, the leaderboard's Score and Tot) and the nav links' weight; `font-bold` marks modal titles, the status chip, the report grid's total rows and the name of a pick that earned, the standings' and scoreboard's team names and boxes, and table heads take it as a `th`'s default; `font-extrabold` is the brand mark's and the page titles'.
 - **Uppercase is structure, not emphasis.** Nav links, page titles, table heads, card headings and team names in tables are uppercase; body text never is.
-- **Numbers line up.** A column of money uses `tabular-nums` (list tables) or `font-mono` (the weekly report grid, late row bets), right-aligned in list tables and centred in the grid.
+- **Numbers line up.** A column of money uses `tabular-nums` (list tables) or `font-mono` (the weekly report grid, late row bets), right-aligned in list tables and the grid's summary rows.
 
 ## Layout
 
@@ -398,7 +390,7 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 - **Page body**: a stack spaced `space-y-6` or `space-y-4`, opening with `PageTitle`.
 - **Cards**: `p-6` for form and rules cards, `p-4` for the rankings chart and late-row-bet tables.
 - **List tables**: cells `px-3 py-2` (scoreboard teams, standings, player rankings) or `px-2 py-2` with `px-3` at the outer edges (the leaderboard, whose nine columns fit half the page from `xl`); card rows are `h-11` and `border-spacing-y-1` apart.
-- **Report grids**: cells `px-1 py-1` to `px-2 py-1.5`, `border-collapse`, every cell bordered. They are the densest surface in the app on purpose: one column per team must fit.
+- **Report grids**: cells `px-2 py-1.5`, `border-separate border-spacing-1` (`REPORT_GRID_TABLE_CLASS`), no cell bordered: the canvas between white cells separates them. They are the densest surface in the app on purpose: one column per team must fit.
 - **Forms**: fields in a `flex flex-wrap items-end gap-4` row inside a card; a form modal stacks them with `space-y-3`.
 
 ### Containers
@@ -411,8 +403,8 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 | Level | Treatment | Use |
 |---|---|---|
 | 0 | `{colors.canvas}` | The page |
-| 1 | `{colors.surface-card}`, no border, no shadow | Cards, summary chips, the standings' and scoreboard's card rows, the report grid's spacer rows |
-| 2 | `{colors.surface-raised}` | Fields, neutral chips, the report's highlighted row |
+| 1 | `{colors.surface-card}`, no border, no shadow | Cards, summary chips, the standings' and scoreboard's card rows, the report grids' cells |
+| 2 | `{colors.surface-raised}` | Fields, neutral chips |
 | 3 | `{colors.surface-card}` + `{colors.hairline-strong}` border + `{elevation.modal}` (`shadow-xl`) over `{colors.overlay}`/60 | The modal panel, and the error screen's card |
 
 White cards on the sky canvas carry depth without shadows, and a raised control is sky again inside its white card. The `{colors.chrome}` nav and footer frame the levels rather than sit on one. `shadow-xl` appears only on the two floating panels.
@@ -424,7 +416,7 @@ White cards on the sky canvas carry depth without shadows, and a raised control 
 | `{rounded.sm}` | 4px | `rounded` | Buttons, fields, chips, banners, nav items |
 | `{rounded.lg}` | 8px | `rounded-lg` | Cards, the modal panel, the error card |
 
-Table cells are square, but for the outer corners of a card row, which its position and money boxes round (`rounded-l`, `rounded-r`). No component is pill-shaped (`rounded-full`), and no corner is larger than 8px.
+Table cells are square, but for the outer corners of a card row, which its position and money boxes round (`rounded-l`, `rounded-r`); the report's TOTAL CASH boxes, not ending a card row, stay square. No component is pill-shaped (`rounded-full`), and no corner is larger than 8px.
 
 ## Components
 
@@ -492,16 +484,16 @@ A fixed scrim `bg-overlay/60`, centring a panel `bg-surface-card rounded-lg shad
 Rankings (the standings) sets each row as a card instead: the table is `border-separate border-spacing-y-1`, each row `h-11`, every cell between the boxes `bg-surface-card`, a `PositionCell` first and a `MoneyCell` last. No divider and no hover: the canvas between cards separates them, and a `/60` tint does not read on a white card. The scoreboard's team table is set the same way, its name cell holding the team's paid golfers on a second line: `text-sm {colors.ink-muted}`, joined by ` · `, each golfer's name, finish (`T` when tied), payout and a share under 100% kept to one line, so a wrap falls only between golfers. Each name is a button with `TAP_TARGET_CLASS`, so a row with golfers is 88px (the name, then a 44px line) and 132px where the line wraps; `h-11` is the floor a team with no golfer keeps. PlayerRankings stays on divided rows.
 
 ### Position and money boxes — `ui/src/shared/components/PositionCell.tsx`, `MoneyCell.tsx`
-The first and last `<td>` of a card row; the box is the cell's fill, edge to edge, and each rounds its outer corners. Like `Button`, neither takes a `className`. `PositionCell` is `{typography.position-figure}` on `{colors.position-fill}` under `{colors.on-fill}`, and `{colors.gold}` under `{colors.on-gold}` for the row numbered 1. `MoneyCell` takes the formatted amount and fills by its `moneyTone` — up `{colors.money-up-fill}`, down `{colors.money-down-fill}`, even `{colors.money-even-fill}` — under a white `{typography.money-figure}`.
+The first and last `<td>` of a card row; the box is the cell's fill, edge to edge, and each rounds its outer corners. `MoneyCell`'s `shape="standalone"` is the square box of a grid cell, the report's TOTAL CASH. Like `Button`, neither takes a `className`. `PositionCell` is `{typography.position-figure}` on `{colors.position-fill}` under `{colors.on-fill}`, and `{colors.gold}` under `{colors.on-gold}` for the row numbered 1. `MoneyCell` takes the formatted amount and fills by its `moneyTone` — up `{colors.money-up-fill}`, down `{colors.money-down-fill}`, even `{colors.money-even-fill}` — under a white `{typography.money-figure}`.
 
-### Report grids — `ui/src/features/weeklyReport/WeeklyReportView.tsx`, `ui/src/features/rosters/RostersView.tsx`
-One column per team, one row per draft round, `text-xs border-collapse`, every cell bordered — in `{colors.hairline}` unless a row below says otherwise.
-- Header row: `{typography.column-header}` on the `<thead>`, and `bg-gold text-on-gold` with `border-hairline-strong` on its row, whose `text-on-gold` holds over the head's ink.
-- Round rows: `bg-surface-card`; the round label is sticky, `font-bold text-ink-muted`. On the rosters page a side-bet round dims to `bg-surface-card/70`.
-- A golfer name in a round cell is a button carrying `TAP_TARGET_CLASS`, so a round row is 44px plus the cell's padding and its other lines; the summary rows, with nothing to tap, stay dense.
-- Weekly-report cell: `{colors.gold-bright}` with `{colors.on-gold}` text when the pick earned, `{colors.side-bet-winner}` when it won the round's side bet, otherwise no fill. `roundCellBg` and `roundTextColor` in `weeklyReportModel.ts` decide which.
-- Summary rows: `bg-surface-raised font-bold` with `border-hairline-strong` for highlighted totals, `bg-surface-card` for sub-rows, separated by `h-1 bg-surface-card` spacer rows.
-- TOTAL CASH row: `bg-gold-soft/30 font-bold text-sm`, borders `border-gold/50`, label cell `bg-gold-tint`, amounts coloured by sign — the only summary row coloured by sign.
+### Report grids — `WeeklyReportView.tsx`, `RostersView.tsx`
+One column per team, one row per draft round. Both grids are built from the same pieces in `ui/src/shared/components/`: `REPORT_GRID_TABLE_CLASS` (`text-xs border-separate border-spacing-1`), `ReportGridHead`, `ReportGridRoundLabel` and `ReportGridCell`. Rosters takes those and nothing the report adds.
+- Head: `{typography.column-header}` on the `<thead>`; each team head adds `bg-header-band text-on-fill`, a small number over the team name in `font-bold`. The sticky corner sits on the canvas.
+- Round label: sticky, on the canvas, the number in `font-display font-bold text-xl text-ink`. A late-row round adds a `Late row` tag in `{colors.ink-muted}`, from the season's side-bet rounds; a season with none tags nothing. The report puts the round's stake under the tag.
+- Cells: `bg-surface-card`, no border, no row hover. A golfer name in a cell is a button carrying `TAP_TARGET_CLASS`, so a round row is 44px plus the cell's padding and its other lines; the summary rows, with nothing to tap, stay dense.
+- Weekly-report cell: a pick that earned has no fill and a `font-bold {colors.ink}` name, one that didn't a `{colors.ink-muted}` name; the payout lines are `{colors.ink-muted}`. A late-row round's leader is `ReportGridCell`'s `late-row-leader` fill, `{colors.late-row-leader}` with a `border-l-4 {colors.gold}` edge.
+- Summary rows: labels on the canvas, right-aligned and sticky; cells white, figures right-aligned. PREVIOUS is italic and muted. One transparent `h-2` spacer row sets the summary rows apart from the rounds.
+- TOTAL CASH: a bold label on the canvas, then a square `MoneyCell` per team (`shape="standalone"`), in whole dollars — the only summary row toned by sign.
 
 ### Money summary chips — `ScoreboardView.tsx`, `RankingsView.tsx`, `LateRowBetsView.tsx`, `WeeklyReportView.tsx` (`StatCard`)
 A `flex flex-wrap gap-3 text-sm` row of `bg-surface-card rounded px-3 py-2` chips: a `{colors.ink-soft}` label (Won, Lost, Net), then a `font-semibold tabular-nums` amount coloured by the sign it prints, so a `$0` Won reads `{colors.ink-soft}`.
@@ -535,7 +527,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 ### Don't
 - Don't use a Tailwind shade, a hex, a ramp variable or a `--brand-*` palette variable in a component (`text-gray-400`, `#fff`, `var(--color-gray-400)`, `var(--brand-red)`). `PALETTE_RESTRICTIONS` in `ui/eslint.config.js` fails the lint on each.
 - Don't merge two tokens because they share a step today (`ink` and `ink-strong`, `ink-soft` and `ink-faint`, `surface-raised` and `canvas`). They hold different roles and move separately.
-- Don't use gold as text: the brand gold is 1.44:1 on white. Outside the report grids it waits on the leader and "you" highlights.
+- Don't use gold as text: the brand gold is 1.44:1 on white. It marks a leader: the standings' and scoreboard's first position box, and a late-row round's leader in the report grid.
 - Don't add shadows to cards or borders to them. White on sky carries depth; the modal is the only floating surface.
 - Don't add a dark theme piecemeal: the ink steps are chosen for the light canvas and the contrast table only measures that.
 
@@ -561,8 +553,8 @@ Use these when building UI here:
 - **A tap target:** append `TAP_TARGET_CLASS` from `@/shared/components/formFields` to any text button, link, select or input (`Button` carries its own); a link adds `inline-flex items-center`.
 - **A toolbar select:** `PickerRow` from `@/shared/components/PickerRow`, with the row's other controls as its children.
 - **A page title:** `<PageTitle title="…" subtitle="…" actions={<><StatusChip variant={statusChipVariant(query.data)} /><LeagueSeasonPicker /></>} />`, outside the page's loading gates.
-- **A table head:** `<thead className={COLUMN_HEADER_CLASS}>` from `@/shared/components/columnHeader`, with no type on its rows or cells but an ink its fill needs, as the gold row's `text-on-gold`; body `divide-y divide-hairline-soft`, or for card rows a `border-separate border-spacing-y-1` table (see List tables).
+- **A table head:** `<thead className={COLUMN_HEADER_CLASS}>` from `@/shared/components/columnHeader`, with no type on its rows or cells but an ink its fill needs, as a report team head's `text-on-fill`; body `divide-y divide-hairline-soft`, or for card rows a `border-separate border-spacing-y-1` table (see List tables).
 - **A money value:** `tabular-nums`, or `font-mono` in the grids; a bottom-line amount adds `moneyToneClass` of the text it prints and keeps its table's weight, or in a card row is a `<MoneyCell display={…} />`.
 - **A modal:** `FormModal` for a form, `ModalShell` when the body waits on a query.
 
-Quick reference: nav and footer on a navy bar, canvas the brand sky, cards white, controls sky; text the brand navy, down to its muted blue (`ink-label`, `ink-muted`, `ink-soft`, `ink-faint`); brand red as a fill, red-700 as type; page titles navy, italic, condensed and uppercase; money green-800 / red-700, or on the standings a filled box; report headers the brand gold; Saira, condensed to 75% with `font-display`.
+Quick reference: nav and footer on a navy bar, canvas the brand sky, cards white, controls sky; text the brand navy, down to its muted blue (`ink-label`, `ink-muted`, `ink-soft`, `ink-faint`); brand red as a fill, red-700 as type; page titles navy, italic, condensed and uppercase; money green-800 / red-700, or on the standings, scoreboard and report a filled box; report team heads the navy band, a late-row leader pale gold; Saira, condensed to 75% with `font-display`.
