@@ -21,7 +21,7 @@ import {
   teamCellsByRound,
 } from './weeklyReportModel';
 
-const GOLFER_BUTTON_CLASS = 'truncate text-left bg-transparent border-0 p-0 hover:underline cursor-pointer';
+const GOLFER_BUTTON_CLASS = 'truncate bg-transparent border-0 p-0 hover:underline cursor-pointer';
 
 interface RoundCellProps {
   cell: ReportCell | undefined;

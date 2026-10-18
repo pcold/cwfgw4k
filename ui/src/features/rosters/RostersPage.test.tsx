@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import type { League, RosterTeam, Season, SeasonRules } from '@/shared/api/types';
@@ -62,7 +62,7 @@ describe('RostersPage', () => {
     seasonRulesMock.mockResolvedValue(rules);
   });
 
-  it("sets apart the side-bet rounds the season's rules name", async () => {
+  it("tags the late-row rounds the season's rules name", async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     rostersMock.mockResolvedValue(teams);
@@ -72,8 +72,8 @@ describe('RostersPage', () => {
     await screen.findByText('Scottie Scheffler');
     await waitFor(() => {
       const roundRows = screen.getAllByRole('row').slice(1);
-      const setApart = roundRows.map((row) => row.classList.contains('bg-surface-card/70'));
-      expect(setApart).toEqual([false, true, true, false, false, false, false, false]);
+      const tagged = roundRows.map((row) => within(row).queryByText('Late row') !== null);
+      expect(tagged).toEqual([false, true, true, false, false, false, false, false]);
     });
     expect(seasonRulesMock).toHaveBeenCalledWith('sn-1');
   });
