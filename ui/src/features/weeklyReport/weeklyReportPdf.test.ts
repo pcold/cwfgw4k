@@ -12,7 +12,7 @@ import type {
   WeeklyReport,
 } from '@/shared/api/types';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
-import { resolveToken } from '@/shared/test/tokenColours';
+import { captured, resolveToken } from '@/shared/test/tokenColours';
 import { PDF_COLOURS, buildWeeklyReportPdf, type PdfColourToken } from './weeklyReportPdf';
 
 function row(overrides: Partial<ReportCell> = {}): ReportCell {
@@ -176,10 +176,14 @@ const contains = (rect: FilledRect, x: number, y: number): boolean =>
 function drawnPage(doc: jsPDF): { readonly runs: readonly DrawnRun[]; readonly rects: readonly FilledRect[] } {
   const source = doc.output();
   const baseFontByObject = new Map(
-    [...source.matchAll(/^(\d+) 0 obj\n<<\n\/Type \/Font\n\/BaseFont \/([\w-]+)$/gm)].map((match) => [match[1], match[2]]),
+    [...source.matchAll(/^(\d+) 0 obj\n<<\n\/Type \/Font\n\/BaseFont \/([\w-]+)$/gm)].map(
+      (match) => [captured(match, 1), captured(match, 2)],
+    ),
   );
   const baseFontByResource = new Map(
-    [...source.matchAll(/^\/(F\d+) (\d+) 0 R$/gm)].map((match) => [match[1], baseFontByObject.get(match[2] ?? '')]),
+    [...source.matchAll(/^\/(F\d+) (\d+) 0 R$/gm)].map(
+      (match) => [captured(match, 1), baseFontByObject.get(captured(match, 2))],
+    ),
   );
   const runs: DrawnRun[] = [];
   const rects: FilledRect[] = [];
@@ -257,6 +261,18 @@ describe('buildWeeklyReportPdf', () => {
     // 0x96 is the en dash in Helvetica's WinAnsi encoding, the PDF's stand-in for U+2212.
     expect(drawn).toContain('+$9');
     expect(drawn).toContain('\x96$2');
+  });
+
+  it('titles the page in white on the header band and names the tournament in ink on bare paper', () => {
+    const doc = buildWeeklyReportPdf(buildFixture());
+    expect(drawnRun(doc, 'Week 1')).toMatchObject({ ink: paint('on-fill'), backdrop: paint('header-band') });
+    expect(drawnRun(doc, 'April 16 - April 19')).toMatchObject({ ink: paint('on-fill'), backdrop: paint('header-band') });
+    expect(drawnRun(doc, 'Masters')).toMatchObject({ ink: paint('ink'), backdrop: null });
+  });
+
+  it('inks a footer total of $0 in the soft ink, as the screen colours an even chip', () => {
+    const doc = buildWeeklyReportPdf({ ...buildFixture(), cashTotals: { won: 0, lost: -2, net: -2 } });
+    expect(drawnRun(doc, '$0')?.ink).toBe(paint('ink-soft'));
   });
 
   it('inks the footer won by its gain and lost by its loss, as the screen colours its Won and Lost chips', () => {
