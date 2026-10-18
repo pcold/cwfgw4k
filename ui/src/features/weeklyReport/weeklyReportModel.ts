@@ -14,16 +14,6 @@ export function teamCellsByRound(team: ReportTeamColumn): Map<number, ReportCell
   return byRound;
 }
 
-export function roundCellBg(hasEarnings: boolean, isSideBetWinner: boolean): string {
-  if (isSideBetWinner) return 'bg-side-bet-winner';
-  if (hasEarnings) return 'bg-gold-bright';
-  return '';
-}
-
-export function roundTextColor(hasEarnings: boolean, isSideBetWinner: boolean): string {
-  return hasEarnings && !isSideBetWinner ? 'text-on-gold' : 'text-ink-body';
-}
-
 // Map of side-bet round -> set of team ids that won that round's side bet.
 // Used by the Weekly Report grid to highlight the winning cells.
 export function sideBetWinnersByRound(

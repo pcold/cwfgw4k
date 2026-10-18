@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type {
   ReportCell,
@@ -13,6 +13,7 @@ import { nth } from '@/shared/test/nth';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
+import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import WeeklyReportView from './WeeklyReportView';
 
 function row(round: number, overrides: Partial<ReportCell> = {}): ReportCell {
@@ -74,6 +75,8 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
   };
 }
 
+const NO_PROVIDERS = { withLeagueSeasonProvider: false };
+
 const TWENTY_ON_ROUNDS_TWO_AND_THREE: ReportSideBetRules = { amountPerTeam: 20, rounds: [2, 3] };
 
 function sideBetEntry(
@@ -94,7 +97,7 @@ function roundRow(round: number): HTMLElement {
 
 describe('WeeklyReportView', () => {
   it('renders a column header per team', () => {
-    render(
+    renderWithProviders(
       <WeeklyReportView
         report={report({
           teams: [
@@ -103,6 +106,7 @@ describe('WeeklyReportView', () => {
           ],
         })}
       />,
+      NO_PROVIDERS,
     );
     const headers = screen.getAllByRole('columnheader');
     expect(headers[0]).toHaveTextContent('TEAM #');
@@ -110,14 +114,30 @@ describe('WeeklyReportView', () => {
     expect(headers[2]).toHaveTextContent('Birdies');
   });
 
+  it('sets every team head on the navy band and leaves the corner on the canvas', () => {
+    renderWithProviders(
+      <WeeklyReportView
+        report={report({ teams: [team({ teamId: 't-1' }), team({ teamId: 't-2', teamName: 'Birdies' })] })}
+      />,
+      NO_PROVIDERS,
+    );
+    const [corner, ...teamHeads] = screen.getAllByRole('columnheader');
+    expect(teamHeads).toHaveLength(2);
+    for (const head of teamHeads) expect(head).toHaveClass('bg-header-band', 'text-on-fill');
+    expect(corner).not.toHaveClass('bg-header-band');
+  });
+
   it('renders 8 draft-round rows with golfer names from team.cells', () => {
-    render(<WeeklyReportView report={report()} />);
+    renderWithProviders(<WeeklyReportView report={report()} />, NO_PROVIDERS);
     expect(screen.getByText('Golfer 1')).toBeInTheDocument();
     expect(screen.getByText('Golfer 8')).toBeInTheDocument();
   });
 
   it('renders the summary rows (TOP TENS / WEEKLY / PREVIOUS / SUBTOTAL / side bets / TOTAL CASH)', () => {
-    render(<WeeklyReportView report={report({ sideBetRules: TWENTY_ON_ROUNDS_TWO_AND_THREE })} />);
+    renderWithProviders(
+      <WeeklyReportView report={report({ sideBetRules: TWENTY_ON_ROUNDS_TWO_AND_THREE })} />,
+      NO_PROVIDERS,
+    );
     expect(screen.getByText('TOP TENS')).toBeInTheDocument();
     expect(screen.getByText('**WEEKLY')).toBeInTheDocument();
     expect(screen.getByText('PREVIOUS')).toBeInTheDocument();
@@ -129,15 +149,33 @@ describe('WeeklyReportView', () => {
   });
 
   it("shows the season's own side-bet amount beside its rounds and beside no other", () => {
-    render(<WeeklyReportView report={report({ sideBetRules: TWENTY_ON_ROUNDS_TWO_AND_THREE })} />);
+    renderWithProviders(
+      <WeeklyReportView report={report({ sideBetRules: TWENTY_ON_ROUNDS_TWO_AND_THREE })} />,
+      NO_PROVIDERS,
+    );
     expect(screen.getAllByText('($20.00)')).toHaveLength(2);
     expect(within(roundRow(2)).getByText('($20.00)')).toBeInTheDocument();
     expect(within(roundRow(3)).getByText('($20.00)')).toBeInTheDocument();
     expect(within(roundRow(5)).queryByText(/\(\$/)).not.toBeInTheDocument();
   });
 
+  it("tags exactly the season's late-row rounds", () => {
+    renderWithProviders(
+      <WeeklyReportView report={report({ sideBetRules: TWENTY_ON_ROUNDS_TWO_AND_THREE })} />,
+      NO_PROVIDERS,
+    );
+    expect(screen.getAllByText('Late row')).toHaveLength(2);
+    expect(within(roundRow(2)).getByText('Late row')).toBeInTheDocument();
+    expect(within(roundRow(3)).getByText('Late row')).toBeInTheDocument();
+  });
+
+  it('tags no round for a season without side bets', () => {
+    renderWithProviders(<WeeklyReportView report={report({ sideBetRules: null })} />, NO_PROVIDERS);
+    expect(screen.queryByText('Late row')).not.toBeInTheDocument();
+  });
+
   it('shows no amount beside any round and a totals row naming none for a season without side bets', () => {
-    render(<WeeklyReportView report={report({ sideBetRules: null, sideBetDetail: [] })} />);
+    renderWithProviders(<WeeklyReportView report={report({ sideBetRules: null, sideBetDetail: [] })} />, NO_PROVIDERS);
     expect(screen.queryByText(/^\(\$/)).not.toBeInTheDocument();
     expect(screen.getByText('SIDE BETS')).toBeInTheDocument();
     expect(screen.queryByText(/^ROWS/)).not.toBeInTheDocument();
@@ -152,14 +190,30 @@ describe('WeeklyReportView', () => {
         { round: 3, teams: [sideBetEntry('t-1', 20, 'won'), sideBetEntry('t-2', -20, 'lost')] },
       ],
     });
-    render(<WeeklyReportView report={tiedRoundTwo} />);
+    renderWithProviders(<WeeklyReportView report={tiedRoundTwo} />, NO_PROVIDERS);
 
     const [, acesTwo, birdiesTwo] = within(roundRow(2)).getAllByRole('cell');
-    expect(acesTwo).toHaveClass('bg-side-bet-winner');
-    expect(birdiesTwo).toHaveClass('bg-side-bet-winner');
+    expect(acesTwo).toHaveClass('bg-late-row-leader');
+    expect(birdiesTwo).toHaveClass('bg-late-row-leader');
     const [, acesThree, birdiesThree] = within(roundRow(3)).getAllByRole('cell');
-    expect(acesThree).toHaveClass('bg-side-bet-winner');
-    expect(birdiesThree).not.toHaveClass('bg-side-bet-winner');
+    expect(acesThree).toHaveClass('bg-late-row-leader');
+    expect(birdiesThree).not.toHaveClass('bg-late-row-leader');
+    expect(birdiesThree).toHaveClass('bg-surface-card');
+    const [, acesFive] = within(roundRow(5)).getAllByRole('cell');
+    expect(acesFive).not.toHaveClass('bg-late-row-leader');
+  });
+
+  it('leaves an earned cell white and sets its name bold, and mutes the name of a cell that earned nothing', () => {
+    const teams = [team({ cells: [row(1, { golferName: 'Earner', earnings: 18 }), row(2, { golferName: 'Blank' })] })];
+    renderWithProviders(<WeeklyReportView report={report({ teams })} />, NO_PROVIDERS);
+
+    const earner = screen.getByText('Earner');
+    expect(earner.closest('td')).toHaveClass('bg-surface-card');
+    expect(earner.closest('td')).not.toHaveClass('bg-late-row-leader');
+    expect(earner).toHaveClass('font-bold', 'text-ink');
+    const blank = screen.getByText('Blank');
+    expect(blank).toHaveClass('text-ink-muted');
+    expect(blank).not.toHaveClass('font-bold');
   });
 
   it('flips the header row label when rendering the season total', () => {
@@ -174,7 +228,7 @@ describe('WeeklyReportView', () => {
         week: null,
       },
     });
-    render(<WeeklyReportView report={seasonReport} />);
+    renderWithProviders(<WeeklyReportView report={seasonReport} />, NO_PROVIDERS);
     expect(screen.getByText('**SEASON')).toBeInTheDocument();
     expect(screen.queryByText('**WEEKLY')).not.toBeInTheDocument();
   });
@@ -182,16 +236,16 @@ describe('WeeklyReportView', () => {
   it('shows the season-to-date line under each cell only on a tournament report', () => {
     const teams = [team({ cells: [row(1, { seasonEarnings: 30, seasonTopTens: 2 })] })];
 
-    const { unmount } = render(<WeeklyReportView report={report({ teams })} />);
+    const { unmount } = renderWithProviders(<WeeklyReportView report={report({ teams })} />, NO_PROVIDERS);
     expect(screen.getByText(/\(2\)/)).toBeInTheDocument();
     unmount();
 
-    render(<WeeklyReportView report={report({ scope: 'season', teams })} />);
+    renderWithProviders(<WeeklyReportView report={report({ scope: 'season', teams })} />, NO_PROVIDERS);
     expect(screen.queryByText(/\(2\)/)).not.toBeInTheDocument();
   });
 
   it('renders the undrafted top tens callout when present', () => {
-    render(
+    renderWithProviders(
       <WeeklyReportView
         report={report({
           undraftedTopTens: [
@@ -199,6 +253,7 @@ describe('WeeklyReportView', () => {
           ],
         })}
       />,
+      NO_PROVIDERS,
     );
     expect(screen.getByText(/UNDRAFTED TOP TENS/)).toBeInTheDocument();
     expect(screen.getByText(/Lefty/)).toBeInTheDocument();
@@ -214,7 +269,7 @@ describe('WeeklyReportView', () => {
         }),
       ],
     });
-    render(<WeeklyReportView report={withMissing} />);
+    renderWithProviders(<WeeklyReportView report={withMissing} />, NO_PROVIDERS);
     const rows = screen.getAllByRole('row');
     // rows[0] = team header, rows[1..8] = rounds 1..8
     const round3 = nth(rows, 3);
@@ -222,7 +277,10 @@ describe('WeeklyReportView', () => {
   });
 
   it('shows the TOTAL CASH row in whole dollars and the subtotal in cents', () => {
-    render(<WeeklyReportView report={report({ teams: [team({ subtotal: 751.5715, totalCash: 1082.4 })] })} />);
+    renderWithProviders(
+      <WeeklyReportView report={report({ teams: [team({ subtotal: 751.5715, totalCash: 1082.4 })] })} />,
+      NO_PROVIDERS,
+    );
     expect(screen.getByText('+$751.57')).toBeInTheDocument();
     expect(screen.getByText('+$1,082')).toBeInTheDocument();
   });
@@ -236,7 +294,7 @@ describe('WeeklyReportView', () => {
       cashTotals: { won: 9, lost: -2, net: 7 },
       sideBetTotals: { won: 55, lost: -66, net: -11 },
     });
-    render(<WeeklyReportView report={disagreeing} />);
+    renderWithProviders(<WeeklyReportView report={disagreeing} />, NO_PROVIDERS);
     expect(screen.getByText('Won').nextSibling).toHaveTextContent(/^\+\$9$/);
     expect(screen.getByText('Lost').nextSibling).toHaveTextContent(/^\u2212\$2$/);
     expect(screen.getByText('Net').nextSibling).toHaveTextContent(/^\+\$7$/);
@@ -245,51 +303,59 @@ describe('WeeklyReportView', () => {
   it('makes round-cell golfer names clickable when onGolferClick is provided', async () => {
     const onGolferClick = vi.fn();
     const user = userEvent.setup();
-    render(
+    renderWithProviders(
       <WeeklyReportView
         report={report({
           teams: [team({ cells: [row(1, { golferId: 'g-99', golferName: 'Clickable' })] })],
         })}
         onGolferClick={onGolferClick}
       />,
+      NO_PROVIDERS,
     );
     await user.click(screen.getByRole('button', { name: /Clickable/ }));
     expect(onGolferClick).toHaveBeenCalledWith('g-99');
   });
 
   it('gives each round-cell golfer name the tap-target height', () => {
-    render(
+    renderWithProviders(
       <WeeklyReportView
         report={report({
           teams: [team({ cells: [row(1, { golferId: 'g-99', golferName: 'Clickable' })] })],
         })}
         onGolferClick={vi.fn()}
       />,
+      NO_PROVIDERS,
     );
 
     expect(screen.getByRole('button', { name: /Clickable/ })).toHaveClass(TAP_TARGET_CLASS);
   });
 
   it('renders golfer names as plain text when no onGolferClick is provided', () => {
-    render(
+    renderWithProviders(
       <WeeklyReportView
         report={report({
           teams: [team({ cells: [row(1, { golferId: 'g-1', golferName: 'NotClickable' })] })],
         })}
       />,
+      NO_PROVIDERS,
     );
     expect(screen.queryByRole('button', { name: /NotClickable/ })).not.toBeInTheDocument();
     expect(screen.getByText(/NotClickable/)).toBeInTheDocument();
   });
 
-  it('colours only TOTAL CASH by sign, and leaves the rows above it in the table ink', () => {
-    render(
+  it('boxes TOTAL CASH by the sign it prints, and leaves the rows above it in the table ink', () => {
+    renderWithProviders(
       <WeeklyReportView
         report={report({
           sideBetRules: TWENTY_ON_ROUNDS_TWO_AND_THREE,
-          teams: [team(), team({ teamId: 't-2', teamName: 'Birdies', totalCash: -0.4 })],
+          teams: [
+            team(),
+            team({ teamId: 't-2', teamName: 'Birdies', totalCash: -60 }),
+            team({ teamId: 't-3', teamName: 'Condors', totalCash: -0.4 }),
+          ],
         })}
       />,
+      NO_PROVIDERS,
     );
     const summaryRow = (label: string): HTMLElement => {
       const found = screen
@@ -299,8 +365,9 @@ describe('WeeklyReportView', () => {
       return found;
     };
     const totalCash = summaryRow('TOTALCASH');
-    expect(within(totalCash).getByText('+$170')).toHaveClass('text-semantic-success');
-    expect(within(totalCash).getByText('$0')).toHaveClass('text-ink-soft');
+    expect(within(totalCash).getByText('+$170')).toHaveClass('bg-money-up-fill');
+    expect(within(totalCash).getByText('\u2212$60')).toHaveClass('bg-money-down-fill');
+    expect(within(totalCash).getByText('$0')).toHaveClass('bg-money-even-fill');
     const plainAmounts: readonly [string, string][] = [
       ['TOP TENS', '+$18.00'],
       ['**WEEKLY', '+$25.00'],
@@ -308,20 +375,24 @@ describe('WeeklyReportView', () => {
       ['ROWS 2-3', '+$45.00'],
     ];
     for (const [label, amount] of plainAmounts) {
-      const cell = within(summaryRow(label)).getAllByText(amount)[0]?.closest('td');
-      expect(cell?.className).not.toMatch(/text-semantic-|text-ink-soft/);
+      const figure = within(summaryRow(label)).getAllByText(amount)[0];
+      expect(figure?.className).not.toMatch(/money-|text-semantic-/);
+      expect(figure?.closest('td')).toHaveClass('bg-surface-card');
     }
   });
 
   it('tones the won, lost and net chips by the sign they print, a zero Won gray', () => {
-    render(<WeeklyReportView report={report({ cashTotals: { won: 0, lost: -2, net: -2 } })} />);
+    renderWithProviders(
+      <WeeklyReportView report={report({ cashTotals: { won: 0, lost: -2, net: -2 } })} />,
+      NO_PROVIDERS,
+    );
     expect(screen.getByText('Won').nextSibling).toHaveClass('text-ink-soft');
     expect(screen.getByText('Lost').nextSibling).toHaveClass('text-semantic-danger');
     expect(screen.getByText('Net').nextSibling).toHaveClass('text-semantic-danger');
   });
 
   it('sets every column head in the shared column-header type', () => {
-    render(<WeeklyReportView report={report()} />);
+    renderWithProviders(<WeeklyReportView report={report()} />, NO_PROVIDERS);
     expectSharedColumnHeads(1);
   });
 });

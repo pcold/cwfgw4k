@@ -29,4 +29,20 @@ describe('MoneyCell', () => {
     expect(cell).toHaveClass(tone, 'text-on-fill', 'rounded-r', 'font-display', 'font-bold', 'text-xl');
     expect(cell).not.toHaveClass(...otherTones);
   });
+
+  it('keeps the card-row shape by default, its classes unchanged for the standings and scoreboard', () => {
+    renderInRow(<MoneyCell display="+$1,082" />);
+
+    expect(screen.getByRole('cell', { name: '+$1,082' }).className).toBe(
+      'px-3 py-2 rounded-r text-right text-on-fill font-display font-bold text-xl tabular-nums bg-money-up-fill',
+    );
+  });
+
+  it('squares a standalone box, in the same padding, fill and figure', () => {
+    renderInRow(<MoneyCell display={'\u2212$35'} shape="standalone" />);
+
+    const cell = screen.getByRole('cell', { name: '\u2212$35' });
+    expect(cell).toHaveClass('px-3', 'py-2', 'bg-money-down-fill', 'text-on-fill', 'font-display', 'font-bold', 'text-xl');
+    expect(cell.className).not.toMatch(/rounded/);
+  });
 });

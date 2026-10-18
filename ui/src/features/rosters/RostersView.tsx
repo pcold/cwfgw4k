@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 import type { RosterPick, RosterTeam } from '@/shared/api/types';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
-import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
+import ReportGridCell from '@/shared/components/ReportGridCell';
+import ReportGridHead from '@/shared/components/ReportGridHead';
+import ReportGridRoundLabel from '@/shared/components/ReportGridRoundLabel';
+import { REPORT_GRID_TABLE_CLASS } from '@/shared/components/reportGrid';
 
 interface Props {
   teams: RosterTeam[];
@@ -48,42 +51,25 @@ function RostersView({ teams, sideBetRounds, onGolferClick }: Props): ReactNode 
   }
 
   const sharedPlayers = computeSharedPlayers(teams);
+  const gridTeams = teams.map((team, i) => ({
+    teamId: team.teamId,
+    number: team.teamNumber ?? i + 1,
+    name: team.teamName,
+  }));
 
   return (
     <section className="space-y-6">
       <div className="overflow-x-auto -mx-3 sm:mx-0">
-        <table className="w-full text-xs border-collapse">
-          <thead className={COLUMN_HEADER_CLASS}>
-            <tr className="bg-gold text-on-gold">
-              <th className="border border-hairline-strong px-1 py-1.5 w-10 sm:w-12 text-center sticky left-0 z-20 bg-gold">
-                RD
-              </th>
-              {teams.map((team, i) => (
-                <th
-                  key={team.teamId}
-                  className="border border-hairline-strong px-1 py-1.5 text-center min-w-[100px]"
-                >
-                  <div>{team.teamNumber ?? i + 1}</div>
-                  <div>{team.teamName}</div>
-                </th>
-              ))}
-            </tr>
-          </thead>
+        <table className={REPORT_GRID_TABLE_CLASS}>
+          <ReportGridHead cornerLabel="RD" teams={gridTeams} />
           <tbody>
-            {ROUNDS.map((round) => {
-              const rowBg = sideBetRounds.includes(round) ? 'bg-surface-card/70' : 'bg-surface-card';
-              return (
-              <tr key={round} className={rowBg}>
-                <td className="border border-hairline px-1 py-1.5 text-center font-bold text-ink-muted sticky left-0 z-10 bg-surface-card">
-                  {round}
-                </td>
+            {ROUNDS.map((round) => (
+              <tr key={round}>
+                <ReportGridRoundLabel round={round} lateRow={sideBetRounds.includes(round)} />
                 {teams.map((team) => {
                   const pick = pickFor(team, round);
                   return (
-                    <td
-                      key={`${team.teamId}-${round}`}
-                      className="border border-hairline px-2 py-1.5 text-center"
-                    >
+                    <ReportGridCell key={`${team.teamId}-${round}`}>
                       {pick ? (
                         <div>
                           {onGolferClick && pick.golferId ? (
@@ -106,12 +92,11 @@ function RostersView({ teams, sideBetRounds, onGolferClick }: Props): ReactNode 
                       ) : (
                         <span className="text-ink-faint">—</span>
                       )}
-                    </td>
+                    </ReportGridCell>
                   );
                 })}
               </tr>
-              );
-            })}
+            ))}
           </tbody>
         </table>
       </div>

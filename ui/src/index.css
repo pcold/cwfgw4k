@@ -66,7 +66,7 @@
   --color-secondary-hover: var(--brand-navy-secondary);
   --color-disabled: var(--color-slate-400);
   --color-position-fill: var(--brand-navy);
-  /* The band opening a table card. Not `chrome`, the bar's, nor `secondary`, a button's. */
+  /* The band opening a table card, and the report grids' team heads. Not `chrome`, the bar's, nor `secondary`, a button's. */
   --color-header-band: var(--brand-navy);
 
   /*
@@ -99,18 +99,12 @@
   --color-money-down-fill: var(--color-red-700);
   --color-money-even-fill: var(--brand-muted);
 
-  /*
-   * The report grids' gold (header rows, the cash-total row, a cell that earned a payout) and the leader's
-   * position box. A fill: 1.44:1 on white.
-   */
-  --color-gold-tint: var(--color-yellow-200);
-  --color-gold-soft: var(--brand-gold);
+  /* The leader's position box and the edge of a late-row leader's cell. A fill: 1.44:1 on white. */
   --color-gold: var(--brand-gold);
-  --color-gold-bright: var(--color-yellow-100);
   --color-on-gold: var(--brand-navy);
-  --color-on-gold-earnings: var(--color-green-800);
 
-  --color-side-bet-winner: var(--color-red-100);
+  /* A report-grid cell whose pick leads its late-row round; a fill, edged in `gold`. */
+  --color-late-row-leader: var(--color-yellow-100);
 
   --font-sans:
     "Saira Variable", "Saira Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;

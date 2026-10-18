@@ -32,28 +32,23 @@ const BOLD_WEIGHT = 700;
 // WCAG 2.2 §1.4.11, for the line that bounds a control rather than a glyph.
 const NON_TEXT_CONTRAST = 3;
 
-// The weekly report's cash-total row.
-const CASH_TOTAL_ROW: Wash = { token: 'gold-soft', percent: 30, over: 'canvas' };
-// The rosters page's side-bet round rows, and a weekly-report round row hovered.
-const SIDE_BET_ROUND_ROW: Wash = { token: 'surface-card', percent: 70, over: 'canvas' };
-const REPORT_ROW_HOVERED: Wash = { token: 'surface-card', percent: 80, over: 'canvas' };
-
 // Where each text token renders, from the call sites, inherited colour included. Hover fills are listed
 // because the label stays put; disabled controls are not, since §1.4.3 exempts an inactive component.
 // A wash between two backdrops an ink is listed on needs no row: on these near-neutral surfaces the
 // blend's luminance lies between theirs, so it contrasts no less than the weaker of the two.
 const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
   'ink-strong': ['canvas', 'surface-card'],
-  ink: ['canvas', 'surface-card', 'surface-raised', 'surface-raised-hover', 'gold-tint'],
-  'ink-body': ['surface-card', 'surface-raised', 'side-bet-winner', SIDE_BET_ROUND_ROW, REPORT_ROW_HOVERED],
+  ink: ['canvas', 'surface-card', 'surface-raised', 'surface-raised-hover', 'late-row-leader'],
+  'ink-body': ['surface-card', 'surface-raised'],
   'ink-secondary': ['canvas', 'surface-card', 'surface-raised'],
   'ink-label': ['canvas', 'surface-card', 'surface-raised'],
   'ink-muted': [
     'canvas',
     'surface-card',
+    'late-row-leader',
     { token: 'surface-raised', percent: 50, over: 'surface-card' },
   ],
-  'ink-soft': ['canvas', 'surface-card', 'surface-raised', 'side-bet-winner', CASH_TOTAL_ROW],
+  'ink-soft': ['canvas', 'surface-card', 'surface-raised'],
   'ink-faint': ['canvas', 'surface-card'],
   'on-chrome': ['chrome'],
   'on-chrome-muted': ['chrome'],
@@ -69,13 +64,7 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
     'money-even-fill',
   ],
   'primary-ink': ['canvas', 'surface-card'],
-  'semantic-success': [
-    'canvas',
-    'surface-card',
-    'surface-raised',
-    'side-bet-winner',
-    CASH_TOTAL_ROW,
-  ],
+  'semantic-success': ['canvas', 'surface-card', 'surface-raised'],
   'semantic-success-ink': [{ token: 'semantic-success-tint', percent: 30, over: 'canvas' }],
   'semantic-warning': ['canvas', 'surface-card'],
   'semantic-warning-ink': [
@@ -83,11 +72,10 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
     { token: 'semantic-warning-tint', percent: 30, over: 'surface-card' },
     { token: 'semantic-warning-soft', percent: 50, over: 'canvas' },
   ],
-  'semantic-danger': ['canvas', 'surface-card', 'surface-raised', CASH_TOTAL_ROW],
+  'semantic-danger': ['canvas', 'surface-card', 'surface-raised'],
   'semantic-danger-hover': ['surface-card'],
   'semantic-danger-strong': ['surface-card'],
-  'on-gold': ['gold', 'gold-bright'],
-  'on-gold-earnings': ['gold-bright'],
+  'on-gold': ['gold'],
 };
 
 // A field's border against its own fill and against each surface a field sits on: a white card, and the canvas

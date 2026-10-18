@@ -11,8 +11,6 @@ import { makeWonLostTotals } from '@/shared/test/fixtures';
 import {
   isSeasonReport,
   reportSubtitle,
-  roundCellBg,
-  roundTextColor,
   sideBetAmountByRound,
   sideBetRowLabel,
   sideBetWinnersByRound,
@@ -160,26 +158,6 @@ describe('teamCellsByRound', () => {
     expect(map.get(2)?.golferName).toBe('Golfer 2');
     expect(map.get(5)?.golferName).toBe('Golfer 5');
     expect(map.has(1)).toBe(false);
-  });
-});
-
-describe('roundCellBg', () => {
-  it('prefers the side-bet winner background over earnings', () => {
-    expect(roundCellBg(true, true)).toBe('bg-side-bet-winner');
-  });
-  it('uses the earnings background when only earnings are present', () => {
-    expect(roundCellBg(true, false)).toBe('bg-gold-bright');
-  });
-  it('returns no background when neither applies', () => {
-    expect(roundCellBg(false, false)).toBe('');
-  });
-});
-
-describe('roundTextColor', () => {
-  it('uses dark text only when earnings are present without a side-bet win', () => {
-    expect(roundTextColor(true, false)).toBe('text-on-gold');
-    expect(roundTextColor(true, true)).toBe('text-ink-body');
-    expect(roundTextColor(false, false)).toBe('text-ink-body');
   });
 });
 
