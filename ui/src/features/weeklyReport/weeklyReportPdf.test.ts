@@ -12,7 +12,8 @@ import type {
   WeeklyReport,
 } from '@/shared/api/types';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
-import { buildWeeklyReportPdf } from './weeklyReportPdf';
+import { resolveToken } from '@/shared/test/tokenColours';
+import { PDF_COLOURS, buildWeeklyReportPdf, type PdfColourToken } from './weeklyReportPdf';
 
 function row(overrides: Partial<ReportCell> = {}): ReportCell {
   return {
@@ -74,8 +75,9 @@ function buildFixture(overrides: {
   payoutMultiplier?: number;
   undraftedLen?: number;
   sideBetRules?: ReportSideBetRules | null;
+  teams?: readonly ReportTeamColumn[];
 } = {}): WeeklyReport {
-  const teams: ReportTeamColumn[] = [
+  const teams: readonly ReportTeamColumn[] = overrides.teams ?? [
     buildTeam('t1', 'Aces', 5),
     buildTeam('t2', 'Birdies'),
     buildTeam('t3', 'Eagles'),
@@ -105,7 +107,7 @@ function buildFixture(overrides: {
       payoutMultiplier: overrides.payoutMultiplier ?? 1,
       week: overrides.week === undefined ? '1' : overrides.week,
     },
-    teams,
+    teams: [...teams],
     undraftedTopTens: Array.from({ length: overrides.undraftedLen ?? 2 }, (_, i) => ({
       name: `Undrafted${i}`,
       position: 10,
@@ -126,26 +128,95 @@ function buildFixture(overrides: {
   };
 }
 
+const unescaped = (text: string): string => text.replace(/\\([()\\])/g, '$1');
+
 // Each string the document draws, read back from the uncompressed stream's `(text) Tj` operators.
 function drawnText(doc: jsPDF): string[] {
   return doc
     .output()
     .split('\n')
     .flatMap((line) => /^\((.*)\) Tj$/.exec(line)?.slice(1) ?? [])
-    .map((text) => text.replace(/\\([()\\])/g, '$1'));
+    .map(unescaped);
 }
 
-// The fill colour each string is drawn in: the operands of the last `g` or `rg` before its `Tj`.
-function drawnInk(doc: jsPDF): Map<string, string> {
-  const ink = new Map<string, string>();
+// jsPDF writes a fill colour to two decimals and a text colour to three, as `g` when the channels match.
+function paintOf(operands: string): string {
+  const channels = operands.split(' ').map((channel) => Number(channel).toFixed(2));
+  return (channels.length === 1 ? [channels[0], channels[0], channels[0]] : channels).join(' ');
+}
+
+function paint(token: PdfColourToken): string {
+  return PDF_COLOURS[token].map((channel) => (channel / 255).toFixed(2)).join(' ');
+}
+
+interface FilledRect {
+  readonly paint: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+interface DrawnRun {
+  readonly text: string;
+  readonly ink: string;
+  readonly font: string;
+  // The last rectangle filled under the run's origin before it was drawn; null on bare paper.
+  readonly backdrop: string | null;
+}
+
+const contains = (rect: FilledRect, x: number, y: number): boolean =>
+  x >= Math.min(rect.x, rect.x + rect.width) &&
+  x <= Math.max(rect.x, rect.x + rect.width) &&
+  y >= Math.min(rect.y, rect.y + rect.height) &&
+  y <= Math.max(rect.y, rect.y + rect.height);
+
+// A walk over the stream's operators: `rg`/`g` set the fill, which also inks text, `re` then `f`/`B` fills a
+// rectangle, `Tf` picks a font resource, `Td` places the next `Tj`.
+function drawnPage(doc: jsPDF): { readonly runs: readonly DrawnRun[]; readonly rects: readonly FilledRect[] } {
+  const source = doc.output();
+  const baseFontByObject = new Map(
+    [...source.matchAll(/^(\d+) 0 obj\n<<\n\/Type \/Font\n\/BaseFont \/([\w-]+)$/gm)].map((match) => [match[1], match[2]]),
+  );
+  const baseFontByResource = new Map(
+    [...source.matchAll(/^\/(F\d+) (\d+) 0 R$/gm)].map((match) => [match[1], baseFontByObject.get(match[2] ?? '')]),
+  );
+  const runs: DrawnRun[] = [];
+  const rects: FilledRect[] = [];
   let fill = '';
-  for (const line of doc.output().split('\n')) {
+  let font = '';
+  let origin = { x: 0, y: 0 };
+  let pending: Omit<FilledRect, 'paint'> | null = null;
+  for (const line of source.split('\n')) {
     const colour = /^([\d. ]+) r?g$/.exec(line)?.[1];
-    if (colour !== undefined) fill = colour;
+    if (colour !== undefined) fill = paintOf(colour);
+    const resource = /^\/(F\d+) [\d.]+ Tf$/.exec(line)?.[1];
+    if (resource !== undefined) font = baseFontByResource.get(resource) ?? resource;
+    const position = /^(-?[\d.]+) (-?[\d.]+) Td$/.exec(line);
+    if (position !== null) origin = { x: Number(position[1]), y: Number(position[2]) };
+    const box = /^(-?[\d.]+) (-?[\d.]+) (-?[\d.]+) (-?[\d.]+) re$/.exec(line);
+    if (box !== null) {
+      pending = { x: Number(box[1]), y: Number(box[2]), width: Number(box[3]), height: Number(box[4]) };
+    } else if (pending !== null && /^(f|F|B|b)\*?$/.test(line)) {
+      rects.push({ paint: fill, ...pending });
+      pending = null;
+    }
     const text = /^\((.*)\) Tj$/.exec(line)?.[1];
-    if (text !== undefined) ink.set(text, fill);
+    if (text !== undefined) {
+      const under = rects.findLast((rect) => contains(rect, origin.x, origin.y));
+      runs.push({ text: unescaped(text), ink: fill, font, backdrop: under?.paint ?? null });
+    }
   }
-  return ink;
+  return { runs, rects };
+}
+
+function drawnRun(doc: jsPDF, text: string): DrawnRun | undefined {
+  return drawnPage(doc).runs.findLast((run) => run.text === text);
+}
+
+// The footer's zero totals print `$0` too, on bare paper.
+function filledRun(doc: jsPDF, text: string): DrawnRun | undefined {
+  return drawnPage(doc).runs.findLast((run) => run.text === text && run.backdrop !== null);
 }
 
 describe('buildWeeklyReportPdf', () => {
@@ -182,8 +253,16 @@ describe('buildWeeklyReportPdf', () => {
       cashTotals: { won: 9, lost: -2, net: 7 },
       sideBetTotals: { won: 55, lost: -66, net: -11 },
     };
+    const drawn = drawnText(buildWeeklyReportPdf(disagreeing));
     // 0x96 is the en dash in Helvetica's WinAnsi encoding, the PDF's stand-in for U+2212.
-    expect(drawnText(buildWeeklyReportPdf(disagreeing))).toContain('+$9    \x96$2');
+    expect(drawn).toContain('+$9');
+    expect(drawn).toContain('\x96$2');
+  });
+
+  it('inks the footer won by its gain and lost by its loss, as the screen colours its Won and Lost chips', () => {
+    const doc = buildWeeklyReportPdf({ ...buildFixture(), cashTotals: { won: 9, lost: -2, net: 7 } });
+    expect(drawnRun(doc, '+$9')?.ink).toBe(paint('semantic-success'));
+    expect(drawnRun(doc, '\x96$2')?.ink).toBe(paint('semantic-danger'));
   });
 
   it('prints the ONGOING TOTAL CASH row in whole dollars and the subtotal in cents', () => {
@@ -203,15 +282,70 @@ describe('buildWeeklyReportPdf', () => {
     expect(blob.size).toBeGreaterThan(100);
   });
 
-  it('colours only ONGOING TOTAL CASH by sign, and draws the rows above it in the label ink', () => {
-    const ink = drawnInk(buildWeeklyReportPdf(buildFixture()));
-    const label = ink.get('TOTAL CASH');
-    expect(ink.get('+$95')).not.toBe(label);
-    expect(ink.get('\x96$55')).not.toBe(label);
-    expect(ink.get('+$95')).not.toBe(ink.get('\x96$55'));
-    for (const amount of ['+$7.50', '+$50.00', '+$40.00', '\x96$40.00', '\x96$20.00']) {
-      expect(ink.get(amount)).toBe(label);
+  it('copies every print colour from its role token in index.css, to within one 8-bit step a channel', () => {
+    for (const [token, printed] of Object.entries(PDF_COLOURS)) {
+      const resolved = resolveToken(token);
+      const drift = printed.map((channel, i) => Math.abs(channel - (resolved[i] ?? Number.NaN)));
+      expect({ token, drift: drift.every((step) => step <= 1) }).toEqual({ token, drift: true });
     }
+  });
+
+  it('heads each team in white on the header band, and leaves the corner unfilled in the muted ink', () => {
+    const doc = buildWeeklyReportPdf(buildFixture());
+    expect(drawnRun(doc, 'ACES')).toMatchObject({
+      ink: paint('on-fill'),
+      font: 'Helvetica-Bold',
+      backdrop: paint('header-band'),
+    });
+    expect(drawnRun(doc, 'TEAM #')).toMatchObject({ ink: paint('ink-muted'), backdrop: null });
+  });
+
+  it('prints a pick that earned in bold ink and one that earned nothing in the regular muted ink', () => {
+    const doc = buildWeeklyReportPdf(buildFixture());
+    expect(drawnRun(doc, 'GOLFERT15')).toMatchObject({ ink: paint('ink'), font: 'Helvetica-Bold', backdrop: null });
+    expect(drawnRun(doc, 'GOLFERT25')).toMatchObject({ ink: paint('ink-muted'), font: 'Helvetica', backdrop: null });
+  });
+
+  it('fills a late-row leader with the leader fill and edges it in gold, keeping its ink', () => {
+    const doc = buildWeeklyReportPdf(buildFixture());
+    expect(drawnRun(doc, 'GOLFERT12 (50%)')).toMatchObject({
+      ink: paint('ink-muted'),
+      backdrop: paint('late-row-leader'),
+    });
+    expect(drawnRun(doc, 'GOLFERT22 (50%)')?.backdrop).toBeNull();
+    const goldEdges = drawnPage(doc).rects.filter((rect) => rect.paint === paint('gold'));
+    expect(goldEdges.map((rect) => rect.width)).toEqual([2, 2]);
+  });
+
+  it('tags each late-row round, and only those, between its number and its stake', () => {
+    const drawn = drawnText(buildWeeklyReportPdf(buildFixture()));
+    const tagged = drawn.flatMap((text, i) => (text === 'LATE ROW' ? [drawn.slice(i - 1, i + 2)] : []));
+    expect(tagged).toEqual([
+      ['2', 'LATE ROW', '($20.00)'],
+      ['3', 'LATE ROW', '($20.00)'],
+    ]);
+    expect(drawnText(buildWeeklyReportPdf(buildFixture({ sideBetRules: null })))).not.toContain('LATE ROW');
+  });
+
+  it('prints the rows above ONGOING TOTAL CASH on bare paper in the ink, PREVIOUS in the muted ink', () => {
+    const doc = buildWeeklyReportPdf(buildFixture());
+    for (const amount of ['+$7.50', '+$50.00', '+$40.00', '\x96$40.00', '\x96$20.00']) {
+      expect(drawnRun(doc, amount)).toMatchObject({ ink: paint('ink'), backdrop: null });
+    }
+    expect(drawnRun(doc, 'PREVIOUS')).toMatchObject({ ink: paint('ink-muted'), backdrop: null });
+  });
+
+  it('fills each TOTAL CASH box by the sign it prints, under a bold white figure', () => {
+    const fixture = buildFixture();
+    const evenTeam: WeeklyReport = {
+      ...fixture,
+      teams: fixture.teams.map((t) => (t.teamId === 't3' ? { ...t, totalCash: 0.2 } : t)),
+    };
+    const doc = buildWeeklyReportPdf(evenTeam);
+    const figure = { ink: paint('on-fill'), font: 'Helvetica-Bold' };
+    expect(drawnRun(doc, '+$95')).toMatchObject({ ...figure, backdrop: paint('money-up-fill') });
+    expect(drawnRun(doc, '\x96$55')).toMatchObject({ ...figure, backdrop: paint('money-down-fill') });
+    expect(filledRun(doc, '$0')).toMatchObject({ ...figure, backdrop: paint('money-even-fill') });
   });
 
   it('tones a total cash that rounds to $0 as even, and one that rounds to a loss as down', () => {
@@ -220,10 +354,18 @@ describe('buildWeeklyReportPdf', () => {
       ...fixture,
       teams: fixture.teams.map((t) => ({ ...t, totalCash: t.teamId === 't1' ? -0.49 : -0.5 })),
     };
-    const ink = drawnInk(buildWeeklyReportPdf(nearZero));
-    const loss = drawnInk(buildWeeklyReportPdf(fixture)).get('\x96$55');
-    expect(ink.get('\x96$1')).toBe(loss);
-    expect(ink.get('$0')).not.toBe(loss);
-    expect(ink.get('$0')).not.toBe(ink.get('TOTAL CASH'));
+    const doc = buildWeeklyReportPdf(nearZero);
+    expect(drawnRun(doc, '\x96$1')?.backdrop).toBe(paint('money-down-fill'));
+    expect(filledRun(doc, '$0')?.backdrop).toBe(paint('money-even-fill'));
+  });
+
+  it('fits a four-figure TOTAL CASH on one line in each of thirteen team columns', () => {
+    const teams = Array.from({ length: 13 }, (_, i) => ({
+      ...buildTeam(`t${i}`, `Team${i}`),
+      totalCash: i % 2 === 0 ? 9999 : -9999,
+    }));
+    const drawn = drawnText(buildWeeklyReportPdf(buildFixture({ teams })));
+    expect(drawn.filter((text) => text === '+$9,999')).toHaveLength(7);
+    expect(drawn.filter((text) => text === '\x96$9,999')).toHaveLength(6);
   });
 });
