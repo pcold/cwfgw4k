@@ -7,7 +7,13 @@ import { moneyTone, type MoneyTone } from '@/shared/util/money';
  */
 export const MONEY_FIGURE_CLASS = 'font-display font-bold text-xl tabular-nums';
 
-const CELL_CLASS = `px-3 py-2 rounded-r text-right text-on-fill ${MONEY_FIGURE_CLASS}`;
+/** `row-end` rounds a card row's right corners, so it is that row's last cell; `standalone` is a square grid cell. */
+export type MoneyCellShape = 'row-end' | 'standalone';
+
+const SHAPE_CLASS: Readonly<Record<MoneyCellShape, string>> = {
+  'row-end': 'px-3 py-2 rounded-r',
+  standalone: 'px-3 py-2',
+};
 
 const TONE_CLASS: Readonly<Record<MoneyTone, string>> = {
   up: 'bg-money-up-fill',
@@ -17,12 +23,17 @@ const TONE_CLASS: Readonly<Record<MoneyTone, string>> = {
 
 interface MoneyCellProps {
   readonly display: string;
+  readonly shape?: MoneyCellShape;
 }
 
 /**
- * Rounds the card's right corners, so it is the row's last cell. No `className`, so a caller can't fight the
- * fill. Takes the formatted text, as `moneyTone` does, so the box tones at the precision it prints.
+ * No `className`, so a caller can't fight the fill. Takes the formatted text, as `moneyTone` does, so the box
+ * tones at the precision it prints.
  */
-export default function MoneyCell({ display }: MoneyCellProps): ReactElement {
-  return <td className={`${CELL_CLASS} ${TONE_CLASS[moneyTone(display)]}`}>{display}</td>;
+export default function MoneyCell({ display, shape = 'row-end' }: MoneyCellProps): ReactElement {
+  return (
+    <td className={`${SHAPE_CLASS[shape]} text-right text-on-fill ${MONEY_FIGURE_CLASS} ${TONE_CLASS[moneyTone(display)]}`}>
+      {display}
+    </td>
+  );
 }
