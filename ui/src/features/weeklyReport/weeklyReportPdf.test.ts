@@ -159,6 +159,8 @@ interface FilledRect {
 
 interface DrawnRun {
   readonly text: string;
+  readonly x: number;
+  readonly y: number;
   readonly ink: string;
   readonly font: string;
   // The last rectangle filled under the run's origin before it was drawn; null on bare paper.
@@ -208,7 +210,7 @@ function drawnPage(doc: jsPDF): { readonly runs: readonly DrawnRun[]; readonly r
     const text = /^\((.*)\) Tj$/.exec(line)?.[1];
     if (text !== undefined) {
       const under = rects.findLast((rect) => contains(rect, origin.x, origin.y));
-      runs.push({ text: unescaped(text), ink: fill, font, backdrop: under?.paint ?? null });
+      runs.push({ text: unescaped(text), ...origin, ink: fill, font, backdrop: under?.paint ?? null });
     }
   }
   return { runs, rects };
@@ -390,5 +392,22 @@ describe('buildWeeklyReportPdf', () => {
     const drawn = drawnText(buildWeeklyReportPdf(buildFixture({ teams })));
     expect(drawn.filter((text) => text === '+$9,999')).toHaveLength(7);
     expect(drawn.filter((text) => text === '\x96$9,999')).toHaveLength(6);
+  });
+
+  it('heads the standings on a line of its own, over four rank-ordered columns of 4, 3, 3 and 3 teams', () => {
+    const teams = Array.from({ length: 13 }, (_, i) => buildTeam(`t${i}`, `Team${i}`));
+    const { runs } = drawnPage(buildWeeklyReportPdf(buildFixture({ teams })));
+    const headingLine = runs.find((run) => run.text === 'STANDINGS THRU WEEK 1')?.y;
+    const tableTopLine = runs.find((run) => run.text === 'TEAM #')?.y;
+    const entries = runs.filter((run) => /^\d+\) TEAM\d+$/.test(run.text));
+    expect(headingLine).toBeDefined();
+    expect(tableTopLine).toBeDefined();
+    expect(entries.filter((entry) => entry.y >= (headingLine ?? 0))).toEqual([]);
+    // At 8pt, a baseline less than one line above the table's first head row overlaps it.
+    expect(entries.filter((entry) => entry.y - (tableTopLine ?? 0) < 8)).toEqual([]);
+    const columnLengths = new Map<number, number>();
+    for (const entry of entries) columnLengths.set(entry.x, (columnLengths.get(entry.x) ?? 0) + 1);
+    expect([...columnLengths.values()]).toEqual([4, 3, 3, 3]);
+    expect(entries.map((entry) => entry.text)).toEqual(teams.map((team, i) => `${i + 1}) ${team.teamName.toUpperCase()}`));
   });
 });
