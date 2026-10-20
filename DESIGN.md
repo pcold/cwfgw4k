@@ -291,14 +291,14 @@ The contrast table in `ui/src/index.css.test.ts` pins every text token at WCAG A
 
 ### Surface
 - **Canvas** (`{colors.canvas}`, the brand sky #e8eef7): the page background.
-- **Surface Card** (`{colors.surface-card}`, white): every card, the money summary chips, the modal panel and the More sheet, the active nav link, the cells between the boxes of the standings' and scoreboard's card rows, every phone list card, the report's phone Team totals card, Late Row Bets' phone chasing list and Totals cards, a chip strip's idle chips, the scoreboard's leaderboard card, every cell of the report and roster grids. At `/60` it is the row hover on the player-rankings table.
+- **Surface Card** (`{colors.surface-card}`, white): every card, the money summary chips, the modal panel and the More sheet, the phone picker's summary button, the active nav link, the cells between the boxes of the standings' and scoreboard's card rows, every phone list card, the report's phone Team totals card, Late Row Bets' phone chasing list and Totals cards, a chip strip's idle chips, the scoreboard's leaderboard card, every cell of the report and roster grids. At `/60` it is the row hover on the player-rankings table.
 - **Surface Raised** (`{colors.surface-raised}`, the brand sky): form fields, the neutral tag chips, the current page's row in the More sheet and a row hovered, the Rules page's payout tiles but first place's, and its formula block. It is the canvas's colour, so it reads as raised only inside a white card.
 - **Surface Raised Hover** (`{colors.surface-raised-hover}`, the brand line #d5deeb): the roster file input's button, hovered.
-- **Overlay** (`{colors.overlay}`, black): the modal scrim, the More sheet's included, at `/60`.
+- **Overlay** (`{colors.overlay}`, black): the modal scrim, the More sheet's and the picker sheet's included, at `/60`.
 
 ### Chrome
 - **Chrome** (`{colors.chrome}`, the brand navy): the bar behind the top nav, the tab bar and the footer, the FINAL chip, and a chip strip's selected chip.
-- **On Chrome** (`{colors.on-chrome}`, white): a nav or footer link hovered, the current tab's label, the FINAL chip's label, a chip strip's selected chip's label.
+- **On Chrome** (`{colors.on-chrome}`, white): the nav's week button, a nav or footer link hovered, the current tab's label, the FINAL chip's label, a chip strip's selected chip's label.
 - **On Chrome Muted** (`{colors.on-chrome-muted}`, slate-300): an idle nav or footer link.
 - **On Chrome Tab Idle** (`{colors.on-chrome-tab-idle}`, the brand steel #8ea2c2): an idle tab's label, 6.50:1 on the bar. Not `{colors.on-chrome-muted}`: dimmer, so the current tab's white stands out from the other four.
 
@@ -307,11 +307,11 @@ These three inks are light, so they are for a `{colors.chrome}` fill alone; on t
 ### Lines
 - **Hairline Soft** (`{colors.hairline-soft}`, the brand line): row dividers (`divide-y`) inside the scoreboard's leaderboard and the player-rankings table, the rules inside the report's phone Team totals card, and the dividers of Late Row Bets' phone team list.
 - **Hairline** (`{colors.hairline}`, the brand line): the modal header rule, the rule above Admin in the More sheet, the rankings chart's gridlines (`stroke-hairline`).
-- **Hairline Strong** (`{colors.hairline-strong}`, slate-400): borders on the modal panel, the More sheet's top edge and the error card, and on the outlined chip, the outlined late-row tag and a chip strip's idle chips.
-- **Control Border** (`{colors.control-border}`, slate-500): the border on every input and select, 4.76:1 on white and 4.08:1 on the canvas. Not the brand line the hairlines keep, which is 1.36:1 on white: a field on the canvas (the league/season picker) has no fill contrast, so its border is its only edge. The brand muted blue also clears 3:1 but draws a field as a heavy box.
+- **Hairline Strong** (`{colors.hairline-strong}`, slate-400): borders on the modal panel, the top edge of the More sheet and the picker sheet, and the error card, and on the outlined chip, the outlined late-row tag and a chip strip's idle chips.
+- **Control Border** (`{colors.control-border}`, slate-500): the border on every input and select and on the phone picker's summary button, 4.76:1 on white and 4.08:1 on the canvas. Not the brand line the hairlines keep, which is 1.36:1 on white: a field on the canvas (the league/season picker) has no fill contrast, so its border is its only edge. The brand muted blue also clears 3:1 but draws a field as a heavy box.
 
 ### Text
-- **Ink Strong** (`{colors.ink-strong}`, the brand navy #0a1d38): every page title, the UPCOMING chip's text and outline, the active nav link on its white block, the current page's row in the More sheet, the close button and a text button hovered, a competitor's name in the player-links panel, the counts on the roster upload. On a light canvas the darkest ink is the strongest, so it shares navy with `{colors.ink}`.
+- **Ink Strong** (`{colors.ink-strong}`, the brand navy #0a1d38): every page title, the UPCOMING chip's text and outline, the active nav link on its white block, the current page's row in the More sheet, the phone picker's summary button, the close button and a text button hovered, a competitor's name in the player-links panel, the counts on the roster upload. On a light canvas the darkest ink is the strongest, so it shares navy with `{colors.ink}`.
 - **Ink** (`{colors.ink}`, the brand navy): the default text colour, set on `body` and the app root; team names in the scoreboard and standings tables, a player's name on the leaderboard, the standings' Subtotal and Late Row Bets, and in the report grid the round numbers, the bold summary rows' labels, every summary figure but PREVIOUS and the top-ten line under SUBTOTAL, and the name of a pick that earned; on a phone, an idle strip chip's label, the Team totals figures, a pick card's payout, and on Late Row Bets a leader card's `TEAM · Golfer` line, a team name in the list or a Totals card, and a listed team's season earnings; on the Rules page, the payout tiles' amounts but first place's, and the formula block.
 - **Ink Body** (`{colors.ink-body}`, the brand navy): golfer names inside the roster grid cells, and the neutral tag chip's text.
 - **Ink Secondary** (`{colors.ink-secondary}`, the brand secondary navy #13305a): running text on the Rules page, golfer names and the Top 10 Earnings column on the scoreboard.
@@ -362,14 +362,14 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 
 ### Font family
 - **Saira** — the brand face, self-hosted from `@fontsource-variable/saira` (width and weight axes, upright and italic) through the imports in `ui/src/main.tsx`. `--font-sans` in `ui/src/index.css` leads with it, so Tailwind's preflight sets it on `html` and every text style inherits it at 100% width. Behind it come `Saira Fallback`, Arial scaled to Saira's metrics so text holds its place while the webfont swaps in, then the system stack.
-- **Display** — the `font-display` utility in `ui/src/index.css` sets `font-stretch: 75%`, the condensed width for the nav, titles, team names and numbers. Today the brand mark, the nav links, the tab labels and More sheet rows, the footer link, page titles, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes, a phone list card's name and total, the report grids' round numbers and Late row tag, a chip strip's chips, the late-row tags, the Team totals figures, Late Row Bets' phone labels, card names and listed season earnings, and the Rules cards' bands and payout tiles use it. A fallback face has no width axis and sets it at its own width.
+- **Display** — the `font-display` utility in `ui/src/index.css` sets `font-stretch: 75%`, the condensed width for the nav, titles, team names and numbers. Today the brand mark, the nav links and week button, the tab labels and More sheet rows, the footer link, page titles, the phone picker's summary, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes, a phone list card's name and total, the report grids' round numbers and Late row tag, a chip strip's chips, the late-row tags, the Team totals figures, Late Row Bets' phone labels, card names and listed season earnings, and the Rules cards' bands and payout tiles use it. A fallback face has no width axis and sets it at its own width.
 - **System Mono** — Tailwind's `font-mono`. The weekly report grid's money figures, late row bets' table golfer names and amounts (from `sm`), the golfer-history modal's place and money columns, and the ESPN week and event names on the schedule import.
 
 ### Hierarchy
 
 | Token | Size | Weight | Tracking | Classes | Where |
 |---|---|---|---|---|---|
-| `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links, tab labels and More sheet rows, the footer link, page titles, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes, a phone list card's name and total, the report grids' round numbers and Late row tag, a chip strip's chips, the late-row tags, the Team totals figures, Late Row Bets' phone labels, card names and listed season earnings, the Rules cards' bands and payout tiles |
+| `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links and week button, tab labels and More sheet rows, the footer link, page titles, the phone picker's summary, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes, a phone list card's name and total, the report grids' round numbers and Late row tag, a chip strip's chips, the late-row tags, the Team totals figures, Late Row Bets' phone labels, card names and listed season earnings, the Rules cards' bands and payout tiles |
 | `{typography.brand-mark}` | 20px | 800 | 0.025em, italic, uppercase | `font-display italic font-extrabold text-xl uppercase tracking-wide` | The CASTLEWOOD FG mark in the nav |
 | `{typography.page-title}` | 24px, 30px from `sm:` | 800 | 0, italic, uppercase | `font-display italic font-extrabold uppercase text-2xl sm:text-3xl leading-tight text-ink-strong` | The `h2` of every page, in `PageTitle` |
 | `{typography.modal-title}` | 18px | 700 | 0 | `text-lg font-bold` | Modal header |
@@ -395,7 +395,7 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 ### Spacing
 - Tailwind's default 4px scale; there are no spacing tokens.
 - **Page**: `<main>` is `max-w-screen-2xl mx-auto px-safe-3 sm:px-safe-4 pt-4 sm:pt-6`, and its foot is `pb-above-tab-bar-4 sm:pb-above-tab-bar-6 lg:pb-6`, so below `lg` the last row clears the fixed tab bar and the home indicator. The nav and the footer centre their contents in the same `max-w-screen-2xl px-safe-3 sm:px-safe-4`, so every band's edges line up with the page's.
-- **Safe area**: the viewport is `viewport-fit=cover`, so a gutter that meets a screen edge takes the larger of its spacing and the inset: `px-safe-*` and `pb-above-tab-bar-*` are utilities in `ui/src/index.css`. A surface that is itself edge to edge (the tab bar, the More sheet) pads by the inset alone, `pb-[env(safe-area-inset-bottom)]` and its left and right pair.
+- **Safe area**: the viewport is `viewport-fit=cover`, so a gutter that meets a screen edge takes the larger of its spacing and the inset: `px-safe-*` and `pb-above-tab-bar-*` are utilities in `ui/src/index.css`. A surface that is itself edge to edge (the tab bar, the More sheet, the picker sheet) pads by the inset alone, `pb-[env(safe-area-inset-bottom)]` and its left and right pair.
 - **Page body**: a stack spaced `space-y-6` or `space-y-4`, opening with `PageTitle`.
 - **Cards**: `p-6` for form cards and a Rules card's body under its band, `p-4` for the rankings chart and late-row-bet tables.
 - **List tables**: cells `px-3 py-2` (scoreboard teams, standings, player rankings) or `px-2 py-2` with `px-3` at the outer edges (the leaderboard, whose nine columns fit half the page from `xl`); card rows are `h-11` and `border-spacing-y-1` apart. Below `sm` the standings, scoreboard teams and players are cards instead, each at least 54px (`min-h-13.5`) and `gap-1` apart.
@@ -416,7 +416,7 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 | 2 | `{colors.surface-raised}` | Fields, neutral chips, the Rules payout tiles but first place's, and the formula block |
 | 3 | `{colors.surface-card}` + `{colors.hairline-strong}` border + `{elevation.modal}` (`shadow-xl`) over `{colors.overlay}`/60 | The modal panel, and the error screen's card |
 
-White cards on the sky canvas carry depth without shadows, and a raised control is sky again inside its white card. The `{colors.chrome}` nav, tab bar and footer frame the levels rather than sit on one. `shadow-xl` appears only on the two floating panels; the More sheet rises from the screen's foot over the scrim and casts none, since nothing lies beside it.
+White cards on the sky canvas carry depth without shadows, and a raised control is sky again inside its white card. The `{colors.chrome}` nav, tab bar and footer frame the levels rather than sit on one. `shadow-xl` appears only on the two floating panels; the More sheet and the picker sheet rise from the screen's foot over the scrim and cast none, since nothing lies beside them.
 
 ## Shapes
 
@@ -433,7 +433,7 @@ Table cells are square, but for the outer corners of a card row, which its posit
 A `{colors.chrome}` bar, `min-h-14`, with no border, its `<nav>` labelled `Main` beside the tab bar's `Tabs`. On the left, the brand mark: an `h1` reading CASTLEWOOD FG in `{typography.brand-mark}` and `{colors.on-primary}`, on a `{colors.primary}` block slanted with `-skew-x-12` the bar's full height; the text inside is skewed back (`skew-x-12`), since the italic face already slants it. At `lg:` and up, a row of links on the right.
 - Every nav label is `font-display font-semibold uppercase tracking-wider`, idle `text-on-chrome-muted hover:text-on-chrome`; the current page's link is a `bg-surface-card text-ink-strong` block and carries `aria-current="page"`.
 - Desktop link: `inline-flex items-center` plus `TAP_TARGET_CLASS`, `px-3 rounded text-sm`.
-- Below `lg:` the bar holds the brand mark alone; the tab bar navigates.
+- Below `lg:` the bar holds the brand mark, and below `sm:` the phone picker's week button at its right (see Phone picker); the tab bar navigates.
 
 ### Footer — `ui/src/App.tsx`
 A `{colors.chrome}` bar matching the nav, `lg` and up only (`hidden lg:block`): below it the More sheet reaches Admin. It is `py-1.5`, holding the Admin link alone at the right: the nav's label and idle ink, `inline-flex items-center` plus `TAP_TARGET_CLASS`, `px-3 rounded text-sm`.
@@ -446,10 +446,17 @@ Below `lg` only (`lg:hidden`): a `{colors.chrome}` `<nav aria-label="Tabs">` fix
 ### Page title — `ui/src/shared/components/PageTitle.tsx`
 Every page opens with one: a `<header>` holding the page's only `h2` in `{typography.page-title}` (the `h1` is the brand mark), an optional `text-sm text-ink-muted` subtitle under it, and on the right an `actions` slot. It is `flex flex-wrap items-center justify-between`; below `sm:` the actions take a line of their own under the title. A Page renders it outside its data's loading gates, so the title holds still while the data loads or the season changes; Admin, which has no title until the session check confirms a login, is the exception. The title is static text; what varies — a tournament's name, its week, a count — goes in the subtitle.
 
-The actions slot holds the status chip on a page whose response carries one (Scoreboard, Weekly Report, Standings, Players, Late Row Bets), then the league/season picker; Admin puts its Log out button there instead. No rule sits under the header.
+The actions slot holds the status chip on a page whose response carries one (Scoreboard, Weekly Report, Standings, Players, Late Row Bets), then the league/season picker, and below `sm:` the phone picker's summary button in its place; Admin puts its Log out button there instead. No rule sits under the header.
 
 ### League / season picker — `ui/src/features/leagues/LeagueSeasonPicker.tsx`
-Lives in the page title's actions, not in a bar of its own: a page that reads the selected season passes `<LeagueSeasonPicker />`, and a page that doesn't (Admin) shows none. Two labelled selects in a `flex flex-wrap` row; labels are `text-xs text-ink-soft font-medium uppercase tracking-wider`, selects `bg-surface-raised border border-control-border rounded text-base` with `TAP_TARGET_CLASS`.
+Lives in the page title's actions, not in a bar of its own: a page that reads the selected season passes `<LeagueSeasonPicker />` in a `DESKTOP_PICKER_CLASS` wrapper, and a page that doesn't (Admin) shows none. Below `sm:` the wrapper hides it and the phone picker's sheet holds it instead. Two labelled selects in a `flex flex-wrap` row; labels are `text-xs text-ink-soft font-medium uppercase tracking-wider`, selects `bg-surface-raised border border-control-border rounded text-base` with `TAP_TARGET_CLASS`.
+
+### Phone picker — `ui/src/features/leagues/PhonePicker.tsx`, `ui/src/shared/components/HeaderSlot.tsx`
+Below `sm:` only, on every page that has a league/season picker. Two buttons open one `ModalShell` sheet (`placement="sheet"`, dismissed by a tap on the scrim), which holds the league/season picker and then the page's tournament or Through field; Rosters and Rules add none. A change leaves the sheet open; the close button, Escape or the scrim close it.
+- The summary button sits in the title's actions after the status chip, `w-full` on `bg-surface-card` with `CONTROL_CLASS` and `TAP_TARGET_CLASS`, left-aligned in `font-display font-medium {colors.ink-strong}`. It reads `Wk 11 · Butterfield Bermuda ▾` (`tournamentShortLabel`), the season's label without a tournament, and `Choose season` without a season.
+- The week button sits at the nav's right, `font-display font-semibold uppercase tracking-wider text-sm {colors.on-chrome}` with `TAP_TARGET_CLASS` and `px-3`, reading `WK 11 ▾` or the same fallbacks.
+- A page portals the week button into the nav's slot (`useHeaderSlot`), so its state stays in the page; a page without a picker leaves the slot empty. The ▾ is `aria-hidden`; both buttons carry `aria-haspopup="dialog"`, `aria-expanded` and `aria-controls`, and the week button's name adds what it changes.
+- The page's desktop field stays mounted under `DESKTOP_PICKER_CLASS` (`hidden sm:block`), so the sheet's copy takes ids suffixed `-sheet`.
 
 ### Status chip — `ui/src/shared/components/StatusChip.tsx`
 `statusChipVariant` picks the chip from a response's `live` flag and its tournament's `status`, in this order:
@@ -487,7 +494,7 @@ Every button, every tone and size included, carries `TAP_TARGET_CLASS` (`min-h-1
 ### Form fields — `ui/src/shared/components/formFields.tsx`
 `FIELD_CLASS` is `bg-surface-raised border border-control-border rounded px-3 py-2 text-base min-h-11 w-full`, built on `CONTROL_CLASS` and `TAP_TARGET_CLASS` and shared by `TextField`, `DateField` and `SelectField`. `FieldShell` puts a `block text-xs text-ink-muted mb-1` label above the control and a `mt-1 text-semantic-danger text-xs` error, with `role="alert"`, below it. Size a field with the `width` prop, not by appending a width class.
 
-A select in a page's toolbar rather than a form — the scoreboard's tournament, player rankings' Through — is `PickerRow.tsx`: an uppercase label, then the select on `bg-surface-card` rather than a field's raised fill, over the same `CONTROL_CLASS` and `TAP_TARGET_CLASS`, then any trailing controls. The row is `flex-wrap`; below `sm:` the select is `w-full min-w-0 truncate`, so a long tournament name truncates rather than scroll the page sideways. The admin payout input is `CONTROL_CLASS` at `w-16`. The schedule-multiplier input and the roster-match select copy its sizing by hand: each has a border colour of its own, and two border colours would tie on stylesheet order.
+A select in a page's toolbar rather than a form — the scoreboard's tournament, player rankings' Through — is `PickerRow.tsx`: an uppercase label, then the select on `bg-surface-card` rather than a field's raised fill, over the same `CONTROL_CLASS` and `TAP_TARGET_CLASS`, then any trailing controls. A page's toolbar row hides below `sm:` (`DESKTOP_PICKER_CLASS`), and the phone picker's sheet holds a second copy. The row is `flex-wrap`; below `sm:`, in the sheet, the select is `w-full min-w-0 truncate`, so a long tournament name truncates rather than scroll the page sideways. The admin payout input is `CONTROL_CLASS` at `w-16`. The schedule-multiplier input and the roster-match select copy its sizing by hand: each has a border colour of its own, and two border colours would tie on stylesheet order.
 
 A table head that filters its column uses `ColumnHeaderFilter.tsx`: a transparent, borderless select that inherits the head's family, weight, tracking and colour and turns `{colors.ink-label}` on hover or focus. It restates `uppercase`, because a browser resets a select's text-transform. It is `text-base` with `TAP_TARGET_CLASS` inside the `text-xs` head, so its column is as wide as its longest option at 16px.
 
@@ -557,7 +564,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 - Set condensed display type with `font-display`, never a raw `font-stretch`.
 - Name a colour by its token: `text-ink-muted`, `bg-surface-card`. A new role gets a token in `ui/src/index.css` and an entry in this file's `colors:` in the same change, plus a row in the contrast table when it colours text.
 - Keep green for a gain. Colour only a surface's bottom-line money, through `moneyToneClass` on the text it prints, or `MoneyCell` in a card row; leave every other amount in the table's ink. Set all money in `tabular-nums` or `font-mono`.
-- Open every page with `PageTitle`, its actions holding the status chip where the response has one, then the league/season picker on every page but Admin; never a hand-rolled `h2`.
+- Open every page with `PageTitle`, its actions holding the status chip where the response has one, then the league/season picker on every page but Admin, hidden below `sm:` beside a `PhonePicker`; never a hand-rolled `h2`.
 - Use `FIELD_CLASS` (through `TextField`, `DateField`, `SelectField`, or `FieldShell` for anything else) for every form input and select, and `PickerRow` for a page toolbar's select; both build on `CONTROL_CLASS`.
 - Put a wide table in `overflow-x-auto -mx-3 sm:mx-0` with a `min-w-*`, so a phone scrolls the table rather than the page; a list or a report grid instead sets cards below `sm` (see List tables, Report grids).
 - Give every button, link, select, input and click handler `TAP_TARGET_CLASS` (`Button` carries its own). A link also needs `flex items-center` (or `inline-flex`), or its text sits at the top of the 44px; a checkbox gives it to its label.
@@ -573,7 +580,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 
 | Breakpoint | Behavior |
 |---|---|
-| Below `sm:` (<640px) | Page padding `px-safe-3 pt-4`, the foot clearing the tab bar. The standings, scoreboard teams and players are cards (see List tables), the report and rosters show one team at a time, chosen from the team strip (see Report grids), and Late Row Bets one round at a time (see Late row bets); other wide tables scroll edge to edge. The title's actions wrap onto a line under the title, and the picker's selects take a row each. Rankings chart 220px tall. Centred modal panels take 92vw; the More sheet spans the width. |
+| Below `sm:` (<640px) | Page padding `px-safe-3 pt-4`, the foot clearing the tab bar. The standings, scoreboard teams and players are cards (see List tables), the report and rosters show one team at a time, chosen from the team strip (see Report grids), and Late Row Bets one round at a time (see Late row bets); other wide tables scroll edge to edge. The title's actions wrap onto a line under the title, where the phone picker's summary button stands in for the league/season picker and the page's tournament field, and the nav shows its week button. Rankings chart 220px tall. Centred modal panels take 92vw; the More sheet and the picker sheet span the width. |
 | `sm:` to `lg:` (640–1024px) | Padding `px-safe-4 pt-6`, the foot clearing the tab bar; tables scroll inside the page margin. The actions sit at the title's right while they fit. Chart 320px. The tab bar still navigates. |
 | `lg:` and up (≥1024px) | The nav shows its links inline, each 44px tall; the tab bar hides and the footer shows. Chart 400px. |
 
@@ -591,7 +598,7 @@ Use these when building UI here:
 - **A field:** `TextField` / `SelectField` / `DateField` from `@/shared/components/formFields`; never a hand-rolled input class.
 - **A tap target:** append `TAP_TARGET_CLASS` from `@/shared/components/formFields` to any text button, link, select or input (`Button` carries its own); a link adds `inline-flex items-center`.
 - **A toolbar select:** `PickerRow` from `@/shared/components/PickerRow`, with the row's other controls as its children.
-- **A page title:** `<PageTitle title="…" subtitle="…" actions={<><StatusChip variant={statusChipVariant(query.data)} /><LeagueSeasonPicker /></>} />`, outside the page's loading gates.
+- **A page title:** `<PageTitle title="…" subtitle="…" actions={<><StatusChip variant={statusChipVariant(query.data)} /><div className={DESKTOP_PICKER_CLASS}><LeagueSeasonPicker /></div><PhonePicker tournament={…} renderField={…} /></>} />`, outside the page's loading gates.
 - **A table head:** `<thead className={COLUMN_HEADER_CLASS}>` from `@/shared/components/columnHeader`, with no type on its rows or cells but an ink its fill needs, as a report team head's `text-on-fill`; body `divide-y divide-hairline-soft`, or for card rows a `border-separate border-spacing-y-1` table (see List tables).
 - **A money value:** `tabular-nums`, or `font-mono` in the grids; a bottom-line amount adds `moneyToneClass` of the text it prints and keeps its table's weight, or in a card row is a `<MoneyCell display={…} />` (`shape="card-end"` on a phone list card).
 - **A modal:** `FormModal` for a form, `ModalShell` when the body waits on a query.
