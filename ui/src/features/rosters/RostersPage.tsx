@@ -13,6 +13,7 @@ function RostersPage(): ReactNode {
   const { seasonId } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
   const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
 
   const rostersQuery = useQuery({
     queryKey: queryKeys.rosters.bySeason(seasonId),
@@ -35,6 +36,8 @@ function RostersPage(): ReactNode {
             <RostersView
               teams={teams}
               sideBetRounds={sideBetRounds}
+              selectedTeamId={selectedTeamId}
+              onSelectTeam={setSelectedTeamId}
               onGolferClick={setHistoryGolferId}
             />
           )}
