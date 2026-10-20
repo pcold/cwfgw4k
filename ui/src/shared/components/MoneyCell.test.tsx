@@ -45,4 +45,16 @@ describe('MoneyCell', () => {
     expect(cell).toHaveClass('px-3', 'py-2', 'bg-money-down-fill', 'text-on-fill', 'font-display', 'font-bold', 'text-xl');
     expect(cell.className).not.toMatch(/rounded/);
   });
+
+  it.each([
+    ['+$1,082', 'bg-money-up-fill'],
+    ['\u2212$35', 'bg-money-down-fill'],
+    ['$0', 'bg-money-even-fill'],
+  ] as const)('sets a card-end box for %s as a div rounded on the right, in the same fill and figure', (display, tone) => {
+    renderWithProviders(<MoneyCell display={display} shape="card-end" />, NO_PROVIDERS);
+
+    const box = screen.getByText(display);
+    expect(box.tagName).toBe('DIV');
+    expect(box).toHaveClass(tone, 'rounded-r', 'shrink-0', 'text-on-fill', 'font-display', 'font-bold', 'text-xl');
+  });
 });
