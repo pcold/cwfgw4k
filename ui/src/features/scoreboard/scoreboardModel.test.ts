@@ -6,6 +6,7 @@ import {
   formatScoreToPar,
   hasPlayerOn,
   hasUndraftedPlayer,
+  leaderboardRoundLine,
   leaderboardTeamChips,
   leaderboardTeamNames,
   playerNames,
@@ -235,6 +236,25 @@ describe('formatScoreToPar', () => {
   });
   it('passes negative values through', () => {
     expect(formatScoreToPar(-7)).toBe('-7');
+  });
+});
+
+describe('leaderboardRoundLine', () => {
+  it('is null for a competitor yet to tee off, with no rounds and no total', () => {
+    expect(leaderboardRoundLine(makeLeaderboardEntry({ roundScores: [], totalStrokes: null }))).toBeNull();
+  });
+  it('lists the rounds played so far, in order, then the total', () => {
+    expect(leaderboardRoundLine(makeLeaderboardEntry({ roundScores: [68, 70], totalStrokes: 138 }))).toBe(
+      'R1 68 · R2 70 · Tot 138',
+    );
+  });
+  it('lists all four rounds and the total', () => {
+    expect(leaderboardRoundLine(makeLeaderboardEntry({ roundScores: [64, 68, 70, 66], totalStrokes: 268 }))).toBe(
+      'R1 64 · R2 68 · R3 70 · R4 66 · Tot 268',
+    );
+  });
+  it('leaves Tot off when the server sent no total', () => {
+    expect(leaderboardRoundLine(makeLeaderboardEntry({ roundScores: [71], totalStrokes: null }))).toBe('R1 71');
   });
 });
 
