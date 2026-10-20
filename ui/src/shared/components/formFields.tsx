@@ -34,7 +34,10 @@ interface FieldShellProps {
    * contents' width in a flex row, but the container's full width in block flow.
    */
   readonly width?: string;
-  /** For a control a table column already heads; the label still names it for assistive tech. */
+  /**
+   * For a control a table column heads, or whose options name what it picks; the label still names it for
+   * assistive tech.
+   */
   readonly hideLabel?: boolean;
   readonly children: ReactNode;
 }

@@ -1,12 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PlayerRankingsRow } from '@/shared/api/types';
+import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { nth } from '@/shared/test/nth';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import { MONEY_FIGURE_CLASS } from '@/shared/components/MoneyCell';
 import PlayerRankingsView from './PlayerRankingsView';
+
+const NO_PROVIDERS = { withLeagueSeasonProvider: false };
 
 function r(overrides: Partial<PlayerRankingsRow>): PlayerRankingsRow {
   return {
@@ -40,23 +43,24 @@ function phoneCard(name: string): HTMLElement {
 }
 
 function phoneDetailLine(name: string): HTMLElement {
-  return nth(Array.from(phoneCard(name).querySelectorAll<HTMLElement>('.text-ink-muted')), 0);
+  return within(phoneCard(name)).getByText(/top 10/);
 }
 
 describe('PlayerRankingsView', () => {
   it('shows an empty state when no players qualify', () => {
-    render(<PlayerRankingsView players={[]} />);
+    renderWithProviders(<PlayerRankingsView players={[]} />, NO_PROVIDERS);
     expect(screen.getByText(/No players with a top 10 finish yet/i)).toBeInTheDocument();
   });
 
   it('renders a row per player with name, top 10s, total $, team, and round', () => {
-    render(
+    renderWithProviders(
       <PlayerRankingsView
         players={[
           r({ key: 'g:g-1', name: 'Scottie Scheffler', topTens: 3, totalEarnings: 50, teamName: 'Aces', draftRound: 1 }),
           r({ key: 'u:Phil', golferId: null, name: 'P. Mickelson', topTens: 1, totalEarnings: 8, teamName: null, draftRound: null }),
         ]}
       />,
+      NO_PROVIDERS,
     );
 
     const rows = tableRows();
@@ -80,47 +84,50 @@ describe('PlayerRankingsView', () => {
   it('makes drafted player names clickable when onGolferClick is provided', async () => {
     const onGolferClick = vi.fn();
     const user = userEvent.setup();
-    render(
+    renderWithProviders(
       <PlayerRankingsView
         players={[r({ golferId: 'g-42', name: 'Clickable' })]}
         onGolferClick={onGolferClick}
       />,
+      NO_PROVIDERS,
     );
     await user.click(within(playerTable()).getByRole('button', { name: 'Clickable' }));
     expect(onGolferClick).toHaveBeenCalledWith('g-42');
   });
 
   it('gives each drafted player name the tap-target height', () => {
-    render(
+    renderWithProviders(
       <PlayerRankingsView
         players={[r({ golferId: 'g-42', name: 'Clickable' })]}
         onGolferClick={vi.fn()}
       />,
+      NO_PROVIDERS,
     );
 
     expect(within(playerTable()).getByRole('button', { name: 'Clickable' })).toHaveClass(TAP_TARGET_CLASS);
   });
 
   it('does not render undrafted players as buttons even when onGolferClick is provided', () => {
-    render(
+    renderWithProviders(
       <PlayerRankingsView
         players={[r({ key: 'u:Phil', golferId: null, name: 'P. Mickelson' })]}
         onGolferClick={vi.fn()}
       />,
+      NO_PROVIDERS,
     );
     expect(screen.queryByRole('button', { name: 'P. Mickelson' })).not.toBeInTheDocument();
     expect(within(playerTable()).getByText('P. Mickelson')).toBeInTheDocument();
   });
 
   it('renders names as plain text when no onGolferClick is provided', () => {
-    render(<PlayerRankingsView players={[r({})]} />);
+    renderWithProviders(<PlayerRankingsView players={[r({})]} />, NO_PROVIDERS);
     expect(screen.queryByRole('button', { name: 'Scottie Scheffler' })).not.toBeInTheDocument();
     expect(within(playerTable()).getByText('Scottie Scheffler')).toBeInTheDocument();
   });
 
   it('filters rows to a single team when that team is selected in the header', async () => {
     const user = userEvent.setup();
-    render(
+    renderWithProviders(
       <PlayerRankingsView
         players={[
           r({ key: 'g:g-1', name: 'Scottie Scheffler', teamName: 'Aces' }),
@@ -128,6 +135,7 @@ describe('PlayerRankingsView', () => {
           r({ key: 'u:Phil', golferId: null, name: 'P. Mickelson', teamName: null }),
         ]}
       />,
+      NO_PROVIDERS,
     );
 
     expect(tableRows()).toHaveLength(3);
@@ -141,13 +149,14 @@ describe('PlayerRankingsView', () => {
 
   it('offers an Undrafted option that shows only undrafted players', async () => {
     const user = userEvent.setup();
-    render(
+    renderWithProviders(
       <PlayerRankingsView
         players={[
           r({ key: 'g:g-1', name: 'Scottie Scheffler', teamName: 'Aces' }),
           r({ key: 'u:Phil', golferId: null, name: 'P. Mickelson', teamName: null }),
         ]}
       />,
+      NO_PROVIDERS,
     );
 
     await user.selectOptions(screen.getByLabelText(/Filter by team/i), 'Undrafted');
@@ -158,16 +167,17 @@ describe('PlayerRankingsView', () => {
   });
 
   it('omits the Undrafted option when no undrafted players are present', () => {
-    render(<PlayerRankingsView players={[r({ teamName: 'Aces' })]} />);
+    renderWithProviders(<PlayerRankingsView players={[r({ teamName: 'Aces' })]} />, NO_PROVIDERS);
     expect(screen.queryByRole('option', { name: 'Undrafted' })).not.toBeInTheDocument();
   });
 
   it('shows a no-match message when the filter yields zero rows and keeps the filter visible', async () => {
     const user = userEvent.setup();
-    render(
+    renderWithProviders(
       <PlayerRankingsView
         players={[r({ key: 'g:g-1', name: 'Scottie Scheffler', teamName: 'Aces' })]}
       />,
+      NO_PROVIDERS,
     );
     // Add a team to the option list first - only Aces is a real option, so pick it then switch back.
     await user.selectOptions(screen.getByLabelText(/Filter by team/i), 'Aces');
@@ -178,7 +188,7 @@ describe('PlayerRankingsView', () => {
   });
 
   it('deduplicates and alphabetizes the team options', () => {
-    render(
+    renderWithProviders(
       <PlayerRankingsView
         players={[
           r({ key: 'g:1', teamName: 'Cuts' }),
@@ -187,6 +197,7 @@ describe('PlayerRankingsView', () => {
           r({ key: 'g:4', teamName: 'Aces' }),
         ]}
       />,
+      NO_PROVIDERS,
     );
 
     const select = screen.getByLabelText<HTMLSelectElement>(/Filter by team/i);
@@ -198,7 +209,7 @@ describe('PlayerRankingsView', () => {
 
   it('filters rows by draft round when the round header is changed', async () => {
     const user = userEvent.setup();
-    render(
+    renderWithProviders(
       <PlayerRankingsView
         players={[
           r({ key: 'g:1', name: 'R1 Guy', teamName: 'Aces', draftRound: 1 }),
@@ -206,6 +217,7 @@ describe('PlayerRankingsView', () => {
           r({ key: 'u:Phil', golferId: null, name: 'Undrafted Guy', teamName: null, draftRound: null }),
         ]}
       />,
+      NO_PROVIDERS,
     );
 
     await user.selectOptions(screen.getByLabelText(/Filter by draft round/i), '3');
@@ -217,13 +229,14 @@ describe('PlayerRankingsView', () => {
 
   it('offers an Undrafted option on the round filter when any undrafted players exist', async () => {
     const user = userEvent.setup();
-    render(
+    renderWithProviders(
       <PlayerRankingsView
         players={[
           r({ key: 'g:1', name: 'Drafted', teamName: 'Aces', draftRound: 2 }),
           r({ key: 'u:Phil', golferId: null, name: 'Not Drafted', teamName: null, draftRound: null }),
         ]}
       />,
+      NO_PROVIDERS,
     );
 
     await user.selectOptions(screen.getByLabelText(/Filter by draft round/i), 'Undrafted');
@@ -234,7 +247,7 @@ describe('PlayerRankingsView', () => {
   });
 
   it('sorts round options ascending and dedupes', () => {
-    render(
+    renderWithProviders(
       <PlayerRankingsView
         players={[
           r({ key: 'g:1', draftRound: 7 }),
@@ -243,6 +256,7 @@ describe('PlayerRankingsView', () => {
           r({ key: 'g:4', draftRound: 1 }),
         ]}
       />,
+      NO_PROVIDERS,
     );
 
     const select = screen.getByLabelText<HTMLSelectElement>(/Filter by draft round/i);
@@ -254,7 +268,7 @@ describe('PlayerRankingsView', () => {
 
   it('combines team and round filters with AND semantics', async () => {
     const user = userEvent.setup();
-    render(
+    renderWithProviders(
       <PlayerRankingsView
         players={[
           r({ key: 'g:1', name: 'Aces R1', teamName: 'Aces', draftRound: 1 }),
@@ -262,6 +276,7 @@ describe('PlayerRankingsView', () => {
           r({ key: 'g:3', name: 'Birdies R1', teamName: 'Birdies', draftRound: 1 }),
         ]}
       />,
+      NO_PROVIDERS,
     );
 
     await user.selectOptions(screen.getByLabelText(/Filter by team/i), 'Aces');
@@ -273,20 +288,21 @@ describe('PlayerRankingsView', () => {
   });
 
   it('tones each season Earnings total by the sign it prints, a zero gray', () => {
-    render(
+    renderWithProviders(
       <PlayerRankingsView
         players={[
           r({ key: 'g:g-1', name: 'Earner', totalEarnings: 50 }),
           r({ key: 'g:g-2', golferId: 'g-2', name: 'Blank', totalEarnings: 0.004 }),
         ]}
       />,
+      NO_PROVIDERS,
     );
     expect(within(playerTable()).getByText('+$50.00')).toHaveClass('text-semantic-success');
     expect(within(playerTable()).getByText('$0')).toHaveClass('text-ink-soft');
   });
 
   it('sets every column head in the shared column-header type', () => {
-    render(<PlayerRankingsView players={[r({})]} />);
+    renderWithProviders(<PlayerRankingsView players={[r({})]} />, NO_PROVIDERS);
     expectSharedColumnHeads(1);
   });
 
@@ -298,7 +314,7 @@ describe('PlayerRankingsView', () => {
     ];
 
     it('shows the cards and their filters below sm and the table from sm up', () => {
-      render(<PlayerRankingsView players={roster} />);
+      renderWithProviders(<PlayerRankingsView players={roster} />, NO_PROVIDERS);
 
       const phoneLayout = phoneCards().parentElement;
       expect(phoneLayout).toHaveClass('sm:hidden');
@@ -307,16 +323,19 @@ describe('PlayerRankingsView', () => {
     });
 
     it('sets a card per player in the order the server sent them', () => {
-      render(<PlayerRankingsView players={roster} />);
+      renderWithProviders(<PlayerRankingsView players={roster} />, NO_PROVIDERS);
 
-      const names = within(phoneCards())
+      const cards = within(phoneCards())
         .getAllByRole('listitem')
-        .map((card) => nth(Array.from(card.querySelectorAll('.font-display')), 1).textContent);
-      expect(names).toEqual(['Scottie Scheffler', 'Rory McIlroy', 'P. Mickelson']);
+        .map((card) => {
+          const [position, middle] = Array.from(card.children);
+          return `${position?.textContent ?? ''} ${middle?.firstElementChild?.textContent ?? ''}`;
+        });
+      expect(cards).toEqual(['1 Scottie Scheffler', '2 Rory McIlroy', '3 P. Mickelson']);
     });
 
     it('boxes the first position in gold and every other in navy', () => {
-      render(<PlayerRankingsView players={roster} />);
+      renderWithProviders(<PlayerRankingsView players={roster} />, NO_PROVIDERS);
 
       const boxes = within(phoneCards())
         .getAllByRole('listitem')
@@ -331,10 +350,10 @@ describe('PlayerRankingsView', () => {
     it("keeps the golfer's name as the server spells it, a tap-target button", async () => {
       const onGolferClick = vi.fn();
       const user = userEvent.setup();
-      render(<PlayerRankingsView players={roster} onGolferClick={onGolferClick} />);
+      renderWithProviders(<PlayerRankingsView players={roster} onGolferClick={onGolferClick} />, NO_PROVIDERS);
 
       const name = within(phoneCards()).getByRole('button', { name: 'Scottie Scheffler' });
-      expect(name).toHaveClass(TAP_TARGET_CLASS);
+      expect(name).toHaveClass(TAP_TARGET_CLASS, 'truncate');
       expect(name.parentElement).toHaveClass('normal-case');
       expect(name.parentElement).not.toHaveClass('uppercase');
       await user.click(name);
@@ -343,32 +362,35 @@ describe('PlayerRankingsView', () => {
     });
 
     it('prints the team, the draft round and the top-10 count under the name', () => {
-      render(<PlayerRankingsView players={roster} />);
+      renderWithProviders(<PlayerRankingsView players={roster} />, NO_PROVIDERS);
 
       expect(phoneDetailLine('Scottie Scheffler')).toHaveTextContent(/^Aces · Rd 1 · 4 top 10s$/);
       expect(within(phoneDetailLine('Scottie Scheffler')).getByText('Aces')).toHaveClass('uppercase');
     });
 
     it('counts a single top 10 in the singular', () => {
-      render(<PlayerRankingsView players={roster} />);
+      renderWithProviders(<PlayerRankingsView players={roster} />, NO_PROVIDERS);
 
       expect(phoneDetailLine('Rory McIlroy')).toHaveTextContent(/^Birdies · Rd 3 · 1 top 10$/);
     });
 
     it('names an undrafted player undrafted, with no round', () => {
-      render(<PlayerRankingsView players={roster} />);
+      renderWithProviders(<PlayerRankingsView players={roster} />, NO_PROVIDERS);
 
       expect(phoneDetailLine('P. Mickelson')).toHaveTextContent(/^Undrafted · 1 top 10$/);
     });
 
     it('leaves the round out for a drafted player the server sends no round for', () => {
-      render(<PlayerRankingsView players={[r({ name: 'Roundless', topTens: 2, teamName: 'Aces', draftRound: null })]} />);
+      renderWithProviders(
+        <PlayerRankingsView players={[r({ name: 'Roundless', topTens: 2, teamName: 'Aces', draftRound: null })]} />,
+        NO_PROVIDERS,
+      );
 
       expect(phoneDetailLine('Roundless')).toHaveTextContent(/^Aces · 2 top 10s$/);
     });
 
     it('sets the total as a plain figure toned by its sign, with no fill', () => {
-      render(<PlayerRankingsView players={roster} />);
+      renderWithProviders(<PlayerRankingsView players={roster} />, NO_PROVIDERS);
 
       const earner = within(phoneCard('Scottie Scheffler')).getByText('+$50.00');
       expect(earner).toHaveClass(...MONEY_FIGURE_CLASS.split(' '), 'text-semantic-success');
@@ -376,20 +398,20 @@ describe('PlayerRankingsView', () => {
       expect(within(phoneCard('P. Mickelson')).getByText('$0')).toHaveClass('text-ink-soft');
     });
 
-    it('offers every team and round from its phone selects, all of them first', () => {
-      render(<PlayerRankingsView players={roster} />);
+    it('offers every team and round from its phone selects, all of them first, each round named a round', () => {
+      renderWithProviders(<PlayerRankingsView players={roster} />, NO_PROVIDERS);
 
       const team = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Team' });
       const round = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Draft round' });
       expect(Array.from(team.options).map((o) => o.textContent)).toEqual(['All teams', 'Aces', 'Birdies', 'Undrafted']);
-      expect(Array.from(round.options).map((o) => o.textContent)).toEqual(['All rounds', '1', '3', 'Undrafted']);
+      expect(Array.from(round.options).map((o) => o.textContent)).toEqual(['All rounds', 'Rd 1', 'Rd 3', 'Undrafted']);
       expect(team).toHaveClass(TAP_TARGET_CLASS);
       expect(round).toHaveClass(TAP_TARGET_CLASS);
     });
 
     it('filters both the cards and the table by the phone team select', async () => {
       const user = userEvent.setup();
-      render(<PlayerRankingsView players={roster} />);
+      renderWithProviders(<PlayerRankingsView players={roster} />, NO_PROVIDERS);
 
       await user.selectOptions(screen.getByRole('combobox', { name: 'Team' }), 'Birdies');
 
@@ -402,7 +424,7 @@ describe('PlayerRankingsView', () => {
 
     it('filters both the cards and the table by the phone round select', async () => {
       const user = userEvent.setup();
-      render(<PlayerRankingsView players={roster} />);
+      renderWithProviders(<PlayerRankingsView players={roster} />, NO_PROVIDERS);
 
       await user.selectOptions(screen.getByRole('combobox', { name: 'Draft round' }), 'Undrafted');
 
@@ -414,10 +436,10 @@ describe('PlayerRankingsView', () => {
 
     it('says no player matches in place of the cards when the filters leave none', async () => {
       const user = userEvent.setup();
-      render(<PlayerRankingsView players={roster} />);
+      renderWithProviders(<PlayerRankingsView players={roster} />, NO_PROVIDERS);
 
       await user.selectOptions(screen.getByRole('combobox', { name: 'Team' }), 'Aces');
-      await user.selectOptions(screen.getByRole('combobox', { name: 'Draft round' }), '3');
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Draft round' }), 'Rd 3');
 
       expect(screen.queryByRole('list', { name: 'Players' })).not.toBeInTheDocument();
       const phoneMessage = screen

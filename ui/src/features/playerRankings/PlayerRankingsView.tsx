@@ -44,6 +44,11 @@ function PhoneFilter({ label, value, options, onChange }: PhoneFilterProps): Rea
   );
 }
 
+/** The phone select shows no label, so a picked round has to name itself. */
+function phoneRoundOption(option: SelectOption): SelectOption {
+  return option.value === UNDRAFTED ? option : { ...option, label: `Rd ${option.label}` };
+}
+
 interface GolferNameProps {
   readonly player: PlayerRankingsRow;
   readonly onGolferClick: ((golferId: string) => void) | undefined;
@@ -64,7 +69,11 @@ function GolferName({ player, onGolferClick }: GolferNameProps): ReactNode {
   );
 }
 
-function PlayerDetail({ player }: { readonly player: PlayerRankingsRow }): ReactNode {
+interface PlayerDetailProps {
+  readonly player: PlayerRankingsRow;
+}
+
+function PlayerDetail({ player }: PlayerDetailProps): ReactNode {
   return (
     <>
       {player.teamName ? <span className="uppercase">{player.teamName}</span> : 'Undrafted'}
@@ -214,7 +223,7 @@ function PlayerRankingsView({ players, onGolferClick }: Props): ReactNode {
           <PhoneFilter
             label="Draft round"
             value={roundFilter}
-            options={[{ value: ALL, label: 'All rounds' }, ...roundChoices]}
+            options={[{ value: ALL, label: 'All rounds' }, ...roundChoices.map(phoneRoundOption)]}
             onChange={setRoundFilter}
           />
         </div>
