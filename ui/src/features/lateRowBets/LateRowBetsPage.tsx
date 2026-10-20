@@ -14,12 +14,13 @@ import {
   pickInSeason,
   tournamentLabel,
 } from '@/shared/util/tournament';
-import LateRowBetsView from './LateRowBetsView';
+import LateRowBetsView, { type LateRowTab } from './LateRowBetsView';
 
 function LateRowBetsPage(): ReactNode {
   const { seasonId, live } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
   const [userTournamentId, setUserTournamentId] = useState<string | null>(null);
+  const [selectedTab, setSelectedTab] = useState<LateRowTab | null>(null);
 
   const tournamentsQuery = useQuery({
     queryKey: queryKeys.tournaments.bySeason(seasonId),
@@ -78,7 +79,7 @@ function LateRowBetsPage(): ReactNode {
         />
 
         <QueryState query={reportQuery} label="report">
-          {(report) => <LateRowBetsView report={report} />}
+          {(report) => <LateRowBetsView report={report} selectedTab={selectedTab} onSelectTab={setSelectedTab} />}
         </QueryState>
       </>
     );
