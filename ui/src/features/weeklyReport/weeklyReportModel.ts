@@ -5,6 +5,7 @@ import type {
   ReportTeamColumn,
   WeeklyReport,
 } from '@/shared/api/types';
+import { formatDollarsAndCents } from '@/shared/util/money';
 
 export const ROUNDS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
@@ -28,6 +29,14 @@ export function sideBetWinnersByRound(
     result.set(entry.round, winners);
   }
   return result;
+}
+
+export function cellEarningsLabel(cell: ReportCell): string {
+  return cell.earnings > 0 ? `${cell.positionStr ?? ''} - ${formatDollarsAndCents(cell.earnings)}` : '-';
+}
+
+export function topTensLabel(count: number): string {
+  return `${count} ${count === 1 ? 'top 10' : 'top 10s'}`;
 }
 
 export function sideBetAmountByRound(rules: ReportSideBetRules | null): Map<number, number> {

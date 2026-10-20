@@ -9,12 +9,14 @@ import type {
 } from '@/shared/api/types';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
 import {
+  cellEarningsLabel,
   isSeasonReport,
   reportSubtitle,
   sideBetAmountByRound,
   sideBetRowLabel,
   sideBetWinnersByRound,
   teamCellsByRound,
+  topTensLabel,
 } from './weeklyReportModel';
 
 function reportScoped(scope: ReportScope, status: string | null = null): WeeklyReport {
@@ -189,3 +191,24 @@ describe('reportSubtitle', () => {
     expect(reportSubtitle(reportScoped('tournament'))).toBe('');
   });
 });
+
+describe('cellEarningsLabel', () => {
+  it('pairs a paid finish with its earnings', () => {
+    expect(cellEarningsLabel({ ...reportRow(1), positionStr: 'T3', earnings: 9.5 })).toBe('T3 - +$9.50');
+  });
+
+  it('prints a bare dash for a finish that paid nothing', () => {
+    expect(cellEarningsLabel(reportRow(1))).toBe('-');
+  });
+});
+
+describe('topTensLabel', () => {
+  it.each([
+    [0, '0 top 10s'],
+    [1, '1 top 10'],
+    [2, '2 top 10s'],
+  ])('counts %i as %s', (count, label) => {
+    expect(topTensLabel(count)).toBe(label);
+  });
+});
+
