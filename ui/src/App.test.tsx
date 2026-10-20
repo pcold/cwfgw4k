@@ -190,7 +190,7 @@ describe('App', () => {
     ['/rosters', 'Team Rosters'],
     ['/late-row-bets', 'Late Row Bets'],
     ['/rules', 'Season Rules'],
-  ])("puts the league and season picker in %s's title row, and nowhere else", async (path, title) => {
+  ])("puts the league and season picker in %s's title row, hidden below sm, and nowhere else", async (path, title) => {
     vi.mocked(api.leagues).mockResolvedValueOnce([league]);
     vi.mocked(api.seasons).mockResolvedValueOnce([season]);
     renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
@@ -199,6 +199,9 @@ describe('App', () => {
     const titleRow = pageTitleRow(screen.getByRole('heading', { level: 2, name: title }));
     expect(titleRow).toContainElement(leagueSelect);
     expect(within(titleRow).getByRole('combobox', { name: 'Season' })).toBeInTheDocument();
+    const desktopWrapper = leagueSelect.closest<HTMLElement>('.hidden');
+    expect(desktopWrapper).toHaveClass('sm:block');
+    expect(titleRow).toContainElement(desktopWrapper);
     expect(screen.getAllByRole('combobox', { name: /^(League|Season)$/ })).toHaveLength(2);
   });
 });
