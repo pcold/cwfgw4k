@@ -233,6 +233,9 @@ describe('ScoreboardPage', () => {
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
 
     expect(await screen.findByText('Current Open · Week 9')).toBeInTheDocument();
+    expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 10 · Current Open' }))).toContainElement(
+      screen.getByRole('heading', { name: 'Scoreboard' }),
+    );
     await waitFor(() => {
       expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-active', true);
     });

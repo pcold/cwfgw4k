@@ -191,6 +191,9 @@ describe('WeeklyReportPage', () => {
     expect(await screen.findByText('Sample Open · 2026-03-01 – 2026-03-04')).toBeInTheDocument();
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
     expect(screen.getByRole('checkbox', { name: /Live overlay/i })).toBeChecked();
+    expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 9 · Sample Open' }))).toContainElement(
+      screen.getByRole('heading', { name: 'Weekly Report' }),
+    );
 
     const select = screen.getByLabelText(/Tournament/i);
     await user.selectOptions(select, '');

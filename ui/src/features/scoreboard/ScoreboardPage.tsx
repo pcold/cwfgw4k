@@ -11,6 +11,7 @@ import PageTitle from '@/shared/components/PageTitle';
 import PickerRow from '@/shared/components/PickerRow';
 import StatusChip, { statusChipVariant } from '@/shared/components/StatusChip';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
+import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicker';
 import { mutationError } from '@/shared/util/mutationError';
 import {
   defaultScoreboardSelection,
@@ -71,6 +72,20 @@ function ScoreboardPage(): ReactNode {
   // Shown only beside the tournament the admin finalized, so switching tournaments leaves its warnings behind.
   const finalized = finalizeMutation.variables === tournamentId ? finalizeMutation.data : undefined;
 
+  function renderTournamentField(selectedId: string, idSuffix: string): ReactNode {
+    return (
+      <PickerRow
+        id={`tournament-select${idSuffix}`}
+        label="Tournament"
+        value={selectedId}
+        options={tournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) }))}
+        onChange={setUserTournamentId}
+      >
+        <LiveOverlayCheckbox state={liveOverlay} id={`scoreboard-live-overlay${idSuffix}`} />
+      </PickerRow>
+    );
+  }
+
   function buildFinalizeSlot(report: WeeklyReport): ReactNode {
     if (!authenticated || !tournamentId) return null;
     const showLinks = isAdmin;
@@ -121,15 +136,7 @@ function ScoreboardPage(): ReactNode {
           }
           return (
             <div className="space-y-4">
-              <PickerRow
-                id="tournament-select"
-                label="Tournament"
-                value={tournamentId}
-                options={loadedTournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) }))}
-                onChange={setUserTournamentId}
-              >
-                <LiveOverlayCheckbox state={liveOverlay} id="scoreboard-live-overlay" />
-              </PickerRow>
+              <div className={DESKTOP_PICKER_CLASS}>{renderTournamentField(tournamentId, '')}</div>
 
               {finalized ? <FinalizeWarnings finalized={finalized} /> : null}
               <QueryState query={reportQuery} label="scoreboard">
@@ -168,7 +175,15 @@ function ScoreboardPage(): ReactNode {
         actions={
           <>
             <StatusChip variant={statusChipVariant(reportQuery.data)} />
-            <LeagueSeasonPicker />
+            <div className={DESKTOP_PICKER_CLASS}>
+              <LeagueSeasonPicker />
+            </div>
+            <PhonePicker
+              tournament={tournaments.find((t) => t.id === tournamentId)}
+              renderField={
+                tournamentId === null ? undefined : (idSuffix) => renderTournamentField(tournamentId, idSuffix)
+              }
+            />
           </>
         }
       />

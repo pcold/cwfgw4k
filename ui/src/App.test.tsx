@@ -127,6 +127,24 @@ describe('App', () => {
     },
   );
 
+  it.each(['/', '/scoreboard', '/report', '/rankings', '/player-rankings', '/rosters', '/late-row-bets', '/rules'])(
+    "puts %s's picker button in the main nav, opening the page's picker sheet",
+    async (path) => {
+      const user = userEvent.setup();
+      renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
+
+      await user.click(within(mainNavigation()).getByRole('button', { name: /, change league/ }));
+
+      expect(screen.getByRole('dialog', { name: 'League and season' })).toBeInTheDocument();
+    },
+  );
+
+  it.each(['/admin', '/no-such-page'])('leaves the main nav without a picker button on %s', (path) => {
+    renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
+
+    expect(within(mainNavigation()).queryByRole('button')).toBeNull();
+  });
+
   it('pads the foot of main past the tab bar below lg, and keeps the page padding from lg', () => {
     renderWithProviders(<App />, { withLeagueSeasonProvider: false });
 

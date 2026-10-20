@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import type { api } from '@/shared/api/client';
 import { nth } from '@/shared/test/nth';
+import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import type { League, Season, SeasonRules, Tournament } from '@/shared/api/types';
 import RulesPage from './RulesPage';
@@ -86,6 +87,9 @@ describe('RulesPage', () => {
       'Side Bets',
       'Season Schedule',
     ]);
+    expect(pageTitleRow(await screen.findByRole('button', { name: '2026 Season 1' }))).toContainElement(
+      screen.getByRole('heading', { name: 'Season Rules' }),
+    );
     for (const title of bandTitles) {
       expect(title.parentElement).toHaveClass('bg-header-band', 'text-on-fill', 'font-display');
     }

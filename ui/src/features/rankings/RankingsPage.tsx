@@ -9,6 +9,8 @@ import PageTitle from '@/shared/components/PageTitle';
 import PickerRow from '@/shared/components/PickerRow';
 import StatusChip, { statusChipVariant } from '@/shared/components/StatusChip';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
+import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicker';
+import type { Tournament } from '@/shared/api/types';
 import {
   ALL_TOURNAMENTS,
   defaultReportSelection,
@@ -47,6 +49,25 @@ function RankingsPage(): ReactNode {
 
   const rankings = rankingsQuery.data;
 
+  function renderThroughField(loaded: readonly Tournament[], selectedId: string, idSuffix: string): ReactNode {
+    const tournamentOptions = [
+      { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
+      ...loaded.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
+    ];
+
+    return (
+      <PickerRow
+        id={`rankings-through-tournament${idSuffix}`}
+        label="Through"
+        value={selectedId}
+        options={tournamentOptions}
+        onChange={setThroughOverride}
+      >
+        <LiveOverlayCheckbox state={liveOverlay} id={`rankings-live-overlay${idSuffix}`} />
+      </PickerRow>
+    );
+  }
+
   function renderBody(): ReactNode {
     if (leaguesGate) return leaguesGate;
     if (tournaments === undefined || throughTournamentId === null) {
@@ -61,22 +82,9 @@ function RankingsPage(): ReactNode {
       );
     }
 
-    const tournamentOptions = [
-      { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
-      ...tournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
-    ];
-
     return (
       <>
-        <PickerRow
-          id="rankings-through-tournament"
-          label="Through"
-          value={throughTournamentId}
-          options={tournamentOptions}
-          onChange={setThroughOverride}
-        >
-          <LiveOverlayCheckbox state={liveOverlay} id="rankings-live-overlay" />
-        </PickerRow>
+        <div className={DESKTOP_PICKER_CLASS}>{renderThroughField(tournaments, throughTournamentId, '')}</div>
 
         <QueryState query={rankingsQuery} label="standings">
           {(loaded) => <RankingsView rankings={loaded} />}
@@ -93,7 +101,17 @@ function RankingsPage(): ReactNode {
         actions={
           <>
             <StatusChip variant={statusChipVariant(rankings)} />
-            <LeagueSeasonPicker />
+            <div className={DESKTOP_PICKER_CLASS}>
+              <LeagueSeasonPicker />
+            </div>
+            <PhonePicker
+              tournament={tournaments?.find((t) => t.id === throughTournamentId)}
+              renderField={
+                tournaments === undefined || throughTournamentId === null
+                  ? undefined
+                  : (idSuffix) => renderThroughField(tournaments, throughTournamentId, idSuffix)
+              }
+            />
           </>
         }
       />

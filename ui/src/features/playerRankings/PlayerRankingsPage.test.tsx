@@ -201,6 +201,9 @@ describe('PlayerRankingsPage', () => {
     await screen.findByRole('option', { name: /tn-upcoming|Sample Open.*upcoming/i });
     const select = screen.getByLabelText<HTMLSelectElement>(/Through/i);
     expect(select.value).toBe('tn-upcoming');
+    expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 9 · Sample Open' }))).toContainElement(
+      screen.getByRole('heading', { name: 'Player Rankings' }),
+    );
   });
 
   it('runs through the tournament the server names, not the first unfinalized one in the list', async () => {

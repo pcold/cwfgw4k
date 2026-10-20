@@ -10,13 +10,14 @@ import PageTitle from '@/shared/components/PageTitle';
 import PickerRow from '@/shared/components/PickerRow';
 import StatusChip, { statusChipVariant } from '@/shared/components/StatusChip';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
+import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicker';
 import {
   ALL_TOURNAMENTS,
   defaultReportSelection,
   pickInSeason,
   tournamentLabel,
 } from '@/shared/util/tournament';
-import type { Season, WeeklyReport } from '@/shared/api/types';
+import type { Season, Tournament, WeeklyReport } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
 import WeeklyReportView from './WeeklyReportView';
 import { reportSubtitle } from './weeklyReportModel';
@@ -62,6 +63,38 @@ function WeeklyReportPage(): ReactNode {
             : api.tournamentReport(seasonId, effectiveId, live),
   );
 
+  function renderTournamentField(loaded: readonly Tournament[], selectedId: string, idSuffix: string): ReactNode {
+    const tournamentOptions = [
+      { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
+      ...loaded.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
+    ];
+
+    return (
+      <PickerRow
+        id={`weekly-report-tournament${idSuffix}`}
+        label="Tournament"
+        value={selectedId}
+        options={tournamentOptions}
+        onChange={setUserTournamentId}
+      >
+        <Button
+          tone="secondary"
+          size="regular"
+          disabled={!reportQuery.data || pdfMutation.isPending}
+          onClick={() => reportQuery.data && pdfMutation.mutate(reportQuery.data)}
+        >
+          Download PDF
+        </Button>
+        {pdfMutation.isError ? (
+          <span role="alert" className="text-semantic-danger text-sm">
+            Failed to generate PDF: {String(pdfMutation.error)}
+          </span>
+        ) : null}
+        <LiveOverlayCheckbox state={liveOverlay} id={`weekly-report-live-overlay${idSuffix}`} />
+      </PickerRow>
+    );
+  }
+
   function renderBody(): ReactNode {
     if (leaguesGate) return leaguesGate;
     if (tournaments === undefined || effectiveId === null) {
@@ -76,35 +109,9 @@ function WeeklyReportPage(): ReactNode {
       );
     }
 
-    const tournamentOptions = [
-      { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
-      ...tournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
-    ];
-
     return (
       <>
-        <PickerRow
-          id="weekly-report-tournament"
-          label="Tournament"
-          value={effectiveId}
-          options={tournamentOptions}
-          onChange={setUserTournamentId}
-        >
-          <Button
-            tone="secondary"
-            size="regular"
-            disabled={!reportQuery.data || pdfMutation.isPending}
-            onClick={() => reportQuery.data && pdfMutation.mutate(reportQuery.data)}
-          >
-            Download PDF
-          </Button>
-          {pdfMutation.isError ? (
-            <span role="alert" className="text-semantic-danger text-sm">
-              Failed to generate PDF: {String(pdfMutation.error)}
-            </span>
-          ) : null}
-          <LiveOverlayCheckbox state={liveOverlay} id="weekly-report-live-overlay" />
-        </PickerRow>
+        <div className={DESKTOP_PICKER_CLASS}>{renderTournamentField(tournaments, effectiveId, '')}</div>
 
         <QueryState query={reportQuery} label="report">
           {(report) => (
@@ -128,7 +135,17 @@ function WeeklyReportPage(): ReactNode {
         actions={
           <>
             <StatusChip variant={statusChipVariant(reportQuery.data)} />
-            <LeagueSeasonPicker />
+            <div className={DESKTOP_PICKER_CLASS}>
+              <LeagueSeasonPicker />
+            </div>
+            <PhonePicker
+              tournament={tournaments?.find((t) => t.id === effectiveId)}
+              renderField={
+                tournaments === undefined || effectiveId === null
+                  ? undefined
+                  : (idSuffix) => renderTournamentField(tournaments, effectiveId, idSuffix)
+              }
+            />
           </>
         }
       />

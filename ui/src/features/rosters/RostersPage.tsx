@@ -7,6 +7,7 @@ import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import PageTitle from '@/shared/components/PageTitle';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
+import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicker';
 import RostersView from './RostersView';
 
 function RostersPage(): ReactNode {
@@ -29,7 +30,17 @@ function RostersPage(): ReactNode {
 
   return (
     <div className="space-y-4">
-      <PageTitle title="Team Rosters" actions={<LeagueSeasonPicker />} />
+      <PageTitle
+        title="Team Rosters"
+        actions={
+          <>
+            <div className={DESKTOP_PICKER_CLASS}>
+              <LeagueSeasonPicker />
+            </div>
+            <PhonePicker />
+          </>
+        }
+      />
       {leaguesGate ?? (
         <QueryState query={rostersQuery} label="rosters">
           {(teams) => (

@@ -216,6 +216,9 @@ describe('LateRowBetsPage', () => {
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-2', true);
     expect(tournamentReportMock).not.toHaveBeenCalledWith('sn-1', 'tn-1', expect.anything());
     expect(seasonReportMock).not.toHaveBeenCalled();
+    expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 9 · Sample Open' }))).toContainElement(
+      screen.getByRole('heading', { name: 'Late Row Bets' }),
+    );
   });
 
   it("drops a pick the newly selected season lacks and opens on that season's current tournament", async () => {

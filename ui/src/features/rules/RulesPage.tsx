@@ -7,6 +7,7 @@ import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState } from '@/shared/components/QueryState';
 import PageTitle from '@/shared/components/PageTitle';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
+import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicker';
 import { formatUnsignedDollarsAndCents } from '@/shared/util/money';
 import { ordinal, payoutsByPlace } from './rulesModel';
 
@@ -75,7 +76,17 @@ function RulesPage(): ReactNode {
 
   return (
     <section className="space-y-6">
-      <PageTitle title="Season Rules" actions={<LeagueSeasonPicker />} />
+      <PageTitle
+        title="Season Rules"
+        actions={
+          <>
+            <div className={DESKTOP_PICKER_CLASS}>
+              <LeagueSeasonPicker />
+            </div>
+            <PhonePicker />
+          </>
+        }
+      />
       {renderBody()}
     </section>
   );

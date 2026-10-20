@@ -9,6 +9,9 @@ import { tournamentShortLabel, tournamentWeekLabel } from '@/shared/util/tournam
 import { useLeagueSeason } from './LeagueSeasonContext';
 import LeagueSeasonPicker from './LeagueSeasonPicker';
 
+/** Wraps a page's desktop copy of each picker the sheet holds below `sm:`. */
+export const DESKTOP_PICKER_CLASS = 'hidden sm:block';
+
 const SHEET_ID_SUFFIX = '-sheet';
 
 const NO_SEASON_LABEL = 'Choose season';

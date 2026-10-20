@@ -142,6 +142,9 @@ describe('RankingsPage', () => {
 
     await screen.findByText('3 weeks played');
     expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', true, 'tn-upcoming');
+    expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 13 · Sample Open' }))).toContainElement(
+      screen.getByRole('heading', { name: 'Team Standings' }),
+    );
   });
 
   it('runs through the tournament the server names, not the first unfinalized one in the list', async () => {
