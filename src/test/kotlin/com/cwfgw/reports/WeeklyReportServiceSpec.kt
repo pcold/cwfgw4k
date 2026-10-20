@@ -440,8 +440,8 @@ private fun espnRow(
         espnId = espnId,
         name = name,
         order = position,
-        scoreStr = "-12",
-        scoreToPar = -12,
+        scoreStr = "${position - 13}",
+        scoreToPar = position - 13,
         totalStrokes = 203,
         roundScores = listOf(68, 68, 67),
         position = position,
@@ -449,6 +449,14 @@ private fun espnRow(
         isTeamPartner = pairKey != null,
         pairKey = pairKey,
     )
+
+/** As ESPN lists a field before its tee time: level par, no linescores, no strokes. */
+private fun notTeedOffRow(
+    espnId: String,
+    name: String,
+): EspnCompetitor =
+    espnRow(espnId = espnId, name = name, position = 1)
+        .copy(scoreStr = "E", scoreToPar = 0, totalStrokes = null, roundScores = emptyList())
 
 /** An in-progress Masters whose whole ESPN field is [field]; each of [picks] is a team's round-1 golfer. */
 private fun liveFieldFixture(
@@ -1329,6 +1337,39 @@ class WeeklyReportServiceSpec : FunSpec({
         fixture.espnClient.fetchCalls shouldBe emptyList<LocalDate>()
     }
 
+    test("getReport with live=true on a field nobody has teed off lists it unplaced and leaves the money stored") {
+        val scottie = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
+        val preStart =
+            listOf(
+                notTeedOffRow("espn-p1", "Scottie Scheffler"),
+                notTeedOffRow("espn-p2", "Nobody's Pick"),
+                notTeedOffRow("espn-p3", "Nobody's Other Pick"),
+            )
+        val fixture = liveFieldFixture(field = preStart, picks = listOf(TEAM_A to scottie))
+
+        val stored = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = false).orFail()
+        val live = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true).orFail()
+
+        fun unplaced(
+            name: String,
+            vararg teamNames: String,
+        ) = LiveLeaderboardEntry(
+            position = null,
+            scoreToPar = null,
+            players = listOf(LeaderboardPlayer(name, teamNames.toList())),
+        )
+        live shouldBe
+            stored.copy(
+                awaitingTeeOff = true,
+                liveLeaderboard =
+                    listOf(
+                        unplaced("Scottie Scheffler", TEAM_A.teamName),
+                        unplaced("Nobody's Pick"),
+                        unplaced("Nobody's Other Pick"),
+                    ),
+            )
+    }
+
     test("getReport with live=true overlays projected ESPN earnings onto cells and sets live=true") {
         val winner = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
         val mastersInProgress =
@@ -1382,6 +1423,7 @@ class WeeklyReportServiceSpec : FunSpec({
         val scottie = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
         val sharedSecond =
             listOf(
+                espnRow("espn-p0", "Leader", position = 1),
                 espnRow("espn-p1", "Scottie Scheffler", position = 2),
                 espnRow("espn-p2", "Nobody's Pick", position = 2),
             )

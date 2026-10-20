@@ -569,7 +569,7 @@ internal fun buildPersistedLeaderboard(
         .map { slot ->
             val lead = slot.lead
             LiveLeaderboardEntry(
-                position = lead.position ?: 0,
+                position = lead.position,
                 scoreToPar = lead.scoreToPar,
                 players =
                     slot.members.map { result ->

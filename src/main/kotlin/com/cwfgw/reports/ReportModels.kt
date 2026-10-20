@@ -88,12 +88,13 @@ data class LeaderboardPlayer(
 
 /**
  * One competitor slot, not one golfer: a team event's partners are a single row of two [players] sharing its
- * position, score and rounds. [rostered] is a body property so it cannot disagree with [players], and
- * reaches the wire only because `appJson` encodes defaults.
+ * position, score and rounds. [position] and [scoreToPar] are null for a slot yet to tee off, listed after every
+ * placed one. [rostered] is a body property so it cannot disagree with [players], and reaches the wire only because
+ * `appJson` encodes defaults.
  */
 @Serializable
 data class LiveLeaderboardEntry(
-    val position: Int,
+    val position: Int?,
     val scoreToPar: Int?,
     val players: List<LeaderboardPlayer>,
     /** Per-round stroke totals (R1..R4) when ESPN ships them. Empty list if pre-tournament. */
@@ -231,6 +232,8 @@ data class WeeklyReport(
     val liveLeaderboard: List<LiveLeaderboardEntry> = emptyList(),
     /** @see Rankings.liveEligible */
     val liveEligible: Boolean = false,
+    /** Set only when the live overlay matched an ESPN event nobody has teed off, listed field or not. */
+    val awaitingTeeOff: Boolean = false,
 ) {
     val cashTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::totalCash))
     val sideBetTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::sideBets))

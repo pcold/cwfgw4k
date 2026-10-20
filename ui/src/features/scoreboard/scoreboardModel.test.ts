@@ -9,6 +9,7 @@ import {
   leaderboardTeamChips,
   leaderboardTeamNames,
   playerNames,
+  scoreboardPhase,
   scoreboardSubtitle,
   scoreboardTeams,
 } from './scoreboardModel';
@@ -64,6 +65,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     standingsOrder: [],
     live: false,
     liveEligible: false,
+    awaitingTeeOff: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
@@ -233,6 +235,23 @@ describe('formatScoreToPar', () => {
   });
   it('passes negative values through', () => {
     expect(formatScoreToPar(-7)).toBe('-7');
+  });
+});
+
+describe('scoreboardPhase', () => {
+  const inProgress = { ...report().tournament, status: 'in_progress' } as const;
+  const unplaced = makeLeaderboardEntry({ position: null, scoreToPar: null });
+
+  it('is finalized for a completed tournament, whatever the server says of tee-off', () => {
+    expect(scoreboardPhase(report({ awaitingTeeOff: true }))).toBe('finalized');
+  });
+  it('is pre-start when the server says it is awaiting tee-off, with or without a field', () => {
+    const awaiting = { tournament: inProgress, awaitingTeeOff: true };
+    expect(scoreboardPhase(report(awaiting))).toBe('preStart');
+    expect(scoreboardPhase(report({ ...awaiting, liveLeaderboard: [unplaced] }))).toBe('preStart');
+  });
+  it('is live unless the server says it is awaiting tee-off, even with nobody placed', () => {
+    expect(scoreboardPhase(report({ tournament: inProgress, liveLeaderboard: [unplaced, unplaced] }))).toBe('live');
   });
 });
 

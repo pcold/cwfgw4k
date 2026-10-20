@@ -98,6 +98,13 @@ export function formatScoreToPar(score: number | null): string {
   return score > 0 ? `+${score}` : `${score}`;
 }
 
+export type ScoreboardPhase = 'finalized' | 'preStart' | 'live';
+
+export function scoreboardPhase(report: WeeklyReport): ScoreboardPhase {
+  if (report.tournament.status === 'completed') return 'finalized';
+  return report.awaitingTeeOff ? 'preStart' : 'live';
+}
+
 export function scoreboardSubtitle(tournament: ReportTournamentInfo): string {
   const payout = tournament.payoutMultiplier !== 1 ? [`${tournament.payoutMultiplier}x payouts`] : [];
   return [tournament.name, `Week ${tournament.week ?? '?'}`, ...payout].filter(Boolean).join(' · ');

@@ -149,7 +149,7 @@ class EspnSurnameGuessSpec : FunSpec({
                 event("evt-a", competitor("1", "Joe Bloggs"), competitor("2", "Jim Bloggs", position = 2)),
                 tournament,
                 rosteredContext(tournament.seasonId, joeBloggs),
-            )
+            ).orFail()
 
         preview.teams.single().golferScores.map { it.position } shouldContainExactly listOf(1)
         preview.leaderboard.map { it.name to it.teamNames } shouldContainExactly
@@ -261,7 +261,7 @@ private fun competitor(
         scoreStr = "-10",
         scoreToPar = -10,
         totalStrokes = 278,
-        roundScores = emptyList(),
+        roundScores = listOf(70, 70, 69, 69),
         position = position,
         status = EspnStatus.Active,
         isTeamPartner = isTeamPartner,

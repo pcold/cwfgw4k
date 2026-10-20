@@ -87,10 +87,9 @@ data class EspnAthlete(
 )
 
 /**
- * Dry-run scoring of one ESPN tournament against the league's current
- * rosters — what each team *would* earn if the tournament were finalized
- * with ESPN's current leaderboard. Consumed by the live overlay to merge
- * in-progress data onto reports + rankings; no route returns it.
+ * Dry-run scoring of one ESPN tournament against the league's current rosters — what each team *would* earn
+ * if the tournament were finalized with the current placings of those who have teed off. Consumed by the
+ * live overlay to merge in-progress data onto reports + rankings; no route returns it.
  *
  * `payoutMultiplier` is the DB tournament's and `isTeamEvent` ESPN's
  * event's, each as finalize scores it ([buildLivePreviewForEvent]).
@@ -119,12 +118,12 @@ data class PreviewGolferScore(
 )
 
 /**
- * One row per competitor in ESPN's field, rostered or not. [teamNames] lists every team rostering the golfer,
- * since one can be split across teams; [rostered] is derived from it so the two cannot disagree.
+ * [position] and [scoreToPar] are null for a competitor yet to tee off. [teamNames] lists every team rostering the
+ * golfer, since one can be split across teams; [rostered] is derived from it so the two cannot disagree.
  */
 data class PreviewLeaderboardEntry(
     val name: String,
-    val position: Int,
+    val position: Int?,
     val scoreToPar: Int?,
     val teamNames: List<String>,
     val pairKey: String? = null,
