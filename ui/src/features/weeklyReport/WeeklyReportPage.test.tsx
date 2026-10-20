@@ -191,6 +191,10 @@ describe('WeeklyReportPage', () => {
     expect(await screen.findByText('Sample Open · 2026-03-01 – 2026-03-04')).toBeInTheDocument();
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
     expect(screen.getByRole('checkbox', { name: /Live overlay/i })).toBeChecked();
+    expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 9 · Sample Open' }))).toContainElement(
+      screen.getByRole('heading', { name: 'Weekly Report' }),
+    );
+    expect(screen.getByLabelText(/Tournament/i).closest('.hidden')).toHaveClass('sm:block');
 
     const select = screen.getByLabelText(/Tournament/i);
     await user.selectOptions(select, '');
@@ -476,6 +480,31 @@ describe('WeeklyReportPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/Failed to generate PDF.*autoTable exploded/);
     expect(button).toBeEnabled();
+  });
+
+  it("shows a PDF failure in the phone's sheet, and keeps it on the page once the sheet closes", async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
+    seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
+    downloadPdfMock.mockImplementation(() => {
+      throw new Error('autoTable exploded');
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<WeeklyReportPage />);
+    await screen.findByText('All Tournaments · Season totals');
+    await user.click(screen.getByRole('button', { name: '2026 Season 1' }));
+    const sheet = screen.getByRole('dialog', { name: 'League, season and tournament' });
+    await user.click(within(sheet).getByRole('button', { name: /Download PDF/i }));
+
+    expect(await within(sheet).findByRole('alert')).toHaveTextContent(/Failed to generate PDF.*autoTable exploded/);
+    await user.click(within(sheet).getByRole('button', { name: 'Close' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/Failed to generate PDF.*autoTable exploded/);
+    expect(alert.closest('.hidden')).toBeNull();
   });
 
   it('clears the PDF error when the next download attempt starts', async () => {

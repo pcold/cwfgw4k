@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
+import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import type { League, RosterTeam, Season, SeasonRules } from '@/shared/api/types';
 import RostersPage from './RostersPage';
@@ -113,6 +114,9 @@ describe('RostersPage', () => {
     expect(within(await findGrid()).getByText('Scottie Scheffler')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Team Rosters/i })).toBeInTheDocument();
     expect(rostersMock).toHaveBeenCalledWith('sn-1');
+    expect(pageTitleRow(await screen.findByRole('button', { name: '2026 Season 1' }))).toContainElement(
+      screen.getByRole('heading', { name: 'Team Rosters' }),
+    );
   });
 
   it('shows an error message when rosters fail to load', async () => {

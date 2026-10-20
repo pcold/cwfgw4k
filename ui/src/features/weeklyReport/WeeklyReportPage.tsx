@@ -10,19 +10,26 @@ import PageTitle from '@/shared/components/PageTitle';
 import PickerRow from '@/shared/components/PickerRow';
 import StatusChip, { statusChipVariant } from '@/shared/components/StatusChip';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
+import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicker';
 import {
   ALL_TOURNAMENTS,
   defaultReportSelection,
   pickInSeason,
   tournamentLabel,
 } from '@/shared/util/tournament';
-import type { Season, WeeklyReport } from '@/shared/api/types';
+import type { Season, Tournament, WeeklyReport } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
 import WeeklyReportView from './WeeklyReportView';
 import { reportSubtitle } from './weeklyReportModel';
 
 function downloadPdf(report: WeeklyReport, season: Season | null): Promise<void> {
   return import('./weeklyReportPdf').then((m) => m.downloadWeeklyReportPdf(report, season));
+}
+
+const PDF_FAILURE_CLASS = 'text-semantic-danger text-sm';
+
+function pdfFailureMessage(error: Error): string {
+  return `Failed to generate PDF: ${String(error)}`;
 }
 
 function WeeklyReportPage(): ReactNode {
@@ -62,6 +69,50 @@ function WeeklyReportPage(): ReactNode {
             : api.tournamentReport(seasonId, effectiveId, live),
   );
 
+  function renderTournamentField(loaded: readonly Tournament[], selectedId: string, idSuffix: string): ReactNode {
+    const tournamentOptions = [
+      { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
+      ...loaded.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
+    ];
+
+    return (
+      <PickerRow
+        id={`weekly-report-tournament${idSuffix}`}
+        label="Tournament"
+        value={selectedId}
+        options={tournamentOptions}
+        onChange={setUserTournamentId}
+      >
+        <Button
+          tone="secondary"
+          size="regular"
+          disabled={!reportQuery.data || pdfMutation.isPending}
+          onClick={() => reportQuery.data && pdfMutation.mutate(reportQuery.data)}
+        >
+          Download PDF
+        </Button>
+        <LiveOverlayCheckbox state={liveOverlay} id={`weekly-report-live-overlay${idSuffix}`} />
+      </PickerRow>
+    );
+  }
+
+  /**
+   * The open panel covers the page's alert, and an `aria-modal` dialog hides it from assistive tech, so the
+   * failure is an alert here too; a reader that ignores `aria-modal` hears it twice, not never.
+   */
+  function renderSheetField(loaded: readonly Tournament[], selectedId: string, idSuffix: string): ReactNode {
+    return (
+      <>
+        {renderTournamentField(loaded, selectedId, idSuffix)}
+        {pdfMutation.isError ? (
+          <p role="alert" className={PDF_FAILURE_CLASS}>
+            {pdfFailureMessage(pdfMutation.error)}
+          </p>
+        ) : null}
+      </>
+    );
+  }
+
   function renderBody(): ReactNode {
     if (leaguesGate) return leaguesGate;
     if (tournaments === undefined || effectiveId === null) {
@@ -76,35 +127,15 @@ function WeeklyReportPage(): ReactNode {
       );
     }
 
-    const tournamentOptions = [
-      { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
-      ...tournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
-    ];
-
     return (
       <>
-        <PickerRow
-          id="weekly-report-tournament"
-          label="Tournament"
-          value={effectiveId}
-          options={tournamentOptions}
-          onChange={setUserTournamentId}
-        >
-          <Button
-            tone="secondary"
-            size="regular"
-            disabled={!reportQuery.data || pdfMutation.isPending}
-            onClick={() => reportQuery.data && pdfMutation.mutate(reportQuery.data)}
-          >
-            Download PDF
-          </Button>
-          {pdfMutation.isError ? (
-            <span role="alert" className="text-semantic-danger text-sm">
-              Failed to generate PDF: {String(pdfMutation.error)}
-            </span>
-          ) : null}
-          <LiveOverlayCheckbox state={liveOverlay} id="weekly-report-live-overlay" />
-        </PickerRow>
+        <div className={DESKTOP_PICKER_CLASS}>{renderTournamentField(tournaments, effectiveId, '')}</div>
+        {/* Outside both copies of the field: a phone's sheet may close before the PDF fails. */}
+        {pdfMutation.isError ? (
+          <p role="alert" className={PDF_FAILURE_CLASS}>
+            {pdfFailureMessage(pdfMutation.error)}
+          </p>
+        ) : null}
 
         <QueryState query={reportQuery} label="report">
           {(report) => (
@@ -128,7 +159,17 @@ function WeeklyReportPage(): ReactNode {
         actions={
           <>
             <StatusChip variant={statusChipVariant(reportQuery.data)} />
-            <LeagueSeasonPicker />
+            <div className={DESKTOP_PICKER_CLASS}>
+              <LeagueSeasonPicker />
+            </div>
+            <PhonePicker
+              tournament={tournaments?.find((t) => t.id === effectiveId)}
+              renderField={
+                tournaments === undefined || effectiveId === null
+                  ? undefined
+                  : (idSuffix) => renderSheetField(tournaments, effectiveId, idSuffix)
+              }
+            />
           </>
         }
       />

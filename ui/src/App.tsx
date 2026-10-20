@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router';
 import WeeklyReportPage from '@/features/weeklyReport/WeeklyReportPage';
 import RankingsPage from '@/features/rankings/RankingsPage';
@@ -11,6 +11,7 @@ import AdminPage from '@/features/admin/AdminPage';
 import { LeagueSeasonProvider } from '@/features/leagues/LeagueSeasonContext';
 import { AuthProvider } from '@/features/auth/AuthContext';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { HeaderSlotProvider } from '@/shared/components/HeaderSlot';
 import TabBar from './TabBar';
 
 const NAV_ITEMS: Array<{ to: string; label: string }> = [
@@ -48,9 +49,12 @@ function SiteFooter(): ReactNode {
 }
 
 function App(): ReactNode {
+  // State, not a ref: the pages portalling into the slot re-render once it mounts.
+  const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
   return (
     <AuthProvider>
     <LeagueSeasonProvider>
+    <HeaderSlotProvider slot={headerSlot}>
       <div className="min-h-screen bg-canvas text-ink">
         <nav aria-label="Main" className="bg-chrome">
           <div className="max-w-screen-2xl mx-auto px-safe-3 sm:px-safe-4 min-h-14 flex justify-between gap-4">
@@ -68,6 +72,8 @@ function App(): ReactNode {
                 </NavLink>
               ))}
             </div>
+
+            <div ref={setHeaderSlot} className="sm:hidden flex items-center min-w-0" />
           </div>
         </nav>
 
@@ -90,6 +96,7 @@ function App(): ReactNode {
         <SiteFooter />
         <TabBar />
       </div>
+    </HeaderSlotProvider>
     </LeagueSeasonProvider>
     </AuthProvider>
   );

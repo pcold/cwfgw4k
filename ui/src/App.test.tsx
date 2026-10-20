@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { api } from '@/shared/api/client';
 import type { League, Season } from '@/shared/api/types';
@@ -127,6 +127,37 @@ describe('App', () => {
     },
   );
 
+  it.each(['/', '/scoreboard', '/report', '/rankings', '/player-rankings', '/rosters', '/late-row-bets', '/rules'])(
+    "puts %s's picker button in the main nav below sm, opening the page's picker sheet",
+    async (path) => {
+      vi.mocked(api.leagues).mockResolvedValueOnce([league]);
+      vi.mocked(api.seasons).mockResolvedValueOnce([season]);
+      const user = userEvent.setup();
+      renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
+
+      const weekButton = await within(mainNavigation()).findByRole('button', {
+        name: '2026 Season 1, change league and season',
+      });
+      expect(weekButton.parentElement).toHaveClass('sm:hidden');
+      await user.click(weekButton);
+
+      expect(screen.getByRole('dialog', { name: 'League and season' })).toBeInTheDocument();
+    },
+  );
+
+  it.each(['/admin', '/no-such-page'])('leaves the main nav without a picker button on %s', async (path) => {
+    vi.mocked(api.leagues).mockResolvedValueOnce([league]);
+    vi.mocked(api.seasons).mockResolvedValueOnce([season]);
+    const seasonsCallsBefore = vi.mocked(api.seasons).mock.calls.length;
+    renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
+
+    // The seasons request follows the leagues, so the picker has had its leagues by the time it fires.
+    await waitFor(() => {
+      expect(vi.mocked(api.seasons).mock.calls.length).toBeGreaterThan(seasonsCallsBefore);
+    });
+    expect(within(mainNavigation()).queryByRole('button')).toBeNull();
+  });
+
   it('pads the foot of main past the tab bar below lg, and keeps the page padding from lg', () => {
     renderWithProviders(<App />, { withLeagueSeasonProvider: false });
 
@@ -172,7 +203,7 @@ describe('App', () => {
     ['/rosters', 'Team Rosters'],
     ['/late-row-bets', 'Late Row Bets'],
     ['/rules', 'Season Rules'],
-  ])("puts the league and season picker in %s's title row, and nowhere else", async (path, title) => {
+  ])("puts the league and season picker in %s's title row, hidden below sm, and nowhere else", async (path, title) => {
     vi.mocked(api.leagues).mockResolvedValueOnce([league]);
     vi.mocked(api.seasons).mockResolvedValueOnce([season]);
     renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
@@ -181,6 +212,9 @@ describe('App', () => {
     const titleRow = pageTitleRow(screen.getByRole('heading', { level: 2, name: title }));
     expect(titleRow).toContainElement(leagueSelect);
     expect(within(titleRow).getByRole('combobox', { name: 'Season' })).toBeInTheDocument();
+    const desktopWrapper = leagueSelect.closest<HTMLElement>('.hidden');
+    expect(desktopWrapper).toHaveClass('sm:block');
+    expect(titleRow).toContainElement(desktopWrapper);
     expect(screen.getAllByRole('combobox', { name: /^(League|Season)$/ })).toHaveLength(2);
   });
 });
