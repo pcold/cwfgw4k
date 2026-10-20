@@ -1,11 +1,12 @@
-import { useId, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { formatDollarsAndCents, moneyToneClass } from '@/shared/util/money';
 import ColumnHeaderFilter from '@/shared/components/ColumnHeaderFilter';
 import type { PlayerRankingsRow } from '@/shared/api/types';
-import { FIELD_CLASS, FieldShell, TAP_TARGET_CLASS, type SelectOption } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS, type SelectOption } from '@/shared/components/formFields';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import ListCard, { CARD_LIST_CLASS } from '@/shared/components/ListCard';
 import { MONEY_FIGURE_CLASS } from '@/shared/components/MoneyCell';
+import PhoneFilter from '@/shared/components/PhoneFilter';
 
 interface Props {
   players: PlayerRankingsRow[];
@@ -19,29 +20,6 @@ const FILTERED_EMPTY = 'No players match this filter.';
 interface PlayerListProps {
   readonly players: readonly PlayerRankingsRow[];
   readonly onGolferClick: ((golferId: string) => void) | undefined;
-}
-
-interface PhoneFilterProps {
-  readonly label: string;
-  readonly value: string;
-  readonly options: readonly SelectOption[];
-  readonly onChange: (value: string) => void;
-}
-
-/** Not `SelectField`: its placeholder is disabled, and the first option here is "all", which must stay selectable. */
-function PhoneFilter({ label, value, options, onChange }: PhoneFilterProps): ReactNode {
-  const id = useId();
-  return (
-    <FieldShell id={id} label={label} error={undefined} hideLabel>
-      <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className={FIELD_CLASS}>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </FieldShell>
-  );
 }
 
 /** The phone select shows no label, so a picked round has to name itself. */
