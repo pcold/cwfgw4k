@@ -543,7 +543,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 
 | Breakpoint | Behavior |
 |---|---|
-| Below `sm:` (<640px) | Page padding `px-3 pt-4`, the foot clearing the tab bar. Wide tables scroll edge to edge. The title's actions wrap onto a line under the title, and the picker's selects take a row each. Rankings chart 220px tall. Modal panels take 92vw. |
+| Below `sm:` (<640px) | Page padding `px-3 pt-4`, the foot clearing the tab bar. Wide tables scroll edge to edge. The title's actions wrap onto a line under the title, and the picker's selects take a row each. Rankings chart 220px tall. Centred modal panels take 92vw; the More sheet spans the width. |
 | `sm:` to `lg:` (640–1024px) | Padding `px-4 pt-6`, the foot clearing the tab bar; tables scroll inside the page margin. The actions sit at the title's right while they fit. Chart 320px. The tab bar still navigates. |
 | `lg:` and up (≥1024px) | The nav shows its links inline, each 44px tall; the tab bar hides and the footer shows. Chart 400px. |
 

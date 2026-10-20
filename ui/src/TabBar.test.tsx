@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import TabBar from './TabBar';
@@ -10,10 +10,20 @@ function CurrentPath() {
   return <output aria-label="Current path">{useLocation().pathname}</output>;
 }
 
+function BackButton() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => void navigate(-1)}>
+      Back
+    </button>
+  );
+}
+
 function renderTabBar(initialPath = '/scoreboard'): void {
   renderWithProviders(
     <>
       <CurrentPath />
+      <BackButton />
       <TabBar />
     </>,
     { initialPath, withLeagueSeasonProvider: false },
@@ -150,6 +160,19 @@ describe('TabBar', () => {
     expect(screen.getByRole('status', { name: 'Current path' })).toHaveTextContent('/late-row-bets');
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(moreTab()).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('keeps the sheet closed on going back to the page it was opened from', async () => {
+    const user = userEvent.setup();
+    renderTabBar();
+    await user.click(moreTab());
+    await user.click(within(screen.getByRole('dialog')).getByRole('link', { name: 'Bets' }));
+
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+
+    expect(screen.getByRole('status', { name: 'Current path' })).toHaveTextContent('/scoreboard');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(moreTab()).toHaveAttribute('aria-expanded', 'false');
   });
 
   it("closes the sheet on a tap on the current page's own row", async () => {

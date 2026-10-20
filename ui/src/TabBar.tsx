@@ -10,7 +10,7 @@ const ROUTE_TABS: ReadonlyArray<{ readonly to: string; readonly label: string }>
   { to: '/player-rankings', label: 'Players' },
 ];
 
-// Over the report grids' sticky z-20 column and corner, under the modal scrim's z-50.
+// Over the report grids' sticky column (z-10) and corner (z-20), under the modal scrim's z-50.
 const BAR_CLASS =
   'lg:hidden fixed inset-x-0 bottom-0 z-40 bg-chrome ' +
   'pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]';
@@ -19,7 +19,12 @@ const tabClass = (isActive: boolean): string =>
   `relative flex items-center justify-center w-full h-full ${TAP_TARGET_CLASS} font-display uppercase tracking-wider ` +
   `text-xs ${isActive ? 'font-bold text-on-chrome' : 'font-medium text-on-chrome-tab-idle'}`;
 
-function TabLabel({ label, isActive }: { readonly label: string; readonly isActive: boolean }): ReactNode {
+interface TabLabelProps {
+  readonly label: string;
+  readonly isActive: boolean;
+}
+
+function TabLabel({ label, isActive }: TabLabelProps): ReactNode {
   return (
     <>
       {isActive ? (
@@ -31,15 +36,22 @@ function TabLabel({ label, isActive }: { readonly label: string; readonly isActi
 }
 
 /**
- * Phones' navigation, below `lg`. The sheet is open only on the location it was opened from, so any navigation,
- * a tap on the current page's row included, closes it without an effect.
+ * Keyed by the location, so any navigation remounts the bar with its sheet closed: a tap on the current page's row,
+ * and a return to the history entry the sheet was opened on, which brings that entry's key back.
  */
 export default function TabBar(): ReactNode {
   const location = useLocation();
+  return <TabBarAt key={location.key} pathname={location.pathname} />;
+}
+
+interface TabBarAtProps {
+  readonly pathname: string;
+}
+
+function TabBarAt({ pathname }: TabBarAtProps): ReactNode {
   const sheetId = useId();
-  const [sheetOpenedAt, setSheetOpenedAt] = useState<string | null>(null);
-  const sheetOpen = sheetOpenedAt === location.key;
-  const moreActive = SHEET_PATHS.includes(location.pathname);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const moreActive = SHEET_PATHS.includes(pathname);
 
   return (
     <>
@@ -59,14 +71,14 @@ export default function TabBar(): ReactNode {
               aria-current={moreActive ? 'page' : undefined}
               aria-expanded={sheetOpen}
               aria-controls={sheetId}
-              onClick={() => setSheetOpenedAt(location.key)}
+              onClick={() => setSheetOpen(true)}
             >
               <TabLabel label="More" isActive={moreActive} />
             </button>
           </li>
         </ul>
       </nav>
-      {sheetOpen ? <MoreSheet id={sheetId} onClose={() => setSheetOpenedAt(null)} /> : null}
+      {sheetOpen ? <MoreSheet id={sheetId} onClose={() => setSheetOpen(false)} /> : null}
     </>
   );
 }
