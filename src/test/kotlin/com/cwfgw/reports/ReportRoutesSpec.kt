@@ -359,7 +359,8 @@ private fun notTeedOff(
     golfer: Golfer,
     order: Int,
 ): EspnCompetitor =
-    espnLeader(golfer).copy(order = order, scoreStr = "E", scoreToPar = 0, totalStrokes = null, roundScores = emptyList())
+    espnLeader(golfer)
+        .copy(order = order, scoreStr = "E", scoreToPar = 0, totalStrokes = null, roundScores = emptyList())
 
 class ReportRoutesSpec : FunSpec({
 
@@ -708,7 +709,7 @@ class ReportRoutesSpec : FunSpec({
         }
     }
 
-    test("GET /api/v1/seasons/{id}/report/{tid}?live=true keeps the stored leaderboard, awaiting tee-off, before a field") {
+    test("GET /api/v1/seasons/{id}/report/{tid}?live=true awaits tee-off on the stored leaderboard before a field") {
         val noField = espnMasters(field = emptyList())
         val configure =
             reportFixture(
@@ -729,7 +730,7 @@ class ReportRoutesSpec : FunSpec({
         }
     }
 
-    test("GET /api/v1/seasons/{id}/report/{tid}?live=true sends a field nobody has teed off unplaced, awaiting tee-off") {
+    test("GET /api/v1/seasons/{id}/report/{tid}?live=true awaits tee-off, sending the field unplaced") {
         val unstarted = notTeedOff(SCHEFFLER, order = 1)
         val configure =
             reportFixture(
