@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -128,6 +129,67 @@ function teamChips(leaderboardRow: HTMLElement): Element[] {
   return chips ? Array.from(chips.children) : [];
 }
 
+function leaderboardTable(): HTMLElement {
+  return nth(screen.getAllByRole('table'), 1);
+}
+
+function leaderboardTableNames(): (string | null | undefined)[] {
+  return within(leaderboardTable())
+    .getAllByRole('row')
+    .slice(1)
+    .map((tableRow) => within(tableRow).getAllByRole('cell')[1]?.textContent);
+}
+
+function phoneLeaderboard(): HTMLElement {
+  return screen.getByRole('list', { name: 'Leaderboard' });
+}
+
+function phoneLeaderboardRows(): HTMLElement[] {
+  return within(phoneLeaderboard()).getAllByRole('listitem');
+}
+
+interface PhoneLeaderboardRow {
+  position: Element | undefined;
+  name: Element | null | undefined;
+  chips: Element[];
+  roundLine: Element | undefined;
+  score: Element | undefined;
+}
+
+function phoneLeaderboardRow(item: HTMLElement): PhoneLeaderboardRow {
+  const [position, middle, score] = Array.from(item.children);
+  const [chips, roundLine] = Array.from(middle?.children[1]?.children ?? []);
+  return {
+    position,
+    name: middle?.firstElementChild,
+    chips: chips ? Array.from(chips.children) : [],
+    roundLine,
+    score,
+  };
+}
+
+function phoneTeamFilter(): HTMLElement {
+  return screen.getByRole('combobox', { name: 'Team' });
+}
+
+interface RefetchingProps {
+  first: WeeklyReport;
+  second: WeeklyReport;
+}
+
+/** The leaderboard's filter outlives a refetch, so a team it names can drop out of the rows. */
+function Refetching({ first, second }: RefetchingProps): ReactNode {
+  const [current, setCurrent] = useState(first);
+  return (
+    <>
+      <button type="button" onClick={() => setCurrent(second)}>
+        Refetch
+      </button>
+      <ScoreboardView report={current} />
+    </>
+  );
+}
+
 describe('ScoreboardView', () => {
   it('shows the "Results finalized" banner for completed tournaments', () => {
     renderWithProviders(<ScoreboardView report={report()} />, NO_PROVIDERS);
@@ -213,7 +275,7 @@ describe('ScoreboardView', () => {
   it('renders the leaderboard the server sent, rostered and undrafted alike', () => {
     renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [tiger, phil] })} />, NO_PROVIDERS);
     expect(screen.getByRole('heading', { name: /Leaderboard/i })).toBeInTheDocument();
-    const leaderboard = nth(screen.getAllByRole('table'), 1);
+    const leaderboard = leaderboardTable();
     const rows = within(leaderboard).getAllByRole('row').slice(1);
     expect(rows.map((r) => within(r).getAllByRole('cell').slice(0, 4).map((c) => c.textContent))).toEqual([
       ['3', 'Tiger', 'Aces', '-8'],
@@ -223,7 +285,7 @@ describe('ScoreboardView', () => {
 
   it('keeps the server\'s leaderboard order rather than sorting by position', () => {
     renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [phil, tiger] })} />, NO_PROVIDERS);
-    const leaderboard = nth(screen.getAllByRole('table'), 1);
+    const leaderboard = leaderboardTable();
     const rows = within(leaderboard).getAllByRole('row').slice(1);
     expect(rows.map((r) => within(r).getAllByRole('cell')[1]?.textContent)).toEqual(['Phil', 'Tiger']);
   });
@@ -231,7 +293,7 @@ describe('ScoreboardView', () => {
   it('prints a dash for the position and score of a slot yet to tee off', () => {
     const lateWave = makeLeaderboardEntry({ position: null, scoreToPar: null });
     renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [lateWave] })} />, NO_PROVIDERS);
-    const leaderboard = nth(screen.getAllByRole('table'), 1);
+    const leaderboard = leaderboardTable();
     const cells = within(nth(within(leaderboard).getAllByRole('row'), 1)).getAllByRole('cell');
     expect([nth(cells, 0), nth(cells, 3)].map((c) => c.textContent)).toEqual(['—', '—']);
   });
@@ -239,7 +301,7 @@ describe('ScoreboardView', () => {
   it('prints round scores and the stroke total, and a dash for a round not yet played', () => {
     const leader = makeLeaderboardEntry({ scoreToPar: null, roundScores: [64, 68], totalStrokes: 132 });
     renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [leader] })} />, NO_PROVIDERS);
-    const leaderboard = nth(screen.getAllByRole('table'), 1);
+    const leaderboard = leaderboardTable();
     const cells = within(nth(within(leaderboard).getAllByRole('row'), 1)).getAllByRole('cell');
     expect(cells.slice(3).map((c) => c.textContent)).toEqual(['—', '64', '68', '—', '—', '132']);
   });
@@ -331,7 +393,7 @@ describe('ScoreboardView', () => {
 
     await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'Aces');
 
-    const leaderboard = nth(screen.getAllByRole('table'), 1);
+    const leaderboard = leaderboardTable();
     const rows = within(leaderboard).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
     expect(within(nth(rows, 0)).getByText('Tiger')).toBeInTheDocument();
@@ -343,7 +405,7 @@ describe('ScoreboardView', () => {
 
     await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'Undrafted');
 
-    const leaderboard = nth(screen.getAllByRole('table'), 1);
+    const leaderboard = leaderboardTable();
     const rows = within(leaderboard).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
     expect(within(nth(rows, 0)).getByText('Phil')).toBeInTheDocument();
@@ -445,14 +507,14 @@ describe('ScoreboardView', () => {
     await user.selectOptions(select, 'Aces');
     await user.selectOptions(select, 'Team');
 
-    const leaderboard = nth(screen.getAllByRole('table'), 1);
+    const leaderboard = leaderboardTable();
     expect(within(leaderboard).getAllByRole('row').slice(1)).toHaveLength(2);
   });
 
   it('renders a pair as one row, its names slash-joined and a chip per partner in player order', () => {
     renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [mcIlroyAndLowry] })} />, NO_PROVIDERS);
 
-    const leaderboard = nth(screen.getAllByRole('table'), 1);
+    const leaderboard = leaderboardTable();
     const rows = within(leaderboard).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
     expect(within(nth(rows, 0)).getByText('McIlroy / Lowry')).toBeInTheDocument();
@@ -462,7 +524,7 @@ describe('ScoreboardView', () => {
   it('outlines the Undrafted chip and fills a team chip', () => {
     renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [mcIlroyAndLowry] })} />, NO_PROVIDERS);
 
-    const [undrafted, payray] = teamChips(nth(within(nth(screen.getAllByRole('table'), 1)).getAllByRole('row'), 1));
+    const [undrafted, payray] = teamChips(nth(within(leaderboardTable()).getAllByRole('row'), 1));
     expect(undrafted).toHaveClass('border-hairline-strong', 'text-ink-muted');
     expect(payray).toHaveClass('bg-surface-raised', 'text-ink-body');
   });
@@ -480,7 +542,7 @@ describe('ScoreboardView', () => {
     renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [mcIlroyAndLowry, phil] })} />, NO_PROVIDERS);
 
     await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'PAYRAY');
-    const leaderboard = nth(screen.getAllByRole('table'), 1);
+    const leaderboard = leaderboardTable();
     const rows = within(leaderboard).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(1);
     expect(within(nth(rows, 0)).getByText('McIlroy / Lowry')).toBeInTheDocument();
@@ -500,7 +562,7 @@ describe('ScoreboardView', () => {
     const leader = makeLeaderboardEntry({ scoreToPar: -8, roundScores: [64, 68, 70, 66], totalStrokes: 268 });
     renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [leader] })} />, NO_PROVIDERS);
 
-    const cells = within(nth(within(nth(screen.getAllByRole('table'), 1)).getAllByRole('row'), 1)).getAllByRole('cell');
+    const cells = within(nth(within(leaderboardTable()).getAllByRole('row'), 1)).getAllByRole('cell');
     expect(nth(cells, 3)).toHaveClass('font-semibold');
     expect(nth(cells, 8)).toHaveClass('font-semibold');
     for (const round of cells.slice(4, 8)) expect(round).toHaveClass('text-ink-muted');
@@ -687,6 +749,144 @@ describe('ScoreboardView', () => {
       expect(within(phoneCard('Aces')).getByText('+$0.40')).toHaveClass('bg-money-up-fill', 'rounded-r');
       expect(within(phoneCard('Birdies')).getByText('\u2212$0.01')).toHaveClass('bg-money-down-fill');
       expect(within(phoneCard('Cuts')).getByText('$0')).toHaveClass('bg-money-even-fill');
+    });
+  });
+  describe('the leaderboard on a phone', () => {
+    const unplacedLate = makeLeaderboardEntry({
+      position: null,
+      scoreToPar: null,
+      players: [{ name: 'Late Wave', teamNames: [] }],
+    });
+    const unplacedLater = makeLeaderboardEntry({
+      position: null,
+      scoreToPar: null,
+      players: [{ name: 'Later Wave', teamNames: ['Aces'] }],
+    });
+
+    it('shows the rows and their team filter below sm and the table from sm up', () => {
+      renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [tiger] })} />, NO_PROVIDERS);
+
+      const phoneOnly = phoneLeaderboard().parentElement;
+      expect(phoneOnly).toHaveClass('sm:hidden');
+      expect(phoneOnly).toContainElement(phoneTeamFilter());
+      expect(leaderboardTable().parentElement).toHaveClass('hidden', 'sm:block', 'overflow-x-auto');
+      expect(leaderboardTable()).toHaveClass('min-w-[480px]');
+    });
+
+    it('sets a row per entry in the server\'s order, the unplaced last, each its position, name and score', () => {
+      renderWithProviders(
+        <ScoreboardView report={report({ liveLeaderboard: [tiger, rory, unplacedLate, unplacedLater] })} />,
+        NO_PROVIDERS,
+      );
+
+      const rows = phoneLeaderboardRows().map(phoneLeaderboardRow);
+      expect(rows.map((r) => [r.position?.textContent, r.name?.textContent, r.score?.textContent])).toEqual([
+        ['3', 'Tiger', '-8'],
+        ['5', 'Rory', '-6'],
+        ['—', 'Late Wave', '—'],
+        ['—', 'Later Wave', '—'],
+      ]);
+    });
+
+    it('sets the position muted in a fixed column, the name truncating, and the score semibold', () => {
+      renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [tiger] })} />, NO_PROVIDERS);
+
+      const { position, name, score } = phoneLeaderboardRow(nth(phoneLeaderboardRows(), 0));
+      expect(position).toHaveClass('w-8', 'shrink-0', 'text-ink-muted', 'tabular-nums');
+      expect(name).toHaveClass('truncate', 'text-ink');
+      expect(name?.parentElement).toHaveClass('min-w-0', 'flex-1');
+      expect(score).toHaveClass('font-semibold', 'tabular-nums');
+      expect(phoneLeaderboard()).toHaveClass('divide-y', 'divide-hairline-soft');
+    });
+
+    it('gives a pair a chip per partner, the undrafted one outlined, and a split golfer a chip per team', () => {
+      const rahm = makeLeaderboardEntry({ players: [{ name: 'Rahm', teamNames: ['Aces', 'Birdies'] }] });
+      renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [mcIlroyAndLowry, rahm] })} />, NO_PROVIDERS);
+
+      const [pair, split] = phoneLeaderboardRows().map(phoneLeaderboardRow);
+      expect(pair?.chips.map((chip) => chip.textContent)).toEqual(['Undrafted', 'PAYRAY']);
+      expect(pair?.chips[0]).toHaveClass('border-hairline-strong', 'text-ink-muted');
+      expect(split?.chips.map((chip) => chip.textContent)).toEqual(['Aces', 'Birdies']);
+    });
+
+    it('prints the rounds played and the total beside the chips, in muted figures', () => {
+      const leader = makeLeaderboardEntry({ roundScores: [68, 70], totalStrokes: 138 });
+      renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [leader] })} />, NO_PROVIDERS);
+
+      const { roundLine } = phoneLeaderboardRow(nth(phoneLeaderboardRows(), 0));
+      expect(roundLine).toHaveTextContent(/^R1 68 · R2 70 · Tot 138$/);
+      expect(roundLine).toHaveClass('text-xs', 'text-ink-muted', 'tabular-nums');
+    });
+
+    it('shows a competitor yet to tee off with chips alone', () => {
+      renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [unplacedLate] })} />, NO_PROVIDERS);
+
+      const { chips, roundLine } = phoneLeaderboardRow(nth(phoneLeaderboardRows(), 0));
+      expect(chips.map((chip) => chip.textContent)).toEqual(['Undrafted']);
+      expect(roundLine).toBeUndefined();
+    });
+
+    it('offers every team and Undrafted after All teams', () => {
+      renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [tiger, rory, phil] })} />, NO_PROVIDERS);
+
+      const options = within(phoneTeamFilter()).getAllByRole('option');
+      expect(options.map((option) => option.textContent)).toEqual(['All teams', 'Aces', 'Birdies', 'Undrafted']);
+    });
+
+    it('filters both the rows and the table by the phone select, and the header filter follows it', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [tiger, rory, phil] })} />, NO_PROVIDERS);
+
+      await user.selectOptions(phoneTeamFilter(), 'Aces');
+
+      expect(phoneLeaderboardRows().map((item) => phoneLeaderboardRow(item).name?.textContent)).toEqual(['Tiger']);
+      expect(leaderboardTableNames()).toEqual(['Tiger']);
+      expect(screen.getByLabelText(/Filter leaderboard by team/i)).toHaveValue('Aces');
+    });
+
+    it('filters both lists to the rows with an undrafted player when Undrafted is picked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(
+        <ScoreboardView report={report({ liveLeaderboard: [tiger, mcIlroyAndLowry, rory, phil] })} />,
+        NO_PROVIDERS,
+      );
+
+      await user.selectOptions(phoneTeamFilter(), 'Undrafted');
+
+      const phoneNames = phoneLeaderboardRows().map((item) => phoneLeaderboardRow(item).name?.textContent);
+      expect(phoneNames).toEqual(['McIlroy / Lowry', 'Phil']);
+      expect(leaderboardTableNames()).toEqual(['McIlroy / Lowry', 'Phil']);
+    });
+
+    it('shows every row again when All teams is picked back', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [tiger, rory] })} />, NO_PROVIDERS);
+
+      await user.selectOptions(phoneTeamFilter(), 'Aces');
+      await user.selectOptions(phoneTeamFilter(), 'All teams');
+
+      expect(phoneLeaderboardRows()).toHaveLength(2);
+    });
+
+    it('says no player matches in place of the rows when the filter leaves none', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(
+        <Refetching
+          first={report({ liveLeaderboard: [tiger, rory] })}
+          second={report({ liveLeaderboard: [rory] })}
+        />,
+        NO_PROVIDERS,
+      );
+
+      await user.selectOptions(phoneTeamFilter(), 'Aces');
+      await user.click(screen.getByRole('button', { name: 'Refetch' }));
+
+      expect(screen.queryByRole('list', { name: 'Leaderboard' })).not.toBeInTheDocument();
+      const phoneMessage = screen
+        .getAllByText('No players match this filter.')
+        .filter((message) => !leaderboardTable().contains(message));
+      expect(phoneMessage).toHaveLength(1);
+      expect(nth(phoneMessage, 0).parentElement).toHaveClass('sm:hidden');
     });
   });
 });
