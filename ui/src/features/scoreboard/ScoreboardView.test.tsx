@@ -90,8 +90,28 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
   };
 }
 
+function teamTable(): HTMLElement {
+  return nth(screen.getAllByRole('table'), 0);
+}
+
+function phoneCards(): HTMLElement[] {
+  return within(screen.getByRole('list', { name: 'Weekly results' })).getAllByRole('listitem');
+}
+
+function phoneCard(teamName: string): HTMLElement {
+  const card = within(screen.getByRole('list', { name: 'Weekly results' })).getByText(teamName).closest('li');
+  if (!card) throw new Error(`no phone card for ${teamName}`);
+  return card;
+}
+
+function phoneDetailLine(teamName: string): HTMLElement {
+  const line = within(phoneCard(teamName)).getByText(teamName).nextElementSibling;
+  if (!(line instanceof HTMLElement)) throw new Error(`no detail line for ${teamName}`);
+  return line;
+}
+
 function teamCell(teamName: string): HTMLElement {
-  const cell = screen.getByText(teamName).closest('td');
+  const cell = within(teamTable()).getByText(teamName).closest('td');
   if (!cell) throw new Error(`no team cell for ${teamName}`);
   return cell;
 }
@@ -230,7 +250,7 @@ describe('ScoreboardView', () => {
       />,
       NO_PROVIDERS,
     );
-    await user.click(screen.getByRole('button', { name: 'TeamGolfer' }));
+    await user.click(within(teamTable()).getByRole('button', { name: 'TeamGolfer' }));
     expect(onGolferClick).toHaveBeenCalledWith('g-42');
   });
 
@@ -252,8 +272,8 @@ describe('ScoreboardView', () => {
       NO_PROVIDERS,
     );
 
-    expect(screen.getByRole('button', { name: 'FirstGolfer' })).toHaveClass(TAP_TARGET_CLASS);
-    expect(screen.getByRole('button', { name: 'SecondGolfer' })).toHaveClass(TAP_TARGET_CLASS);
+    expect(within(teamTable()).getByRole('button', { name: 'FirstGolfer' })).toHaveClass(TAP_TARGET_CLASS);
+    expect(within(teamTable()).getByRole('button', { name: 'SecondGolfer' })).toHaveClass(TAP_TARGET_CLASS);
   });
 
   it('renders golfer names as plain text when no onGolferClick is provided', () => {
@@ -270,7 +290,7 @@ describe('ScoreboardView', () => {
       NO_PROVIDERS,
     );
     expect(screen.queryByRole('button', { name: 'PlainGolfer' })).not.toBeInTheDocument();
-    expect(screen.getByText('PlainGolfer')).toBeInTheDocument();
+    expect(within(teamTable()).getByText('PlainGolfer')).toBeInTheDocument();
   });
 
   it('hides the leaderboard section when the server sent no rows, whatever the cells hold', () => {
@@ -377,7 +397,7 @@ describe('ScoreboardView', () => {
   it('sets the golfer line in the team cell, under the team name', () => {
     renderWithProviders(<ScoreboardView report={report()} onGolferClick={vi.fn()} />, NO_PROVIDERS);
 
-    const name = screen.getByText('Aces');
+    const name = within(teamTable()).getByText('Aces');
     expect(name).toHaveClass('font-display', 'font-bold', 'text-lg', 'uppercase', 'text-ink');
     expect(name.nextElementSibling).toBe(golferLine('Aces'));
     expect(within(teamCell('Aces')).getByRole('button', { name: 'Scottie Scheffler' })).toBeInTheDocument();
@@ -556,5 +576,91 @@ describe('ScoreboardView', () => {
   it('sets every column head in the shared column-header type', () => {
     renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [tiger] })} />, NO_PROVIDERS);
     expectSharedColumnHeads(2);
+  });
+
+  describe('on a phone', () => {
+    const threeTeams = [
+      team({ teamId: 't-1', teamName: 'Aces', weeklyTotal: 0.4 }),
+      team({ teamId: 't-2', teamName: 'Birdies', weeklyTotal: -0.01, cells: [] }),
+      team({ teamId: 't-3', teamName: 'Cuts', weeklyTotal: 0.004, cells: [] }),
+    ];
+
+    it('shows the cards below sm and the team table from sm up', () => {
+      renderWithProviders(<ScoreboardView report={report()} />, NO_PROVIDERS);
+
+      expect(screen.getByRole('list', { name: 'Weekly results' })).toHaveClass('sm:hidden');
+      expect(teamTable().parentElement).toHaveClass('hidden', 'sm:block');
+    });
+
+    it('sets a card per team in the server\'s weekly standings', () => {
+      renderWithProviders(
+        <ScoreboardView report={report({ teams: threeTeams, weeklyStandings: ['t-3', 't-1', 't-2'] })} />,
+        NO_PROVIDERS,
+      );
+
+      const placings = phoneCards().map((card) => {
+        const [position, middle] = Array.from(card.children);
+        return [position?.textContent, middle?.firstElementChild?.textContent];
+      });
+      expect(placings).toEqual([
+        ['1', 'Cuts'],
+        ['2', 'Aces'],
+        ['3', 'Birdies'],
+      ]);
+    });
+
+    it('boxes the first position in gold and every other in navy', () => {
+      renderWithProviders(<ScoreboardView report={report({ teams: threeTeams })} />, NO_PROVIDERS);
+
+      const positions = phoneCards().map((card) => card.firstElementChild);
+      expect(positions[0]).toHaveClass('bg-gold');
+      expect(positions[1]).toHaveClass('bg-position-fill');
+      expect(positions[2]).toHaveClass('bg-position-fill');
+      expect(positions[1]).not.toHaveClass('bg-gold');
+    });
+
+    it('prints the team\'s paid golfers under its name, each name a tap-target button', async () => {
+      const onGolferClick = vi.fn();
+      const user = userEvent.setup();
+      renderWithProviders(
+        <ScoreboardView
+          report={report({
+            teams: [
+              team({
+                teamName: 'Aces',
+                cells: [
+                  row({ golferId: 'g-1', golferName: 'MORIKAWA', finish: { position: 4, tied: true }, earnings: 7, ownershipPct: 50 }),
+                  row({ round: 2, golferId: 'g-2', golferName: 'SCHAUFFELE', finish: { position: 9, tied: false }, earnings: 2.5 }),
+                ],
+              }),
+            ],
+          })}
+          onGolferClick={onGolferClick}
+        />,
+        NO_PROVIDERS,
+      );
+
+      const line = phoneDetailLine('Aces');
+      expect(line).toHaveTextContent(/^MORIKAWA T4 \+\$7\.00 \(50%\) · SCHAUFFELE 9 \+\$2\.50$/);
+      const button = within(line).getByRole('button', { name: 'SCHAUFFELE' });
+      expect(button).toHaveClass(TAP_TARGET_CLASS);
+      await user.click(button);
+      expect(onGolferClick).toHaveBeenCalledWith('g-2');
+    });
+
+    it('says a team with no paid golfer has none in the top 10, where the table leaves the cell bare', () => {
+      renderWithProviders(<ScoreboardView report={report({ teams: [team({ cells: [] })] })} />, NO_PROVIDERS);
+
+      expect(phoneDetailLine('Aces')).toHaveTextContent(/^No golfers in the top 10$/);
+      expect(teamCell('Aces')).toHaveTextContent(/^Aces$/);
+    });
+
+    it('fills each Weekly +/- box with the tone its cents print', () => {
+      renderWithProviders(<ScoreboardView report={report({ teams: threeTeams })} />, NO_PROVIDERS);
+
+      expect(within(phoneCard('Aces')).getByText('+$0.40')).toHaveClass('bg-money-up-fill', 'rounded-r');
+      expect(within(phoneCard('Birdies')).getByText('\u2212$0.01')).toHaveClass('bg-money-down-fill');
+      expect(within(phoneCard('Cuts')).getByText('$0')).toHaveClass('bg-money-even-fill');
+    });
   });
 });
