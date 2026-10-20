@@ -180,6 +180,7 @@ function ScoreboardPage(): ReactNode {
             </div>
             <PhonePicker
               tournament={tournaments.find((t) => t.id === tournamentId)}
+              // On isError, not a missing list like its siblings: the body's QueryState hides its field on any error.
               renderField={
                 tournamentsQuery.isError || tournamentId === null
                   ? undefined
