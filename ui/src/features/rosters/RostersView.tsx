@@ -10,12 +10,12 @@ import { REPORT_GRID_TABLE_CLASS } from '@/shared/components/reportGrid';
 import TeamStrip from '@/shared/components/TeamStrip';
 
 interface Props {
-  teams: RosterTeam[];
-  sideBetRounds: readonly number[];
+  readonly teams: readonly RosterTeam[];
+  readonly sideBetRounds: readonly number[];
   /** Null, or an id the season no longer has, shows the first team. */
-  selectedTeamId: string | null;
-  onSelectTeam: (teamId: string) => void;
-  onGolferClick?: (golferId: string) => void;
+  readonly selectedTeamId: string | null;
+  readonly onSelectTeam: (teamId: string) => void;
+  readonly onGolferClick?: (golferId: string) => void;
 }
 
 interface SharedPlayer {
@@ -32,7 +32,7 @@ function pickFor(team: RosterTeam, round: number): RosterPick | undefined {
   return team.picks.find((p) => p.round === round);
 }
 
-function computeSharedPlayers(teams: RosterTeam[]): SharedPlayer[] {
+function computeSharedPlayers(teams: readonly RosterTeam[]): SharedPlayer[] {
   const byName = new Map<string, { team: string; pct: number }[]>();
   for (const team of teams) {
     for (const pick of team.picks) {

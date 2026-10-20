@@ -265,11 +265,11 @@ function PhoneReport({
 }
 
 interface Props {
-  report: WeeklyReport;
+  readonly report: WeeklyReport;
   /** Null, or an id the report no longer has, shows the first team. */
-  selectedTeamId: string | null;
-  onSelectTeam: (teamId: string) => void;
-  onGolferClick?: (golferId: string) => void;
+  readonly selectedTeamId: string | null;
+  readonly onSelectTeam: (teamId: string) => void;
+  readonly onGolferClick?: (golferId: string) => void;
 }
 
 function WeeklyReportView({ report, selectedTeamId, onSelectTeam, onGolferClick }: Props): ReactNode {
