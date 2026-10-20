@@ -40,10 +40,13 @@ interface PhonePickerProps {
  * reachable while the tournaments load or fail.
  */
 export default function PhonePicker({ tournament, renderField }: PhonePickerProps): ReactNode {
-  const { seasons, seasonId } = useLeagueSeason();
+  const { leagues, seasons, seasonId } = useLeagueSeason();
   const headerSlot = useHeaderSlot();
   const sheetId = useId();
   const [open, setOpen] = useState(false);
+
+  // LeagueSeasonPicker's own guard: without a league the sheet would hold nothing to pick.
+  if (!leagues || leagues.length === 0) return null;
 
   const season = seasons?.find((s) => s.id === seasonId);
   const fallbackLabel = season ? seasonLabel(season) : NO_SEASON_LABEL;

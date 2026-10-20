@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { api } from '@/shared/api/client';
 import type { League, Season } from '@/shared/api/types';
@@ -130,18 +130,29 @@ describe('App', () => {
   it.each(['/', '/scoreboard', '/report', '/rankings', '/player-rankings', '/rosters', '/late-row-bets', '/rules'])(
     "puts %s's picker button in the main nav, opening the page's picker sheet",
     async (path) => {
+      vi.mocked(api.leagues).mockResolvedValueOnce([league]);
+      vi.mocked(api.seasons).mockResolvedValueOnce([season]);
       const user = userEvent.setup();
       renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
 
-      await user.click(within(mainNavigation()).getByRole('button', { name: /, change league/ }));
+      await user.click(
+        await within(mainNavigation()).findByRole('button', { name: '2026 Season 1, change league and season' }),
+      );
 
       expect(screen.getByRole('dialog', { name: 'League and season' })).toBeInTheDocument();
     },
   );
 
-  it.each(['/admin', '/no-such-page'])('leaves the main nav without a picker button on %s', (path) => {
+  it.each(['/admin', '/no-such-page'])('leaves the main nav without a picker button on %s', async (path) => {
+    vi.mocked(api.leagues).mockResolvedValueOnce([league]);
+    vi.mocked(api.seasons).mockResolvedValueOnce([season]);
+    const seasonsCallsBefore = vi.mocked(api.seasons).mock.calls.length;
     renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
 
+    // The seasons request follows the leagues, so the picker has had its leagues by the time it fires.
+    await waitFor(() => {
+      expect(vi.mocked(api.seasons).mock.calls.length).toBeGreaterThan(seasonsCallsBefore);
+    });
     expect(within(mainNavigation()).queryByRole('button')).toBeNull();
   });
 

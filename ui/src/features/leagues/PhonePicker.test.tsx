@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import type { api } from '@/shared/api/client';
@@ -65,7 +65,7 @@ describe('PhonePicker', () => {
       headerSlot: mountSlot(),
     });
 
-    await user.click(screen.getByRole('button', { name: SUMMARY_NAME }));
+    await user.click(await screen.findByRole('button', { name: SUMMARY_NAME }));
     const sheet = screen.getByRole('dialog', { name: 'League, season and tournament' });
     expect(screen.getByRole('button', { name: SUMMARY_NAME })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: HEADER_NAME })).toHaveAttribute('aria-expanded', 'true');
@@ -76,12 +76,12 @@ describe('PhonePicker', () => {
     expect(screen.getByRole('dialog', { name: 'League, season and tournament' })).toBeInTheDocument();
   });
 
-  it('names the sheet from both triggers, which say they open a dialog', () => {
+  it('names the sheet from both triggers, which say they open a dialog', async () => {
     renderWithProviders(<PhonePicker tournament={bermuda} renderField={renderTournamentField} />, {
       headerSlot: mountSlot(),
     });
 
-    const summary = screen.getByRole('button', { name: SUMMARY_NAME });
+    const summary = await screen.findByRole('button', { name: SUMMARY_NAME });
     const header = screen.getByRole('button', { name: HEADER_NAME });
     for (const trigger of [summary, header]) {
       expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
@@ -116,10 +116,10 @@ describe('PhonePicker', () => {
     expect(screen.getByRole('dialog', { name: 'League and season' })).toBeInTheDocument();
   });
 
-  it('reads the summary as the week and the tournament, its arrow hidden from the name', () => {
+  it('reads the summary as the week and the tournament, its arrow hidden from the name', async () => {
     renderWithProviders(<PhonePicker tournament={bermuda} />);
 
-    expect(screen.getByRole('button', { name: SUMMARY_NAME })).toHaveTextContent(`${SUMMARY_NAME}▾`);
+    expect(await screen.findByRole('button', { name: SUMMARY_NAME })).toHaveTextContent(`${SUMMARY_NAME}▾`);
   });
 
   it("falls back to the selected season's label without a tournament", async () => {
@@ -129,32 +129,45 @@ describe('PhonePicker', () => {
     expect(screen.getByRole('button', { name: '2026 Spring, change league and season' })).toBeInTheDocument();
   });
 
-  it('reads Choose season while no season is selected', () => {
-    leaguesMock.mockResolvedValue([]);
+  it('reads Choose season while no season is selected', async () => {
+    seasonsMock.mockResolvedValue([]);
     renderWithProviders(<PhonePicker />);
 
-    expect(screen.getByRole('button', { name: 'Choose season' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Choose season' })).toBeInTheDocument();
   });
 
-  it('renders no header button while the slot is null', () => {
-    renderWithProviders(<PhonePicker tournament={bermuda} />);
-
-    expect(screen.getAllByRole('button')).toEqual([screen.getByRole('button', { name: SUMMARY_NAME })]);
-  });
-
-  it('renders the header button inside the slot, the week alone in the nav type', () => {
+  it('renders no trigger in either place while there is no league to pick', async () => {
+    leaguesMock.mockResolvedValue([]);
     const slot = mountSlot();
     renderWithProviders(<PhonePicker tournament={bermuda} />, { headerSlot: slot });
 
-    const header = within(slot).getByRole('button', { name: 'Wk 11, change league and season' });
+    await waitFor(() => {
+      expect(leaguesMock).toHaveBeenCalled();
+    });
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(slot).toBeEmptyDOMElement();
+  });
+
+  it('renders no header button while the slot is null', async () => {
+    renderWithProviders(<PhonePicker tournament={bermuda} />);
+
+    const summary = await screen.findByRole('button', { name: SUMMARY_NAME });
+    expect(screen.getAllByRole('button')).toEqual([summary]);
+  });
+
+  it('renders the header button inside the slot, the week alone in the nav type', async () => {
+    const slot = mountSlot();
+    renderWithProviders(<PhonePicker tournament={bermuda} />, { headerSlot: slot });
+
+    const header = await within(slot).findByRole('button', { name: 'Wk 11, change league and season' });
     expect(header).toHaveTextContent('Wk 11▾');
     expect(header).toHaveClass(TAP_TARGET_CLASS, 'font-display', 'uppercase', 'text-on-chrome');
   });
 
-  it('hides the summary from sm, at full width below it', () => {
+  it('hides the summary from sm, at full width below it', async () => {
     renderWithProviders(<PhonePicker tournament={bermuda} />);
 
-    expect(screen.getByRole('button', { name: SUMMARY_NAME })).toHaveClass(
+    expect(await screen.findByRole('button', { name: SUMMARY_NAME })).toHaveClass(
       'sm:hidden',
       'w-full',
       'bg-surface-card',
@@ -172,7 +185,7 @@ describe('PhonePicker', () => {
       </>,
     );
 
-    await user.click(screen.getByRole('button', { name: SUMMARY_NAME }));
+    await user.click(await screen.findByRole('button', { name: SUMMARY_NAME }));
 
     const sheetSelect = within(screen.getByRole('dialog')).getByRole('combobox', { name: 'Tournament' });
     const selects = screen.getAllByRole('combobox', { name: 'Tournament' });
