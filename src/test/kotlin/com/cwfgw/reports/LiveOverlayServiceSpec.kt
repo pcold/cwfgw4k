@@ -674,6 +674,22 @@ class LiveOverlayServiceSpec : FunSpec({
         undrafted.single().payout.compareTo(BigDecimal(18)) shouldBe 0
     }
 
+    test("foldLivePlayerRankings credits no top ten to an undrafted competitor yet to tee off") {
+        val live =
+            preview(
+                leaderboard =
+                    listOf(
+                        leaderboardEntry("Leader", position = 1),
+                        leaderboardEntry("Late Wave", position = null, scoreToPar = null),
+                    ),
+            )
+
+        val folded = foldLivePlayerRankings(PlayerRankingsAcc(emptyMap(), emptyMap()), live, DEFAULT_RULES)
+
+        folded.undrafted.keys shouldContainExactly setOf("Leader")
+        folded.undrafted.getValue("Leader").totalEarnings.compareTo(BigDecimal(18)) shouldBe 0
+    }
+
     test("buildUndraftedFromLeaderboard returns empty when every top-10 finisher is rostered") {
         val live =
             preview(

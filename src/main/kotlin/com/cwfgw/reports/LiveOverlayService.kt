@@ -11,6 +11,7 @@ import com.cwfgw.result.getOrElse
 import com.cwfgw.scoring.PayoutTable
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRules
+import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -166,7 +167,7 @@ private fun WeeklyReport.withUnpaidPreview(error: LivePreviewError): WeeklyRepor
  * and threaded into the next iteration.
  */
 internal data class RankingsContext(
-    val allRosters: List<com.cwfgw.teams.RosterEntry>,
+    val allRosters: List<RosterEntry>,
     val rules: SeasonRules,
     val sideBetPerRound: List<SideBetRoundSnapshot>,
     val numTeams: Int,
@@ -340,7 +341,7 @@ internal fun overlayLiveRankings(
 }
 
 private fun SideBetRoundSnapshot.foldLive(
-    allRosters: List<com.cwfgw.teams.RosterEntry>,
+    allRosters: List<RosterEntry>,
     liveByGolfer: Map<Pair<TeamId, GolferId>, BigDecimal>,
 ): SideBetRoundSnapshot {
     val updated =

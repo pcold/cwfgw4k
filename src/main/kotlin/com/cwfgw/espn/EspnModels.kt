@@ -87,10 +87,9 @@ data class EspnAthlete(
 )
 
 /**
- * Dry-run scoring of one ESPN tournament against the league's current
- * rosters — what each team *would* earn if the tournament were finalized
- * with ESPN's current leaderboard. Consumed by the live overlay to merge
- * in-progress data onto reports + rankings; no route returns it.
+ * Dry-run scoring of one ESPN tournament against the league's current rosters — what each team *would* earn
+ * if the tournament were finalized with the current placings of those who have teed off. Consumed by the
+ * live overlay to merge in-progress data onto reports + rankings; no route returns it.
  *
  * `payoutMultiplier` is the DB tournament's and `isTeamEvent` ESPN's
  * event's, each as finalize scores it ([buildLivePreviewForEvent]).
