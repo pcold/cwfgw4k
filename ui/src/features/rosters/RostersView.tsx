@@ -19,8 +19,8 @@ interface Props {
 }
 
 interface SharedPlayer {
-  name: string;
-  owners: { team: string; pct: number }[];
+  readonly name: string;
+  readonly owners: readonly { readonly team: string; readonly pct: number }[];
 }
 
 const ROUNDS = [1, 2, 3, 4, 5, 6, 7, 8] as const;

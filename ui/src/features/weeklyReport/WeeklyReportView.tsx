@@ -29,10 +29,10 @@ import {
 const GOLFER_BUTTON_CLASS = 'truncate bg-transparent border-0 p-0 hover:underline cursor-pointer';
 
 interface RoundCellProps {
-  cell: ReportCell | undefined;
-  isSideBetWinner: boolean;
-  showSeasonFooter: boolean;
-  onGolferClick?: (golferId: string) => void;
+  readonly cell: ReportCell | undefined;
+  readonly isSideBetWinner: boolean;
+  readonly showSeasonFooter: boolean;
+  readonly onGolferClick?: (golferId: string) => void;
 }
 
 function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick }: RoundCellProps) {
@@ -112,7 +112,7 @@ function SummaryLabel({ className, children }: SummaryLabelProps) {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value }: { readonly label: string; readonly value: number }) {
   const amount = formatWholeDollars(value);
   return (
     <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
