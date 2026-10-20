@@ -49,6 +49,7 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
   'ink-faint': ['canvas', 'surface-card'],
   'on-chrome': ['chrome'],
   'on-chrome-muted': ['chrome'],
+  'on-chrome-tab-idle': ['chrome'],
   'on-primary': ['primary', 'primary-hover'],
   'on-fill': [
     'semantic-danger-fill',

@@ -173,6 +173,29 @@ describe('ModalShell', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it('centres its panel at the chosen width by default', () => {
+    renderShell(vi.fn(), false);
+
+    const panel = screen.getByRole('dialog');
+    expect(panel.parentElement).toHaveClass('items-center', 'justify-center', 'p-3');
+    expect(panel).toHaveClass('rounded-lg', 'shadow-xl', 'w-[min(92vw,22rem)]');
+  });
+
+  it('sets a sheet full width at the foot of the viewport, clear of the home indicator', () => {
+    renderWithProviders(
+      <ModalShell title="More" onClose={() => {}} placement="sheet">
+        <p>Body</p>
+      </ModalShell>,
+      { withLeagueSeasonProvider: false },
+    );
+
+    const panel = screen.getByRole('dialog', { name: 'More' });
+    expect(panel.parentElement).toHaveClass('fixed', 'inset-0', 'items-end', 'z-50');
+    expect(panel.parentElement).not.toHaveClass('items-center', 'p-3');
+    expect(panel).toHaveClass('w-full', 'rounded-t-lg', 'pb-[env(safe-area-inset-bottom)]');
+    expect(panel).not.toHaveClass('rounded-lg', 'shadow-xl');
+  });
+
   it('ignores a backdrop click by default', async () => {
     const onClose = vi.fn();
     const backdrop = renderShell(onClose, false);

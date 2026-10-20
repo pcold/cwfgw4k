@@ -24,15 +24,29 @@ const PANEL_WIDTH: Record<ModalWidth, string> = {
   wide: 'w-full max-w-3xl',
 };
 
-interface ModalShellProps {
+const CENTRED_OVERLAY = 'fixed inset-0 bg-overlay/60 flex items-center justify-center z-50 p-3 sm:p-4';
+
+const SHEET_OVERLAY = 'fixed inset-0 bg-overlay/60 flex items-end z-50';
+
+// No shadow: the scrim is all that lies above the sheet's one edge.
+const SHEET_PANEL =
+  'bg-surface-card rounded-t-lg max-h-[90dvh] overflow-y-auto border-t border-hairline-strong w-full ' +
+  'pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] ' +
+  'transition-transform duration-200 ease-out starting:translate-y-full motion-reduce:transition-none';
+
+/** A sheet spans the viewport, so it takes no width. */
+type ModalPlacement =
+  | { readonly placement?: 'centred'; readonly width?: ModalWidth }
+  | { readonly placement: 'sheet'; readonly width?: never };
+
+type ModalShellProps = ModalPlacement & {
   /** Also supplies the dialog's accessible name. */
   readonly title: string;
   readonly onClose: () => void;
-  readonly width?: ModalWidth;
   /** Off by default: a click that misses a form's panel would discard what was typed into it. */
   readonly dismissOnBackdrop?: boolean;
   readonly children: ReactNode;
-}
+};
 
 /** Null leaves the keypress to the browser, whose own tab order already stays inside. */
 function trapDestination(panel: HTMLElement, event: KeyboardEvent): HTMLElement | null {
@@ -113,13 +127,14 @@ function useModalDialog(onClose: () => void): RefObject<HTMLDivElement | null> {
 }
 
 /**
- * For a modal gating its body on a query, whose `QueryState` must sit inside the panel; all else uses
- * `FormModal`. The cap is `dvh`: mobile `vh` ignores the on-screen keyboard and pushes the footer off-screen.
+ * For a modal gating its body on a query, whose `QueryState` must sit inside the panel, and for the phone's More
+ * sheet; all else uses `FormModal`. The cap is `dvh`: mobile `vh` ignores the on-screen keyboard and pushes the footer off-screen.
  */
 export default function ModalShell({
   title,
   onClose,
   width = 'form',
+  placement = 'centred',
   dismissOnBackdrop = false,
   children,
 }: ModalShellProps): ReactElement {
@@ -129,7 +144,7 @@ export default function ModalShell({
     /* eslint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions --
        a backdrop click is a mouse shortcut; Escape and the Close button are the keyboard paths. */
     <div
-      className="fixed inset-0 bg-overlay/60 flex items-center justify-center z-50 p-3 sm:p-4"
+      className={placement === 'sheet' ? SHEET_OVERLAY : CENTRED_OVERLAY}
       onClick={(event) => {
         if (dismissOnBackdrop && event.target === event.currentTarget) {
           onClose();
@@ -143,7 +158,7 @@ export default function ModalShell({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`${PANEL_GEOMETRY} ${PANEL_WIDTH[width]}`}
+        className={placement === 'sheet' ? SHEET_PANEL : `${PANEL_GEOMETRY} ${PANEL_WIDTH[width]}`}
       >
         <div className="px-5 py-4 border-b border-hairline flex items-center justify-between">
           <h2 id={titleId} className="text-lg font-bold">
