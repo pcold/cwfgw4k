@@ -87,7 +87,7 @@ describe('RulesPage', () => {
       'Season Schedule',
     ]);
     for (const title of bandTitles) {
-      expect(title.parentElement).toHaveClass('bg-header-band', 'text-on-fill');
+      expect(title.parentElement).toHaveClass('bg-header-band', 'text-on-fill', 'font-display');
     }
   });
 
@@ -114,7 +114,10 @@ describe('RulesPage', () => {
 
     const payoutList = await screen.findByRole('list', { name: 'Payouts by place' });
     const [firstPlace, ...field] = within(payoutList).getAllByRole('listitem');
+    if (firstPlace === undefined) throw new Error('the payout grid has no tiles');
     expect(firstPlace).toHaveClass('bg-gold');
+    expect(within(firstPlace).getByText('1st')).toHaveClass('text-on-gold');
+    expect(within(firstPlace).getByText('$18.00')).toHaveClass('text-on-gold');
     expect(within(nth(field, 0)).getByText('2nd')).toBeInTheDocument();
     for (const tile of field) {
       expect(tile).toHaveClass('bg-surface-raised');
