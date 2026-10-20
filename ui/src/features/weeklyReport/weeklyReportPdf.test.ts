@@ -120,6 +120,7 @@ function buildFixture(overrides: {
     standingsOrder: standings,
     live: false,
     liveEligible: false,
+    awaitingTeeOff: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),

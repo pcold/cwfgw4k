@@ -104,6 +104,7 @@ function buildReport(): WeeklyReport {
     standingsOrder: [],
     live: false,
     liveEligible: false,
+    awaitingTeeOff: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),

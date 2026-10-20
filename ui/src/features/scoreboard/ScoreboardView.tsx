@@ -29,7 +29,7 @@ const STATUS_BANNERS: Record<ScoreboardPhase, { text: string; className: string 
     className: 'bg-semantic-success-tint/30 border-semantic-success-soft text-semantic-success-ink',
   },
   preStart: {
-    text: "Play hasn't started — showing the field",
+    text: "Play hasn't started — no scores yet",
     className: 'bg-surface-card border-hairline-soft text-ink-secondary',
   },
   live: {

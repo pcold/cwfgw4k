@@ -125,6 +125,8 @@ export interface WeeklyReport {
   liveLeaderboard: LiveLeaderboardEntry[];
   /** @see Rankings.liveEligible */
   liveEligible: boolean;
+  /** The live overlay matched an event nobody has teed off. Read it for the pre-start phase; never infer it from the rows. */
+  awaitingTeeOff: boolean;
   /** Over every team's `totalCash`. Display it; never re-sum `totalCash`. */
   cashTotals: WonLostTotals;
   /** Over every team's `sideBets`. @see WeeklyReport.cashTotals */

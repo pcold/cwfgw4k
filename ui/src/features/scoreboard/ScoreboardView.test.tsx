@@ -81,6 +81,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     standingsOrder: [],
     live: false,
     liveEligible: false,
+    awaitingTeeOff: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
@@ -145,19 +146,18 @@ describe('ScoreboardView', () => {
     expect(screen.getByText(/Tournament in progress/i)).toBeInTheDocument();
   });
 
-  it('says play has not started, in a neutral banner with no finalize slot, while nobody is placed', () => {
-    const unplaced = makeLeaderboardEntry({ position: null, scoreToPar: null });
+  it('says play has not started, in a neutral banner with no finalize slot, while awaiting tee-off', () => {
     renderWithProviders(
       <ScoreboardView
         report={report({
           tournament: { ...report().tournament, status: 'in_progress' },
-          liveLeaderboard: [unplaced],
+          awaitingTeeOff: true,
         })}
         finalizeSlot={<button type="button">Finalize Results</button>}
       />,
       NO_PROVIDERS,
     );
-    const banner = screen.getByText("Play hasn't started — showing the field");
+    const banner = screen.getByText("Play hasn't started — no scores yet");
     expect(banner.parentElement).not.toHaveClass('bg-semantic-warning-tint/40');
     expect(screen.queryByText(/Tournament in progress/i)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Finalize Results/i })).not.toBeInTheDocument();

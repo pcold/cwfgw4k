@@ -100,11 +100,9 @@ export function formatScoreToPar(score: number | null): string {
 
 export type ScoreboardPhase = 'finalized' | 'preStart' | 'live';
 
-// A field the server lists with nobody placed has not teed off: nothing on it is an estimate yet.
 export function scoreboardPhase(report: WeeklyReport): ScoreboardPhase {
   if (report.tournament.status === 'completed') return 'finalized';
-  const field = report.liveLeaderboard;
-  return field.length > 0 && field.every((entry) => entry.position === null) ? 'preStart' : 'live';
+  return report.awaitingTeeOff ? 'preStart' : 'live';
 }
 
 export function scoreboardSubtitle(tournament: ReportTournamentInfo): string {

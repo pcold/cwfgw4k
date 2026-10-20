@@ -65,6 +65,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     standingsOrder: [],
     live: false,
     liveEligible: false,
+    awaitingTeeOff: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
@@ -241,20 +242,16 @@ describe('scoreboardPhase', () => {
   const inProgress = { ...report().tournament, status: 'in_progress' } as const;
   const unplaced = makeLeaderboardEntry({ position: null, scoreToPar: null });
 
-  it('is finalized for a completed tournament, whatever its leaderboard', () => {
-    expect(scoreboardPhase(report({ liveLeaderboard: [unplaced] }))).toBe('finalized');
+  it('is finalized for a completed tournament, whatever the server says of tee-off', () => {
+    expect(scoreboardPhase(report({ awaitingTeeOff: true }))).toBe('finalized');
   });
-  it('is pre-start when the field is listed with nobody placed', () => {
-    expect(scoreboardPhase(report({ tournament: inProgress, liveLeaderboard: [unplaced, unplaced] }))).toBe(
-      'preStart',
-    );
+  it('is pre-start when the server says it is awaiting tee-off, with or without a field', () => {
+    const awaiting = { tournament: inProgress, awaitingTeeOff: true };
+    expect(scoreboardPhase(report(awaiting))).toBe('preStart');
+    expect(scoreboardPhase(report({ ...awaiting, liveLeaderboard: [unplaced] }))).toBe('preStart');
   });
-  it('is live once anyone in the field is placed', () => {
-    const leader = makeLeaderboardEntry({ position: 1 });
-    expect(scoreboardPhase(report({ tournament: inProgress, liveLeaderboard: [leader, unplaced] }))).toBe('live');
-  });
-  it('is live with no leaderboard at all, since an empty field shows no one to wait on', () => {
-    expect(scoreboardPhase(report({ tournament: inProgress, liveLeaderboard: [] }))).toBe('live');
+  it('is live unless the server says it is awaiting tee-off, even with nobody placed', () => {
+    expect(scoreboardPhase(report({ tournament: inProgress, liveLeaderboard: [unplaced, unplaced] }))).toBe('live');
   });
 });
 

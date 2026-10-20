@@ -126,6 +126,7 @@ function buildReport(name: string, tournamentId: string | null = null): WeeklyRe
     standingsOrder: [],
     live: false,
     liveEligible: false,
+    awaitingTeeOff: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
