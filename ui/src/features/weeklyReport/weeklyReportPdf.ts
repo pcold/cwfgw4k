@@ -75,8 +75,11 @@ const MONEY_TONE_INK: Readonly<Record<MoneyTone, PdfColourToken>> = {
   even: 'ink-soft',
 };
 
+const PAGE_MARGIN = 18;
 const ROUND_COLUMN_WIDTH = 52;
 const FOOTER_TOTALS_GAP = '    ';
+const FOOTER_FONT_SIZE = 8;
+const FOOTER_LINE_PITCH = 10;
 const CELL_PADDING = 1.5;
 const LEADER_EDGE_WIDTH = 2;
 // White on the up fill is 4.40:1, which WCAG passes only as large text: bold and at least 14pt.
@@ -252,25 +255,43 @@ function lastTableFinalY(doc: jsPDF): number {
   throw new Error('jspdf-autotable recorded no finalY for the table it drew');
 }
 
+// jsPDF types `splitTextToSize` as returning `any`.
+function wrappedLines(doc: jsPDF, text: string, width: number): readonly string[] {
+  const lines: unknown = doc.splitTextToSize(text, width);
+  if (Array.isArray(lines) && lines.every((line): line is string => typeof line === 'string')) return lines;
+  throw new Error('jsPDF split the text into something other than lines');
+}
+
+function undraftedLines(doc: jsPDF, report: WeeklyReport, width: number): readonly string[] {
+  if (report.undraftedTopTens.length === 0) return [];
+  const parts = report.undraftedTopTens.map(
+    (u) => `${u.name.toUpperCase()} ${formatPdfDollarsAndCents(u.payout)}`,
+  );
+  return wrappedLines(doc, `UNDRAFTED TOP TENS: ${parts.join(', ')}`, width);
+}
+
+// The footer never splits: one that would pass the bottom margin starts a page of its own, totals included.
 function drawFooter(
   doc: jsPDF,
   report: WeeklyReport,
   marginLeft: number,
   marginRight: number,
-  y: number,
+  belowTable: number,
 ): void {
   const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(...PDF_COLOURS['ink-soft']);
-  if (report.undraftedTopTens.length > 0) {
-    const parts = report.undraftedTopTens.map(
-      (u) => `${u.name.toUpperCase()} ${formatPdfDollarsAndCents(u.payout)}`,
-    );
-    doc.text(`UNDRAFTED TOP TENS: ${parts.join(', ')}`, marginLeft, y);
-  }
+  doc.setFontSize(FOOTER_FONT_SIZE);
   const won = formatPdfWholeDollars(report.cashTotals.won);
   const lost = formatPdfWholeDollars(report.cashTotals.lost);
+  const totalsWidth = doc.getTextWidth(`${FOOTER_TOTALS_GAP}${won}${FOOTER_TOTALS_GAP}${lost}`);
+  const lines = undraftedLines(doc, report, pageWidth - marginLeft - marginRight - totalsWidth);
+  const lastLineOffset = Math.max(0, lines.length - 1) * FOOTER_LINE_PITCH;
+  const fitsBelowTable = belowTable + lastLineOffset <= pageHeight - PAGE_MARGIN;
+  if (!fitsBelowTable) doc.addPage();
+  const y = fitsBelowTable ? belowTable : PAGE_MARGIN + FOOTER_FONT_SIZE;
+  doc.setTextColor(...PDF_COLOURS['ink-soft']);
+  lines.forEach((line, i) => doc.text(line, marginLeft, y + i * FOOTER_LINE_PITCH));
   const right = pageWidth - marginRight;
   doc.setTextColor(...PDF_COLOURS[MONEY_TONE_INK[moneyTone(lost)]]);
   doc.text(lost, right, y, { align: 'right' });
@@ -291,9 +312,9 @@ export function buildWeeklyReportPdf(report: WeeklyReport): jsPDF {
   const sideBetAmounts = sideBetAmountByRound(report.sideBetRules);
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
-  const marginLeft = 18;
-  const marginRight = 18;
-  const headerBottom = drawHeader(doc, report, marginLeft, marginRight, 18);
+  const marginLeft = PAGE_MARGIN;
+  const marginRight = PAGE_MARGIN;
+  const headerBottom = drawHeader(doc, report, marginLeft, marginRight, PAGE_MARGIN);
 
   const teamsByRound = teams.map((t) => ({ team: t, rows: teamCellsByRound(t) }));
 
