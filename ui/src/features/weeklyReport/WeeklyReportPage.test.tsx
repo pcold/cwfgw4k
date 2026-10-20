@@ -499,8 +499,7 @@ describe('WeeklyReportPage', () => {
     const sheet = screen.getByRole('dialog', { name: 'League, season and tournament' });
     await user.click(within(sheet).getByRole('button', { name: /Download PDF/i }));
 
-    expect(await within(sheet).findByText(/Failed to generate PDF.*autoTable exploded/)).toBeInTheDocument();
-    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(await within(sheet).findByRole('alert')).toHaveTextContent(/Failed to generate PDF.*autoTable exploded/);
     await user.click(within(sheet).getByRole('button', { name: 'Close' }));
 
     const alert = await screen.findByRole('alert');

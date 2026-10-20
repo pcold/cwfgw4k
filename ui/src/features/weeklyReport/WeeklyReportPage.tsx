@@ -96,12 +96,19 @@ function WeeklyReportPage(): ReactNode {
     );
   }
 
-  /** The sheet's copy of the field: the open panel covers the page's alert, so the failure shows here too. */
+  /**
+   * The open panel covers the page's alert, and an `aria-modal` dialog hides it from assistive tech, so the
+   * failure is an alert here too; a reader that ignores `aria-modal` hears it twice, not never.
+   */
   function renderSheetField(loaded: readonly Tournament[], selectedId: string, idSuffix: string): ReactNode {
     return (
       <>
         {renderTournamentField(loaded, selectedId, idSuffix)}
-        {pdfMutation.isError ? <p className={PDF_FAILURE_CLASS}>{pdfFailureMessage(pdfMutation.error)}</p> : null}
+        {pdfMutation.isError ? (
+          <p role="alert" className={PDF_FAILURE_CLASS}>
+            {pdfFailureMessage(pdfMutation.error)}
+          </p>
+        ) : null}
       </>
     );
   }
@@ -123,7 +130,7 @@ function WeeklyReportPage(): ReactNode {
     return (
       <>
         <div className={DESKTOP_PICKER_CLASS}>{renderTournamentField(tournaments, effectiveId, '')}</div>
-        {/* The only alert, outside both copies of the field: a phone's sheet may close before the PDF fails. */}
+        {/* Outside both copies of the field: a phone's sheet may close before the PDF fails. */}
         {pdfMutation.isError ? (
           <p role="alert" className={PDF_FAILURE_CLASS}>
             {pdfFailureMessage(pdfMutation.error)}
