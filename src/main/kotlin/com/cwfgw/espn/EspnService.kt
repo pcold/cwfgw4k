@@ -138,9 +138,8 @@ class EspnService(
         val events =
             fetchEspnEvents(tournament.startDate).getOrElse { return Result.Err(LivePreviewError.EspnUnavailable(it)) }
         val event = findLinkedEvent(events, tournament) ?: return Result.Err(LivePreviewError.NoMatchingEvent)
-        if (event.competitors.none { it.hasTeedOff }) return Result.Err(LivePreviewError.NotStarted)
         val siblings = findSiblingImports(tournament, event, events, ctx.unfinalizedTournaments)
-        return Result.Ok(buildLivePreviewForEvent(event, tournament, ctx, siblings))
+        return buildLivePreviewForEvent(event, tournament, ctx, siblings)
     }
 
     context(ctx: TransactionContext)
@@ -691,14 +690,15 @@ private fun claim(namesake: Golfer): CompetitorMatch =
 
 /**
  * Kept apart from [EspnError] so the overlay's `when` is exhaustive over what a preview can actually
- * answer: [NoMatchingEvent] and [NotStarted] are routine and skipped silently, [EspnUnavailable] is logged.
+ * answer: [NoMatchingEvent] is routine and skipped silently, [NotStarted] pays nothing but shows its [field],
+ * [EspnUnavailable] is logged.
  */
 internal sealed interface LivePreviewError {
     /** @see LivePreviewError */
     data object NoMatchingEvent : LivePreviewError
 
-    /** @see LivePreviewError */
-    data object NotStarted : LivePreviewError
+    /** Nobody has teed off, so every entry of [field] is unplaced. */
+    data class NotStarted(val field: List<PreviewLeaderboardEntry>) : LivePreviewError
 
     /** @see LivePreviewError */
     data class EspnUnavailable(val cause: EspnError.UpstreamUnavailable) : LivePreviewError
@@ -742,17 +742,24 @@ internal fun buildLivePreviewForEvent(
     tournament: Tournament,
     ctx: LivePreviewContext,
     siblings: List<EventImport> = emptyList(),
-): EspnLivePreview {
+): Result<EspnLivePreview, LivePreviewError.NotStarted> {
     val multiplier = tournament.payoutMultiplier
     val isTeamEvent = event.isTeamEvent
 
     val located = event.competitors.map { it to ctx.match(it, tournament.id) }
     val siblingFields =
         siblings.map { sibling -> sibling.event.competitors.map { it to ctx.match(it, sibling.tournament.id) } }
-    val matchedCompetitors: List<Pair<EspnCompetitor, Golfer?>> =
+    // Settled whole before the split, as finalize settles it, so an unstarted claimant still withholds a guess.
+    val (teedOff, unstarted) =
         located.settledBeside(siblingFields)
             .map { (competitor, match) -> competitor to match.creditedGolfer }
-            .rankedAmongTeedOff(completed = event.completed)
+            .partition { (competitor, _) -> competitor.hasTeedOff }
+    if (teedOff.isEmpty()) {
+        return Result.Err(
+            LivePreviewError.NotStarted(buildLivePreviewLeaderboard(emptyList(), unstarted, ctx.teams, ctx.rosters)),
+        )
+    }
+    val matchedCompetitors = teedOff.ranked(completed = event.completed)
     val tiedCounts = matchedCompetitors.groupingBy { (competitor, _) -> competitor.position }.eachCount()
 
     val teamPreviews =
@@ -760,25 +767,21 @@ internal fun buildLivePreviewForEvent(
             buildTeamPreview(team, matchedCompetitors, tiedCounts, ctx, multiplier, isTeamEvent)
         }
 
-    return EspnLivePreview(
-        espnName = event.name,
-        payoutMultiplier = multiplier,
-        teams = teamPreviews,
-        isTeamEvent = isTeamEvent,
-        leaderboard = buildLivePreviewLeaderboard(matchedCompetitors, ctx.teams, ctx.rosters),
+    return Result.Ok(
+        EspnLivePreview(
+            espnName = event.name,
+            payoutMultiplier = multiplier,
+            teams = teamPreviews,
+            isTeamEvent = isTeamEvent,
+            leaderboard = buildLivePreviewLeaderboard(matchedCompetitors, unstarted, ctx.teams, ctx.rosters),
+        ),
     )
 }
 
-/**
- * Settled over the whole field first, as finalize settles it, so a claim by a competitor yet to tee off still
- * withholds a guess. Only then are the unstarted dropped: no strokes means no finish, so no place and no tie.
- */
-private fun List<Pair<EspnCompetitor, Golfer?>>.rankedAmongTeedOff(
-    completed: Boolean,
-): List<Pair<EspnCompetitor, Golfer?>> {
-    val teedOff = filter { (competitor, _) -> competitor.hasTeedOff }
-    val golferByEspnId = teedOff.associate { (competitor, golfer) -> competitor.espnId to golfer }
-    return assignPositions(teedOff.map { (competitor, _) -> competitor }, completed = completed)
+/** Re-placed among those who have teed off alone: no strokes means no finish, so no place and no share of a tie. */
+private fun List<Pair<EspnCompetitor, Golfer?>>.ranked(completed: Boolean): List<Pair<EspnCompetitor, Golfer?>> {
+    val golferByEspnId = associate { (competitor, golfer) -> competitor.espnId to golfer }
+    return assignPositions(map { (competitor, _) -> competitor }, completed = completed)
         .map { competitor -> competitor to golferByEspnId[competitor.espnId] }
 }
 
@@ -889,8 +892,10 @@ private fun LivePreviewContext.match(
     return resolveByName(competitor, golferNames, rosteredGolferIds)
 }
 
+/** The whole field: [placed] by position, then [unstarted] unplaced, in ESPN's order. */
 private fun buildLivePreviewLeaderboard(
-    matchedCompetitors: List<Pair<EspnCompetitor, Golfer?>>,
+    placed: List<Pair<EspnCompetitor, Golfer?>>,
+    unstarted: List<Pair<EspnCompetitor, Golfer?>>,
     teams: List<Team>,
     rosters: List<RosterEntry>,
 ): List<PreviewLeaderboardEntry> {
@@ -899,17 +904,19 @@ private fun buildLivePreviewLeaderboard(
         rosters
             .groupBy { it.golferId }
             .mapValues { (_, entries) -> entries.mapNotNull { nameByTeam[it.teamId] } }
-    return matchedCompetitors
-        .sortedBy { (competitor, _) -> competitor.position }
-        .map { (competitor, golfer) ->
-            PreviewLeaderboardEntry(
-                name = competitor.name,
-                position = competitor.position,
-                scoreToPar = competitor.scoreToPar,
-                teamNames = golfer?.let { teamNamesByGolfer[it.id] }.orEmpty(),
-                pairKey = competitor.pairKey,
-                roundScores = competitor.roundScores,
-                totalStrokes = competitor.totalStrokes,
-            )
-        }
+
+    fun entry(competitor: EspnCompetitor, golfer: Golfer?, position: Int?, scoreToPar: Int?) =
+        PreviewLeaderboardEntry(
+            name = competitor.name,
+            position = position,
+            scoreToPar = scoreToPar,
+            teamNames = golfer?.let { teamNamesByGolfer[it.id] }.orEmpty(),
+            pairKey = competitor.pairKey,
+            roundScores = competitor.roundScores,
+            totalStrokes = competitor.totalStrokes,
+        )
+    return placed.sortedBy { (competitor, _) -> competitor.position }
+        .map { (competitor, golfer) -> entry(competitor, golfer, competitor.position, competitor.scoreToPar) } +
+        unstarted.sortedBy { (competitor, _) -> competitor.order }
+            .map { (competitor, golfer) -> entry(competitor, golfer, position = null, scoreToPar = null) }
 }

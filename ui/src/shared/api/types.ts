@@ -87,10 +87,11 @@ export interface LeaderboardPlayer {
 
 /**
  * One competitor slot, not one golfer: a team event's partners arrive as a
- * single row of two `players`. Arrives sorted by position; never re-sort it.
+ * single row of two `players`. Arrives sorted by position, slots yet to tee off
+ * last with a null position and score; never re-sort it.
  */
 export interface LiveLeaderboardEntry {
-  position: number;
+  position: number | null;
   scoreToPar: number | null;
   players: LeaderboardPlayer[];
   roundScores: number[];

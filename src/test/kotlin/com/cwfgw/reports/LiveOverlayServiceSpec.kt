@@ -68,7 +68,7 @@ private fun previewGolfer(
 
 private fun leaderboardEntry(
     name: String,
-    position: Int,
+    position: Int?,
     teamNames: List<String> = emptyList(),
     scoreToPar: Int? = -10,
     pairKey: String? = null,
@@ -588,10 +588,24 @@ class LiveOverlayServiceSpec : FunSpec({
                     ),
             )
 
-        val rendered = buildLiveLeaderboard(live)
+        val rendered = buildLiveLeaderboard(live.leaderboard)
         rendered.map { row -> row.players.map { it.name } } shouldContainExactly
             listOf(listOf("Leader"), listOf("Second"), listOf("Third"))
         rendered.map { it.scoreToPar } shouldContainExactly listOf(-10, 0, -5)
+    }
+
+    test("buildLiveLeaderboard lists the slots yet to tee off after every placed one, in the order given") {
+        val rendered =
+            buildLiveLeaderboard(
+                listOf(
+                    leaderboardEntry("Late Wave", position = null, scoreToPar = null),
+                    leaderboardEntry("Leader", position = 1, scoreToPar = -3),
+                    leaderboardEntry("Later Wave", position = null, scoreToPar = null),
+                ),
+            )
+
+        rendered.map { row -> row.players.single().name to row.position } shouldContainExactly
+            listOf("Leader" to 1, "Late Wave" to null, "Later Wave" to null)
     }
 
     test("buildLiveLeaderboard makes one row of a team event's partners, each with the teams rostering him") {
@@ -606,7 +620,7 @@ class LiveOverlayServiceSpec : FunSpec({
                     ),
             )
 
-        val rendered = buildLiveLeaderboard(live)
+        val rendered = buildLiveLeaderboard(live.leaderboard)
 
         rendered.map { it.players } shouldContainExactly
             listOf(
@@ -642,6 +656,22 @@ class LiveOverlayServiceSpec : FunSpec({
         undrafted.map { it.name } shouldContainExactly listOf("Undrafted T2")
         // Position 2 → DEFAULT_PAYOUTS[1] = $12.
         undrafted.single().payout.compareTo(BigDecimal(12)) shouldBe 0
+    }
+
+    test("buildUndraftedFromLeaderboard pays no competitor yet to tee off and counts none in a tie") {
+        val live =
+            preview(
+                leaderboard =
+                    listOf(
+                        leaderboardEntry("Leader", position = 1),
+                        leaderboardEntry("Late Wave", position = null, scoreToPar = null),
+                    ),
+            )
+
+        val undrafted = buildUndraftedFromLeaderboard(live, DEFAULT_RULES)
+
+        undrafted.map { it.name } shouldContainExactly listOf("Leader")
+        undrafted.single().payout.compareTo(BigDecimal(18)) shouldBe 0
     }
 
     test("buildUndraftedFromLeaderboard returns empty when every top-10 finisher is rostered") {

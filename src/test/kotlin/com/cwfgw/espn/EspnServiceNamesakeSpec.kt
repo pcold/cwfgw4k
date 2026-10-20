@@ -329,7 +329,7 @@ private fun livePreview(
             rules = SeasonRules.defaults(),
             overridesByTournament = emptyMap(),
         )
-    return buildLivePreviewForEvent(event, tournament, context)
+    return buildLivePreviewForEvent(event, tournament, context).orFail()
 }
 
 /**

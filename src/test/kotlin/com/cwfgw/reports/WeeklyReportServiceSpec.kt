@@ -1337,7 +1337,7 @@ class WeeklyReportServiceSpec : FunSpec({
         fixture.espnClient.fetchCalls shouldBe emptyList<LocalDate>()
     }
 
-    test("getReport with live=true on a field nobody has teed off returns the stored report unchanged") {
+    test("getReport with live=true on a field nobody has teed off lists it unplaced and leaves the money stored") {
         val scottie = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
         val preStart =
             listOf(
@@ -1350,7 +1350,23 @@ class WeeklyReportServiceSpec : FunSpec({
         val stored = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = false).orFail()
         val live = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true).orFail()
 
-        live shouldBe stored
+        fun unplaced(
+            name: String,
+            vararg teamNames: String,
+        ) = LiveLeaderboardEntry(
+            position = null,
+            scoreToPar = null,
+            players = listOf(LeaderboardPlayer(name, teamNames.toList())),
+        )
+        live shouldBe
+            stored.copy(
+                liveLeaderboard =
+                    listOf(
+                        unplaced("Scottie Scheffler", TEAM_A.teamName),
+                        unplaced("Nobody's Pick"),
+                        unplaced("Nobody's Other Pick"),
+                    ),
+            )
     }
 
     test("getReport with live=true overlays projected ESPN earnings onto cells and sets live=true") {

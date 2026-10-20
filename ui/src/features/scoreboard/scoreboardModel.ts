@@ -98,6 +98,15 @@ export function formatScoreToPar(score: number | null): string {
   return score > 0 ? `+${score}` : `${score}`;
 }
 
+export type ScoreboardPhase = 'finalized' | 'preStart' | 'live';
+
+// A field the server lists with nobody placed has not teed off: nothing on it is an estimate yet.
+export function scoreboardPhase(report: WeeklyReport): ScoreboardPhase {
+  if (report.tournament.status === 'completed') return 'finalized';
+  const field = report.liveLeaderboard;
+  return field.length > 0 && field.every((entry) => entry.position === null) ? 'preStart' : 'live';
+}
+
 export function scoreboardSubtitle(tournament: ReportTournamentInfo): string {
   const payout = tournament.payoutMultiplier !== 1 ? [`${tournament.payoutMultiplier}x payouts`] : [];
   return [tournament.name, `Week ${tournament.week ?? '?'}`, ...payout].filter(Boolean).join(' · ');

@@ -720,6 +720,30 @@ class ReportRoutesSpec : FunSpec({
         }
     }
 
+    test("GET /api/v1/seasons/{id}/report/{tid}?live=true sends a field nobody has teed off unplaced and unscored") {
+        val unstarted =
+            espnLeader(SCHEFFLER).copy(scoreStr = "E", scoreToPar = 0, totalStrokes = null, roundScores = emptyList())
+        val configure =
+            reportFixture(
+                initialTournaments = listOf(MASTERS_IN_PLAY),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers = MASTERS_GOLFERS,
+                initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5)),
+                espn =
+                    FakeEspnClient(
+                        tournamentsByDate = mapOf(MASTERS_IN_PLAY.startDate to listOf(espnMasters(listOf(unstarted)))),
+                    ),
+            )
+        apiTest(configure) { client ->
+            val url = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
+            val body = client.get(url).bodyAsText()
+
+            wireReport(body)["live"] shouldBe JsonNull
+            wireLeaderboard(body).map { listOf(it["position"], it["score_to_par"]) } shouldContainExactly
+                listOf(listOf(JsonNull, JsonNull))
+        }
+    }
+
     // ----- GET /api/v1/seasons/{id}/rankings -----
 
     test("GET /api/v1/seasons/{id}/rankings returns 200 with team rankings + per-tournament series") {

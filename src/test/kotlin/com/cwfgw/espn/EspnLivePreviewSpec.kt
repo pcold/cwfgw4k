@@ -451,7 +451,7 @@ class EspnLivePreviewSpec : FunSpec({
         leaderboard.forEach { it.rostered shouldBe false }
     }
 
-    test("previewForTournament answers NotStarted when no competitor in the field has teed off") {
+    test("previewForTournament answers NotStarted with the field unplaced when no competitor has teed off") {
         val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
         val event =
             espnField(notTeedOff("p1", "Scottie Scheffler", order = 1), notTeedOff("p2", "Undrafted", order = 2))
@@ -464,10 +464,15 @@ class EspnLivePreviewSpec : FunSpec({
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
 
-        fixture.previewFor(tournament()) shouldBe Result.Err(LivePreviewError.NotStarted)
+        val unplacedField =
+            listOf(
+                PreviewLeaderboardEntry("Scottie Scheffler", position = null, scoreToPar = null, listOf("BROWN")),
+                PreviewLeaderboardEntry("Undrafted", position = null, scoreToPar = null, emptyList()),
+            )
+        fixture.previewFor(tournament()) shouldBe Result.Err(LivePreviewError.NotStarted(unplacedField))
     }
 
-    test("previewForTournament ranks only the competitors who have teed off, and pays none who has not") {
+    test("previewForTournament places and pays only who has teed off, listing the rest unplaced after them") {
         val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p3")
         val rory = golfer(RORY_ID, "Rory", "McIlroy", pgaPlayerId = "u1")
         val unstarted = (1..10).map { index -> notTeedOff("u$index", "Not Yet $index", order = index + 3) }
@@ -494,7 +499,12 @@ class EspnLivePreviewSpec : FunSpec({
         val preview = fixture.previewFor(tournament()).orFail()
 
         preview.leaderboard.map { it.name to it.position } shouldContainExactly
-            listOf("First Place" to 1, "Second Place" to 2, "Scottie Scheffler" to 3)
+            listOf("First Place" to 1, "Second Place" to 2, "Scottie Scheffler" to 3) +
+            (1..10).map { index -> "Not Yet $index" to null }
+        preview.leaderboard.single { it.name == "Not Yet 1" }.let { rorysRow ->
+            rorysRow.scoreToPar shouldBe null
+            rorysRow.teamNames shouldContainExactly listOf("WOMBLE")
+        }
         val brown = preview.teams.single { it.teamId == TEAM_A_ID }
         brown.golferScores.map { it.position to it.numTied } shouldContainExactly listOf(3 to 1)
         brown.topTenEarnings.compareTo(BigDecimal(10)) shouldBe 0

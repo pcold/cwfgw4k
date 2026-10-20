@@ -469,8 +469,9 @@ imports by (`findLinkedEvent` in `espn/EspnService.kt`), so an unlinked or stale
 until it is linked. The preview pays a team event by ESPN's flag, which finalize's import writes over the row.
 It matches the event's competitors beside its same-day siblings (see [Golfer matching](#golfer-matching)), so a
 guess a sibling's full name claims is paid to nobody, as an unlinked finalize importing both scores it.
-Only competitors with a round score recorded are ranked, tied and paid: one yet to tee off has no projected
-finish, and an event where nobody has teed off previews nothing, though finalize still imports the whole field.
+Only competitors with a round score recorded are placed, tied and paid; the rest have no projected finish and
+are listed after them with no position or score. An event nobody has teed off pays nothing and leaves `live` unset,
+but the weekly report still shows its field as the leaderboard. Finalize imports the whole field either way.
 Only a view of one tournament is overlaid: its weekly report, or rankings and player rankings `through` it.
 Rankings gain a column per live candidate up to that tournament; player rankings fold in the live payouts. The
 All Tournaments rollups (the season report, and rankings without a `through`) count finalized results alone and

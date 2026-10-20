@@ -17,9 +17,26 @@ import {
   leaderboardTeamChips,
   leaderboardTeamNames,
   playerNames,
+  scoreboardPhase,
   scoreboardTeams,
+  type ScoreboardPhase,
   type ScoreboardTeam,
 } from './scoreboardModel';
+
+const STATUS_BANNERS: Record<ScoreboardPhase, { text: string; className: string }> = {
+  finalized: {
+    text: 'Results finalized',
+    className: 'bg-semantic-success-tint/30 border-semantic-success-soft text-semantic-success-ink',
+  },
+  preStart: {
+    text: "Play hasn't started — showing the field",
+    className: 'bg-surface-card border-hairline-soft text-ink-secondary',
+  },
+  live: {
+    text: 'Tournament in progress — scores are live estimates',
+    className: 'bg-semantic-warning-tint/40 border-semantic-warning-soft text-semantic-warning-ink',
+  },
+};
 
 const ALL = '';
 const UNDRAFTED = '__undrafted__';
@@ -236,7 +253,7 @@ function LeaderboardCard({ leaderboard, tournamentName }: LeaderboardCardProps):
             ) : (
               filteredLeaderboard.map((entry) => (
                 <tr key={playerNames(entry)}>
-                  <td className="pl-3 pr-2 py-2 text-ink-muted tabular-nums">{entry.position}</td>
+                  <td className="pl-3 pr-2 py-2 text-ink-muted tabular-nums">{entry.position ?? '—'}</td>
                   <td className="px-2 py-2 text-ink">{playerNames(entry)}</td>
                   <td className="px-2 py-2">
                     <TeamChips entry={entry} />
@@ -271,22 +288,17 @@ interface Props {
 function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNode {
   const teams = scoreboardTeams(report);
   const { tournament, weeklyTotals, liveLeaderboard: leaderboard } = report;
-  const isCompleted = tournament.status === 'completed';
-  const statusBanner = isCompleted
-    ? 'Results finalized'
-    : 'Tournament in progress — scores are live estimates';
-  const bannerClass = isCompleted
-    ? 'bg-semantic-success-tint/30 border-semantic-success-soft text-semantic-success-ink'
-    : 'bg-semantic-warning-tint/40 border-semantic-warning-soft text-semantic-warning-ink';
+  const phase = scoreboardPhase(report);
+  const banner = STATUS_BANNERS[phase];
   const hasLeaderboard = leaderboard.length > 0;
 
   return (
     <section className="space-y-6">
       <div
-        className={`px-4 py-2 border rounded text-sm flex items-center justify-between gap-3 ${bannerClass}`}
+        className={`px-4 py-2 border rounded text-sm flex items-center justify-between gap-3 ${banner.className}`}
       >
-        <span>{statusBanner}</span>
-        {!isCompleted && finalizeSlot ? finalizeSlot : null}
+        <span>{banner.text}</span>
+        {phase === 'live' && finalizeSlot ? finalizeSlot : null}
       </div>
 
       <div className={hasLeaderboard ? TWO_COLUMN_CLASS : undefined}>

@@ -145,6 +145,24 @@ describe('ScoreboardView', () => {
     expect(screen.getByText(/Tournament in progress/i)).toBeInTheDocument();
   });
 
+  it('says play has not started, in a neutral banner with no finalize slot, while nobody is placed', () => {
+    const unplaced = makeLeaderboardEntry({ position: null, scoreToPar: null });
+    renderWithProviders(
+      <ScoreboardView
+        report={report({
+          tournament: { ...report().tournament, status: 'in_progress' },
+          liveLeaderboard: [unplaced],
+        })}
+        finalizeSlot={<button type="button">Finalize Results</button>}
+      />,
+      NO_PROVIDERS,
+    );
+    const banner = screen.getByText("Play hasn't started — showing the field");
+    expect(banner.parentElement).not.toHaveClass('bg-semantic-warning-tint/40');
+    expect(screen.queryByText(/Tournament in progress/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Finalize Results/i })).not.toBeInTheDocument();
+  });
+
   it('renders a finalize slot inside the in-progress banner when provided', () => {
     renderWithProviders(
       <ScoreboardView
@@ -208,6 +226,14 @@ describe('ScoreboardView', () => {
     const leaderboard = nth(screen.getAllByRole('table'), 1);
     const rows = within(leaderboard).getAllByRole('row').slice(1);
     expect(rows.map((r) => within(r).getAllByRole('cell')[1]?.textContent)).toEqual(['Phil', 'Tiger']);
+  });
+
+  it('prints a dash for the position and score of a slot yet to tee off', () => {
+    const lateWave = makeLeaderboardEntry({ position: null, scoreToPar: null });
+    renderWithProviders(<ScoreboardView report={report({ liveLeaderboard: [lateWave] })} />, NO_PROVIDERS);
+    const leaderboard = nth(screen.getAllByRole('table'), 1);
+    const cells = within(nth(within(leaderboard).getAllByRole('row'), 1)).getAllByRole('cell');
+    expect([nth(cells, 0), nth(cells, 3)].map((c) => c.textContent)).toEqual(['—', '—']);
   });
 
   it('prints round scores and the stroke total, and a dash for a round not yet played', () => {
