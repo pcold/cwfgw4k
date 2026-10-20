@@ -73,7 +73,7 @@ describe('lateRowBetRounds', () => {
           round: 2,
           teams: [
             entry({ teamId: 't-2', teamName: 'Birdies', cumulativeEarnings: 50, payout: -20 }),
-            entry({ teamId: 't-1', teamName: 'Aces', cumulativeEarnings: 200, payout: 40 }),
+            entry({ teamId: 't-1', teamName: 'Aces', cumulativeEarnings: 200, payout: 40, outcome: 'won' }),
             entry({ teamId: 't-3', teamName: 'Eagles', cumulativeEarnings: 100, payout: -20 }),
           ],
         },
@@ -89,7 +89,31 @@ describe('lateRowBetRounds', () => {
       golferName: 'Golfer',
       cumulativeEarnings: 200,
       payout: 40,
+      outcome: 'won',
     });
+  });
+
+  it("keeps the server's outcome on every entry, a round nobody has earned in left null", () => {
+    const report: WeeklyReport = {
+      ...baseReport(),
+      sideBetRules: { amountPerTeam: 20, rounds: [5, 6] },
+      sideBetDetail: [
+        {
+          round: 5,
+          teams: [
+            entry({ teamId: 't-1', cumulativeEarnings: 0, payout: 0, outcome: 'won' }),
+            entry({ teamId: 't-2', cumulativeEarnings: 0, payout: 0, outcome: 'won' }),
+          ],
+        },
+        { round: 6, teams: [entry({ teamId: 't-1' }), entry({ teamId: 't-2' })] },
+      ],
+    };
+
+    const outcomes = lateRowBetRounds(report).map((rd) => rd.entries.map((e) => e.outcome));
+    expect(outcomes).toEqual([
+      ['won', 'won'],
+      [null, null],
+    ]);
   });
 
   it("takes each entry's team name from the entry, whatever the teams list calls that team", () => {
