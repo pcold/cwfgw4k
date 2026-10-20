@@ -298,7 +298,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
         className={`px-4 py-2 border rounded text-sm flex items-center justify-between gap-3 ${banner.className}`}
       >
         <span>{banner.text}</span>
-        {phase === 'live' && finalizeSlot ? finalizeSlot : null}
+        {phase !== 'finalized' && finalizeSlot ? finalizeSlot : null}
       </div>
 
       <div className={hasLeaderboard ? TWO_COLUMN_CLASS : undefined}>

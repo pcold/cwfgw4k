@@ -826,6 +826,36 @@ describe('ScoreboardPage', () => {
     });
   });
 
+  it('shows an admin Manage player links but not Finalize Results while awaiting tee-off', async () => {
+    authMeMock.mockResolvedValue({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
+    tournamentReportMock.mockResolvedValue({
+      ...buildReport('Current Open'),
+      tournament: {
+        name: 'Current Open',
+        startDate: '2026-03-01',
+        endDate: '2026-03-04',
+        status: 'in_progress',
+        payoutMultiplier: 1,
+        week: '10',
+      },
+      awaitingTeeOff: true,
+    });
+
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    expect(await screen.findByRole('button', { name: /Manage player links/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Finalize Results/i })).not.toBeInTheDocument();
+  });
+
   it('hides the Manage player links button for a logged-in non-admin', async () => {
     authMeMock.mockResolvedValue({
       id: 'u-2',
