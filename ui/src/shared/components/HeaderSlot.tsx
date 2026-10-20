@@ -16,7 +16,7 @@ export function HeaderSlotProvider({ slot, children }: HeaderSlotProviderProps):
   return <HeaderSlotContext.Provider value={slot}>{children}</HeaderSlotContext.Provider>;
 }
 
-/** Null until the nav has mounted its slot; a portal into it then renders nothing. */
+/** Null until the nav has mounted its slot; guard before portalling, since `createPortal` throws on null. */
 export function useHeaderSlot(): HTMLElement | null {
   const slot = useContext(HeaderSlotContext);
   if (slot === undefined) throw new Error('useHeaderSlot must be used inside a HeaderSlotProvider');
