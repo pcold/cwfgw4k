@@ -16,7 +16,7 @@ export type MoneyCellShape = 'row-end' | 'standalone' | 'card-end';
 const SHAPE_CLASS: Readonly<Record<MoneyCellShape, string>> = {
   'row-end': 'px-3 py-2 rounded-r',
   standalone: 'px-3 py-2',
-  'card-end': 'px-3 shrink-0 flex items-center justify-end rounded-r',
+  'card-end': 'min-w-24 px-3 shrink-0 flex items-center justify-center rounded-r',
 };
 
 const TONE_CLASS: Readonly<Record<MoneyTone, string>> = {

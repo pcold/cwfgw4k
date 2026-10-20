@@ -55,6 +55,6 @@ describe('MoneyCell', () => {
 
     const box = screen.getByText(display);
     expect(box.tagName).toBe('DIV');
-    expect(box).toHaveClass(tone, 'rounded-r', 'shrink-0', 'text-on-fill', 'font-display', 'font-bold', 'text-xl');
+    expect(box).toHaveClass(tone, 'rounded-r', 'min-w-24', 'shrink-0', 'text-on-fill', 'font-display', 'font-bold', 'text-xl');
   });
 });
