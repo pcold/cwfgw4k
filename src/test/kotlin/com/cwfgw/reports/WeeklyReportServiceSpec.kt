@@ -1360,6 +1360,7 @@ class WeeklyReportServiceSpec : FunSpec({
         )
         live shouldBe
             stored.copy(
+                awaitingTeeOff = true,
                 liveLeaderboard =
                     listOf(
                         unplaced("Scottie Scheffler", TEAM_A.teamName),

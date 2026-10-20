@@ -232,6 +232,8 @@ data class WeeklyReport(
     val liveLeaderboard: List<LiveLeaderboardEntry> = emptyList(),
     /** @see Rankings.liveEligible */
     val liveEligible: Boolean = false,
+    /** Set only when the live overlay matched an ESPN event nobody has teed off, listed field or not. */
+    val awaitingTeeOff: Boolean = false,
 ) {
     val cashTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::totalCash))
     val sideBetTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::sideBets))
