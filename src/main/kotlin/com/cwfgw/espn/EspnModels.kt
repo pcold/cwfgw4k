@@ -119,7 +119,7 @@ data class PreviewGolferScore(
 )
 
 /**
- * One row per competitor in ESPN's field, rostered or not. [teamNames] lists every team rostering the golfer,
+ * One row per competitor who has teed off, rostered or not. [teamNames] lists every team rostering the golfer,
  * since one can be split across teams; [rostered] is derived from it so the two cannot disagree.
  */
 data class PreviewLeaderboardEntry(

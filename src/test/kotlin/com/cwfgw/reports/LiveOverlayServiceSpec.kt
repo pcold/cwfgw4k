@@ -616,22 +616,7 @@ class LiveOverlayServiceSpec : FunSpec({
         rendered.map { it.rostered } shouldContainExactly listOf(true, false)
     }
 
-    test("mergeLiveData keeps the report's leaderboard when the live preview lists no field") {
-        val persisted =
-            LiveLeaderboardEntry(
-                position = 1,
-                scoreToPar = -5,
-                players = listOf(LeaderboardPlayer("Scottie Scheffler", listOf("BROWN"))),
-            )
-        val base = emptyReport(listOf(teamColumn(TEAM_A_ID))).copy(liveLeaderboard = listOf(persisted))
-
-        val overlaid = mergeLiveData(base, listOf(preview()), DEFAULT_RULES)
-
-        overlaid.live shouldBe true
-        overlaid.liveLeaderboard shouldContainExactly listOf(persisted)
-    }
-
-    test("mergeLiveData replaces the report's leaderboard with a live field that has rows") {
+    test("mergeLiveData replaces the report's leaderboard with the live field") {
         val stale = listOf(LeaderboardPlayer("Stale", emptyList()))
         val persisted = LiveLeaderboardEntry(position = 1, scoreToPar = -5, players = stale)
         val base = emptyReport(listOf(teamColumn(TEAM_A_ID))).copy(liveLeaderboard = listOf(persisted))

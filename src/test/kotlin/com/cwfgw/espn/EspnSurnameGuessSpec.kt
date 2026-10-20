@@ -261,7 +261,7 @@ private fun competitor(
         scoreStr = "-10",
         scoreToPar = -10,
         totalStrokes = 278,
-        roundScores = emptyList(),
+        roundScores = listOf(70, 70, 69, 69),
         position = position,
         status = EspnStatus.Active,
         isTeamPartner = isTeamPartner,

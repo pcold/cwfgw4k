@@ -345,8 +345,8 @@ private fun espnLeader(golfer: Golfer): EspnCompetitor =
         order = 1,
         scoreStr = "-5",
         scoreToPar = -5,
-        totalStrokes = null,
-        roundScores = emptyList(),
+        totalStrokes = 67,
+        roundScores = listOf(67),
         position = 1,
         status = EspnStatus.Active,
         isTeamPartner = false,
@@ -700,7 +700,7 @@ class ReportRoutesSpec : FunSpec({
         }
     }
 
-    test("GET /api/v1/seasons/{id}/report/{tid}?live=true keeps the persisted leaderboard when ESPN's field is empty") {
+    test("GET /api/v1/seasons/{id}/report/{tid}?live=true keeps the stored report when ESPN lists no field yet") {
         val noField = espnMasters(field = emptyList())
         val configure =
             reportFixture(
@@ -715,7 +715,7 @@ class ReportRoutesSpec : FunSpec({
             val url = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
             val body = client.get(url).bodyAsText()
 
-            wireReport(body)["live"] shouldBe JsonPrimitive(true)
+            wireReport(body)["live"] shouldBe JsonNull
             wireLeaderboard(body).map { it["position"] } shouldContainExactly listOf(JsonPrimitive(1))
         }
     }
@@ -877,7 +877,7 @@ class ReportRoutesSpec : FunSpec({
                 espnId = "espn-masters",
                 name = "The Masters",
                 completed = false,
-                competitors = emptyList(),
+                competitors = listOf(espnLeader(SCHEFFLER)),
                 isTeamEvent = false,
             )
         // Behind the production ESPN cache, so the spec covers both layers a failure could be kept in.

@@ -54,7 +54,7 @@ private fun espnCompetitor(
         espnId = espnId,
         name = name,
         order = position,
-        scoreStr = scoreToPar.toString(),
+        scoreStr = scoreLabel(scoreToPar),
         scoreToPar = scoreToPar,
         totalStrokes = 280,
         roundScores = listOf(70, 70, 70),
@@ -63,6 +63,29 @@ private fun espnCompetitor(
         isTeamPartner = false,
         pairKey = null,
     )
+
+/** As ESPN lists a field before its tee time: level par, no linescores, no strokes. */
+private fun notTeedOff(
+    espnId: String,
+    name: String,
+    order: Int,
+): EspnCompetitor =
+    espnCompetitor(espnId, name, position = order, scoreToPar = 0).copy(totalStrokes = null, roundScores = emptyList())
+
+private fun scoreLabel(scoreToPar: Int): String =
+    when {
+        scoreToPar == 0 -> "E"
+        scoreToPar > 0 -> "+$scoreToPar"
+        else -> scoreToPar.toString()
+    }
+
+/** Positioned as the client positions a parsed field, so ties fall where ESPN's scores put them. */
+private fun espnField(
+    vararg competitors: EspnCompetitor,
+    completed: Boolean = false,
+): EspnTournament =
+    espnTournament(competitors = assignPositions(competitors.toList(), completed = completed))
+        .copy(completed = completed)
 
 private fun espnTournament(
     espnId: String = "401580999",
@@ -198,7 +221,8 @@ class EspnLivePreviewSpec : FunSpec({
 
     test("previewForTournament picks the event carrying the tournament's pga_tournament_id among several") {
         val sony = espnTournament(espnId = "espn-sony", name = "Sony Open")
-        val masters = espnTournament(espnId = "espn-masters")
+        val masters =
+            espnTournament(espnId = "espn-masters", competitors = listOf(espnCompetitor("p1", "Leader", 1, -10)))
         val fixture = PreviewFixture(tournamentsByDate = mapOf(START_DATE to listOf(sony, masters)))
 
         val preview = fixture.previewFor(tournament(pgaTournamentId = "espn-masters")).orFail()
@@ -229,7 +253,8 @@ class EspnLivePreviewSpec : FunSpec({
     }
 
     test("previewForTournament asks ESPN once, for the tournament's start date") {
-        val fixture = PreviewFixture(tournamentsByDate = mapOf(START_DATE to listOf(espnTournament())))
+        val event = espnTournament(competitors = listOf(espnCompetitor("p1", "Leader", 1, -10)))
+        val fixture = PreviewFixture(tournamentsByDate = mapOf(START_DATE to listOf(event)))
 
         fixture.previewFor(tournament()).orFail()
 
@@ -242,10 +267,14 @@ class EspnLivePreviewSpec : FunSpec({
         val event =
             espnTournament(
                 competitors =
-                    listOf(
-                        espnCompetitor("p1", "Scottie Scheffler", 1, -10),
+                    listOf(espnCompetitor("p1", "Scottie Scheffler", 1, -10)) +
+                        (2..10).map { position ->
+                            espnCompetitor(
+                                "f$position", "Filler $position", position,
+                                position - 11,
+                            )
+                        } +
                         espnCompetitor("p2", "Rory McIlroy", 11, 5),
-                    ),
             )
         val fixture =
             PreviewFixture(
@@ -420,6 +449,85 @@ class EspnLivePreviewSpec : FunSpec({
         leaderboard.map { it.name } shouldContainExactly
             listOf("First Place", "Second Place", "Third Place")
         leaderboard.forEach { it.rostered shouldBe false }
+    }
+
+    test("previewForTournament answers NotStarted when no competitor in the field has teed off") {
+        val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
+        val event =
+            espnField(notTeedOff("p1", "Scottie Scheffler", order = 1), notTeedOff("p2", "Undrafted", order = 2))
+        val fixture =
+            PreviewFixture(
+                initialTournaments = listOf(tournament()),
+                initialTeams = listOf(team(TEAM_A_ID, "BROWN")),
+                initialGolfers = listOf(scottie),
+                initialRosters = listOf(rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1)),
+                tournamentsByDate = mapOf(START_DATE to listOf(event)),
+            )
+
+        fixture.previewFor(tournament()) shouldBe Result.Err(LivePreviewError.NotStarted)
+    }
+
+    test("previewForTournament ranks only the competitors who have teed off, and pays none who has not") {
+        val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p3")
+        val rory = golfer(RORY_ID, "Rory", "McIlroy", pgaPlayerId = "u1")
+        val unstarted = (1..10).map { index -> notTeedOff("u$index", "Not Yet $index", order = index + 3) }
+        val event =
+            espnField(
+                espnCompetitor("p1", "First Place", 1, -2),
+                espnCompetitor("p2", "Second Place", 2, -1),
+                espnCompetitor("p3", "Scottie Scheffler", 3, 0),
+                *unstarted.toTypedArray(),
+            )
+        val fixture =
+            PreviewFixture(
+                initialTournaments = listOf(tournament()),
+                initialTeams = listOf(team(TEAM_A_ID, "BROWN"), team(TEAM_B_ID, "WOMBLE")),
+                initialGolfers = listOf(scottie, rory),
+                initialRosters =
+                    listOf(
+                        rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1),
+                        rosterEntry(TEAM_B_ID, RORY_ID, draftRound = 1),
+                    ),
+                tournamentsByDate = mapOf(START_DATE to listOf(event)),
+            )
+
+        val preview = fixture.previewFor(tournament()).orFail()
+
+        preview.leaderboard.map { it.name to it.position } shouldContainExactly
+            listOf("First Place" to 1, "Second Place" to 2, "Scottie Scheffler" to 3)
+        val brown = preview.teams.single { it.teamId == TEAM_A_ID }
+        brown.golferScores.map { it.position to it.numTied } shouldContainExactly listOf(3 to 1)
+        brown.topTenEarnings.compareTo(BigDecimal(10)) shouldBe 0
+        preview.teams.single { it.teamId == TEAM_B_ID }.golferScores shouldBe emptyList()
+    }
+
+    test("previewForTournament still breaks a completed event's tie for the lead by playoff order") {
+        val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
+        val rory = golfer(RORY_ID, "Rory", "McIlroy", pgaPlayerId = "p2")
+        val event =
+            espnField(
+                espnCompetitor("p1", "Scottie Scheffler", 1, -12),
+                espnCompetitor("p2", "Rory McIlroy", 2, -12),
+                completed = true,
+            )
+        val fixture =
+            PreviewFixture(
+                initialTournaments = listOf(tournament()),
+                initialTeams = listOf(team(TEAM_A_ID, "BROWN"), team(TEAM_B_ID, "WOMBLE")),
+                initialGolfers = listOf(scottie, rory),
+                initialRosters =
+                    listOf(
+                        rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1),
+                        rosterEntry(TEAM_B_ID, RORY_ID, draftRound = 1),
+                    ),
+                tournamentsByDate = mapOf(START_DATE to listOf(event)),
+            )
+
+        val preview = fixture.previewFor(tournament()).orFail()
+
+        preview.leaderboard.map { it.position } shouldContainExactly listOf(1, 2)
+        preview.teams.single { it.teamId == TEAM_A_ID }.topTenEarnings.compareTo(BigDecimal(18)) shouldBe 0
+        preview.teams.single { it.teamId == TEAM_B_ID }.topTenEarnings.compareTo(BigDecimal(12)) shouldBe 0
     }
 
     test("previewForTournament returns UpstreamUnavailable when ESPN is down") {

@@ -127,7 +127,7 @@ class LiveOverlayService(private val espnService: EspnService) {
     ): EspnLivePreview? =
         espnService.previewForTournament(previewCtx, tournament).getOrElse { error ->
             when (error) {
-                LivePreviewError.NoMatchingEvent -> Unit
+                LivePreviewError.NoMatchingEvent, LivePreviewError.NotStarted -> Unit
                 is LivePreviewError.EspnUnavailable -> log.warn { "$context: ESPN preview failed: ${error.cause}" }
             }
             null
@@ -234,9 +234,9 @@ private fun bumpPriorTeamCells(
 
 /**
  * Replace per-cell tournament data with live projected payouts and
- * recompute weekly / subtotal / total cash. Also surfaces the full ESPN
- * leaderboard for the scoreboard view, keeping the report's own where
- * ESPN lists no field, and rebuilds the undrafted top-10s from ESPN's.
+ * recompute weekly / subtotal / total cash. Also surfaces the live
+ * leaderboard for the scoreboard view and rebuilds the undrafted
+ * top-10s from it.
  */
 internal fun mergeLiveData(
     report: WeeklyReport,
@@ -260,8 +260,6 @@ internal fun mergeLiveData(
     val liveSideBetTotals = aggregateSideBetTotals(liveSideBetDetail)
     val finalTeams = phase1.map { it.toFinalTeam(numTeams, totalPot, liveSideBetTotals) }
     val updatedUndrafted = buildUndraftedFromLeaderboard(liveData, rules)
-    // ESPN can match the event before it lists a field; the persisted rows are then the only leaderboard.
-    val liveLeaderboard = buildLiveLeaderboard(liveData).ifEmpty { report.liveLeaderboard }
 
     return report.copy(
         teams = finalTeams,
@@ -269,7 +267,7 @@ internal fun mergeLiveData(
         sideBetDetail = liveSideBetDetail,
         standingsOrder = buildStandingsOrder(finalTeams),
         live = true,
-        liveLeaderboard = liveLeaderboard,
+        liveLeaderboard = buildLiveLeaderboard(liveData),
     )
 }
 

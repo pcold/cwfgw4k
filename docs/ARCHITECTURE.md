@@ -469,14 +469,16 @@ imports by (`findLinkedEvent` in `espn/EspnService.kt`), so an unlinked or stale
 until it is linked. The preview pays a team event by ESPN's flag, which finalize's import writes over the row.
 It matches the event's competitors beside its same-day siblings (see [Golfer matching](#golfer-matching)), so a
 guess a sibling's full name claims is paid to nobody, as an unlinked finalize importing both scores it.
+Only competitors with a round score recorded are ranked, tied and paid: one yet to tee off has no projected
+finish, and an event where nobody has teed off previews nothing, though finalize still imports the whole field.
 Only a view of one tournament is overlaid: its weekly report, or rankings and player rankings `through` it.
 Rankings gain a column per live candidate up to that tournament; player rankings fold in the live payouts. The
 All Tournaments rollups (the season report, and rankings without a `through`) count finalized results alone and
 never ask ESPN (CWF-215). A completed tournament selected in the weekly report is never overlaid.
 Each of the three responses carries `live_eligible`, whether a `live=true` request for that selection would
 overlay, decided by the same candidate check the overlay runs; the UI offers its live toggle on that flag alone.
-`live` is true only when an overlay contributed; an ESPN outage or a selection with no candidate leaves it unset
-(`false` on player rankings).
+`live` is true only when an overlay contributed; an ESPN outage, an event nobody has teed off, or a selection with
+no candidate leaves it unset (`false` on player rankings).
 
 **Fallback.** If ESPN does not answer, answers non-200, or answers 200 with a body that does not parse, the
 overlay logs a WARN and skips that candidate, so a full outage returns the persisted report unchanged
