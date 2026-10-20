@@ -121,7 +121,7 @@ class LiveOverlayService(private val espnService: EspnService) {
             is Result.Err -> {
                 logIfUnavailable(selected.error, "live overlay $tournamentId")
                 when (val error = selected.error) {
-                    is LivePreviewError.NotStarted -> withPrior.awaitingTeeOff(error.field)
+                    is LivePreviewError.NotStarted -> withPrior.withAwaitingTeeOff(error.field)
                     LivePreviewError.NoMatchingEvent, is LivePreviewError.EspnUnavailable -> withPrior
                 }
             }
@@ -153,7 +153,7 @@ class LiveOverlayService(private val espnService: EspnService) {
  * A field nobody has teed off pays nothing, so only its leaderboard is shown and [WeeklyReport.live] is left as is.
  * ESPN can match the event before it lists a field; the persisted rows are then the only leaderboard.
  */
-private fun WeeklyReport.awaitingTeeOff(field: List<PreviewLeaderboardEntry>): WeeklyReport =
+private fun WeeklyReport.withAwaitingTeeOff(field: List<PreviewLeaderboardEntry>): WeeklyReport =
     copy(
         awaitingTeeOff = true,
         liveLeaderboard = if (field.isEmpty()) liveLeaderboard else buildLiveLeaderboard(field),

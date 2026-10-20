@@ -125,7 +125,10 @@ export interface WeeklyReport {
   liveLeaderboard: LiveLeaderboardEntry[];
   /** @see Rankings.liveEligible */
   liveEligible: boolean;
-  /** Set only for a live ESPN event nobody has teed off. Show the pre-start phase on it; never infer it from the rows. */
+  /**
+   * Set only for a live ESPN event nobody has teed off, listed field or not. Show the pre-start phase on it; never
+   * infer it from the rows.
+   */
   awaitingTeeOff: boolean;
   /** Over every team's `totalCash`. Display it; never re-sum `totalCash`. */
   cashTotals: WonLostTotals;
