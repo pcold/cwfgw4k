@@ -44,6 +44,16 @@ function buildRankings(overrides: Partial<Rankings> = {}): Rankings {
 
 const NO_PROVIDERS = { withLeagueSeasonProvider: false };
 
+function phoneCards(): HTMLElement[] {
+  return within(screen.getByRole('list', { name: 'Standings' })).getAllByRole('listitem');
+}
+
+function phoneCard(teamName: string): HTMLElement {
+  const card = within(screen.getByRole('list', { name: 'Standings' })).getByText(teamName).closest('li');
+  if (!card) throw new Error(`no phone card for ${teamName}`);
+  return card;
+}
+
 describe('RankingsView', () => {
   it('numbers the teams in the order the server sent them, without re-sorting by totalCash', () => {
     renderWithProviders(<RankingsView rankings={buildRankings()} />, NO_PROVIDERS);
@@ -137,5 +147,57 @@ describe('RankingsView', () => {
   it('sets every column head in the shared column-header type', () => {
     renderWithProviders(<RankingsView rankings={buildRankings()} />, NO_PROVIDERS);
     expectSharedColumnHeads(1);
+  });
+
+  describe('on a phone', () => {
+    it('shows the cards below sm and the table from sm up', () => {
+      renderWithProviders(<RankingsView rankings={buildRankings()} />, NO_PROVIDERS);
+
+      expect(screen.getByRole('list', { name: 'Standings' })).toHaveClass('sm:hidden');
+      expect(screen.getByRole('table').parentElement).toHaveClass('hidden', 'sm:block');
+    });
+
+    it('sets a card per team in the order the server sent them', () => {
+      renderWithProviders(<RankingsView rankings={buildRankings()} />, NO_PROVIDERS);
+
+      const cards = phoneCards().map((card) => {
+        const [position, middle] = Array.from(card.children);
+        return `${position?.textContent ?? ''} ${middle?.firstElementChild?.textContent ?? ''}`;
+      });
+      expect(cards).toEqual(['1 Aces', '2 Birdies', '3 Cuts']);
+    });
+
+    it('boxes the first position in gold and every other in navy', () => {
+      renderWithProviders(<RankingsView rankings={buildRankings()} />, NO_PROVIDERS);
+
+      const positions = phoneCards().map((card) => card.firstElementChild);
+      expect(positions[0]).toHaveClass('bg-gold');
+      expect(positions[1]).toHaveClass('bg-position-fill');
+      expect(positions[2]).toHaveClass('bg-position-fill');
+      expect(positions[1]).not.toHaveClass('bg-gold');
+    });
+
+    it('prints the subtotal and late row bets under the name, in cents as the table does', () => {
+      const [aces, ...rest] = buildRankings().teams;
+      if (!aces) throw new Error('fixture has no first team');
+      const fractional = { ...aces, subtotal: 751.5715, sideBets: -1.7785 };
+      renderWithProviders(<RankingsView rankings={buildRankings({ teams: [fractional, ...rest] })} />, NO_PROVIDERS);
+
+      expect(within(phoneCard('Aces')).getByText(/^Sub /)).toHaveTextContent(/^Sub \+\$751\.57 · Bets \u2212\$1\.78$/);
+      expect(within(phoneCard('Birdies')).getByText(/^Sub /)).toHaveTextContent(/^Sub \u2212\$20\.00 · Bets \u2212\$15\.00$/);
+    });
+
+    it('fills each Total Cash box with the tone of its sign, in whole dollars', () => {
+      const [aces, birdies, cuts] = buildRankings().teams;
+      if (!aces || !birdies || !cuts) throw new Error('fixture has fewer than three teams');
+      renderWithProviders(
+        <RankingsView rankings={buildRankings({ teams: [aces, birdies, { ...cuts, totalCash: 0.4 }] })} />,
+        NO_PROVIDERS,
+      );
+
+      expect(within(phoneCard('Aces')).getByText('+$150')).toHaveClass('bg-money-up-fill', 'rounded-r');
+      expect(within(phoneCard('Birdies')).getByText('\u2212$35')).toHaveClass('bg-money-down-fill');
+      expect(within(phoneCard('Cuts')).getByText('$0')).toHaveClass('bg-money-even-fill');
+    });
   });
 });

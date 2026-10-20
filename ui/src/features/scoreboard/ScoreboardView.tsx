@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import type { LiveLeaderboardEntry, WeeklyReport, WonLostTotals } from '@/shared/api/types';
 import { formatDollarsAndCents, moneyToneClass } from '@/shared/util/money';
 import Chip from '@/shared/components/Chip';
+import ListCard, { CARD_LIST_CLASS } from '@/shared/components/ListCard';
 import MoneyCell from '@/shared/components/MoneyCell';
 import PositionCell from '@/shared/components/PositionCell';
 import ColumnHeaderFilter, {
@@ -65,14 +66,37 @@ function GolferLine({ team, onGolferClick }: GolferLineProps): ReactNode {
   );
 }
 
-interface TeamTableProps {
+interface TeamListProps {
   teams: readonly ScoreboardTeam[];
   onGolferClick?: (golferId: string) => void;
 }
 
-function TeamTable({ teams, onGolferClick }: TeamTableProps): ReactNode {
+function TeamCards({ teams, onGolferClick }: TeamListProps): ReactNode {
   return (
-    <div className="overflow-x-auto -mx-3 sm:mx-0">
+    <ol aria-label="Weekly results" className={`sm:hidden ${CARD_LIST_CLASS}`}>
+      {teams.map((team, index) => (
+        <ListCard
+          key={team.teamId}
+          position={index + 1}
+          name={team.teamName}
+          nameCase="team"
+          detail={
+            team.golferScores.length === 0 ? (
+              'No golfers in the top 10'
+            ) : (
+              <GolferLine team={team} onGolferClick={onGolferClick} />
+            )
+          }
+          total={<MoneyCell display={formatDollarsAndCents(team.weeklyTotal)} shape="card-end" />}
+        />
+      ))}
+    </ol>
+  );
+}
+
+function TeamTable({ teams, onGolferClick }: TeamListProps): ReactNode {
+  return (
+    <div className="hidden sm:block overflow-x-auto -mx-3 sm:mx-0">
       <table className="w-full min-w-[500px] text-sm border-separate border-spacing-y-1">
         <thead className={COLUMN_HEADER_CLASS}>
           <tr className="text-left">
@@ -267,6 +291,7 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
 
       <div className={hasLeaderboard ? TWO_COLUMN_CLASS : undefined}>
         <div className="space-y-6">
+          <TeamCards teams={teams} onGolferClick={onGolferClick} />
           <TeamTable teams={teams} onGolferClick={onGolferClick} />
           <MoneySummary totals={weeklyTotals} />
         </div>
