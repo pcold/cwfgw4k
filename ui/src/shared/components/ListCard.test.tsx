@@ -94,4 +94,3 @@ describe('ListCard', () => {
     expect(box).not.toHaveClass('bg-gold');
   });
 });
-

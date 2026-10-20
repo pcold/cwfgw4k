@@ -124,7 +124,7 @@ describe('RostersPage', () => {
     expect(await screen.findByText(/Failed to load rosters/i)).toBeInTheDocument();
   });
 
-  it("switches the phone cards to the team tapped on the strip", async () => {
+  it('switches the phone cards to the team tapped on the strip', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     rostersMock.mockResolvedValue(teams);
@@ -145,4 +145,3 @@ describe('RostersPage', () => {
     expect(within(switched).queryByText('Scottie Scheffler')).not.toBeInTheDocument();
   });
 });
-

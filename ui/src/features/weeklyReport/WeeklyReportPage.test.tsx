@@ -532,4 +532,3 @@ describe('WeeklyReportPage', () => {
     expect(screen.getByRole('group', { name: 'Team totals' })).toHaveTextContent('Birdies');
   });
 });
-

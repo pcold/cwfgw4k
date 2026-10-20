@@ -600,9 +600,11 @@ describe('WeeklyReportView', () => {
         NO_PROVIDERS,
       );
 
-      await user.click(within(nth(pickCards(), 0)).getByRole('button', { name: 'Clickable' }));
+      const golfer = within(nth(pickCards(), 0)).getByRole('button', { name: 'Clickable' });
+      await user.click(golfer);
 
       expect(onGolferClick).toHaveBeenCalledWith('g-99');
+      expect(golfer).toHaveClass(TAP_TARGET_CLASS);
     });
 
     it('shows no strip or cards for a report with no teams', () => {
@@ -623,4 +625,3 @@ describe('WeeklyReportView', () => {
     });
   });
 });
-

@@ -266,9 +266,11 @@ describe('RostersView', () => {
         NO_PROVIDERS,
       );
 
-      await user.click(within(nth(pickCards(), 0)).getByRole('button', { name: 'Scottie Scheffler' }));
+      const golfer = within(nth(pickCards(), 0)).getByRole('button', { name: 'Scottie Scheffler' });
+      await user.click(golfer);
 
       expect(onGolferClick).toHaveBeenCalledWith('g-1-Scottie Scheffler');
+      expect(golfer).toHaveClass(TAP_TARGET_CLASS);
     });
 
     it('lists the shared players once, under both layouts', () => {
@@ -278,4 +280,3 @@ describe('RostersView', () => {
     });
   });
 });
-

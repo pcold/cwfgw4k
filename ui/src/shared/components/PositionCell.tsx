@@ -28,7 +28,7 @@ interface PositionCellProps {
 
 /**
  * Rounds the card's left corners, so it is the row's first box. No `className`, so a caller can't fight the
- * fill. Gold marks the row numbered 1, not a tie for first: the number is the row's order.
+ * fill. Gold marks a `position` box numbered 1, not a tie for first: the number is the row's order.
  */
 export default function PositionCell({
   position,

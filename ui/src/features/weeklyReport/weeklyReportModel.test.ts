@@ -211,4 +211,3 @@ describe('topTensLabel', () => {
     expect(topTensLabel(count)).toBe(label);
   });
 });
-
