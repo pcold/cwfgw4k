@@ -91,7 +91,7 @@ describe('RulesPage', () => {
     }
   });
 
-  it('lays the payouts out as one tile per place, first place in gold', async () => {
+  it('lays the payouts out as one tile per place, each with its ordinal and amount', async () => {
     tournamentsMock.mockResolvedValue([]);
     renderWithProviders(<RulesPage />);
 
