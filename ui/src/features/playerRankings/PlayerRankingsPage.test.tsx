@@ -204,6 +204,7 @@ describe('PlayerRankingsPage', () => {
     expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 9 · Sample Open' }))).toContainElement(
       screen.getByRole('heading', { name: 'Player Rankings' }),
     );
+    expect(screen.getByLabelText(/Through/i).closest('.hidden')).toHaveClass('sm:block');
   });
 
   it('runs through the tournament the server names, not the first unfinalized one in the list', async () => {

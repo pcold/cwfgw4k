@@ -219,6 +219,7 @@ describe('LateRowBetsPage', () => {
     expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 9 · Sample Open' }))).toContainElement(
       screen.getByRole('heading', { name: 'Late Row Bets' }),
     );
+    expect(screen.getByLabelText(/Through/i).closest('.hidden')).toHaveClass('sm:block');
   });
 
   it("drops a pick the newly selected season lacks and opens on that season's current tournament", async () => {

@@ -194,6 +194,7 @@ describe('WeeklyReportPage', () => {
     expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 9 · Sample Open' }))).toContainElement(
       screen.getByRole('heading', { name: 'Weekly Report' }),
     );
+    expect(screen.getByLabelText(/Tournament/i).closest('.hidden')).toHaveClass('sm:block');
 
     const select = screen.getByLabelText(/Tournament/i);
     await user.selectOptions(select, '');

@@ -236,6 +236,7 @@ describe('ScoreboardPage', () => {
     expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 10 · Current Open' }))).toContainElement(
       screen.getByRole('heading', { name: 'Scoreboard' }),
     );
+    expect(screen.getByLabelText('Tournament').closest('.hidden')).toHaveClass('sm:block');
     await waitFor(() => {
       expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-active', true);
     });
