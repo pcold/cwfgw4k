@@ -261,7 +261,7 @@ components:
 
 Castlewood Fantasy Golf is read almost entirely as tables: the week's scoreboard, the weekly report grid, team standings, player rankings, rosters. The design exists to make those tables legible and to make money read at a glance.
 
-The palette is **Tour Broadcast**, and the app is **light only**. The page is `{colors.canvas}` (the brand sky), between a top nav and a footer on `{colors.chrome}` (the brand navy); cards are `{colors.surface-card}` (white); form controls are `{colors.surface-raised}`, the canvas's sky again. No table head has a fill but the report grids' team heads, on the navy `{colors.header-band}`. Text is the brand navy (`{colors.ink}`), with its muted slate blue (`{colors.ink-muted}`) for labels and captions.
+The palette is **Tour Broadcast**, and the app is **light only**. The page is `{colors.canvas}` (the brand sky), between a top nav and, from `lg`, a footer on `{colors.chrome}` (the brand navy), with a tab bar at the foot below `lg`; cards are `{colors.surface-card}` (white); form controls are `{colors.surface-raised}`, the canvas's sky again. No table head has a fill but the report grids' team heads, on the navy `{colors.header-band}`. Text is the brand navy (`{colors.ink}`), with its muted slate blue (`{colors.ink-muted}`) for labels and captions.
 
 The one brand colour is red: `{colors.primary}` (the brand red) fills primary buttons, the block behind the CASTLEWOOD FG mark and the LIVE chip. The brand red is 4.25:1 on the canvas, so it is a fill; type takes the darker step, `{colors.primary-ink}` (red-700). Page titles are navy, so a title never shares a hex with a loss.
 
@@ -273,7 +273,7 @@ The weekly report and the rosters page are laid out like the league's spreadshee
 - Light canvas, no dark mode. `index.css` sets `{colors.canvas}` and `{colors.ink}` on `body`.
 - White on sky for depth: cards are white on the sky canvas, and raised controls are sky again inside them. Only the modal and the error screen cast a shadow.
 - Small type: `text-sm` (14px) body, `text-xs` (12px) for helper text, table heads and the report grids. Every select and text input is the exception at `text-base` (16px), because iOS zooms the page into a smaller control. The roster file input stays `text-sm`: iOS opens a picker for it rather than zooming.
-- Uppercase `tracking-wider` labels mark structure: nav links, table heads, card headings, the league/season picker's labels.
+- Uppercase `tracking-wider` labels mark structure: nav links and tabs, table heads, card headings, the league/season picker's labels.
 - Tabular numbers (`tabular-nums` or `font-mono`) on every money and count column. The Rules page's payout schedule does not have them yet.
 - Corners are `rounded` (4px) on controls and chips, `rounded-lg` (8px) on cards and the modal. Nothing is pill-shaped.
 
@@ -285,26 +285,27 @@ The contrast table in `ui/src/index.css.test.ts` pins every text token at WCAG A
 
 ### Surface
 - **Canvas** (`{colors.canvas}`, the brand sky #e8eef7): the page background.
-- **Surface Card** (`{colors.surface-card}`, white): every card, the money summary chips, the modal panel, the active nav link, the cells between the boxes of the standings' and scoreboard's card rows, the scoreboard's leaderboard card, every cell of the report and roster grids. At `/60` it is the row hover on the player-rankings table.
-- **Surface Raised** (`{colors.surface-raised}`, the brand sky): form fields, the neutral tag chips. It is the canvas's colour, so it reads as raised only inside a white card.
+- **Surface Card** (`{colors.surface-card}`, white): every card, the money summary chips, the modal panel and the More sheet, the active nav link, the cells between the boxes of the standings' and scoreboard's card rows, the scoreboard's leaderboard card, every cell of the report and roster grids. At `/60` it is the row hover on the player-rankings table.
+- **Surface Raised** (`{colors.surface-raised}`, the brand sky): form fields, the neutral tag chips, the current page's row in the More sheet and a row hovered. It is the canvas's colour, so it reads as raised only inside a white card.
 - **Surface Raised Hover** (`{colors.surface-raised-hover}`, the brand line #d5deeb): the roster file input's button, hovered.
-- **Overlay** (`{colors.overlay}`, black): the modal scrim, at `/60`.
+- **Overlay** (`{colors.overlay}`, black): the modal scrim, the More sheet's included, at `/60`.
 
 ### Chrome
-- **Chrome** (`{colors.chrome}`, the brand navy): the bar behind the top nav and the footer, and the FINAL chip.
-- **On Chrome** (`{colors.on-chrome}`, white): a nav or footer link, or the menu button, hovered; the FINAL chip's label.
-- **On Chrome Muted** (`{colors.on-chrome-muted}`, slate-300): an idle nav or footer link, and the menu button.
+- **Chrome** (`{colors.chrome}`, the brand navy): the bar behind the top nav, the tab bar and the footer, and the FINAL chip.
+- **On Chrome** (`{colors.on-chrome}`, white): a nav or footer link hovered, the current tab's label, the FINAL chip's label.
+- **On Chrome Muted** (`{colors.on-chrome-muted}`, slate-300): an idle nav or footer link.
+- **On Chrome Tab Idle** (`{colors.on-chrome-tab-idle}`, the brand steel #8ea2c2): an idle tab's label, 6.50:1 on the bar. Not `{colors.on-chrome-muted}`: dimmer, so the current tab's white stands out from the other four.
 
-These two inks are light, so they are for a `{colors.chrome}` fill alone; on the canvas or a card they fail the contrast floor.
+These three inks are light, so they are for a `{colors.chrome}` fill alone; on the canvas or a card they fail the contrast floor.
 
 ### Lines
 - **Hairline Soft** (`{colors.hairline-soft}`, the brand line): row dividers (`divide-y`) inside the scoreboard's leaderboard and the player-rankings table.
-- **Hairline** (`{colors.hairline}`, the brand line): the modal header rule, the rankings chart's gridlines (`stroke-hairline`).
-- **Hairline Strong** (`{colors.hairline-strong}`, slate-400): borders on the modal panel and error card, and on the outlined chip.
+- **Hairline** (`{colors.hairline}`, the brand line): the modal header rule, the rule above Admin in the More sheet, the rankings chart's gridlines (`stroke-hairline`).
+- **Hairline Strong** (`{colors.hairline-strong}`, slate-400): borders on the modal panel, the More sheet's top edge and the error card, and on the outlined chip.
 - **Control Border** (`{colors.control-border}`, slate-500): the border on every input and select, 4.76:1 on white and 4.08:1 on the canvas. Not the brand line the hairlines keep, which is 1.36:1 on white: a field on the canvas (the league/season picker) has no fill contrast, so its border is its only edge. The brand muted blue also clears 3:1 but draws a field as a heavy box.
 
 ### Text
-- **Ink Strong** (`{colors.ink-strong}`, the brand navy #0a1d38): every page title, the UPCOMING chip's text and outline, the active nav link on its white block, the close button and a text button hovered, a competitor's name in the player-links panel, the counts on the roster upload. On a light canvas the darkest ink is the strongest, so it shares navy with `{colors.ink}`.
+- **Ink Strong** (`{colors.ink-strong}`, the brand navy #0a1d38): every page title, the UPCOMING chip's text and outline, the active nav link on its white block, the current page's row in the More sheet, the close button and a text button hovered, a competitor's name in the player-links panel, the counts on the roster upload. On a light canvas the darkest ink is the strongest, so it shares navy with `{colors.ink}`.
 - **Ink** (`{colors.ink}`, the brand navy): the default text colour, set on `body` and the app root; team names in the scoreboard and standings tables, a player's name on the leaderboard, the standings' Subtotal and Late Row Bets, and in the report grid the round numbers, the bold summary rows' labels, every summary figure but PREVIOUS and the top-ten line under SUBTOTAL, and the name of a pick that earned.
 - **Ink Body** (`{colors.ink-body}`, the brand navy): golfer names inside the roster grid cells, and the neutral tag chip's text.
 - **Ink Secondary** (`{colors.ink-secondary}`, the brand secondary navy #13305a): running text on the Rules page, golfer names and the Top 10 Earnings column on the scoreboard.
@@ -314,7 +315,7 @@ These two inks are light, so they are for a `{colors.chrome}` fill alone; on the
 - **Ink Faint** (`{colors.ink-faint}`, the brand muted blue #4a5f80): the em dash in an empty cell, the `/` between a shared player's owners on the rosters page.
 
 ### Brand
-- **Primary** (`{colors.primary}`, the brand red #d7263d): the fill on every primary button — form submit, Create, Save, Finalize, Reload — the block behind the CASTLEWOOD FG mark, and the LIVE chip.
+- **Primary** (`{colors.primary}`, the brand red #d7263d): the fill on every primary button — form submit, Create, Save, Finalize, Reload — the block behind the CASTLEWOOD FG mark, the LIVE chip, and the bar over the current tab.
 - **Primary Hover** (`{colors.primary-hover}`, red-700): that fill, hovered.
 - **On Primary** (`{colors.on-primary}`, white): text on a primary fill, the CASTLEWOOD FG mark and the LIVE chip's label among it.
 - **Primary Ink** (`{colors.primary-ink}`, red-700): a player name hovered in player rankings.
@@ -355,14 +356,14 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 
 ### Font family
 - **Saira** — the brand face, self-hosted from `@fontsource-variable/saira` (width and weight axes, upright and italic) through the imports in `ui/src/main.tsx`. `--font-sans` in `ui/src/index.css` leads with it, so Tailwind's preflight sets it on `html` and every text style inherits it at 100% width. Behind it come `Saira Fallback`, Arial scaled to Saira's metrics so text holds its place while the webfont swaps in, then the system stack.
-- **Display** — the `font-display` utility in `ui/src/index.css` sets `font-stretch: 75%`, the condensed width for the nav, titles, team names and numbers. Today the brand mark, the nav links, the footer link, page titles, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes, and the report grids' round numbers and Late row tag use it. A fallback face has no width axis and sets it at its own width.
+- **Display** — the `font-display` utility in `ui/src/index.css` sets `font-stretch: 75%`, the condensed width for the nav, titles, team names and numbers. Today the brand mark, the nav links, the tab labels and More sheet rows, the footer link, page titles, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes, and the report grids' round numbers and Late row tag use it. A fallback face has no width axis and sets it at its own width.
 - **System Mono** — Tailwind's `font-mono`. The weekly report grid's money figures, late row bets' golfer names and amounts, the golfer-history modal's place and money columns, and the ESPN week and event names on the schedule import.
 
 ### Hierarchy
 
 | Token | Size | Weight | Tracking | Classes | Where |
 |---|---|---|---|---|---|
-| `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links, the footer link, page titles, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes, the report grids' round numbers and Late row tag |
+| `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links, tab labels and More sheet rows, the footer link, page titles, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes, the report grids' round numbers and Late row tag |
 | `{typography.brand-mark}` | 20px | 800 | 0.025em, italic, uppercase | `font-display italic font-extrabold text-xl uppercase tracking-wide` | The CASTLEWOOD FG mark in the nav |
 | `{typography.page-title}` | 24px, 30px from `sm:` | 800 | 0, italic, uppercase | `font-display italic font-extrabold uppercase text-2xl sm:text-3xl leading-tight text-ink-strong` | The `h2` of every page, in `PageTitle` |
 | `{typography.modal-title}` | 18px | 700 | 0 | `text-lg font-bold` | Modal header |
@@ -387,7 +388,8 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 
 ### Spacing
 - Tailwind's default 4px scale; there are no spacing tokens.
-- **Page**: `<main>` is `max-w-screen-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6`. The nav and the footer centre their contents in the same `max-w-screen-2xl px-3 sm:px-4`, so every band's edges line up with the page's.
+- **Page**: `<main>` is `max-w-screen-2xl mx-auto px-safe-3 sm:px-safe-4 pt-4 sm:pt-6`, and its foot is `pb-above-tab-bar-4 sm:pb-above-tab-bar-6 lg:pb-6`, so below `lg` the last row clears the fixed tab bar and the home indicator. The nav and the footer centre their contents in the same `max-w-screen-2xl px-safe-3 sm:px-safe-4`, so every band's edges line up with the page's.
+- **Safe area**: the viewport is `viewport-fit=cover`, so a gutter that meets a screen edge takes the larger of its spacing and the inset: `px-safe-*` and `pb-above-tab-bar-*` are utilities in `ui/src/index.css`. A surface that is itself edge to edge (the tab bar, the More sheet) pads by the inset alone, `pb-[env(safe-area-inset-bottom)]` and its left and right pair.
 - **Page body**: a stack spaced `space-y-6` or `space-y-4`, opening with `PageTitle`.
 - **Cards**: `p-6` for form and rules cards, `p-4` for the rankings chart and late-row-bet tables.
 - **List tables**: cells `px-3 py-2` (scoreboard teams, standings, player rankings) or `px-2 py-2` with `px-3` at the outer edges (the leaderboard, whose nine columns fit half the page from `xl`); card rows are `h-11` and `border-spacing-y-1` apart.
@@ -408,7 +410,7 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 | 2 | `{colors.surface-raised}` | Fields, neutral chips |
 | 3 | `{colors.surface-card}` + `{colors.hairline-strong}` border + `{elevation.modal}` (`shadow-xl`) over `{colors.overlay}`/60 | The modal panel, and the error screen's card |
 
-White cards on the sky canvas carry depth without shadows, and a raised control is sky again inside its white card. The `{colors.chrome}` nav and footer frame the levels rather than sit on one. `shadow-xl` appears only on the two floating panels.
+White cards on the sky canvas carry depth without shadows, and a raised control is sky again inside its white card. The `{colors.chrome}` nav, tab bar and footer frame the levels rather than sit on one. `shadow-xl` appears only on the two floating panels; the More sheet rises from the screen's foot over the scrim and casts none, since nothing lies beside it.
 
 ## Shapes
 
@@ -422,13 +424,18 @@ Table cells are square, but for the outer corners of a card row, which its posit
 ## Components
 
 ### Top nav — `ui/src/App.tsx`
-A `{colors.chrome}` bar, `min-h-14`, with no border. On the left, the brand mark: an `h1` reading CASTLEWOOD FG in `{typography.brand-mark}` and `{colors.on-primary}`, on a `{colors.primary}` block slanted with `-skew-x-12` the bar's full height; the text inside is skewed back (`skew-x-12`), since the italic face already slants it. At `lg:` and up, a row of links on the right.
+A `{colors.chrome}` bar, `min-h-14`, with no border, its `<nav>` labelled `Main` beside the tab bar's `Tabs`. On the left, the brand mark: an `h1` reading CASTLEWOOD FG in `{typography.brand-mark}` and `{colors.on-primary}`, on a `{colors.primary}` block slanted with `-skew-x-12` the bar's full height; the text inside is skewed back (`skew-x-12`), since the italic face already slants it. At `lg:` and up, a row of links on the right.
 - Every nav label is `font-display font-semibold uppercase tracking-wider`, idle `text-on-chrome-muted hover:text-on-chrome`; the current page's link is a `bg-surface-card text-ink-strong` block and carries `aria-current="page"`.
 - Desktop link: `inline-flex items-center` plus `TAP_TARGET_CLASS`, `px-3 rounded text-sm`.
-- Below `lg:`, a 44px (`w-11 h-11`) menu button in the idle ink opens a stacked list inside the same bar; its links are `px-4 py-3 rounded text-base`, and clear 44px on that padding (48px) without `TAP_TARGET_CLASS`.
+- Below `lg:` the bar holds the brand mark alone; the tab bar navigates.
 
 ### Footer — `ui/src/App.tsx`
-A `{colors.chrome}` bar matching the nav, `py-1.5`, holding the Admin link alone at the right: the nav's label and idle ink, `inline-flex items-center` plus `TAP_TARGET_CLASS`, `px-3 rounded text-sm`.
+A `{colors.chrome}` bar matching the nav, `lg` and up only (`hidden lg:block`): below it the More sheet reaches Admin. It is `py-1.5`, holding the Admin link alone at the right: the nav's label and idle ink, `inline-flex items-center` plus `TAP_TARGET_CLASS`, `px-3 rounded text-sm`.
+
+### Tab bar — `ui/src/TabBar.tsx`, `ui/src/MoreSheet.tsx`
+Below `lg` only (`lg:hidden`): a `{colors.chrome}` `<nav aria-label="Tabs">` fixed to the viewport's foot, `z-40` over the report grids' sticky `z-20` and under the modal scrim's `z-50`. Five equal tabs in a `grid-cols-5 h-14` row, the bar padded below by the home indicator's inset: Scores, Standings, Report, Players, More.
+- A tab is a label alone, `font-display text-xs uppercase tracking-wider` with `TAP_TARGET_CLASS`: idle `font-medium {colors.on-chrome-tab-idle}`; the current one `font-bold {colors.on-chrome}` under a `w-8 h-1 {colors.primary}` bar at the tab's top edge, and carries `aria-current="page"`. More is current on Rosters, Bets, Rules and Admin; `/` marks no tab.
+- More is a button (`aria-expanded`, `aria-controls`) opening the More sheet: `ModalShell` with `placement="sheet"`, holding Rosters, Bets and Rules, a `{colors.hairline}` rule, then Admin. Each row is `flex items-center` with `TAP_TARGET_CLASS`, `px-3 rounded text-base font-display font-semibold uppercase tracking-wider`, `{colors.ink}` and the current page's row `bg-surface-raised text-ink-strong`. Any navigation closes it, a tap on the current page's row included.
 
 ### Page title — `ui/src/shared/components/PageTitle.tsx`
 Every page opens with one: a `<header>` holding the page's only `h2` in `{typography.page-title}` (the `h1` is the brand mark), an optional `text-sm text-ink-muted` subtitle under it, and on the right an `actions` slot. It is `flex flex-wrap items-center justify-between`; below `sm:` the actions take a line of their own under the title. A Page renders it outside its data's loading gates, so the title holds still while the data loads or the season changes; Admin, which has no title until the session check confirms a login, is the exception. The title is static text; what varies — a tournament's name, its week, a count — goes in the subtitle.
@@ -477,7 +484,7 @@ A select in a page's toolbar rather than a form — the scoreboard's tournament,
 A table head that filters its column uses `ColumnHeaderFilter.tsx`: a transparent, borderless select that inherits the head's family, weight, tracking and colour and turns `{colors.ink-label}` on hover or focus. It restates `uppercase`, because a browser resets a select's text-transform. It is `text-base` with `TAP_TARGET_CLASS` inside the `text-xs` head, so its column is as wide as its longest option at 16px.
 
 ### Modal — `ui/src/shared/components/ModalShell.tsx`, `FormModal.tsx`
-A fixed scrim `bg-overlay/60`, centring a panel `bg-surface-card rounded-lg shadow-xl border border-hairline-strong`, capped at `max-h-[90dvh]` and scrolling inside. Header `px-5 py-4 border-b border-hairline` with a `{typography.modal-title}` and a 44px-tall `×` close button; body `px-5 py-4`. Widths are `form` (22rem) and `detail` (28rem), each capped at 92vw, and `wide` (`w-full max-w-3xl`). `FormModal` adds a primary submit stretched with `flex-1` and a secondary Cancel. Focus is trapped while open, and Escape closes it.
+A fixed scrim `bg-overlay/60`, centring a panel `bg-surface-card rounded-lg shadow-xl border border-hairline-strong`, capped at `max-h-[90dvh]` and scrolling inside. Header `px-5 py-4 border-b border-hairline` with a `{typography.modal-title}` and a 44px-tall `×` close button; body `px-5 py-4`. Widths are `form` (22rem) and `detail` (28rem), each capped at 92vw, and `wide` (`w-full max-w-3xl`). `FormModal` adds a primary submit stretched with `flex-1` and a secondary Cancel. Focus is trapped while open, Escape closes it, and focus returns to the control that opened it. `placement="sheet"` sets the panel instead full width at the viewport's foot, `rounded-t-lg border-t`, with no shadow and no width, padded by the safe-area insets, sliding up on open (`starting:translate-y-full`, none under reduced motion).
 
 ### List tables — `ScoreboardView.tsx`, `RankingsView.tsx`, `PlayerRankingsView.tsx`
 `text-sm`, full width. Head: `{typography.column-header}`, with no fill. PlayerRankings and the scoreboard's leaderboard: body `divide-y divide-hairline-soft`; PlayerRankings' rows also take `hover:bg-surface-card/60`. A row holding a golfer-name button is at least 44px: the button's `TAP_TARGET_CLASS`, plus the cell's own padding. A row with nothing to tap keeps the dense padding and has no minimum.
@@ -529,18 +536,19 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 - Don't use a Tailwind shade, a hex, a ramp variable or a `--brand-*` palette variable in a component (`text-gray-400`, `#fff`, `var(--color-gray-400)`, `var(--brand-red)`). `PALETTE_RESTRICTIONS` in `ui/eslint.config.js` fails the lint on each.
 - Don't merge two tokens because they share a step today (`ink` and `ink-strong`, `ink-soft` and `ink-faint`, `surface-raised` and `canvas`). They hold different roles and move separately.
 - Don't use gold as text: the brand gold is 1.44:1 on white. It marks a leader: the standings' and scoreboard's first position box, and a late-row round's leader in the report grid.
-- Don't add shadows to cards or borders to them. White on sky carries depth; the modal is the only floating surface.
+- Don't add shadows to cards or borders to them. White on sky carries depth; the modal, centred or a sheet, is the only floating surface.
 - Don't add a dark theme piecemeal: the ink steps are chosen for the light canvas and the contrast table only measures that.
 
 ## Responsive Behavior
 
 | Breakpoint | Behavior |
 |---|---|
-| Below `sm:` (<640px) | Page padding `px-3 py-4`. Wide tables scroll edge to edge. The title's actions wrap onto a line under the title, and the picker's selects take a row each. Rankings chart 220px tall. Modal panels take 92vw. |
-| `sm:` to `lg:` (640–1024px) | Padding `px-4 py-6`; tables scroll inside the page margin. The actions sit at the title's right while they fit. Chart 320px. The nav is still the menu button. |
-| `lg:` and up (≥1024px) | The nav shows its links inline, each 44px tall, and hides the menu button. Chart 400px. |
+| Below `sm:` (<640px) | Page padding `px-3 pt-4`, the foot clearing the tab bar. Wide tables scroll edge to edge. The title's actions wrap onto a line under the title, and the picker's selects take a row each. Rankings chart 220px tall. Modal panels take 92vw. |
+| `sm:` to `lg:` (640–1024px) | Padding `px-4 pt-6`, the foot clearing the tab bar; tables scroll inside the page margin. The actions sit at the title's right while they fit. Chart 320px. The tab bar still navigates. |
+| `lg:` and up (≥1024px) | The nav shows its links inline, each 44px tall; the tab bar hides and the footer shows. Chart 400px. |
 
-- The menu button is 44px square (`w-11 h-11`), and the menu's links clear 44px on their own padding.
+- Below `lg` the tab bar is fixed at the viewport's foot, each tab and each More sheet row 44px or taller; `<main>`'s foot clears it.
+- A gutter or a bar at a screen edge clears the device's safe-area inset (see Spacing), since the viewport is `viewport-fit=cover`.
 - Report grids keep their round column sticky at every width; only the team columns scroll.
 - Modal height caps at `90dvh`, not `vh`: mobile `vh` ignores the on-screen keyboard and pushes the footer off-screen.
 
@@ -558,4 +566,4 @@ Use these when building UI here:
 - **A money value:** `tabular-nums`, or `font-mono` in the grids; a bottom-line amount adds `moneyToneClass` of the text it prints and keeps its table's weight, or in a card row is a `<MoneyCell display={…} />`.
 - **A modal:** `FormModal` for a form, `ModalShell` when the body waits on a query.
 
-Quick reference: nav and footer on a navy bar, canvas the brand sky, cards white, controls sky; text the brand navy, down to its muted blue (`ink-label`, `ink-muted`, `ink-soft`, `ink-faint`); brand red as a fill, red-700 as type; page titles navy, italic, condensed and uppercase; money green-800 / red-700, or on the standings, scoreboard and report a filled box; report team heads the navy band, a late-row leader pale gold; Saira, condensed to 75% with `font-display`.
+Quick reference: nav, tab bar and footer on a navy bar, the current tab white over a red bar, canvas the brand sky, cards white, controls sky; text the brand navy, down to its muted blue (`ink-label`, `ink-muted`, `ink-soft`, `ink-faint`); brand red as a fill, red-700 as type; page titles navy, italic, condensed and uppercase; money green-800 / red-700, or on the standings, scoreboard and report a filled box; report team heads the navy band, a late-row leader pale gold; Saira, condensed to 75% with `font-display`.
