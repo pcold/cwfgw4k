@@ -5,12 +5,17 @@ export const ALL_TOURNAMENTS = '';
 
 export function tournamentLabel(t: Tournament): string {
   const multiplier = t.payoutMultiplier !== 1 ? ` (${t.payoutMultiplier}x)` : '';
-  return `Wk ${t.week ?? '?'} — ${t.name}${multiplier} — ${t.status}`;
+  return `${tournamentWeekLabel(t)} — ${t.name}${multiplier} — ${t.status}`;
 }
 
 /** For a line too narrow for the status and multiplier, which the select's options still carry. */
 export function tournamentShortLabel(t: Tournament): string {
-  return `Wk ${t.week ?? '?'} · ${t.name}`;
+  return `${tournamentWeekLabel(t)} · ${t.name}`;
+}
+
+/** @see tournamentShortLabel */
+export function tournamentWeekLabel(t: Tournament): string {
+  return `Wk ${t.week ?? '?'}`;
 }
 
 /**

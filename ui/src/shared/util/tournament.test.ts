@@ -7,6 +7,7 @@ import {
   pickInSeason,
   tournamentLabel,
   tournamentShortLabel,
+  tournamentWeekLabel,
 } from './tournament';
 
 function makeTournament(overrides: Partial<Tournament> = {}): Tournament {
@@ -56,6 +57,16 @@ describe('tournamentShortLabel', () => {
 
   it('falls back to ? when the week is null', () => {
     expect(tournamentShortLabel(makeTournament({ week: null }))).toBe('Wk ? · Sony Open');
+  });
+});
+
+describe('tournamentWeekLabel', () => {
+  it('reads the week alone', () => {
+    expect(tournamentWeekLabel(makeTournament({ week: '11' }))).toBe('Wk 11');
+  });
+
+  it('falls back to ? when the week is null', () => {
+    expect(tournamentWeekLabel(makeTournament({ week: null }))).toBe('Wk ?');
   });
 });
 
