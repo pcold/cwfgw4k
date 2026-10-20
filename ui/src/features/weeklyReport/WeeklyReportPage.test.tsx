@@ -377,8 +377,9 @@ describe('WeeklyReportPage', () => {
 
     renderWithProviders(<WeeklyReportPage />);
 
-    expect(await screen.findByText('ROWS 2-3')).toBeInTheDocument();
-    expect(screen.getAllByText('($20.00)')).toHaveLength(2);
+    const grid = await screen.findByRole('table');
+    expect(within(grid).getByText('ROWS 2-3')).toBeInTheDocument();
+    expect(within(grid).getAllByText('($20.00)')).toHaveLength(2);
   });
 
   it('renders the grid of a report cached before the rules were sent, naming no rounds or amount', async () => {
@@ -391,9 +392,10 @@ describe('WeeklyReportPage', () => {
 
     renderWithProviders(<WeeklyReportPage />);
 
-    expect(await screen.findByText('SIDE BETS')).toBeInTheDocument();
-    expect(screen.getByText('Golfer 8')).toBeInTheDocument();
-    expect(screen.queryByText(/^\(\$/)).not.toBeInTheDocument();
+    const grid = await screen.findByRole('table');
+    expect(within(grid).getByText('SIDE BETS')).toBeInTheDocument();
+    expect(within(grid).getByText('Golfer 8')).toBeInTheDocument();
+    expect(within(grid).queryByText(/^\(\$/)).not.toBeInTheDocument();
   });
 
   it.each([
@@ -496,5 +498,37 @@ describe('WeeklyReportPage', () => {
 
     await waitFor(() => expect(downloadPdfMock).toHaveBeenCalledTimes(2));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('switches the phone cards to the team tapped on the strip', async () => {
+    const report = buildReport('All Tournaments');
+    const [aces] = report.teams;
+    if (!aces) throw new Error('the report fixture has no team');
+    const birdies = {
+      ...aces,
+      teamId: 'team-2',
+      teamName: 'Birdies',
+      cells: aces.cells.map((cell) => ({ ...cell, golferName: `Birdie ${cell.round}` })),
+    };
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
+    seasonReportMock.mockResolvedValue({ ...report, teams: [aces, birdies] });
+    const user = userEvent.setup();
+
+    renderWithProviders(<WeeklyReportPage />);
+
+    const strip = await screen.findByRole('group', { name: 'Team' });
+    expect(within(screen.getByRole('list', { name: 'Picks' })).getByText('Golfer 1')).toBeInTheDocument();
+
+    await user.click(within(strip).getByRole('button', { name: 'Birdies' }));
+
+    expect(within(strip).getByRole('button', { name: 'Birdies' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(strip).getByRole('button', { name: 'Aces' })).toHaveAttribute('aria-pressed', 'false');
+    const picks = screen.getByRole('list', { name: 'Picks' });
+    expect(within(picks).getByText('Birdie 1')).toBeInTheDocument();
+    expect(within(picks).queryByText('Golfer 1')).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Team totals' })).toHaveTextContent('Birdies');
   });
 });

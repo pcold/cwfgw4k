@@ -31,6 +31,7 @@ function WeeklyReportPage(): ReactNode {
   const leaguesGate = useLeaguesGate();
   const [userTournamentId, setUserTournamentId] = useState<string | null>(null);
   const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
 
   const tournamentsQuery = useQuery({
     queryKey: queryKeys.tournaments.bySeason(seasonId),
@@ -106,7 +107,14 @@ function WeeklyReportPage(): ReactNode {
         </PickerRow>
 
         <QueryState query={reportQuery} label="report">
-          {(report) => <WeeklyReportView report={report} onGolferClick={setHistoryGolferId} />}
+          {(report) => (
+            <WeeklyReportView
+              report={report}
+              selectedTeamId={selectedTeamId}
+              onSelectTeam={setSelectedTeamId}
+              onGolferClick={setHistoryGolferId}
+            />
+          )}
         </QueryState>
       </>
     );

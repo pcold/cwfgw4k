@@ -64,4 +64,33 @@ describe('ListCard', () => {
 
     expect(screen.getByRole('list')).toHaveClass('flex', 'flex-col', 'gap-1');
   });
+
+  it('keeps the plain card and its middle unchanged for the standings, scoreboard and players cards', () => {
+    const card = renderInList(<ListCard position={2} name="Aces" nameCase="team" detail="detail" total={null} />);
+
+    expect(card.className).toBe('flex min-h-13.5 rounded bg-surface-card');
+    expect(within(card).getByText('Aces').parentElement?.className).toBe(
+      'flex-1 min-w-0 px-3 py-2 flex flex-col justify-center',
+    );
+  });
+
+  it('fills a late-row leader pale gold, with the gold edge on the middle beside the box', () => {
+    const card = renderInList(
+      <ListCard position={6} name="Aces" nameCase="golfer" detail="detail" total={null} fill="late-row-leader" />,
+    );
+
+    expect(card).toHaveClass('bg-late-row-leader');
+    expect(card).not.toHaveClass('bg-surface-card');
+    expect(within(card).getByText('Aces').parentElement).toHaveClass('border-l-4', 'border-gold');
+  });
+
+  it('numbers a round box 1 in navy, where a position 1 is gold', () => {
+    const card = renderInList(
+      <ListCard position={1} positionKind="round" name="Aces" nameCase="golfer" detail="detail" total={null} />,
+    );
+
+    const box = nth(Array.from(card.children), 0);
+    expect(box).toHaveClass('bg-position-fill');
+    expect(box).not.toHaveClass('bg-gold');
+  });
 });
