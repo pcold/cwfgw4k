@@ -26,6 +26,12 @@ function downloadPdf(report: WeeklyReport, season: Season | null): Promise<void>
   return import('./weeklyReportPdf').then((m) => m.downloadWeeklyReportPdf(report, season));
 }
 
+const PDF_FAILURE_CLASS = 'text-semantic-danger text-sm';
+
+function pdfFailureMessage(error: Error): string {
+  return `Failed to generate PDF: ${String(error)}`;
+}
+
 function WeeklyReportPage(): ReactNode {
   const { seasonId, seasons } = useLeagueSeason();
   const currentSeason = seasons?.find((s) => s.id === seasonId) ?? null;
@@ -90,6 +96,16 @@ function WeeklyReportPage(): ReactNode {
     );
   }
 
+  /** The sheet's copy of the field: the open panel covers the page's alert, so the failure shows here too. */
+  function renderSheetField(loaded: readonly Tournament[], selectedId: string, idSuffix: string): ReactNode {
+    return (
+      <>
+        {renderTournamentField(loaded, selectedId, idSuffix)}
+        {pdfMutation.isError ? <p className={PDF_FAILURE_CLASS}>{pdfFailureMessage(pdfMutation.error)}</p> : null}
+      </>
+    );
+  }
+
   function renderBody(): ReactNode {
     if (leaguesGate) return leaguesGate;
     if (tournaments === undefined || effectiveId === null) {
@@ -107,10 +123,10 @@ function WeeklyReportPage(): ReactNode {
     return (
       <>
         <div className={DESKTOP_PICKER_CLASS}>{renderTournamentField(tournaments, effectiveId, '')}</div>
-        {/* Once, outside both copies of the field: a phone's sheet may close before the PDF fails. */}
+        {/* The only alert, outside both copies of the field: a phone's sheet may close before the PDF fails. */}
         {pdfMutation.isError ? (
-          <p role="alert" className="text-semantic-danger text-sm">
-            Failed to generate PDF: {String(pdfMutation.error)}
+          <p role="alert" className={PDF_FAILURE_CLASS}>
+            {pdfFailureMessage(pdfMutation.error)}
           </p>
         ) : null}
 
@@ -144,7 +160,7 @@ function WeeklyReportPage(): ReactNode {
               renderField={
                 tournaments === undefined || effectiveId === null
                   ? undefined
-                  : (idSuffix) => renderTournamentField(tournaments, effectiveId, idSuffix)
+                  : (idSuffix) => renderSheetField(tournaments, effectiveId, idSuffix)
               }
             />
           </>

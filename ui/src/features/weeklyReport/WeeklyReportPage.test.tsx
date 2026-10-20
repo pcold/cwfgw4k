@@ -482,7 +482,7 @@ describe('WeeklyReportPage', () => {
     expect(button).toBeEnabled();
   });
 
-  it("keeps a PDF failure from the phone's sheet on the page once the sheet closes", async () => {
+  it("shows a PDF failure in the phone's sheet, and keeps it on the page once the sheet closes", async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
@@ -498,6 +498,9 @@ describe('WeeklyReportPage', () => {
     await user.click(screen.getByRole('button', { name: '2026 Season 1' }));
     const sheet = screen.getByRole('dialog', { name: 'League, season and tournament' });
     await user.click(within(sheet).getByRole('button', { name: /Download PDF/i }));
+
+    expect(await within(sheet).findByText(/Failed to generate PDF.*autoTable exploded/)).toBeInTheDocument();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
     await user.click(within(sheet).getByRole('button', { name: 'Close' }));
 
     const alert = await screen.findByRole('alert');
