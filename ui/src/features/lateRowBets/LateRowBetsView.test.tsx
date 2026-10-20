@@ -289,6 +289,18 @@ describe('LateRowBetsView', () => {
       expect(within(nth(rows, 0)).getByText('+$13.75').className).not.toMatch(/bg-money/);
     });
 
+    it("truncates a leader's long name inside the card, so the payout box stays on screen", () => {
+      const longName = report({
+        sideBetDetail: [roundOf(2, [entry('t-1', 'GALBRAITHWAITE-MACKENZIE', 'Christiaan Bezuidenhout', 300, 20, 'won')])],
+      });
+      render(<LateRowBetsView report={longName} {...FIRST_TAB} />);
+
+      const name = within(nth(leaderCards(), 0)).getByText(/·/);
+      expect(name).toHaveClass('truncate');
+      expect(name.parentElement).toHaveClass('flex-1', 'min-w-0');
+      expect(within(nth(leaderCards(), 0)).getByText('+$20.00')).toHaveClass('shrink-0');
+    });
+
     it('gives every team tied for the lead a gold card, and never one that lost', () => {
       const tied = report({
         sideBetDetail: [
