@@ -24,6 +24,7 @@ interface MoreSheetProps {
   readonly onClose: () => void;
 }
 
+/** Never closes itself on navigation: `TabBar` remounts it. @see ModalShell */
 export default function MoreSheet({ id, onClose }: MoreSheetProps): ReactNode {
   return (
     <ModalShell title="More" onClose={onClose} placement="sheet" dismissOnBackdrop>
