@@ -12,6 +12,7 @@ colors:
   chrome: "#0a1d38"
   on-chrome: "#ffffff"
   on-chrome-muted: "#cad5e2"
+  on-chrome-tab-idle: "#8ea2c2"
   hairline-soft: "#d5deeb"
   hairline: "#d5deeb"
   hairline-strong: "#90a1b9"
