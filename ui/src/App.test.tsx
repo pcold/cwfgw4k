@@ -128,16 +128,18 @@ describe('App', () => {
   );
 
   it.each(['/', '/scoreboard', '/report', '/rankings', '/player-rankings', '/rosters', '/late-row-bets', '/rules'])(
-    "puts %s's picker button in the main nav, opening the page's picker sheet",
+    "puts %s's picker button in the main nav below sm, opening the page's picker sheet",
     async (path) => {
       vi.mocked(api.leagues).mockResolvedValueOnce([league]);
       vi.mocked(api.seasons).mockResolvedValueOnce([season]);
       const user = userEvent.setup();
       renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
 
-      await user.click(
-        await within(mainNavigation()).findByRole('button', { name: '2026 Season 1, change league and season' }),
-      );
+      const weekButton = await within(mainNavigation()).findByRole('button', {
+        name: '2026 Season 1, change league and season',
+      });
+      expect(weekButton.parentElement).toHaveClass('sm:hidden');
+      await user.click(weekButton);
 
       expect(screen.getByRole('dialog', { name: 'League and season' })).toBeInTheDocument();
     },
