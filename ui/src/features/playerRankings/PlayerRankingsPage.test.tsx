@@ -167,15 +167,15 @@ describe('PlayerRankingsPage', () => {
 
     const user = userEvent.setup();
     renderWithProviders(<PlayerRankingsPage />);
-    await screen.findByText('Scottie Scheffler');
-    expect(within(nth(screen.getAllByRole('row'), 1)).getAllByRole('cell')[3]).toHaveTextContent(
+    const table = await screen.findByRole('table');
+    expect(within(nth(within(table).getAllByRole('row'), 1)).getAllByRole('cell')[3]).toHaveTextContent(
       '+$30.00',
     );
 
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-a');
 
-    await screen.findByText('+$18.00');
+    await within(screen.getByRole('table')).findByText('+$18.00');
     expect(playerRankingsMock).toHaveBeenCalledWith('sn-1', false, 'tn-a');
   });
 
