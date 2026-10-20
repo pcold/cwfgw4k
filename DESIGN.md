@@ -250,6 +250,12 @@ components:
     typography: "{typography.money-figure}"
     rounded: "{rounded.sm}"
     padding: 8px 12px
+  list-card:
+    backgroundColor: "{colors.surface-card}"
+    textColor: "{colors.ink}"
+    typography: "{typography.card-row-name}"
+    rounded: "{rounded.sm}"
+    height: 54px
   header-band:
     backgroundColor: "{colors.header-band}"
     textColor: "{colors.on-fill}"
@@ -285,7 +291,7 @@ The contrast table in `ui/src/index.css.test.ts` pins every text token at WCAG A
 
 ### Surface
 - **Canvas** (`{colors.canvas}`, the brand sky #e8eef7): the page background.
-- **Surface Card** (`{colors.surface-card}`, white): every card, the money summary chips, the modal panel and the More sheet, the active nav link, the cells between the boxes of the standings' and scoreboard's card rows, the scoreboard's leaderboard card, every cell of the report and roster grids. At `/60` it is the row hover on the player-rankings table.
+- **Surface Card** (`{colors.surface-card}`, white): every card, the money summary chips, the modal panel and the More sheet, the active nav link, the cells between the boxes of the standings' and scoreboard's card rows, every phone list card, the scoreboard's leaderboard card, every cell of the report and roster grids. At `/60` it is the row hover on the player-rankings table.
 - **Surface Raised** (`{colors.surface-raised}`, the brand sky): form fields, the neutral tag chips, the current page's row in the More sheet and a row hovered. It is the canvas's colour, so it reads as raised only inside a white card.
 - **Surface Raised Hover** (`{colors.surface-raised-hover}`, the brand line #d5deeb): the roster file input's button, hovered.
 - **Overlay** (`{colors.overlay}`, black): the modal scrim, the More sheet's included, at `/60`.
@@ -310,7 +316,7 @@ These three inks are light, so they are for a `{colors.chrome}` fill alone; on t
 - **Ink Body** (`{colors.ink-body}`, the brand navy): golfer names inside the roster grid cells, and the neutral tag chip's text.
 - **Ink Secondary** (`{colors.ink-secondary}`, the brand secondary navy #13305a): running text on the Rules page, golfer names and the Top 10 Earnings column on the scoreboard.
 - **Ink Label** (`{colors.ink-label}`, the brand muted blue #4a5f80): uppercase card headings, every table head but the report grids' team heads, a column-filter select on hover or focus.
-- **Ink Muted** (`{colors.ink-muted}`, the brand muted blue #4a5f80): helper and caption text — field labels, the subtitle under a page title, loading messages, chart axis labels (`fill-ink-muted`), the golfer line under a scoreboard team, the leaderboard's positions and round scores, the outlined chip's label, and in the report grids the Late row tag and the report's stake under it, a pick's payout lines, the name of a pick that earned nothing, the PREVIOUS and side-bet rows' labels, the PREVIOUS figures and the top-ten line under SUBTOTAL — and every text button but a Remove link, which is `{colors.semantic-danger}`.
+- **Ink Muted** (`{colors.ink-muted}`, the brand muted blue #4a5f80): helper and caption text — field labels, the subtitle under a page title, loading messages, chart axis labels (`fill-ink-muted`), the golfer line under a scoreboard team, a phone list card's second line, the leaderboard's positions and round scores, the outlined chip's label, and in the report grids the Late row tag and the report's stake under it, a pick's payout lines, the name of a pick that earned nothing, the PREVIOUS and side-bet rows' labels, the PREVIOUS figures and the top-ten line under SUBTOTAL — and every text button but a Remove link, which is `{colors.semantic-danger}`.
 - **Ink Soft** (`{colors.ink-soft}`, the brand muted blue #4a5f80): rank numbers in player rankings, the labels on the money summary chips, empty-state lines, the picker's labels, a bottom-line amount that prints as `$0`, and the ownership share under a roster pick.
 - **Ink Faint** (`{colors.ink-faint}`, the brand muted blue #4a5f80): the em dash in an empty cell, the `/` between a shared player's owners on the rosters page.
 
@@ -356,14 +362,14 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 
 ### Font family
 - **Saira** — the brand face, self-hosted from `@fontsource-variable/saira` (width and weight axes, upright and italic) through the imports in `ui/src/main.tsx`. `--font-sans` in `ui/src/index.css` leads with it, so Tailwind's preflight sets it on `html` and every text style inherits it at 100% width. Behind it come `Saira Fallback`, Arial scaled to Saira's metrics so text holds its place while the webfont swaps in, then the system stack.
-- **Display** — the `font-display` utility in `ui/src/index.css` sets `font-stretch: 75%`, the condensed width for the nav, titles, team names and numbers. Today the brand mark, the nav links, the tab labels and More sheet rows, the footer link, page titles, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes, and the report grids' round numbers and Late row tag use it. A fallback face has no width axis and sets it at its own width.
+- **Display** — the `font-display` utility in `ui/src/index.css` sets `font-stretch: 75%`, the condensed width for the nav, titles, team names and numbers. Today the brand mark, the nav links, the tab labels and More sheet rows, the footer link, page titles, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes, a phone list card's name and total, and the report grids' round numbers and Late row tag use it. A fallback face has no width axis and sets it at its own width.
 - **System Mono** — Tailwind's `font-mono`. The weekly report grid's money figures, late row bets' golfer names and amounts, the golfer-history modal's place and money columns, and the ESPN week and event names on the schedule import.
 
 ### Hierarchy
 
 | Token | Size | Weight | Tracking | Classes | Where |
 |---|---|---|---|---|---|
-| `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links, tab labels and More sheet rows, the footer link, page titles, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes, the report grids' round numbers and Late row tag |
+| `{typography.display}` | — | — | — | `font-display` | The brand mark, nav links, tab labels and More sheet rows, the footer link, page titles, the status chip, table heads, the standings' and scoreboard's team names and position and money boxes, a phone list card's name and total, the report grids' round numbers and Late row tag |
 | `{typography.brand-mark}` | 20px | 800 | 0.025em, italic, uppercase | `font-display italic font-extrabold text-xl uppercase tracking-wide` | The CASTLEWOOD FG mark in the nav |
 | `{typography.page-title}` | 24px, 30px from `sm:` | 800 | 0, italic, uppercase | `font-display italic font-extrabold uppercase text-2xl sm:text-3xl leading-tight text-ink-strong` | The `h2` of every page, in `PageTitle` |
 | `{typography.modal-title}` | 18px | 700 | 0 | `text-lg font-bold` | Modal header |
@@ -375,7 +381,7 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 | `{typography.button}` | 14px | 500 | 0 | `text-sm font-medium` | `Button`'s `regular` size |
 | `{typography.button-compact}` | 12px | 500 | 0 | `text-xs font-medium` | `Button`'s `compact` size: the scoreboard's tournament header, a panel row, a table row |
 | `{typography.report-figure}` | 12px | 400 | 0 | `font-mono` in a `text-xs` table | Money in the weekly report grid but TOTAL CASH, a `MoneyCell` |
-| `{typography.card-row-name}` | 18px | 700 | 0, uppercase | `font-display font-bold text-lg uppercase text-ink` | A team name in a standings or scoreboard card row |
+| `{typography.card-row-name}` | 18px | 700 | 0, uppercase | `font-display font-bold text-lg uppercase text-ink` | A team name in a standings or scoreboard card row, and a phone list card's name; a golfer's name there is `normal-case` |
 | `{typography.position-figure}` | 18px | 700 | 0 | `font-display font-bold text-lg tabular-nums` | `PositionCell` |
 | `{typography.money-figure}` | 20px | 700 | 0 | `MONEY_FIGURE_CLASS`: `font-display font-bold text-xl tabular-nums` | `MoneyCell`; bold and at least 18.66px, or white on the up fill fails contrast |
 
@@ -392,12 +398,12 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 - **Safe area**: the viewport is `viewport-fit=cover`, so a gutter that meets a screen edge takes the larger of its spacing and the inset: `px-safe-*` and `pb-above-tab-bar-*` are utilities in `ui/src/index.css`. A surface that is itself edge to edge (the tab bar, the More sheet) pads by the inset alone, `pb-[env(safe-area-inset-bottom)]` and its left and right pair.
 - **Page body**: a stack spaced `space-y-6` or `space-y-4`, opening with `PageTitle`.
 - **Cards**: `p-6` for form and rules cards, `p-4` for the rankings chart and late-row-bet tables.
-- **List tables**: cells `px-3 py-2` (scoreboard teams, standings, player rankings) or `px-2 py-2` with `px-3` at the outer edges (the leaderboard, whose nine columns fit half the page from `xl`); card rows are `h-11` and `border-spacing-y-1` apart.
+- **List tables**: cells `px-3 py-2` (scoreboard teams, standings, player rankings) or `px-2 py-2` with `px-3` at the outer edges (the leaderboard, whose nine columns fit half the page from `xl`); card rows are `h-11` and `border-spacing-y-1` apart. Below `sm` the standings, scoreboard teams and players are cards instead, each at least 54px (`min-h-13.5`) and `gap-1` apart.
 - **Report grids**: cells `px-2 py-1.5`, `border-separate border-spacing-1` (`REPORT_GRID_TABLE_CLASS`), no cell bordered: the canvas between white cells separates them. They are the densest surface in the app on purpose: one column per team must fit.
 - **Forms**: fields in a `flex flex-wrap items-end gap-4` row inside a card; a form modal stacks them with `space-y-3`.
 
 ### Containers
-- List tables and report grids sit in `overflow-x-auto -mx-3 sm:mx-0`, so on a phone they scroll sideways edge to edge. A table card's table scrolls inside the card, `overflow-x-auto` alone, since a bleed would cut the card's rounded edge. The scoreboard's two tables also set a floor (`min-w-[500px]` teams, `min-w-[480px]` leaderboard) so their columns don't crush first; at a 1280px viewport each column is wider than its floor, so neither scrolls.
+- Report grids sit in `overflow-x-auto -mx-3 sm:mx-0`, so on a phone they scroll sideways edge to edge. A list table keeps that wrapper but shows only from `sm` (`hidden sm:block`), where `sm:mx-0` cancels the bleed, so the scoreboard teams' floor applies from `sm` only; below it the list is cards, which never scroll sideways. A table card's table scrolls inside the card, `overflow-x-auto` alone, since a bleed would cut the card's rounded edge. The scoreboard's two tables also set a floor (`min-w-[500px]` teams, `min-w-[480px]` leaderboard) so their columns don't crush first; at a 1280px viewport each column is wider than its floor, so neither scrolls.
 - From `xl` the scoreboard sets its teams and the leaderboard side by side, `grid-cols-[minmax(0,5fr)_minmax(0,4fr)]` at `gap-6`, the money summary chips under the teams; the split gives a two-golfer line room in its team cell. Below `xl` the two stack in a `grid-cols-1`, since an implicit track grows to a table's floor and scrolls the page on a phone.
 - The report grids pin the first column (`sticky left-0`) so the round label stays visible while the teams scroll.
 
@@ -406,7 +412,7 @@ Tokens only re-colour what the dark theme drew; the component treatment has rest
 | Level | Treatment | Use |
 |---|---|---|
 | 0 | `{colors.canvas}` | The page |
-| 1 | `{colors.surface-card}`, no border, no shadow | Cards, summary chips, the standings' and scoreboard's card rows, the report grids' cells |
+| 1 | `{colors.surface-card}`, no border, no shadow | Cards, summary chips, the standings' and scoreboard's card rows, phone list cards, the report grids' cells |
 | 2 | `{colors.surface-raised}` | Fields, neutral chips |
 | 3 | `{colors.surface-card}` + `{colors.hairline-strong}` border + `{elevation.modal}` (`shadow-xl`) over `{colors.overlay}`/60 | The modal panel, and the error screen's card |
 
@@ -419,7 +425,7 @@ White cards on the sky canvas carry depth without shadows, and a raised control 
 | `{rounded.sm}` | 4px | `rounded` | Buttons, fields, chips, banners, nav items |
 | `{rounded.lg}` | 8px | `rounded-lg` | Cards, the modal panel, the error card |
 
-Table cells are square, but for the outer corners of a card row, which its position and money boxes round (`rounded-l`, `rounded-r`); the report's TOTAL CASH boxes, not ending a card row, stay square. No component is pill-shaped (`rounded-full`), and no corner is larger than 8px.
+Table cells are square, but for the outer corners of a card row, which its position and money boxes round (`rounded-l`, `rounded-r`); the report's TOTAL CASH boxes, not ending a card row, stay square. A phone list card is `rounded`, and its boxes round the same outer corners. No component is pill-shaped (`rounded-full`), and no corner is larger than 8px.
 
 ## Components
 
@@ -491,8 +497,12 @@ A fixed scrim `bg-overlay/60`, centring a panel `bg-surface-card rounded-lg shad
 
 Rankings (the standings) sets each row as a card instead: the table is `border-separate border-spacing-y-1`, each row `h-11`, every cell between the boxes `bg-surface-card`, a `PositionCell` first and a `MoneyCell` last. No divider and no hover: the canvas between cards separates them, and a `/60` tint does not read on a white card. The scoreboard's team table is set the same way, its name cell holding the team's paid golfers on a second line: `text-sm {colors.ink-muted}`, joined by ` · `, each golfer's name, finish (`T` when tied), payout and a share under 100% kept to one line, so a wrap falls only between golfers. Each name is a button with `TAP_TARGET_CLASS`, so a row with golfers is 88px (the name, then a 44px line) and 132px where the line wraps; `h-11` is the floor a team with no golfer keeps. PlayerRankings stays on divided rows.
 
+Below `sm` each of the three renders as a list of cards instead, an `<ol>` of `ListCard.tsx` (`sm:hidden`), and its table only from `sm` (`hidden sm:block`). A card is a white `rounded` flex row, at least 54px (`min-h-13.5`), the cards `gap-1` apart, with no bleed: a position box, then the name over a second line, then the total. The name is `{typography.card-row-name}` and `truncate`s, its column `min-w-0`, so a long name never pushes the total off the screen; the second line is `text-sm {colors.ink-muted}`. Standings: `Sub … · Bets …` in cents, the box Total Cash in whole dollars. Scoreboard: the team's golfer line, or "No golfers in the top 10", the box the week's +/- in cents. PlayerRankings: the golfer's name in `normal-case`, still a `TAP_TARGET_CLASS` button, over `TEAM · Rd N · K top 10s` (Undrafted for no team, the round left out when there is none, `1 top 10` singular); its total takes no box, a plain `{typography.money-figure}` in `moneyToneClass`. Its team and round filters move above the cards as two `FIELD_CLASS` selects, `grid-cols-2 gap-2`, each first offering all; one filter state drives them and the header's filters both.
+
 ### Position and money boxes — `ui/src/shared/components/PositionCell.tsx`, `MoneyCell.tsx`
 The first and last `<td>` of a card row; the box is the cell's fill, edge to edge, and each rounds its outer corners. `MoneyCell`'s `shape="standalone"` is the square box of a grid cell, the report's TOTAL CASH. Like `Button`, neither takes a `className`. `PositionCell` is `{typography.position-figure}` on `{colors.position-fill}` under `{colors.on-fill}`, and `{colors.gold}` under `{colors.on-gold}` for the row numbered 1. `MoneyCell` takes the formatted amount and fills by its `moneyTone` — up `{colors.money-up-fill}`, down `{colors.money-down-fill}`, even `{colors.money-even-fill}` — under a white `{typography.money-figure}`.
+
+A phone list card takes the same boxes as `div`s: `PositionCell`'s `shape="card-start"` is `w-9.5` (38px) and `MoneyCell`'s `shape="card-end"` is as wide as its figure, each the card's full height. One shape prop picks the element and the corners, so a box's fills and type have one definition.
 
 ### Report grids — `WeeklyReportView.tsx`, `RostersView.tsx`
 One column per team, one row per draft round. Both grids are built from the same pieces in `ui/src/shared/components/`: `REPORT_GRID_TABLE_CLASS` (`text-xs border-separate border-spacing-1`), `ReportGridHead`, `ReportGridRoundLabel` and `ReportGridCell`. Rosters takes those and nothing the report adds.
@@ -529,7 +539,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 - Keep green for a gain. Colour only a surface's bottom-line money, through `moneyToneClass` on the text it prints, or `MoneyCell` in a card row; leave every other amount in the table's ink. Set all money in `tabular-nums` or `font-mono`.
 - Open every page with `PageTitle`, its actions holding the status chip where the response has one, then the league/season picker on every page but Admin; never a hand-rolled `h2`.
 - Use `FIELD_CLASS` (through `TextField`, `DateField`, `SelectField`, or `FieldShell` for anything else) for every form input and select, and `PickerRow` for a page toolbar's select; both build on `CONTROL_CLASS`.
-- Put a wide table in `overflow-x-auto -mx-3 sm:mx-0` with a `min-w-*`, so a phone scrolls the table rather than the page.
+- Put a wide table in `overflow-x-auto -mx-3 sm:mx-0` with a `min-w-*`, so a phone scrolls the table rather than the page; a list instead sets cards below `sm` (see List tables).
 - Give every button, link, select, input and click handler `TAP_TARGET_CLASS` (`Button` carries its own). A link also needs `flex items-center` (or `inline-flex`), or its text sits at the top of the 44px; a checkbox gives it to its label.
 
 ### Don't
@@ -543,7 +553,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 
 | Breakpoint | Behavior |
 |---|---|
-| Below `sm:` (<640px) | Page padding `px-safe-3 pt-4`, the foot clearing the tab bar. Wide tables scroll edge to edge. The title's actions wrap onto a line under the title, and the picker's selects take a row each. Rankings chart 220px tall. Centred modal panels take 92vw; the More sheet spans the width. |
+| Below `sm:` (<640px) | Page padding `px-safe-3 pt-4`, the foot clearing the tab bar. The standings, scoreboard teams and players are cards (see List tables); other wide tables scroll edge to edge. The title's actions wrap onto a line under the title, and the picker's selects take a row each. Rankings chart 220px tall. Centred modal panels take 92vw; the More sheet spans the width. |
 | `sm:` to `lg:` (640–1024px) | Padding `px-safe-4 pt-6`, the foot clearing the tab bar; tables scroll inside the page margin. The actions sit at the title's right while they fit. Chart 320px. The tab bar still navigates. |
 | `lg:` and up (≥1024px) | The nav shows its links inline, each 44px tall; the tab bar hides and the footer shows. Chart 400px. |
 
@@ -563,7 +573,7 @@ Use these when building UI here:
 - **A toolbar select:** `PickerRow` from `@/shared/components/PickerRow`, with the row's other controls as its children.
 - **A page title:** `<PageTitle title="…" subtitle="…" actions={<><StatusChip variant={statusChipVariant(query.data)} /><LeagueSeasonPicker /></>} />`, outside the page's loading gates.
 - **A table head:** `<thead className={COLUMN_HEADER_CLASS}>` from `@/shared/components/columnHeader`, with no type on its rows or cells but an ink its fill needs, as a report team head's `text-on-fill`; body `divide-y divide-hairline-soft`, or for card rows a `border-separate border-spacing-y-1` table (see List tables).
-- **A money value:** `tabular-nums`, or `font-mono` in the grids; a bottom-line amount adds `moneyToneClass` of the text it prints and keeps its table's weight, or in a card row is a `<MoneyCell display={…} />`.
+- **A money value:** `tabular-nums`, or `font-mono` in the grids; a bottom-line amount adds `moneyToneClass` of the text it prints and keeps its table's weight, or in a card row is a `<MoneyCell display={…} />` (`shape="card-end"` on a phone list card).
 - **A modal:** `FormModal` for a form, `ModalShell` when the body waits on a query.
 
 Quick reference: nav, tab bar and footer on a navy bar, the current tab white over a red bar, canvas the brand sky, cards white, controls sky; text the brand navy, down to its muted blue (`ink-label`, `ink-muted`, `ink-soft`, `ink-faint`); brand red as a fill, red-700 as type; page titles navy, italic, condensed and uppercase; money green-800 / red-700, or on the standings, scoreboard and report a filled box; report team heads the navy band, a late-row leader pale gold; Saira, condensed to 75% with `font-display`.
