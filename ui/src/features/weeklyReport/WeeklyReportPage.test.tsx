@@ -482,6 +482,29 @@ describe('WeeklyReportPage', () => {
     expect(button).toBeEnabled();
   });
 
+  it("keeps a PDF failure from the phone's sheet on the page once the sheet closes", async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
+    seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
+    downloadPdfMock.mockImplementation(() => {
+      throw new Error('autoTable exploded');
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<WeeklyReportPage />);
+    await screen.findByText('All Tournaments · Season totals');
+    await user.click(screen.getByRole('button', { name: '2026 Season 1' }));
+    const sheet = screen.getByRole('dialog', { name: 'League, season and tournament' });
+    await user.click(within(sheet).getByRole('button', { name: /Download PDF/i }));
+    await user.click(within(sheet).getByRole('button', { name: 'Close' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/Failed to generate PDF.*autoTable exploded/);
+    expect(alert.closest('.hidden')).toBeNull();
+  });
+
   it('clears the PDF error when the next download attempt starts', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);

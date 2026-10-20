@@ -85,11 +85,6 @@ function WeeklyReportPage(): ReactNode {
         >
           Download PDF
         </Button>
-        {pdfMutation.isError ? (
-          <span role="alert" className="text-semantic-danger text-sm">
-            Failed to generate PDF: {String(pdfMutation.error)}
-          </span>
-        ) : null}
         <LiveOverlayCheckbox state={liveOverlay} id={`weekly-report-live-overlay${idSuffix}`} />
       </PickerRow>
     );
@@ -112,6 +107,12 @@ function WeeklyReportPage(): ReactNode {
     return (
       <>
         <div className={DESKTOP_PICKER_CLASS}>{renderTournamentField(tournaments, effectiveId, '')}</div>
+        {/* Once, outside both copies of the field: a phone's sheet may close before the PDF fails. */}
+        {pdfMutation.isError ? (
+          <p role="alert" className="text-semantic-danger text-sm">
+            Failed to generate PDF: {String(pdfMutation.error)}
+          </p>
+        ) : null}
 
         <QueryState query={reportQuery} label="report">
           {(report) => (
