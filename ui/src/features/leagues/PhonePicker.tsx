@@ -16,6 +16,9 @@ const SHEET_ID_SUFFIX = '-sheet';
 
 const NO_SEASON_LABEL = 'Choose season';
 
+/** Neutral while the seasons load, so the trigger doesn't ask for a pick there may be no need to make. */
+const SEASONS_LOADING_LABEL = 'Season';
+
 const SUMMARY_CLASS =
   `sm:hidden flex items-center justify-between gap-2 w-full bg-surface-card ${CONTROL_CLASS} ${TAP_TARGET_CLASS} ` +
   'text-left font-display font-medium text-ink-strong';
@@ -40,7 +43,7 @@ interface PhonePickerProps {
  * reachable while the tournaments load or fail.
  */
 export default function PhonePicker({ tournament, renderField }: PhonePickerProps): ReactNode {
-  const { leagues, seasons, seasonId } = useLeagueSeason();
+  const { leagues, seasons, seasonsLoading, seasonId } = useLeagueSeason();
   const headerSlot = useHeaderSlot();
   const sheetId = useId();
   const [open, setOpen] = useState(false);
@@ -49,7 +52,7 @@ export default function PhonePicker({ tournament, renderField }: PhonePickerProp
   if (!leagues || leagues.length === 0) return null;
 
   const season = seasons?.find((s) => s.id === seasonId);
-  const fallbackLabel = season ? seasonLabel(season) : NO_SEASON_LABEL;
+  const fallbackLabel = season ? seasonLabel(season) : seasonsLoading ? SEASONS_LOADING_LABEL : NO_SEASON_LABEL;
   const summaryLabel = tournament ? tournamentShortLabel(tournament) : fallbackLabel;
   const headerLabel = tournament ? tournamentWeekLabel(tournament) : fallbackLabel;
   const sheetTitle = renderField ? 'League, season and tournament' : 'League and season';

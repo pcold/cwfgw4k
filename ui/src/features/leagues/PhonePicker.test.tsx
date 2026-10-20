@@ -136,6 +136,13 @@ describe('PhonePicker', () => {
     expect(await screen.findByRole('button', { name: 'Choose season' })).toBeInTheDocument();
   });
 
+  it('reads a neutral Season while the seasons load', async () => {
+    seasonsMock.mockReturnValue(new Promise(() => undefined));
+    renderWithProviders(<PhonePicker />);
+
+    expect(await screen.findByRole('button', { name: 'Season' })).toBeInTheDocument();
+  });
+
   it('renders no trigger in either place while there is no league to pick', async () => {
     leaguesMock.mockResolvedValue([]);
     const slot = mountSlot();
