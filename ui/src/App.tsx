@@ -14,7 +14,7 @@ import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import { HeaderSlotProvider } from '@/shared/components/HeaderSlot';
 import TabBar from './TabBar';
 
-const NAV_ITEMS: ReadonlyArray<{ readonly to: string; readonly label: string }> = [
+const NAV_ITEMS: Array<{ to: string; label: string }> = [
   { to: '/scoreboard', label: 'Scoreboard' },
   { to: '/report', label: 'Report' },
   { to: '/rankings', label: 'Standings' },
@@ -30,7 +30,7 @@ const NAV_LABEL_CLASS = 'font-display font-semibold uppercase tracking-wider';
 const navLinkTone = (isActive: boolean): string =>
   isActive ? 'bg-surface-card text-ink-strong' : ON_CHROME_IDLE_CLASS;
 
-const desktopLinkClass = ({ isActive }: { readonly isActive: boolean }): string =>
+const desktopLinkClass = ({ isActive }: { isActive: boolean }): string =>
   `inline-flex items-center ${TAP_TARGET_CLASS} px-3 rounded text-sm ${NAV_LABEL_CLASS} transition ${navLinkTone(isActive)}`;
 
 function SiteFooter(): ReactNode {
