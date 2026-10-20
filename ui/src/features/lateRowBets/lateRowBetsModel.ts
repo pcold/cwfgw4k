@@ -1,22 +1,29 @@
-import type { ReportSideBetRound, ReportSideBetTeamEntry, WeeklyReport } from '@/shared/api/types';
+import type {
+  ReportSideBetRound,
+  ReportSideBetTeamEntry,
+  SideBetOutcome,
+  WeeklyReport,
+} from '@/shared/api/types';
 
+/** @see ReportSideBetTeamEntry */
 export interface LateRowBetEntry {
-  teamId: string;
-  teamName: string;
-  golferName: string;
-  cumulativeEarnings: number;
-  payout: number;
+  readonly teamId: string;
+  readonly teamName: string;
+  readonly golferName: string;
+  readonly cumulativeEarnings: number;
+  readonly payout: number;
+  readonly outcome: SideBetOutcome | null;
 }
 
 export interface LateRowBetRound {
-  round: number;
-  entries: LateRowBetEntry[];
+  readonly round: number;
+  readonly entries: readonly LateRowBetEntry[];
 }
 
 export interface LateRowBetTeamTotal {
-  teamId: string;
-  teamName: string;
-  sideBets: number;
+  readonly teamId: string;
+  readonly teamName: string;
+  readonly sideBets: number;
 }
 
 function toEntry(raw: ReportSideBetTeamEntry): LateRowBetEntry {
@@ -26,10 +33,11 @@ function toEntry(raw: ReportSideBetTeamEntry): LateRowBetEntry {
     golferName: raw.golferName,
     cumulativeEarnings: raw.cumulativeEarnings,
     payout: raw.payout,
+    outcome: raw.outcome,
   };
 }
 
-export function lateRowBetRounds(report: WeeklyReport): LateRowBetRound[] {
+export function lateRowBetRounds(report: WeeklyReport): readonly LateRowBetRound[] {
   return report.sideBetDetail.map((rd: ReportSideBetRound) => ({
     round: rd.round,
     entries: rd.teams
@@ -38,7 +46,7 @@ export function lateRowBetRounds(report: WeeklyReport): LateRowBetRound[] {
   }));
 }
 
-export function lateRowBetTeamTotals(report: WeeklyReport): LateRowBetTeamTotal[] {
+export function lateRowBetTeamTotals(report: WeeklyReport): readonly LateRowBetTeamTotal[] {
   return report.teams
     .map((team) => ({
       teamId: team.teamId,

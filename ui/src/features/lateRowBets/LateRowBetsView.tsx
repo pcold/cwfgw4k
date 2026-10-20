@@ -9,8 +9,8 @@ import {
 import { lateRowBetRounds, lateRowBetTeamTotals, type LateRowBetEntry } from './lateRowBetsModel';
 
 interface RoundTableProps {
-  round: number;
-  entries: LateRowBetEntry[];
+  readonly round: number;
+  readonly entries: readonly LateRowBetEntry[];
 }
 
 function RoundTable({ round, entries }: RoundTableProps) {
@@ -52,7 +52,7 @@ function RoundTable({ round, entries }: RoundTableProps) {
 const ROUND_LIST = new Intl.ListFormat('en', { style: 'long', type: 'conjunction' });
 
 interface RulesNoteProps {
-  rules: ReportSideBetRules;
+  readonly rules: ReportSideBetRules;
 }
 
 // Worded to stay true of a tied round, where several teams collect and split
@@ -70,7 +70,7 @@ function RulesNote({ rules }: RulesNoteProps) {
 }
 
 interface Props {
-  report: WeeklyReport;
+  readonly report: WeeklyReport;
 }
 
 function LateRowBetsView({ report }: Props): ReactNode {
