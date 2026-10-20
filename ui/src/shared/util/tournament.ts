@@ -8,6 +8,11 @@ export function tournamentLabel(t: Tournament): string {
   return `Wk ${t.week ?? '?'} — ${t.name}${multiplier} — ${t.status}`;
 }
 
+/** For a line too narrow for the status and multiplier, which the select's options still carry. */
+export function tournamentShortLabel(t: Tournament): string {
+  return `Wk ${t.week ?? '?'} · ${t.name}`;
+}
+
 /**
  * Null once the loaded list lacks the pick, so a season change needs no handler and an answer the
  * cached list trails selects no option the dropdown lacks.
