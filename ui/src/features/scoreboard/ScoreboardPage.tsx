@@ -18,7 +18,7 @@ import {
   pickInSeason,
   tournamentLabel,
 } from '@/shared/util/tournament';
-import type { WeeklyReport } from '@/shared/api/types';
+import type { Tournament, WeeklyReport } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
 import FinalizeWarnings from './FinalizeWarnings';
 import PlayerLinksPanel from './PlayerLinksPanel';
@@ -72,13 +72,13 @@ function ScoreboardPage(): ReactNode {
   // Shown only beside the tournament the admin finalized, so switching tournaments leaves its warnings behind.
   const finalized = finalizeMutation.variables === tournamentId ? finalizeMutation.data : undefined;
 
-  function renderTournamentField(selectedId: string, idSuffix: string): ReactNode {
+  function renderTournamentField(loaded: readonly Tournament[], selectedId: string, idSuffix: string): ReactNode {
     return (
       <PickerRow
         id={`tournament-select${idSuffix}`}
         label="Tournament"
         value={selectedId}
-        options={tournaments.map((t) => ({ value: t.id, label: tournamentLabel(t) }))}
+        options={loaded.map((t) => ({ value: t.id, label: tournamentLabel(t) }))}
         onChange={setUserTournamentId}
       >
         <LiveOverlayCheckbox state={liveOverlay} id={`scoreboard-live-overlay${idSuffix}`} />
@@ -136,7 +136,7 @@ function ScoreboardPage(): ReactNode {
           }
           return (
             <div className="space-y-4">
-              <div className={DESKTOP_PICKER_CLASS}>{renderTournamentField(tournamentId, '')}</div>
+              <div className={DESKTOP_PICKER_CLASS}>{renderTournamentField(loadedTournaments, tournamentId, '')}</div>
 
               {finalized ? <FinalizeWarnings finalized={finalized} /> : null}
               <QueryState query={reportQuery} label="scoreboard">
@@ -181,7 +181,9 @@ function ScoreboardPage(): ReactNode {
             <PhonePicker
               tournament={tournaments.find((t) => t.id === tournamentId)}
               renderField={
-                tournamentId === null ? undefined : (idSuffix) => renderTournamentField(tournamentId, idSuffix)
+                tournamentsQuery.isError || tournamentId === null
+                  ? undefined
+                  : (idSuffix) => renderTournamentField(tournaments, tournamentId, idSuffix)
               }
             />
           </>

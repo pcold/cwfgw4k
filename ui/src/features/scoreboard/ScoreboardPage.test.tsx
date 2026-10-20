@@ -242,6 +242,27 @@ describe('ScoreboardPage', () => {
     });
   });
 
+  it("switches tournament from the phone's sheet, which stays open on the pick", async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament, completedTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
+    tournamentReportMock.mockImplementation((_s, id) =>
+      Promise.resolve(id === 'tn-active' ? buildReport('Current Open') : buildReport('Sample Open')),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+
+    await user.click(await screen.findByRole('button', { name: 'Wk 10 · Current Open' }));
+    const sheet = screen.getByRole('dialog', { name: 'League, season and tournament' });
+    await user.selectOptions(within(sheet).getByRole('combobox', { name: 'Tournament' }), 'tn-completed');
+
+    expect(await screen.findByRole('button', { name: 'Wk 9 · Sample Open' })).toBeInTheDocument();
+    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-completed', expect.anything());
+    expect(screen.getByRole('dialog', { name: 'League, season and tournament' })).toBeInTheDocument();
+  });
+
   it('defaults to the most recent tournament when every event is completed', async () => {
     const earlier = { ...completedTournament, id: 'tn-early', name: 'Early Open', week: '1' };
     const latest = { ...completedTournament, id: 'tn-latest', name: 'Latest Open', week: '20' };
