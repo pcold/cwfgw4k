@@ -229,6 +229,10 @@ export interface League {
   createdAt: string;
 }
 
+export interface CreateLeagueRequest {
+  name: string;
+}
+
 export interface Tournament {
   id: string;
   pgaTournamentId: string | null;
@@ -243,6 +247,17 @@ export interface Tournament {
   week: string | null;
   isTeamEvent: boolean;
   createdAt: string;
+}
+
+export interface UpdateTournamentRequest {
+  name?: string;
+  startDate?: string;
+  endDate?: string;
+  courseName?: string;
+  status?: TournamentStatus;
+  purseAmount?: number;
+  payoutMultiplier?: number;
+  isTeamEvent?: boolean;
 }
 
 // Mirrors backend com.cwfgw.tournaments.FinalizedTournament. importWarnings holds one entry per tournament the
@@ -301,6 +316,15 @@ export interface Season {
   updatedAt: string;
 }
 
+export interface CreateSeasonRequest {
+  leagueId: string;
+  name: string;
+  seasonYear: number;
+  seasonNumber?: number;
+  maxTeams?: number;
+  rules?: SeasonRules;
+}
+
 // Mirrors backend com.cwfgw.users.User. Returned by /auth/me (200) and
 // /auth/login (200). A 401 from /auth/me means "not logged in" — handled
 // in `api.authMe` by returning null.
@@ -311,6 +335,11 @@ export interface User {
   username: string;
   role: UserRole;
   createdAt: string;
+}
+
+export interface LoginRequest {
+  username: string;
+  password: string;
 }
 
 export interface SeasonRules {
@@ -353,6 +382,15 @@ export interface ConfirmedTournamentEntry {
   name: string;
   startDate: string;
   endDate: string;
+}
+
+export interface UploadSeasonRequest {
+  startDate: string;
+  endDate: string;
+}
+
+export interface ConfirmSeasonScheduleRequest {
+  entries: readonly ConfirmedTournamentEntry[];
 }
 
 // Mirrors the backend's sealed GolferCandidate (com.cwfgw.admin.GolferCandidate).
@@ -411,6 +449,11 @@ export interface RosterConfirmTeamInput {
   teamNumber: number;
   teamName: string;
   picks: RosterConfirmPick[];
+}
+
+export interface ConfirmRosterRequest {
+  seasonId: string;
+  teams: readonly RosterConfirmTeamInput[];
 }
 
 // Mirrors backend com.cwfgw.teams.Team. Returned by /admin/roster/confirm

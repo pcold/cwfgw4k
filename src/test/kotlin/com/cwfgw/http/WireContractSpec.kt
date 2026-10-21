@@ -180,7 +180,7 @@ class WireContractSpec : FunSpec({
 
     test("the emitted TypeScript assertions match the file tsc reads") {
         val committed = File(ASSERTIONS_PATH)
-        val actual = wireContractAssertions(WIRE_TYPES)
+        val actual = wireContractAssertions(responded = RESPONDED_TYPES, received = RECEIVED_TYPES)
         if (committed.exists() && committed.readText() == actual) return@test
 
         val regenerated = File(REGENERATED_ASSERTIONS_PATH).also { it.parentFile.mkdirs() }

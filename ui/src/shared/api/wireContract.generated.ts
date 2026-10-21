@@ -9,12 +9,16 @@
  * compile; without it the command that regenerates the file cannot reach the code that writes it.
  */
 
-import type { ExactFields, ExactValues } from './exactFields';
+import type { ExactFields, ExactRequestFields, ExactValues } from './exactFields';
 import type {
   CleanSeasonResult,
+  ConfirmRosterRequest,
+  ConfirmSeasonScheduleRequest,
   ConfirmedTournamentEntry,
   ContestedCompetitor,
+  CreateLeagueRequest,
   CreateLinkedGolferRequest,
+  CreateSeasonRequest,
   CurrentTournament,
   DataHealthCheck,
   DataHealthGolfer,
@@ -29,6 +33,7 @@ import type {
   LeaderboardPlayer,
   League,
   LiveLeaderboardEntry,
+  LoginRequest,
   PickMatch,
   PlayerRankings,
   PlayerRankingsRow,
@@ -70,6 +75,8 @@ import type {
   TournamentStatus,
   UndraftedGolfer,
   UnmatchedCompetitor,
+  UpdateTournamentRequest,
+  UploadSeasonRequest,
   UpsertTournamentPlayerOverrideRequest,
   User,
   UserRole,
@@ -82,24 +89,38 @@ import type {
  * `src`, and each member is a verdict standing under an index signature of `true`.
  */
 export interface WireContract extends Record<string, true> {
-  'com.cwfgw.admin.ConfirmedPick': ExactFields<
+  'com.cwfgw.admin.ConfirmRosterRequest': ExactRequestFields<
+    ConfirmRosterRequest,
+    | 'seasonId'
+    | 'teams',
+    never
+  >;
+  'com.cwfgw.admin.ConfirmSeasonScheduleRequest': ExactRequestFields<
+    ConfirmSeasonScheduleRequest,
+    | 'entries',
+    never
+  >;
+  'com.cwfgw.admin.ConfirmedPick': ExactRequestFields<
     RosterConfirmPick,
     | 'round'
     | 'ownershipPct'
-    | 'assignment'
+    | 'assignment',
+    never
   >;
-  'com.cwfgw.admin.ConfirmedTeam': ExactFields<
+  'com.cwfgw.admin.ConfirmedTeam': ExactRequestFields<
     RosterConfirmTeamInput,
     | 'teamNumber'
     | 'teamName'
-    | 'picks'
+    | 'picks',
+    never
   >;
-  'com.cwfgw.admin.ConfirmedTournamentEntry': ExactFields<
+  'com.cwfgw.admin.ConfirmedTournamentEntry': ExactRequestFields<
     ConfirmedTournamentEntry,
     | 'espnEventId'
     | 'name'
     | 'startDate'
-    | 'endDate'
+    | 'endDate',
+    never
   >;
   'com.cwfgw.admin.GolferAssignment': ExactValues<
     GolferAssignment['type'],
@@ -107,21 +128,24 @@ export interface WireContract extends Record<string, true> {
     | 'existing'
     | 'new'
   >;
-  'com.cwfgw.admin.GolferAssignment#espn': ExactFields<
+  'com.cwfgw.admin.GolferAssignment#espn': ExactRequestFields<
     Extract<GolferAssignment, { type: 'espn' }>,
     | 'type'
     | 'espnId'
-    | 'name'
+    | 'name',
+    never
   >;
-  'com.cwfgw.admin.GolferAssignment#existing': ExactFields<
+  'com.cwfgw.admin.GolferAssignment#existing': ExactRequestFields<
     Extract<GolferAssignment, { type: 'existing' }>,
     | 'type'
-    | 'golferId'
+    | 'golferId',
+    never
   >;
-  'com.cwfgw.admin.GolferAssignment#new': ExactFields<
+  'com.cwfgw.admin.GolferAssignment#new': ExactRequestFields<
     Extract<GolferAssignment, { type: 'new' }>,
     | 'type'
-    | 'name'
+    | 'name',
+    never
   >;
   'com.cwfgw.admin.GolferCandidate': ExactValues<
     GolferCandidate['type'],
@@ -226,6 +250,12 @@ export interface WireContract extends Record<string, true> {
     | 'espnEventName'
     | 'reason'
   >;
+  'com.cwfgw.admin.UploadSeasonRequest': ExactRequestFields<
+    UploadSeasonRequest,
+    | 'startDate'
+    | 'endDate',
+    never
+  >;
   'com.cwfgw.datahealth.DataHealthCheck': ExactFields<
     DataHealthCheck<unknown>,
     | 'rows'
@@ -284,6 +314,11 @@ export interface WireContract extends Record<string, true> {
     | 'country'
     | 'worldRanking'
     | 'updatedAt'
+  >;
+  'com.cwfgw.leagues.CreateLeagueRequest': ExactRequestFields<
+    CreateLeagueRequest,
+    | 'name',
+    never
   >;
   'com.cwfgw.leagues.League': ExactFields<
     League,
@@ -492,6 +527,15 @@ export interface WireContract extends Record<string, true> {
     | 'resultsDeleted'
     | 'tournamentsReset'
   >;
+  'com.cwfgw.seasons.CreateSeasonRequest': ExactRequestFields<
+    CreateSeasonRequest,
+    | 'leagueId'
+    | 'name'
+    | 'seasonYear',
+    | 'seasonNumber'
+    | 'maxTeams'
+    | 'rules'
+  >;
   'com.cwfgw.seasons.Season': ExactFields<
     Season,
     | 'id'
@@ -536,10 +580,11 @@ export interface WireContract extends Record<string, true> {
     | 'createdAt'
     | 'updatedAt'
   >;
-  'com.cwfgw.tournamentLinks.CreateLinkedGolferRequest': ExactFields<
+  'com.cwfgw.tournamentLinks.CreateLinkedGolferRequest': ExactRequestFields<
     CreateLinkedGolferRequest,
     | 'espnCompetitorId'
-    | 'name'
+    | 'name',
+    never
   >;
   'com.cwfgw.tournamentLinks.TournamentCompetitorListing': ExactFields<
     TournamentCompetitorListing,
@@ -562,10 +607,11 @@ export interface WireContract extends Record<string, true> {
     | 'espnCompetitorId'
     | 'golferId'
   >;
-  'com.cwfgw.tournamentLinks.UpsertTournamentPlayerOverrideRequest': ExactFields<
+  'com.cwfgw.tournamentLinks.UpsertTournamentPlayerOverrideRequest': ExactRequestFields<
     UpsertTournamentPlayerOverrideRequest,
     | 'espnCompetitorId'
-    | 'golferId'
+    | 'golferId',
+    never
   >;
   'com.cwfgw.tournaments.CurrentTournament': ExactValues<
     CurrentTournament['type'],
@@ -613,6 +659,24 @@ export interface WireContract extends Record<string, true> {
     | 'upcoming'
     | 'in_progress'
     | 'completed'
+  >;
+  'com.cwfgw.tournaments.UpdateTournamentRequest': ExactRequestFields<
+    UpdateTournamentRequest,
+    never,
+    | 'name'
+    | 'startDate'
+    | 'endDate'
+    | 'courseName'
+    | 'status'
+    | 'purseAmount'
+    | 'payoutMultiplier'
+    | 'isTeamEvent'
+  >;
+  'com.cwfgw.users.LoginRequest': ExactRequestFields<
+    LoginRequest,
+    | 'username'
+    | 'password',
+    never
   >;
   'com.cwfgw.users.User': ExactFields<
     User,

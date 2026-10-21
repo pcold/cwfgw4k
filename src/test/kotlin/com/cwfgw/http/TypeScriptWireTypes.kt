@@ -24,14 +24,6 @@ internal val TYPESCRIPT_WIRE_TYPES: Map<String, String> =
  */
 internal val UNMODELLED_WIRE_TYPES: Set<String> =
     setOf(
-        // Request bodies sent from exactly one place, each typed inline at its `client/` slice call.
-        "com.cwfgw.admin.ConfirmRosterRequest",
-        "com.cwfgw.admin.ConfirmSeasonScheduleRequest",
-        "com.cwfgw.admin.UploadSeasonRequest",
-        "com.cwfgw.leagues.CreateLeagueRequest",
-        "com.cwfgw.seasons.CreateSeasonRequest",
-        "com.cwfgw.tournaments.UpdateTournamentRequest",
-        "com.cwfgw.users.LoginRequest",
         // Read inline, at the one place `client/core.ts` reads a non-2xx body.
         "com.cwfgw.http.ErrorBody",
         "com.cwfgw.http.RefusalBody",
