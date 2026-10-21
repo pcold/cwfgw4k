@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type {
   ReportSideBetTeamEntry,
@@ -10,6 +10,7 @@ import type {
 import { makeWonLostTotals } from '@/shared/test/fixtures';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { nth } from '@/shared/test/nth';
+import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import LateRowBetsView from './LateRowBetsView';
 
 function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
@@ -91,6 +92,8 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
   };
 }
 
+const NO_PROVIDERS = { withLeagueSeasonProvider: false };
+
 const FIRST_TAB = { selectedTab: null, onSelectTab: () => undefined };
 
 function phoneSection(): HTMLElement {
@@ -131,7 +134,7 @@ function phoneList(heading: string | RegExp): HTMLElement {
 
 describe('LateRowBetsView', () => {
   it("states the season's own amount and rounds in the rules sentence, once for both layouts", () => {
-    render(<LateRowBetsView report={report()} {...FIRST_TAB} />);
+    renderWithProviders(<LateRowBetsView report={report()} {...FIRST_TAB} />, NO_PROVIDERS);
     expect(
       screen.getAllByText(
         "$20.00 per team in each of draft rounds 2 and 3. Every team behind a round's highest " +
@@ -141,27 +144,28 @@ describe('LateRowBetsView', () => {
   });
 
   it('names a single side-bet round in the singular', () => {
-    render(
+    renderWithProviders(
       <LateRowBetsView report={report({ sideBetRules: { amountPerTeam: 12.5, rounds: [7] } })} {...FIRST_TAB} />,
+      NO_PROVIDERS,
     );
     expect(screen.getByText(/^\$12\.50 per team in draft round 7\./)).toBeInTheDocument();
   });
 
   it('renders a table per side-bet round from sm up', () => {
-    render(<LateRowBetsView report={report()} {...FIRST_TAB} />);
+    renderWithProviders(<LateRowBetsView report={report()} {...FIRST_TAB} />, NO_PROVIDERS);
     expect(within(desktop()).getByRole('heading', { name: 'Round 2' })).toBeInTheDocument();
     expect(within(desktop()).getByRole('heading', { name: 'Round 3' })).toBeInTheDocument();
   });
 
   it("shows each entry's team name from the entry itself, in the order the round arrives in", () => {
-    render(<LateRowBetsView report={report({ teams: [] })} {...FIRST_TAB} />);
+    renderWithProviders(<LateRowBetsView report={report({ teams: [] })} {...FIRST_TAB} />, NO_PROVIDERS);
     const rows = within(roundTable(2)).getAllByRole('row').slice(1);
     const teamCells = rows.map((r) => within(r).getAllByRole('cell')[0]?.textContent);
     expect(teamCells).toEqual(['Aces', 'Birdies', 'Eagles']);
   });
 
   it("renders the totals table in the report's side-bet standings", () => {
-    render(<LateRowBetsView report={report()} {...FIRST_TAB} />);
+    renderWithProviders(<LateRowBetsView report={report()} {...FIRST_TAB} />, NO_PROVIDERS);
     const rows = within(totalsTable()).getAllByRole('row').slice(1);
     const teamCells = rows.map((r) => within(r).getAllByRole('cell')[0]?.textContent);
     expect(teamCells).toEqual(['Aces', 'Eagles', 'Birdies']);
@@ -172,7 +176,7 @@ describe('LateRowBetsView', () => {
       cashTotals: { won: 55, lost: -66, net: -11 },
       sideBetTotals: { won: 9, lost: -2, net: 7 },
     });
-    render(<LateRowBetsView report={disagreeing} {...FIRST_TAB} />);
+    renderWithProviders(<LateRowBetsView report={disagreeing} {...FIRST_TAB} />, NO_PROVIDERS);
     expect(screen.getByText('Won').nextSibling).toHaveTextContent('+$9.00');
     expect(screen.getByText('Lost').nextSibling).toHaveTextContent('\u2212$2.00');
     expect(screen.getByText('Net').nextSibling).toHaveTextContent('+$7.00');
@@ -182,7 +186,7 @@ describe('LateRowBetsView', () => {
 
   it('says a season that stakes nothing on side bets has none, and shows no rules, tabs or totals', () => {
     const noSideBets = report({ sideBetRules: null, sideBetDetail: [] });
-    render(<LateRowBetsView report={noSideBets} {...FIRST_TAB} />);
+    renderWithProviders(<LateRowBetsView report={noSideBets} {...FIRST_TAB} />, NO_PROVIDERS);
     expect(screen.getAllByText('This season has no late row bets.')).toHaveLength(1);
     expect(screen.queryByText(/per team in/)).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'Late row round' })).not.toBeInTheDocument();
@@ -190,21 +194,24 @@ describe('LateRowBetsView', () => {
   });
 
   it("colours the all-rounds total by sign, and leaves each round's late row bet in the table ink", () => {
-    render(<LateRowBetsView report={report()} {...FIRST_TAB} />);
+    renderWithProviders(<LateRowBetsView report={report()} {...FIRST_TAB} />, NO_PROVIDERS);
     expect(within(totalsTable()).getByText('+$80.00')).toHaveClass('text-semantic-success');
     expect(within(totalsTable()).getByText('\u2212$60.00')).toHaveClass('text-semantic-danger');
     expect(within(roundTable(2)).getByText('+$40.00').className).not.toMatch(/text-semantic-|text-ink-soft/);
   });
 
   it('tones the won, lost and net chips by the sign they print, a zero Won gray', () => {
-    render(<LateRowBetsView report={report({ sideBetTotals: { won: 0, lost: -2, net: -2 } })} {...FIRST_TAB} />);
+    renderWithProviders(
+      <LateRowBetsView report={report({ sideBetTotals: { won: 0, lost: -2, net: -2 } })} {...FIRST_TAB} />,
+      NO_PROVIDERS,
+    );
     expect(screen.getByText('Won').nextSibling).toHaveClass('text-ink-soft');
     expect(screen.getByText('Lost').nextSibling).toHaveClass('text-semantic-danger');
     expect(screen.getByText('Net').nextSibling).toHaveClass('text-semantic-danger');
   });
 
   it('sets every column head in the shared column-header type', () => {
-    render(<LateRowBetsView report={report()} {...FIRST_TAB} />);
+    renderWithProviders(<LateRowBetsView report={report()} {...FIRST_TAB} />, NO_PROVIDERS);
     expectSharedColumnHeads(3);
   });
 
@@ -214,7 +221,7 @@ describe('LateRowBetsView', () => {
     }
 
     it('shows the round tabs and cards below sm, and the tables from sm up, with no bleed', () => {
-      render(<LateRowBetsView report={report()} {...FIRST_TAB} />);
+      renderWithProviders(<LateRowBetsView report={report()} {...FIRST_TAB} />, NO_PROVIDERS);
 
       expect(phoneSection()).toHaveClass('sm:hidden');
       expect(phoneSection().className).not.toMatch(/-mx-/);
@@ -226,7 +233,7 @@ describe('LateRowBetsView', () => {
       const fourRounds = report({
         sideBetDetail: [5, 6, 7, 8].map((round) => roundOf(round, [entry('t-1', 'Aces', 'Scottie', 0, 0, null)])),
       });
-      render(<LateRowBetsView report={fourRounds} {...FIRST_TAB} />);
+      renderWithProviders(<LateRowBetsView report={fourRounds} {...FIRST_TAB} />, NO_PROVIDERS);
 
       expect(chips().map((chip) => chip.textContent)).toEqual(['Rd 5', 'Rd 6', 'Rd 7', 'Rd 8', 'Totals']);
       expect(chips().map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false', 'false']);
@@ -235,7 +242,10 @@ describe('LateRowBetsView', () => {
     it('reports the tapped tab', async () => {
       const onSelectTab = vi.fn();
       const user = userEvent.setup();
-      render(<LateRowBetsView report={report()} selectedTab={null} onSelectTab={onSelectTab} />);
+      renderWithProviders(
+        <LateRowBetsView report={report()} selectedTab={null} onSelectTab={onSelectTab} />,
+        NO_PROVIDERS,
+      );
 
       await user.click(within(screen.getByRole('group', { name: 'Late row round' })).getByRole('button', { name: 'Rd 3' }));
       await user.click(within(screen.getByRole('group', { name: 'Late row round' })).getByRole('button', { name: 'Totals' }));
@@ -244,7 +254,10 @@ describe('LateRowBetsView', () => {
     });
 
     it('shows the selected round', () => {
-      render(<LateRowBetsView report={report()} selectedTab={{ kind: 'round', round: 3 }} onSelectTab={vi.fn()} />);
+      renderWithProviders(
+        <LateRowBetsView report={report()} selectedTab={{ kind: 'round', round: 3 }} onSelectTab={vi.fn()} />,
+        NO_PROVIDERS,
+      );
 
       expect(chips().map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
       expect(nth(leaderCards(), 0)).toHaveTextContent('Leading round 3');
@@ -252,7 +265,10 @@ describe('LateRowBetsView', () => {
     });
 
     it('falls back to the first round when the selected one is no longer in the report', () => {
-      render(<LateRowBetsView report={report()} selectedTab={{ kind: 'round', round: 9 }} onSelectTab={vi.fn()} />);
+      renderWithProviders(
+        <LateRowBetsView report={report()} selectedTab={{ kind: 'round', round: 9 }} onSelectTab={vi.fn()} />,
+        NO_PROVIDERS,
+      );
 
       expect(chips().map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false']);
       expect(nth(leaderCards(), 0)).toHaveTextContent('Leading round 2');
@@ -271,7 +287,7 @@ describe('LateRowBetsView', () => {
           ]),
         ],
       });
-      render(<LateRowBetsView report={settled} {...FIRST_TAB} />);
+      renderWithProviders(<LateRowBetsView report={settled} {...FIRST_TAB} />, NO_PROVIDERS);
 
       const [leader] = leaderCards();
       expect(leaderCards()).toHaveLength(1);
@@ -296,7 +312,7 @@ describe('LateRowBetsView', () => {
       const longName = report({
         sideBetDetail: [roundOf(2, [entry('t-1', 'GALBRAITHWAITE-MACKENZIE', 'Christiaan Bezuidenhout', 300, 20, 'won')])],
       });
-      render(<LateRowBetsView report={longName} {...FIRST_TAB} />);
+      renderWithProviders(<LateRowBetsView report={longName} {...FIRST_TAB} />, NO_PROVIDERS);
 
       const name = within(nth(leaderCards(), 0)).getByText(/·/);
       expect(name).toHaveClass('truncate');
@@ -314,7 +330,7 @@ describe('LateRowBetsView', () => {
           ]),
         ],
       });
-      render(<LateRowBetsView report={tied} {...FIRST_TAB} />);
+      renderWithProviders(<LateRowBetsView report={tied} {...FIRST_TAB} />, NO_PROVIDERS);
 
       expect(leaderCards().map((card) => within(card).getByText(/·/).textContent)).toEqual([
         'Aces · Scottie',
@@ -333,7 +349,7 @@ describe('LateRowBetsView', () => {
           ]),
         ],
       });
-      render(<LateRowBetsView report={outcomeOverRank} {...FIRST_TAB} />);
+      renderWithProviders(<LateRowBetsView report={outcomeOverRank} {...FIRST_TAB} />, NO_PROVIDERS);
 
       expect(leaderCards()).toHaveLength(1);
       expect(nth(leaderCards(), 0)).toHaveTextContent('Birdies · Rory');
@@ -346,7 +362,7 @@ describe('LateRowBetsView', () => {
           roundOf(2, [entry('t-1', 'Aces', 'Scottie', 0, 0, 'won'), entry('t-2', 'Birdies', 'Rory', 0, 0, 'won')]),
         ],
       });
-      render(<LateRowBetsView report={allTied} {...FIRST_TAB} />);
+      renderWithProviders(<LateRowBetsView report={allTied} {...FIRST_TAB} />, NO_PROVIDERS);
 
       expect(leaderCards()).toHaveLength(2);
       expect(within(nth(leaderCards(), 0)).getByText('$0')).toHaveClass('bg-money-even-fill');
@@ -359,7 +375,7 @@ describe('LateRowBetsView', () => {
           roundOf(6, [entry('t-1', 'Aces', 'Scottie', 0, 0, null), entry('t-2', 'Birdies', 'Rory', 0, 0, null)]),
         ],
       });
-      render(<LateRowBetsView report={unsettled} {...FIRST_TAB} />);
+      renderWithProviders(<LateRowBetsView report={unsettled} {...FIRST_TAB} />, NO_PROVIDERS);
 
       expect(within(phoneSection()).getByText('No team has earned in round 6 yet.')).toBeInTheDocument();
       expect(within(phoneSection()).queryByRole('list', { name: 'Leaders' })).not.toBeInTheDocument();
@@ -369,13 +385,16 @@ describe('LateRowBetsView', () => {
     });
 
     it('drops what each pays from the chasing label when the report sends no rules', () => {
-      render(<LateRowBetsView report={report({ sideBetRules: null })} {...FIRST_TAB} />);
+      renderWithProviders(<LateRowBetsView report={report({ sideBetRules: null })} {...FIRST_TAB} />, NO_PROVIDERS);
 
       expect(within(phoneSection()).getByRole('heading', { name: 'Chasing' })).toBeInTheDocument();
     });
 
     it("shows a card per team on the Totals tab, each team's total in a toned box", () => {
-      render(<LateRowBetsView report={report()} selectedTab={{ kind: 'totals' }} onSelectTab={vi.fn()} />);
+      renderWithProviders(
+        <LateRowBetsView report={report()} selectedTab={{ kind: 'totals' }} onSelectTab={vi.fn()} />,
+        NO_PROVIDERS,
+      );
 
       expect(chips().map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true']);
       expect(within(phoneSection()).queryByRole('list', { name: 'Leaders' })).not.toBeInTheDocument();
