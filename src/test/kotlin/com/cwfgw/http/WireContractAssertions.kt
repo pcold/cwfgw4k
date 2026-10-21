@@ -5,7 +5,6 @@ package com.cwfgw.http
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.descriptors.PolymorphicKind
 import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.descriptors.SerialKind
 
 private const val GENERATED_HEADER =
     """/*
@@ -29,8 +28,9 @@ private const val WIRE_CONTRACT_DOC =
 
 /**
  * One assertion per asserted wire type, over the walk the snapshot renders, so the two cannot disagree
- * about which types reach a client. A sealed hierarchy gets one per variant, named through `Extract`:
- * the wire sends a variant's own keys beside the discriminator, never the hierarchy's union of them.
+ * about which types reach a client. A sealed hierarchy gets one for its discriminator values and one per
+ * variant, named through `Extract`: the wire sends a variant's own keys beside the discriminator, never
+ * the hierarchy's union of them.
  */
 internal fun wireContractAssertions(roots: List<SerialDescriptor>): String {
     val members = assertionMembers(roots)
@@ -67,16 +67,17 @@ private fun membersOf(
 ): List<AssertionMember> {
     val modelled = TYPESCRIPT_WIRE_TYPES[serialName] ?: serialName.substringAfterLast('.')
     val declared = { keys: List<String> -> keys - UNMODELLED_WIRE_FIELDS[serialName].orEmpty() }
-    return when (descriptor.kind) {
-        PolymorphicKind.SEALED -> variantMembers(serialName, descriptor, modelled, declared)
-        SerialKind.ENUM ->
+    val enumValues = wireEnumValues(descriptor)
+    return when {
+        descriptor.kind == PolymorphicKind.SEALED -> variantMembers(serialName, descriptor, modelled, declared)
+        enumValues != null ->
             listOf(
                 AssertionMember(
                     key = serialName,
                     verdict = "ExactValues",
                     typeScriptType = modelled,
                     importedType = modelled,
-                    names = descriptor.elementNames(),
+                    names = enumValues,
                 ),
             )
         else -> {
@@ -104,15 +105,26 @@ private fun variantMembers(
     val discriminator = sealedDiscriminator(descriptor)
     // `camelizeKeys` renames the discriminator key too, so a multi-word one would name no types.ts field.
     check('_' !in discriminator) { "$serialName: discriminator '$discriminator' would need camelizing here" }
-    return sealedVariants(descriptor).map { variant ->
+    val variants = sealedVariants(descriptor)
+    // Per-variant members name only the wire's variants, so an arm types.ts kept after one is dropped needs this.
+    val armSet =
         AssertionMember(
-            key = "$serialName#${variant.serialName}",
-            verdict = "ExactFields",
-            typeScriptType = "Extract<$modelled, { $discriminator: '${variant.serialName}' }>",
+            key = serialName,
+            verdict = "ExactValues",
+            typeScriptType = "$modelled['$discriminator']",
             importedType = modelled,
-            names = declared((listOf(discriminator) + wireKeys(variant.descriptor)).distinct()),
+            names = variants.map { it.serialName },
         )
-    }
+    return listOf(armSet) +
+        variants.map { variant ->
+            AssertionMember(
+                key = "$serialName#${variant.serialName}",
+                verdict = "ExactFields",
+                typeScriptType = "Extract<$modelled, { $discriminator: '${variant.serialName}' }>",
+                importedType = modelled,
+                names = declared((listOf(discriminator) + wireKeys(variant.descriptor)).distinct()),
+            )
+        }
 }
 
 /** [names] are JSON keys for an `ExactFields` verdict and serial names for an `ExactValues` one. */

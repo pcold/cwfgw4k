@@ -4,10 +4,13 @@ package com.cwfgw.http
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.descriptors.PolymorphicKind
+import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.descriptors.SerialKind
 import kotlinx.serialization.descriptors.StructureKind
 import kotlinx.serialization.json.JsonClassDiscriminator
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.serializer
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.lang.reflect.TypeVariable
@@ -33,8 +36,8 @@ internal fun wireReachableDescriptors(roots: List<SerialDescriptor>): Map<String
     walkWireTypes(roots).blocks.entries.associate { (heading, block) -> heading.serialName to block.descriptor }
 
 /**
- * Every serial name a root reaches, block or not. A class-level `@Serializable(with = ...)` such as
- * `TournamentStatus` renders as a primitive, so it gets no block and is reached only as a leaf.
+ * Every serial name a root reaches, block or not. A class-level `@Serializable(with = ...)` on anything
+ * but an enum renders as a primitive, so it gets no block and is reached only as a leaf.
  */
 internal fun wireReachableSerialNames(roots: List<SerialDescriptor>): Set<String> {
     val walk = walkWireTypes(roots)
@@ -72,7 +75,32 @@ private fun walkWireTypes(roots: List<SerialDescriptor>): WireWalk {
 }
 
 private fun rendersAsBlock(descriptor: SerialDescriptor): Boolean =
-    descriptor.kind in setOf(StructureKind.CLASS, StructureKind.OBJECT, SerialKind.ENUM, PolymorphicKind.SEALED)
+    descriptor.kind in setOf(StructureKind.CLASS, StructureKind.OBJECT, SerialKind.ENUM, PolymorphicKind.SEALED) ||
+        customSerializedEnum(descriptor) != null
+
+/** The strings a client can receive for an enum, or null for anything else. */
+internal fun wireEnumValues(descriptor: SerialDescriptor): List<String>? =
+    if (descriptor.kind == SerialKind.ENUM) {
+        descriptor.elementNames()
+    } else {
+        customSerializedEnum(descriptor)?.let(::encodedConstants)
+    }
+
+/**
+ * An enum with its own serializer has a primitive descriptor that names none of its values. One whose
+ * descriptor names some other class is not found here, and the accounting test reports the enum unreached.
+ */
+private fun customSerializedEnum(descriptor: SerialDescriptor): Class<*>? =
+    if (descriptor.kind is PrimitiveKind) {
+        loadedClass(descriptor.serialName.removeSuffix("?"))?.takeIf { it.isEnum }
+    } else {
+        null
+    }
+
+private fun encodedConstants(enumClass: Class<*>): List<String> {
+    val encoder = serializer(enumClass)
+    return enumClass.enumConstants.map { appJson.encodeToJsonElement(encoder, it).jsonPrimitive.content }
+}
 
 private const val SNAPSHOT_HEADER =
     """# The JSON shape of every type in WIRE_TYPES and of every type reachable from one.
@@ -138,17 +166,19 @@ private fun bodyLines(
     descriptor: SerialDescriptor,
     indent: String,
     reach: (SerialDescriptor) -> Unit,
-): List<String> =
-    when {
+): List<String> {
+    val enumValues = wireEnumValues(descriptor)
+    return when {
         descriptor.isInline -> {
             val wrapped = descriptor.getElementDescriptor(0)
             reachedTypes(wrapped).forEach(reach)
             listOf("$indent${typeReference(wrapped)} [${kindLabel(wrapped)}]")
         }
-        descriptor.kind == SerialKind.ENUM -> descriptor.elementNames().map { "$indent$it" }
+        enumValues != null -> enumValues.map { "$indent$it" }
         descriptor.kind == PolymorphicKind.SEALED -> sealedBodyLines(descriptor, indent, reach)
         else -> descriptor.elementIndices().map { elementLine(descriptor, it, indent, reach) }
     }
+}
 
 private fun sealedBodyLines(
     descriptor: SerialDescriptor,
@@ -269,7 +299,10 @@ internal fun wireTypeParameterCount(descriptor: SerialDescriptor): Int =
 
 private fun declaringClass(descriptor: SerialDescriptor): Class<*>? {
     if (descriptor.kind != StructureKind.CLASS || descriptor.isInline) return null
-    val className = descriptor.serialName.removeSuffix("?")
+    return loadedClass(descriptor.serialName.removeSuffix("?"))
+}
+
+private fun loadedClass(className: String): Class<*>? {
     val loader = WireBlock::class.java.classLoader
     return loader.getResource(className.replace('.', '/') + ".class")?.let { Class.forName(className, false, loader) }
 }

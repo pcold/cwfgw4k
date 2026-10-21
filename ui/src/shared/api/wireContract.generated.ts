@@ -71,6 +71,7 @@ import type {
   UnmatchedCompetitor,
   UpsertTournamentPlayerOverrideRequest,
   User,
+  UserRole,
   WeeklyReport,
   WonLostTotals,
 } from './types';
@@ -99,6 +100,12 @@ export interface WireContract extends Record<string, true> {
     | 'start_date'
     | 'end_date'
   >;
+  'com.cwfgw.admin.GolferAssignment': ExactValues<
+    GolferAssignment['type'],
+    | 'espn'
+    | 'existing'
+    | 'new'
+  >;
   'com.cwfgw.admin.GolferAssignment#espn': ExactFields<
     Extract<GolferAssignment, { type: 'espn' }>,
     | 'type'
@@ -115,6 +122,11 @@ export interface WireContract extends Record<string, true> {
     | 'type'
     | 'name'
   >;
+  'com.cwfgw.admin.GolferCandidate': ExactValues<
+    GolferCandidate['type'],
+    | 'espn'
+    | 'existing'
+  >;
   'com.cwfgw.admin.GolferCandidate#espn': ExactFields<
     Extract<GolferCandidate, { type: 'espn' }>,
     | 'type'
@@ -126,6 +138,14 @@ export interface WireContract extends Record<string, true> {
     | 'type'
     | 'golfer_id'
     | 'name'
+  >;
+  'com.cwfgw.admin.PickMatch': ExactValues<
+    PickMatch['type'],
+    | 'ambiguous'
+    | 'matched'
+    | 'matched_backfill'
+    | 'matched_espn'
+    | 'no_match'
   >;
   'com.cwfgw.admin.PickMatch#ambiguous': ExactFields<
     Extract<PickMatch, { type: 'ambiguous' }>,
@@ -413,6 +433,11 @@ export interface WireContract extends Record<string, true> {
     | 'total_cash'
     | 'series'
   >;
+  'com.cwfgw.reports.TeamStanding': ExactValues<
+    TeamStanding['type'],
+    | 'chaser'
+    | 'leader'
+  >;
   'com.cwfgw.reports.TeamStanding#chaser': ExactFields<
     Extract<TeamStanding, { type: 'chaser' }>,
     | 'type'
@@ -541,6 +566,12 @@ export interface WireContract extends Record<string, true> {
     | 'espn_competitor_id'
     | 'golfer_id'
   >;
+  'com.cwfgw.tournaments.CurrentTournament': ExactValues<
+    CurrentTournament['type'],
+    | 'no_tournaments'
+    | 'season_finalized'
+    | 'unfinalized'
+  >;
   'com.cwfgw.tournaments.CurrentTournament#no_tournaments': ExactFields<
     Extract<CurrentTournament, { type: 'no_tournaments' }>,
     | 'type'
@@ -582,5 +613,10 @@ export interface WireContract extends Record<string, true> {
     | 'username'
     | 'role'
     | 'created_at'
+  >;
+  'com.cwfgw.users.UserRole': ExactValues<
+    UserRole,
+    | 'admin'
+    | 'user'
   >;
 }

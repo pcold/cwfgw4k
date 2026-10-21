@@ -87,6 +87,14 @@ describe('ExactValues', () => {
 
     expect(verdict).toBe(true);
   });
+
+  it('refuses a union arm whose sealed variant the wire dropped', () => {
+    type Standing = { type: 'leader'; teamId: string } | { type: 'chaser'; teamId: string };
+    // @ts-expect-error verdict: the 'chaser' arm is not on the wire
+    const verdict: ExactValues<Standing['type'], 'leader'> = true;
+
+    expect(verdict).toBe(true);
+  });
 });
 
 describe('CamelizedKey', () => {

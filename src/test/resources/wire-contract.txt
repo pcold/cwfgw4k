@@ -470,6 +470,11 @@ com.cwfgw.tournaments.Tournament [CLASS]
 com.cwfgw.tournaments.TournamentId [INLINE]
   java.util.UUID [STRING]
 
+com.cwfgw.tournaments.TournamentStatus [STRING]
+  upcoming
+  in_progress
+  completed
+
 com.cwfgw.tournaments.UpdateTournamentRequest [CLASS]
   name: kotlin.String? [STRING] optional
   start_date: java.time.LocalDate? [STRING] optional
@@ -492,3 +497,7 @@ com.cwfgw.users.User [CLASS]
 
 com.cwfgw.users.UserId [INLINE]
   java.util.UUID [STRING]
+
+com.cwfgw.users.UserRole [STRING]
+  admin
+  user
