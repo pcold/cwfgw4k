@@ -103,29 +103,29 @@ class EspnService(
         }
 
     /**
-     * Called once per overlay and reused across its fold, so the gather is not paid per candidate.
-     * [candidates] must hold every completed tournament later handed to [previewForTournament]: one left
-     * out previews without its link overrides. The season's unfinalized ones are loaded as siblings anyway.
+     * Takes the caller's transaction, so an overlay reads the snapshot its report was built from. [candidates]
+     * must hold every completed tournament later handed to [previewForTournament]: one left out previews
+     * without its link overrides. The season's unfinalized ones are loaded as siblings anyway.
      */
-    internal suspend fun loadLivePreviewContext(
+    context(ctx: TransactionContext)
+    internal fun loadLivePreviewContextIn(
         seasonId: SeasonId,
         candidates: List<Tournament>,
-    ): LivePreviewContext =
-        tx.read {
-            val unfinalized = findUnfinalizedIn(seasonId)
-            val previewable = (candidates + unfinalized).distinctBy { it.id }
-            val overrides =
-                linkRepository.listByTournaments(previewable.map { it.id })
-                    .groupBy({ it.tournamentId }, { it.espnCompetitorId to it.golferId })
-            LivePreviewContext.from(
-                allGolfers = golferRepository.findAll(search = null),
-                teams = teamRepository.findBySeason(seasonId),
-                rosters = teamRepository.findRostersBySeason(seasonId),
-                rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults(),
-                overridesByTournament = previewable.associate { it.id to overrides[it.id].orEmpty().toMap() },
-                unfinalizedTournaments = unfinalized,
-            )
-        }
+    ): LivePreviewContext {
+        val unfinalized = findUnfinalizedIn(seasonId)
+        val previewable = (candidates + unfinalized).distinctBy { it.id }
+        val overrides =
+            linkRepository.listByTournaments(previewable.map { it.id })
+                .groupBy({ it.tournamentId }, { it.espnCompetitorId to it.golferId })
+        return LivePreviewContext.from(
+            allGolfers = golferRepository.findAll(search = null),
+            teams = teamRepository.findBySeason(seasonId),
+            rosters = teamRepository.findRostersBySeason(seasonId),
+            rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults(),
+            overridesByTournament = previewable.associate { it.id to overrides[it.id].orEmpty().toMap() },
+            unfinalizedTournaments = unfinalized,
+        )
+    }
 
     /**
      * Must stay DB-free and at one scoreboard request, keyed by start date as the client's cache is: the
@@ -852,14 +852,9 @@ private fun buildTeamPreview(
 }
 
 /**
- * Pre-derived lookups used by every per-event preview build. Computing
- * these once per [EspnService.loadLivePreviewContext] avoids walking the
- * rosters list for every team and every competitor.
- *
- * Internal because [LiveOverlayService] holds one across its fold so a
- * multi-event overlay only pays for the season-scoped gather once
- * (CWF-18). Callers outside `com.cwfgw.espn` / `com.cwfgw.reports` must
- * not depend on the field layout.
+ * Built once per overlay by [EspnService.loadLivePreviewContextIn] and held across its fold, so a multi-event
+ * overlay walks the season's rosters and golfers once rather than per competitor. Callers outside
+ * `com.cwfgw.espn` / `com.cwfgw.reports` must not depend on the field layout.
  */
 internal data class LivePreviewContext(
     val teams: List<Team>,

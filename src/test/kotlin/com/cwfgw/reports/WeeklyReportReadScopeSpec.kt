@@ -36,6 +36,7 @@ private val SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000
 private val SONY_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b01"))
 private val MASTERS_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b02"))
 private val PGA_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b03"))
+private val US_OPEN_ID = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000b04"))
 private val SCHEFFLER_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d01"))
 private val MCILROY_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d02"))
 
@@ -97,7 +98,10 @@ private class RecordingScoringRepository(
     }
 }
 
-private class ReadScopeFixture(results: List<TournamentResult> = emptyList()) {
+private class ReadScopeFixture(
+    results: List<TournamentResult> = emptyList(),
+    unfinished: List<Tournament> = emptyList(),
+) {
     val scoring = RecordingScoringRepository()
     val service: WeeklyReportService
 
@@ -113,7 +117,7 @@ private class ReadScopeFixture(results: List<TournamentResult> = emptyList()) {
                         completedTournament(SONY_ID, "Sony Open", "2026-01-15"),
                         completedTournament(MASTERS_ID, "The Masters", "2026-04-09"),
                         completedTournament(PGA_ID, "PGA Championship", "2026-05-14"),
-                    ),
+                    ) + unfinished,
                 initialResults = results,
             )
         val teamRepo = FakeTeamRepository()
@@ -157,6 +161,25 @@ class WeeklyReportReadScopeSpec : FunSpec({
         fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail()
 
         fixture.scoring.seasonReads shouldContainExactly listOf(setOf(SONY_ID, MASTERS_ID))
+    }
+
+    test("getSeasonReport leaves out a tournament still in play, though it already has a top-10 result") {
+        val usOpen =
+            completedTournament(US_OPEN_ID, "U.S. Open", "2026-06-18").copy(status = TournamentStatus.InProgress)
+        val fixture =
+            ReadScopeFixture(
+                results =
+                    listOf(
+                        finish(SONY_ID, SCHEFFLER_ID, position = 1),
+                        finish(US_OPEN_ID, MCILROY_ID, position = 2),
+                    ),
+                unfinished = listOf(usOpen),
+            )
+
+        val report = fixture.service.getSeasonReport(SEASON_ID).orFail()
+
+        report.undraftedTopTens.map { it.name } shouldContainExactly listOf("S. Scheffler")
+        fixture.scoring.seasonReads shouldContainExactly listOf(setOf(SONY_ID, MASTERS_ID, PGA_ID))
     }
 
     test("getGolferHistory splits a two-way T3 across both tied golfers, though only one is asked about") {

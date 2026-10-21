@@ -398,7 +398,8 @@ For each side-bet round, every team's pick from that draft round races for the s
 
 Reports (`reports/WeeklyReportService.kt`) read persisted `fantasy_scores` of completed tournaments only, and
 gather them in one `tx.read`; a live request on one tournament, or on rankings through one, adds the route's
-live-candidate check and one more read for the overlay's context. The weekly grid shows eight draft rounds per team, and every golfer who finished in a fixed top
+live-candidate check, and its `tx.read` also reads the overlay's context, so the overlay folds onto the report's own
+snapshot. The weekly grid shows eight draft rounds per team, and every golfer who finished in a fixed top
 10 (independent of the payout table's length), drafted or not. Golfer history recomputes each finish's payout from
 `tournament_results` at full ownership, which is what the golfer earned rather than what any one team took.
 

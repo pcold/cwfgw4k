@@ -60,7 +60,15 @@ private fun tournament(
  * A finalized Sony, the Masters in play, the Heritage another week away but inside the look-ahead, and an Open
  * outside it. Dates hang off the real today because the service reads the clock itself.
  */
-private class EligibilityFixture {
+private fun standardSeason(today: LocalDate): List<Tournament> =
+    listOf(
+        tournament(SONY_ID, "Sony Open", today.minusWeeks(8), TournamentStatus.Completed, "1"),
+        tournament(MASTERS_ID, "The Masters", today.minusDays(1), TournamentStatus.InProgress, "2"),
+        tournament(HERITAGE_ID, "RBC Heritage", today.plusDays(2), TournamentStatus.Upcoming, "3"),
+        tournament(OPEN_ID, "The Open", today.plusWeeks(2), TournamentStatus.Upcoming, "5"),
+    )
+
+private class EligibilityFixture(seasonOf: (LocalDate) -> List<Tournament> = ::standardSeason) {
     val espn = FakeEspnClient()
     val service: WeeklyReportService
 
@@ -70,16 +78,7 @@ private class EligibilityFixture {
         with(noopTransactionContext) {
             seasonRepo.create(CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026))
         }
-        val tournamentRepo =
-            FakeTournamentRepository(
-                initial =
-                    listOf(
-                        tournament(SONY_ID, "Sony Open", today.minusWeeks(8), TournamentStatus.Completed, "1"),
-                        tournament(MASTERS_ID, "The Masters", today.minusDays(1), TournamentStatus.InProgress, "2"),
-                        tournament(HERITAGE_ID, "RBC Heritage", today.plusDays(2), TournamentStatus.Upcoming, "3"),
-                        tournament(OPEN_ID, "The Open", today.plusWeeks(2), TournamentStatus.Upcoming, "5"),
-                    ),
-            )
+        val tournamentRepo = FakeTournamentRepository(initial = seasonOf(today))
         val teamRepo = FakeTeamRepository()
         val golferRepo = FakeGolferRepository()
         val espnService =
@@ -167,6 +166,21 @@ class LiveOverlayEligibilitySpec : FunSpec({
 
             case.endpoint.requestLive(fixture.service, case.tournamentId)
             if (case.eligible) fixture.espn.fetchCalls.shouldNotBeEmpty() else fixture.espn.fetchCalls.shouldBeEmpty()
+        }
+    }
+
+    // The route's cache check reads candidates in SQL and the report judges its tournament in memory, so the
+    // window's edge is where the two forms of it could disagree and cache a live body.
+    mapOf(3L to true, 4L to false).forEach { (daysOut, eligible) ->
+        test("an event $daysOut days out is liveEligible=$eligible, and the route's candidate check agrees") {
+            val fixture =
+                EligibilityFixture { today ->
+                    val start = today.plusDays(daysOut)
+                    listOf(tournament(HERITAGE_ID, "RBC Heritage", start, TournamentStatus.Upcoming, "3"))
+                }
+
+            fixture.service.getReport(SEASON_ID, HERITAGE_ID).orFail().liveEligible shouldBe eligible
+            fixture.service.hasLiveCandidate(SEASON_ID) shouldBe eligible
         }
     }
 })
