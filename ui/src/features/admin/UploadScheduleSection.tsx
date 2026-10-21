@@ -168,7 +168,7 @@ function UploadScheduleSection(): ReactNode {
 }
 
 interface SchedulePreviewProps {
-  entries: PreviewedTournament[];
+  entries: readonly PreviewedTournament[];
   skipped: SeasonImportResult['skipped'];
   onRemove: (espnEventId: string) => void;
   onConfirm: () => void;
@@ -255,7 +255,7 @@ function SchedulePreview({
 }
 
 interface ImportResultProps {
-  created: Tournament[];
+  created: readonly Tournament[];
   skipped: SeasonImportResult['skipped'];
   onRowSaved: (updated: Tournament) => void;
 }

@@ -6,7 +6,7 @@ import type { League } from '@/shared/api/types';
 
 /** @see useAdminLeague */
 export interface AdminLeagueChoice {
-  leagues: League[];
+  leagues: readonly League[];
   /** Empty until the leagues load. */
   leagueId: string;
   setLeagueId: (id: string) => void;

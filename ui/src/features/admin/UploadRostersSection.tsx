@@ -199,8 +199,8 @@ function UploadRostersSection(): ReactNode {
 }
 
 interface InputStepProps {
-  leagues: League[];
-  seasons: Season[];
+  leagues: readonly League[];
+  seasons: readonly Season[];
   leagueId: string;
   seasonId: string;
   rosterText: string;
@@ -284,7 +284,7 @@ function RosterInputStep({
 
 interface ReviewStepProps {
   preview: RosterPreview;
-  selections: Record<string, string>;
+  selections: Readonly<Record<string, string>>;
   onSelectionChange: (teamNumber: number, pick: RosterPreviewPick, value: string) => void;
   onConfirm: (teams: RosterConfirmTeamInput[]) => void;
   onBack: () => void;

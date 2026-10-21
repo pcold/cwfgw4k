@@ -11,10 +11,10 @@ import YouTag from '@/shared/components/YouTag';
 import { isMyTeam } from '@/features/myTeam/myTeamModel';
 
 interface Props {
-  players: PlayerRankingsRow[];
+  readonly players: readonly PlayerRankingsRow[];
   /** @see isMyTeam */
-  myTeamName: string | null;
-  onGolferClick?: (golferId: string) => void;
+  readonly myTeamName: string | null;
+  readonly onGolferClick?: (golferId: string) => void;
 }
 
 const ALL = '';

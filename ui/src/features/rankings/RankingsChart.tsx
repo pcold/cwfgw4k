@@ -8,7 +8,7 @@ import {
   type ChartPoint,
 } from './rankingsChartModel';
 
-function polylinePath(points: ChartPoint[]): string {
+function polylinePath(points: readonly ChartPoint[]): string {
   return points.map((p) => `${p.x},${p.y}`).join(' ');
 }
 

@@ -18,7 +18,7 @@ export function teamCellsByRound(team: ReportTeamColumn): Map<number, ReportCell
 // Map of side-bet round -> set of team ids that won that round's side bet.
 // Used by the Weekly Report grid to highlight the winning cells.
 export function sideBetWinnersByRound(
-  sideBetDetail: ReportSideBetRound[],
+  sideBetDetail: readonly ReportSideBetRound[],
 ): Map<number, Set<string>> {
   const result = new Map<number, Set<string>>();
   for (const entry of sideBetDetail) {
