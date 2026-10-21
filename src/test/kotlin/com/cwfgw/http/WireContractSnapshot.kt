@@ -225,24 +225,7 @@ private fun elementLine(
     val element = descriptor.getElementDescriptor(index)
     reachedTypes(element).forEach(reach)
     val optional = if (descriptor.isElementOptional(index)) " optional" else ""
-    return "$indent${wireElementName(descriptor, index)}: ${typeReference(element)} [${kindLabel(element)}]$optional"
-}
-
-/**
- * The JSON key kotlinx writes: [appJson]'s naming strategy, which kotlinx applies to CLASS elements
- * only, an explicit `@SerialName` included. Discriminator and enum values are not keys and stay verbatim.
- */
-internal fun wireElementName(
-    descriptor: SerialDescriptor,
-    index: Int,
-): String {
-    val name = descriptor.getElementName(index)
-    val strategy = appJson.configuration.namingStrategy
-    return if (strategy != null && descriptor.kind == StructureKind.CLASS) {
-        strategy.serialNameForJson(descriptor, index, name)
-    } else {
-        name
-    }
+    return "$indent${descriptor.getElementName(index)}: ${typeReference(element)} [${kindLabel(element)}]$optional"
 }
 
 /** Containers render inline at the element that holds them, so what they hold is what is reached. */

@@ -196,9 +196,9 @@ class LiveReportEspnOutageSpec : FunSpec({
                 val base = appJson.parseToJsonElement(client.get(MASTERS_URL).bodyAsText()).jsonObject
                 val fallback = appJson.parseToJsonElement(client.get(LIVE_MASTERS_URL).bodyAsText()).jsonObject
 
-                base.getValue("cash_totals").jsonObject.getValue("won").jsonPrimitive.double shouldBe 18.0
-                fallback.getValue("cash_totals") shouldBe base.getValue("cash_totals")
-                fallback.getValue("side_bet_totals") shouldBe base.getValue("side_bet_totals")
+                base.getValue("cashTotals").jsonObject.getValue("won").jsonPrimitive.double shouldBe 18.0
+                fallback.getValue("cashTotals") shouldBe base.getValue("cashTotals")
+                fallback.getValue("sideBetTotals") shouldBe base.getValue("sideBetTotals")
             }
         }
     }

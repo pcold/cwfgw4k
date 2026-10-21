@@ -8,7 +8,7 @@
 # wireContract.generated.ts the same change left stale fails `tsc -b` before the spec runs.
 
 com.cwfgw.admin.ConfirmRosterRequest [CLASS]
-  season_id: com.cwfgw.seasons.SeasonId [INLINE]
+  seasonId: com.cwfgw.seasons.SeasonId [INLINE]
   teams: List<com.cwfgw.admin.ConfirmedTeam> [LIST]
 
 com.cwfgw.admin.ConfirmSeasonScheduleRequest [CLASS]
@@ -16,37 +16,37 @@ com.cwfgw.admin.ConfirmSeasonScheduleRequest [CLASS]
 
 com.cwfgw.admin.ConfirmedPick [CLASS]
   round: kotlin.Int [INT]
-  ownership_pct: kotlin.Int [INT]
+  ownershipPct: kotlin.Int [INT]
   assignment: com.cwfgw.admin.GolferAssignment [SEALED]
 
 com.cwfgw.admin.ConfirmedTeam [CLASS]
-  team_number: kotlin.Int [INT]
-  team_name: kotlin.String [STRING]
+  teamNumber: kotlin.Int [INT]
+  teamName: kotlin.String [STRING]
   picks: List<com.cwfgw.admin.ConfirmedPick> [LIST]
 
 com.cwfgw.admin.ConfirmedTournamentEntry [CLASS]
-  espn_event_id: kotlin.String [STRING]
+  espnEventId: kotlin.String [STRING]
   name: kotlin.String [STRING]
-  start_date: java.time.LocalDate [STRING]
-  end_date: java.time.LocalDate [STRING]
+  startDate: java.time.LocalDate [STRING]
+  endDate: java.time.LocalDate [STRING]
 
 com.cwfgw.admin.GolferAssignment [SEALED]
   discriminator: type
   espn [CLASS]
-    espn_id: kotlin.String [STRING]
+    espnId: kotlin.String [STRING]
     name: kotlin.String [STRING]
   existing [CLASS]
-    golfer_id: com.cwfgw.golfers.GolferId [INLINE]
+    golferId: com.cwfgw.golfers.GolferId [INLINE]
   new [CLASS]
     name: kotlin.String [STRING]
 
 com.cwfgw.admin.GolferCandidate [SEALED]
   discriminator: type
   espn [CLASS]
-    espn_id: kotlin.String [STRING]
+    espnId: kotlin.String [STRING]
     name: kotlin.String [STRING]
   existing [CLASS]
-    golfer_id: com.cwfgw.golfers.GolferId [INLINE]
+    golferId: com.cwfgw.golfers.GolferId [INLINE]
     name: kotlin.String [STRING]
 
 com.cwfgw.admin.PickMatch [SEALED]
@@ -54,44 +54,44 @@ com.cwfgw.admin.PickMatch [SEALED]
   ambiguous [CLASS]
     candidates: List<com.cwfgw.admin.GolferCandidate> [LIST]
   matched [CLASS]
-    golfer_id: com.cwfgw.golfers.GolferId [INLINE]
-    golfer_name: kotlin.String [STRING]
+    golferId: com.cwfgw.golfers.GolferId [INLINE]
+    golferName: kotlin.String [STRING]
   matched_backfill [CLASS]
-    espn_id: kotlin.String [STRING]
-    golfer_name: kotlin.String [STRING]
+    espnId: kotlin.String [STRING]
+    golferName: kotlin.String [STRING]
   matched_espn [CLASS]
-    espn_id: kotlin.String [STRING]
-    golfer_name: kotlin.String [STRING]
+    espnId: kotlin.String [STRING]
+    golferName: kotlin.String [STRING]
   no_match [OBJECT]
 
 com.cwfgw.admin.PreviewPick [CLASS]
   round: kotlin.Int [INT]
-  player_name: kotlin.String [STRING]
-  ownership_pct: kotlin.Int [INT]
+  playerName: kotlin.String [STRING]
+  ownershipPct: kotlin.Int [INT]
   match: com.cwfgw.admin.PickMatch [SEALED]
 
 com.cwfgw.admin.PreviewTeam [CLASS]
-  team_number: kotlin.Int [INT]
-  team_name: kotlin.String [STRING]
+  teamNumber: kotlin.Int [INT]
+  teamName: kotlin.String [STRING]
   picks: List<com.cwfgw.admin.PreviewPick> [LIST]
 
 com.cwfgw.admin.PreviewedTournament [CLASS]
-  espn_event_id: kotlin.String [STRING]
+  espnEventId: kotlin.String [STRING]
   name: kotlin.String [STRING]
-  start_date: java.time.LocalDate [STRING]
-  end_date: java.time.LocalDate [STRING]
+  startDate: java.time.LocalDate [STRING]
+  endDate: java.time.LocalDate [STRING]
   week: kotlin.String [STRING]
 
 com.cwfgw.admin.RosterPreviewResult [CLASS]
   teams: List<com.cwfgw.admin.PreviewTeam> [LIST]
-  total_picks: kotlin.Int [INT]
-  matched_count: kotlin.Int [INT]
-  ambiguous_count: kotlin.Int [INT]
-  unmatched_count: kotlin.Int [INT]
+  totalPicks: kotlin.Int [INT]
+  matchedCount: kotlin.Int [INT]
+  ambiguousCount: kotlin.Int [INT]
+  unmatchedCount: kotlin.Int [INT]
 
 com.cwfgw.admin.RosterUploadResult [CLASS]
-  teams_created: kotlin.Int [INT]
-  golfers_created: kotlin.Int [INT]
+  teamsCreated: kotlin.Int [INT]
+  golfersCreated: kotlin.Int [INT]
   teams: List<com.cwfgw.teams.Team> [LIST]
 
 com.cwfgw.admin.SeasonImportResult [CLASS]
@@ -103,13 +103,13 @@ com.cwfgw.admin.SeasonSchedulePreviewResult [CLASS]
   skipped: List<com.cwfgw.admin.SkippedEntry> [LIST]
 
 com.cwfgw.admin.SkippedEntry [CLASS]
-  espn_event_id: kotlin.String [STRING]
-  espn_event_name: kotlin.String [STRING]
+  espnEventId: kotlin.String [STRING]
+  espnEventName: kotlin.String [STRING]
   reason: kotlin.String [STRING]
 
 com.cwfgw.admin.UploadSeasonRequest [CLASS]
-  start_date: java.time.LocalDate [STRING]
-  end_date: java.time.LocalDate [STRING]
+  startDate: java.time.LocalDate [STRING]
+  endDate: java.time.LocalDate [STRING]
 
 com.cwfgw.datahealth.DataHealthCheck<com.cwfgw.datahealth.DataHealthGolfer> [CLASS]
   rows: List<com.cwfgw.datahealth.DataHealthGolfer> [LIST]
@@ -121,49 +121,49 @@ com.cwfgw.datahealth.DataHealthCheck<com.cwfgw.datahealth.RosteredTwinGroup> [CL
 
 com.cwfgw.datahealth.DataHealthGolfer [CLASS]
   id: com.cwfgw.golfers.GolferId [INLINE]
-  first_name: kotlin.String [STRING]
-  last_name: kotlin.String [STRING]
-  pga_player_id: kotlin.String? [STRING]
+  firstName: kotlin.String [STRING]
+  lastName: kotlin.String [STRING]
+  pgaPlayerId: kotlin.String? [STRING]
 
 com.cwfgw.datahealth.DataHealthReport [CLASS]
-  rostered_twins: com.cwfgw.datahealth.DataHealthCheck<com.cwfgw.datahealth.RosteredTwinGroup> [CLASS]
-  rostered_without_espn_id: com.cwfgw.datahealth.DataHealthCheck<com.cwfgw.datahealth.DataHealthGolfer> [CLASS]
-  blank_first_names: com.cwfgw.datahealth.DataHealthCheck<com.cwfgw.datahealth.DataHealthGolfer> [CLASS]
+  rosteredTwins: com.cwfgw.datahealth.DataHealthCheck<com.cwfgw.datahealth.RosteredTwinGroup> [CLASS]
+  rosteredWithoutEspnId: com.cwfgw.datahealth.DataHealthCheck<com.cwfgw.datahealth.DataHealthGolfer> [CLASS]
+  blankFirstNames: com.cwfgw.datahealth.DataHealthCheck<com.cwfgw.datahealth.DataHealthGolfer> [CLASS]
 
 com.cwfgw.datahealth.RosteredTwinGroup [CLASS]
-  normalized_name: kotlin.String [STRING]
-  rostered_without_espn_id: List<com.cwfgw.datahealth.DataHealthGolfer> [LIST]
-  holding_espn_id: List<com.cwfgw.datahealth.DataHealthGolfer> [LIST]
+  normalizedName: kotlin.String [STRING]
+  rosteredWithoutEspnId: List<com.cwfgw.datahealth.DataHealthGolfer> [LIST]
+  holdingEspnId: List<com.cwfgw.datahealth.DataHealthGolfer> [LIST]
 
 com.cwfgw.espn.ContestedCompetitor [CLASS]
-  espn_competitor_id: kotlin.String [STRING]
+  espnCompetitorId: kotlin.String [STRING]
   name: kotlin.String [STRING]
   candidates: List<com.cwfgw.golfers.Golfer> [LIST]
 
 com.cwfgw.espn.EspnImportWarnings [CLASS]
-  tournament_id: com.cwfgw.tournaments.TournamentId [INLINE]
-  tournament_name: kotlin.String [STRING]
-  rostered_surname_twins: List<com.cwfgw.espn.RosteredSurnameTwin> [LIST]
-  created_golfers: List<com.cwfgw.golfers.Golfer> [LIST]
-  unmatched_competitors: List<com.cwfgw.espn.UnmatchedCompetitor> [LIST]
-  contested_competitors: List<com.cwfgw.espn.ContestedCompetitor> [LIST]
+  tournamentId: com.cwfgw.tournaments.TournamentId [INLINE]
+  tournamentName: kotlin.String [STRING]
+  rosteredSurnameTwins: List<com.cwfgw.espn.RosteredSurnameTwin> [LIST]
+  createdGolfers: List<com.cwfgw.golfers.Golfer> [LIST]
+  unmatchedCompetitors: List<com.cwfgw.espn.UnmatchedCompetitor> [LIST]
+  contestedCompetitors: List<com.cwfgw.espn.ContestedCompetitor> [LIST]
 
 com.cwfgw.espn.RosteredSurnameTwin [CLASS]
   created: com.cwfgw.golfers.Golfer [CLASS]
   rostered: List<com.cwfgw.golfers.Golfer> [LIST]
 
 com.cwfgw.espn.UnmatchedCompetitor [CLASS]
-  espn_competitor_id: kotlin.String [STRING]
+  espnCompetitorId: kotlin.String [STRING]
   name: kotlin.String [STRING]
 
 com.cwfgw.golfers.Golfer [CLASS]
   id: com.cwfgw.golfers.GolferId [INLINE]
-  pga_player_id: kotlin.String? [STRING]
-  first_name: kotlin.String [STRING]
-  last_name: kotlin.String [STRING]
+  pgaPlayerId: kotlin.String? [STRING]
+  firstName: kotlin.String [STRING]
+  lastName: kotlin.String [STRING]
   country: kotlin.String? [STRING]
-  world_ranking: kotlin.Int? [INT]
-  updated_at: java.time.Instant [STRING]
+  worldRanking: kotlin.Int? [INT]
+  updatedAt: java.time.Instant [STRING]
 
 com.cwfgw.golfers.GolferId [INLINE]
   java.util.UUID [STRING]
@@ -186,15 +186,15 @@ com.cwfgw.leagues.CreateLeagueRequest [CLASS]
 com.cwfgw.leagues.League [CLASS]
   id: com.cwfgw.leagues.LeagueId [INLINE]
   name: kotlin.String [STRING]
-  created_at: java.time.Instant [STRING]
+  createdAt: java.time.Instant [STRING]
 
 com.cwfgw.leagues.LeagueId [INLINE]
   java.util.UUID [STRING]
 
 com.cwfgw.reports.GolferHistory [CLASS]
-  golfer_name: kotlin.String [STRING]
-  total_earnings: java.math.BigDecimal [STRING]
-  top_tens: kotlin.Int [INT]
+  golferName: kotlin.String [STRING]
+  totalEarnings: java.math.BigDecimal [STRING]
+  topTens: kotlin.Int [INT]
   results: List<com.cwfgw.reports.GolferHistoryEntry> [LIST]
 
 com.cwfgw.reports.GolferHistoryEntry [CLASS]
@@ -204,50 +204,50 @@ com.cwfgw.reports.GolferHistoryEntry [CLASS]
 
 com.cwfgw.reports.LeaderboardPlayer [CLASS]
   name: kotlin.String [STRING]
-  team_names: List<kotlin.String> [LIST]
+  teamNames: List<kotlin.String> [LIST]
 
 com.cwfgw.reports.LiveLeaderboardEntry [CLASS]
   position: kotlin.Int? [INT]
-  score_to_par: kotlin.Int? [INT]
+  scoreToPar: kotlin.Int? [INT]
   players: List<com.cwfgw.reports.LeaderboardPlayer> [LIST]
-  round_scores: List<kotlin.Int> [LIST] optional
-  total_strokes: kotlin.Int? [INT] optional
+  roundScores: List<kotlin.Int> [LIST] optional
+  totalStrokes: kotlin.Int? [INT] optional
   rostered: kotlin.Boolean [BOOLEAN] optional
 
 com.cwfgw.reports.PlayerRankings [CLASS]
   players: List<com.cwfgw.reports.PlayerRankingsRow> [LIST]
   live: kotlin.Boolean [BOOLEAN]
-  live_eligible: kotlin.Boolean [BOOLEAN]
+  liveEligible: kotlin.Boolean [BOOLEAN]
 
 com.cwfgw.reports.PlayerRankingsRow [CLASS]
   key: kotlin.String [STRING]
-  golfer_id: com.cwfgw.golfers.GolferId? [INLINE] optional
+  golferId: com.cwfgw.golfers.GolferId? [INLINE] optional
   name: kotlin.String [STRING]
-  top_tens: kotlin.Int [INT]
-  total_earnings: java.math.BigDecimal [STRING]
-  team_name: kotlin.String? [STRING] optional
-  draft_round: kotlin.Int? [INT] optional
+  topTens: kotlin.Int [INT]
+  totalEarnings: java.math.BigDecimal [STRING]
+  teamName: kotlin.String? [STRING] optional
+  draftRound: kotlin.Int? [INT] optional
 
 com.cwfgw.reports.Rankings [CLASS]
   teams: List<com.cwfgw.reports.TeamRanking> [LIST]
   weeks: List<kotlin.String> [LIST]
-  tournament_names: List<kotlin.String> [LIST]
+  tournamentNames: List<kotlin.String> [LIST]
   live: kotlin.Boolean? [BOOLEAN] optional
-  live_eligible: kotlin.Boolean [BOOLEAN] optional
-  cash_totals: com.cwfgw.reports.WonLostTotals [CLASS] optional
+  liveEligible: kotlin.Boolean [BOOLEAN] optional
+  cashTotals: com.cwfgw.reports.WonLostTotals [CLASS] optional
   standings: List<com.cwfgw.reports.TeamStanding> [LIST] optional
 
 com.cwfgw.reports.ReportCell [CLASS]
   round: kotlin.Int [INT]
-  golfer_name: kotlin.String? [STRING]
-  golfer_id: com.cwfgw.golfers.GolferId? [INLINE]
-  position_str: kotlin.String? [STRING]
+  golferName: kotlin.String? [STRING]
+  golferId: com.cwfgw.golfers.GolferId? [INLINE]
+  positionStr: kotlin.String? [STRING]
   finish: com.cwfgw.reports.ReportCellFinish? [CLASS]
   earnings: java.math.BigDecimal [STRING]
-  ownership_pct: java.math.BigDecimal [STRING]
-  season_earnings: java.math.BigDecimal [STRING]
-  season_top_tens: kotlin.Int [INT]
-  in_field: kotlin.Boolean [BOOLEAN]
+  ownershipPct: java.math.BigDecimal [STRING]
+  seasonEarnings: java.math.BigDecimal [STRING]
+  seasonTopTens: kotlin.Int [INT]
+  inField: kotlin.Boolean [BOOLEAN]
 
 com.cwfgw.reports.ReportCellFinish [CLASS]
   position: kotlin.Int [INT]
@@ -262,36 +262,36 @@ com.cwfgw.reports.ReportSideBetRound [CLASS]
   teams: List<com.cwfgw.reports.ReportSideBetTeamEntry> [LIST]
 
 com.cwfgw.reports.ReportSideBetRules [CLASS]
-  amount_per_team: java.math.BigDecimal [STRING]
+  amountPerTeam: java.math.BigDecimal [STRING]
   rounds: List<kotlin.Int> [LIST]
 
 com.cwfgw.reports.ReportSideBetTeamEntry [CLASS]
-  team_id: com.cwfgw.teams.TeamId [INLINE]
-  team_name: kotlin.String [STRING]
-  golfer_name: kotlin.String [STRING]
-  cumulative_earnings: java.math.BigDecimal [STRING]
+  teamId: com.cwfgw.teams.TeamId [INLINE]
+  teamName: kotlin.String [STRING]
+  golferName: kotlin.String [STRING]
+  cumulativeEarnings: java.math.BigDecimal [STRING]
   payout: java.math.BigDecimal [STRING]
   outcome: com.cwfgw.reports.SideBetOutcome? [ENUM]
 
 com.cwfgw.reports.ReportTeamColumn [CLASS]
-  team_id: com.cwfgw.teams.TeamId [INLINE]
-  team_name: kotlin.String [STRING]
+  teamId: com.cwfgw.teams.TeamId [INLINE]
+  teamName: kotlin.String [STRING]
   cells: List<com.cwfgw.reports.ReportCell> [LIST]
-  top_ten_earnings: java.math.BigDecimal [STRING]
-  weekly_total: java.math.BigDecimal [STRING]
+  topTenEarnings: java.math.BigDecimal [STRING]
+  weeklyTotal: java.math.BigDecimal [STRING]
   previous: java.math.BigDecimal [STRING]
   subtotal: java.math.BigDecimal [STRING]
-  top_ten_count: kotlin.Int [INT]
-  top_ten_money: java.math.BigDecimal [STRING]
-  side_bets: java.math.BigDecimal [STRING]
-  total_cash: java.math.BigDecimal [STRING]
+  topTenCount: kotlin.Int [INT]
+  topTenMoney: java.math.BigDecimal [STRING]
+  sideBets: java.math.BigDecimal [STRING]
+  totalCash: java.math.BigDecimal [STRING]
 
 com.cwfgw.reports.ReportTournamentInfo [CLASS]
   name: kotlin.String? [STRING]
-  start_date: kotlin.String? [STRING]
-  end_date: kotlin.String? [STRING]
+  startDate: kotlin.String? [STRING]
+  endDate: kotlin.String? [STRING]
   status: com.cwfgw.tournaments.TournamentStatus? [STRING]
-  payout_multiplier: java.math.BigDecimal [STRING]
+  payoutMultiplier: java.math.BigDecimal [STRING]
   week: kotlin.String? [STRING]
 
 com.cwfgw.reports.SideBetOutcome [ENUM]
@@ -305,28 +305,28 @@ com.cwfgw.reports.StandingGap [CLASS]
 
 com.cwfgw.reports.StandingsEntry [CLASS]
   rank: kotlin.Int [INT]
-  team_name: kotlin.String [STRING]
+  teamName: kotlin.String [STRING]
 
 com.cwfgw.reports.TeamRanking [CLASS]
-  team_id: com.cwfgw.teams.TeamId [INLINE]
-  team_name: kotlin.String [STRING]
+  teamId: com.cwfgw.teams.TeamId [INLINE]
+  teamName: kotlin.String [STRING]
   subtotal: java.math.BigDecimal [STRING]
-  side_bets: java.math.BigDecimal [STRING]
-  total_cash: java.math.BigDecimal [STRING]
+  sideBets: java.math.BigDecimal [STRING]
+  totalCash: java.math.BigDecimal [STRING]
   series: List<java.math.BigDecimal> [LIST]
 
 com.cwfgw.reports.TeamStanding [SEALED]
   discriminator: type
   chaser [CLASS]
-    team_id: com.cwfgw.teams.TeamId [INLINE]
+    teamId: com.cwfgw.teams.TeamId [INLINE]
     tied: kotlin.Boolean [BOOLEAN]
     position: kotlin.Int [INT]
     behind: com.cwfgw.reports.StandingGap [CLASS]
-    behind_leader: java.math.BigDecimal [STRING]
+    behindLeader: java.math.BigDecimal [STRING]
   leader [CLASS]
-    team_id: com.cwfgw.teams.TeamId [INLINE]
+    teamId: com.cwfgw.teams.TeamId [INLINE]
     tied: kotlin.Boolean [BOOLEAN]
-    ahead_of: com.cwfgw.reports.StandingGap? [CLASS]
+    aheadOf: com.cwfgw.reports.StandingGap? [CLASS]
 
 com.cwfgw.reports.UndraftedGolfer [CLASS]
   name: kotlin.String [STRING]
@@ -336,19 +336,19 @@ com.cwfgw.reports.WeeklyReport [CLASS]
   scope: com.cwfgw.reports.ReportScope [ENUM]
   tournament: com.cwfgw.reports.ReportTournamentInfo [CLASS]
   teams: List<com.cwfgw.reports.ReportTeamColumn> [LIST]
-  undrafted_top_tens: List<com.cwfgw.reports.UndraftedGolfer> [LIST]
-  side_bet_rules: com.cwfgw.reports.ReportSideBetRules? [CLASS]
-  side_bet_detail: List<com.cwfgw.reports.ReportSideBetRound> [LIST]
-  standings_order: List<com.cwfgw.reports.StandingsEntry> [LIST]
+  undraftedTopTens: List<com.cwfgw.reports.UndraftedGolfer> [LIST]
+  sideBetRules: com.cwfgw.reports.ReportSideBetRules? [CLASS]
+  sideBetDetail: List<com.cwfgw.reports.ReportSideBetRound> [LIST]
+  standingsOrder: List<com.cwfgw.reports.StandingsEntry> [LIST]
   live: kotlin.Boolean? [BOOLEAN] optional
-  live_leaderboard: List<com.cwfgw.reports.LiveLeaderboardEntry> [LIST] optional
-  live_eligible: kotlin.Boolean [BOOLEAN] optional
-  awaiting_tee_off: kotlin.Boolean [BOOLEAN] optional
-  cash_totals: com.cwfgw.reports.WonLostTotals [CLASS] optional
-  side_bet_totals: com.cwfgw.reports.WonLostTotals [CLASS] optional
-  weekly_totals: com.cwfgw.reports.WonLostTotals [CLASS] optional
-  weekly_standings: List<com.cwfgw.teams.TeamId> [LIST] optional
-  side_bet_standings: List<com.cwfgw.teams.TeamId> [LIST] optional
+  liveLeaderboard: List<com.cwfgw.reports.LiveLeaderboardEntry> [LIST] optional
+  liveEligible: kotlin.Boolean [BOOLEAN] optional
+  awaitingTeeOff: kotlin.Boolean [BOOLEAN] optional
+  cashTotals: com.cwfgw.reports.WonLostTotals [CLASS] optional
+  sideBetTotals: com.cwfgw.reports.WonLostTotals [CLASS] optional
+  weeklyTotals: com.cwfgw.reports.WonLostTotals [CLASS] optional
+  weeklyStandings: List<com.cwfgw.teams.TeamId> [LIST] optional
+  sideBetStandings: List<com.cwfgw.teams.TeamId> [LIST] optional
   finalizable: kotlin.Boolean [BOOLEAN] optional
 
 com.cwfgw.reports.WonLostTotals [CLASS]
@@ -357,115 +357,115 @@ com.cwfgw.reports.WonLostTotals [CLASS]
   net: java.math.BigDecimal [STRING]
 
 com.cwfgw.seasons.CleanSeasonResult [CLASS]
-  scores_deleted: kotlin.Int [INT]
-  results_deleted: kotlin.Int [INT]
-  tournaments_reset: kotlin.Int [INT]
+  scoresDeleted: kotlin.Int [INT]
+  resultsDeleted: kotlin.Int [INT]
+  tournamentsReset: kotlin.Int [INT]
 
 com.cwfgw.seasons.CreateSeasonRequest [CLASS]
-  league_id: com.cwfgw.leagues.LeagueId [INLINE]
+  leagueId: com.cwfgw.leagues.LeagueId [INLINE]
   name: kotlin.String [STRING]
-  season_year: kotlin.Int [INT]
-  season_number: kotlin.Int? [INT] optional
-  max_teams: kotlin.Int? [INT] optional
+  seasonYear: kotlin.Int [INT]
+  seasonNumber: kotlin.Int? [INT] optional
+  maxTeams: kotlin.Int? [INT] optional
   rules: com.cwfgw.seasons.SeasonRules? [CLASS] optional
 
 com.cwfgw.seasons.Season [CLASS]
   id: com.cwfgw.seasons.SeasonId [INLINE]
-  league_id: com.cwfgw.leagues.LeagueId [INLINE]
+  leagueId: com.cwfgw.leagues.LeagueId [INLINE]
   name: kotlin.String [STRING]
-  season_year: kotlin.Int [INT]
-  season_number: kotlin.Int [INT]
-  tie_floor: java.math.BigDecimal [STRING]
-  side_bet_amount: java.math.BigDecimal [STRING]
-  max_teams: kotlin.Int [INT]
-  created_at: java.time.Instant [STRING]
-  updated_at: java.time.Instant [STRING]
+  seasonYear: kotlin.Int [INT]
+  seasonNumber: kotlin.Int [INT]
+  tieFloor: java.math.BigDecimal [STRING]
+  sideBetAmount: java.math.BigDecimal [STRING]
+  maxTeams: kotlin.Int [INT]
+  createdAt: java.time.Instant [STRING]
+  updatedAt: java.time.Instant [STRING]
 
 com.cwfgw.seasons.SeasonId [INLINE]
   java.util.UUID [STRING]
 
 com.cwfgw.seasons.SeasonRules [CLASS]
   payouts: List<java.math.BigDecimal> [LIST]
-  tie_floor: java.math.BigDecimal [STRING]
-  side_bet_rounds: List<kotlin.Int> [LIST]
-  side_bet_amount: java.math.BigDecimal [STRING]
+  tieFloor: java.math.BigDecimal [STRING]
+  sideBetRounds: List<kotlin.Int> [LIST]
+  sideBetAmount: java.math.BigDecimal [STRING]
 
 com.cwfgw.teams.RosterViewPick [CLASS]
   round: kotlin.Int [INT]
-  golfer_name: kotlin.String [STRING]
-  ownership_pct: java.math.BigDecimal [STRING]
-  golfer_id: com.cwfgw.golfers.GolferId [INLINE]
+  golferName: kotlin.String [STRING]
+  ownershipPct: java.math.BigDecimal [STRING]
+  golferId: com.cwfgw.golfers.GolferId [INLINE]
 
 com.cwfgw.teams.RosterViewTeam [CLASS]
-  team_id: com.cwfgw.teams.TeamId [INLINE]
-  team_number: kotlin.Int? [INT]
-  team_name: kotlin.String [STRING]
+  teamId: com.cwfgw.teams.TeamId [INLINE]
+  teamNumber: kotlin.Int? [INT]
+  teamName: kotlin.String [STRING]
   picks: List<com.cwfgw.teams.RosterViewPick> [LIST]
 
 com.cwfgw.teams.Team [CLASS]
   id: com.cwfgw.teams.TeamId [INLINE]
-  season_id: com.cwfgw.seasons.SeasonId [INLINE]
-  owner_name: kotlin.String [STRING]
-  team_name: kotlin.String [STRING]
-  team_number: kotlin.Int? [INT]
-  created_at: java.time.Instant [STRING]
-  updated_at: java.time.Instant [STRING]
+  seasonId: com.cwfgw.seasons.SeasonId [INLINE]
+  ownerName: kotlin.String [STRING]
+  teamName: kotlin.String [STRING]
+  teamNumber: kotlin.Int? [INT]
+  createdAt: java.time.Instant [STRING]
+  updatedAt: java.time.Instant [STRING]
 
 com.cwfgw.teams.TeamId [INLINE]
   java.util.UUID [STRING]
 
 com.cwfgw.tournamentLinks.CreateLinkedGolferRequest [CLASS]
-  espn_competitor_id: kotlin.String [STRING]
+  espnCompetitorId: kotlin.String [STRING]
   name: kotlin.String [STRING]
 
 com.cwfgw.tournamentLinks.TournamentCompetitorListing [CLASS]
-  tournament_id: com.cwfgw.tournaments.TournamentId [INLINE]
-  is_finalized: kotlin.Boolean [BOOLEAN]
+  tournamentId: com.cwfgw.tournaments.TournamentId [INLINE]
+  isFinalized: kotlin.Boolean [BOOLEAN]
   competitors: List<com.cwfgw.tournamentLinks.TournamentCompetitorView> [LIST]
 
 com.cwfgw.tournamentLinks.TournamentCompetitorView [CLASS]
-  espn_competitor_id: kotlin.String [STRING]
+  espnCompetitorId: kotlin.String [STRING]
   name: kotlin.String [STRING]
   position: kotlin.Int [INT]
-  is_team_partner: kotlin.Boolean [BOOLEAN]
-  linked_golfer: com.cwfgw.golfers.Golfer? [CLASS]
-  has_override: kotlin.Boolean [BOOLEAN]
+  isTeamPartner: kotlin.Boolean [BOOLEAN]
+  linkedGolfer: com.cwfgw.golfers.Golfer? [CLASS]
+  hasOverride: kotlin.Boolean [BOOLEAN]
 
 com.cwfgw.tournamentLinks.TournamentPlayerOverride [CLASS]
-  tournament_id: com.cwfgw.tournaments.TournamentId [INLINE]
-  espn_competitor_id: kotlin.String [STRING]
-  golfer_id: com.cwfgw.golfers.GolferId [INLINE]
+  tournamentId: com.cwfgw.tournaments.TournamentId [INLINE]
+  espnCompetitorId: kotlin.String [STRING]
+  golferId: com.cwfgw.golfers.GolferId [INLINE]
 
 com.cwfgw.tournamentLinks.UpsertTournamentPlayerOverrideRequest [CLASS]
-  espn_competitor_id: kotlin.String [STRING]
-  golfer_id: com.cwfgw.golfers.GolferId [INLINE]
+  espnCompetitorId: kotlin.String [STRING]
+  golferId: com.cwfgw.golfers.GolferId [INLINE]
 
 com.cwfgw.tournaments.CurrentTournament [SEALED]
   discriminator: type
   no_tournaments [OBJECT]
   season_finalized [CLASS]
-    tournament_id: com.cwfgw.tournaments.TournamentId [INLINE]
+    tournamentId: com.cwfgw.tournaments.TournamentId [INLINE]
   unfinalized [CLASS]
-    tournament_id: com.cwfgw.tournaments.TournamentId [INLINE]
+    tournamentId: com.cwfgw.tournaments.TournamentId [INLINE]
 
 com.cwfgw.tournaments.FinalizedTournament [CLASS]
   tournament: com.cwfgw.tournaments.Tournament [CLASS]
-  import_warnings: List<com.cwfgw.espn.EspnImportWarnings> [LIST]
+  importWarnings: List<com.cwfgw.espn.EspnImportWarnings> [LIST]
 
 com.cwfgw.tournaments.Tournament [CLASS]
   id: com.cwfgw.tournaments.TournamentId [INLINE]
-  pga_tournament_id: kotlin.String? [STRING]
+  pgaTournamentId: kotlin.String? [STRING]
   name: kotlin.String [STRING]
-  season_id: com.cwfgw.seasons.SeasonId [INLINE]
-  start_date: java.time.LocalDate [STRING]
-  end_date: java.time.LocalDate [STRING]
-  course_name: kotlin.String? [STRING]
+  seasonId: com.cwfgw.seasons.SeasonId [INLINE]
+  startDate: java.time.LocalDate [STRING]
+  endDate: java.time.LocalDate [STRING]
+  courseName: kotlin.String? [STRING]
   status: com.cwfgw.tournaments.TournamentStatus [STRING]
-  purse_amount: kotlin.Long? [LONG]
-  payout_multiplier: java.math.BigDecimal [STRING]
+  purseAmount: kotlin.Long? [LONG]
+  payoutMultiplier: java.math.BigDecimal [STRING]
   week: kotlin.String? [STRING]
-  is_team_event: kotlin.Boolean [BOOLEAN]
-  created_at: java.time.Instant [STRING]
+  isTeamEvent: kotlin.Boolean [BOOLEAN]
+  createdAt: java.time.Instant [STRING]
 
 com.cwfgw.tournaments.TournamentId [INLINE]
   java.util.UUID [STRING]
@@ -477,13 +477,13 @@ com.cwfgw.tournaments.TournamentStatus [STRING]
 
 com.cwfgw.tournaments.UpdateTournamentRequest [CLASS]
   name: kotlin.String? [STRING] optional
-  start_date: java.time.LocalDate? [STRING] optional
-  end_date: java.time.LocalDate? [STRING] optional
-  course_name: kotlin.String? [STRING] optional
+  startDate: java.time.LocalDate? [STRING] optional
+  endDate: java.time.LocalDate? [STRING] optional
+  courseName: kotlin.String? [STRING] optional
   status: com.cwfgw.tournaments.TournamentStatus? [STRING] optional
-  purse_amount: kotlin.Long? [LONG] optional
-  payout_multiplier: java.math.BigDecimal? [STRING] optional
-  is_team_event: kotlin.Boolean? [BOOLEAN] optional
+  purseAmount: kotlin.Long? [LONG] optional
+  payoutMultiplier: java.math.BigDecimal? [STRING] optional
+  isTeamEvent: kotlin.Boolean? [BOOLEAN] optional
 
 com.cwfgw.users.LoginRequest [CLASS]
   username: kotlin.String [STRING]
@@ -493,7 +493,7 @@ com.cwfgw.users.User [CLASS]
   id: com.cwfgw.users.UserId [INLINE]
   username: kotlin.String [STRING]
   role: com.cwfgw.users.UserRole [STRING]
-  created_at: java.time.Instant [STRING]
+  createdAt: java.time.Instant [STRING]
 
 com.cwfgw.users.UserId [INLINE]
   java.util.UUID [STRING]

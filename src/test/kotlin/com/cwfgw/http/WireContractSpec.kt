@@ -14,7 +14,6 @@ import io.kotest.matchers.shouldBe
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PolymorphicKind
-import kotlinx.serialization.json.JsonNamingStrategy
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.serializer
 import java.io.File
@@ -75,7 +74,7 @@ class WireContractSpec : FunSpec({
     test("appJson still reads and writes the wire the way the snapshot assumes") {
         appJson.configuration.ignoreUnknownKeys shouldBe true
         appJson.configuration.encodeDefaults shouldBe true
-        appJson.configuration.namingStrategy shouldBe JsonNamingStrategy.SnakeCase
+        appJson.configuration.namingStrategy shouldBe null
         appJson.configuration.explicitNulls shouldBe true
         appJson.configuration.useArrayPolymorphism shouldBe false
         appJson.configuration.classDiscriminator shouldBe "type"

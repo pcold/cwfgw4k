@@ -6,6 +6,7 @@ import io.kotest.core.spec.Spec
 import io.kotest.extensions.testcontainers.JdbcDatabaseContainerExtension
 import io.kotest.extensions.testcontainers.toDataSource
 import org.flywaydb.core.Flyway
+import org.flywaydb.core.api.configuration.FluentConfiguration
 import org.jooq.DSLContext
 import org.jooq.SQLDialect
 import org.jooq.impl.DSL
@@ -98,16 +99,31 @@ internal fun Spec.postgresHarness(): PostgresHarness {
 internal fun migrateTemplateDatabase() {
     if (templateMigrated.get()) return
     executeOnCluster("""CREATE DATABASE "$TEMPLATE_DATABASE"""")
-    Flyway.configure()
+    migrationsInto(SCHEMA)
         .dataSource(databaseUrl(TEMPLATE_DATABASE), sharedPostgres.username, sharedPostgres.password)
-        .schemas(SCHEMA)
-        .createSchemas(true)
-        .locations("classpath:db/migration")
         .load()
         .migrate()
     executeOnCluster("""ALTER DATABASE "$TEMPLATE_DATABASE" WITH ALLOW_CONNECTIONS false""")
     templateMigrated.set(true)
 }
+
+/** A migration spec's own [schema], stopped at [version]: the harness's schema is already at the latest one. */
+internal fun PostgresHarness.migrateSchemaTo(
+    schema: String,
+    version: String,
+) {
+    migrationsInto(schema)
+        .dataSource(dataSource)
+        .target(version)
+        .load()
+        .migrate()
+}
+
+private fun migrationsInto(schema: String): FluentConfiguration =
+    Flyway.configure()
+        .schemas(schema)
+        .createSchemas(true)
+        .locations("classpath:db/migration")
 
 private fun databaseUrl(database: String): String =
     "jdbc:postgresql://${sharedPostgres.host}:${sharedPostgres.firstMappedPort}/$database"

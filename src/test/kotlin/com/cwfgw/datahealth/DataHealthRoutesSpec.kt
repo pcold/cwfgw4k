@@ -58,39 +58,39 @@ class DataHealthRoutesSpec : FunSpec({
 
 private const val EXPECTED_REPORT = """
 {
-  "rostered_twins": {
+  "rosteredTwins": {
     "rows": [
       {
-        "normalized_name": "si woo kim",
-        "rostered_without_espn_id": [
+        "normalizedName": "si woo kim",
+        "rosteredWithoutEspnId": [
           {
             "id": "00000000-0000-0000-0000-000000000201",
-            "first_name": "Si Woo",
-            "last_name": "Kim",
-            "pga_player_id": null
+            "firstName": "Si Woo",
+            "lastName": "Kim",
+            "pgaPlayerId": null
           }
         ],
-        "holding_espn_id": [
+        "holdingEspnId": [
           {
             "id": "00000000-0000-0000-0000-000000000202",
-            "first_name": "Si Woo",
-            "last_name": "Kim",
-            "pga_player_id": "7081"
+            "firstName": "Si Woo",
+            "lastName": "Kim",
+            "pgaPlayerId": "7081"
           }
         ]
       }
     ],
     "count": 1
   },
-  "rostered_without_espn_id": {
+  "rosteredWithoutEspnId": {
     "rows": [
-      {"id": "00000000-0000-0000-0000-000000000201", "first_name": "Si Woo", "last_name": "Kim", "pga_player_id": null}
+      {"id": "00000000-0000-0000-0000-000000000201", "firstName": "Si Woo", "lastName": "Kim", "pgaPlayerId": null}
     ],
     "count": 1
   },
-  "blank_first_names": {
+  "blankFirstNames": {
     "rows": [
-      {"id": "00000000-0000-0000-0000-000000000203", "first_name": " ", "last_name": "Kim", "pga_player_id": null}
+      {"id": "00000000-0000-0000-0000-000000000203", "firstName": " ", "lastName": "Kim", "pgaPlayerId": null}
     ],
     "count": 1
   }

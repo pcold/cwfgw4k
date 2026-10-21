@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { nth } from '@/shared/test/nth';
-import { ApiError, api, camelizeKeys, snakeifyKeys } from './index';
+import { ApiError, api } from './index';
 import { adminApi } from './admin';
 import { authApi } from './auth';
 import { golfersApi } from './golfers';
@@ -36,53 +36,6 @@ function mockJson(body: unknown, status = 200): Response {
     headers: { 'Content-Type': 'application/json' },
   });
 }
-
-describe('camelizeKeys', () => {
-  it('passes through primitives and null', () => {
-    expect(camelizeKeys(42)).toBe(42);
-    expect(camelizeKeys('hi')).toBe('hi');
-    expect(camelizeKeys(null)).toBe(null);
-  });
-
-  it('rewrites nested objects and arrays', () => {
-    const input = {
-      top_level: {
-        inner_key: [{ leaf_one: 1, leaf_two: null }],
-      },
-    };
-    expect(camelizeKeys(input)).toEqual({
-      topLevel: { innerKey: [{ leafOne: 1, leafTwo: null }] },
-    });
-  });
-
-  it('leaves already-camelCase keys alone', () => {
-    expect(camelizeKeys({ teamName: 'Aces', total: 120 })).toEqual({
-      teamName: 'Aces',
-      total: 120,
-    });
-  });
-});
-
-describe('snakeifyKeys', () => {
-  it('converts camelCase to snake_case recursively', () => {
-    expect(
-      snakeifyKeys({
-        leagueId: 'lg-1',
-        seasonYear: 2026,
-        rules: { tieFloor: 1, sideBetRounds: [5, 6] },
-      }),
-    ).toEqual({
-      league_id: 'lg-1',
-      season_year: 2026,
-      rules: { tie_floor: 1, side_bet_rounds: [5, 6] },
-    });
-  });
-
-  it('passes through primitives and null', () => {
-    expect(snakeifyKeys(null)).toBe(null);
-    expect(snakeifyKeys(42)).toBe(42);
-  });
-});
 
 describe('api client', () => {
   let fetchMock: FetchMock;
@@ -132,23 +85,17 @@ describe('api client', () => {
     );
   });
 
-  it('converts snake_case response keys to camelCase', async () => {
+  it('returns the response body key for key', async () => {
     const wire = [
-      {
-        team_id: 't-1',
-        team_name: 'Aces',
-        picks: [{ round: 1, golfer_name: 'Scheffler', ownership_pct: 100 }],
-      },
-    ];
-    fetchMock.mockResolvedValueOnce(mockJson(wire));
-    const result = await api.rosters('sn-1');
-    expect(result).toEqual([
       {
         teamId: 't-1',
         teamName: 'Aces',
         picks: [{ round: 1, golferName: 'Scheffler', ownershipPct: 100 }],
       },
-    ]);
+    ];
+    fetchMock.mockResolvedValueOnce(mockJson(wire));
+    const result = await api.rosters('sn-1');
+    expect(result).toEqual(wire);
   });
 
   it('throws ApiError with the HTTP status when the response is not ok', async () => {
@@ -163,14 +110,14 @@ describe('api client', () => {
     expect(err).toMatchObject({ name: 'ApiError', status: 503 });
   });
 
-  it('createSeason() sends snake_case keys in the body', async () => {
+  it('createSeason() sends the request as the body, key for key', async () => {
     fetchMock.mockResolvedValueOnce(
       mockJson({
         id: 'sn-9',
-        league_id: 'lg-1',
+        leagueId: 'lg-1',
         name: 'Spring',
-        season_year: 2026,
-        season_number: 1,
+        seasonYear: 2026,
+        seasonNumber: 1,
       }),
     );
     const result = await api.createSeason({
@@ -183,14 +130,14 @@ describe('api client', () => {
     expect(call[0]).toBe('/api/v1/seasons');
     const body = jsonBody(call);
     expect(body).toEqual({
-      league_id: 'lg-1',
+      leagueId: 'lg-1',
       name: 'Spring',
-      season_year: 2026,
+      seasonYear: 2026,
       rules: {
         payouts: [18, 12],
-        tie_floor: 1,
-        side_bet_rounds: [5, 6],
-        side_bet_amount: 15,
+        tieFloor: 1,
+        sideBetRounds: [5, 6],
+        sideBetAmount: 15,
       },
     });
     expect(result).toMatchObject({ id: 'sn-9', leagueId: 'lg-1', seasonYear: 2026 });
@@ -218,7 +165,7 @@ describe('api client', () => {
         id: 'u-1',
         username: 'admin',
         role: 'admin',
-        created_at: '2026-01-01T00:00:00Z',
+        createdAt: '2026-01-01T00:00:00Z',
       }),
     );
     const result = await api.login('admin', 'secret');
@@ -253,7 +200,7 @@ describe('api client', () => {
         id: 'u-1',
         username: 'admin',
         role: 'admin',
-        created_at: '2026-01-01T00:00:00Z',
+        createdAt: '2026-01-01T00:00:00Z',
       }),
     );
     const result = await api.authMe();
@@ -311,8 +258,8 @@ describe('api client', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/tournaments?season_id=sn%2F1%20a');
   });
 
-  it('currentTournament() url-encodes the season id and camelizes the answer', async () => {
-    fetchMock.mockResolvedValueOnce(mockJson({ type: 'unfinalized', tournament_id: 'tn-1' }));
+  it('currentTournament() url-encodes the season id and returns the answer', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({ type: 'unfinalized', tournamentId: 'tn-1' }));
     const current = await api.currentTournament('sn/1 a');
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/tournaments/current?season_id=sn%2F1%20a');
     expect(current).toEqual({ type: 'unfinalized', tournamentId: 'tn-1' });
@@ -338,13 +285,13 @@ describe('api client', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/seasons/sn-1/golfer/g-1/history');
   });
 
-  it('updateTournament() PUTs a snake_case body and url-encodes the id', async () => {
-    fetchMock.mockResolvedValueOnce(mockJson({ id: 'tn-1', payout_multiplier: 2 }));
+  it('updateTournament() PUTs the request as the body and url-encodes the id', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({ id: 'tn-1', payoutMultiplier: 2 }));
     await api.updateTournament('tn/1', { payoutMultiplier: 2 });
     const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/tournaments/tn%2F1');
     expect(requestInit(call).method).toBe('PUT');
-    expect(jsonBody(call)).toEqual({ payout_multiplier: 2 });
+    expect(jsonBody(call)).toEqual({ payoutMultiplier: 2 });
   });
 
   it('updateTournament() surfaces the server-supplied error message on PUT failure', async () => {
@@ -374,8 +321,8 @@ describe('api client', () => {
     expect(call[0]).toBe('/api/v1/admin/seasons/sn%201/upload/preview');
     expect(requestInit(call).method).toBe('POST');
     expect(jsonBody(call)).toEqual({
-      start_date: '2026-01-01',
-      end_date: '2026-04-01',
+      startDate: '2026-01-01',
+      endDate: '2026-04-01',
     });
   });
 
@@ -392,14 +339,14 @@ describe('api client', () => {
     expect(requestInit(call).method).toBe('POST');
     expect(jsonBody(call)).toEqual({
       entries: [
-        { espn_event_id: 'e-1', name: 'Sony Open', start_date: '2026-01-15', end_date: '2026-01-18' },
+        { espnEventId: 'e-1', name: 'Sony Open', startDate: '2026-01-15', endDate: '2026-01-18' },
       ],
     });
   });
 
   it('previewRoster() POSTs the raw TSV body as text/plain', async () => {
     fetchMock.mockResolvedValueOnce(
-      mockJson({ teams: [], total_picks: 0, matched_count: 0, ambiguous_count: 0, unmatched_count: 0 }),
+      mockJson({ teams: [], totalPicks: 0, matchedCount: 0, ambiguousCount: 0, unmatchedCount: 0 }),
     );
     const tsv = 'team_number\tteam_name\tround\tplayer_name\townership_pct\n1\tBROWN\t1\tScottie Scheffler\t';
     await api.previewRoster(tsv);
@@ -423,8 +370,8 @@ describe('api client', () => {
     expect(apiError(err).message).toBe('header invalid');
   });
 
-  it('confirmRoster() POSTs a snake_case envelope including the discriminated assignment', async () => {
-    fetchMock.mockResolvedValueOnce(mockJson({ teams_created: 0, golfers_created: 0, teams: [] }));
+  it('confirmRoster() POSTs the envelope including the discriminated assignment', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson({ teamsCreated: 0, golfersCreated: 0, teams: [] }));
     await api.confirmRoster({
       seasonId: 'sn-1',
       teams: [
@@ -443,16 +390,16 @@ describe('api client', () => {
     });
     const body = jsonBody(nth(fetchMock.mock.calls, 0));
     expect(body).toEqual({
-      season_id: 'sn-1',
+      seasonId: 'sn-1',
       teams: [
         {
-          team_number: 1,
-          team_name: 'BROWN',
+          teamNumber: 1,
+          teamName: 'BROWN',
           picks: [
             {
               round: 1,
-              ownership_pct: 75,
-              assignment: { type: 'existing', golfer_id: 'g-1' },
+              ownershipPct: 75,
+              assignment: { type: 'existing', golferId: 'g-1' },
             },
           ],
         },
@@ -464,7 +411,7 @@ describe('api client', () => {
     fetchMock.mockResolvedValueOnce(
       mockJson({
         tournament: { id: 'tn-7', name: 'Sony', status: 'completed' },
-        import_warnings: [{ tournament_id: 'tn-7', tournament_name: 'Sony', created_golfers: [] }],
+        importWarnings: [{ tournamentId: 'tn-7', tournamentName: 'Sony', createdGolfers: [] }],
       }),
     );
     const result = await api.finalizeTournament('tn-7');
@@ -481,9 +428,9 @@ describe('api client', () => {
   it('cleanSeasonResults() returns the deletion counts from the body', async () => {
     fetchMock.mockResolvedValueOnce(
       mockJson({
-        scores_deleted: 12,
-        results_deleted: 3,
-        tournaments_reset: 2,
+        scoresDeleted: 12,
+        resultsDeleted: 3,
+        tournamentsReset: 2,
       }),
     );
     const result = await api.cleanSeasonResults('sn-1');
@@ -540,19 +487,19 @@ describe('api client', () => {
     expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/golfers');
   });
 
-  it('tournamentCompetitors() fetches the admin competitors endpoint and camelizes the body', async () => {
+  it('tournamentCompetitors() fetches the admin competitors endpoint and returns the body', async () => {
     fetchMock.mockResolvedValueOnce(
       mockJson({
-        tournament_id: 'tn-1',
-        is_finalized: false,
+        tournamentId: 'tn-1',
+        isFinalized: false,
         competitors: [
           {
-            espn_competitor_id: 'team:1:1',
+            espnCompetitorId: 'team:1:1',
             name: 'Fitzpatrick',
             position: 1,
-            is_team_partner: true,
-            linked_golfer: null,
-            has_override: false,
+            isTeamPartner: true,
+            linkedGolfer: null,
+            hasOverride: false,
           },
         ],
       }),
@@ -567,9 +514,9 @@ describe('api client', () => {
     });
   });
 
-  it('upsertTournamentPlayerOverride() POSTs a snake_case body to the player-overrides endpoint', async () => {
+  it('upsertTournamentPlayerOverride() POSTs the request as the body to the player-overrides endpoint', async () => {
     fetchMock.mockResolvedValueOnce(
-      mockJson({ tournament_id: 'tn-1', espn_competitor_id: 'abc', golfer_id: 'g-1' }),
+      mockJson({ tournamentId: 'tn-1', espnCompetitorId: 'abc', golferId: 'g-1' }),
     );
     const result = await api.upsertTournamentPlayerOverride('tn-1', {
       espnCompetitorId: 'abc',
@@ -579,7 +526,7 @@ describe('api client', () => {
     expect(call[0]).toBe('/api/v1/admin/tournaments/tn-1/player-overrides');
     expect(requestInit(call).method).toBe('POST');
     const body = jsonBody(call);
-    expect(body).toEqual({ espn_competitor_id: 'abc', golfer_id: 'g-1' });
+    expect(body).toEqual({ espnCompetitorId: 'abc', golferId: 'g-1' });
     expect(result).toEqual({
       tournamentId: 'tn-1',
       espnCompetitorId: 'abc',
@@ -595,27 +542,27 @@ describe('api client', () => {
     expect(requestInit(call).method).toBe('DELETE');
   });
 
-  it('createGolferAndLink() POSTs a snake_case body to the new-golfer endpoint', async () => {
+  it('createGolferAndLink() POSTs the request as the body to the new-golfer endpoint', async () => {
     fetchMock.mockResolvedValueOnce(
-      mockJson({ tournament_id: 'tn-1', espn_competitor_id: 'abc', golfer_id: 'g-99' }),
+      mockJson({ tournamentId: 'tn-1', espnCompetitorId: 'abc', golferId: 'g-99' }),
     );
     const result = await api.createGolferAndLink('tn-1', { espnCompetitorId: 'abc', name: 'Alex Fitzpatrick' });
     const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/admin/tournaments/tn-1/player-overrides/new-golfer');
     expect(requestInit(call).method).toBe('POST');
-    expect(jsonBody(call)).toEqual({ espn_competitor_id: 'abc', name: 'Alex Fitzpatrick' });
+    expect(jsonBody(call)).toEqual({ espnCompetitorId: 'abc', name: 'Alex Fitzpatrick' });
     expect(result.golferId).toBe('g-99');
   });
 
-  it('dataHealth() fetches the admin data-health endpoint and camelizes each check', async () => {
+  it('dataHealth() fetches the admin data-health endpoint and returns each check', async () => {
     fetchMock.mockResolvedValueOnce(
       mockJson({
-        rostered_twins: { count: 0, rows: [] },
-        rostered_without_espn_id: {
+        rosteredTwins: { count: 0, rows: [] },
+        rosteredWithoutEspnId: {
           count: 1,
-          rows: [{ id: 'g-1', first_name: 'Si Woo', last_name: 'Kim', pga_player_id: null }],
+          rows: [{ id: 'g-1', firstName: 'Si Woo', lastName: 'Kim', pgaPlayerId: null }],
         },
-        blank_first_names: { count: 0, rows: [] },
+        blankFirstNames: { count: 0, rows: [] },
       }),
     );
     const result = await api.dataHealth();

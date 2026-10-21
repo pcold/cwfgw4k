@@ -103,8 +103,6 @@ private fun variantMembers(
     declared: (List<String>) -> List<String>,
 ): List<AssertionMember> {
     val discriminator = sealedDiscriminator(descriptor)
-    // `camelizeKeys` renames the discriminator key too, so a multi-word one would name no types.ts field.
-    check('_' !in discriminator) { "$serialName: discriminator '$discriminator' would need camelizing here" }
     val variants = sealedVariants(descriptor)
     // Per-variant members name only the wire's variants, so an arm types.ts kept after one is dropped needs this.
     val armSet =
@@ -142,8 +140,7 @@ private data class AssertionMember(
         get() = if (names.isEmpty()) "    never" else names.joinToString("\n") { "    | '$it'" }
 }
 
-private fun wireKeys(descriptor: SerialDescriptor): List<String> =
-    descriptor.elementIndices().map { wireElementName(descriptor, it) }
+private fun wireKeys(descriptor: SerialDescriptor): List<String> = descriptor.elementNames()
 
 /** Flat, as an accounting question over a serial name needs: a hierarchy's discriminator and every variant's keys. */
 internal fun wireFieldNames(descriptor: SerialDescriptor): Set<String> =

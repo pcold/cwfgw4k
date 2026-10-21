@@ -74,8 +74,8 @@ User (username, role admin | user)
 - **Season.** Identified by `season_year` and `season_number` (when the create request names none, the next free
   number, from `SeasonRepository.nextSeasonNumber`). Owns its rules: the payout table and the side-bet rounds live
   in the side tables `season_rule_payouts` and `season_rule_side_bet_rounds`; the tie floor and side-bet amount are
-  columns. `max_teams` is stored and returned but nothing enforces it; the team count is whatever the roster upload
-  creates.
+  columns. `max_teams` is stored and returned (as `maxTeams`) but nothing enforces it; the team count is whatever the
+  roster upload creates.
 - **Tournament.** A season's schedule entry. `pga_tournament_id` is the ESPN event id once linked.
   `payout_multiplier` (default 1) scales every payout for that event. `is_team_event` marks two-player events
   such as the Zurich Classic. `week` is the display label from the schedule upload.
@@ -135,7 +135,8 @@ A `Refused` carries a stable code the UI branches on: `tournament_out_of_order`,
 
 ### JSON, IDs and parameters
 
-- `appJson` (`http/AppJson.kt`) is snake_case on the wire, ignores unknown keys, and encodes defaults.
+- `appJson` (`http/AppJson.kt`) writes each key as its Kotlin property name, ignores unknown keys, and encodes
+  defaults.
 - Sealed types serialize with a `type` discriminator.
 - IDs are value classes (`SeasonId`, `TournamentId`, ...). A path id that is not a UUID answers 400
   "invalid season id" and the like.
@@ -300,7 +301,7 @@ by this status (see [Live overlay](#live-overlay)).
    itself, which no import writes results into when it is unlinked. Scoring takes no further season or tournament
    lock, and an error scoring any of them rolls back the whole finalize. Step 3's gates leave every match on the
    unlinked tournament's start date, and no tournament's scores read another's, so the order among them is free.
-6. Answer `FinalizedTournament`: the tournament plus `import_warnings`, one
+6. Answer `FinalizedTournament`: the tournament plus `importWarnings`, one
    `EspnImportWarnings` per tournament step 3 imported into, so `[]` means nothing was imported. A created golfer
    whose surname matches a rostered one, under the matcher's own `surnameKey`, is reported apart from other created
    golfers unless every such namesake has its own result in that event, since its results may belong to the pick.
@@ -391,8 +392,8 @@ For each side-bet round, every team's pick from that draft round races for the s
   `amount × (numTeams − winners)`.
 - Winners split the pool evenly; when it does not divide to the cent, the last winner by team id takes the
   remainder.
-- Each round's entries, and the report's `side_bet_standings`, rank best first. A tie keeps the report's team
-  order (team number, then name), as `weekly_standings` does.
+- Each round's entries, and the report's `sideBetStandings`, rank best first. A tie keeps the report's team
+  order (team number, then name), as `weeklyStandings` does.
 - A side-bet amount of 0, or an empty round list, turns the bets off for the season. A season created without
   rules gets rounds 5–8 written as rows; no rows reads back as no rounds.
 
@@ -420,7 +421,7 @@ nothing.
 ### Parsing
 
 - **Team entries.** A competitor with `type == "team"`, or a `/` in its name, becomes one row per partner,
-  sharing a `pair_key` of `team:<id>`.
+  sharing a `pairKey` of `team:<id>`.
 - **Positions.** Competitors are sorted by score to par, then ESPN's order. Equal scores share a position, and
   the next position skips past them, counting a pair as one. Once the event is completed a tie for the lead is
   broken by ESPN's order (the playoff result): every playoff entrant gets its own place, so a three-way playoff
@@ -481,9 +482,9 @@ It matches the event's competitors beside its same-day siblings (see [Golfer mat
 guess a sibling's full name claims is paid to nobody, as an unlinked finalize importing both scores it.
 Only competitors with a round score recorded are placed, tied and paid; the rest have no projected finish and
 are listed after them with no position or score. An event nobody has teed off pays nothing and leaves `live` unset,
-but the weekly report still shows its field as the leaderboard and sets `awaiting_tee_off`, even before ESPN lists
+but the weekly report still shows its field as the leaderboard and sets `awaitingTeeOff`, even before ESPN lists
 a field; the UI shows the pre-start phase on that flag alone. Finalize imports the whole field either way.
-Before tee-off and while live, each team cell sets `in_field` when the selected event credits its golfer and ESPN
+Before tee-off and while live, each team cell sets `inField` when the selected event credits its golfer and ESPN
 lists him active or unknown; a cut, withdrawn or disqualified one drops out. The mark carries no money, so the
 UI lists who is playing before anyone is paid. A prior tournament's preview never marks a cell, and a persisted
 report leaves every cell unmarked.
@@ -491,7 +492,7 @@ Only a view of one tournament is overlaid: its weekly report, or rankings and pl
 Rankings gain a column per live candidate up to that tournament; player rankings fold in the live payouts. The
 All Tournaments rollups (the season report, and rankings without a `through`) count finalized results alone and
 never ask ESPN (CWF-215). A completed tournament selected in the weekly report is never overlaid.
-Each of the three responses carries `live_eligible`, whether a `live=true` request for that selection would
+Each of the three responses carries `liveEligible`, whether a `live=true` request for that selection would
 overlay, decided by the same candidate check the overlay runs; the UI offers its live toggle on that flag alone.
 `live` is true only when an overlay contributed; an ESPN outage, an event nobody has teed off, or a selection with
 no candidate leaves it unset (`false` on player rankings).

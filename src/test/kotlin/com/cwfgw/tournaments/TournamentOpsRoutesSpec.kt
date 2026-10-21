@@ -225,23 +225,23 @@ class TournamentOpsRoutesSpec : FunSpec({
             response.status shouldBe HttpStatusCode.OK
             val finalized = response.body<FinalizedTournament>()
             finalized.tournament.status shouldBe TournamentStatus.Completed
-            response.wireJson().jsonObject.getValue("import_warnings") shouldBe
+            response.wireJson().jsonObject.getValue("importWarnings") shouldBe
                 appJson.parseToJsonElement(
                     """
                     [{
-                      "tournament_id": "${MASTERS_ID.value}",
-                      "tournament_name": "The Masters",
-                      "rostered_surname_twins": [],
-                      "created_golfers": [],
-                      "unmatched_competitors": [],
-                      "contested_competitors": []
+                      "tournamentId": "${MASTERS_ID.value}",
+                      "tournamentName": "The Masters",
+                      "rosteredSurnameTwins": [],
+                      "createdGolfers": [],
+                      "unmatchedCompetitors": [],
+                      "contestedCompetitors": []
                     }]
                     """,
                 )
         }
     }
 
-    test("POST /api/v1/tournaments/{id}/finalize names each import warning beside the tournament, in snake case") {
+    test("POST /api/v1/tournaments/{id}/finalize names each import warning beside the tournament") {
         val masters = tournament(MASTERS_ID, "The Masters", "2026-04-09")
         val field =
             listOf(
@@ -268,21 +268,21 @@ class TournamentOpsRoutesSpec : FunSpec({
             val response = client.post("/api/v1/tournaments/${MASTERS_ID.value}/finalize")
             response.status shouldBe HttpStatusCode.OK
             val wire = response.wireJson().jsonObject
-            wire.keys shouldBe setOf("tournament", "import_warnings")
-            wire.getValue("import_warnings") shouldBe
+            wire.keys shouldBe setOf("tournament", "importWarnings")
+            wire.getValue("importWarnings") shouldBe
                 appJson.parseToJsonElement(
                     """
                     [{
-                      "tournament_id": "${MASTERS_ID.value}",
-                      "tournament_name": "The Masters",
-                      "rostered_surname_twins": [
+                      "tournamentId": "${MASTERS_ID.value}",
+                      "tournamentName": "The Masters",
+                      "rosteredSurnameTwins": [
                         {"created": ${created.wire()}, "rostered": [${NICOLAI_HOJGAARD.wire()}]}
                       ],
-                      "created_golfers": [],
-                      "unmatched_competitors": [{"espn_competitor_id": "5502", "name": ""}],
-                      "contested_competitors": [
+                      "createdGolfers": [],
+                      "unmatchedCompetitors": [{"espnCompetitorId": "5502", "name": ""}],
+                      "contestedCompetitors": [
                         {
-                          "espn_competitor_id": "5501",
+                          "espnCompetitorId": "5501",
                           "name": "Tom Kim",
                           "candidates": [${TOM_KIM.wire()}, ${TOM_KIM_TWIN.wire()}]
                         }

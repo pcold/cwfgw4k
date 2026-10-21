@@ -323,11 +323,11 @@ private fun wirePlayer(
 ): JsonObject =
     buildJsonObject {
         put("name", name)
-        putJsonArray("team_names") { teamNames.forEach { add(it) } }
+        putJsonArray("teamNames") { teamNames.forEach { add(it) } }
     }
 
 private fun wireLeaderboard(body: String): List<JsonObject> =
-    wireReport(body).getValue("live_leaderboard").jsonArray.map { it.jsonObject }
+    wireReport(body).getValue("liveLeaderboard").jsonArray.map { it.jsonObject }
 
 private fun JsonObject.keysOfEach(field: String): Set<String> =
     getValue(field).jsonArray.flatMap { it.jsonObject.keys }.toSet()
@@ -457,16 +457,16 @@ class ReportRoutesSpec : FunSpec({
             val response = client.get("/api/v1/seasons/${SEASON_ID.value}/report")
             val report = appJson.parseToJsonElement(response.bodyAsText()).jsonObject
 
-            report["side_bet_rules"] shouldBe
+            report["sideBetRules"] shouldBe
                 buildJsonObject {
-                    put("amount_per_team", BigDecimal("15.0000"))
+                    put("amountPerTeam", BigDecimal("15.0000"))
                     putJsonArray("rounds") { listOf(5, 6, 7, 8).forEach { add(it) } }
                 }
             val teamsByRound =
-                report.getValue("side_bet_detail").jsonArray.map { round ->
+                report.getValue("sideBetDetail").jsonArray.map { round ->
                     round.jsonObject.getValue("teams").jsonArray.map { it.jsonObject }
                 }
-            teamsByRound[0].map { it["team_name"] to it["outcome"] } shouldContainExactly
+            teamsByRound[0].map { it["teamName"] to it["outcome"] } shouldContainExactly
                 listOf(JsonPrimitive("BROWN") to JsonPrimitive("won"), JsonPrimitive("WOMBLE") to JsonPrimitive("lost"))
             teamsByRound[1].map { it["outcome"] } shouldContainExactly listOf(JsonNull, JsonNull)
         }
@@ -499,9 +499,9 @@ class ReportRoutesSpec : FunSpec({
                 val body = client.get(url).bodyAsText()
 
                 // WOMBLE pays BROWN the 18 its pick earned and the default 15 side bet on round 5.
-                wireTotals(body, "cash_totals") shouldBe mapOf("won" to 33.0, "lost" to -33.0, "net" to 0.0)
-                wireTotals(body, "side_bet_totals") shouldBe mapOf("won" to 15.0, "lost" to -15.0, "net" to 0.0)
-                wireTotals(body, "weekly_totals") shouldBe mapOf("won" to 18.0, "lost" to -18.0, "net" to 0.0)
+                wireTotals(body, "cashTotals") shouldBe mapOf("won" to 33.0, "lost" to -33.0, "net" to 0.0)
+                wireTotals(body, "sideBetTotals") shouldBe mapOf("won" to 15.0, "lost" to -15.0, "net" to 0.0)
+                wireTotals(body, "weeklyTotals") shouldBe mapOf("won" to 18.0, "lost" to -18.0, "net" to 0.0)
             }
         }
 
@@ -517,9 +517,9 @@ class ReportRoutesSpec : FunSpec({
                 )
             apiTest(wombleOutEarnsBrown) { client ->
                 val report = wireReport(client.get(url).bodyAsText())
-                val teamNames = report.getValue("teams").jsonArray.map { it.jsonObject.getValue("team_name") }
-                val weeklyStandings = report.getValue("weekly_standings").jsonArray.map { it.jsonPrimitive.content }
-                val sideBetStandings = report.getValue("side_bet_standings").jsonArray.map { it.jsonPrimitive.content }
+                val teamNames = report.getValue("teams").jsonArray.map { it.jsonObject.getValue("teamName") }
+                val weeklyStandings = report.getValue("weeklyStandings").jsonArray.map { it.jsonPrimitive.content }
+                val sideBetStandings = report.getValue("sideBetStandings").jsonArray.map { it.jsonPrimitive.content }
                 val wombleFirst = listOf(TEAM_B.value.toString(), TEAM_A.value.toString())
 
                 teamNames.map { it.jsonPrimitive.content } shouldContainExactly listOf("BROWN", "WOMBLE")
@@ -565,7 +565,7 @@ class ReportRoutesSpec : FunSpec({
         }
     }
 
-    test("GET /api/v1/seasons/{id}/report sends no finish on a cell whose position_str counts top tens") {
+    test("GET /api/v1/seasons/{id}/report sends no finish on a cell whose positionStr counts top tens") {
         val sharedThird =
             reportFixture(
                 initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
@@ -593,7 +593,7 @@ class ReportRoutesSpec : FunSpec({
             val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report").bodyAsText()
             val scheffler = wireCell(wireReport(body), team = 0, round = 5)
 
-            scheffler["position_str"] shouldBe JsonPrimitive("1x")
+            scheffler["positionStr"] shouldBe JsonPrimitive("1x")
             scheffler["finish"] shouldBe JsonNull
         }
     }
@@ -627,7 +627,7 @@ class ReportRoutesSpec : FunSpec({
             val report = wireReport(body)
             val evenPar = JsonPrimitive(0)
 
-            report.getValue("live_leaderboard").jsonArray.map { it.jsonObject["score_to_par"] } shouldContainExactly
+            report.getValue("liveLeaderboard").jsonArray.map { it.jsonObject["scoreToPar"] } shouldContainExactly
                 listOf(JsonPrimitive(-5), evenPar, evenPar)
         }
     }
@@ -664,7 +664,7 @@ class ReportRoutesSpec : FunSpec({
                     wirePlayer("Xander Schauffele") to JsonPrimitive(false),
                 )
             rows.map { it.keys }.distinct() shouldContainExactly
-                listOf(setOf("position", "score_to_par", "players", "round_scores", "total_strokes", "rostered"))
+                listOf(setOf("position", "scoreToPar", "players", "roundScores", "totalStrokes", "rostered"))
         }
     }
 
@@ -740,9 +740,9 @@ class ReportRoutesSpec : FunSpec({
             val body = client.get(url).bodyAsText()
 
             wireReport(body)["live"] shouldBe JsonNull
-            wireReport(body)["awaiting_tee_off"] shouldBe JsonPrimitive(true)
+            wireReport(body)["awaitingTeeOff"] shouldBe JsonPrimitive(true)
             wireLeaderboard(body).map { it["position"] } shouldContainExactly listOf(JsonPrimitive(1))
-            wireCell(wireReport(body), team = 0, round = 5)["in_field"] shouldBe JsonPrimitive(false)
+            wireCell(wireReport(body), team = 0, round = 5)["inField"] shouldBe JsonPrimitive(false)
         }
     }
 
@@ -764,8 +764,8 @@ class ReportRoutesSpec : FunSpec({
             val body = client.get(url).bodyAsText()
 
             wireReport(body)["live"] shouldBe JsonNull
-            wireReport(body)["awaiting_tee_off"] shouldBe JsonPrimitive(true)
-            wireLeaderboard(body).map { listOf(it["position"], it["score_to_par"]) } shouldContainExactly
+            wireReport(body)["awaitingTeeOff"] shouldBe JsonPrimitive(true)
+            wireLeaderboard(body).map { listOf(it["position"], it["scoreToPar"]) } shouldContainExactly
                 listOf(listOf(JsonNull, JsonNull))
         }
     }
@@ -788,7 +788,7 @@ class ReportRoutesSpec : FunSpec({
             val url = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
             val report = wireReport(client.get(url).bodyAsText())
 
-            listOf(0, 1).map { team -> wireCell(report, team, round = 5)["in_field"] } shouldContainExactly
+            listOf(0, 1).map { team -> wireCell(report, team, round = 5)["inField"] } shouldContainExactly
                 listOf(JsonPrimitive(true), JsonPrimitive(false))
         }
     }
@@ -808,7 +808,7 @@ class ReportRoutesSpec : FunSpec({
             val body = client.get(url).bodyAsText()
 
             wireReport(body)["live"] shouldBe JsonPrimitive(true)
-            wireReport(body)["awaiting_tee_off"] shouldBe JsonPrimitive(false)
+            wireReport(body)["awaitingTeeOff"] shouldBe JsonPrimitive(false)
             wireLeaderboard(body).map { it["position"] } shouldContainExactly listOf(JsonPrimitive(1), JsonNull)
         }
     }
@@ -826,7 +826,7 @@ class ReportRoutesSpec : FunSpec({
         apiTest(configure) { client ->
             val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}").bodyAsText()
 
-            wireReport(body)["awaiting_tee_off"] shouldBe JsonPrimitive(false)
+            wireReport(body)["awaitingTeeOff"] shouldBe JsonPrimitive(false)
         }
     }
 
@@ -836,7 +836,7 @@ class ReportRoutesSpec : FunSpec({
             val report = wireReport(body)
 
             report["finalizable"] shouldBe JsonPrimitive(true)
-            report.keys shouldNotContain "earlier_finalized"
+            report.keys shouldNotContain "earlierFinalized"
         }
     }
 
@@ -891,7 +891,7 @@ class ReportRoutesSpec : FunSpec({
             val body = client.get("/api/v1/seasons/${SEASON_ID.value}/rankings").bodyAsText()
 
             // WOMBLE pays BROWN the 18 its pick earned and the default 15 side bet on round 5.
-            wireTotals(body, "cash_totals") shouldBe mapOf("won" to 33.0, "lost" to -33.0, "net" to 0.0)
+            wireTotals(body, "cashTotals") shouldBe mapOf("won" to 33.0, "lost" to -33.0, "net" to 0.0)
         }
     }
 
@@ -909,17 +909,17 @@ class ReportRoutesSpec : FunSpec({
             val body = client.get("/api/v1/seasons/${SEASON_ID.value}/rankings").bodyAsText()
 
             val (brown, womble) = wireReport(body).getValue("standings").jsonArray.map { it.jsonObject }
-            brown.keys shouldBe setOf("type", "team_id", "tied", "ahead_of")
+            brown.keys shouldBe setOf("type", "teamId", "tied", "aheadOf")
             brown["type"] shouldBe JsonPrimitive("leader")
-            brown["team_id"] shouldBe JsonPrimitive(TEAM_A.value.toString())
+            brown["teamId"] shouldBe JsonPrimitive(TEAM_A.value.toString())
             brown["tied"] shouldBe JsonPrimitive(false)
-            wireGap(brown.getValue("ahead_of")) shouldBe Triple(2, false, 66.0)
-            womble.keys shouldBe setOf("type", "team_id", "tied", "position", "behind", "behind_leader")
+            wireGap(brown.getValue("aheadOf")) shouldBe Triple(2, false, 66.0)
+            womble.keys shouldBe setOf("type", "teamId", "tied", "position", "behind", "behindLeader")
             womble["type"] shouldBe JsonPrimitive("chaser")
-            womble["team_id"] shouldBe JsonPrimitive(TEAM_B.value.toString())
+            womble["teamId"] shouldBe JsonPrimitive(TEAM_B.value.toString())
             womble["position"] shouldBe JsonPrimitive(2)
             wireGap(womble.getValue("behind")) shouldBe Triple(1, false, 66.0)
-            womble.getValue("behind_leader").jsonPrimitive.double shouldBe 66.0
+            womble.getValue("behindLeader").jsonPrimitive.double shouldBe 66.0
         }
     }
 
@@ -1112,13 +1112,13 @@ class ReportRoutesSpec : FunSpec({
             val team = report.getValue("teams").jsonArray.single().jsonObject
 
             report.getValue("tournament").jsonObject.keys shouldNotContain "id"
-            team.keys shouldNotContain "owner_name"
-            team.keysOfEach("cells") shouldNotContainAnyOf listOf("score_to_par", "top_tens", "pair_key")
-            report.keysOfEach("undrafted_top_tens") shouldNotContainAnyOf
-                listOf("position", "score_to_par", "pair_key")
-            report.keysOfEach("standings_order") shouldNotContain "total_cash"
-            rankings.keysOfEach("teams") shouldNotContain "live_weekly"
-            history.keys shouldNotContain "golfer_id"
+            team.keys shouldNotContain "ownerName"
+            team.keysOfEach("cells") shouldNotContainAnyOf listOf("scoreToPar", "topTens", "pairKey")
+            report.keysOfEach("undraftedTopTens") shouldNotContainAnyOf
+                listOf("position", "scoreToPar", "pairKey")
+            report.keysOfEach("standingsOrder") shouldNotContain "totalCash"
+            rankings.keysOfEach("teams") shouldNotContain "liveWeekly"
+            history.keys shouldNotContain "golferId"
         }
     }
 })

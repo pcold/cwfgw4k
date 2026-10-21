@@ -31,9 +31,8 @@ private val log = KotlinLogging.logger {}
 /**
  * Fetches PGA leaderboards from ESPN's public scoreboard API.
  *
- * ESPN's JSON uses camelCase keys, so the implementation owns its own [Json]
- * instance rather than sharing the server's SnakeCase-configured one —
- * exposing the response types internally keeps that boundary clean.
+ * ESPN's JSON is read with the implementation's own [Json], never `appJson`, whose settings are our API's
+ * contract and change without regard to ESPN. Exposing the response types internally keeps that boundary clean.
  *
  * Scope: one responsibility — fetch, deserialize, and parse. HTTP retries
  * and error policy belong to the caller (EspnService).
@@ -312,7 +311,6 @@ internal fun parseCalendar(body: String): List<EspnCalendarEntry> =
             )
         }
 
-// ESPN uses camelCase, unlike our server's SnakeCase global Json.
 private val espnJson: Json =
     Json {
         ignoreUnknownKeys = true

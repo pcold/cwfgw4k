@@ -18,6 +18,8 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -94,7 +96,7 @@ class TournamentRoutesSpec : FunSpec({
 
             response.status shouldBe HttpStatusCode.OK
             response.wireJson() shouldBe
-                Json.parseToJsonElement("""{"type": "unfinalized", "tournament_id": "${masters.id.value}"}""")
+                Json.parseToJsonElement("""{"type": "unfinalized", "tournamentId": "${masters.id.value}"}""")
         }
     }
 
@@ -108,7 +110,7 @@ class TournamentRoutesSpec : FunSpec({
 
             response.status shouldBe HttpStatusCode.OK
             response.wireJson() shouldBe
-                Json.parseToJsonElement("""{"type": "season_finalized", "tournament_id": "${masters.id.value}"}""")
+                Json.parseToJsonElement("""{"type": "season_finalized", "tournamentId": "${masters.id.value}"}""")
         }
     }
 
@@ -145,6 +147,24 @@ class TournamentRoutesSpec : FunSpec({
 
             response.status shouldBe HttpStatusCode.OK
             response.body<Tournament>().status shouldBe TournamentStatus.InProgress
+        }
+    }
+
+    // A raw body, not a serialized request: a client sharing the server's Json would agree with it on any naming.
+    test("PUT /api/v1/tournaments/{id} reads and writes each key as its Kotlin property names it") {
+        val masters = tournament(name = "Masters")
+
+        authenticatedApiTest({ seedTournaments(masters) }) { client ->
+            val response =
+                client.put("/api/v1/tournaments/${masters.id.value}") {
+                    contentType(ContentType.Application.Json)
+                    setBody("""{"purseAmount": 20000000, "status": "in_progress"}""")
+                }
+
+            response.status shouldBe HttpStatusCode.OK
+            val wire = response.wireJson().jsonObject
+            wire["purseAmount"] shouldBe JsonPrimitive(20_000_000)
+            wire["status"] shouldBe JsonPrimitive("in_progress")
         }
     }
 
