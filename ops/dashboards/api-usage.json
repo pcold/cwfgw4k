@@ -101,7 +101,8 @@
                 },
                 "tableDisplayOptions": {}
               }
-            ]
+            ],
+            "metricVisualization": "NUMBER"
           }
         }
       },
@@ -128,7 +129,8 @@
                 },
                 "tableDisplayOptions": {}
               }
-            ]
+            ],
+            "metricVisualization": "NUMBER"
           }
         }
       },

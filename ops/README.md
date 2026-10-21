@@ -146,6 +146,52 @@ gcloud monitoring dashboards create \
   --config-from-file=ops/dashboards/api-usage.json
 ```
 
+Each `create` mints a new dashboard id, so after the first import edits go
+through `update`, which keeps the id and every bookmark to it. The live
+dashboards are:
+
+- `ops/dashboards/operational-health.json` — `projects/368240674777/dashboards/01067d35-ef50-4bef-9ae2-9dfd2780e90f`
+- `ops/dashboards/api-usage.json` — `projects/368240674777/dashboards/cb4c689b-6a0d-4e4b-86de-f3aea0b9688b`
+
+If a dashboard is ever recreated, look its new name up and replace it above:
+
+```bash
+gcloud monitoring dashboards list --project=cwfgw4k --format='value(name,displayName)'
+```
+
+Updating later — set the pair for the dashboard you edited, then check for
+drift before applying. `update` replaces the whole dashboard, so any line the
+diff shows besides your edit (`<` live, `>` repo) is a console change it would
+overwrite; copy that into the repo file first.
+
+```bash
+name=projects/368240674777/dashboards/cb4c689b-6a0d-4e4b-86de-f3aea0b9688b
+file=ops/dashboards/api-usage.json
+
+norm='del(.etag, .name)
+  | walk(if type == "object" then with_entries(select(.value | IN(0, false, "", {}, []) | not)) else . end)'
+diff <(gcloud monitoring dashboards describe "$name" --project=cwfgw4k --format=json | jq -S "$norm") \
+  <(jq -S "$norm" "$file")
+```
+
+The `norm` filter drops zero, `false`, empty-string and empty-collection fields
+from both sides, because the server omits those defaults (and adds `style: {}`
+to a text tile); without it every `xPos: 0` reads as drift.
+
+`update` refuses a config without the live etag, which changes on every write,
+so the repo file carries none; inject it into a temp copy:
+
+```bash
+etag=$(gcloud monitoring dashboards describe "$name" --project=cwfgw4k --format='value(etag)')
+config=$(mktemp)
+jq --arg etag "$etag" '. + {etag: $etag}' "$file" >| "$config"
+gcloud monitoring dashboards update "$name" --project=cwfgw4k --config-from-file="$config"
+rm -f "$config"
+```
+
+`>|` because `mktemp` has already created the file, and zsh's `noclobber`
+refuses a plain `>` onto it.
+
 ### 7. Enable Cloud SQL Query Insights
 
 Turns on per-statement latency + plan capture for the `cwfgw4k-prod`
@@ -164,19 +210,6 @@ gcloud sql instances patch cwfgw4k-prod \
 
 View at:
 <https://console.cloud.google.com/sql/instances/cwfgw4k-prod/insights?project=cwfgw4k>
-
-Updating later:
-
-```bash
-# Find the dashboard name (projects/…/dashboards/…)
-gcloud monitoring dashboards list --project=cwfgw4k \
-  --filter='displayName:"cwfgw4k — Operational Health"' --format='value(name)'
-
-# Apply edits
-gcloud monitoring dashboards update <dashboard-name> \
-  --project=cwfgw4k \
-  --config-from-file=ops/dashboards/operational-health.json
-```
 
 ### 8. Configure alerting policies
 
