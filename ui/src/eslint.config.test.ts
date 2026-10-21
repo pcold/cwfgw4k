@@ -37,9 +37,11 @@ const PLAIN_CAST_LINE = "export const count = JSON.parse('1') as number;";
 const DOM_NARROWING_LINE = "export const found = document.querySelector('input') as HTMLInputElement;";
 const CAST_LINES: readonly string[] = [PLAIN_CAST_LINE, DOM_NARROWING_LINE];
 
-const BOUNDARY_CAST_LINE = 'export function read<T>(parsed: unknown): T { return parsed as T; }';
+const BOUNDARY_CAST_LINE = 'export function decodeJson<T>(parsed: unknown): T { return parsed as T; }';
 const CLIENT_BOUNDARY_LINES: readonly string[] = [BOUNDARY_CAST_LINE];
 const OTHER_GENERIC_CAST_LINE = 'export function decode<T>(raw: unknown): T { return raw as T; }';
+const UNANCHORED_BOUNDARY_LINE = 'export function read<T>(parsed: unknown): T { return parsed as T; }';
+const OTHER_CLIENT_CAST_LINES: readonly string[] = [OTHER_GENERIC_CAST_LINE, UNANCHORED_BOUNDARY_LINE];
 
 const CONST_ASSERTION_LINE = "export const modes = ['live', 'final'] as const;";
 
@@ -183,12 +185,10 @@ describe('the `as` ban in eslint.config.js', () => {
     expect(reportedLines(messages, 'no-restricted-syntax', CLIENT_BOUNDARY_LINES)).toEqual([]);
   });
 
-  it('refuses the api client a cast to T of anything but `parsed`', async () => {
-    const messages = await lintFixture([OTHER_GENERIC_CAST_LINE], CLIENT_FILE);
+  it('refuses the api client any cast to T but the one in decodeJson', async () => {
+    const messages = await lintFixture(OTHER_CLIENT_CAST_LINES, CLIENT_FILE);
 
-    expect(reportedLines(messages, 'no-restricted-syntax', [OTHER_GENERIC_CAST_LINE])).toEqual([
-      OTHER_GENERIC_CAST_LINE,
-    ]);
+    expect(reportedLines(messages, 'no-restricted-syntax', OTHER_CLIENT_CAST_LINES)).toEqual(OTHER_CLIENT_CAST_LINES);
   });
 
   it('keeps that boundary to the api client', async () => {
