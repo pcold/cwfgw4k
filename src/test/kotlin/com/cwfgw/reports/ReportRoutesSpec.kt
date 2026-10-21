@@ -727,6 +727,7 @@ class ReportRoutesSpec : FunSpec({
             wireReport(body)["live"] shouldBe JsonNull
             wireReport(body)["awaiting_tee_off"] shouldBe JsonPrimitive(true)
             wireLeaderboard(body).map { it["position"] } shouldContainExactly listOf(JsonPrimitive(1))
+            wireCell(wireReport(body), team = 0, round = 5)["in_field"] shouldBe JsonPrimitive(false)
         }
     }
 
