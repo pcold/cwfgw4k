@@ -306,6 +306,7 @@ describe('App my team', () => {
 
     const myTeam = await within(mainNavigation()).findByRole('button', { name: 'My team: WOMBLE, change' });
     expect(myTeam).toHaveTextContent(/^My team$/);
+    expect(myTeam).toHaveAttribute('aria-haspopup', 'dialog');
     await user.click(myTeam);
 
     expect(await picker()).toBeInTheDocument();

@@ -56,6 +56,7 @@ function DesktopMyTeamButton(): ReactNode {
     <button
       type="button"
       aria-label={myTeamNavName(choice)}
+      aria-haspopup="dialog"
       onClick={changeTeam}
       className={desktopLinkClass({ isActive: false })}
     >

@@ -68,7 +68,10 @@ describe('MoreSheet', () => {
     window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"WOMBLE"}');
     const sheet = renderSheet();
 
-    expect(await within(sheet).findByRole('button', { name: 'My team: WOMBLE · Change' })).toBeInTheDocument();
+    expect(await within(sheet).findByRole('button', { name: 'My team: WOMBLE · Change' })).toHaveAttribute(
+      'aria-haspopup',
+      'dialog',
+    );
   });
 
   it('offers a choice on the My team row to a visitor who is just browsing', async () => {

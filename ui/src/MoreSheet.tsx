@@ -56,6 +56,7 @@ export default function MoreSheet({ id, onClose }: MoreSheetProps): ReactNode {
             <li>
               <button
                 type="button"
+                aria-haspopup="dialog"
                 className={`w-full text-left ${rowClass({ isActive: false })}`}
                 onClick={() => {
                   changeTeam();
