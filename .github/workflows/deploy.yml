@@ -140,7 +140,7 @@ jobs:
           # DB_JDBC_URL uses the Cloud SQL socket factory; the
           # postgres-socket-factory dependency in build.gradle.kts is what makes
           # that URL resolve.
-          jdbc_url="jdbc:postgresql:///${DB_NAME}?cloudSqlInstance=${sql_connection}"
+          jdbc_url="jdbc:postgresql:///${DB_NAME}?cloudSqlInstance=${sql_connection}&cloudSqlRefreshStrategy=lazy"
           jdbc_url="${jdbc_url}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
           env_vars="DB_JDBC_URL=${jdbc_url},DB_USER=${DB_USER},DB_SCHEMA=${DB_SCHEMA},DB_POOL=15"
           env_vars="${env_vars},AUTH_ADMIN_USERNAME=admin"

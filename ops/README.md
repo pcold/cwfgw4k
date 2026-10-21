@@ -330,6 +330,10 @@ runs only on an API request. An idle instance should log
 and its first canary opens a fresh connection on request CPU: no
 `cwfgw4k.db.slow_acquire` line, no Broken Pipe.
 
+For the same reason every Cloud SQL JDBC URL sets `cloudSqlRefreshStrategy=lazy`:
+the connector's default refreshes its certificate on a background thread, which
+throttling starves. Any other value silently falls back to that default.
+
 ```bash
 # Default: 30-min idle, 5-min canary window @ 30s interval.
 ops/load-test/soak.sh
