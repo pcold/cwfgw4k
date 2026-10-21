@@ -444,7 +444,7 @@ function ScoreboardView({ report, myTeamName, finalizeSlot, onGolferClick }: Pro
   return (
     <section className="space-y-6">
       <div
-        className={`px-4 py-2 border rounded text-sm flex items-center justify-between gap-3 ${banner.className}`}
+        className={`px-4 py-2 border rounded text-sm flex flex-wrap items-center justify-between gap-3 ${banner.className}`}
       >
         <span>{banner.text}</span>
         {phase !== 'finalized' && finalizeSlot ? finalizeSlot : null}
