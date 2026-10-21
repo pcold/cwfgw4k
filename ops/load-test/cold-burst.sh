@@ -142,7 +142,7 @@ gcloud sql instances clone "$PROD_SQL" "$STAGING_SQL" --project="$PROJECT"
 
 echo
 echo "==> Deploying $STAGING_SERVICE (min-instances=0, ${MEMORY}/${CPU}vCPU)..."
-DB_JDBC_URL="jdbc:postgresql:///cwfgw4k?cloudSqlInstance=${PROJECT}:${REGION}:${STAGING_SQL}&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
+DB_JDBC_URL="jdbc:postgresql:///cwfgw4k?cloudSqlInstance=${PROJECT}:${REGION}:${STAGING_SQL}&cloudSqlRefreshStrategy=lazy&socketFactory=com.google.cloud.sql.postgres.SocketFactory"
 
 gcloud run deploy "$STAGING_SERVICE" \
   --image="$IMAGE_REPO" \
