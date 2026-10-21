@@ -4,6 +4,7 @@ import com.cwfgw.testing.apiTest
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
+import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -38,6 +39,8 @@ class StaticRoutesSpec : FunSpec({
             val response = client.get("/assets/missing.js")
 
             response.status shouldBe HttpStatusCode.NotFound
+            response.contentType()?.withoutParameters() shouldBe ContentType.Application.Json
+            response.body<ErrorBody>().error shouldBe "asset not found"
         }
     }
 
@@ -56,6 +59,8 @@ class StaticRoutesSpec : FunSpec({
             val response = client.get("/api/v1/nonexistent")
 
             response.status shouldBe HttpStatusCode.NotFound
+            response.contentType()?.withoutParameters() shouldBe ContentType.Application.Json
+            response.body<ErrorBody>().error shouldBe "route not found"
         }
     }
 })

@@ -2,14 +2,14 @@ package com.cwfgw.http
 
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.response.header
-import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingContext
 import io.ktor.server.routing.get
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private const val IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
 private const val INDEX_CACHE = "no-cache"
@@ -38,45 +38,38 @@ fun Route.staticRoutes() {
  * being masked by the SPA fallback.
  */
 fun Route.spaFallback() {
-    get("{path...}") {
-        val segments = call.parameters.getAll("path").orEmpty()
-        if (segments.firstOrNull() == "api") {
-            call.respond(HttpStatusCode.NotFound)
-        } else {
-            serveIndex()
-        }
-    }
+    get("{path...}") { serveShellOrApiMiss() }
+}
+
+private suspend fun RoutingContext.serveShellOrApiMiss() {
+    val segments = call.parameters.getAll("path").orEmpty()
+    if (segments.firstOrNull() == "api") throw DomainError.NotFound("route not found")
+    serveIndex()
 }
 
 private suspend fun RoutingContext.serveIndex() {
-    val bytes = readClasspathBytes(INDEX_RESOURCE)
-    if (bytes == null) {
-        call.respond(HttpStatusCode.NotFound)
-        return
-    }
+    val bytes = readClasspathBytes(INDEX_RESOURCE) ?: throw DomainError.NotFound("index not found")
     call.response.header(HttpHeaders.CacheControl, INDEX_CACHE)
     call.respondBytes(bytes, ContentType.Text.Html)
 }
 
 private suspend fun RoutingContext.serveBundle(resourceDir: String) {
-    val file = call.parameters["file"]
-    if (file == null) {
-        call.respond(HttpStatusCode.NotFound)
-        return
-    }
-    val bytes = readClasspathBytes("$resourceDir/$file")
-    if (bytes == null) {
-        call.respond(HttpStatusCode.NotFound)
-        return
-    }
+    val file = call.parameters["file"] ?: throw DomainError.NotFound("asset not found")
+    val bytes = readClasspathBytes("$resourceDir/$file") ?: throw DomainError.NotFound("asset not found")
     call.response.header(HttpHeaders.CacheControl, IMMUTABLE_CACHE)
     call.respondBytes(bytes, contentTypeFor(file))
 }
 
-private fun readClasspathBytes(path: String): ByteArray? {
-    val classLoader = Thread.currentThread().contextClassLoader ?: StaticRoutesMarker::class.java.classLoader
-    return classLoader.getResourceAsStream(path)?.use { stream -> stream.readAllBytes() }
-}
+/**
+ * This file's own loader, not the thread's context loader, which on [Dispatchers.IO] belongs to
+ * whichever pool thread runs the read rather than to the request.
+ */
+private suspend fun readClasspathBytes(path: String): ByteArray? =
+    withContext(Dispatchers.IO) {
+        StaticRoutesMarker::class.java.classLoader
+            .getResourceAsStream(path)
+            ?.use { stream -> stream.readAllBytes() }
+    }
 
 private object StaticRoutesMarker
 
