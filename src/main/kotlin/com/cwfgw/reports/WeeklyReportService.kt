@@ -27,6 +27,7 @@ import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentResult
 import com.cwfgw.tournaments.TournamentStatus
 import com.cwfgw.tournaments.isLiveOverlayCandidate
+import com.cwfgw.tournaments.liveOverlayWindowEnd
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -371,16 +372,19 @@ class WeeklyReportService(
             TournamentFilter(seasonId = seasonId, statuses = setOf(TournamentStatus.Completed)),
         )
 
-    // [hasLiveCandidate] reads with this too, so the route's cache bypass applies the overlays' own rule. The
-    // look-ahead stays in [isLiveOverlayCandidate], which also judges a selected tournament alone: a `startsBefore`
-    // copy of it here could drift from that and cache a live body.
+    // [hasLiveCandidate] reads with this too, so the route's cache bypass applies the overlays' own rule.
     context(ctx: TransactionContext)
     private fun findLiveOverlayCandidatesIn(
         seasonId: SeasonId,
         today: LocalDate,
     ): List<Tournament> =
-        tournamentRepository.findAll(TournamentFilter(seasonId = seasonId, statuses = UNFINALIZED))
-            .filter { it.isLiveOverlayCandidate(today) }
+        tournamentRepository.findAll(
+            TournamentFilter(
+                seasonId = seasonId,
+                statuses = UNFINALIZED,
+                startsBefore = liveOverlayWindowEnd(today),
+            ),
+        )
 
     /**
      * Every live-overlay candidate strictly before [through], plus [through] itself when it is one, in play order
