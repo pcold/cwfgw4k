@@ -19,10 +19,13 @@ import com.cwfgw.leagues.LeagueId
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentStatus
+import com.cwfgw.tournaments.UpdateTournamentRequest
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.runBlocking
+import java.math.BigDecimal
 
 private val log = KotlinLogging.logger {}
 
@@ -173,7 +176,7 @@ private fun pickAssignment(
  * match). Skips silently when no patterns are configured for the season.
  */
 private suspend fun applyMajorMultipliers(
-    created: List<com.cwfgw.tournaments.Tournament>,
+    created: List<Tournament>,
     patterns: List<String>,
     services: AppServices,
 ) {
@@ -187,7 +190,7 @@ private suspend fun applyMajorMultipliers(
     for (tournament in majors) {
         services.tournamentService.update(
             tournament.id,
-            com.cwfgw.tournaments.UpdateTournamentRequest(payoutMultiplier = java.math.BigDecimal("2")),
+            UpdateTournamentRequest(payoutMultiplier = BigDecimal("2")),
         )
         log.info { "Marked '${tournament.name}' as 2x major" }
     }
