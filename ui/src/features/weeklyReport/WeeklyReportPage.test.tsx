@@ -196,7 +196,7 @@ describe('WeeklyReportPage', () => {
   });
 
   it("defaults to the server's current tournament, live, and switches to the finalized season report at All Tournaments", async () => {
-    const inProgress = { ...tournament, status: 'in_progress' };
+    const inProgress: Tournament = { ...tournament, status: 'in_progress' };
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([inProgress]);
@@ -238,8 +238,8 @@ describe('WeeklyReportPage', () => {
   });
 
   it('opens on the tournament the server names, not the first unfinalized one in the list', async () => {
-    const first = { ...tournament, status: 'upcoming' };
-    const second = {
+    const first: Tournament = { ...tournament, status: 'upcoming' };
+    const second: Tournament = {
       ...tournament,
       id: 'tn-2',
       name: 'Second Open',
@@ -426,7 +426,7 @@ describe('WeeklyReportPage', () => {
     { state: 'LIVE', overrides: { live: true, liveEligible: true }, status: 'in_progress', chip: 'Live' },
     { state: 'FINAL', overrides: {}, status: 'completed', chip: 'Final' },
     { state: 'UPCOMING', overrides: {}, status: 'upcoming', chip: 'Upcoming' },
-  ])('chips a $status tournament $state in the title row', async ({ overrides, status, chip }) => {
+  ] as const)('chips a $status tournament $state in the title row', async ({ overrides, status, chip }) => {
     const event = { ...tournament, status };
     const report = buildReport('Sample Open', 'tn-1');
     leaguesMock.mockResolvedValue([league]);

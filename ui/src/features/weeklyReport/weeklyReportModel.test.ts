@@ -5,6 +5,7 @@ import type {
   ReportSideBetTeamEntry,
   ReportTeamColumn,
   SideBetOutcome,
+  TournamentStatus,
   WeeklyReport,
 } from '@/shared/api/types';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
@@ -19,7 +20,7 @@ import {
   topTensLabel,
 } from './weeklyReportModel';
 
-function reportScoped(scope: ReportScope, status: string | null = null): WeeklyReport {
+function reportScoped(scope: ReportScope, status: TournamentStatus | null = null): WeeklyReport {
   return {
     scope,
     tournament: {

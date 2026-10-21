@@ -67,6 +67,7 @@ import type {
   TournamentCompetitorListing,
   TournamentCompetitorView,
   TournamentPlayerOverride,
+  TournamentStatus,
   UndraftedGolfer,
   UnmatchedCompetitor,
   UpsertTournamentPlayerOverrideRequest,
@@ -606,6 +607,12 @@ export interface WireContract extends Record<string, true> {
     | 'week'
     | 'isTeamEvent'
     | 'createdAt'
+  >;
+  'com.cwfgw.tournaments.TournamentStatus': ExactValues<
+    TournamentStatus,
+    | 'upcoming'
+    | 'in_progress'
+    | 'completed'
   >;
   'com.cwfgw.users.User': ExactFields<
     User,

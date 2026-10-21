@@ -37,8 +37,6 @@ internal val UNMODELLED_WIRE_TYPES: Set<String> =
         "com.cwfgw.http.RefusalBody",
         // The UI never calls `/health`; it is the load balancer's.
         "com.cwfgw.health.HealthResponse",
-        // `types.ts` reads it as a plain `string`; the snapshot still pins its values.
-        "com.cwfgw.tournaments.TournamentStatus",
     )
 
 /**

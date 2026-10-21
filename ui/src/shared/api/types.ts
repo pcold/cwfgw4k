@@ -1,8 +1,11 @@
+/** @see TournamentStatusSerializer — the wire contract pins these values, so a new one fails `tsc`. */
+export type TournamentStatus = 'upcoming' | 'in_progress' | 'completed';
+
 export interface ReportTournamentInfo {
   name: string | null;
   startDate: string | null;
   endDate: string | null;
-  status: string | null;
+  status: TournamentStatus | null;
   payoutMultiplier: number;
   week: string | null;
 }
@@ -234,7 +237,7 @@ export interface Tournament {
   startDate: string;
   endDate: string;
   courseName: string | null;
-  status: string;
+  status: TournamentStatus;
   purseAmount: number | null;
   payoutMultiplier: number;
   week: string | null;
