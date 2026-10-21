@@ -379,7 +379,7 @@ class WeeklyReportService(
         seasonId: SeasonId,
         today: LocalDate,
     ): List<Tournament> =
-        tournamentRepository.findAll(TournamentFilter(seasonId = seasonId, statuses = NOT_COMPLETED))
+        tournamentRepository.findAll(TournamentFilter(seasonId = seasonId, statuses = UNFINALIZED))
             .filter { it.isLiveOverlayCandidate(today) }
 
     /**
@@ -1145,8 +1145,7 @@ private fun List<FantasyScore>.sumPoints(): BigDecimal = fold(BigDecimal.ZERO) {
 private const val ROUNDS_PER_REPORT = 8
 private const val TOP_TEN_CUTOFF = 10
 
-// Not Completed, rather than InProgress alone: an Upcoming event inside the look-ahead window is a candidate too.
-private val NOT_COMPLETED: Set<TournamentStatus> = TournamentStatus.entries.toSet() - TournamentStatus.Completed
+private val UNFINALIZED: Set<TournamentStatus> = setOf(TournamentStatus.Upcoming, TournamentStatus.InProgress)
 
 // Sentinel position fed to [PayoutTable.tieSplitPayout] when the result has no position —
 // past the payout zone so the table returns 0.

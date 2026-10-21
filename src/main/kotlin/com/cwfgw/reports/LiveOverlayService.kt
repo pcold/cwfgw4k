@@ -29,8 +29,10 @@ private val log = KotlinLogging.logger {}
  */
 class LiveOverlayService(private val espnService: EspnService) {
     /**
-     * Read in the report's own snapshot, so the two cannot disagree over a finalize. The overlays below take what this
-     * returns, rather than reading it themselves, so no transaction spans their ESPN calls.
+     * The overlays below take what this returns rather than reading it themselves, so no transaction spans their ESPN
+     * calls.
+     *
+     * @see EspnService.loadLivePreviewContextIn
      */
     context(ctx: TransactionContext)
     internal fun loadLivePreviewContextIn(
