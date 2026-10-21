@@ -21,6 +21,7 @@ import io.kotest.matchers.string.shouldContain
 import io.ktor.client.call.body
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -485,4 +486,4 @@ class AdminRoutesSpec : FunSpec({
     }
 })
 
-private suspend fun io.ktor.client.statement.HttpResponse.bodyAsString(): String = body()
+private suspend fun HttpResponse.bodyAsString(): String = body()

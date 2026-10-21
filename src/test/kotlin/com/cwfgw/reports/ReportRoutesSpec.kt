@@ -48,6 +48,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -213,7 +214,7 @@ private fun reportFixture(
     {
         val seasonRepo = FakeSeasonRepository(idFactory = { SEASON_ID })
         if (seedSeason) {
-            kotlinx.coroutines.runBlocking {
+            runBlocking {
                 with(noopTransactionContext) {
                     seasonRepo.create(
                         CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),
@@ -223,7 +224,7 @@ private fun reportFixture(
         }
         val tournamentRepo = FakeTournamentRepository(initial = initialTournaments)
         initialResults.forEach { result ->
-            kotlinx.coroutines.runBlocking {
+            runBlocking {
                 with(noopTransactionContext) {
                     tournamentRepo.upsertResult(result.tournamentId, asUpsertRequest(result))
                 }

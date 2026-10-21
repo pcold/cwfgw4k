@@ -4,12 +4,13 @@ import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
 import com.cwfgw.testing.fakeTableOf
 import com.cwfgw.testing.uniqueViolation
+import java.time.Instant
 import java.util.UUID
 
 class FakeUserRepository(
     initial: List<UserWithHash> = emptyList(),
     private val idFactory: () -> UserId = { UserId(UUID.randomUUID()) },
-    private val now: () -> java.time.Instant = java.time.Instant::now,
+    private val now: () -> Instant = Instant::now,
 ) : UserRepository {
     private val store = fakeTableOf<UserId, UserWithHash>()
 

@@ -20,6 +20,7 @@ import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.teams.FakeTeamRepository
+import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamService
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
@@ -32,6 +33,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.runBlocking
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -129,7 +131,7 @@ private fun fantasyScore(
     FantasyScore(
         id = FantasyScoreId(UUID.randomUUID()),
         seasonId = SEASON_ID,
-        teamId = com.cwfgw.teams.TeamId(UUID.fromString("00000000-0000-0000-0000-000000000$teamHex")),
+        teamId = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000$teamHex")),
         tournamentId = tournamentId,
         golferId = GolferId(UUID.randomUUID()),
         points = points,
@@ -160,7 +162,7 @@ private class Fixture(
 
     init {
         if (seedSeason) {
-            kotlinx.coroutines.runBlocking {
+            runBlocking {
                 with(noopTransactionContext) {
 
                     seasonRepo.create(
@@ -170,7 +172,7 @@ private class Fixture(
             }
         }
         initialResults.forEach { result ->
-            kotlinx.coroutines.runBlocking {
+            runBlocking {
                 with(noopTransactionContext) {
                     tournamentRepo.upsertResult(result.tournamentId, asUpsertRequest(result))
                 }

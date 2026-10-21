@@ -27,6 +27,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import org.jooq.exception.DataAccessException
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.util.UUID
 
 private fun seasonRequest(leagueId: LeagueId): CreateSeasonRequest =
@@ -406,8 +407,8 @@ class SeasonRepositorySpec : FunSpec({
                     NewTournament(
                         name = "Sony Open",
                         seasonId = season.id,
-                        startDate = java.time.LocalDate.parse("2026-01-15"),
-                        endDate = java.time.LocalDate.parse("2026-01-18"),
+                        startDate = LocalDate.parse("2026-01-15"),
+                        endDate = LocalDate.parse("2026-01-18"),
                     ),
                 )
                 val golfer = golferRepo.create(CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler"))
