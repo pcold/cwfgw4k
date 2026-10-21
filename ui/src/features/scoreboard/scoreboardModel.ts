@@ -15,12 +15,18 @@ export interface ScoreboardGolfer {
   ownershipPct: number;
 }
 
+export interface FieldGolfer {
+  golferId: string;
+  golferName: string;
+}
+
 export interface ScoreboardTeam {
   teamId: string;
   teamName: string;
   topTenEarnings: number;
   weeklyTotal: number;
   golferScores: ScoreboardGolfer[];
+  fieldGolfers: FieldGolfer[];
 }
 
 type PaidCell = ReportCell & { golferName: string };
@@ -41,6 +47,20 @@ function golferScoresFor(team: ReportTeamColumn): ScoreboardGolfer[] {
   }));
 }
 
+type InFieldCell = ReportCell & { golferId: string; golferName: string };
+
+function isInField(cell: ReportCell): cell is InFieldCell {
+  return cell.inField && cell.golferId !== null && cell.golferName !== null;
+}
+
+function fieldGolfersFor(team: ReportTeamColumn): FieldGolfer[] {
+  return team.cells.filter(isInField).map((cell) => ({ golferId: cell.golferId, golferName: cell.golferName }));
+}
+
+export function playingLabel(team: ScoreboardTeam): string {
+  return `${team.fieldGolfers.length} playing`;
+}
+
 function scoreboardTeamFor(team: ReportTeamColumn): ScoreboardTeam {
   return {
     teamId: team.teamId,
@@ -48,6 +68,7 @@ function scoreboardTeamFor(team: ReportTeamColumn): ScoreboardTeam {
     topTenEarnings: team.topTenEarnings,
     weeklyTotal: team.weeklyTotal,
     golferScores: golferScoresFor(team),
+    fieldGolfers: fieldGolfersFor(team),
   };
 }
 
@@ -96,6 +117,22 @@ export function formatScoreToPar(score: number | null): string {
   if (score === null) return '—';
   if (score === 0) return 'E';
   return score > 0 ? `+${score}` : `${score}`;
+}
+
+const ROUND_SEPARATOR = ' · ';
+
+export function leaderboardRoundLine(entry: LiveLeaderboardEntry): string | null {
+  const rounds = entry.roundScores.map((strokes, index) => `R${index + 1} ${strokes}`);
+  const total = entry.totalStrokes === null ? [] : [`Tot ${entry.totalStrokes}`];
+  const parts = [...rounds, ...total];
+  return parts.length === 0 ? null : parts.join(ROUND_SEPARATOR);
+}
+
+export type ScoreboardPhase = 'finalized' | 'preStart' | 'live';
+
+export function scoreboardPhase(report: WeeklyReport): ScoreboardPhase {
+  if (report.tournament.status === 'completed') return 'finalized';
+  return report.awaitingTeeOff ? 'preStart' : 'live';
 }
 
 export function scoreboardSubtitle(tournament: ReportTournamentInfo): string {

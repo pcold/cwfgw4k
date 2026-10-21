@@ -6,9 +6,12 @@ import {
   formatScoreToPar,
   hasPlayerOn,
   hasUndraftedPlayer,
+  leaderboardRoundLine,
   leaderboardTeamChips,
   leaderboardTeamNames,
   playerNames,
+  playingLabel,
+  scoreboardPhase,
   scoreboardSubtitle,
   scoreboardTeams,
 } from './scoreboardModel';
@@ -24,6 +27,7 @@ function row(overrides: Partial<ReportCell> = {}): ReportCell {
     ownershipPct: 100,
     seasonEarnings: 100,
     seasonTopTens: 1,
+    inField: false,
     ...overrides,
   };
 }
@@ -64,6 +68,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     standingsOrder: [],
     live: false,
     liveEligible: false,
+    awaitingTeeOff: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
@@ -152,6 +157,48 @@ describe('scoreboardTeams', () => {
   });
 });
 
+describe('fieldGolfers', () => {
+  it('lists the cells the server marked in the field, in cell order, paid or not', () => {
+    const teams = scoreboardTeams(
+      report({
+        teams: [
+          teamColumn({
+            cells: [
+              row({ round: 1, golferId: 'g-1', golferName: 'Alpha', inField: true, earnings: 0 }),
+              row({ round: 2, golferId: 'g-2', golferName: 'Beta', inField: false, earnings: 0 }),
+              row({ round: 3, golferId: 'g-3', golferName: 'Gamma', inField: true, earnings: 12 }),
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(nth(teams, 0).fieldGolfers).toEqual([
+      { golferId: 'g-1', golferName: 'Alpha' },
+      { golferId: 'g-3', golferName: 'Gamma' },
+    ]);
+  });
+
+  it('leaves an in-field cell with no golfer out', () => {
+    const teams = scoreboardTeams(
+      report({ teams: [teamColumn({ cells: [row({ golferId: null, golferName: null, inField: true })] })] }),
+    );
+    expect(nth(teams, 0).fieldGolfers).toEqual([]);
+  });
+
+  it('counts the golfers in the field, none included', () => {
+    const teams = scoreboardTeams(
+      report({
+        teams: [
+          teamColumn({ teamId: 't-1', cells: [row({ inField: true }), row({ round: 2, golferId: 'g-2', inField: true })] }),
+          teamColumn({ teamId: 't-2', cells: [row({ inField: false })] }),
+        ],
+        weeklyStandings: ['t-1', 't-2'],
+      }),
+    );
+    expect(teams.map(playingLabel)).toEqual(['2 playing', '0 playing']);
+  });
+});
+
 describe('leaderboard labels', () => {
   const pair = makeLeaderboardEntry({
     players: [
@@ -233,6 +280,42 @@ describe('formatScoreToPar', () => {
   });
   it('passes negative values through', () => {
     expect(formatScoreToPar(-7)).toBe('-7');
+  });
+});
+
+describe('leaderboardRoundLine', () => {
+  it('is null for a competitor yet to tee off, with no rounds and no total', () => {
+    expect(leaderboardRoundLine(makeLeaderboardEntry({ roundScores: [], totalStrokes: null }))).toBeNull();
+  });
+  it('lists the rounds played so far, in order, then the total', () => {
+    expect(leaderboardRoundLine(makeLeaderboardEntry({ roundScores: [68, 70], totalStrokes: 138 }))).toBe(
+      'R1 68 · R2 70 · Tot 138',
+    );
+  });
+  it('lists all four rounds and the total', () => {
+    expect(leaderboardRoundLine(makeLeaderboardEntry({ roundScores: [64, 68, 70, 66], totalStrokes: 268 }))).toBe(
+      'R1 64 · R2 68 · R3 70 · R4 66 · Tot 268',
+    );
+  });
+  it('leaves Tot off when the server sent no total', () => {
+    expect(leaderboardRoundLine(makeLeaderboardEntry({ roundScores: [71], totalStrokes: null }))).toBe('R1 71');
+  });
+});
+
+describe('scoreboardPhase', () => {
+  const inProgress = { ...report().tournament, status: 'in_progress' } as const;
+  const unplaced = makeLeaderboardEntry({ position: null, scoreToPar: null });
+
+  it('is finalized for a completed tournament, whatever the server says of tee-off', () => {
+    expect(scoreboardPhase(report({ awaitingTeeOff: true }))).toBe('finalized');
+  });
+  it('is pre-start when the server says it is awaiting tee-off, with or without a field', () => {
+    const awaiting = { tournament: inProgress, awaitingTeeOff: true };
+    expect(scoreboardPhase(report(awaiting))).toBe('preStart');
+    expect(scoreboardPhase(report({ ...awaiting, liveLeaderboard: [unplaced] }))).toBe('preStart');
+  });
+  it('is live unless the server says it is awaiting tee-off, even with nobody placed', () => {
+    expect(scoreboardPhase(report({ tournament: inProgress, liveLeaderboard: [unplaced, unplaced] }))).toBe('live');
   });
 });
 

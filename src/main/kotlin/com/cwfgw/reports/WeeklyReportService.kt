@@ -569,7 +569,7 @@ internal fun buildPersistedLeaderboard(
         .map { slot ->
             val lead = slot.lead
             LiveLeaderboardEntry(
-                position = lead.position ?: 0,
+                position = lead.position,
                 scoreToPar = lead.scoreToPar,
                 players =
                     slot.members.map { result ->
@@ -766,6 +766,7 @@ private fun buildSeasonCells(
             ownershipPct = entry.ownershipPct,
             seasonEarnings = earnings,
             seasonTopTens = topTens,
+            inField = false,
         )
     }
 
@@ -986,6 +987,7 @@ private fun cellForEntry(
         ownershipPct = entry.ownershipPct,
         seasonEarnings = cumulativeEarnings,
         seasonTopTens = cumulativeTopTens,
+        inField = false,
     )
 }
 
@@ -1000,6 +1002,7 @@ private fun emptyCell(round: Int): ReportCell =
         ownershipPct = BigDecimal(100),
         seasonEarnings = BigDecimal.ZERO,
         seasonTopTens = 0,
+        inField = false,
     )
 
 internal fun buildUndraftedForTournament(

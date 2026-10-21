@@ -20,6 +20,7 @@ private val TEAM_B_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-00000000
 private val TEAM_C_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c03"))
 private val SCOTTIE_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d01"))
 private val RORY_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d02"))
+private val XANDER_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d03"))
 
 private val DEFAULT_RULES =
     SeasonRules(
@@ -34,12 +35,14 @@ private fun preview(
     leaderboard: List<PreviewLeaderboardEntry> = emptyList(),
     multiplier: BigDecimal = BigDecimal.ONE,
     isTeamEvent: Boolean = false,
+    fieldGolferIds: Set<GolferId> = emptySet(),
 ): EspnLivePreview =
     EspnLivePreview(
         espnName = "The Masters",
         payoutMultiplier = multiplier,
         teams = teams,
         leaderboard = leaderboard,
+        fieldGolferIds = fieldGolferIds,
         isTeamEvent = isTeamEvent,
     )
 
@@ -68,7 +71,7 @@ private fun previewGolfer(
 
 private fun leaderboardEntry(
     name: String,
-    position: Int,
+    position: Int?,
     teamNames: List<String> = emptyList(),
     scoreToPar: Int? = -10,
     pairKey: String? = null,
@@ -98,6 +101,7 @@ private fun cell(
         ownershipPct = BigDecimal(100),
         seasonEarnings = seasonEarnings,
         seasonTopTens = seasonTopTens,
+        inField = false,
     )
 
 private fun teamColumn(
@@ -455,7 +459,55 @@ class LiveOverlayServiceSpec : FunSpec({
         a.weeklyTotal.add(b.weeklyTotal).compareTo(BigDecimal.ZERO) shouldBe 0
     }
 
+    test("mergeLiveData marks every cell whose golfer is in the field, paid or yet to tee off, and pays the paid") {
+        val base =
+            emptyReport(
+                listOf(
+                    teamColumn(
+                        TEAM_A_ID,
+                        cells =
+                            listOf(
+                                cell(round = 1, golferId = SCOTTIE_ID),
+                                cell(round = 2, golferId = RORY_ID),
+                                cell(round = 3, golferId = XANDER_ID),
+                                cell(round = 4),
+                            ),
+                    ),
+                ),
+            )
+        val live =
+            preview(
+                teams =
+                    listOf(
+                        previewTeam(
+                            teamId = TEAM_A_ID,
+                            golfers = listOf(previewGolfer(SCOTTIE_ID, position = 1, payout = BigDecimal(18))),
+                        ),
+                    ),
+                fieldGolferIds = setOf(SCOTTIE_ID, RORY_ID),
+            )
+
+        val cells = mergeLiveData(base, listOf(live), DEFAULT_RULES).teams.single().cells
+
+        cells.map { it.inField } shouldContainExactly listOf(true, true, false, false)
+        cells.map { it.earnings.toInt() } shouldContainExactly listOf(18, 0, 0, 0)
+    }
+
+    test("mergeLiveData marks cells from the selected preview's field alone") {
+        val base = emptyReport(listOf(teamColumn(TEAM_A_ID, cells = listOf(cell(round = 1, golferId = SCOTTIE_ID)))))
+        val previews = listOf(preview(), preview(fieldGolferIds = setOf(SCOTTIE_ID)))
+
+        mergeLiveData(base, previews, DEFAULT_RULES).teams.single().cells.single().inField shouldBe false
+    }
+
     // ----- overlayPriorLivePreview -----
+
+    test("overlayPriorLivePreview never marks a cell from a prior tournament's field") {
+        val base = emptyReport(listOf(teamColumn(TEAM_A_ID, cells = listOf(cell(round = 1, golferId = SCOTTIE_ID)))))
+        val priorLive = preview(teams = listOf(previewTeam(TEAM_A_ID)), fieldGolferIds = setOf(SCOTTIE_ID))
+
+        overlayPriorLivePreview(base, priorLive, DEFAULT_RULES).teams.single().cells.single().inField shouldBe false
+    }
 
     test("overlayPriorLivePreview bumps previous + seasonEarnings without touching this-tournament earnings") {
         val base =
@@ -588,10 +640,24 @@ class LiveOverlayServiceSpec : FunSpec({
                     ),
             )
 
-        val rendered = buildLiveLeaderboard(live)
+        val rendered = buildLiveLeaderboard(live.leaderboard)
         rendered.map { row -> row.players.map { it.name } } shouldContainExactly
             listOf(listOf("Leader"), listOf("Second"), listOf("Third"))
         rendered.map { it.scoreToPar } shouldContainExactly listOf(-10, 0, -5)
+    }
+
+    test("buildLiveLeaderboard lists the slots yet to tee off after every placed one, in the order given") {
+        val rendered =
+            buildLiveLeaderboard(
+                listOf(
+                    leaderboardEntry("Late Wave", position = null, scoreToPar = null),
+                    leaderboardEntry("Leader", position = 1, scoreToPar = -3),
+                    leaderboardEntry("Later Wave", position = null, scoreToPar = null),
+                ),
+            )
+
+        rendered.map { row -> row.players.single().name to row.position } shouldContainExactly
+            listOf("Leader" to 1, "Late Wave" to null, "Later Wave" to null)
     }
 
     test("buildLiveLeaderboard makes one row of a team event's partners, each with the teams rostering him") {
@@ -606,7 +672,7 @@ class LiveOverlayServiceSpec : FunSpec({
                     ),
             )
 
-        val rendered = buildLiveLeaderboard(live)
+        val rendered = buildLiveLeaderboard(live.leaderboard)
 
         rendered.map { it.players } shouldContainExactly
             listOf(
@@ -616,22 +682,7 @@ class LiveOverlayServiceSpec : FunSpec({
         rendered.map { it.rostered } shouldContainExactly listOf(true, false)
     }
 
-    test("mergeLiveData keeps the report's leaderboard when the live preview lists no field") {
-        val persisted =
-            LiveLeaderboardEntry(
-                position = 1,
-                scoreToPar = -5,
-                players = listOf(LeaderboardPlayer("Scottie Scheffler", listOf("BROWN"))),
-            )
-        val base = emptyReport(listOf(teamColumn(TEAM_A_ID))).copy(liveLeaderboard = listOf(persisted))
-
-        val overlaid = mergeLiveData(base, listOf(preview()), DEFAULT_RULES)
-
-        overlaid.live shouldBe true
-        overlaid.liveLeaderboard shouldContainExactly listOf(persisted)
-    }
-
-    test("mergeLiveData replaces the report's leaderboard with a live field that has rows") {
+    test("mergeLiveData replaces the report's leaderboard with the live field") {
         val stale = listOf(LeaderboardPlayer("Stale", emptyList()))
         val persisted = LiveLeaderboardEntry(position = 1, scoreToPar = -5, players = stale)
         val base = emptyReport(listOf(teamColumn(TEAM_A_ID))).copy(liveLeaderboard = listOf(persisted))
@@ -657,6 +708,38 @@ class LiveOverlayServiceSpec : FunSpec({
         undrafted.map { it.name } shouldContainExactly listOf("Undrafted T2")
         // Position 2 → DEFAULT_PAYOUTS[1] = $12.
         undrafted.single().payout.compareTo(BigDecimal(12)) shouldBe 0
+    }
+
+    test("buildUndraftedFromLeaderboard pays no competitor yet to tee off and counts none in a tie") {
+        val live =
+            preview(
+                leaderboard =
+                    listOf(
+                        leaderboardEntry("Leader", position = 1),
+                        leaderboardEntry("Late Wave", position = null, scoreToPar = null),
+                    ),
+            )
+
+        val undrafted = buildUndraftedFromLeaderboard(live, DEFAULT_RULES)
+
+        undrafted.map { it.name } shouldContainExactly listOf("Leader")
+        undrafted.single().payout.compareTo(BigDecimal(18)) shouldBe 0
+    }
+
+    test("foldLivePlayerRankings credits no top ten to an undrafted competitor yet to tee off") {
+        val live =
+            preview(
+                leaderboard =
+                    listOf(
+                        leaderboardEntry("Leader", position = 1),
+                        leaderboardEntry("Late Wave", position = null, scoreToPar = null),
+                    ),
+            )
+
+        val folded = foldLivePlayerRankings(PlayerRankingsAcc(emptyMap(), emptyMap()), live, DEFAULT_RULES)
+
+        folded.undrafted.keys shouldContainExactly setOf("Leader")
+        folded.undrafted.getValue("Leader").totalEarnings.compareTo(BigDecimal(18)) shouldBe 0
     }
 
     test("buildUndraftedFromLeaderboard returns empty when every top-10 finisher is rostered") {

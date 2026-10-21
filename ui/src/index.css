@@ -18,6 +18,7 @@
   --brand-red: #d7263d;
   --brand-green: #0f8a4f;
   --brand-gold: #ffd23f;
+  --brand-steel: #8ea2c2;
 }
 
 /*
@@ -31,10 +32,12 @@
   --color-surface-raised-hover: var(--brand-line);
   --color-overlay: var(--color-black);
 
-  /* The navy bar behind the nav and footer. Its inks are light, so on any other surface they fail contrast. */
+  /* The navy bar behind the nav, the tab bar and the footer. Its inks are light, so on any other surface they fail contrast. */
   --color-chrome: var(--brand-navy);
   --color-on-chrome: var(--color-white);
   --color-on-chrome-muted: var(--color-slate-300);
+  /* Not on-chrome-muted: an idle tab sits dimmer, so the current tab's white stands out from the other four. */
+  --color-on-chrome-tab-idle: var(--brand-steel);
 
   --color-hairline-soft: var(--brand-line);
   --color-hairline: var(--brand-line);
@@ -123,6 +126,17 @@
 /* A fallback face without a width axis sets this at its own width. */
 @utility font-display {
   font-stretch: 75%;
+}
+
+/* viewport-fit=cover lets a landscape notch overlap the page's edge, so a gutter widens to the inset. */
+@utility px-safe-* {
+  padding-left: max(--spacing(--value(integer)), env(safe-area-inset-left));
+  padding-right: max(--spacing(--value(integer)), env(safe-area-inset-right));
+}
+
+/* The phone tab bar is h-14 and fixed over the page's foot, home indicator included. */
+@utility pb-above-tab-bar-* {
+  padding-bottom: calc(--spacing(14) + --spacing(--value(integer)) + env(safe-area-inset-bottom));
 }
 
 html,

@@ -6,6 +6,8 @@ import {
   defaultScoreboardSelection,
   pickInSeason,
   tournamentLabel,
+  tournamentShortLabel,
+  tournamentWeekLabel,
 } from './tournament';
 
 function makeTournament(overrides: Partial<Tournament> = {}): Tournament {
@@ -45,6 +47,26 @@ describe('tournamentLabel', () => {
     expect(tournamentLabel(makeTournament({ status: 'in_progress' }))).toBe(
       'Wk 1 — Sony Open — in_progress',
     );
+  });
+});
+
+describe('tournamentShortLabel', () => {
+  it('reads the week and the name alone, without the multiplier or the status', () => {
+    expect(tournamentShortLabel(makeTournament({ payoutMultiplier: 2 }))).toBe('Wk 1 · Sony Open');
+  });
+
+  it('falls back to ? when the week is null', () => {
+    expect(tournamentShortLabel(makeTournament({ week: null }))).toBe('Wk ? · Sony Open');
+  });
+});
+
+describe('tournamentWeekLabel', () => {
+  it('reads the week alone', () => {
+    expect(tournamentWeekLabel(makeTournament({ week: '11' }))).toBe('Wk 11');
+  });
+
+  it('falls back to ? when the week is null', () => {
+    expect(tournamentWeekLabel(makeTournament({ week: null }))).toBe('Wk ?');
   });
 });
 

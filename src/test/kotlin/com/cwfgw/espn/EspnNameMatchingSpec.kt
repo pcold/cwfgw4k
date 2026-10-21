@@ -15,6 +15,7 @@ import com.cwfgw.teams.Team
 import com.cwfgw.teams.TeamId
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.orFail
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.Tournament
@@ -172,7 +173,7 @@ private fun rosteredPreview(
             rules = SeasonRules.defaults(),
             overridesByTournament = emptyMap(),
         )
-    return buildLivePreviewForEvent(event, TOURNAMENT, context)
+    return buildLivePreviewForEvent(event, TOURNAMENT, context).orFail()
 }
 
 class EspnNameMatchingSpec : FunSpec({

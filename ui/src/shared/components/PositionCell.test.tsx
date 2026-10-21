@@ -29,4 +29,41 @@ describe('PositionCell', () => {
     expect(cell).toHaveClass(...tone, 'rounded-l', 'font-display', 'font-bold');
     expect(cell).not.toHaveClass(...otherTones);
   });
+
+  it('keeps the row-start cell by default, its classes unchanged for the standings and scoreboard tables', () => {
+    renderInRow(<PositionCell position={1} />);
+
+    expect(screen.getByRole('cell', { name: '1' }).className).toBe(
+      'px-3 py-2 rounded-l text-center font-display font-bold text-lg tabular-nums bg-gold text-on-gold',
+    );
+  });
+
+  it.each([
+    [1, 'bg-gold', 'bg-position-fill'],
+    [2, 'bg-position-fill', 'bg-gold'],
+  ] as const)('sets a card-start box for position %i as a narrow div in the same tone and figure', (position, tone, otherTone) => {
+    renderWithProviders(<PositionCell position={position} shape="card-start" />, NO_PROVIDERS);
+
+    const box = screen.getByText(String(position));
+    expect(box.tagName).toBe('DIV');
+    expect(box).toHaveClass(tone, 'w-9.5', 'shrink-0', 'rounded-l', 'font-display', 'font-bold', 'text-lg');
+    expect(box).not.toHaveClass(otherTone);
+  });
+
+  it.each(['row-start', 'card-start'] as const)('fills a %s round box 1 in navy, never gold: gold marks first place', (shape) => {
+    if (shape === 'row-start') renderInRow(<PositionCell position={1} shape={shape} kind="round" />);
+    else renderWithProviders(<PositionCell position={1} shape={shape} kind="round" />, NO_PROVIDERS);
+
+    const box = screen.getByText('1');
+    expect(box).toHaveClass('bg-position-fill', 'text-on-fill');
+    expect(box).not.toHaveClass('bg-gold', 'text-on-gold');
+  });
+
+  it('keeps the card-start box classes unchanged for the standings and scoreboard cards', () => {
+    renderWithProviders(<PositionCell position={1} shape="card-start" />, NO_PROVIDERS);
+
+    expect(screen.getByText('1').className).toBe(
+      'w-9.5 shrink-0 flex items-center justify-center rounded-l font-display font-bold text-lg tabular-nums bg-gold text-on-gold',
+    );
+  });
 });

@@ -104,6 +104,7 @@ function buildReport(): WeeklyReport {
     standingsOrder: [],
     live: false,
     liveEligible: false,
+    awaitingTeeOff: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
@@ -129,6 +130,13 @@ function buildReportWithoutSideBetFacts(): unknown {
   };
 }
 
+async function desktopBets(): Promise<HTMLElement> {
+  const strip = await screen.findByRole('group', { name: 'Late row round' });
+  const wrapper = strip.parentElement?.nextElementSibling;
+  if (!(wrapper instanceof HTMLElement)) throw new Error('no desktop layout follows the round tabs');
+  return wrapper;
+}
+
 describe('LateRowBetsPage', () => {
   beforeEach(() => {
     leaguesMock.mockReset();
@@ -148,7 +156,7 @@ describe('LateRowBetsPage', () => {
 
     renderWithProviders(<LateRowBetsPage />);
 
-    expect(await screen.findByRole('heading', { name: 'Round 2' })).toBeInTheDocument();
+    expect(within(await desktopBets()).getByRole('heading', { name: 'Round 2' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Late Row Bets' })).toBeInTheDocument();
     expect(seasonReportMock).toHaveBeenCalledWith('sn-1');
     expect(tournamentReportMock).not.toHaveBeenCalled();
@@ -165,7 +173,7 @@ describe('LateRowBetsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<LateRowBetsPage />);
 
-    await screen.findByRole('heading', { name: 'Round 2' });
+    await desktopBets();
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
 
     await user.selectOptions(screen.getByLabelText(/Through/i), '');
@@ -188,7 +196,7 @@ describe('LateRowBetsPage', () => {
 
     renderWithProviders(<LateRowBetsPage />);
 
-    await screen.findByRole('heading', { name: 'Round 2' });
+    await desktopBets();
     const title = screen.getByRole('heading', { name: 'Late Row Bets' });
     expect(within(pageTitleRow(title)).getByText('Live')).toHaveClass('bg-primary');
   });
@@ -204,11 +212,15 @@ describe('LateRowBetsPage', () => {
 
     renderWithProviders(<LateRowBetsPage />);
 
-    await screen.findByRole('heading', { name: 'Round 2' });
+    await desktopBets();
     expect(screen.getByLabelText<HTMLSelectElement>(/Through/i).value).toBe('tn-2');
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-2', true);
     expect(tournamentReportMock).not.toHaveBeenCalledWith('sn-1', 'tn-1', expect.anything());
     expect(seasonReportMock).not.toHaveBeenCalled();
+    expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 9 · Sample Open' }))).toContainElement(
+      screen.getByRole('heading', { name: 'Late Row Bets' }),
+    );
+    expect(screen.getByLabelText(/Through/i).closest('.hidden')).toHaveClass('sm:block');
   });
 
   it("drops a pick the newly selected season lacks and opens on that season's current tournament", async () => {
@@ -329,8 +341,9 @@ describe('LateRowBetsPage', () => {
     expect(
       await screen.findByText(/^\$20\.00 per team in each of draft rounds 2 and 3\./),
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Round 3' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Round 5' })).not.toBeInTheDocument();
+    const desktop = await desktopBets();
+    expect(within(desktop).getByRole('heading', { name: 'Round 3' })).toBeInTheDocument();
+    expect(within(desktop).queryByRole('heading', { name: 'Round 5' })).not.toBeInTheDocument();
   });
 
   it('renders the rounds of a report cached before the rules were sent, without a rules sentence', async () => {
@@ -343,9 +356,48 @@ describe('LateRowBetsPage', () => {
 
     renderWithProviders(<LateRowBetsPage />);
 
-    expect(await screen.findByRole('heading', { name: 'Round 2' })).toBeInTheDocument();
-    expect(screen.getAllByText('Scottie')).toHaveLength(2);
+    const desktop = await desktopBets();
+    expect(within(desktop).getByRole('heading', { name: 'Round 2' })).toBeInTheDocument();
+    expect(within(desktop).getAllByText('Scottie')).toHaveLength(2);
     expect(screen.queryByText(/per team in/)).not.toBeInTheDocument();
+  });
+
+  it('switches the phone between rounds and the totals as their tabs are tapped', async () => {
+    const report = buildReport();
+    const byRound: WeeklyReport = {
+      ...report,
+      sideBetDetail: report.sideBetDetail.map(({ round, teams }) => ({
+        round,
+        teams: teams.map((entry) => ({ ...entry, golferName: round === 2 ? 'Scottie' : 'Xander' })),
+      })),
+    };
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
+    seasonReportMock.mockResolvedValue(byRound);
+
+    const user = userEvent.setup();
+    renderWithProviders(<LateRowBetsPage />);
+
+    const strip = await screen.findByRole('group', { name: 'Late row round' });
+    const phone = strip.parentElement;
+    if (!phone) throw new Error('the round tabs have no section around them');
+    const leader = () => within(within(phone).getByRole('list', { name: 'Leaders' })).getByRole('listitem');
+    expect(leader()).toHaveTextContent('Leading round 2');
+
+    await user.click(within(strip).getByRole('button', { name: 'Rd 3' }));
+
+    expect(leader()).toHaveTextContent('Leading round 3');
+    expect(leader()).toHaveTextContent('Aces · Xander');
+    expect(within(strip).getByRole('button', { name: 'Rd 3' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(strip).getByRole('button', { name: 'Rd 2' })).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(within(strip).getByRole('button', { name: 'Totals' }));
+
+    expect(within(phone).queryByRole('list', { name: 'Leaders' })).not.toBeInTheDocument();
+    expect(within(phone).getByRole('list', { name: 'Totals' })).toHaveTextContent('Aces$0');
+    expect(within(strip).getByRole('button', { name: 'Totals' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('switches to the per-tournament report when a tournament is selected', async () => {
@@ -359,7 +411,7 @@ describe('LateRowBetsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<LateRowBetsPage />);
 
-    await screen.findByRole('heading', { name: 'Round 2' });
+    await desktopBets();
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-1');
 

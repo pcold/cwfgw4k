@@ -9,12 +9,14 @@ import type {
 } from '@/shared/api/types';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
 import {
+  cellEarnings,
   isSeasonReport,
   reportSubtitle,
   sideBetAmountByRound,
   sideBetRowLabel,
   sideBetWinnersByRound,
   teamCellsByRound,
+  topTensLabel,
 } from './weeklyReportModel';
 
 function reportScoped(scope: ReportScope, status: string | null = null): WeeklyReport {
@@ -35,6 +37,7 @@ function reportScoped(scope: ReportScope, status: string | null = null): WeeklyR
     standingsOrder: [],
     live: false,
     liveEligible: false,
+    awaitingTeeOff: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
@@ -136,6 +139,7 @@ function reportRow(round: number): ReportCell {
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
+    inField: false,
   };
 }
 
@@ -187,5 +191,39 @@ describe('reportSubtitle', () => {
   });
   it('leaves out the parts the report lacks', () => {
     expect(reportSubtitle(reportScoped('tournament'))).toBe('');
+  });
+});
+
+describe('cellEarnings', () => {
+  it('pairs a paid finish with its earnings', () => {
+    expect(cellEarnings({ ...reportRow(1), positionStr: 'T3', earnings: 9.5 })).toEqual({
+      kind: 'paid',
+      label: 'T3 - +$9.50',
+    });
+  });
+
+  it('keeps the paid label for a paid golfer in the field', () => {
+    expect(cellEarnings({ ...reportRow(1), positionStr: '1', earnings: 18, inField: true })).toEqual({
+      kind: 'paid',
+      label: '1 - +$18.00',
+    });
+  });
+
+  it('marks an unpaid golfer in the field as playing', () => {
+    expect(cellEarnings({ ...reportRow(1), inField: true })).toEqual({ kind: 'playing', label: 'Playing' });
+  });
+
+  it('prints a bare dash for an unpaid golfer not in the field', () => {
+    expect(cellEarnings(reportRow(1))).toEqual({ kind: 'unpaid', label: '-' });
+  });
+});
+
+describe('topTensLabel', () => {
+  it.each([
+    [0, '0 top 10s'],
+    [1, '1 top 10'],
+    [2, '2 top 10s'],
+  ])('counts %i as %s', (count, label) => {
+    expect(topTensLabel(count)).toBe(label);
   });
 });

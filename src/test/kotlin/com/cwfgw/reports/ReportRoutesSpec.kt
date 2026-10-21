@@ -322,8 +322,9 @@ private fun JsonObject.keysOfEach(field: String): Set<String> =
 
 private val SCHEFFLER = golferRow(SCOTTIE_ID, "Scottie", "Scheffler")
 
-private val MASTERS_GOLFERS =
-    listOf(SCHEFFLER, golferRow(RORY_ID, "Rory", "McIlroy"), golferRow(XANDER_ID, "Xander", "Schauffele"))
+private val MCILROY = golferRow(RORY_ID, "Rory", "McIlroy")
+
+private val MASTERS_GOLFERS = listOf(SCHEFFLER, MCILROY, golferRow(XANDER_ID, "Xander", "Schauffele"))
 
 private val MASTERS_IN_PLAY =
     tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
@@ -345,13 +346,21 @@ private fun espnLeader(golfer: Golfer): EspnCompetitor =
         order = 1,
         scoreStr = "-5",
         scoreToPar = -5,
-        totalStrokes = null,
-        roundScores = emptyList(),
+        totalStrokes = 67,
+        roundScores = listOf(67),
         position = 1,
         status = EspnStatus.Active,
         isTeamPartner = false,
         pairKey = null,
     )
+
+/** As ESPN lists a competitor before his tee time: level par, no linescores. */
+private fun notTeedOff(
+    golfer: Golfer,
+    order: Int,
+): EspnCompetitor =
+    espnLeader(golfer)
+        .copy(order = order, scoreStr = "E", scoreToPar = 0, totalStrokes = null, roundScores = emptyList())
 
 class ReportRoutesSpec : FunSpec({
 
@@ -700,7 +709,7 @@ class ReportRoutesSpec : FunSpec({
         }
     }
 
-    test("GET /api/v1/seasons/{id}/report/{tid}?live=true keeps the persisted leaderboard when ESPN's field is empty") {
+    test("GET /api/v1/seasons/{id}/report/{tid}?live=true awaits tee-off on the stored leaderboard before a field") {
         val noField = espnMasters(field = emptyList())
         val configure =
             reportFixture(
@@ -715,8 +724,94 @@ class ReportRoutesSpec : FunSpec({
             val url = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
             val body = client.get(url).bodyAsText()
 
-            wireReport(body)["live"] shouldBe JsonPrimitive(true)
+            wireReport(body)["live"] shouldBe JsonNull
+            wireReport(body)["awaiting_tee_off"] shouldBe JsonPrimitive(true)
             wireLeaderboard(body).map { it["position"] } shouldContainExactly listOf(JsonPrimitive(1))
+            wireCell(wireReport(body), team = 0, round = 5)["in_field"] shouldBe JsonPrimitive(false)
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/report/{tid}?live=true awaits tee-off, sending the field unplaced") {
+        val unstarted = notTeedOff(SCHEFFLER, order = 1)
+        val configure =
+            reportFixture(
+                initialTournaments = listOf(MASTERS_IN_PLAY),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers = MASTERS_GOLFERS,
+                initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5)),
+                espn =
+                    FakeEspnClient(
+                        tournamentsByDate = mapOf(MASTERS_IN_PLAY.startDate to listOf(espnMasters(listOf(unstarted)))),
+                    ),
+            )
+        apiTest(configure) { client ->
+            val url = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
+            val body = client.get(url).bodyAsText()
+
+            wireReport(body)["live"] shouldBe JsonNull
+            wireReport(body)["awaiting_tee_off"] shouldBe JsonPrimitive(true)
+            wireLeaderboard(body).map { listOf(it["position"], it["score_to_par"]) } shouldContainExactly
+                listOf(listOf(JsonNull, JsonNull))
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/report/{tid}?live=true awaits tee-off, marking each cell in the field") {
+        val configure =
+            reportFixture(
+                initialTournaments = listOf(MASTERS_IN_PLAY),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers = MASTERS_GOLFERS,
+                initialRosters =
+                    listOf(rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5), rosterRow(TEAM_B, RORY_ID, draftRound = 5)),
+                espn =
+                    FakeEspnClient(
+                        tournamentsByDate =
+                            mapOf(MASTERS_IN_PLAY.startDate to listOf(espnMasters(listOf(notTeedOff(SCHEFFLER, 1))))),
+                    ),
+            )
+        apiTest(configure) { client ->
+            val url = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
+            val report = wireReport(client.get(url).bodyAsText())
+
+            listOf(0, 1).map { team -> wireCell(report, team, round = 5)["in_field"] } shouldContainExactly
+                listOf(JsonPrimitive(true), JsonPrimitive(false))
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/report/{tid}?live=true on a part-started field is not awaiting tee-off") {
+        val partStarted = espnMasters(listOf(espnLeader(SCHEFFLER), notTeedOff(MCILROY, order = 2)))
+        val configure =
+            reportFixture(
+                initialTournaments = listOf(MASTERS_IN_PLAY),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers = MASTERS_GOLFERS,
+                initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5)),
+                espn = FakeEspnClient(tournamentsByDate = mapOf(MASTERS_IN_PLAY.startDate to listOf(partStarted))),
+            )
+        apiTest(configure) { client ->
+            val url = "/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}?live=true"
+            val body = client.get(url).bodyAsText()
+
+            wireReport(body)["live"] shouldBe JsonPrimitive(true)
+            wireReport(body)["awaiting_tee_off"] shouldBe JsonPrimitive(false)
+            wireLeaderboard(body).map { it["position"] } shouldContainExactly listOf(JsonPrimitive(1), JsonNull)
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/report/{tid} without live is not awaiting tee-off, whatever ESPN lists") {
+        val preStart = espnMasters(listOf(notTeedOff(SCHEFFLER, order = 1)))
+        val configure =
+            reportFixture(
+                initialTournaments = listOf(MASTERS_IN_PLAY),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers = MASTERS_GOLFERS,
+                initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, draftRound = 5)),
+                espn = FakeEspnClient(tournamentsByDate = mapOf(MASTERS_IN_PLAY.startDate to listOf(preStart))),
+            )
+        apiTest(configure) { client ->
+            val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}").bodyAsText()
+
+            wireReport(body)["awaiting_tee_off"] shouldBe JsonPrimitive(false)
         }
     }
 
@@ -877,7 +972,7 @@ class ReportRoutesSpec : FunSpec({
                 espnId = "espn-masters",
                 name = "The Masters",
                 completed = false,
-                competitors = emptyList(),
+                competitors = listOf(espnLeader(SCHEFFLER)),
                 isTeamEvent = false,
             )
         // Behind the production ESPN cache, so the spec covers both layers a failure could be kept in.

@@ -440,8 +440,8 @@ private fun espnRow(
         espnId = espnId,
         name = name,
         order = position,
-        scoreStr = "-12",
-        scoreToPar = -12,
+        scoreStr = "${position - 13}",
+        scoreToPar = position - 13,
         totalStrokes = 203,
         roundScores = listOf(68, 68, 67),
         position = position,
@@ -449,6 +449,14 @@ private fun espnRow(
         isTeamPartner = pairKey != null,
         pairKey = pairKey,
     )
+
+/** As ESPN lists a field before its tee time: level par, no linescores, no strokes. */
+private fun notTeedOffRow(
+    espnId: String,
+    name: String,
+): EspnCompetitor =
+    espnRow(espnId = espnId, name = name, position = 1)
+        .copy(scoreStr = "E", scoreToPar = 0, totalStrokes = null, roundScores = emptyList())
 
 /** An in-progress Masters whose whole ESPN field is [field]; each of [picks] is a team's round-1 golfer. */
 private fun liveFieldFixture(
@@ -1329,6 +1337,44 @@ class WeeklyReportServiceSpec : FunSpec({
         fixture.espnClient.fetchCalls shouldBe emptyList<LocalDate>()
     }
 
+    test("getReport with live=true before anyone tees off marks the field's cells, lists it unplaced, pays nothing") {
+        val scottie = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
+        val absent = golferFixture("202", "Not", "Entered").copy(pgaPlayerId = "espn-p9")
+        val preStart =
+            listOf(
+                notTeedOffRow("espn-p1", "Scottie Scheffler"),
+                notTeedOffRow("espn-p2", "Nobody's Pick"),
+                notTeedOffRow("espn-p3", "Nobody's Other Pick"),
+            )
+        val fixture = liveFieldFixture(field = preStart, picks = listOf(TEAM_A to scottie, TEAM_B to absent))
+
+        val stored = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = false).orFail()
+        val live = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true).orFail()
+
+        fun unplaced(
+            name: String,
+            vararg teamNames: String,
+        ) = LiveLeaderboardEntry(
+            position = null,
+            scoreToPar = null,
+            players = listOf(LeaderboardPlayer(name, teamNames.toList())),
+        )
+        live shouldBe
+            stored.copy(
+                teams =
+                    stored.teams.map { team ->
+                        team.copy(cells = team.cells.map { cell -> cell.copy(inField = cell.golferId == scottie.id) })
+                    },
+                awaitingTeeOff = true,
+                liveLeaderboard =
+                    listOf(
+                        unplaced("Scottie Scheffler", TEAM_A.teamName),
+                        unplaced("Nobody's Pick"),
+                        unplaced("Nobody's Other Pick"),
+                    ),
+            )
+    }
+
     test("getReport with live=true overlays projected ESPN earnings onto cells and sets live=true") {
         val winner = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
         val mastersInProgress =
@@ -1378,10 +1424,24 @@ class WeeklyReportServiceSpec : FunSpec({
         a.weeklyTotal.compareTo(BigDecimal(18)) shouldBe 0
     }
 
+    test("getReport with live=true marks a pick yet to tee off as in the field and pays only the one who has") {
+        val leader = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
+        val later = golferFixture("202", "Rory", "McIlroy").copy(pgaPlayerId = "espn-p2")
+        val field =
+            listOf(espnRow("espn-p1", "Scottie Scheffler", position = 1), notTeedOffRow("espn-p2", "Rory McIlroy"))
+        val fixture = liveFieldFixture(field = field, picks = listOf(TEAM_A to leader, TEAM_B to later))
+
+        val cells = fixture.roundOneCells(live = true)
+
+        cells.single { it.golferId == leader.id }.let { it.inField to it.earnings.toInt() } shouldBe (true to 18)
+        cells.single { it.golferId == later.id }.let { it.inField to it.earnings.toInt() } shouldBe (true to 0)
+    }
+
     test("getReport with live=true marks a rostered golfer tied with an undrafted one on ESPN's board") {
         val scottie = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
         val sharedSecond =
             listOf(
+                espnRow("espn-p0", "Leader", position = 1),
                 espnRow("espn-p1", "Scottie Scheffler", position = 2),
                 espnRow("espn-p2", "Nobody's Pick", position = 2),
             )
@@ -1555,11 +1615,14 @@ class WeeklyReportServiceSpec : FunSpec({
     test("getReport with live=true on a completed tournament does not call the live overlay (no live flag set)") {
         val completedMasters =
             tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
-                .copy(status = TournamentStatus.Completed)
+                .copy(status = TournamentStatus.Completed, pgaTournamentId = "espn-masters")
+        val scottie = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
         val fixture =
             Fixture(
                 initialTournaments = listOf(completedMasters),
                 initialTeams = listOf(TEAM_A),
+                initialGolfers = listOf(scottie),
+                initialRosters = listOf(rosterEntry(TEAM_A.id, scottie.id, draftRound = 1)),
                 // ESPN data present but selected tournament is already completed so overlay should skip.
                 espnByDate =
                     mapOf(
@@ -1569,7 +1632,7 @@ class WeeklyReportServiceSpec : FunSpec({
                                     espnId = "espn-masters",
                                     name = "The Masters",
                                     completed = true,
-                                    competitors = emptyList(),
+                                    competitors = listOf(espnRow("espn-p1", "Scottie Scheffler", position = 1)),
                                     isTeamEvent = false,
                                 ),
                             ),
@@ -1578,6 +1641,7 @@ class WeeklyReportServiceSpec : FunSpec({
 
         val report = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true).orFail()
         report.live shouldBe null
+        report.teams.single().cells.single { it.golferId == scottie.id }.inField shouldBe false
     }
 
     test("getPlayerRankings returns SeasonNotFound when the season id doesn't exist") {

@@ -4,11 +4,21 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, type RenderResult } from '@testing-library/react';
 import { LeagueSeasonProvider } from '@/features/leagues/LeagueSeasonContext';
 import { AuthProvider } from '@/features/auth/AuthContext';
+import { MyTeamProvider } from '@/features/myTeam/MyTeamContext';
+import { HeaderSlotProvider } from '@/shared/components/HeaderSlot';
 
 interface Options {
-  initialPath?: string;
-  withLeagueSeasonProvider?: boolean;
-  withAuthProvider?: boolean;
+  readonly initialPath?: string;
+  readonly withLeagueSeasonProvider?: boolean;
+  readonly withAuthProvider?: boolean;
+  /**
+   * Off by default: it reads the newest season's rosters, which a test then has to mock. Needs the league and
+   * season provider above it.
+   */
+  readonly withMyTeamProvider?: boolean;
+  readonly withHeaderSlotProvider?: boolean;
+  /** The nav's slot a page portals into; null is the app before the nav mounts it. */
+  readonly headerSlot?: HTMLElement | null;
 }
 
 export function renderWithProviders(ui: ReactElement, options: Options = {}): RenderResult {
@@ -16,6 +26,9 @@ export function renderWithProviders(ui: ReactElement, options: Options = {}): Re
     initialPath = '/',
     withLeagueSeasonProvider = true,
     withAuthProvider = false,
+    withMyTeamProvider = false,
+    withHeaderSlotProvider = true,
+    headerSlot = null,
   } = options;
 
   const queryClient = new QueryClient({
@@ -25,6 +38,8 @@ export function renderWithProviders(ui: ReactElement, options: Options = {}): Re
   });
 
   let tree: ReactNode = ui;
+  if (withHeaderSlotProvider) tree = <HeaderSlotProvider slot={headerSlot}>{tree}</HeaderSlotProvider>;
+  if (withMyTeamProvider) tree = <MyTeamProvider>{tree}</MyTeamProvider>;
   if (withLeagueSeasonProvider) tree = <LeagueSeasonProvider>{tree}</LeagueSeasonProvider>;
   if (withAuthProvider) tree = <AuthProvider>{tree}</AuthProvider>;
 

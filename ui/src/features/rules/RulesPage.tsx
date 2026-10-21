@@ -6,10 +6,26 @@ import type { SeasonRules, Tournament } from '@/shared/api/types';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { QueryState } from '@/shared/components/QueryState';
 import PageTitle from '@/shared/components/PageTitle';
-import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
+import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicker';
 import { formatUnsignedDollarsAndCents } from '@/shared/util/money';
-import { ordinal } from './rulesModel';
+import { ordinal, payoutsByPlace } from './rulesModel';
+
+const BULLET_LIST_CLASS = 'text-ink-secondary space-y-1 text-sm list-disc list-inside';
+
+type TileTone = 'first-place' | 'field';
+
+interface TileInks {
+  readonly fill: string;
+  readonly ordinal: string;
+  readonly amount: string;
+}
+
+// Gold marks first place, as on the standings' first position box.
+const TILE_INKS: Readonly<Record<TileTone, TileInks>> = {
+  'first-place': { fill: 'bg-gold', ordinal: 'text-on-gold', amount: 'text-on-gold' },
+  field: { fill: 'bg-surface-raised', ordinal: 'text-ink-label', amount: 'text-ink' },
+};
 
 function RulesPage(): ReactNode {
   const { leaguesLoading, leaguesError, seasonId } = useLeagueSeason();
@@ -29,29 +45,23 @@ function RulesPage(): ReactNode {
     if (leaguesError)
       return <p className="text-semantic-danger">Failed to load leagues: {String(leaguesError)}</p>;
 
+    // Two slots, not one around the stack: the static cards between them hold their place while the rules load or fail.
     return (
       <>
-        <div className="bg-surface-card rounded-lg p-6">
-          <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
-            The Draft
-          </h3>
-          <ul className="text-ink-secondary space-y-1 text-sm list-disc list-inside">
-            <li>Snake draft, each team drafts PGA Tour players</li>
-            <li>
-              Players can be split between teams with ownership percentages (earnings divided
-              proportionally)
-            </li>
-          </ul>
-        </div>
-
         <QueryState query={rulesQuery} label="season rules">
-          {(rules) => <RulesView rules={rules} />}
+          {(rules) => <PayoutsCard payouts={rules.payouts} />}
         </QueryState>
-
-        <div className="bg-surface-card rounded-lg p-6">
-          <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
-            Season Schedule
-          </h3>
+        <DraftCard />
+        <ZeroSumCard />
+        <QueryState query={rulesQuery} label="season rules">
+          {(rules) => (
+            <>
+              <TieHandlingCard tieFloor={rules.tieFloor} />
+              <SideBetsCard rules={rules} />
+            </>
+          )}
+        </QueryState>
+        <RulesCard title="Season Schedule">
           <p className="text-ink-secondary text-sm mb-3">
             Tournaments on the season calendar. A highlighted multiplier means payouts are
             boosted for that week (e.g. 2x for majors).
@@ -59,131 +69,179 @@ function RulesPage(): ReactNode {
           <QueryState query={tournamentsQuery} label="schedule">
             {(tournaments) => <ScheduleList tournaments={tournaments} />}
           </QueryState>
-        </div>
+        </RulesCard>
       </>
     );
   }
 
   return (
     <section className="space-y-6">
-      <PageTitle title="Season Rules" actions={<LeagueSeasonPicker />} />
+      <PageTitle
+        title="Season Rules"
+        actions={
+          <>
+            <div className={DESKTOP_PICKER_CLASS}>
+              <LeagueSeasonPicker />
+            </div>
+            <PhonePicker />
+          </>
+        }
+      />
       {renderBody()}
     </section>
   );
 }
 
-interface RulesViewProps {
-  rules: SeasonRules;
+interface RulesCardProps {
+  readonly title: string;
+  readonly caption?: string;
+  readonly children: ReactNode;
 }
 
-function RulesView({ rules }: RulesViewProps): ReactNode {
+/**
+ * The leaderboard's band in the condensed display type: at body width, "Top 10 drafted finishers" truncates
+ * beside its title below 375px.
+ */
+function RulesCard({ title, caption, children }: RulesCardProps): ReactNode {
   return (
-    <>
-      <div className="bg-surface-card rounded-lg p-6">
-        <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
-          Weekly Payouts
-        </h3>
-        <p className="text-ink-muted text-sm mb-3">
-          Each PGA tournament, the top {rules.payouts.length} finishers among all drafted
-          players earn payouts:
-        </p>
-        <table className="w-full max-w-xs text-sm">
-          <thead className={COLUMN_HEADER_CLASS}>
-            <tr className="border-b border-hairline">
-              <th className="text-left py-1">Position</th>
-              <th className="text-right py-1">Payout</th>
-            </tr>
-          </thead>
-          <tbody className="text-ink-secondary">
-            {rules.payouts.map((amount, i) => (
-              // eslint-disable-next-line react/no-array-index-key -- a payout row is its finishing position.
-              <tr key={i}>
-                <td className="py-0.5">{ordinal(i + 1)}</td>
-                <td className="text-right">{formatUnsignedDollarsAndCents(amount)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="bg-surface-card rounded-lg">
+      <div className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-t-lg bg-header-band text-on-fill font-display">
+        <h3 className="text-sm font-semibold uppercase tracking-wider">{title}</h3>
+        {caption ? <span className="text-sm uppercase tracking-wider truncate">{caption}</span> : null}
       </div>
+      <div className="p-6">{children}</div>
+    </div>
+  );
+}
 
-      <div className="bg-surface-card rounded-lg p-6">
-        <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
-          Tie Handling
-        </h3>
-        <ul className="text-ink-secondary space-y-1 text-sm list-disc list-inside">
-          <li>Tied positions average the payouts across all tied slots</li>
-          <li>
-            Minimum payout of{' '}
-            <span className="text-semantic-success font-semibold">
-              {formatUnsignedDollarsAndCents(rules.tieFloor)}
-            </span>{' '}
-            per player
-            for any tie that overlaps the payout zone
-          </li>
-        </ul>
-      </div>
+interface PayoutsCardProps {
+  readonly payouts: readonly number[];
+}
 
-      <div className="bg-surface-card rounded-lg p-6">
-        <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
-          Zero-Sum Scoring
-        </h3>
-        <ul className="text-ink-secondary space-y-1 text-sm list-disc list-inside">
-          <li>Each top-N finish earns that payout from every other team</li>
-          <li>
-            Formula:{' '}
-            <code className="bg-surface-raised px-1 rounded">
-              weekly +/- = (your earnings × num_teams) − total pot
-            </code>
-          </li>
-          <li>
-            The league is zero-sum — every dollar won is a dollar lost by someone else
-          </li>
-          <li>
-            Undrafted players who finish in the payout zone are tracked but don't affect team
-            payouts
-          </li>
-        </ul>
-      </div>
+function PayoutsCard({ payouts }: PayoutsCardProps): ReactNode {
+  return (
+    <RulesCard title="Weekly Payouts" caption={`Top ${payouts.length} drafted finishers`}>
+      <ol aria-label="Payouts by place" className="grid grid-cols-5 gap-2 max-w-md">
+        {payoutsByPlace(payouts).map(({ place, amount }) => (
+          <PayoutTile key={place} place={place} amount={amount} />
+        ))}
+      </ol>
+    </RulesCard>
+  );
+}
 
-      {rules.sideBetRounds.length > 0 ? (
-        <div className="bg-surface-card rounded-lg p-6">
-          <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
-            Side Bets (Rounds {rules.sideBetRounds.join(', ')})
-          </h3>
-          <ul className="text-ink-secondary space-y-1 text-sm list-disc list-inside">
-            <li>
-              {rules.sideBetRounds.length} separate season-long races — one for each draft
-              round
-            </li>
-            <li>
-              Winner = the team whose round-N pick has the highest cumulative earnings across
-              all tournaments
-            </li>
-            <li>
-              Winner collects{' '}
-              <span className="text-semantic-success font-semibold">
-                {formatUnsignedDollarsAndCents(rules.sideBetAmount)}
-              </span>{' '}
-              from every other team
-            </li>
-            <li>Side bet is not active if all entries are at $0</li>
-          </ul>
-        </div>
-      ) : (
-        <div className="bg-surface-card rounded-lg p-6">
-          <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
-            Side Bets
-          </h3>
-          {/* States the field, not whether bets are on: that also turns on the amount, and is the server's to say. */}
-          <p className="text-ink-soft text-sm">No draft round carries a side bet this season.</p>
-        </div>
-      )}
-    </>
+interface PayoutTileProps {
+  readonly place: number;
+  readonly amount: number;
+}
+
+function PayoutTile({ place, amount }: PayoutTileProps): ReactNode {
+  const inks = TILE_INKS[place === 1 ? 'first-place' : 'field'];
+  return (
+    <li className={`rounded py-2 text-center ${inks.fill}`}>
+      <span className={`block font-display font-bold text-xs uppercase tracking-wider ${inks.ordinal}`}>
+        {ordinal(place)}
+      </span>
+      <span className={`block font-display font-bold text-sm sm:text-lg tabular-nums ${inks.amount}`}>
+        {formatUnsignedDollarsAndCents(amount)}
+      </span>
+    </li>
+  );
+}
+
+function DraftCard(): ReactNode {
+  return (
+    <RulesCard title="The Draft">
+      <ul className={BULLET_LIST_CLASS}>
+        <li>Snake draft, each team drafts PGA Tour players</li>
+        <li>
+          Players can be split between teams with ownership percentages (earnings divided
+          proportionally)
+        </li>
+      </ul>
+    </RulesCard>
+  );
+}
+
+function ZeroSumCard(): ReactNode {
+  return (
+    <RulesCard title="Zero-Sum Scoring">
+      <ul className={BULLET_LIST_CLASS}>
+        <li>Each top-N finish earns that payout from every other team</li>
+      </ul>
+      <p className="my-3 bg-surface-raised rounded px-3 py-2 text-sm font-semibold text-ink">
+        Weekly +/− = (your earnings × teams) − total pot
+      </p>
+      <ul className={BULLET_LIST_CLASS}>
+        <li>The league is zero-sum — every dollar won is a dollar lost by someone else</li>
+        <li>
+          Undrafted players who finish in the payout zone are tracked but don't affect team
+          payouts
+        </li>
+      </ul>
+    </RulesCard>
+  );
+}
+
+interface TieHandlingCardProps {
+  readonly tieFloor: number;
+}
+
+function TieHandlingCard({ tieFloor }: TieHandlingCardProps): ReactNode {
+  return (
+    <RulesCard title="Tie Handling">
+      <ul className={BULLET_LIST_CLASS}>
+        <li>Tied positions average the payouts across all tied slots</li>
+        <li>
+          Minimum payout of{' '}
+          <span className="text-semantic-success font-semibold">
+            {formatUnsignedDollarsAndCents(tieFloor)}
+          </span>{' '}
+          per player for any tie that overlaps the payout zone
+        </li>
+      </ul>
+    </RulesCard>
+  );
+}
+
+interface SideBetsCardProps {
+  readonly rules: SeasonRules;
+}
+
+function SideBetsCard({ rules }: SideBetsCardProps): ReactNode {
+  if (rules.sideBetRounds.length === 0) {
+    return (
+      <RulesCard title="Side Bets">
+        {/* States the field, not whether bets are on: that also turns on the amount, and is the server's to say. */}
+        <p className="text-ink-soft text-sm">No draft round carries a side bet this season.</p>
+      </RulesCard>
+    );
+  }
+  return (
+    <RulesCard title="Side Bets" caption={`Rounds ${rules.sideBetRounds.join(', ')}`}>
+      <ul className={BULLET_LIST_CLASS}>
+        <li>
+          {rules.sideBetRounds.length} separate season-long races — one for each draft round
+        </li>
+        <li>
+          Winner = the team whose round-N pick has the highest cumulative earnings across all
+          tournaments
+        </li>
+        <li>
+          Winner collects{' '}
+          <span className="text-semantic-success font-semibold">
+            {formatUnsignedDollarsAndCents(rules.sideBetAmount)}
+          </span>{' '}
+          from every other team
+        </li>
+        <li>Side bet is not active if all entries are at $0</li>
+      </ul>
+    </RulesCard>
   );
 }
 
 interface ScheduleListProps {
-  tournaments: readonly Tournament[];
+  readonly tournaments: readonly Tournament[];
 }
 
 function ScheduleList({ tournaments }: ScheduleListProps): ReactNode {

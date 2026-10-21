@@ -26,6 +26,11 @@ export interface ReportCell {
   ownershipPct: number;
   seasonEarnings: number;
   seasonTopTens: number;
+  /**
+   * Set only on a live report, from the selected event's field; a persisted one is false throughout.
+   * Says nothing about money: an in-field cell may be unpaid.
+   */
+  inField: boolean;
 }
 
 export interface ReportTeamColumn {
@@ -87,10 +92,11 @@ export interface LeaderboardPlayer {
 
 /**
  * One competitor slot, not one golfer: a team event's partners arrive as a
- * single row of two `players`. Arrives sorted by position; never re-sort it.
+ * single row of two `players`. Arrives sorted by position, slots yet to tee off
+ * last with a null position and score; never re-sort it.
  */
 export interface LiveLeaderboardEntry {
-  position: number;
+  position: number | null;
   scoreToPar: number | null;
   players: LeaderboardPlayer[];
   roundScores: number[];
@@ -124,6 +130,11 @@ export interface WeeklyReport {
   liveLeaderboard: LiveLeaderboardEntry[];
   /** @see Rankings.liveEligible */
   liveEligible: boolean;
+  /**
+   * Set only for a live ESPN event nobody has teed off, listed field or not. Show the pre-start phase on it; never
+   * infer it from the rows.
+   */
+  awaitingTeeOff: boolean;
   /** Over every team's `totalCash`. Display it; never re-sum `totalCash`. */
   cashTotals: WonLostTotals;
   /** Over every team's `sideBets`. @see WeeklyReport.cashTotals */

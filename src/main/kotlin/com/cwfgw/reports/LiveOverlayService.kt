@@ -6,10 +6,12 @@ import com.cwfgw.espn.LivePreviewContext
 import com.cwfgw.espn.LivePreviewError
 import com.cwfgw.espn.PreviewLeaderboardEntry
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.result.Result
 import com.cwfgw.result.getOrElse
 import com.cwfgw.scoring.PayoutTable
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRules
+import com.cwfgw.teams.RosterEntry
 import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
@@ -114,10 +116,16 @@ class LiveOverlayService(private val espnService: EspnService) {
                     overlayPriorLivePreview(acc, matched, rules)
                 }
 
-        val matched =
-            fetchPreviewOrLog(previewCtx, selectedTournament, "live overlay $tournamentId")
-                ?: return withPrior
-        return mergeLiveData(withPrior, listOf(matched), rules)
+        return when (val selected = espnService.previewForTournament(previewCtx, selectedTournament)) {
+            is Result.Ok -> mergeLiveData(withPrior, listOf(selected.value), rules)
+            is Result.Err -> {
+                logIfUnavailable(selected.error, "live overlay $tournamentId")
+                when (val error = selected.error) {
+                    is LivePreviewError.NotStarted -> withPrior.withAwaitingTeeOff(error.field, error.fieldGolferIds)
+                    LivePreviewError.NoMatchingEvent, is LivePreviewError.EspnUnavailable -> withPrior
+                }
+            }
+        }
     }
 
     private suspend fun fetchPreviewOrLog(
@@ -126,13 +134,37 @@ class LiveOverlayService(private val espnService: EspnService) {
         context: String,
     ): EspnLivePreview? =
         espnService.previewForTournament(previewCtx, tournament).getOrElse { error ->
-            when (error) {
-                LivePreviewError.NoMatchingEvent -> Unit
-                is LivePreviewError.EspnUnavailable -> log.warn { "$context: ESPN preview failed: ${error.cause}" }
-            }
+            logIfUnavailable(error, context)
             null
         }
+
+    private fun logIfUnavailable(
+        error: LivePreviewError,
+        context: String,
+    ) {
+        when (error) {
+            LivePreviewError.NoMatchingEvent, is LivePreviewError.NotStarted -> Unit
+            is LivePreviewError.EspnUnavailable -> log.warn { "$context: ESPN preview failed: ${error.cause}" }
+        }
+    }
 }
+
+/**
+ * A field nobody has teed off pays nothing, so only its leaderboard and who is in it are shown, and [WeeklyReport.live]
+ * is left as is. ESPN can match the event before it lists a field; the persisted rows are then the only leaderboard.
+ */
+private fun WeeklyReport.withAwaitingTeeOff(
+    field: List<PreviewLeaderboardEntry>,
+    fieldGolferIds: Set<GolferId>,
+): WeeklyReport =
+    copy(
+        teams =
+            teams.map { team ->
+                team.copy(cells = team.cells.map { cell -> cell.copy(inField = cell.golferId in fieldGolferIds) })
+            },
+        awaitingTeeOff = true,
+        liveLeaderboard = if (field.isEmpty()) liveLeaderboard else buildLiveLeaderboard(field),
+    )
 
 /**
  * Carrier for the data [LiveOverlayService.overlayRankings] needs to
@@ -144,7 +176,7 @@ class LiveOverlayService(private val espnService: EspnService) {
  * and threaded into the next iteration.
  */
 internal data class RankingsContext(
-    val allRosters: List<com.cwfgw.teams.RosterEntry>,
+    val allRosters: List<RosterEntry>,
     val rules: SeasonRules,
     val sideBetPerRound: List<SideBetRoundSnapshot>,
     val numTeams: Int,
@@ -234,9 +266,9 @@ private fun bumpPriorTeamCells(
 
 /**
  * Replace per-cell tournament data with live projected payouts and
- * recompute weekly / subtotal / total cash. Also surfaces the full ESPN
- * leaderboard for the scoreboard view, keeping the report's own where
- * ESPN lists no field, and rebuilds the undrafted top-10s from ESPN's.
+ * recompute weekly / subtotal / total cash. Also surfaces the live
+ * leaderboard for the scoreboard view and rebuilds the undrafted
+ * top-10s from it.
  */
 internal fun mergeLiveData(
     report: WeeklyReport,
@@ -247,7 +279,7 @@ internal fun mergeLiveData(
     val livePayout = livePayoutMap(liveData)
 
     val numTeams = report.teams.size
-    val phase1 = report.teams.map { team -> overlayTeamCells(team, livePayout) }
+    val phase1 = report.teams.map { team -> overlayTeamCells(team, livePayout, liveData.fieldGolferIds) }
     val totalPot = phase1.fold(BigDecimal.ZERO) { acc, snapshot -> acc.add(snapshot.weeklyTopTenEarnings) }
     val liveSideBetDetail =
         updateSideBetDetailWith(
@@ -260,8 +292,6 @@ internal fun mergeLiveData(
     val liveSideBetTotals = aggregateSideBetTotals(liveSideBetDetail)
     val finalTeams = phase1.map { it.toFinalTeam(numTeams, totalPot, liveSideBetTotals) }
     val updatedUndrafted = buildUndraftedFromLeaderboard(liveData, rules)
-    // ESPN can match the event before it lists a field; the persisted rows are then the only leaderboard.
-    val liveLeaderboard = buildLiveLeaderboard(liveData).ifEmpty { report.liveLeaderboard }
 
     return report.copy(
         teams = finalTeams,
@@ -269,7 +299,7 @@ internal fun mergeLiveData(
         sideBetDetail = liveSideBetDetail,
         standingsOrder = buildStandingsOrder(finalTeams),
         live = true,
-        liveLeaderboard = liveLeaderboard,
+        liveLeaderboard = buildLiveLeaderboard(liveData.leaderboard),
     )
 }
 
@@ -320,7 +350,7 @@ internal fun overlayLiveRankings(
 }
 
 private fun SideBetRoundSnapshot.foldLive(
-    allRosters: List<com.cwfgw.teams.RosterEntry>,
+    allRosters: List<RosterEntry>,
     liveByGolfer: Map<Pair<TeamId, GolferId>, BigDecimal>,
 ): SideBetRoundSnapshot {
     val updated =
@@ -411,14 +441,17 @@ private data class LiveCellInputs(
 private fun overlayTeamCells(
     team: ReportTeamColumn,
     livePayout: Map<Pair<TeamId, GolferId>, LiveCellInputs>,
+    fieldGolferIds: Set<GolferId>,
 ): TeamPhase1 {
     val updatedCells =
         team.cells.map { cell ->
             val live = cell.golferId?.let { livePayout[team.teamId to it] }
+            val inField = cell.golferId in fieldGolferIds
             if (live == null) {
-                cell.copy(earnings = BigDecimal.ZERO)
+                cell.copy(earnings = BigDecimal.ZERO, inField = inField)
             } else {
                 cell.copy(
+                    inField = inField,
                     earnings = live.payout,
                     positionStr = live.finish.label(),
                     finish = live.finish,
@@ -446,9 +479,9 @@ private fun overlayTeamCells(
     )
 }
 
-internal fun buildLiveLeaderboard(liveData: EspnLivePreview): List<LiveLeaderboardEntry> =
-    liveData.leaderboard
-        .sortedBy { it.position }
+internal fun buildLiveLeaderboard(leaderboard: List<PreviewLeaderboardEntry>): List<LiveLeaderboardEntry> =
+    leaderboard
+        .sortedWith(compareBy(nullsLast()) { it.position })
         .inCompetitorSlots(PreviewLeaderboardEntry::pairKey)
         .map { slot ->
             LiveLeaderboardEntry(
@@ -464,23 +497,27 @@ internal fun buildUndraftedFromLeaderboard(
     liveData: EspnLivePreview,
     rules: SeasonRules,
 ): List<UndraftedGolfer> {
-    val tiedAtPosition = liveData.leaderboard.groupingBy { it.position }.eachCount()
+    val tiedAtPosition = liveData.leaderboard.tiesByPosition()
     return liveData.leaderboard
-        .filter { !it.rostered && it.position <= TOP_TEN }
-        .sortedBy { it.position }
-        .map { entry ->
-            val numTied = tiedAtPosition[entry.position] ?: 1
+        .filterNot { it.rostered }
+        .mapNotNull { entry -> entry.position?.takeIf { it <= TOP_TEN }?.let { position -> entry.name to position } }
+        .sortedBy { (_, position) -> position }
+        .map { (name, position) ->
+            val numTied = tiedAtPosition[position] ?: 1
             val payout =
                 PayoutTable.tieSplitPayout(
-                    position = entry.position,
+                    position = position,
                     numTied = numTied,
                     multiplier = liveData.payoutMultiplier,
                     rules = rules,
                     isTeamEvent = liveData.isTeamEvent,
                 )
-            UndraftedGolfer(name = entry.name, payout = payout)
+            UndraftedGolfer(name = name, payout = payout)
         }
 }
+
+private fun List<PreviewLeaderboardEntry>.tiesByPosition(): Map<Int, Int> =
+    mapNotNull { it.position }.groupingBy { it }.eachCount()
 
 /**
  * Walk the existing side-bet detail rounds, fold the supplied live
@@ -532,7 +569,7 @@ internal fun foldLivePlayerRankings(
     }
 
     val undrafted = acc.undrafted.toMutableMap()
-    val tiedAtPosition = preview.leaderboard.groupingBy { it.position }.eachCount()
+    val tiedAtPosition = preview.leaderboard.tiesByPosition()
     preview.leaderboard.forEach { entry ->
         liveUndraftedPayout(entry, preview, rules, tiedAtPosition)?.let { payout ->
             val existing = undrafted[entry.name] ?: UndraftedAgg(topTens = 0, totalEarnings = BigDecimal.ZERO)
@@ -560,10 +597,11 @@ private fun liveUndraftedPayout(
     tiedAtPosition: Map<Int, Int>,
 ): BigDecimal? {
     if (entry.rostered) return null
-    if (entry.position > TOP_TEN) return null
-    val numTied = tiedAtPosition[entry.position] ?: 1
+    val position = entry.position ?: return null
+    if (position > TOP_TEN) return null
+    val numTied = tiedAtPosition[position] ?: 1
     return PayoutTable.tieSplitPayout(
-        position = entry.position,
+        position = position,
         numTied = numTied,
         multiplier = preview.payoutMultiplier,
         rules = rules,

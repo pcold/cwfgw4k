@@ -96,6 +96,7 @@ function buildReport(name: string, tournamentId: string | null = null): WeeklyRe
           ownershipPct: 100,
           seasonEarnings: 0,
           seasonTopTens: 0,
+          inField: false,
           pairKey: null,
         })),
         topTenEarnings: 0,
@@ -126,6 +127,7 @@ function buildReport(name: string, tournamentId: string | null = null): WeeklyRe
     standingsOrder: [],
     live: false,
     liveEligible: false,
+    awaitingTeeOff: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
@@ -191,6 +193,10 @@ describe('WeeklyReportPage', () => {
     expect(await screen.findByText('Sample Open · 2026-03-01 – 2026-03-04')).toBeInTheDocument();
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
     expect(screen.getByRole('checkbox', { name: /Live overlay/i })).toBeChecked();
+    expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 9 · Sample Open' }))).toContainElement(
+      screen.getByRole('heading', { name: 'Weekly Report' }),
+    );
+    expect(screen.getByLabelText(/Tournament/i).closest('.hidden')).toHaveClass('sm:block');
 
     const select = screen.getByLabelText(/Tournament/i);
     await user.selectOptions(select, '');
@@ -377,8 +383,9 @@ describe('WeeklyReportPage', () => {
 
     renderWithProviders(<WeeklyReportPage />);
 
-    expect(await screen.findByText('ROWS 2-3')).toBeInTheDocument();
-    expect(screen.getAllByText('($20.00)')).toHaveLength(2);
+    const grid = await screen.findByRole('table');
+    expect(within(grid).getByText('ROWS 2-3')).toBeInTheDocument();
+    expect(within(grid).getAllByText('($20.00)')).toHaveLength(2);
   });
 
   it('renders the grid of a report cached before the rules were sent, naming no rounds or amount', async () => {
@@ -391,9 +398,10 @@ describe('WeeklyReportPage', () => {
 
     renderWithProviders(<WeeklyReportPage />);
 
-    expect(await screen.findByText('SIDE BETS')).toBeInTheDocument();
-    expect(screen.getByText('Golfer 8')).toBeInTheDocument();
-    expect(screen.queryByText(/^\(\$/)).not.toBeInTheDocument();
+    const grid = await screen.findByRole('table');
+    expect(within(grid).getByText('SIDE BETS')).toBeInTheDocument();
+    expect(within(grid).getByText('Golfer 8')).toBeInTheDocument();
+    expect(within(grid).queryByText(/^\(\$/)).not.toBeInTheDocument();
   });
 
   it.each([
@@ -476,6 +484,31 @@ describe('WeeklyReportPage', () => {
     expect(button).toBeEnabled();
   });
 
+  it("shows a PDF failure in the phone's sheet, and keeps it on the page once the sheet closes", async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
+    seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
+    downloadPdfMock.mockImplementation(() => {
+      throw new Error('autoTable exploded');
+    });
+
+    const user = userEvent.setup();
+    renderWithProviders(<WeeklyReportPage />);
+    await screen.findByText('All Tournaments · Season totals');
+    await user.click(screen.getByRole('button', { name: '2026 Season 1' }));
+    const sheet = screen.getByRole('dialog', { name: 'League, season and tournament' });
+    await user.click(within(sheet).getByRole('button', { name: /Download PDF/i }));
+
+    expect(await within(sheet).findByRole('alert')).toHaveTextContent(/Failed to generate PDF.*autoTable exploded/);
+    await user.click(within(sheet).getByRole('button', { name: 'Close' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/Failed to generate PDF.*autoTable exploded/);
+    expect(alert.closest('.hidden')).toBeNull();
+  });
+
   it('clears the PDF error when the next download attempt starts', async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
@@ -496,5 +529,37 @@ describe('WeeklyReportPage', () => {
 
     await waitFor(() => expect(downloadPdfMock).toHaveBeenCalledTimes(2));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('switches the phone cards to the team tapped on the strip', async () => {
+    const report = buildReport('All Tournaments');
+    const [aces] = report.teams;
+    if (!aces) throw new Error('the report fixture has no team');
+    const birdies = {
+      ...aces,
+      teamId: 'team-2',
+      teamName: 'Birdies',
+      cells: aces.cells.map((cell) => ({ ...cell, golferName: `Birdie ${cell.round}` })),
+    };
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([]);
+    currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
+    seasonReportMock.mockResolvedValue({ ...report, teams: [aces, birdies] });
+    const user = userEvent.setup();
+
+    renderWithProviders(<WeeklyReportPage />);
+
+    const strip = await screen.findByRole('group', { name: 'Team' });
+    expect(within(screen.getByRole('list', { name: 'Picks' })).getByText('Golfer 1')).toBeInTheDocument();
+
+    await user.click(within(strip).getByRole('button', { name: 'Birdies' }));
+
+    expect(within(strip).getByRole('button', { name: 'Birdies' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(strip).getByRole('button', { name: 'Aces' })).toHaveAttribute('aria-pressed', 'false');
+    const picks = screen.getByRole('list', { name: 'Picks' });
+    expect(within(picks).getByText('Birdie 1')).toBeInTheDocument();
+    expect(within(picks).queryByText('Golfer 1')).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Team totals' })).toHaveTextContent('Birdies');
   });
 });

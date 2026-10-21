@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Rankings } from '@/shared/api/types';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
+import ListCard, { CARD_LIST_CLASS } from '@/shared/components/ListCard';
 import MoneyCell from '@/shared/components/MoneyCell';
 import PositionCell from '@/shared/components/PositionCell';
 import { formatDollarsAndCents, formatWholeDollars, moneyToneClass } from '@/shared/util/money';
@@ -19,7 +20,20 @@ function RankingsView({ rankings }: Props): ReactNode {
 
   return (
     <section className="space-y-6">
-      <div className="overflow-x-auto -mx-3 sm:mx-0">
+      <ol aria-label="Standings" className={`sm:hidden ${CARD_LIST_CLASS}`}>
+        {rankings.teams.map((team, index) => (
+          <ListCard
+            key={team.teamId}
+            position={index + 1}
+            name={team.teamName}
+            nameCase="team"
+            detail={`Sub ${formatDollarsAndCents(team.subtotal)} · Bets ${formatDollarsAndCents(team.sideBets)}`}
+            total={<MoneyCell display={formatWholeDollars(team.totalCash)} shape="card-end" />}
+          />
+        ))}
+      </ol>
+
+      <div className="hidden sm:block overflow-x-auto -mx-3 sm:mx-0">
         <table className="min-w-full text-sm border-separate border-spacing-y-1">
           <thead className={COLUMN_HEADER_CLASS}>
             <tr className="text-left">

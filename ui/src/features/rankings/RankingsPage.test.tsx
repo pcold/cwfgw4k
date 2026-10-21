@@ -142,6 +142,10 @@ describe('RankingsPage', () => {
 
     await screen.findByText('3 weeks played');
     expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', true, 'tn-upcoming');
+    expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 13 · Sample Open' }))).toContainElement(
+      screen.getByRole('heading', { name: 'Team Standings' }),
+    );
+    expect(screen.getByLabelText(/Through/i).closest('.hidden')).toHaveClass('sm:block');
   });
 
   it('runs through the tournament the server names, not the first unfinalized one in the list', async () => {
@@ -281,6 +285,24 @@ describe('RankingsPage', () => {
 
     expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', false, undefined);
     expect(screen.queryByRole('checkbox', { name: /Live overlay/i })).not.toBeInTheDocument();
+  });
+
+  it("runs through All Tournaments picked from the phone's sheet, the summary falling back to the season", async () => {
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([{ ...tournament, status: 'in_progress' }]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-7' });
+    answerLiveEligibleThrough('tn-7');
+
+    const user = userEvent.setup();
+    renderWithProviders(<RankingsPage />);
+
+    await user.click(await screen.findByRole('button', { name: 'Wk 9 · Sample Open' }));
+    const sheet = screen.getByRole('dialog', { name: 'League, season and tournament' });
+    await user.selectOptions(within(sheet).getByRole('combobox', { name: 'Through' }), '');
+
+    expect(rankingsMock).toHaveBeenLastCalledWith('sn-1', false, undefined);
+    expect(screen.getByRole('button', { name: '2026 Season 1' })).toBeInTheDocument();
   });
 
   it('offers the live toggle through another week when the server says the overlay applies there', async () => {

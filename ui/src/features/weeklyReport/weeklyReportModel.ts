@@ -5,6 +5,7 @@ import type {
   ReportTeamColumn,
   WeeklyReport,
 } from '@/shared/api/types';
+import { formatDollarsAndCents } from '@/shared/util/money';
 
 export const ROUNDS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
@@ -28,6 +29,22 @@ export function sideBetWinnersByRound(
     result.set(entry.round, winners);
   }
   return result;
+}
+
+export type CellEarnings =
+  | { readonly kind: 'paid'; readonly label: string }
+  | { readonly kind: 'playing'; readonly label: 'Playing' }
+  | { readonly kind: 'unpaid'; readonly label: '-' };
+
+export function cellEarnings(cell: ReportCell): CellEarnings {
+  if (cell.earnings > 0) {
+    return { kind: 'paid', label: `${cell.positionStr ?? ''} - ${formatDollarsAndCents(cell.earnings)}` };
+  }
+  return cell.inField ? { kind: 'playing', label: 'Playing' } : { kind: 'unpaid', label: '-' };
+}
+
+export function topTensLabel(count: number): string {
+  return `${count} ${count === 1 ? 'top 10' : 'top 10s'}`;
 }
 
 export function sideBetAmountByRound(rules: ReportSideBetRules | null): Map<number, number> {

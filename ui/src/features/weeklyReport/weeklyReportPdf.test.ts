@@ -26,6 +26,7 @@ function row(overrides: Partial<ReportCell> = {}): ReportCell {
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
+    inField: false,
     ...overrides,
   };
 }
@@ -109,7 +110,7 @@ function buildFixture(overrides: {
     },
     teams: [...teams],
     undraftedTopTens: Array.from({ length: overrides.undraftedLen ?? 2 }, (_, i) => ({
-      name: `Undrafted${i}`,
+      name: `Undrafted Golfer ${i}`,
       position: 10,
       payout: 4,
       scoreToPar: null,
@@ -120,6 +121,7 @@ function buildFixture(overrides: {
     standingsOrder: standings,
     live: false,
     liveEligible: false,
+    awaitingTeeOff: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
@@ -163,6 +165,7 @@ interface DrawnRun {
   readonly y: number;
   readonly ink: string;
   readonly font: string;
+  readonly page: number;
   // The last rectangle filled under the run's origin before it was drawn; null on bare paper.
   readonly backdrop: string | null;
 }
@@ -174,7 +177,7 @@ const contains = (rect: FilledRect, x: number, y: number): boolean =>
   y <= Math.max(rect.y, rect.y + rect.height);
 
 // A walk over the stream's operators: `rg`/`g` set the fill, which also inks text, `re` then `f`/`B` fills a
-// rectangle, `Tf` picks a font resource, `Td` places the next `Tj`.
+// rectangle, `Tf` picks a font resource, `Td` places the next `Tj`. Each page object precedes its content stream.
 function drawnPage(doc: jsPDF): { readonly runs: readonly DrawnRun[]; readonly rects: readonly FilledRect[] } {
   const source = doc.output();
   const baseFontByObject = new Map(
@@ -191,9 +194,11 @@ function drawnPage(doc: jsPDF): { readonly runs: readonly DrawnRun[]; readonly r
   const rects: FilledRect[] = [];
   let fill = '';
   let font = '';
+  let page = 0;
   let origin = { x: 0, y: 0 };
   let pending: Omit<FilledRect, 'paint'> | null = null;
   for (const line of source.split('\n')) {
+    if (line === '<</Type /Page') page += 1;
     const colour = /^([\d. ]+) r?g$/.exec(line)?.[1];
     if (colour !== undefined) fill = paintOf(colour);
     const resource = /^\/(F\d+) [\d.]+ Tf$/.exec(line)?.[1];
@@ -210,7 +215,7 @@ function drawnPage(doc: jsPDF): { readonly runs: readonly DrawnRun[]; readonly r
     const text = /^\((.*)\) Tj$/.exec(line)?.[1];
     if (text !== undefined) {
       const under = rects.findLast((rect) => contains(rect, origin.x, origin.y));
-      runs.push({ text: unescaped(text), ...origin, ink: fill, font, backdrop: under?.paint ?? null });
+      runs.push({ text: unescaped(text), ...origin, ink: fill, font, page, backdrop: under?.paint ?? null });
     }
   }
   return { runs, rects };
@@ -223,6 +228,35 @@ function drawnRun(doc: jsPDF, text: string): DrawnRun | undefined {
 // The footer's zero totals print `$0` too, on bare paper.
 function filledRun(doc: jsPDF, text: string): DrawnRun | undefined {
   return drawnPage(doc).runs.findLast((run) => run.text === text && run.backdrop !== null);
+}
+
+const FOOTER_CASH_TOTALS = { won: 1234, lost: -987, net: 247 };
+
+interface DrawnFooter {
+  readonly lines: readonly DrawnRun[];
+  readonly won: DrawnRun;
+  readonly lost: DrawnRun;
+}
+
+// The footer is the last thing drawn, so its undrafted lines run from their prefix to the end, less the totals.
+function drawnFooter(doc: jsPDF): DrawnFooter {
+  const { runs } = drawnPage(doc);
+  const won = runs.findLast((run) => run.text === '+$1,234');
+  const lost = runs.findLast((run) => run.text === '\x96$987');
+  const start = runs.findIndex((run) => run.text.startsWith('UNDRAFTED TOP TENS: '));
+  if (won === undefined || lost === undefined || start < 0) throw new Error('the footer drew no undrafted list or totals');
+  return { lines: runs.slice(start).filter((run) => run !== won && run !== lost), won, lost };
+}
+
+function footerTextWidth(doc: jsPDF, text: string): number {
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  return doc.getTextWidth(text);
+}
+
+function undraftedText(report: WeeklyReport): string {
+  const parts = report.undraftedTopTens.map((undrafted) => `${undrafted.name.toUpperCase()} +$4.00`);
+  return `UNDRAFTED TOP TENS: ${parts.join(', ')}`;
 }
 
 describe('buildWeeklyReportPdf', () => {
@@ -305,6 +339,49 @@ describe('buildWeeklyReportPdf', () => {
     const doc = buildWeeklyReportPdf(buildFixture({ undraftedLen: 0 }));
     const blob: Blob = doc.output('blob');
     expect(blob.size).toBeGreaterThan(100);
+  });
+
+  it('prints a short undrafted list on one line at the left margin, beside the totals', () => {
+    const report = { ...buildFixture(), cashTotals: FOOTER_CASH_TOTALS };
+    const { lines, won, lost } = drawnFooter(buildWeeklyReportPdf(report));
+    expect(lines.map(({ text, x, y, page }) => ({ text, x, y, page }))).toEqual([
+      { text: undraftedText(report), x: 18, y: won.y, page: 1 },
+    ]);
+    expect(lost.y).toBe(won.y);
+  });
+
+  it('wraps a long undrafted list onto lines that each end a totals gap short of the won total', () => {
+    const report = { ...buildFixture({ undraftedLen: 30 }), cashTotals: FOOTER_CASH_TOTALS };
+    const doc = buildWeeklyReportPdf(report);
+    const { lines, won } = drawnFooter(doc);
+    const gap = footerTextWidth(doc, '    ');
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.filter((line) => line.x + footerTextWidth(doc, line.text) > won.x - gap)).toEqual([]);
+    expect(lines.filter((line) => line.x !== 18)).toEqual([]);
+    expect(lines.map((line) => line.text).join(' ')).toBe(undraftedText(report));
+  });
+
+  it('keeps the won and lost totals beside the first of several undrafted lines, the rest below them', () => {
+    const doc = buildWeeklyReportPdf({ ...buildFixture({ undraftedLen: 30 }), cashTotals: FOOTER_CASH_TOTALS });
+    const { lines, won, lost } = drawnFooter(doc);
+    const [first, ...rest] = lines;
+    expect(rest.length).toBeGreaterThan(0);
+    expect(won.y).toBe(first?.y);
+    expect(lost.y).toBe(first?.y);
+    expect(rest.filter((line) => line.y >= won.y)).toEqual([]);
+  });
+
+  it('starts a footer that would pass the bottom margin at the top of a page of its own, totals beside it', () => {
+    const doc = buildWeeklyReportPdf({ ...buildFixture({ undraftedLen: 150 }), cashTotals: FOOTER_CASH_TOTALS });
+    const { lines, won, lost } = drawnFooter(doc);
+    const pageHeight = doc.internal.pageSize.getHeight();
+    expect(drawnRun(doc, 'TEAM #')?.page).toBe(1);
+    expect(new Set([...lines, won, lost].map((run) => run.page))).toEqual(new Set([2]));
+    // An 8pt line whose top sits on the 18pt margin.
+    expect(pageHeight - (lines[0]?.y ?? 0)).toBe(26);
+    expect(won.y).toBe(lines[0]?.y);
+    expect(lost.y).toBe(lines[0]?.y);
+    expect(lines.filter((line) => line.y < 18)).toEqual([]);
   });
 
   it('copies every print colour from its role token in index.css, to within one 8-bit step a channel', () => {

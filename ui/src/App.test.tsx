@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { api } from '@/shared/api/client';
-import type { League, Season } from '@/shared/api/types';
+import type { League, RosterTeam, Season } from '@/shared/api/types';
 import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
@@ -64,9 +64,20 @@ const season: Season = {
   updatedAt: '2026-01-01T00:00:00Z',
 };
 
+const mainNavigation = (): HTMLElement => screen.getByRole('navigation', { name: 'Main' });
+
+const MY_TEAM_KEY = 'cwfg.myTeam';
+
+const rosterTeam = (teamName: string): RosterTeam => ({ teamId: `tm-${teamName}`, teamNumber: null, teamName, picks: [] });
+
 describe('App', () => {
-  // The mobile menu mounts inside the navigation landmark only once opened, so a query within
-  // that landmark before the hamburger is clicked sees the desktop links alone.
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
+  });
 
   it('renders the site heading', () => {
     renderWithProviders(<App />, { withLeagueSeasonProvider: false });
@@ -77,7 +88,7 @@ describe('App', () => {
   it("marks the current page's nav link, and only that one, as the current page", () => {
     renderWithProviders(<App />, { initialPath: '/rankings', withLeagueSeasonProvider: false });
 
-    const currentLinks = within(screen.getByRole('navigation'))
+    const currentLinks = within(mainNavigation())
       .getAllByRole('link')
       .filter((link) => link.hasAttribute('aria-current'));
     expect(currentLinks.map((link) => [link.textContent, link.getAttribute('aria-current')])).toEqual([
@@ -88,7 +99,7 @@ describe('App', () => {
   it('gives every desktop nav link the tap-target height, its text centred in it', () => {
     renderWithProviders(<App />, { withLeagueSeasonProvider: false });
 
-    for (const link of within(screen.getByRole('navigation')).getAllByRole('link')) {
+    for (const link of within(mainNavigation()).getAllByRole('link')) {
       expect(link).toHaveClass(TAP_TARGET_CLASS, 'inline-flex', 'items-center');
     }
   });
@@ -104,37 +115,82 @@ describe('App', () => {
   ])('links the %s nav item to %s', (label, path) => {
     renderWithProviders(<App />, { withLeagueSeasonProvider: false });
 
-    const navigation = screen.getByRole('navigation');
-    expect(within(navigation).getByRole('link', { name: label })).toHaveAttribute('href', path);
+    expect(within(mainNavigation()).getByRole('link', { name: label })).toHaveAttribute('href', path);
   });
 
-  it('toggles the mobile hamburger menu and lets the user follow a link', async () => {
-    const user = userEvent.setup();
-    const { container } = renderWithProviders(<App />, { withLeagueSeasonProvider: false });
+  it('keeps Admin out of the main nav', () => {
+    renderWithProviders(<App />, { withLeagueSeasonProvider: false });
 
-    // Mobile nav container is absent until the hamburger is opened.
-    expect(container.querySelector('#mobile-nav')).toBeNull();
-
-    await user.click(screen.getByRole('button', { name: /Open navigation menu/i }));
-    const mobileNav = container.querySelector('#mobile-nav') as HTMLElement;
-    expect(mobileNav).not.toBeNull();
-
-    await user.click(within(mobileNav).getByRole('link', { name: 'Standings' }));
-    expect(await screen.findByText(/No leagues configured/i)).toBeInTheDocument();
-    // Closes itself after navigation
-    expect(container.querySelector('#mobile-nav')).toBeNull();
+    expect(within(mainNavigation()).queryByRole('link', { name: /admin/i })).toBeNull();
   });
 
-  it('keeps Admin out of the main nav and the mobile menu', async () => {
+  it('has no hamburger menu button', () => {
+    renderWithProviders(<App />, { withLeagueSeasonProvider: false });
+
+    expect(screen.queryByRole('button', { name: /navigation menu/i })).toBeNull();
+  });
+
+  it.each(['/', '/scoreboard', '/report', '/rankings', '/player-rankings', '/rosters', '/late-row-bets', '/rules', '/admin'])(
+    'shows the tab bar on %s',
+    (path) => {
+      renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
+
+      expect(screen.getByRole('navigation', { name: 'Tabs' })).toBeInTheDocument();
+    },
+  );
+
+  it.each(['/', '/scoreboard', '/report', '/rankings', '/player-rankings', '/rosters', '/late-row-bets', '/rules'])(
+    "puts %s's picker button in the main nav below sm, opening the page's picker sheet",
+    async (path) => {
+      vi.mocked(api.leagues).mockResolvedValueOnce([league]);
+      vi.mocked(api.seasons).mockResolvedValueOnce([season]);
+      const user = userEvent.setup();
+      renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
+
+      const weekButton = await within(mainNavigation()).findByRole('button', {
+        name: '2026 Season 1, change league and season',
+      });
+      expect(weekButton.parentElement).toHaveClass('sm:hidden');
+      await user.click(weekButton);
+
+      expect(screen.getByRole('dialog', { name: 'League and season' })).toBeInTheDocument();
+    },
+  );
+
+  it.each(['/admin', '/no-such-page'])('leaves the main nav without a picker button on %s', async (path) => {
+    vi.mocked(api.leagues).mockResolvedValueOnce([league]);
+    vi.mocked(api.seasons).mockResolvedValueOnce([season]);
+    const seasonsCallsBefore = vi.mocked(api.seasons).mock.calls.length;
+    renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
+
+    // The seasons request follows the leagues, so the picker has had its leagues by the time it fires.
+    await waitFor(() => {
+      expect(vi.mocked(api.seasons).mock.calls.length).toBeGreaterThan(seasonsCallsBefore);
+    });
+    expect(within(mainNavigation()).queryByRole('button')).toBeNull();
+  });
+
+  it('pads the foot of main past the tab bar below lg, and keeps the page padding from lg', () => {
+    renderWithProviders(<App />, { withLeagueSeasonProvider: false });
+
+    expect(screen.getByRole('main')).toHaveClass('pt-4', 'sm:pt-6', 'pb-above-tab-bar-4', 'sm:pb-above-tab-bar-6', 'lg:pb-6');
+  });
+
+  it('hides the footer below lg, where the More sheet reaches Admin', () => {
+    renderWithProviders(<App />, { withLeagueSeasonProvider: false });
+
+    expect(screen.getByRole('contentinfo')).toHaveClass('hidden', 'lg:block');
+  });
+
+  it('follows a More sheet link to its page and closes the sheet', async () => {
     const user = userEvent.setup();
-    const { container } = renderWithProviders(<App />, { withLeagueSeasonProvider: false });
+    renderWithProviders(<App />, { initialPath: '/scoreboard', withLeagueSeasonProvider: false });
 
-    expect(within(screen.getByRole('navigation')).queryByRole('link', { name: /admin/i })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'More' }));
+    await user.click(within(screen.getByRole('dialog', { name: 'More' })).getByRole('link', { name: 'Rules' }));
 
-    await user.click(screen.getByRole('button', { name: /Open navigation menu/i }));
-    const mobileNav = container.querySelector('#mobile-nav') as HTMLElement;
-    expect(within(mobileNav).getByRole('link', { name: 'Rules' })).toBeInTheDocument();
-    expect(within(mobileNav).queryByRole('link', { name: /admin/i })).toBeNull();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Season Rules' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('links Admin from the site footer to its unchanged path', () => {
@@ -159,7 +215,7 @@ describe('App', () => {
     ['/rosters', 'Team Rosters'],
     ['/late-row-bets', 'Late Row Bets'],
     ['/rules', 'Season Rules'],
-  ])("puts the league and season picker in %s's title row, and nowhere else", async (path, title) => {
+  ])("puts the league and season picker in %s's title row, hidden below sm, and nowhere else", async (path, title) => {
     vi.mocked(api.leagues).mockResolvedValueOnce([league]);
     vi.mocked(api.seasons).mockResolvedValueOnce([season]);
     renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
@@ -168,6 +224,119 @@ describe('App', () => {
     const titleRow = pageTitleRow(screen.getByRole('heading', { level: 2, name: title }));
     expect(titleRow).toContainElement(leagueSelect);
     expect(within(titleRow).getByRole('combobox', { name: 'Season' })).toBeInTheDocument();
+    const desktopWrapper = leagueSelect.closest<HTMLElement>('.hidden');
+    expect(desktopWrapper).toHaveClass('sm:block');
+    expect(titleRow).toContainElement(desktopWrapper);
     expect(screen.getAllByRole('combobox', { name: /^(League|Season)$/ })).toHaveLength(2);
+  });
+});
+
+describe('App my team', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.mocked(api.leagues).mockResolvedValue([league]);
+    vi.mocked(api.seasons).mockResolvedValue([season]);
+    vi.mocked(api.rosters).mockResolvedValue(['Womble', 'BLAU', 'Juray'].map(rosterTeam));
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
+    vi.mocked(api.leagues).mockResolvedValue([]);
+    vi.mocked(api.seasons).mockResolvedValue([]);
+    vi.mocked(api.rosters).mockResolvedValue([]);
+  });
+
+  const picker = (): Promise<HTMLElement> => screen.findByRole('dialog', { name: 'Which team is yours?' });
+
+  it('asks a first-time visitor which team is theirs', async () => {
+    renderWithProviders(<App />, { initialPath: '/rankings', withLeagueSeasonProvider: false });
+
+    expect(await picker()).toBeInTheDocument();
+  });
+
+  it('does not ask on Admin', async () => {
+    renderWithProviders(<App />, { initialPath: '/admin', withLeagueSeasonProvider: false });
+
+    await waitFor(() => {
+      expect(api.rosters).toHaveBeenCalledWith(season.id);
+    });
+    await act(async () => {
+      await vi.mocked(api.rosters).mock.results.at(-1)?.value;
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      });
+    });
+    expect(screen.queryByRole('dialog', { name: 'Which team is yours?' })).toBeNull();
+  });
+
+  it('clears the saved team from More and asks again', async () => {
+    window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"WOMBLE"}');
+    const user = userEvent.setup();
+    renderWithProviders(<App />, { initialPath: '/scoreboard', withLeagueSeasonProvider: false });
+
+    await user.click(screen.getByRole('button', { name: 'More' }));
+    const more = screen.getByRole('dialog', { name: 'More' });
+    await user.click(await within(more).findByRole('button', { name: 'My team: WOMBLE · Change' }));
+
+    expect(await picker()).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'More' })).toBeNull();
+    expect(window.localStorage.getItem(MY_TEAM_KEY)).toBeNull();
+  });
+
+  it('returns focus to the More tab when the picker opened from its sheet closes', async () => {
+    window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"WOMBLE"}');
+    const user = userEvent.setup();
+    renderWithProviders(<App />, { initialPath: '/scoreboard', withLeagueSeasonProvider: false });
+
+    const moreTab = screen.getByRole('button', { name: 'More' });
+    await user.click(moreTab);
+    const more = screen.getByRole('dialog', { name: 'More' });
+    await user.click(await within(more).findByRole('button', { name: 'My team: WOMBLE · Change' }));
+    await picker();
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog', { name: 'Which team is yours?' })).toBeNull();
+    expect(moreTab).toHaveFocus();
+  });
+
+  it('asks again from My team in the header, naming the saved team only to assistive tech', async () => {
+    window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"WOMBLE"}');
+    const user = userEvent.setup();
+    renderWithProviders(<App />, { initialPath: '/scoreboard', withLeagueSeasonProvider: false });
+
+    const myTeam = await within(mainNavigation()).findByRole('button', { name: 'My team: WOMBLE, change' });
+    expect(myTeam).toHaveTextContent(/^My team$/);
+    expect(myTeam).toHaveAttribute('aria-haspopup', 'dialog');
+    await user.click(myTeam);
+
+    expect(await picker()).toBeInTheDocument();
+    expect(window.localStorage.getItem(MY_TEAM_KEY)).toBeNull();
+  });
+
+  it('offers a choice from My team in the header to a visitor who is just browsing', async () => {
+    window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"browsing"}');
+    renderWithProviders(<App />, { initialPath: '/scoreboard', withLeagueSeasonProvider: false });
+
+    expect(await within(mainNavigation()).findByRole('button', { name: 'My team, choose' })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['on Admin', '/admin', ['Womble']],
+    ['while the newest season has no teams', '/scoreboard', []],
+  ])('offers no My team in the header %s', async (_case, path, teamNames) => {
+    window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"WOMBLE"}');
+    vi.mocked(api.rosters).mockResolvedValue(teamNames.map(rosterTeam));
+    renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
+
+    await waitFor(() => {
+      expect(api.rosters).toHaveBeenCalledWith(season.id);
+    });
+    await act(async () => {
+      await vi.mocked(api.rosters).mock.results.at(-1)?.value;
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      });
+    });
+    expect(within(mainNavigation()).queryByRole('button', { name: /^My team/ })).toBeNull();
   });
 });

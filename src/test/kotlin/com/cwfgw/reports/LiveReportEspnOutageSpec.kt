@@ -58,8 +58,12 @@ private val LIVE_CAPABLE_PATHS =
 
 private fun withLive(url: String): String = if ('?' in url) "$url&live=true" else "$url?live=true"
 
+private const val MASTERS_LEADER =
+    """{"id":"p1","order":1,"score":"-5","athlete":{"displayName":"Leader"},"linescores":[{"value":67.0}],""" +
+        """"status":{"type":{"id":"1"}}}"""
+
 private const val MASTERS_SCOREBOARD =
-    """{"events":[{"id":"espn-masters","name":"The Masters","competitions":[{"competitors":[]}]}]}"""
+    """{"events":[{"id":"espn-masters","name":"The Masters","competitions":[{"competitors":[$MASTERS_LEADER]}]}]}"""
 
 private const val TRUNCATED_SCOREBOARD = """{"events":[{"id":"espn-masters","name":"""
 
