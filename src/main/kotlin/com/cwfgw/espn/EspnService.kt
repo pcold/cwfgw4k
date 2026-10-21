@@ -261,15 +261,17 @@ class EspnService(
         seasonId: SeasonId,
         tournamentId: TournamentId,
     ): MatchingContext {
+        // Overrides before golfers: under READ COMMITTED, a golfer committed between the two reads would otherwise
+        // be named by an override and missing from the maps, and the override would be skipped.
+        val overrides =
+            linkRepository.listByTournament(tournamentId)
+                .associate { it.espnCompetitorId to it.golferId }
         val names = GolferNameIndex(golferRepository.findAll(search = null))
         val rosterIds =
             teamRepository.getRosterView(seasonId)
                 .flatMap { it.picks }
                 .map { it.golferId }
                 .toSet()
-        val overrides =
-            linkRepository.listByTournament(tournamentId)
-                .associate { it.espnCompetitorId to it.golferId }
         return MatchingContext(names = names, rosterGolferIds = rosterIds, overrides = overrides)
     }
 
