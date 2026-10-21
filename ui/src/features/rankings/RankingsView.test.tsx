@@ -38,6 +38,25 @@ function buildRankings(overrides: Partial<Rankings> = {}): Rankings {
     live: false,
     liveEligible: false,
     cashTotals: { won: 185, lost: -35, net: 150 },
+    standings: [
+      { type: 'leader', teamId: 'team-1', tied: false, aheadOf: { position: 2, tied: false, amount: 115 } },
+      {
+        type: 'chaser',
+        teamId: 'team-2',
+        tied: false,
+        position: 3,
+        behind: { position: 2, tied: false, amount: 70 },
+        behindLeader: 185,
+      },
+      {
+        type: 'chaser',
+        teamId: 'team-3',
+        tied: false,
+        position: 2,
+        behind: { position: 1, tied: false, amount: 115 },
+        behindLeader: 115,
+      },
+    ],
     ...overrides,
   };
 }
@@ -178,6 +197,47 @@ describe('RankingsView', () => {
 
       expect(screen.queryByText('your team')).toBeNull();
       expect(screen.getByRole('row', { name: /Cuts/ })).not.toHaveClass('outline-2');
+    });
+  });
+
+  describe('the your-team card', () => {
+    function yourTeamCard(): HTMLElement {
+      return screen.getByRole('region', { name: 'Your team' });
+    }
+
+    function statsOf(card: HTMLElement): string[] {
+      const definitions = within(card).getAllByRole('definition');
+      return within(card)
+        .getAllByRole('term')
+        .map((term, index) => `${term.textContent}: ${definitions[index]?.textContent ?? ''}`);
+    }
+
+    it('opens the standings with a chasing team, its total box and three stats from its standing', () => {
+      renderWithProviders(<RankingsView myTeamName="birdies" rankings={buildRankings()} />, NO_PROVIDERS);
+
+      const card = yourTeamCard();
+      expect(within(card).getByText('Birdies')).toBeInTheDocument();
+      expect(within(card).getByText('\u2212$35')).toHaveClass('bg-money-down-fill');
+      expect(statsOf(card)).toEqual(['Pos: 3rd / 3', 'Behind 2nd: +$70', 'Behind leader: +$185']);
+    });
+
+    it('gives the leader two stats: its position and its lead', () => {
+      renderWithProviders(<RankingsView myTeamName="Aces" rankings={buildRankings()} />, NO_PROVIDERS);
+
+      expect(statsOf(yourTeamCard())).toEqual(['Pos: 1st / 3', 'Ahead of 2nd: +$115']);
+    });
+
+    it('shows no card when no team is chosen', () => {
+      renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
+
+      expect(screen.queryByRole('region', { name: 'Your team' })).toBeNull();
+    });
+
+    it('shows no card for a team these standings do not hold', () => {
+      renderWithProviders(<RankingsView myTeamName="Eagles" rankings={buildRankings()} />, NO_PROVIDERS);
+
+      expect(screen.queryByRole('region', { name: 'Your team' })).toBeNull();
+      expect(screen.getByRole('table')).toBeInTheDocument();
     });
   });
 

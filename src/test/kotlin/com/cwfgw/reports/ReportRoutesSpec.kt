@@ -53,8 +53,10 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.double
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -288,6 +290,16 @@ private fun wireTotals(
     appJson.parseToJsonElement(body).jsonObject.getValue(field).jsonObject.mapValues { it.value.jsonPrimitive.double }
 
 private fun wireReport(body: String): JsonObject = appJson.parseToJsonElement(body).jsonObject
+
+// Read as numbers for the reason [wireTotals] gives.
+private fun wireGap(gap: JsonElement): Triple<Int, Boolean, Double> {
+    val fields = gap.jsonObject
+    return Triple(
+        fields.getValue("position").jsonPrimitive.int,
+        fields.getValue("tied").jsonPrimitive.boolean,
+        fields.getValue("amount").jsonPrimitive.double,
+    )
+}
 
 // No team here has a number, so the report falls back to listing them by name: [team] is an alphabetical index.
 private fun wireCell(
@@ -858,6 +870,34 @@ class ReportRoutesSpec : FunSpec({
 
             // WOMBLE pays BROWN the 18 its pick earned and the default 15 side bet on round 5.
             wireTotals(body, "cash_totals") shouldBe mapOf("won" to 33.0, "lost" to -33.0, "net" to 0.0)
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/rankings puts each team's standing on the wire, tagged by type") {
+        val brownOutEarnsWomble =
+            reportFixture(
+                initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
+                initialTeams = listOf(teamRow(TEAM_A, "BROWN"), teamRow(TEAM_B, "WOMBLE")),
+                initialGolfers =
+                    listOf(golferRow(SCOTTIE_ID, "Scottie", "Scheffler"), golferRow(RORY_ID, "Rory", "McIlroy")),
+                initialRosters = listOf(rosterRow(TEAM_A, SCOTTIE_ID, 5), rosterRow(TEAM_B, RORY_ID, 5)),
+                initialScores = listOf(scoreRow(TEAM_A, MASTERS_ID, SCOTTIE_ID, BigDecimal(18))),
+            )
+        apiTest(brownOutEarnsWomble) { client ->
+            val body = client.get("/api/v1/seasons/${SEASON_ID.value}/rankings").bodyAsText()
+
+            val (brown, womble) = wireReport(body).getValue("standings").jsonArray.map { it.jsonObject }
+            brown.keys shouldBe setOf("type", "team_id", "tied", "ahead_of")
+            brown["type"] shouldBe JsonPrimitive("leader")
+            brown["team_id"] shouldBe JsonPrimitive(TEAM_A.value.toString())
+            brown["tied"] shouldBe JsonPrimitive(false)
+            wireGap(brown.getValue("ahead_of")) shouldBe Triple(2, false, 66.0)
+            womble.keys shouldBe setOf("type", "team_id", "tied", "position", "behind", "behind_leader")
+            womble["type"] shouldBe JsonPrimitive("chaser")
+            womble["team_id"] shouldBe JsonPrimitive(TEAM_B.value.toString())
+            womble["position"] shouldBe JsonPrimitive(2)
+            wireGap(womble.getValue("behind")) shouldBe Triple(1, false, 66.0)
+            womble.getValue("behind_leader").jsonPrimitive.double shouldBe 66.0
         }
     }
 

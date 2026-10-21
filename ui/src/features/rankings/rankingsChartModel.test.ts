@@ -34,6 +34,7 @@ function buildRankings(overrides: Partial<Rankings> = {}): Rankings {
     live: false,
     liveEligible: false,
     cashTotals: { won: 150, lost: -35, net: 115 },
+    standings: [],
     ...overrides,
   };
 }

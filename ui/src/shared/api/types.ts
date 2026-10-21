@@ -155,7 +155,7 @@ export interface TeamRanking {
 }
 
 export interface Rankings {
-  /** Best `totalCash` first. Number the standings in this order; never re-sort. */
+  /** Best `totalCash` first. Number the rows in this order; never re-sort. */
   teams: TeamRanking[];
   weeks: string[];
   tournamentNames: string[];
@@ -164,6 +164,24 @@ export interface Rankings {
   liveEligible: boolean;
   /** @see WeeklyReport.cashTotals */
   cashTotals: WonLostTotals;
+  /**
+   * One per `teams` entry, matched by `teamId`: a team's tie-aware place and its gaps, never derived from `teams`.
+   * The rows keep their arrival numbering, so a tied team's row number can differ from its place here.
+   */
+  standings: TeamStanding[];
+}
+
+// Mirrors the backend's sealed TeamStanding (com.cwfgw.reports), discriminated by `type`. A leader has no position
+// field because it is always 1.
+export type TeamStanding =
+  | { type: 'leader'; teamId: string; tied: boolean; aheadOf: StandingGap | null }
+  | { type: 'chaser'; teamId: string; tied: boolean; position: number; behind: StandingGap; behindLeader: number };
+
+/** The other team's place, and the distance to it, never negative. */
+export interface StandingGap {
+  position: number;
+  tied: boolean;
+  amount: number;
 }
 
 export interface PlayerRankingsRow {

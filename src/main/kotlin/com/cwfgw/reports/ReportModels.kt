@@ -6,9 +6,11 @@ import com.cwfgw.golfers.GolferId
 import com.cwfgw.serialization.BigDecimalSerializer
 import com.cwfgw.teams.TeamId
 import com.cwfgw.tournaments.TournamentStatus
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
+import kotlinx.serialization.json.JsonClassDiscriminator
 import java.math.BigDecimal
 
 /*
@@ -267,10 +269,10 @@ data class TeamRanking(
     val series: List<BigDecimal>,
 )
 
-/** Full rankings response — teams plus the column headers for the series chart. */
+/** Full rankings response — teams with their standings, plus the column headers for the series chart. */
 @Serializable
 data class Rankings(
-    /** Ranked by [TeamRanking.totalCash] descending; the UI numbers the standings in the order they arrive. */
+    /** Ranked by [TeamRanking.totalCash] descending; the UI numbers the rows in the order they arrive. */
     val teams: List<TeamRanking>,
     val weeks: List<String>,
     val tournamentNames: List<String>,
@@ -283,7 +285,90 @@ data class Rankings(
 ) {
     /** A body property for the reason [WeeklyReport] gives its totals. */
     val cashTotals: WonLostTotals = WonLostTotals.over(teams.map(TeamRanking::totalCash))
+
+    /**
+     * One entry per [teams] entry, in its order. A list keyed by team id rather than a field on [TeamRanking], so it
+     * is a body property for the reason [WeeklyReport] gives its totals.
+     */
+    val standings: List<TeamStanding> = TeamStanding.over(teams)
 }
+
+/**
+ * Where a team stands on [TeamRanking.totalCash], ranked competition style: equal totals share a position and the
+ * next total takes one plus the count above it (1, 2, 2, 4). Discriminated on the wire by `type`.
+ */
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable
+@JsonClassDiscriminator("type")
+sealed interface TeamStanding {
+    val teamId: TeamId
+    val tied: Boolean
+
+    /** First on its own or tied for it. [aheadOf] is null when no team has a lower total. */
+    @Serializable
+    @SerialName("leader")
+    data class Leader(
+        override val teamId: TeamId,
+        override val tied: Boolean,
+        val aheadOf: StandingGap?,
+    ) : TeamStanding
+
+    /** [behind] is the nearest strictly higher total, so it skips a team tied with this one. */
+    @Serializable
+    @SerialName("chaser")
+    data class Chaser(
+        override val teamId: TeamId,
+        override val tied: Boolean,
+        val position: Int,
+        val behind: StandingGap,
+        val behindLeader: BigDecimal,
+    ) : TeamStanding
+
+    companion object {
+        fun over(teams: List<TeamRanking>): List<TeamStanding> {
+            val totals = teams.map(TeamRanking::totalCash)
+            val leaderTotal = totals.maxOrNull() ?: return emptyList()
+
+            fun positionOf(total: BigDecimal): Int = 1 + totals.count { it > total }
+
+            fun isTied(total: BigDecimal): Boolean = totals.count { it.compareTo(total) == 0 } > 1
+
+            fun gapTo(otherTotal: BigDecimal, amount: BigDecimal): StandingGap =
+                StandingGap(position = positionOf(otherTotal), tied = isTied(otherTotal), amount = amount)
+
+            return teams.map { team ->
+                val total = team.totalCash
+                val nextHigher = totals.filter { it > total }.minOrNull()
+                if (nextHigher == null) {
+                    Leader(
+                        teamId = team.teamId,
+                        tied = isTied(total),
+                        aheadOf =
+                            totals.filter { it < total }.maxOrNull()?.let { lower ->
+                                gapTo(lower, total - lower)
+                            },
+                    )
+                } else {
+                    Chaser(
+                        teamId = team.teamId,
+                        tied = isTied(total),
+                        position = positionOf(total),
+                        behind = gapTo(nextHigher, nextHigher - total),
+                        behindLeader = leaderTotal - total,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** [amount] is never negative: the distance between the two totals, whichever side this team is on. */
+@Serializable
+data class StandingGap(
+    val position: Int,
+    val tied: Boolean,
+    val amount: BigDecimal,
+)
 
 /** One top-10 finish in a golfer's season history. */
 @Serializable
