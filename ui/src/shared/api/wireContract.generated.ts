@@ -84,21 +84,21 @@ export interface WireContract extends Record<string, true> {
   'com.cwfgw.admin.ConfirmedPick': ExactFields<
     RosterConfirmPick,
     | 'round'
-    | 'ownership_pct'
+    | 'ownershipPct'
     | 'assignment'
   >;
   'com.cwfgw.admin.ConfirmedTeam': ExactFields<
     RosterConfirmTeamInput,
-    | 'team_number'
-    | 'team_name'
+    | 'teamNumber'
+    | 'teamName'
     | 'picks'
   >;
   'com.cwfgw.admin.ConfirmedTournamentEntry': ExactFields<
     ConfirmedTournamentEntry,
-    | 'espn_event_id'
+    | 'espnEventId'
     | 'name'
-    | 'start_date'
-    | 'end_date'
+    | 'startDate'
+    | 'endDate'
   >;
   'com.cwfgw.admin.GolferAssignment': ExactValues<
     GolferAssignment['type'],
@@ -109,13 +109,13 @@ export interface WireContract extends Record<string, true> {
   'com.cwfgw.admin.GolferAssignment#espn': ExactFields<
     Extract<GolferAssignment, { type: 'espn' }>,
     | 'type'
-    | 'espn_id'
+    | 'espnId'
     | 'name'
   >;
   'com.cwfgw.admin.GolferAssignment#existing': ExactFields<
     Extract<GolferAssignment, { type: 'existing' }>,
     | 'type'
-    | 'golfer_id'
+    | 'golferId'
   >;
   'com.cwfgw.admin.GolferAssignment#new': ExactFields<
     Extract<GolferAssignment, { type: 'new' }>,
@@ -130,13 +130,13 @@ export interface WireContract extends Record<string, true> {
   'com.cwfgw.admin.GolferCandidate#espn': ExactFields<
     Extract<GolferCandidate, { type: 'espn' }>,
     | 'type'
-    | 'espn_id'
+    | 'espnId'
     | 'name'
   >;
   'com.cwfgw.admin.GolferCandidate#existing': ExactFields<
     Extract<GolferCandidate, { type: 'existing' }>,
     | 'type'
-    | 'golfer_id'
+    | 'golferId'
     | 'name'
   >;
   'com.cwfgw.admin.PickMatch': ExactValues<
@@ -155,20 +155,20 @@ export interface WireContract extends Record<string, true> {
   'com.cwfgw.admin.PickMatch#matched': ExactFields<
     Extract<PickMatch, { type: 'matched' }>,
     | 'type'
-    | 'golfer_id'
-    | 'golfer_name'
+    | 'golferId'
+    | 'golferName'
   >;
   'com.cwfgw.admin.PickMatch#matched_backfill': ExactFields<
     Extract<PickMatch, { type: 'matched_backfill' }>,
     | 'type'
-    | 'espn_id'
-    | 'golfer_name'
+    | 'espnId'
+    | 'golferName'
   >;
   'com.cwfgw.admin.PickMatch#matched_espn': ExactFields<
     Extract<PickMatch, { type: 'matched_espn' }>,
     | 'type'
-    | 'espn_id'
-    | 'golfer_name'
+    | 'espnId'
+    | 'golferName'
   >;
   'com.cwfgw.admin.PickMatch#no_match': ExactFields<
     Extract<PickMatch, { type: 'no_match' }>,
@@ -177,36 +177,36 @@ export interface WireContract extends Record<string, true> {
   'com.cwfgw.admin.PreviewPick': ExactFields<
     RosterPreviewPick,
     | 'round'
-    | 'player_name'
-    | 'ownership_pct'
+    | 'playerName'
+    | 'ownershipPct'
     | 'match'
   >;
   'com.cwfgw.admin.PreviewTeam': ExactFields<
     RosterPreviewTeam,
-    | 'team_number'
-    | 'team_name'
+    | 'teamNumber'
+    | 'teamName'
     | 'picks'
   >;
   'com.cwfgw.admin.PreviewedTournament': ExactFields<
     PreviewedTournament,
-    | 'espn_event_id'
+    | 'espnEventId'
     | 'name'
-    | 'start_date'
-    | 'end_date'
+    | 'startDate'
+    | 'endDate'
     | 'week'
   >;
   'com.cwfgw.admin.RosterPreviewResult': ExactFields<
     RosterPreview,
     | 'teams'
-    | 'total_picks'
-    | 'matched_count'
-    | 'ambiguous_count'
-    | 'unmatched_count'
+    | 'totalPicks'
+    | 'matchedCount'
+    | 'ambiguousCount'
+    | 'unmatchedCount'
   >;
   'com.cwfgw.admin.RosterUploadResult': ExactFields<
     RosterConfirmResult,
-    | 'teams_created'
-    | 'golfers_created'
+    | 'teamsCreated'
+    | 'golfersCreated'
     | 'teams'
   >;
   'com.cwfgw.admin.SeasonImportResult': ExactFields<
@@ -221,8 +221,8 @@ export interface WireContract extends Record<string, true> {
   >;
   'com.cwfgw.admin.SkippedEntry': ExactFields<
     SkippedSeasonImportEntry,
-    | 'espn_event_id'
-    | 'espn_event_name'
+    | 'espnEventId'
+    | 'espnEventName'
     | 'reason'
   >;
   'com.cwfgw.datahealth.DataHealthCheck': ExactFields<
@@ -233,36 +233,36 @@ export interface WireContract extends Record<string, true> {
   'com.cwfgw.datahealth.DataHealthGolfer': ExactFields<
     DataHealthGolfer,
     | 'id'
-    | 'first_name'
-    | 'last_name'
-    | 'pga_player_id'
+    | 'firstName'
+    | 'lastName'
+    | 'pgaPlayerId'
   >;
   'com.cwfgw.datahealth.DataHealthReport': ExactFields<
     DataHealthReport,
-    | 'rostered_twins'
-    | 'rostered_without_espn_id'
-    | 'blank_first_names'
+    | 'rosteredTwins'
+    | 'rosteredWithoutEspnId'
+    | 'blankFirstNames'
   >;
   'com.cwfgw.datahealth.RosteredTwinGroup': ExactFields<
     RosteredTwinGroup,
-    | 'normalized_name'
-    | 'rostered_without_espn_id'
-    | 'holding_espn_id'
+    | 'normalizedName'
+    | 'rosteredWithoutEspnId'
+    | 'holdingEspnId'
   >;
   'com.cwfgw.espn.ContestedCompetitor': ExactFields<
     ContestedCompetitor,
-    | 'espn_competitor_id'
+    | 'espnCompetitorId'
     | 'name'
     | 'candidates'
   >;
   'com.cwfgw.espn.EspnImportWarnings': ExactFields<
     EspnImportWarnings,
-    | 'tournament_id'
-    | 'tournament_name'
-    | 'rostered_surname_twins'
-    | 'created_golfers'
-    | 'unmatched_competitors'
-    | 'contested_competitors'
+    | 'tournamentId'
+    | 'tournamentName'
+    | 'rosteredSurnameTwins'
+    | 'createdGolfers'
+    | 'unmatchedCompetitors'
+    | 'contestedCompetitors'
   >;
   'com.cwfgw.espn.RosteredSurnameTwin': ExactFields<
     RosteredSurnameTwin,
@@ -271,30 +271,30 @@ export interface WireContract extends Record<string, true> {
   >;
   'com.cwfgw.espn.UnmatchedCompetitor': ExactFields<
     UnmatchedCompetitor,
-    | 'espn_competitor_id'
+    | 'espnCompetitorId'
     | 'name'
   >;
   'com.cwfgw.golfers.Golfer': ExactFields<
     Golfer,
     | 'id'
-    | 'pga_player_id'
-    | 'first_name'
-    | 'last_name'
+    | 'pgaPlayerId'
+    | 'firstName'
+    | 'lastName'
     | 'country'
-    | 'world_ranking'
-    | 'updated_at'
+    | 'worldRanking'
+    | 'updatedAt'
   >;
   'com.cwfgw.leagues.League': ExactFields<
     League,
     | 'id'
     | 'name'
-    | 'created_at'
+    | 'createdAt'
   >;
   'com.cwfgw.reports.GolferHistory': ExactFields<
     GolferHistory,
-    | 'golfer_name'
-    | 'total_earnings'
-    | 'top_tens'
+    | 'golferName'
+    | 'totalEarnings'
+    | 'topTens'
     | 'results'
   >;
   'com.cwfgw.reports.GolferHistoryEntry': ExactFields<
@@ -306,55 +306,55 @@ export interface WireContract extends Record<string, true> {
   'com.cwfgw.reports.LeaderboardPlayer': ExactFields<
     LeaderboardPlayer,
     | 'name'
-    | 'team_names'
+    | 'teamNames'
   >;
   'com.cwfgw.reports.LiveLeaderboardEntry': ExactFields<
     LiveLeaderboardEntry,
     | 'position'
-    | 'score_to_par'
+    | 'scoreToPar'
     | 'players'
-    | 'round_scores'
-    | 'total_strokes'
+    | 'roundScores'
+    | 'totalStrokes'
     | 'rostered'
   >;
   'com.cwfgw.reports.PlayerRankings': ExactFields<
     PlayerRankings,
     | 'players'
     | 'live'
-    | 'live_eligible'
+    | 'liveEligible'
   >;
   'com.cwfgw.reports.PlayerRankingsRow': ExactFields<
     PlayerRankingsRow,
     | 'key'
-    | 'golfer_id'
+    | 'golferId'
     | 'name'
-    | 'top_tens'
-    | 'total_earnings'
-    | 'team_name'
-    | 'draft_round'
+    | 'topTens'
+    | 'totalEarnings'
+    | 'teamName'
+    | 'draftRound'
   >;
   'com.cwfgw.reports.Rankings': ExactFields<
     Rankings,
     | 'teams'
     | 'weeks'
-    | 'tournament_names'
+    | 'tournamentNames'
     | 'live'
-    | 'live_eligible'
-    | 'cash_totals'
+    | 'liveEligible'
+    | 'cashTotals'
     | 'standings'
   >;
   'com.cwfgw.reports.ReportCell': ExactFields<
     ReportCell,
     | 'round'
-    | 'golfer_name'
-    | 'golfer_id'
-    | 'position_str'
+    | 'golferName'
+    | 'golferId'
+    | 'positionStr'
     | 'finish'
     | 'earnings'
-    | 'ownership_pct'
-    | 'season_earnings'
-    | 'season_top_tens'
-    | 'in_field'
+    | 'ownershipPct'
+    | 'seasonEarnings'
+    | 'seasonTopTens'
+    | 'inField'
   >;
   'com.cwfgw.reports.ReportCellFinish': ExactFields<
     ReportCellFinish,
@@ -373,39 +373,39 @@ export interface WireContract extends Record<string, true> {
   >;
   'com.cwfgw.reports.ReportSideBetRules': ExactFields<
     ReportSideBetRules,
-    | 'amount_per_team'
+    | 'amountPerTeam'
     | 'rounds'
   >;
   'com.cwfgw.reports.ReportSideBetTeamEntry': ExactFields<
     ReportSideBetTeamEntry,
-    | 'team_id'
-    | 'team_name'
-    | 'golfer_name'
-    | 'cumulative_earnings'
+    | 'teamId'
+    | 'teamName'
+    | 'golferName'
+    | 'cumulativeEarnings'
     | 'payout'
     | 'outcome'
   >;
   'com.cwfgw.reports.ReportTeamColumn': ExactFields<
     ReportTeamColumn,
-    | 'team_id'
-    | 'team_name'
+    | 'teamId'
+    | 'teamName'
     | 'cells'
-    | 'top_ten_earnings'
-    | 'weekly_total'
+    | 'topTenEarnings'
+    | 'weeklyTotal'
     | 'previous'
     | 'subtotal'
-    | 'top_ten_count'
-    | 'top_ten_money'
-    | 'side_bets'
-    | 'total_cash'
+    | 'topTenCount'
+    | 'topTenMoney'
+    | 'sideBets'
+    | 'totalCash'
   >;
   'com.cwfgw.reports.ReportTournamentInfo': ExactFields<
     ReportTournamentInfo,
     | 'name'
-    | 'start_date'
-    | 'end_date'
+    | 'startDate'
+    | 'endDate'
     | 'status'
-    | 'payout_multiplier'
+    | 'payoutMultiplier'
     | 'week'
   >;
   'com.cwfgw.reports.SideBetOutcome': ExactValues<
@@ -422,15 +422,15 @@ export interface WireContract extends Record<string, true> {
   'com.cwfgw.reports.StandingsEntry': ExactFields<
     StandingsEntry,
     | 'rank'
-    | 'team_name'
+    | 'teamName'
   >;
   'com.cwfgw.reports.TeamRanking': ExactFields<
     TeamRanking,
-    | 'team_id'
-    | 'team_name'
+    | 'teamId'
+    | 'teamName'
     | 'subtotal'
-    | 'side_bets'
-    | 'total_cash'
+    | 'sideBets'
+    | 'totalCash'
     | 'series'
   >;
   'com.cwfgw.reports.TeamStanding': ExactValues<
@@ -441,18 +441,18 @@ export interface WireContract extends Record<string, true> {
   'com.cwfgw.reports.TeamStanding#chaser': ExactFields<
     Extract<TeamStanding, { type: 'chaser' }>,
     | 'type'
-    | 'team_id'
+    | 'teamId'
     | 'tied'
     | 'position'
     | 'behind'
-    | 'behind_leader'
+    | 'behindLeader'
   >;
   'com.cwfgw.reports.TeamStanding#leader': ExactFields<
     Extract<TeamStanding, { type: 'leader' }>,
     | 'type'
-    | 'team_id'
+    | 'teamId'
     | 'tied'
-    | 'ahead_of'
+    | 'aheadOf'
   >;
   'com.cwfgw.reports.UndraftedGolfer': ExactFields<
     UndraftedGolfer,
@@ -464,19 +464,19 @@ export interface WireContract extends Record<string, true> {
     | 'scope'
     | 'tournament'
     | 'teams'
-    | 'undrafted_top_tens'
-    | 'side_bet_rules'
-    | 'side_bet_detail'
-    | 'standings_order'
+    | 'undraftedTopTens'
+    | 'sideBetRules'
+    | 'sideBetDetail'
+    | 'standingsOrder'
     | 'live'
-    | 'live_leaderboard'
-    | 'live_eligible'
-    | 'awaiting_tee_off'
-    | 'cash_totals'
-    | 'side_bet_totals'
-    | 'weekly_totals'
-    | 'weekly_standings'
-    | 'side_bet_standings'
+    | 'liveLeaderboard'
+    | 'liveEligible'
+    | 'awaitingTeeOff'
+    | 'cashTotals'
+    | 'sideBetTotals'
+    | 'weeklyTotals'
+    | 'weeklyStandings'
+    | 'sideBetStandings'
     | 'finalizable'
   >;
   'com.cwfgw.reports.WonLostTotals': ExactFields<
@@ -487,84 +487,84 @@ export interface WireContract extends Record<string, true> {
   >;
   'com.cwfgw.seasons.CleanSeasonResult': ExactFields<
     CleanSeasonResult,
-    | 'scores_deleted'
-    | 'results_deleted'
-    | 'tournaments_reset'
+    | 'scoresDeleted'
+    | 'resultsDeleted'
+    | 'tournamentsReset'
   >;
   'com.cwfgw.seasons.Season': ExactFields<
     Season,
     | 'id'
-    | 'league_id'
+    | 'leagueId'
     | 'name'
-    | 'season_year'
-    | 'season_number'
-    | 'tie_floor'
-    | 'side_bet_amount'
-    | 'max_teams'
-    | 'created_at'
-    | 'updated_at'
+    | 'seasonYear'
+    | 'seasonNumber'
+    | 'tieFloor'
+    | 'sideBetAmount'
+    | 'maxTeams'
+    | 'createdAt'
+    | 'updatedAt'
   >;
   'com.cwfgw.seasons.SeasonRules': ExactFields<
     SeasonRules,
     | 'payouts'
-    | 'tie_floor'
-    | 'side_bet_rounds'
-    | 'side_bet_amount'
+    | 'tieFloor'
+    | 'sideBetRounds'
+    | 'sideBetAmount'
   >;
   'com.cwfgw.teams.RosterViewPick': ExactFields<
     RosterPick,
     | 'round'
-    | 'golfer_name'
-    | 'ownership_pct'
-    | 'golfer_id'
+    | 'golferName'
+    | 'ownershipPct'
+    | 'golferId'
   >;
   'com.cwfgw.teams.RosterViewTeam': ExactFields<
     RosterTeam,
-    | 'team_id'
-    | 'team_number'
-    | 'team_name'
+    | 'teamId'
+    | 'teamNumber'
+    | 'teamName'
     | 'picks'
   >;
   'com.cwfgw.teams.Team': ExactFields<
     Team,
     | 'id'
-    | 'season_id'
-    | 'owner_name'
-    | 'team_name'
-    | 'team_number'
-    | 'created_at'
-    | 'updated_at'
+    | 'seasonId'
+    | 'ownerName'
+    | 'teamName'
+    | 'teamNumber'
+    | 'createdAt'
+    | 'updatedAt'
   >;
   'com.cwfgw.tournamentLinks.CreateLinkedGolferRequest': ExactFields<
     CreateLinkedGolferRequest,
-    | 'espn_competitor_id'
+    | 'espnCompetitorId'
     | 'name'
   >;
   'com.cwfgw.tournamentLinks.TournamentCompetitorListing': ExactFields<
     TournamentCompetitorListing,
-    | 'tournament_id'
-    | 'is_finalized'
+    | 'tournamentId'
+    | 'isFinalized'
     | 'competitors'
   >;
   'com.cwfgw.tournamentLinks.TournamentCompetitorView': ExactFields<
     TournamentCompetitorView,
-    | 'espn_competitor_id'
+    | 'espnCompetitorId'
     | 'name'
     | 'position'
-    | 'is_team_partner'
-    | 'linked_golfer'
-    | 'has_override'
+    | 'isTeamPartner'
+    | 'linkedGolfer'
+    | 'hasOverride'
   >;
   'com.cwfgw.tournamentLinks.TournamentPlayerOverride': ExactFields<
     TournamentPlayerOverride,
-    | 'tournament_id'
-    | 'espn_competitor_id'
-    | 'golfer_id'
+    | 'tournamentId'
+    | 'espnCompetitorId'
+    | 'golferId'
   >;
   'com.cwfgw.tournamentLinks.UpsertTournamentPlayerOverrideRequest': ExactFields<
     UpsertTournamentPlayerOverrideRequest,
-    | 'espn_competitor_id'
-    | 'golfer_id'
+    | 'espnCompetitorId'
+    | 'golferId'
   >;
   'com.cwfgw.tournaments.CurrentTournament': ExactValues<
     CurrentTournament['type'],
@@ -579,40 +579,40 @@ export interface WireContract extends Record<string, true> {
   'com.cwfgw.tournaments.CurrentTournament#season_finalized': ExactFields<
     Extract<CurrentTournament, { type: 'season_finalized' }>,
     | 'type'
-    | 'tournament_id'
+    | 'tournamentId'
   >;
   'com.cwfgw.tournaments.CurrentTournament#unfinalized': ExactFields<
     Extract<CurrentTournament, { type: 'unfinalized' }>,
     | 'type'
-    | 'tournament_id'
+    | 'tournamentId'
   >;
   'com.cwfgw.tournaments.FinalizedTournament': ExactFields<
     FinalizedTournament,
     | 'tournament'
-    | 'import_warnings'
+    | 'importWarnings'
   >;
   'com.cwfgw.tournaments.Tournament': ExactFields<
     Tournament,
     | 'id'
-    | 'pga_tournament_id'
+    | 'pgaTournamentId'
     | 'name'
-    | 'season_id'
-    | 'start_date'
-    | 'end_date'
-    | 'course_name'
+    | 'seasonId'
+    | 'startDate'
+    | 'endDate'
+    | 'courseName'
     | 'status'
-    | 'purse_amount'
-    | 'payout_multiplier'
+    | 'purseAmount'
+    | 'payoutMultiplier'
     | 'week'
-    | 'is_team_event'
-    | 'created_at'
+    | 'isTeamEvent'
+    | 'createdAt'
   >;
   'com.cwfgw.users.User': ExactFields<
     User,
     | 'id'
     | 'username'
     | 'role'
-    | 'created_at'
+    | 'createdAt'
   >;
   'com.cwfgw.users.UserRole': ExactValues<
     UserRole,
