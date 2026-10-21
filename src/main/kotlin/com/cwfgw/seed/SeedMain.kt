@@ -179,19 +179,19 @@ private suspend fun applyMajorMultipliers(
 ) {
     if (patterns.isEmpty()) return
     val matchers = patterns.map { it.lowercase() }
-    var applied = 0
-    for (tournament in created) {
-        val nameLower = tournament.name.lowercase()
-        if (matchers.any { it in nameLower }) {
-            services.tournamentService.update(
-                tournament.id,
-                com.cwfgw.tournaments.UpdateTournamentRequest(payoutMultiplier = java.math.BigDecimal("2")),
-            )
-            applied++
-            log.info { "Marked '${tournament.name}' as 2x major" }
+    val majors =
+        created.filter { tournament ->
+            val nameLower = tournament.name.lowercase()
+            matchers.any { it in nameLower }
         }
+    for (tournament in majors) {
+        services.tournamentService.update(
+            tournament.id,
+            com.cwfgw.tournaments.UpdateTournamentRequest(payoutMultiplier = java.math.BigDecimal("2")),
+        )
+        log.info { "Marked '${tournament.name}' as 2x major" }
     }
-    log.info { "Applied 2x multiplier to $applied tournament(s) matching $patterns" }
+    log.info { "Applied 2x multiplier to ${majors.size} tournament(s) matching $patterns" }
 }
 
 /**
