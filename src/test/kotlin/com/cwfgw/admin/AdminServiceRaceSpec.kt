@@ -65,6 +65,7 @@ class AdminServiceRaceSpec : FunSpec({
             tx = tx,
             seasonService = SeasonService(SeasonRepository(), tx),
             tournamentService = TournamentService(tournamentRepository, tx),
+            tournamentRepository = tournamentRepository,
             espnService = testEspnService(client = client, golferRepository = golferRepository, tx = tx),
             golferService = GolferService(golferRepository, tx),
             golferRepository = golferRepository,
@@ -186,8 +187,8 @@ private class OnceBlindPgaIdGolferRepository(
     private val blind = AtomicBoolean(true)
 
     context(ctx: TransactionContext)
-    override fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
-        if (blind.getAndSet(false)) null else inner.findByPgaPlayerId(pgaPlayerId)
+    override fun findByPgaPlayerIds(pgaPlayerIds: Collection<String>): List<Golfer> =
+        if (blind.getAndSet(false)) emptyList() else inner.findByPgaPlayerIds(pgaPlayerIds)
 }
 
 private fun espnPlayer(

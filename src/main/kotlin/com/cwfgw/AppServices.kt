@@ -137,6 +137,7 @@ data class AppServices private constructor(
                     AdminSupport.from(
                         seasons = seasons,
                         tournaments = tournaments,
+                        tournamentRepository = tournamentRepository,
                         espn = espn,
                         golfers = golfers,
                         golferRepository = golferRepository,

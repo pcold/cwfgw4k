@@ -6,6 +6,7 @@ import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolfersSupport
 import com.cwfgw.seasons.SeasonsSupport
 import com.cwfgw.teams.TeamRepository
+import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentsSupport
 
 /** @see com.cwfgw.AppServices.from */
@@ -16,6 +17,7 @@ internal class AdminSupport private constructor(
         fun from(
             seasons: SeasonsSupport,
             tournaments: TournamentsSupport,
+            tournamentRepository: TournamentRepository,
             espn: EspnSupport,
             golfers: GolfersSupport,
             golferRepository: GolferRepository,
@@ -28,6 +30,7 @@ internal class AdminSupport private constructor(
                         tx = transactor,
                         seasonService = seasons.seasonService,
                         tournamentService = tournaments.tournamentService,
+                        tournamentRepository = tournamentRepository,
                         espnService = espn.espnService,
                         golferService = golfers.golferService,
                         golferRepository = golferRepository,

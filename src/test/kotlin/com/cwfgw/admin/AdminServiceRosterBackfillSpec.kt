@@ -80,6 +80,7 @@ class AdminServiceRosterBackfillSpec : FunSpec({
             tx = tx,
             seasonService = SeasonService(SeasonRepository(), tx),
             tournamentService = TournamentService(TournamentRepository(), tx),
+            tournamentRepository = TournamentRepository(),
             espnService = testEspnService(client = client, golferRepository = golferRepository, tx = tx),
             golferService = GolferService(golferRepository, tx),
             golferRepository = golferRepository,
@@ -199,7 +200,7 @@ class AdminServiceRosterBackfillSpec : FunSpec({
 })
 
 /**
- * The first [findAll] and the first [findByPgaPlayerId] each answer as before a concurrent writer set the
+ * The first [findAll] and the first [findByPgaPlayerIds] each answer as before a concurrent writer set the
  * `pga_player_id`, which is the window that writer commits into; the backfill itself then meets the committed row.
  */
 private class OnceStaleGolferRepository(
@@ -210,8 +211,8 @@ private class OnceStaleGolferRepository(
     private val staleAll = AtomicBoolean(true)
 
     context(ctx: TransactionContext)
-    override fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
-        if (staleById.getAndSet(false)) null else inner.findByPgaPlayerId(pgaPlayerId)
+    override fun findByPgaPlayerIds(pgaPlayerIds: Collection<String>): List<Golfer> =
+        if (staleById.getAndSet(false)) emptyList() else inner.findByPgaPlayerIds(pgaPlayerIds)
 
     context(ctx: TransactionContext)
     override fun findAll(search: String?): List<Golfer> {

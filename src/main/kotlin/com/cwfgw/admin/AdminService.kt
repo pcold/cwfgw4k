@@ -28,6 +28,7 @@ import com.cwfgw.teams.TeamRepository
 import com.cwfgw.teams.UNIQUE_TEAM_NAME_PER_SEASON
 import com.cwfgw.tournaments.NewTournament
 import com.cwfgw.tournaments.Tournament
+import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentService
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.math.BigDecimal
@@ -62,6 +63,7 @@ class AdminService(
     private val tx: Transactor,
     private val seasonService: SeasonService,
     private val tournamentService: TournamentService,
+    private val tournamentRepository: TournamentRepository,
     private val espnService: EspnService,
     private val golferService: GolferService,
     private val golferRepository: GolferRepository,
@@ -90,9 +92,12 @@ class AdminService(
         // (the 'b' is conventionally the alternate-field event, but we can't
         // tell which is which from ESPN — operators correct via the UI).
         val datedEntries = parseAndFilterByRange(calendar, startDate, endDate, skipped)
+        val linked =
+            tx.get { tournamentRepository.findByPgaTournamentIds(datedEntries.map { (entry, _) -> entry.id }) }
+                .associateBy(Tournament::pgaTournamentId)
         for ((pair, week) in assignSequentialWeekLabels(datedEntries) { it.second }) {
             val (entry, date) = pair
-            val existing = tournamentService.findByPgaTournamentId(entry.id)
+            val existing = linked[entry.id]
             if (existing != null) {
                 skipped += SkippedEntry(entry.id, entry.label, "already linked to tournament ${existing.id.value}")
             } else {
@@ -273,9 +278,12 @@ class AdminService(
                 .map(ConfirmedPick::assignment)
                 .filterIsInstance<GolferAssignment.Espn>()
                 .distinctBy(GolferAssignment.Espn::espnId)
+        val holders =
+            golferRepository.findByPgaPlayerIds(athletes.map(GolferAssignment.Espn::espnId))
+                .associateBy(Golfer::pgaPlayerId)
         val persisted =
             athletes.mapNotNull { athlete ->
-                golferRepository.findByPgaPlayerId(athlete.espnId)?.let { golfer -> athlete.espnId to golfer.id }
+                holders[athlete.espnId]?.let { golfer -> athlete.espnId to golfer.id }
             }.toMap()
         val unpersisted = athletes.filterNot { it.espnId in persisted }
         val targets = targetRowsByName(unpersisted)
@@ -367,7 +375,8 @@ class AdminService(
                 .flatMap { it.picks.asSequence() }
                 .mapNotNull { (it.assignment as? GolferAssignment.Existing)?.golferId }
                 .toSet()
-        return referencedIds.filter { golferService.get(it) == null }
+        val found = tx.get { golferRepository.findByIds(referencedIds) }.map(Golfer::id).toSet()
+        return referencedIds.filterNot { it in found }
     }
 
     private suspend fun createOrSkip(
