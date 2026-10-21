@@ -104,9 +104,7 @@ private val TEST_LOGIN_WINDOW: Duration = Duration.ofMinutes(15)
 private const val TEST_SESSION_MAX_AGE = 3_600L
 private const val TEST_SESSION_SECRET = "test-only-session-secret-not-used-in-prod"
 
-// Long enough that the launchCacheSweep coroutine never fires inside a single
-// test's lifetime. The fake transactor + fake cache repo would be safe to
-// call, but skipping the loop entirely avoids stray log lines.
+// Long enough that only a test's first request sweeps, so a spec counting a transactor's calls sees at most one.
 private const val TEST_SWEEP_INTERVAL_SECONDS: Long = 3_600L
 
 /**

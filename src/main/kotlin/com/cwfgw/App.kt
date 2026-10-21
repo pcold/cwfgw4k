@@ -1,7 +1,7 @@
 package com.cwfgw
 
 import com.cwfgw.admin.adminRoutes
-import com.cwfgw.cache.RequestCache
+import com.cwfgw.cache.CacheSweep
 import com.cwfgw.cache.clearResponseCacheOnWrite
 import com.cwfgw.datahealth.dataHealthRoutes
 import com.cwfgw.db.PoolMetrics
@@ -28,6 +28,7 @@ import com.cwfgw.users.installSessionAuth
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCallPipeline
 import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.Routing
@@ -36,8 +37,7 @@ import io.ktor.server.routing.routing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import org.jooq.exception.DataAccessException
-import java.sql.SQLException
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Apart from `Main.kt` because no spec can start the process entry point, and every route spec
@@ -54,7 +54,7 @@ fun Application.module(
     installRequestLogging()
     installCompression()
     installErrorHandling()
-    launchCacheSweep(services.requestCache, services.sweepIntervalSeconds)
+    sweepCacheOnRequests(CacheSweep(services.requestCache, services.sweepIntervalSeconds.seconds))
     poolMetrics?.let(::launchPoolMetricsLog)
     if (services.debugEnabled) launchDebugProbeLog()
     routing {
@@ -65,30 +65,10 @@ fun Application.module(
     }
 }
 
-/**
- * The one loop that catches, as the only pass here that reaches the database: a sweep ended by one
- * blip would leave expired rows piling up until the process restarts.
- */
-private fun Application.launchCacheSweep(
-    requestCache: RequestCache,
-    sweepIntervalSeconds: Long,
-) {
-    val intervalMs = sweepIntervalSeconds * 1000L
-    launch {
-        while (isActive) {
-            try {
-                requestCache.deleteExpired()
-            } catch (e: SQLException) {
-                cacheSweepLog.warn(e) { "Cache sweep failed; retrying after interval" }
-            } catch (e: DataAccessException) {
-                cacheSweepLog.warn(e) { "Cache sweep failed; retrying after interval" }
-            }
-            delay(intervalMs)
-        }
-    }
+/** Before the handler, so the sweep runs on the CPU the request was given. @see CacheSweep */
+private fun Application.sweepCacheOnRequests(sweep: CacheSweep) {
+    intercept(ApplicationCallPipeline.Monitoring) { sweep.sweepIfDue() }
 }
-
-private val cacheSweepLog = KotlinLogging.logger("com.cwfgw.cache.Sweep")
 
 /**
  * `ops/` filters logs on the `cwfgw4k.db.pool …` line format, so it is a contract. A sustained
