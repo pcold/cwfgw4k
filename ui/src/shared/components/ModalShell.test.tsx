@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { TAP_TARGET_CLASS } from './formFields';
@@ -46,6 +46,26 @@ function SheetHandOver() {
       {open === 'picker' && (
         <ModalShell title="Which team is yours?" onClose={() => setOpen('none')} placement="responsive">
           <p>Teams</p>
+        </ModalShell>
+      )}
+    </>
+  );
+}
+
+/** The team picker opening on its own over a sheet the visitor already had open. */
+function StackedShells() {
+  const [sheetOpen, setSheetOpen] = useState(true);
+  const [pickerOpen, setPickerOpen] = useState(true);
+  return (
+    <>
+      {sheetOpen && (
+        <ModalShell title="More" onClose={() => setSheetOpen(false)} placement="sheet">
+          <a href="/rules">Rules</a>
+        </ModalShell>
+      )}
+      {pickerOpen && (
+        <ModalShell title="Which team is yours?" onClose={() => setPickerOpen(false)} placement="responsive">
+          <button type="button">WOMBLE</button>
         </ModalShell>
       )}
     </>
@@ -195,6 +215,28 @@ describe('ModalShell', () => {
 
     await userEvent.keyboard('{Escape}');
 
+    expect(document.body).not.toHaveClass(MODAL_SCROLL_LOCK_CLASS);
+  });
+
+  it('gives the keyboard to the shell opened last, and hands it back when that one closes', async () => {
+    renderWithProviders(<StackedShells />, { withLeagueSeasonProvider: false });
+    const picker = screen.getByRole('dialog', { name: 'Which team is yours?' });
+    const pickerClose = within(picker).getByRole('button', { name: 'Close' });
+
+    await userEvent.tab();
+    expect(pickerClose).toHaveFocus();
+    await userEvent.tab();
+    expect(within(picker).getByRole('button', { name: 'WOMBLE' })).toHaveFocus();
+    await userEvent.tab();
+    expect(pickerClose).toHaveFocus();
+
+    await userEvent.keyboard('{Escape}');
+    expect(picker).not.toBeInTheDocument();
+    const sheet = screen.getByRole('dialog', { name: 'More' });
+    expect(document.body).toHaveClass(MODAL_SCROLL_LOCK_CLASS);
+
+    await userEvent.keyboard('{Escape}');
+    expect(sheet).not.toBeInTheDocument();
     expect(document.body).not.toHaveClass(MODAL_SCROLL_LOCK_CLASS);
   });
 

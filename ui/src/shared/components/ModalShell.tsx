@@ -77,6 +77,9 @@ type ModalShellProps = ModalPlacement & {
   readonly children: ReactNode;
 };
 
+// Module state, not context: the team picker opens itself over whatever shell is up, from another subtree.
+const openPanels: HTMLElement[] = [];
+
 /** Null leaves the keypress to the browser, whose own tab order already stays inside. */
 function trapDestination(panel: HTMLElement, event: KeyboardEvent): HTMLElement | null {
   const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
@@ -98,8 +101,8 @@ function trapDestination(panel: HTMLElement, event: KeyboardEvent): HTMLElement 
 
 /**
  * Trapped, not merely moved: `aria-modal` has told a screen reader the page is inert, so the keyboard
- * must not reach it either. Mount is open. Shells don't stack: each owns the scroll lock and Escape
- * outright, so a second one open at once would be released and closed with the first.
+ * must not reach it either. Mount is open. Shells stack: only the one opened last answers the keyboard,
+ * and the scroll lock holds until the last of them closes.
  */
 function useModalDialog(onClose: () => void): RefObject<HTMLDivElement | null> {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -109,7 +112,7 @@ function useModalDialog(onClose: () => void): RefObject<HTMLDivElement | null> {
   useEffect(() => {
     function handleKey(event: KeyboardEvent): void {
       const panel = panelRef.current;
-      if (!panel) {
+      if (!panel || panel !== openPanels.at(-1)) {
         return;
       }
       if (event.key === 'Escape') {
@@ -132,9 +135,17 @@ function useModalDialog(onClose: () => void): RefObject<HTMLDivElement | null> {
   }, [onClose]);
 
   useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) {
+      return;
+    }
+    openPanels.push(panel);
     document.body.classList.add(MODAL_SCROLL_LOCK_CLASS);
     return () => {
-      document.body.classList.remove(MODAL_SCROLL_LOCK_CLASS);
+      openPanels.splice(openPanels.indexOf(panel), 1);
+      if (openPanels.length === 0) {
+        document.body.classList.remove(MODAL_SCROLL_LOCK_CLASS);
+      }
     };
   }, []);
 
