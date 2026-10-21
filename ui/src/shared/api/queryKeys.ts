@@ -36,7 +36,10 @@ export const queryKeys = {
     ],
   },
 
-  /** Staled by `invalidateAfterScoreChange`: only a write that finalizes or wipes scores moves it. */
+  /**
+   * Its own root, not a second leaf beside `current`: an entity's keys form one chain. Staled by
+   * `invalidateAfterScoreChange`, since only a write that finalizes or wipes scores moves it.
+   */
   resettableTournaments: {
     root: ['resettableTournaments'] as const,
     bySeason: (seasonId: string | null): QueryKey => [
@@ -207,7 +210,7 @@ export function invalidateAfterScoreChange(queryClient: QueryClient, scope: Repo
 
 /**
  * For a write that stores no score and moves which team one counts for: a roster, a player link.
- * @see invalidateAfterScoreChange for the read this leaves fresh.
+ * @see invalidateAfterScoreChange for the reads this leaves fresh.
  */
 export function invalidateAfterScoreOwnerChange(queryClient: QueryClient, scope: ReportScope): void {
   invalidateEach(queryClient, TEAM_REPORTS, scope);

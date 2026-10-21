@@ -118,11 +118,15 @@ class TournamentOpsService(
             Result.Ok(updated ?: tournament)
         }
 
-    /** The completed tournaments [resetTournament] would accept, judged by its own guard. */
+    /**
+     * Reset refuses a tournament with any completed one after it, so it accepts exactly the completed ones on the
+     * latest completed start date. That restates [findLaterCompleted]; the spec resetting each listed one holds them.
+     */
     suspend fun listResettable(seasonId: SeasonId): List<Tournament> =
         tx.read {
             val completed = TournamentFilter(seasonId = seasonId, statuses = setOf(TournamentStatus.Completed))
-            tournamentRepository.findAll(completed).filter { tournamentRepository.findLaterCompleted(it).isEmpty() }
+            val latestStart = tournamentRepository.findAll(completed).lastOrNull()?.startDate
+            latestStart?.let { tournamentRepository.findAll(completed.copy(startsOn = it)) }.orEmpty()
         }
 
     context(ctx: WriteTransactionContext)

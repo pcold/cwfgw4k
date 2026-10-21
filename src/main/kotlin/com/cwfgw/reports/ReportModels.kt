@@ -263,7 +263,7 @@ data class WeeklyReport(
     val sideBetStandings: List<TeamId> =
         teams.sortedByDescending(ReportTeamColumn::sideBets).map(ReportTeamColumn::teamId)
 
-    /** False before tee-off, though the finalize endpoint itself does not refuse then. */
+    /** False while [awaitingTeeOff], which only a live read sets; the finalize endpoint itself does not refuse then. */
     val finalizable: Boolean =
         earlierFinalized && tournament.status != TournamentStatus.Completed && !awaitingTeeOff
 }
