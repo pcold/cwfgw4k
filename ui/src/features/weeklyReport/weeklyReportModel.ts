@@ -31,8 +31,16 @@ export function sideBetWinnersByRound(
   return result;
 }
 
-export function cellEarningsLabel(cell: ReportCell): string {
-  return cell.earnings > 0 ? `${cell.positionStr ?? ''} - ${formatDollarsAndCents(cell.earnings)}` : '-';
+export type CellEarnings =
+  | { readonly kind: 'paid'; readonly label: string }
+  | { readonly kind: 'playing'; readonly label: 'Playing' }
+  | { readonly kind: 'unpaid'; readonly label: '-' };
+
+export function cellEarnings(cell: ReportCell): CellEarnings {
+  if (cell.earnings > 0) {
+    return { kind: 'paid', label: `${cell.positionStr ?? ''} - ${formatDollarsAndCents(cell.earnings)}` };
+  }
+  return cell.inField ? { kind: 'playing', label: 'Playing' } : { kind: 'unpaid', label: '-' };
 }
 
 export function topTensLabel(count: number): string {

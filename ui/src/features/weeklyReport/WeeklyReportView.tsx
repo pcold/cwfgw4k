@@ -17,16 +17,23 @@ import { REPORT_GRID_TABLE_CLASS } from '@/shared/components/reportGrid';
 import TeamStrip from '@/shared/components/TeamStrip';
 import {
   ROUNDS,
-  cellEarningsLabel,
+  cellEarnings,
   isSeasonReport,
   sideBetAmountByRound,
   sideBetRowLabel,
   sideBetWinnersByRound,
   teamCellsByRound,
   topTensLabel,
+  type CellEarnings,
 } from './weeklyReportModel';
 
 const GOLFER_BUTTON_CLASS = 'truncate bg-transparent border-0 p-0 hover:underline cursor-pointer';
+
+const PICK_EARNINGS_CLASS: Readonly<Record<CellEarnings['kind'], string>> = {
+  paid: 'font-display font-bold text-ink',
+  playing: 'text-ink-muted',
+  unpaid: 'font-display font-bold text-ink',
+};
 
 interface RoundCellProps {
   readonly cell: ReportCell | undefined;
@@ -47,7 +54,7 @@ function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick }: R
   const hasEarnings = cell.earnings > 0;
   const nameTone = hasEarnings ? 'font-bold text-ink' : 'text-ink-muted';
   const ownership = cell.ownershipPct < 100 ? ` (${cell.ownershipPct}%)` : '';
-  const earningsLabel = cellEarningsLabel(cell);
+  const earnings = cellEarnings(cell);
   const seasonEarningsLabel =
     cell.seasonTopTens > 0
       ? `${formatDollarsAndCents(cell.seasonEarnings)} (${cell.seasonTopTens})`
@@ -74,7 +81,7 @@ function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick }: R
   return (
     <ReportGridCell fill={isSideBetWinner ? 'late-row-leader' : 'plain'}>
       {nameContent}
-      <div className="font-mono text-ink-muted">{earningsLabel}</div>
+      <div className="font-mono text-ink-muted">{earnings.label}</div>
       {showSeasonFooter ? <div className="font-mono text-ink-muted">{seasonEarningsLabel}</div> : null}
     </ReportGridCell>
   );
@@ -192,6 +199,7 @@ function PickCard({ round, cell, lateRow, leadsLateRow, showSeasonLine, onGolfer
   }
 
   const label = `${cell.golferName}${cell.ownershipPct < 100 ? ` (${cell.ownershipPct}%)` : ''}`;
+  const earnings = cellEarnings(cell);
   const golferId = cell.golferId;
   const name =
     onGolferClick && golferId ? (
@@ -210,7 +218,7 @@ function PickCard({ round, cell, lateRow, leadsLateRow, showSeasonLine, onGolfer
       detail={detail}
       total={
         <div className="shrink-0 px-3 py-2 flex flex-col justify-center items-end text-right tabular-nums">
-          <div className="font-display font-bold text-ink">{cellEarningsLabel(cell)}</div>
+          <div className={PICK_EARNINGS_CLASS[earnings.kind]}>{earnings.label}</div>
           {showSeasonLine ? (
             <div className="text-sm text-ink-muted">
               {formatDollarsAndCents(cell.seasonEarnings)} · {topTensLabel(cell.seasonTopTens)}

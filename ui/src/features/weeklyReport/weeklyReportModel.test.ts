@@ -9,7 +9,7 @@ import type {
 } from '@/shared/api/types';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
 import {
-  cellEarningsLabel,
+  cellEarnings,
   isSeasonReport,
   reportSubtitle,
   sideBetAmountByRound,
@@ -194,13 +194,27 @@ describe('reportSubtitle', () => {
   });
 });
 
-describe('cellEarningsLabel', () => {
+describe('cellEarnings', () => {
   it('pairs a paid finish with its earnings', () => {
-    expect(cellEarningsLabel({ ...reportRow(1), positionStr: 'T3', earnings: 9.5 })).toBe('T3 - +$9.50');
+    expect(cellEarnings({ ...reportRow(1), positionStr: 'T3', earnings: 9.5 })).toEqual({
+      kind: 'paid',
+      label: 'T3 - +$9.50',
+    });
   });
 
-  it('prints a bare dash for a finish that paid nothing', () => {
-    expect(cellEarningsLabel(reportRow(1))).toBe('-');
+  it('keeps the paid label for a paid golfer in the field', () => {
+    expect(cellEarnings({ ...reportRow(1), positionStr: '1', earnings: 18, inField: true })).toEqual({
+      kind: 'paid',
+      label: '1 - +$18.00',
+    });
+  });
+
+  it('marks an unpaid golfer in the field as playing', () => {
+    expect(cellEarnings({ ...reportRow(1), inField: true })).toEqual({ kind: 'playing', label: 'Playing' });
+  });
+
+  it('prints a bare dash for an unpaid golfer not in the field', () => {
+    expect(cellEarnings(reportRow(1))).toEqual({ kind: 'unpaid', label: '-' });
   });
 });
 
