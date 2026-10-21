@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { TAP_TARGET_CLASS } from './formFields';
@@ -22,6 +22,50 @@ function ModalTrigger({ autoFocusField = false }: { readonly autoFocusField?: bo
         <ModalShell title="New season" onClose={() => setIsOpen(false)}>
           {/* eslint-disable-next-line jsx-a11y/no-autofocus -- the case under test. */}
           <input aria-label="Season name" autoFocus={autoFocusField} />
+        </ModalShell>
+      )}
+    </>
+  );
+}
+
+/** A sheet whose row swaps it for a second shell, as More hands over to the team picker. */
+function SheetHandOver() {
+  const [open, setOpen] = useState<'none' | 'sheet' | 'picker'>('none');
+  return (
+    <>
+      <button type="button" onClick={() => setOpen('sheet')}>
+        More
+      </button>
+      {open === 'sheet' && (
+        <ModalShell title="More" onClose={() => setOpen('none')} placement="sheet">
+          <button type="button" onClick={() => setOpen('picker')}>
+            My team
+          </button>
+        </ModalShell>
+      )}
+      {open === 'picker' && (
+        <ModalShell title="Which team is yours?" onClose={() => setOpen('none')} placement="responsive">
+          <p>Teams</p>
+        </ModalShell>
+      )}
+    </>
+  );
+}
+
+/** The team picker opening on its own over a sheet the visitor already had open. */
+function StackedShells() {
+  const [sheetOpen, setSheetOpen] = useState(true);
+  const [pickerOpen, setPickerOpen] = useState(true);
+  return (
+    <>
+      {sheetOpen && (
+        <ModalShell title="More" onClose={() => setSheetOpen(false)} placement="sheet">
+          <a href="/rules">Rules</a>
+        </ModalShell>
+      )}
+      {pickerOpen && (
+        <ModalShell title="Which team is yours?" onClose={() => setPickerOpen(false)} placement="responsive">
+          <button type="button">WOMBLE</button>
         </ModalShell>
       )}
     </>
@@ -114,6 +158,18 @@ describe('ModalShell', () => {
     expect(trigger).toHaveFocus();
   });
 
+  it("returns focus to the sheet's opener when a row of that sheet opened it in the sheet's place", async () => {
+    renderWithProviders(<SheetHandOver />, { withLeagueSeasonProvider: false });
+    const more = screen.getByRole('button', { name: 'More' });
+    await userEvent.click(more);
+    await userEvent.click(screen.getByRole('button', { name: 'My team' }));
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(more).toHaveFocus();
+  });
+
   it('closes on Escape', async () => {
     const trigger = await openModal();
 
@@ -162,6 +218,28 @@ describe('ModalShell', () => {
     expect(document.body).not.toHaveClass(MODAL_SCROLL_LOCK_CLASS);
   });
 
+  it('gives the keyboard to the shell opened last, and hands it back when that one closes', async () => {
+    renderWithProviders(<StackedShells />, { withLeagueSeasonProvider: false });
+    const picker = screen.getByRole('dialog', { name: 'Which team is yours?' });
+    const pickerClose = within(picker).getByRole('button', { name: 'Close' });
+
+    await userEvent.tab();
+    expect(pickerClose).toHaveFocus();
+    await userEvent.tab();
+    expect(within(picker).getByRole('button', { name: 'WOMBLE' })).toHaveFocus();
+    await userEvent.tab();
+    expect(pickerClose).toHaveFocus();
+
+    await userEvent.keyboard('{Escape}');
+    expect(picker).not.toBeInTheDocument();
+    const sheet = screen.getByRole('dialog', { name: 'More' });
+    expect(document.body).toHaveClass(MODAL_SCROLL_LOCK_CLASS);
+
+    await userEvent.keyboard('{Escape}');
+    expect(sheet).not.toBeInTheDocument();
+    expect(document.body).not.toHaveClass(MODAL_SCROLL_LOCK_CLASS);
+  });
+
   it('closes on a backdrop click when asked to', async () => {
     const onClose = vi.fn();
     const backdrop = renderShell(onClose, true);
@@ -193,6 +271,22 @@ describe('ModalShell', () => {
     expect(panel.parentElement).toHaveClass('fixed', 'inset-0', 'items-end', 'z-50');
     expect(panel.parentElement).not.toHaveClass('items-center', 'p-3');
     expect(panel).toHaveClass('w-full', 'rounded-t-lg', 'pb-[env(safe-area-inset-bottom)]');
+    expect(panel).not.toHaveClass('rounded-lg', 'shadow-xl');
+  });
+
+  it('sets a responsive panel as a sheet below sm and centres it at the detail width from sm', () => {
+    renderWithProviders(
+      <ModalShell title="Which team is yours?" onClose={() => {}} placement="responsive">
+        <p>Body</p>
+      </ModalShell>,
+      { withLeagueSeasonProvider: false },
+    );
+
+    const panel = screen.getByRole('dialog', { name: 'Which team is yours?' });
+    expect(panel.parentElement).toHaveClass('fixed', 'inset-0', 'items-end', 'z-50', 'sm:items-center', 'sm:justify-center');
+    expect(panel).toHaveClass('w-full', 'rounded-t-lg', 'border-t', 'pb-[env(safe-area-inset-bottom)]', 'starting:translate-y-full');
+    expect(panel).toHaveClass('sm:w-[min(92vw,28rem)]', 'sm:rounded-lg', 'sm:border', 'sm:shadow-xl', 'sm:starting:translate-y-0');
+    expect(panel).toHaveClass('sm:pb-0', 'sm:pl-0', 'sm:pr-0');
     expect(panel).not.toHaveClass('rounded-lg', 'shadow-xl');
   });
 

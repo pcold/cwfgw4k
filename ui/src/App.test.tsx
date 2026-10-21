@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { api } from '@/shared/api/client';
-import type { League, Season } from '@/shared/api/types';
+import type { League, RosterTeam, Season } from '@/shared/api/types';
 import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
@@ -66,7 +66,19 @@ const season: Season = {
 
 const mainNavigation = (): HTMLElement => screen.getByRole('navigation', { name: 'Main' });
 
+const MY_TEAM_KEY = 'cwfg.myTeam';
+
+const rosterTeam = (teamName: string): RosterTeam => ({ teamId: `tm-${teamName}`, teamNumber: null, teamName, picks: [] });
+
 describe('App', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
   it('renders the site heading', () => {
     renderWithProviders(<App />, { withLeagueSeasonProvider: false });
 
@@ -216,5 +228,115 @@ describe('App', () => {
     expect(desktopWrapper).toHaveClass('sm:block');
     expect(titleRow).toContainElement(desktopWrapper);
     expect(screen.getAllByRole('combobox', { name: /^(League|Season)$/ })).toHaveLength(2);
+  });
+});
+
+describe('App my team', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.mocked(api.leagues).mockResolvedValue([league]);
+    vi.mocked(api.seasons).mockResolvedValue([season]);
+    vi.mocked(api.rosters).mockResolvedValue(['Womble', 'BLAU', 'Juray'].map(rosterTeam));
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
+    vi.mocked(api.leagues).mockResolvedValue([]);
+    vi.mocked(api.seasons).mockResolvedValue([]);
+    vi.mocked(api.rosters).mockResolvedValue([]);
+  });
+
+  const picker = (): Promise<HTMLElement> => screen.findByRole('dialog', { name: 'Which team is yours?' });
+
+  it('asks a first-time visitor which team is theirs', async () => {
+    renderWithProviders(<App />, { initialPath: '/rankings', withLeagueSeasonProvider: false });
+
+    expect(await picker()).toBeInTheDocument();
+  });
+
+  it('does not ask on Admin', async () => {
+    renderWithProviders(<App />, { initialPath: '/admin', withLeagueSeasonProvider: false });
+
+    await waitFor(() => {
+      expect(api.rosters).toHaveBeenCalledWith(season.id);
+    });
+    await act(async () => {
+      await vi.mocked(api.rosters).mock.results.at(-1)?.value;
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      });
+    });
+    expect(screen.queryByRole('dialog', { name: 'Which team is yours?' })).toBeNull();
+  });
+
+  it('clears the saved team from More and asks again', async () => {
+    window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"WOMBLE"}');
+    const user = userEvent.setup();
+    renderWithProviders(<App />, { initialPath: '/scoreboard', withLeagueSeasonProvider: false });
+
+    await user.click(screen.getByRole('button', { name: 'More' }));
+    const more = screen.getByRole('dialog', { name: 'More' });
+    await user.click(await within(more).findByRole('button', { name: 'My team: WOMBLE · Change' }));
+
+    expect(await picker()).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'More' })).toBeNull();
+    expect(window.localStorage.getItem(MY_TEAM_KEY)).toBeNull();
+  });
+
+  it('returns focus to the More tab when the picker opened from its sheet closes', async () => {
+    window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"WOMBLE"}');
+    const user = userEvent.setup();
+    renderWithProviders(<App />, { initialPath: '/scoreboard', withLeagueSeasonProvider: false });
+
+    const moreTab = screen.getByRole('button', { name: 'More' });
+    await user.click(moreTab);
+    const more = screen.getByRole('dialog', { name: 'More' });
+    await user.click(await within(more).findByRole('button', { name: 'My team: WOMBLE · Change' }));
+    await picker();
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog', { name: 'Which team is yours?' })).toBeNull();
+    expect(moreTab).toHaveFocus();
+  });
+
+  it('asks again from My team in the header, naming the saved team only to assistive tech', async () => {
+    window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"WOMBLE"}');
+    const user = userEvent.setup();
+    renderWithProviders(<App />, { initialPath: '/scoreboard', withLeagueSeasonProvider: false });
+
+    const myTeam = await within(mainNavigation()).findByRole('button', { name: 'My team: WOMBLE, change' });
+    expect(myTeam).toHaveTextContent(/^My team$/);
+    expect(myTeam).toHaveAttribute('aria-haspopup', 'dialog');
+    await user.click(myTeam);
+
+    expect(await picker()).toBeInTheDocument();
+    expect(window.localStorage.getItem(MY_TEAM_KEY)).toBeNull();
+  });
+
+  it('offers a choice from My team in the header to a visitor who is just browsing', async () => {
+    window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"browsing"}');
+    renderWithProviders(<App />, { initialPath: '/scoreboard', withLeagueSeasonProvider: false });
+
+    expect(await within(mainNavigation()).findByRole('button', { name: 'My team, choose' })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['on Admin', '/admin', ['Womble']],
+    ['while the newest season has no teams', '/scoreboard', []],
+  ])('offers no My team in the header %s', async (_case, path, teamNames) => {
+    window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"WOMBLE"}');
+    vi.mocked(api.rosters).mockResolvedValue(teamNames.map(rosterTeam));
+    renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
+
+    await waitFor(() => {
+      expect(api.rosters).toHaveBeenCalledWith(season.id);
+    });
+    await act(async () => {
+      await vi.mocked(api.rosters).mock.results.at(-1)?.value;
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      });
+    });
+    expect(within(mainNavigation()).queryByRole('button', { name: /^My team/ })).toBeNull();
   });
 });
