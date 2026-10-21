@@ -36,7 +36,7 @@ document and the code disagree, the code is right and this document has a bug.
 
 | Layer | Choice |
 |---|---|
-| Language | Kotlin 2.4 (language version 2.2) on JVM 21 |
+| Language | Kotlin 2.4 (language version 2.3) on JVM 25 |
 | HTTP | Ktor 3.6 server on Netty; Ktor CIO client for ESPN |
 | JSON | kotlinx.serialization |
 | Database | PostgreSQL; jOOQ 3.21 for queries, Flyway 13 for migrations, HikariCP for pooling |
@@ -47,7 +47,7 @@ document and the code disagree, the code is right and this document has a bug.
 | Lint and coverage | ktlint, detekt with the repo's own `detekt-rules` subproject, Kover |
 | UI | React 19, React Router 8, TanStack Query 5, Tailwind 4, TypeScript 6, Vite 8, Vitest |
 | Build | Gradle; the node-gradle plugin builds the UI into the fat jar |
-| Runtime | One fat jar (`cwfgw4k-all.jar`) in a Temurin 21 JRE image on Cloud Run |
+| Runtime | One fat jar (`cwfgw4k-all.jar`) in a Temurin 25 JRE image on Cloud Run |
 
 Versions are pinned in [`gradle/libs.versions.toml`](../gradle/libs.versions.toml) and `ui/package.json`.
 
@@ -131,7 +131,7 @@ Domain code throws a `DomainError`; `http/ErrorHandling.kt` maps it to a status 
 | anything else | 500 |
 
 A `Refused` carries a stable code the UI branches on: `tournament_out_of_order`, `tournament_start_date_changed`,
-`tournament_not_linked`, `tournament_finalized`.
+`tournament_not_linked`, `tournament_finalized`, `golfer_tombstoned`.
 
 ### JSON, IDs and parameters
 
@@ -229,8 +229,9 @@ whole cache, whether it succeeded or failed (`cache/ResponseCacheInvalidation.kt
 `cwfgw4k.cache event=uncleared`. Pinned by `ResponseCacheInvalidationSpec`.
 
 Report routes skip the cache only when the request asks for `live=true` and the season has a live candidate
-(see [Live overlay](#live-overlay)); otherwise the live and non-live forms are both cached. The season report and
-rankings without a `through` are never live, so they are served from the cache whatever `live` says.
+(see [Live overlay](#live-overlay)); otherwise the live and non-live forms are both cached. The season report, and
+rankings and player rankings without a `through`, are never live, so they are served from the cache whatever `live`
+says.
 
 ## 5. Transactional Invariants
 
@@ -252,9 +253,9 @@ Each of these runs in exactly one `tx.update`, so it lands whole or not at all:
 
 A create that loses a race on a unique key gets a typed outcome, not a 500. `Transactor.updateOrOutraced`
 (`db/OutracedWrites.kt`) turns a 23505 on the one constraint it names into a typed error and rethrows anything
-else: 409 from the golfer POST and roster confirm, a skipped entry in schedule confirm, a log line in the boot
-admin seed. The finalize import creates golfers with `ON CONFLICT DO NOTHING` instead, since a 23505 would abort
-the finalize; its backfill, an UPDATE, rolls back to a savepoint on that 23505 (`writeOrOutraced`).
+else: 409 from roster confirm, a skipped entry in schedule confirm, a log line in the boot admin seed. The finalize
+import creates golfers with `ON CONFLICT DO NOTHING` instead, since a 23505 would abort the finalize; its backfill,
+an UPDATE, rolls back to a savepoint on that 23505 (`writeOrOutraced`).
 
 Not atomic, deliberately or by default:
 
@@ -555,7 +556,7 @@ src/main/kotlin/com/cwfgw/
 ├─ http/            JSON, error mapping, query params, request logging, compression, static UI
 ├─ result/          Result type for expected failures
 ├─ serialization/   shared serializers (BigDecimal, dates, UUID)
-├─ cache/           response cache, invalidation, sweeper
+├─ cache/           response cache, invalidation, per-request expiry sweep
 ├─ users/           auth routes, session, admin gate, admin seeding
 ├─ leagues/  seasons/  golfers/  teams/  tournaments/   domain CRUD and season/tournament ops
 ├─ tournamentLinks/ ESPN competitor list and player overrides
@@ -574,14 +575,14 @@ transaction context and never open one. Ops on a season or tournament live besid
 
 Each package's services are built by its `*Support.from(...)` (`SeasonsSupport`, `EspnSupport`, ...), and
 `AppServices.from` composes them all. `Main.buildServices` (also used by `SeedMain`) and the route-spec
-`ApiFixture` both call `AppServices.from`, passing only leaves: repositories, the ESPN client, the transactors,
-the health probe, and the cache, throttle and auth settings. Neither constructs a service, so a new dependency is
-wired once.
+`ApiFixture` both call `AppServices.from`, passing only leaves: repositories, the ESPN client, one transactor (the
+fixture may give the report services a second), the health probe, and the cache, throttle and auth settings.
+Neither constructs a service, so a new dependency is wired once.
 
 `src/main/resources/db/migration` holds the Flyway migrations. `detekt-rules/` is the repo's custom detekt
 rule set. The UI lives in `ui/src`, with one folder per screen under `features/` (`admin`, `auth`,
-`lateRowBets`, `leagues`, `playerRankings`, `rankings`, `rosters`, `rules`, `scoreboard`, `weeklyReport`) and
-shared code in `shared/`.
+`lateRowBets`, `leagues`, `myTeam`, `playerRankings`, `rankings`, `rosters`, `rules`, `scoreboard`,
+`weeklyReport`) and shared code in `shared/`.
 
 ## 11. Deployment
 
@@ -606,6 +607,3 @@ shared code in `shared/`.
 - **A team with no pick in a side-bet round (CWF-83).** The persisted report and rankings leave such a team out of
   that round's race, yet the pool counts it among the losers, so the round pays out a stake nobody paid. The
   live overlay instead races it at $0 and charges it, so the two views disagree.
-- **A shared ESPN-event resolver (CWF-179).** The live preview and the competitors route resolve a tournament's
-  ESPN event through `findLinkedEvent` (`espn/EspnService.kt`); finalize applies the same exact-id rule inline
-  and does not call it yet.

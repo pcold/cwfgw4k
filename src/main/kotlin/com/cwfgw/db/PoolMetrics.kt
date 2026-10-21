@@ -55,14 +55,8 @@ data class PoolSnapshot(
 fun DataSource.poolMetricsOrNull(): PoolMetrics? = (this as? HikariDataSource)?.let(::PoolMetrics)
 
 /**
- * Hikari [MetricsTrackerFactory] that emits one structured WARN line for
- * every connection acquisition slower than [SLOW_ACQUIRE_THRESHOLD_MS]:
- * `cwfgw4k.db.slow_acquire duration_ms=N`. Routine fast acquisitions
- * (the typical case) stay silent so we don't drown the request log.
- *
- * Wired in [Database.start]. The signal we care about is whether
- * pool-side waiting (vs. query-side latency vs. tx-coordination latency)
- * is what's eating a request — without this they're indistinguishable.
+ * Set on the pool by [poolConfig]. Logs only slow acquisitions, so pool-side waiting can be told apart from query and
+ * transaction latency without drowning the request log.
  */
 object SlowAcquireMetricsTrackerFactory : MetricsTrackerFactory {
     override fun create(

@@ -5,9 +5,11 @@ Two Cloud Monitoring dashboards over the `cwfgw4k` Cloud Run service and the
 
 - **Operational Health** — is it up, is it slow, is it erroring? Powered by
   Cloud Run + Cloud SQL built-in metrics plus two log-based counters.
-- **API Usage** — per-route traffic, latency, and error breakdowns. Powered by
-  a single log-based distribution metric populated by
-  `installRequestLogging` in the app.
+- **API Usage** — per-route traffic, latency, and error breakdowns, plus the
+  response cache's events. Powered by three log-based metrics:
+  `cwfgw4k_request_count` and `cwfgw4k_requests` over the request line
+  `installRequestLogging` writes, and `cwfgw4k_cache` over the cache's event
+  lines.
 
 Nothing writes custom Cloud Monitoring metrics, so there's no per-metric
 ingestion cost — the charts read from:
@@ -19,7 +21,7 @@ ingestion cost — the charts read from:
   `database/postgresql/num_backends`.
 - **Five user log-based metrics** (free under the 20-metric/project quota):
   `cwfgw4k_unhandled_errors`, `cwfgw4k_espn_failures`, `cwfgw4k_requests`,
-  `cwfgw4k_request_count`, `cwfgw4k_cache`. The first three plus the last are
+  `cwfgw4k_request_count`, `cwfgw4k_cache`. All but `cwfgw4k_requests` are
   counters; `cwfgw4k_requests` is a duration distribution (used for P95
   latency), and `cwfgw4k_request_count` is its counter sibling over the same
   log line — xyCharts need a scalar metric to rank series for top-N plotting,
@@ -30,20 +32,20 @@ ingestion cost — the charts read from:
 
 ## One-time setup
 
-Run these three commands against the project that hosts the service
+Run the steps below against the project that hosts the service
 (`cwfgw4k`, the `GCP_PROJECT_ID` repository variable). Adjust `--project` if you're
 targeting a different environment.
 
 ### 1. Create the `unhandled_errors` log-based metric
 
 Counts unhandled exceptions surfaced by `installErrorHandling`, which logs
-`Unhandled error on {method} {uri}` at ERROR severity for anything that escapes
+`Unhandled error on {method} {path}` at ERROR severity for anything that escapes
 the route handlers.
 
 ```bash
 gcloud logging metrics create cwfgw4k_unhandled_errors \
   --project=cwfgw4k \
-  --description='cwfgw4k unhandled exceptions from ErrorHandlingMiddleware' \
+  --description='cwfgw4k unhandled exceptions from installErrorHandling' \
   --log-filter='resource.type="cloud_run_revision"
     AND resource.labels.service_name="cwfgw4k"
     AND severity>=ERROR
@@ -52,8 +54,8 @@ gcloud logging metrics create cwfgw4k_unhandled_errors \
 
 ### 2. Create the `espn_failures` log-based metric
 
-Counts ESPN integration warnings/errors — calendar fetches, scoreboard fetches,
-athlete lookups — logged by `EspnClient`, `EspnService`, and `AdminService`.
+Counts ESPN integration warnings/errors — calendar and scoreboard fetches —
+logged by `EspnClient`, `EspnService`, and `AdminService`.
 `message` holds only the line's text, so the logger and `severity>=ERROR`
 clauses stand in for the logger name and level prefix a text line carried. A
 stack trace is part of its entry, so one failure counts once, not once per line.
@@ -235,15 +237,19 @@ gcloud monitoring policies list --project=cwfgw4k --format='table(displayName,na
 
 | Tile | Source | Reading it |
 | --- | --- | --- |
-| Requests / min (last 5 min avg) | `cwfgw4k_requests` count | Running traffic baseline. |
-| 4xx / 5xx rate (last 5 min) | `cwfgw4k_requests`, filtered by `status_class` | Thresholds colored like operational-health. |
-| Top routes by request rate | `cwfgw4k_requests` grouped by method + route | Sorted table — top talkers. |
+| Requests / min (last 5 min avg) | `cwfgw4k_request_count` | Running traffic baseline. |
+| 4xx / 5xx rate (last 5 min) | `cwfgw4k_request_count`, filtered by `status_class` | Thresholds colored like operational-health. |
+| Top routes by request rate | `cwfgw4k_request_count` grouped by method + route | Sorted table — top talkers. |
 | P95 latency by route | `cwfgw4k_requests` as a distribution | Which endpoint is slow, not just the service aggregate. |
-| Requests by status class | `cwfgw4k_requests` grouped by `status_class` | Stacked area over time. |
-| Requests by HTTP method | `cwfgw4k_requests` grouped by `method` | GET vs POST vs PUT traffic split. |
-| 4xx / 5xx responses by route | `cwfgw4k_requests` filtered + grouped by route | Pinpoint the failing endpoint. |
+| Requests by status class | `cwfgw4k_request_count` grouped by `status_class` | Stacked area over time. |
+| Requests by HTTP method | `cwfgw4k_request_count` grouped by `method` | GET vs POST vs PUT traffic split. |
+| 4xx / 5xx responses by route | `cwfgw4k_request_count` filtered + grouped by route | Pinpoint the failing endpoint. |
+| Cache events over time | `cwfgw4k_cache` grouped by `event` | Stacked area, one band per `event`. |
+| Cache hit rate by route | `cwfgw4k_cache`, `hit` and `miss` per route | Low on a hot route usually means a high-cardinality query param in the URI. |
+| Cache writes (put) by route | `cwfgw4k_cache` filtered to `put`, grouped by route | Every put is a miss that ran the report build. |
 
-The `route` label is normalized by `installRequestLogging.normalizeRoute`:
+The `route` label is normalized by the top-level `normalizeRoute` in
+`http/RequestLogging.kt`:
 UUIDs become `:id`, pure-numeric segments become `:n`, and Vite hashed assets
 under `/assets/` collapse to one bucket. That keeps cardinality bounded across
 deploys.
@@ -359,7 +365,7 @@ At this app's traffic, everything on this dashboard is under GCP's free tier:
 
 - Cloud Monitoring charges only for non-GCP metrics (the ones we're using are
   all Google-supplied).
-- User log-based metrics are free up to 20 per project; we use 2.
+- User log-based metrics are free up to 20 per project; we use 5.
 - Log ingestion's free tier is 50 GiB/project/month; a low-traffic Cloud Run
   service logs a tiny fraction of that.
 
