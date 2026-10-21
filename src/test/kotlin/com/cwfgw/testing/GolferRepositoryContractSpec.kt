@@ -23,6 +23,10 @@ import java.util.UUID
 private val SCHEFFLER =
     CreateGolferRequest(pgaPlayerId = "pga-1", firstName = "Scottie", lastName = "Scheffler", worldRanking = 1)
 
+private val MCILROY = CreateGolferRequest(pgaPlayerId = "pga-2", firstName = "Rory", lastName = "McIlroy")
+
+private val FLEETWOOD = CreateGolferRequest(pgaPlayerId = "pga-3", firstName = "Tommy", lastName = "Fleetwood")
+
 private val SCHEFFLER_NAME: GolferName = checkNotNull(GolferName.splitName("Scottie Scheffler"))
 
 class GolferRepositoryContractSpec : FunSpec({
@@ -64,6 +68,16 @@ private val tombstoneContract: List<ContractCase<TombstoningGolfers>> =
             tx.get { repository.golfers.findById(retired.id) }?.tombstonedAt.shouldNotBeNull()
             tx.update { repository.golfers.findByIdForShare(retired.id) }?.tombstonedAt.shouldNotBeNull()
         },
+        ContractCase("findByIds and findByPgaPlayerIds answer a tombstone, as their single-key reads do") {
+            val retired = tx.update { repository.golfers.create(SCHEFFLER) }
+            repository.tombstone(retired.id)
+
+            val byId = tx.get { repository.golfers.findByIds(listOf(retired.id)) }
+            val byPgaId = tx.get { repository.golfers.findByPgaPlayerIds(listOf("pga-1")) }
+
+            byId.map { it.id to (it.tombstonedAt != null) } shouldContainExactly listOf(retired.id to true)
+            byPgaId.map { it.id to (it.tombstonedAt != null) } shouldContainExactly listOf(retired.id to true)
+        },
     )
 
 private val golferContract: List<ContractCase<GolferRepository>> =
@@ -77,6 +91,20 @@ private val golferContract: List<ContractCase<GolferRepository>> =
             tx.get { repository.findByPgaPlayerId("pga-1") } shouldBe created
             tx.get { repository.findById(GolferId(UUID.randomUUID())) }.shouldBeNull()
             tx.get { repository.findByPgaPlayerId("pga-missing") }.shouldBeNull()
+        },
+        ContractCase("findByIds and findByPgaPlayerIds read only the golfers on the keys asked for") {
+            val scheffler = tx.update { repository.create(SCHEFFLER) }
+            val mcilroy = tx.update { repository.create(MCILROY) }
+            val fleetwood = tx.update { repository.create(FLEETWOOD) }
+            val unknownId = GolferId(UUID.randomUUID())
+
+            val byId = tx.get { repository.findByIds(listOf(fleetwood.id, unknownId, scheffler.id)) }
+            val byPgaId = tx.get { repository.findByPgaPlayerIds(listOf("pga-2", "pga-missing", "pga-3")) }
+
+            byId shouldContainExactlyInAnyOrder listOf(scheffler, fleetwood)
+            byPgaId shouldContainExactlyInAnyOrder listOf(mcilroy, fleetwood)
+            tx.get { repository.findByIds(emptyList()) }.shouldBeEmpty()
+            tx.get { repository.findByPgaPlayerIds(emptyList()) }.shouldBeEmpty()
         },
         ContractCase("findAll orders by world ranking with the unranked last, then by last name") {
             listOf(

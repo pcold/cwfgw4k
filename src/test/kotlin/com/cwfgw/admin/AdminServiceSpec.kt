@@ -110,6 +110,7 @@ private class Fixture(
                 tx = transactor,
                 seasonService = SeasonService(seasonRepo, transactor),
                 tournamentService = tournamentService,
+                tournamentRepository = tournamentRepo,
                 espnService = espnService,
                 golferService = golferService,
                 golferRepository = golferRepo,

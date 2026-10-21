@@ -80,6 +80,7 @@ class AdminServiceRosterBackfillSpec : FunSpec({
             tx = tx,
             seasonService = SeasonService(SeasonRepository(), tx),
             tournamentService = TournamentService(TournamentRepository(), tx),
+            tournamentRepository = TournamentRepository(),
             espnService = testEspnService(client = client, golferRepository = golferRepository, tx = tx),
             golferService = GolferService(golferRepository, tx),
             golferRepository = golferRepository,
@@ -189,9 +190,12 @@ class AdminServiceRosterBackfillSpec : FunSpec({
         val winner = tx.update { GolferRepository().create(KOIVUN.copy(pgaPlayerId = "espn-koivun")) }
         val womble = fullTeam(1, "WOMBLE", espnPick(1, "espn-koivun", "Jackson Koivun"))
 
-        service(golferRepository = OnceStaleGolferRepository(GolferRepository()))
+        val golfers = OnceStaleGolferRepository(GolferRepository())
+        service(golferRepository = golfers)
             .confirmRoster(ConfirmRosterRequest(seasonId, listOf(womble)))
             .orFail()
+
+        golfers.windowFired shouldBe true
 
         koivunRows() shouldContainExactly listOf(winner)
         rosterGolferIds(seasonId) shouldContain winner.id
@@ -199,7 +203,7 @@ class AdminServiceRosterBackfillSpec : FunSpec({
 })
 
 /**
- * The first [findAll] and the first [findByPgaPlayerId] each answer as before a concurrent writer set the
+ * The first [findAll] and the first [findByPgaPlayerIds] each answer as before a concurrent writer set the
  * `pga_player_id`, which is the window that writer commits into; the backfill itself then meets the committed row.
  */
 private class OnceStaleGolferRepository(
@@ -209,9 +213,12 @@ private class OnceStaleGolferRepository(
     private val staleById = AtomicBoolean(true)
     private val staleAll = AtomicBoolean(true)
 
+    /** The race path ends where the plain one does, so only this tells a stale read nobody makes. */
+    val windowFired: Boolean get() = !staleById.get() && !staleAll.get()
+
     context(ctx: TransactionContext)
-    override fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
-        if (staleById.getAndSet(false)) null else inner.findByPgaPlayerId(pgaPlayerId)
+    override fun findByPgaPlayerIds(pgaPlayerIds: Collection<String>): List<Golfer> =
+        if (staleById.getAndSet(false)) emptyList() else inner.findByPgaPlayerIds(pgaPlayerIds)
 
     context(ctx: TransactionContext)
     override fun findAll(search: String?): List<Golfer> {

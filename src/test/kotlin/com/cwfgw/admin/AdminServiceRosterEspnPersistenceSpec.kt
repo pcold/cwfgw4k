@@ -60,6 +60,7 @@ class AdminServiceRosterEspnPersistenceSpec : FunSpec({
             tx = tx,
             seasonService = SeasonService(SeasonRepository(), tx),
             tournamentService = TournamentService(TournamentRepository(), tx),
+            tournamentRepository = TournamentRepository(),
             espnService = testEspnService(client = client, golferRepository = GolferRepository(), tx = tx),
             golferService = GolferService(GolferRepository(), tx),
             golferRepository = GolferRepository(),

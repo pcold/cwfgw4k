@@ -42,6 +42,10 @@ interface TournamentRepository {
     context(ctx: TransactionContext)
     fun findByPgaTournamentId(pgaTournamentId: String): Tournament?
 
+    /** Takes no lock, so a read-only caller can; a write gating on the rows takes [findByPgaTournamentIdsForUpdate]. */
+    context(ctx: TransactionContext)
+    fun findByPgaTournamentIds(pgaTournamentIds: Collection<String>): List<Tournament>
+
     /**
      * Locks in id order: an id never changes, where a start date can between two lockers' reads. Their seasons go
      * unlocked, since a NO KEY UPDATE on them deadlocks two unlinked finalizes matching into each other's season.
@@ -165,6 +169,14 @@ private class JooqTournamentRepository : TournamentRepository {
             .where(TOURNAMENTS.PGA_TOURNAMENT_ID.eq(pgaTournamentId))
             .fetchOne()
             ?.let(::toTournament)
+
+    context(ctx: TransactionContext)
+    override fun findByPgaTournamentIds(pgaTournamentIds: Collection<String>): List<Tournament> {
+        if (pgaTournamentIds.isEmpty()) return emptyList()
+        return ctx.dsl.selectFrom(TOURNAMENTS)
+            .where(TOURNAMENTS.PGA_TOURNAMENT_ID.`in`(pgaTournamentIds))
+            .fetch(::toTournament)
+    }
 
     context(ctx: WriteTransactionContext)
     override fun findByPgaTournamentIdsForUpdate(pgaTournamentIds: Collection<String>): List<Tournament> {

@@ -72,6 +72,7 @@ class AdminServiceConfirmRosterSpec : FunSpec({
             tx = tx,
             seasonService = seasonService,
             tournamentService = tournamentService,
+            tournamentRepository = tournamentRepo,
             espnService = espnService,
             golferService = golferService,
             golferRepository = golferRepo,
