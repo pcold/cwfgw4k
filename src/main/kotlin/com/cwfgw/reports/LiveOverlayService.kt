@@ -33,7 +33,7 @@ class LiveOverlayService(private val espnService: EspnService) {
      * returns, rather than reading it themselves, so no transaction spans their ESPN calls.
      */
     context(ctx: TransactionContext)
-    internal fun loadPreviewContextIn(
+    internal fun loadLivePreviewContextIn(
         seasonId: SeasonId,
         candidates: List<Tournament>,
     ): LivePreviewContext = espnService.loadLivePreviewContextIn(seasonId, candidates)

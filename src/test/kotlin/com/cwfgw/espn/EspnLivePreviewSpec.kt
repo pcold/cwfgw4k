@@ -207,10 +207,10 @@ private class PreviewFixture(
     }
 }
 
+// The context loads link overrides only for its candidates and the season's unfinalized tournaments.
 private fun PreviewFixture.previewContext(): LivePreviewContext =
     with(noopTransactionContext) { service.loadLivePreviewContextIn(SEASON_ID, initialTournaments) }
 
-// The context loads link overrides only for its candidates and the season's unfinalized tournaments.
 private suspend fun PreviewFixture.previewFor(candidate: Tournament): Result<EspnLivePreview, LivePreviewError> =
     service.previewForTournament(previewContext(), candidate)
 
