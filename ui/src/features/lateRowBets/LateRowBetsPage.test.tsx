@@ -110,6 +110,7 @@ function buildReport(): WeeklyReport {
     sideBetTotals: makeWonLostTotals(),
     weeklyTotals: makeWonLostTotals(),
     weeklyStandings: [],
+    sideBetStandings: ['t-1'],
   };
 }
 

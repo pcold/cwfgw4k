@@ -140,6 +140,7 @@ function buildReport(name: string): WeeklyReport {
     sideBetTotals: makeWonLostTotals(),
     weeklyTotals: makeWonLostTotals(),
     weeklyStandings: ['team-1'],
+    sideBetStandings: ['team-1'],
   };
 }
 

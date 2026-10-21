@@ -70,6 +70,7 @@ export interface ReportSideBetTeamEntry {
 
 export interface ReportSideBetRound {
   round: number;
+  /** Best `cumulativeEarnings` first; a tie keeps `WeeklyReport.teams`' order. Lay rows out in it; never re-sort. */
   teams: ReportSideBetTeamEntry[];
 }
 
@@ -143,6 +144,8 @@ export interface WeeklyReport {
   weeklyTotals: WonLostTotals;
   /** Every `teams` id, best `weeklyTotal` first; a tie keeps `teams`' order. Lay rows out in it; never re-sort. */
   weeklyStandings: string[];
+  /** Every `teams` id, best `sideBets` first; a tie keeps `teams`' order. Lay rows out in it; never re-sort. */
+  sideBetStandings: string[];
 }
 
 export interface TeamRanking {

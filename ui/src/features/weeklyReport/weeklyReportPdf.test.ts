@@ -127,6 +127,7 @@ function buildFixture(overrides: {
     sideBetTotals: makeWonLostTotals(),
     weeklyTotals: makeWonLostTotals(),
     weeklyStandings: [],
+    sideBetStandings: [],
   };
 }
 
