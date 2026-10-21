@@ -75,8 +75,8 @@
               "sparkChartType": "SPARK_LINE"
             },
             "thresholds": [
-              { "value": 500, "color": "YELLOW", "direction": "ABOVE" },
-              { "value": 2000, "color": "RED", "direction": "ABOVE" }
+              { "value": 500.0, "color": "YELLOW", "direction": "ABOVE" },
+              { "value": 2000.0, "color": "RED", "direction": "ABOVE" }
             ]
           }
         }
