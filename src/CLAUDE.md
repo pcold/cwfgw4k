@@ -110,7 +110,8 @@ Rules:
 - **MUST NOT** introduce Arrow's `Either`. `Result<T, E>` covers the use
   case and `arrow.*` is excluded by the "what we do not use" list.
 - **MUST NOT** catch `Throwable` or bare `Exception` outside of
-  `installErrorHandling()`. Catch specific types.
+  `installErrorHandling()` and the `RequestCache` loader (see HTTP boundary
+  below). Catch specific types.
 - **MUST NOT** swallow exceptions silently. If catching, log at appropriate
   level with the caught throwable attached.
 - **MUST NOT** use `runCatching { }.getOrNull()` as a general pattern. It
