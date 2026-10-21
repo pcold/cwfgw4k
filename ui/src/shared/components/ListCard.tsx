@@ -22,7 +22,8 @@ export type ListCardFill = 'plain' | 'late-row-leader' | 'my-team';
 
 const MIDDLE_CLASS = 'flex-1 min-w-0 px-3 py-2 flex flex-col justify-center';
 
-// The gold edge sits on the middle, beside the box, as the grid cell's does: the fill alone is 1.07:1 on white.
+// A late-row leader's gold edge sits on the middle, beside the box, as the grid cell's does; my team's is a ring
+// on the card. Either way the fill alone is 1.07:1 on white.
 const FILL_CLASS: Readonly<Record<ListCardFill, { card: string; middle: string }>> = {
   plain: { card: 'bg-surface-card', middle: MIDDLE_CLASS },
   'late-row-leader': { card: 'bg-late-row-leader', middle: `${MIDDLE_CLASS} border-l-4 border-gold` },
@@ -35,7 +36,7 @@ const FILL_CLASS: Readonly<Record<ListCardFill, { card: string; middle: string }
  */
 export type CardRowFill = Extract<ListCardFill, 'plain' | 'my-team'>;
 
-/** @see CardRowFill; `cell` fills each cell between the row's position and money boxes. */
+/** @see CardRowFill; `cell` fills each cell after the row's position box but its money box, if any. */
 export const CARD_ROW_CLASS: Readonly<Record<CardRowFill, { row: string; cell: string }>> = {
   plain: { row: 'h-11', cell: 'bg-surface-card' },
   'my-team': { row: 'h-11 rounded outline-2 -outline-offset-2 outline-gold', cell: 'bg-my-team' },
