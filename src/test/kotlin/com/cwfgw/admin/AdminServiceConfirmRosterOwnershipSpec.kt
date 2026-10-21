@@ -4,16 +4,14 @@ import com.cwfgw.db.Transactor
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.golfers.GolferService
-import com.cwfgw.leagues.CreateLeagueRequest
-import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.result.Result
-import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
+import com.cwfgw.testing.seedSeason
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentService
@@ -27,12 +25,6 @@ class AdminServiceConfirmRosterOwnershipSpec : FunSpec({
 
     val postgres = postgresHarness()
     val tx = Transactor(postgres.dsl, postgres.maxPoolSize)
-
-    suspend fun seedSeason(): SeasonId =
-        tx.update {
-            val league = LeagueRepository().create(CreateLeagueRequest(name = "Castlewood"))
-            SeasonRepository().create(CreateSeasonRequest(leagueId = league.id, name = "2026", seasonYear = 2026)).id
-        }
 
     fun service(): AdminService =
         AdminService(
@@ -53,7 +45,7 @@ class AdminServiceConfirmRosterOwnershipSpec : FunSpec({
         service().confirmRoster(ConfirmRosterRequest(seasonId = seasonId, teams = teams.toList()))
 
     test("an ownership of zero or past 100 is refused, naming its team and round, and nothing is written") {
-        val seasonId = seedSeason()
+        val seasonId = tx.update { seedSeason() }
         val brown =
             fullTeam(
                 number = 1,
@@ -76,7 +68,7 @@ class AdminServiceConfirmRosterOwnershipSpec : FunSpec({
     }
 
     test("an ownership at either end of the range is written as given") {
-        val seasonId = seedSeason()
+        val seasonId = tx.update { seedSeason() }
         val brown =
             fullTeam(
                 number = 1,
