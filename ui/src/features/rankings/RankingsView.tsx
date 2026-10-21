@@ -1,19 +1,23 @@
 import type { ReactNode } from 'react';
 import type { Rankings } from '@/shared/api/types';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
-import ListCard, { CARD_LIST_CLASS } from '@/shared/components/ListCard';
+import ListCard, { CARD_LIST_CLASS, CARD_ROW_CLASS } from '@/shared/components/ListCard';
 import MoneyCell from '@/shared/components/MoneyCell';
 import PositionCell from '@/shared/components/PositionCell';
+import YouTag from '@/shared/components/YouTag';
+import { isMyTeam } from '@/features/myTeam/myTeamModel';
 import { formatDollarsAndCents, formatWholeDollars, moneyToneClass } from '@/shared/util/money';
 import RankingsChart from './RankingsChart';
 
-const CARD_CELL_CLASS = 'px-3 py-2 bg-surface-card';
+const CARD_CELL_CLASS = 'px-3 py-2';
 
 interface Props {
   rankings: Rankings;
+  /** @see isMyTeam */
+  myTeamName: string | null;
 }
 
-function RankingsView({ rankings }: Props): ReactNode {
+function RankingsView({ rankings, myTeamName }: Props): ReactNode {
   const wonText = formatWholeDollars(rankings.cashTotals.won);
   const lostText = formatWholeDollars(rankings.cashTotals.lost);
   const netText = formatWholeDollars(rankings.cashTotals.net);
@@ -27,6 +31,7 @@ function RankingsView({ rankings }: Props): ReactNode {
             position={index + 1}
             name={team.teamName}
             nameCase="team"
+            fill={isMyTeam(team.teamName, myTeamName) ? 'my-team' : 'plain'}
             detail={`Sub ${formatDollarsAndCents(team.subtotal)} · Bets ${formatDollarsAndCents(team.sideBets)}`}
             total={<MoneyCell display={formatWholeDollars(team.totalCash)} shape="card-end" />}
           />
@@ -45,17 +50,23 @@ function RankingsView({ rankings }: Props): ReactNode {
             </tr>
           </thead>
           <tbody>
-            {rankings.teams.map((team, index) => (
-              <tr key={team.teamId} className="h-11">
-                <PositionCell position={index + 1} />
-                <td className={`${CARD_CELL_CLASS} font-display font-bold text-lg uppercase text-ink`}>
-                  {team.teamName}
-                </td>
-                <td className={`${CARD_CELL_CLASS} text-right tabular-nums`}>{formatDollarsAndCents(team.subtotal)}</td>
-                <td className={`${CARD_CELL_CLASS} text-right tabular-nums`}>{formatDollarsAndCents(team.sideBets)}</td>
-                <MoneyCell display={formatWholeDollars(team.totalCash)} />
-              </tr>
-            ))}
+            {rankings.teams.map((team, index) => {
+              const mine = isMyTeam(team.teamName, myTeamName);
+              const look = CARD_ROW_CLASS[mine ? 'my-team' : 'plain'];
+              const cellClass = `${CARD_CELL_CLASS} ${look.cell}`;
+              return (
+                <tr key={team.teamId} className={look.row}>
+                  <PositionCell position={index + 1} />
+                  <td className={`${cellClass} font-display font-bold text-lg uppercase text-ink`}>
+                    {team.teamName}
+                    {mine ? <YouTag /> : null}
+                  </td>
+                  <td className={`${cellClass} text-right tabular-nums`}>{formatDollarsAndCents(team.subtotal)}</td>
+                  <td className={`${cellClass} text-right tabular-nums`}>{formatDollarsAndCents(team.sideBets)}</td>
+                  <MoneyCell display={formatWholeDollars(team.totalCash)} />
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

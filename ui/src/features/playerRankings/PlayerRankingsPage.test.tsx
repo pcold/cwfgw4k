@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, waitForElementToBeRemoved, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
@@ -11,6 +11,7 @@ import type {
   League,
   PlayerRankings,
   PlayerRankingsRow,
+  RosterTeam,
   Season,
   Tournament,
 } from '@/shared/api/types';
@@ -21,6 +22,7 @@ const seasonsMock = vi.fn<typeof api.seasons>();
 const tournamentsMock = vi.fn<typeof api.tournaments>();
 const currentTournamentMock = vi.fn<typeof api.currentTournament>();
 const playerRankingsMock = vi.fn<typeof api.playerRankings>();
+const rostersMock = vi.fn<typeof api.rosters>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -30,6 +32,7 @@ vi.mock('@/shared/api/client', () => ({
     currentTournament: (id: string) => currentTournamentMock(id),
     playerRankings: (seasonId: string, live: boolean, throughTournamentId?: string) =>
       playerRankingsMock(seasonId, live, throughTournamentId),
+    rosters: (id: string) => rostersMock(id),
   },
   ApiError: class ApiError extends Error {},
 }));
@@ -88,6 +91,13 @@ function rankings(overrides: Partial<PlayerRankings>): PlayerRankings {
   };
 }
 
+const MY_TEAM_KEY = 'cwfg.myTeam';
+const WITH_MY_TEAM = { withMyTeamProvider: true };
+const newestRoster: RosterTeam[] = [
+  { teamId: 'team-1', teamNumber: 1, teamName: 'Aces', picks: [] },
+  { teamId: 'team-2', teamNumber: 2, teamName: 'Birdies', picks: [] },
+];
+
 function answerLiveEligibleThrough(...eligibleIds: string[]): void {
   playerRankingsMock.mockImplementation((_id, _live, through) =>
     Promise.resolve(rankings({ liveEligible: through !== undefined && eligibleIds.includes(through) })),
@@ -101,6 +111,12 @@ describe('PlayerRankingsPage', () => {
     tournamentsMock.mockReset();
     currentTournamentMock.mockReset();
     playerRankingsMock.mockReset();
+    rostersMock.mockResolvedValue(newestRoster);
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
   });
 
   it('renders rows from the player-rankings endpoint', async () => {
@@ -128,7 +144,7 @@ describe('PlayerRankingsPage', () => {
       }),
     );
 
-    renderWithProviders(<PlayerRankingsPage />);
+    renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
 
     const subtitle = await screen.findByText('2 players with at least one top 10');
     expect(pageTitleRow(subtitle)).toContainElement(screen.getByRole('heading', { name: /Player Rankings/i }));
@@ -166,7 +182,7 @@ describe('PlayerRankingsPage', () => {
     });
 
     const user = userEvent.setup();
-    renderWithProviders(<PlayerRankingsPage />);
+    renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
     const table = await screen.findByRole('table');
     expect(within(nth(within(table).getAllByRole('row'), 1)).getAllByRole('cell')[3]).toHaveTextContent(
       '+$30.00',
@@ -196,7 +212,7 @@ describe('PlayerRankingsPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-upcoming' });
     playerRankingsMock.mockResolvedValue(rankings({}));
 
-    renderWithProviders(<PlayerRankingsPage />);
+    renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
 
     await screen.findByRole('option', { name: /tn-upcoming|Sample Open.*upcoming/i });
     const select = screen.getByLabelText<HTMLSelectElement>(/Through/i);
@@ -216,7 +232,7 @@ describe('PlayerRankingsPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-b' });
     answerLiveEligibleThrough('tn-b');
 
-    renderWithProviders(<PlayerRankingsPage />);
+    renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
 
     await screen.findByText(/No players with a top 10 finish yet/i);
     expect(screen.getByLabelText<HTMLSelectElement>(/Through/i).value).toBe('tn-b');
@@ -244,7 +260,7 @@ describe('PlayerRankingsPage', () => {
     );
 
     const user = userEvent.setup();
-    renderWithProviders(<PlayerRankingsPage />);
+    renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
 
     await user.selectOptions(await screen.findByLabelText(/Through/i), spring.id);
     await waitFor(() => expect(playerRankingsMock).toHaveBeenCalledWith('sn-1', false, 'tn-a'));
@@ -260,7 +276,7 @@ describe('PlayerRankingsPage', () => {
     tournamentsMock.mockResolvedValue([tournament({ id: 'tn-a' })]);
     currentTournamentMock.mockRejectedValue(new Error('down'));
 
-    renderWithProviders(<PlayerRankingsPage />);
+    renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
 
     expect(await screen.findByText(/Failed to load current tournament/i)).toBeInTheDocument();
     expect(playerRankingsMock).not.toHaveBeenCalled();
@@ -272,7 +288,7 @@ describe('PlayerRankingsPage', () => {
     tournamentsMock.mockResolvedValue([tournament({ id: 'tn-a' })]);
     currentTournamentMock.mockReturnValue(new Promise(() => {}));
 
-    renderWithProviders(<PlayerRankingsPage />);
+    renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
 
     expect(await screen.findByText(/Loading current tournament/i)).toBeInTheDocument();
     expect(playerRankingsMock).not.toHaveBeenCalled();
@@ -292,6 +308,7 @@ describe('PlayerRankingsPage', () => {
           fetcher={() => currentTournamentMock('sn-1')}
         />
       </>,
+      WITH_MY_TEAM,
     );
 
     expect(await screen.findByText(/Loading tournaments/i)).toBeInTheDocument();
@@ -311,7 +328,7 @@ describe('PlayerRankingsPage', () => {
       }),
     );
 
-    renderWithProviders(<PlayerRankingsPage />);
+    renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
 
     const loading = await screen.findByText(/Loading current tournament/i);
     answer.release();
@@ -329,7 +346,7 @@ describe('PlayerRankingsPage', () => {
     answerLiveEligibleThrough('tn-a');
 
     const user = userEvent.setup();
-    renderWithProviders(<PlayerRankingsPage />);
+    renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
 
     expect(await screen.findByRole('checkbox', { name: /Live overlay/i })).toBeChecked();
     expect(playerRankingsMock).toHaveBeenLastCalledWith('sn-1', true, 'tn-a');
@@ -349,7 +366,7 @@ describe('PlayerRankingsPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-a' });
     playerRankingsMock.mockResolvedValue(rankings({ players: [] }));
 
-    renderWithProviders(<PlayerRankingsPage />);
+    renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
     expect(
       await screen.findByText(/No players with a top 10 finish yet/i),
     ).toBeInTheDocument();
@@ -363,11 +380,56 @@ describe('PlayerRankingsPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-a' });
     playerRankingsMock.mockResolvedValue(rankings({ players: [row({})], live: true, liveEligible: true }));
 
-    renderWithProviders(<PlayerRankingsPage />);
+    renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
 
     const subtitle = await screen.findByText('1 players with at least one top 10');
     expect(screen.getAllByRole('heading', { name: /Player Rankings/i })).toHaveLength(1);
     expect(within(pageTitleRow(subtitle)).getByText('Live')).toHaveClass('bg-primary');
+  });
+
+  describe("the visitor's own team", () => {
+    async function renderPlayers(): Promise<void> {
+      leaguesMock.mockResolvedValue([league]);
+      seasonsMock.mockResolvedValue([season]);
+      tournamentsMock.mockResolvedValue([tournament({})]);
+      currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-1' });
+      playerRankingsMock.mockResolvedValue(
+        rankings({
+          players: [
+            row({ key: 'g:g-1', golferId: 'g-1', name: 'Scottie Scheffler', teamName: 'Aces' }),
+            row({ key: 'g:g-2', golferId: 'g-2', name: 'Rory McIlroy', teamName: 'Birdies' }),
+          ],
+        }),
+      );
+      renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
+      await screen.findByRole('table');
+    }
+
+    function tableRow(name: string): HTMLElement {
+      const found = within(screen.getByRole('table')).getByText(name).closest('tr');
+      if (!found) throw new Error(`no table row for ${name}`);
+      return found;
+    }
+
+    it("tags the saved team's name beside the golfers it drafted, and no other", async () => {
+      window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"BIRDIES"}');
+      await renderPlayers();
+
+      expect(within(tableRow('Rory McIlroy')).getByText('your team')).toBeInTheDocument();
+      expect(within(tableRow('Scottie Scheffler')).queryByText('your team')).toBeNull();
+      expect(screen.getAllByText('your team')).toHaveLength(2);
+    });
+
+    it.each([
+      ['browsing', '{"kind":"browsing"}'],
+      ['never asked', null],
+    ])('tags nothing when %s', async (_choice, stored) => {
+      if (stored !== null) window.localStorage.setItem(MY_TEAM_KEY, stored);
+      await renderPlayers();
+
+      expect(tableRow('Rory McIlroy')).toBeInTheDocument();
+      expect(screen.queryByText('your team')).toBeNull();
+    });
   });
 
   it('surfaces an error when the player-rankings query fails', async () => {
@@ -378,7 +440,7 @@ describe('PlayerRankingsPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-a' });
     playerRankingsMock.mockRejectedValue(new Error('boom'));
 
-    renderWithProviders(<PlayerRankingsPage />);
+    renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
     expect(await screen.findByText(/Failed to load player rankings/i)).toBeInTheDocument();
   });
 });

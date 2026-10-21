@@ -2,15 +2,17 @@ import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import type { LiveLeaderboardEntry, WeeklyReport, WonLostTotals } from '@/shared/api/types';
 import { formatDollarsAndCents, moneyToneClass } from '@/shared/util/money';
 import Chip from '@/shared/components/Chip';
-import ListCard, { CARD_LIST_CLASS } from '@/shared/components/ListCard';
+import ListCard, { CARD_LIST_CLASS, CARD_ROW_CLASS } from '@/shared/components/ListCard';
 import MoneyCell from '@/shared/components/MoneyCell';
 import PositionCell from '@/shared/components/PositionCell';
+import YouTag from '@/shared/components/YouTag';
 import ColumnHeaderFilter, {
   type ColumnHeaderFilterOption,
 } from '@/shared/components/ColumnHeaderFilter';
 import PhoneFilter from '@/shared/components/PhoneFilter';
 import { TAP_TARGET_CLASS, type SelectOption } from '@/shared/components/formFields';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
+import { isMyTeam } from '@/features/myTeam/myTeamModel';
 import {
   formatScoreToPar,
   hasPlayerOn,
@@ -48,7 +50,7 @@ const FILTERED_EMPTY = 'No players match this filter.';
 const GOLFER_BUTTON_CLASS = `text-ink-secondary hover:underline cursor-pointer bg-transparent border-0 p-0 ${TAP_TARGET_CLASS}`;
 
 // Spelled as on the standings' card rows, which keep theirs private.
-const CARD_CELL_CLASS = 'px-3 py-2 bg-surface-card';
+const CARD_CELL_CLASS = 'px-3 py-2';
 
 // `grid-cols-1`, not the implicit track, which grows to a table's min-width and scrolls a phone's page sideways.
 const TWO_COLUMN_CLASS = 'grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,5fr)_minmax(0,4fr)] xl:items-start';
@@ -87,12 +89,22 @@ function GolferLine({ team, onGolferClick }: GolferLineProps): ReactNode {
   );
 }
 
+function TeamName({ teamName, mine }: { teamName: string; mine: boolean }): ReactNode {
+  return (
+    <div className="font-display font-bold text-lg uppercase text-ink">
+      {teamName}
+      {mine ? <YouTag /> : null}
+    </div>
+  );
+}
+
 interface TeamListProps {
   teams: readonly ScoreboardTeam[];
+  myTeamName: string | null;
   onGolferClick?: (golferId: string) => void;
 }
 
-function TeamCards({ teams, onGolferClick }: TeamListProps): ReactNode {
+function TeamCards({ teams, myTeamName, onGolferClick }: TeamListProps): ReactNode {
   return (
     <ol aria-label="Weekly results" className={`sm:hidden ${CARD_LIST_CLASS}`}>
       {teams.map((team, index) => (
@@ -101,6 +113,7 @@ function TeamCards({ teams, onGolferClick }: TeamListProps): ReactNode {
           position={index + 1}
           name={team.teamName}
           nameCase="team"
+          fill={isMyTeam(team.teamName, myTeamName) ? 'my-team' : 'plain'}
           detail={
             team.golferScores.length === 0 ? (
               'No golfers in the top 10'
@@ -115,7 +128,7 @@ function TeamCards({ teams, onGolferClick }: TeamListProps): ReactNode {
   );
 }
 
-function TeamTable({ teams, onGolferClick }: TeamListProps): ReactNode {
+function TeamTable({ teams, myTeamName, onGolferClick }: TeamListProps): ReactNode {
   return (
     <div className="hidden sm:block overflow-x-auto -mx-3 sm:mx-0">
       <table className="w-full min-w-[500px] text-sm border-separate border-spacing-y-1">
@@ -128,19 +141,23 @@ function TeamTable({ teams, onGolferClick }: TeamListProps): ReactNode {
           </tr>
         </thead>
         <tbody>
-          {teams.map((team, index) => (
-            <tr key={team.teamId} className="h-11">
-              <PositionCell position={index + 1} />
-              <td className={CARD_CELL_CLASS}>
-                <div className="font-display font-bold text-lg uppercase text-ink">{team.teamName}</div>
-                <GolferLine team={team} onGolferClick={onGolferClick} />
-              </td>
-              <td className={`${CARD_CELL_CLASS} text-right tabular-nums text-ink-secondary`}>
-                {formatDollarsAndCents(team.topTenEarnings)}
-              </td>
-              <MoneyCell display={formatDollarsAndCents(team.weeklyTotal)} />
-            </tr>
-          ))}
+          {teams.map((team, index) => {
+            const mine = isMyTeam(team.teamName, myTeamName);
+            const look = CARD_ROW_CLASS[mine ? 'my-team' : 'plain'];
+            return (
+              <tr key={team.teamId} className={look.row}>
+                <PositionCell position={index + 1} />
+                <td className={`${CARD_CELL_CLASS} ${look.cell}`}>
+                  <TeamName teamName={team.teamName} mine={mine} />
+                  <GolferLine team={team} onGolferClick={onGolferClick} />
+                </td>
+                <td className={`${CARD_CELL_CLASS} ${look.cell} text-right tabular-nums text-ink-secondary`}>
+                  {formatDollarsAndCents(team.topTenEarnings)}
+                </td>
+                <MoneyCell display={formatDollarsAndCents(team.weeklyTotal)} />
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -170,7 +187,7 @@ function FieldLine({ team, onGolferClick }: GolferLineProps): ReactNode {
   );
 }
 
-function FieldCards({ teams, onGolferClick }: TeamListProps): ReactNode {
+function FieldCards({ teams, myTeamName, onGolferClick }: TeamListProps): ReactNode {
   return (
     <ol aria-label="Weekly results" className={`sm:hidden ${CARD_LIST_CLASS}`}>
       {teams.map((team, index) => (
@@ -179,6 +196,7 @@ function FieldCards({ teams, onGolferClick }: TeamListProps): ReactNode {
           position={index + 1}
           name={team.teamName}
           nameCase="team"
+          fill={isMyTeam(team.teamName, myTeamName) ? 'my-team' : 'plain'}
           detail={<FieldLine team={team} onGolferClick={onGolferClick} />}
           total={null}
         />
@@ -187,7 +205,7 @@ function FieldCards({ teams, onGolferClick }: TeamListProps): ReactNode {
   );
 }
 
-function FieldTable({ teams, onGolferClick }: TeamListProps): ReactNode {
+function FieldTable({ teams, myTeamName, onGolferClick }: TeamListProps): ReactNode {
   return (
     <div className="hidden sm:block overflow-x-auto -mx-3 sm:mx-0">
       <table className="w-full min-w-[500px] text-sm border-separate border-spacing-y-1">
@@ -198,15 +216,19 @@ function FieldTable({ teams, onGolferClick }: TeamListProps): ReactNode {
           </tr>
         </thead>
         <tbody>
-          {teams.map((team, index) => (
-            <tr key={team.teamId} className="h-11">
-              <PositionCell position={index + 1} />
-              <td className={CARD_CELL_CLASS}>
-                <div className="font-display font-bold text-lg uppercase text-ink">{team.teamName}</div>
-                <FieldLine team={team} onGolferClick={onGolferClick} />
-              </td>
-            </tr>
-          ))}
+          {teams.map((team, index) => {
+            const mine = isMyTeam(team.teamName, myTeamName);
+            const look = CARD_ROW_CLASS[mine ? 'my-team' : 'plain'];
+            return (
+              <tr key={team.teamId} className={look.row}>
+                <PositionCell position={index + 1} />
+                <td className={`${CARD_CELL_CLASS} ${look.cell}`}>
+                  <TeamName teamName={team.teamName} mine={mine} />
+                  <FieldLine team={team} onGolferClick={onGolferClick} />
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -406,11 +428,13 @@ function LeaderboardCard({ leaderboard, tournamentName }: LeaderboardCardProps):
 
 interface Props {
   report: WeeklyReport;
+  /** @see isMyTeam */
+  myTeamName: string | null;
   finalizeSlot?: ReactNode;
   onGolferClick?: (golferId: string) => void;
 }
 
-function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNode {
+function ScoreboardView({ report, myTeamName, finalizeSlot, onGolferClick }: Props): ReactNode {
   const teams = scoreboardTeams(report);
   const { tournament, weeklyTotals, liveLeaderboard: leaderboard } = report;
   const phase = scoreboardPhase(report);
@@ -430,13 +454,13 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
         <div className="space-y-6">
           {phase === 'preStart' ? (
             <>
-              <FieldCards teams={teams} onGolferClick={onGolferClick} />
-              <FieldTable teams={teams} onGolferClick={onGolferClick} />
+              <FieldCards teams={teams} myTeamName={myTeamName} onGolferClick={onGolferClick} />
+              <FieldTable teams={teams} myTeamName={myTeamName} onGolferClick={onGolferClick} />
             </>
           ) : (
             <>
-              <TeamCards teams={teams} onGolferClick={onGolferClick} />
-              <TeamTable teams={teams} onGolferClick={onGolferClick} />
+              <TeamCards teams={teams} myTeamName={myTeamName} onGolferClick={onGolferClick} />
+              <TeamTable teams={teams} myTeamName={myTeamName} onGolferClick={onGolferClick} />
             </>
           )}
           <MoneySummary totals={weeklyTotals} />
