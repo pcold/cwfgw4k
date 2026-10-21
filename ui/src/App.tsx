@@ -10,6 +10,8 @@ import RulesPage from '@/features/rules/RulesPage';
 import AdminPage from '@/features/admin/AdminPage';
 import { LeagueSeasonProvider } from '@/features/leagues/LeagueSeasonContext';
 import { AuthProvider } from '@/features/auth/AuthContext';
+import { MyTeamProvider } from '@/features/myTeam/MyTeamContext';
+import MyTeamPicker from '@/features/myTeam/MyTeamPicker';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import { HeaderSlotProvider } from '@/shared/components/HeaderSlot';
 import TabBar from './TabBar';
@@ -54,6 +56,7 @@ function App(): ReactNode {
   return (
     <AuthProvider>
     <LeagueSeasonProvider>
+    <MyTeamProvider>
     <HeaderSlotProvider slot={headerSlot}>
       <div className="min-h-screen bg-canvas text-ink">
         <nav aria-label="Main" className="bg-chrome">
@@ -95,8 +98,10 @@ function App(): ReactNode {
 
         <SiteFooter />
         <TabBar />
+        <MyTeamPicker />
       </div>
     </HeaderSlotProvider>
+    </MyTeamProvider>
     </LeagueSeasonProvider>
     </AuthProvider>
   );
