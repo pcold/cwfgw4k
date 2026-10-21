@@ -1,7 +1,4 @@
-/**
- * Must match the values `TournamentStatusSerializer` writes. The wire contract compares key names only, so a
- * value added on the server shows up nowhere until it is added here.
- */
+/** @see TournamentStatusSerializer — the wire contract pins these values, so a new one fails `tsc`. */
 export type TournamentStatus = 'upcoming' | 'in_progress' | 'completed';
 
 export interface ReportTournamentInfo {
