@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { QueryKey } from '@tanstack/react-query';
 import type { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
@@ -20,6 +21,16 @@ vi.mock('@/shared/api/client', () => ({
   },
   ApiError: class ApiError extends Error {},
 }));
+
+// Each key is the one its page holds: ScoreboardPage, WeeklyReportPage (and LateRowBetsPage),
+// RankingsPage, PlayerRankingsPage, GolferHistoryModal.
+const OPEN_WHEN_A_DELETE_LANDS: [string, QueryKey][] = [
+  ['tournamentReport', queryKeys.tournamentReport.detail('sn-1', 'tn-1', false)],
+  ['report', queryKeys.report.detail('sn-1', 'tn-1', false)],
+  ['rankings', queryKeys.rankings.detail('sn-1', false, 'tn-1')],
+  ['playerRankings', queryKeys.playerRankings.detail('sn-1', 'tn-1', false)],
+  ['golferHistory', queryKeys.golferHistory.detail('sn-1', 'g-1')],
+];
 
 describe('DeleteSeasonSection', () => {
   beforeEach(() => {
@@ -78,6 +89,65 @@ describe('DeleteSeasonSection', () => {
     await waitFor(() => {
       expect(fetcher).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it.each(OPEN_WHEN_A_DELETE_LANDS)(
+    'refetches an open %s query for the deleted season',
+    async (_root, queryKey) => {
+      const fetcher = vi.fn().mockResolvedValue({});
+      deleteMock.mockResolvedValue(undefined);
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+      const user = userEvent.setup();
+      renderWithProviders(
+        <>
+          <DeleteSeasonSection />
+          <OpenQuery queryKey={queryKey} fetcher={fetcher} />
+        </>,
+        { withLeagueSeasonProvider: false },
+      );
+
+      await screen.findByRole('option', { name: /^2026 Spring$/ });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      await user.selectOptions(screen.getByLabelText(/Season to delete/i), 'sn-1');
+      await user.click(screen.getByRole('button', { name: /Delete Season/i }));
+
+      await waitFor(() => {
+        expect(fetcher).toHaveBeenCalledTimes(2);
+      });
+    },
+  );
+
+  it("leaves another season's open report alone", async () => {
+    const deletedSeasonFetcher = vi.fn().mockResolvedValue({});
+    const otherSeasonFetcher = vi.fn().mockResolvedValue({});
+    deleteMock.mockResolvedValue(undefined);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <DeleteSeasonSection />
+        <OpenQuery
+          queryKey={queryKeys.report.detail('sn-1', 'tn-1', false)}
+          fetcher={deletedSeasonFetcher}
+        />
+        <OpenQuery
+          queryKey={queryKeys.report.detail('sn-2', 'tn-2', false)}
+          fetcher={otherSeasonFetcher}
+        />
+      </>,
+      { withLeagueSeasonProvider: false },
+    );
+
+    await screen.findByRole('option', { name: /^2026 Spring$/ });
+    await user.selectOptions(screen.getByLabelText(/Season to delete/i), 'sn-1');
+    await user.click(screen.getByRole('button', { name: /Delete Season/i }));
+
+    await waitFor(() => {
+      expect(deletedSeasonFetcher).toHaveBeenCalledTimes(2);
+    });
+    expect(otherSeasonFetcher).toHaveBeenCalledTimes(1);
   });
 
   it('does nothing when the user cancels the confirm dialog', async () => {
