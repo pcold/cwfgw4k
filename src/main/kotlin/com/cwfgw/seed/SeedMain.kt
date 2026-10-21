@@ -194,6 +194,7 @@ private suspend fun applyMajorMultipliers(
         )
         log.info { "Marked '${tournament.name}' as 2x major" }
     }
+    // Not inlined: detekt-baseline.xml pins the log literal below verbatim, `$applied` included.
     val applied = majors.size
     log.info { "Applied 2x multiplier to $applied tournament(s) matching $patterns" }
 }
