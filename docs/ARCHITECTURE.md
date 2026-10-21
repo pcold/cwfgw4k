@@ -74,8 +74,8 @@ User (username, role admin | user)
 - **Season.** Identified by `season_year` and `season_number` (when the create request names none, the next free
   number, from `SeasonRepository.nextSeasonNumber`). Owns its rules: the payout table and the side-bet rounds live
   in the side tables `season_rule_payouts` and `season_rule_side_bet_rounds`; the tie floor and side-bet amount are
-  columns. `max_teams` is stored and returned but nothing enforces it; the team count is whatever the roster upload
-  creates.
+  columns. `max_teams` is stored and returned (as `maxTeams`) but nothing enforces it; the team count is whatever the
+  roster upload creates.
 - **Tournament.** A season's schedule entry. `pga_tournament_id` is the ESPN event id once linked.
   `payout_multiplier` (default 1) scales every payout for that event. `is_team_event` marks two-player events
   such as the Zurich Classic. `week` is the display label from the schedule upload.
