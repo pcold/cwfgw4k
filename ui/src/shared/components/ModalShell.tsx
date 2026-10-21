@@ -140,14 +140,16 @@ function useModalDialog(onClose: () => void): RefObject<HTMLDivElement | null> {
 
   useEffect(() => {
     const panel = panelRef.current;
+    // A trigger inside a sheet that closed in this commit is gone; the sheet has handed focus to its own opener.
+    const returnTarget = opener?.isConnected ? opener : document.activeElement;
     if (panel && !panel.contains(document.activeElement)) {
       panel.focus();
     }
     return () => {
       // A trigger the modal's own mutation removed is gone by the time focus comes back; the caller
       // re-renders around that, so leave focus where it is.
-      if (opener instanceof HTMLElement && opener.isConnected) {
-        opener.focus();
+      if (returnTarget instanceof HTMLElement && returnTarget.isConnected) {
+        returnTarget.focus();
       }
     };
   }, [opener]);

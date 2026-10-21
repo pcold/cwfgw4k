@@ -283,6 +283,22 @@ describe('App my team', () => {
     expect(window.localStorage.getItem(MY_TEAM_KEY)).toBeNull();
   });
 
+  it('returns focus to the More tab when the picker opened from its sheet closes', async () => {
+    window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"WOMBLE"}');
+    const user = userEvent.setup();
+    renderWithProviders(<App />, { initialPath: '/scoreboard', withLeagueSeasonProvider: false });
+
+    const moreTab = screen.getByRole('button', { name: 'More' });
+    await user.click(moreTab);
+    const more = screen.getByRole('dialog', { name: 'More' });
+    await user.click(await within(more).findByRole('button', { name: 'My team: WOMBLE · Change' }));
+    await picker();
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog', { name: 'Which team is yours?' })).toBeNull();
+    expect(moreTab).toHaveFocus();
+  });
+
   it('asks again from My team in the header, naming the saved team only to assistive tech', async () => {
     window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"WOMBLE"}');
     const user = userEvent.setup();

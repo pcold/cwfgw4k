@@ -28,6 +28,30 @@ function ModalTrigger({ autoFocusField = false }: { readonly autoFocusField?: bo
   );
 }
 
+/** A sheet whose row swaps it for a second shell, as More hands over to the team picker. */
+function SheetHandOver() {
+  const [open, setOpen] = useState<'none' | 'sheet' | 'picker'>('none');
+  return (
+    <>
+      <button type="button" onClick={() => setOpen('sheet')}>
+        More
+      </button>
+      {open === 'sheet' && (
+        <ModalShell title="More" onClose={() => setOpen('none')} placement="sheet">
+          <button type="button" onClick={() => setOpen('picker')}>
+            My team
+          </button>
+        </ModalShell>
+      )}
+      {open === 'picker' && (
+        <ModalShell title="Which team is yours?" onClose={() => setOpen('none')} placement="responsive">
+          <p>Teams</p>
+        </ModalShell>
+      )}
+    </>
+  );
+}
+
 async function openModal(autoFocusField = false): Promise<HTMLElement> {
   renderWithProviders(<ModalTrigger autoFocusField={autoFocusField} />, { withLeagueSeasonProvider: false });
   const trigger = screen.getByRole('button', { name: 'New season' });
@@ -112,6 +136,18 @@ describe('ModalShell', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Close' }));
 
     expect(trigger).toHaveFocus();
+  });
+
+  it("returns focus to the sheet's opener when a row of that sheet opened it in the sheet's place", async () => {
+    renderWithProviders(<SheetHandOver />, { withLeagueSeasonProvider: false });
+    const more = screen.getByRole('button', { name: 'More' });
+    await userEvent.click(more);
+    await userEvent.click(screen.getByRole('button', { name: 'My team' }));
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(more).toHaveFocus();
   });
 
   it('closes on Escape', async () => {
