@@ -39,7 +39,7 @@ import java.io.IOException
 import java.security.KeyStore
 import java.security.KeyStoreException
 import java.security.NoSuchAlgorithmException
-import java.security.NoSuchProviderException
+import java.security.Security
 import java.security.cert.CertificateException
 import java.time.Duration
 import javax.net.ssl.TrustManagerFactory
@@ -110,8 +110,8 @@ private const val HTTP_CLIENT_REQUEST_TIMEOUT_MS: Long = 30_000
  * service). On macOS we initialize the trust manager from the system Keychain
  * so corporate/MITM proxies (Zscaler, etc.) that have a trusted root in the
  * user's keychain don't fail TLS validation. On other platforms (Linux Cloud
- * Run, etc.) the keychain lookup throws and we fall through to the JDK default
- * trust store, which is what we want there.
+ * Run, etc.) there is no Apple security provider and we fall through to the JDK
+ * default trust store, which is what we want there.
  */
 internal fun buildHttpClient(): HttpClient {
     val trustManager = systemKeychainTrustManager() ?: defaultJdkTrustManager()
@@ -128,15 +128,12 @@ internal fun buildHttpClient(): HttpClient {
     }
 }
 
-private fun systemKeychainTrustManager(): X509TrustManager? =
-    try {
-        val keychain = KeyStore.getInstance("KeychainStore", "Apple")
+private fun systemKeychainTrustManager(): X509TrustManager? {
+    val apple = Security.getProvider("Apple") ?: return null
+    return try {
+        val keychain = KeyStore.getInstance("KeychainStore", apple)
         keychain.load(null, null)
         firstX509(TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply { init(keychain) })
-    } catch (notOnMac: NoSuchProviderException) {
-        // Every boot off a Mac, Cloud Run's included, lands here; at WARN it would flag each healthy boot.
-        log.debug(notOnMac) { "No Apple keychain provider; using the JDK trust store" }
-        null
     } catch (failure: KeyStoreException) {
         warnUnreadableKeychain(failure)
     } catch (failure: NoSuchAlgorithmException) {
@@ -146,6 +143,7 @@ private fun systemKeychainTrustManager(): X509TrustManager? =
     } catch (failure: IOException) {
         warnUnreadableKeychain(failure)
     }
+}
 
 private fun warnUnreadableKeychain(failure: Exception): X509TrustManager? {
     log.warn(failure) { "System keychain unreadable; using the JDK trust store" }
