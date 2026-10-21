@@ -56,8 +56,6 @@ private val NON_WIRE_TYPES =
         "com.cwfgw.espn.EspnScoreboardResponse",
         "com.cwfgw.espn.EspnStatusJson",
         "com.cwfgw.espn.EspnStatusType",
-        // An in-process command the admin and ESPN imports build; no route receives it.
-        "com.cwfgw.golfers.CreateGolferRequest",
         // A log line on stdout, for Cloud Logging.
         "com.cwfgw.logging.CloudLogEntry",
         // The session cookie's payload, which the client never parses.
