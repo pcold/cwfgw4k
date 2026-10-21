@@ -191,7 +191,8 @@ private suspend fun applyMajorMultipliers(
         )
         log.info { "Marked '${tournament.name}' as 2x major" }
     }
-    log.info { "Applied 2x multiplier to ${majors.size} tournament(s) matching $patterns" }
+    val applied = majors.size
+    log.info { "Applied 2x multiplier to $applied tournament(s) matching $patterns" }
 }
 
 /**
