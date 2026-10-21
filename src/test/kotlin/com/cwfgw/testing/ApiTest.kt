@@ -189,8 +189,8 @@ fun ApiFixture.seedUser(
 }
 
 /** Binds the cache to [ApiFixture.transactor] as it is now, so call it after replacing that. */
-fun ApiFixture.seedCache(rows: CacheRepository) {
-    requestCache = RequestCache(rows, transactor, TEST_REVISION, defaultTtl = TEST_CACHE_TTL)
+fun ApiFixture.seedCache(rows: CacheRepository, revision: String = TEST_REVISION) {
+    requestCache = RequestCache(rows, transactor, revision, defaultTtl = TEST_CACHE_TTL)
 }
 
 private fun ApiFixture.toAppServices(): AppServices =
