@@ -13,21 +13,8 @@ import java.time.ZoneId
 val ESPN_SCHEDULE_ZONE: ZoneId = ZoneId.of("America/New_York")
 
 /**
- * Days before [Tournament.startDate] that the tournament becomes eligible
- * for an ESPN live-overlay pull. PGA Tour events typically start
- * Thursday and ESPN publishes tee times / field commitments somewhere
- * between Monday morning and Wednesday afternoon. With a 3-day window
- * a Thursday start is eligible from the prior Monday, which makes the
- * pre-tournament data (who's playing, tee-time pairings) visible
- * before the round opens — the operator's whole reason for asking.
- *
- * The May 10 wedge was the original argument *against* a look-ahead: a
- * full season carries 20+ `Upcoming` tournaments and the per-event
- * gather was expensive enough that fanning out across all of them was
- * unaffordable. CWF-17 + CWF-18 dropped the gather to O(1) per overlay,
- * so a small look-ahead is back in budget. Keep this small enough that
- * a peak-week (current event + next week's preview) doesn't more than
- * double the candidate count.
+ * Opens a Thursday start from the Monday, the earliest ESPN publishes its field and tee times. Keep it small
+ * enough that a peak week (current event plus next week's preview) doesn't more than double the candidate count.
  */
 private const val LIVE_OVERLAY_LOOKAHEAD_DAYS: Long = 3
 
