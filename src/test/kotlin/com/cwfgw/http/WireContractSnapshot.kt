@@ -78,7 +78,7 @@ private fun rendersAsBlock(descriptor: SerialDescriptor): Boolean =
     descriptor.kind in setOf(StructureKind.CLASS, StructureKind.OBJECT, SerialKind.ENUM, PolymorphicKind.SEALED) ||
         customSerializedEnum(descriptor) != null
 
-/** The strings a client can receive for an enum, or null for anything else. */
+/** A plain enum's serial names, but for one with its own serializer, whatever that serializer writes. */
 internal fun wireEnumValues(descriptor: SerialDescriptor): List<String>? =
     if (descriptor.kind == SerialKind.ENUM) {
         descriptor.elementNames()
