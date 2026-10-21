@@ -29,8 +29,9 @@ interface TournamentRepository {
 
     /**
      * Locks the season row before the tournament, the order a season delete's cascade takes both. NO KEY UPDATE runs
-     * one finalize, reset, status or start-date PUT, or season clean-results per season at a time, so each sees the
-     * others' sibling writes. An FK insert's key-share stays free, so a tournament create does not wait.
+     * one finalize, reset, status or start-date PUT, season clean-results, or schedule or roster confirm per season at
+     * a time, so each sees the others' sibling writes. An FK insert's key-share stays free, so a tournament create
+     * does not wait.
      */
     context(ctx: WriteTransactionContext)
     fun findByIdForUpdate(id: TournamentId): Tournament?
@@ -42,7 +43,10 @@ interface TournamentRepository {
     context(ctx: TransactionContext)
     fun findByPgaTournamentId(pgaTournamentId: String): Tournament?
 
-    /** Takes no lock, so a read-only caller can; a write gating on the rows takes [findByPgaTournamentIdsForUpdate]. */
+    /**
+     * Takes no lock, so a read-only caller can; a write gating on the rows takes [findByPgaTournamentIdsForUpdate],
+     * unless it gates only on a row's absence, which no lock holds and the unique key refuses instead.
+     */
     context(ctx: TransactionContext)
     fun findByPgaTournamentIds(pgaTournamentIds: Collection<String>): List<Tournament>
 
