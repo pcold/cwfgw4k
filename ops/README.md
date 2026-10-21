@@ -325,7 +325,7 @@ that timeline end-to-end.
 
 Cloud Run throttles an idle instance's CPU, so the pool keeps no
 connection idle for more than 30s and pings none, and the cache sweep
-runs only on a request. An idle instance should log
+runs only on an API request. An idle instance should log
 `cwfgw4k.db.pool … total=0` within about a minute of its last request,
 and its first canary opens a fresh connection on request CPU: no
 `cwfgw4k.db.slow_acquire` line, no Broken Pipe.

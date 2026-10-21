@@ -215,8 +215,8 @@ every read that takes a row lock, declares it as a context parameter. Calling a 
 The report routes cache their responses in the `cache` table (`cache/RequestCache.kt`):
 
 - The key is the deploy revision (`K_REVISION`) plus the request URI, so a deploy starts cold.
-- Entries live `CACHE_DEFAULT_TTL_SECONDS` (300). A read skips an expired row, and a request deletes them before
-  its handler at most once per `CACHE_SWEEP_INTERVAL_SECONDS` (300), so an idle instance never sweeps
+- Entries live `CACHE_DEFAULT_TTL_SECONDS` (300). A read skips an expired row, and an `/api/v1` request deletes them
+  before its handler at most once per `CACHE_SWEEP_INTERVAL_SECONDS` (300), so an idle instance never sweeps
   (`cache/CacheSweep.kt`, pinned by `CacheSweepSpec` and `CacheSweepTrafficSpec`).
 - Fills are single-flight per key: concurrent misses share one loader. A loader that fails stores nothing.
 - `cache_generation` is a counter bumped on every clear. A fill that started before a clear and finishes after
