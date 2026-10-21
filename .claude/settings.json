@@ -70,7 +70,6 @@
       "Bash(npm run *)",
       "Bash(npm test *)",
       "Bash(npm view *)",
-      "Bash(npm --prefix *)",
       "Bash(npx vitest *)",
       "Bash(npx tsc *)",
       "Bash(./gradlew *)",
