@@ -67,8 +67,9 @@ Policy, in order of preference:
    "tournament not found," "tournament finalized," and "golfer not found"
    must each produce a different HTTP status). The error type lives in the
    domain package and stays free of HTTP imports; routes map it to
-   `DomainError` via a tiny `.orThrow()` extension. The `TournamentLinkService`
-   / `TournamentLinkRoutes` pair is the reference shape.
+   `DomainError` via a tiny `.orThrow()` extension. `AdminRoutes`'
+   `orThrow()` over `AdminError` is the reference shape; a route mapping two
+   error types names each mapper for its type (`orThrowLink()`, `orThrowEspn()`).
 3. **Exceptions** for truly exceptional conditions: programmer errors
    (`IllegalArgumentException`, `IllegalStateException`), infrastructure
    failures, and at HTTP/framework boundaries — specifically `DomainError`
