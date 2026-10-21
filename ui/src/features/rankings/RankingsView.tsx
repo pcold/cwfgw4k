@@ -4,9 +4,10 @@ import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import ListCard, { CARD_LIST_CLASS, CARD_ROW_CLASS } from '@/shared/components/ListCard';
 import MoneyCell from '@/shared/components/MoneyCell';
 import PositionCell from '@/shared/components/PositionCell';
+import WonLostNetCards from '@/shared/components/WonLostNetCards';
 import YouTag from '@/shared/components/YouTag';
 import { isMyTeam } from '@/features/myTeam/myTeamModel';
-import { formatDollarsAndCents, formatWholeDollars, moneyToneClass } from '@/shared/util/money';
+import { formatDollarsAndCents, formatWholeDollars } from '@/shared/util/money';
 import RankingsChart from './RankingsChart';
 import YourTeamCard from './YourTeamCard';
 import { findYourTeam } from './yourTeamCardModel';
@@ -75,26 +76,7 @@ function RankingsView({ rankings, myTeamName }: Props): ReactNode {
         </table>
       </div>
 
-      <div className="flex flex-wrap gap-3 text-sm">
-        <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
-          <span className="text-ink-soft">Won</span>
-          <span className={`font-semibold tabular-nums ${moneyToneClass(wonText)}`}>
-            {wonText}
-          </span>
-        </div>
-        <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
-          <span className="text-ink-soft">Lost</span>
-          <span className={`font-semibold tabular-nums ${moneyToneClass(lostText)}`}>
-            {lostText}
-          </span>
-        </div>
-        <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
-          <span className="text-ink-soft">Net</span>
-          <span className={`font-semibold tabular-nums ${moneyToneClass(netText)}`}>
-            {netText}
-          </span>
-        </div>
-      </div>
+      <WonLostNetCards won={wonText} lost={lostText} net={netText} />
 
       <RankingsChart rankings={rankings} />
     </section>
