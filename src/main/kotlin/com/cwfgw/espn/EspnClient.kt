@@ -490,14 +490,11 @@ internal fun assignPositions(
         }
     }
     val rankedGroups: List<List<EspnCompetitor>> = if (completed) breakLeadTie(groups) else groups
-    val positioned = mutableListOf<EspnCompetitor>()
-    var nextPosition = 1
-    for (group in rankedGroups) {
-        val teamCount = group.map { it.pairKey ?: it.espnId }.distinct().size
-        positioned += group.map { it.copy(position = nextPosition) }
-        nextPosition += teamCount
-    }
-    return positioned
+    val teamCounts = rankedGroups.map { group -> group.map { it.pairKey ?: it.espnId }.distinct().size }
+    val groupPositions = teamCounts.runningFold(1, Int::plus).dropLast(1)
+    return rankedGroups
+        .zip(groupPositions) { group, position -> group.map { it.copy(position = position) } }
+        .flatten()
 }
 
 /**

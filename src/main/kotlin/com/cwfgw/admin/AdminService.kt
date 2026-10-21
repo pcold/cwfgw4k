@@ -84,14 +84,14 @@ class AdminService(
                 return Result.Err(AdminError.UpstreamUnavailable(e.failure))
             }
 
-        val skipped = mutableListOf<SkippedEntry>()
-        val entries = mutableListOf<PreviewedTournament>()
         // ESPN's calendar response doesn't carry a "week N" concept, so we
         // synthesize one from chronologically-sorted in-range entries. Two
         // tournaments in the same ISO calendar week get suffixed "Na" / "Nb"
         // (the 'b' is conventionally the alternate-field event, but we can't
         // tell which is which from ESPN — operators correct via the UI).
-        val datedEntries = parseAndFilterByRange(calendar, startDate, endDate, skipped)
+        val (datedEntries, unparseable) = parseAndFilterByRange(calendar, startDate, endDate)
+        val skipped = unparseable.toMutableList()
+        val entries = mutableListOf<PreviewedTournament>()
         val linked =
             tx.get { tournamentRepository.findByPgaTournamentIds(datedEntries.map { (entry, _) -> entry.id }) }
                 .associateBy(Tournament::pgaTournamentId)
@@ -135,19 +135,21 @@ class AdminService(
         calendar: List<EspnCalendarEntry>,
         startDate: LocalDate,
         endDate: LocalDate,
-        skipped: MutableList<SkippedEntry>,
-    ): List<Pair<EspnCalendarEntry, LocalDate>> =
-        calendar.mapNotNull { entry ->
-            val parsed = parseEspnDate(entry.startDate)
-            if (parsed == null) {
-                skipped += SkippedEntry(entry.id, entry.label, "could not parse ESPN start date '${entry.startDate}'")
-                null
-            } else if (parsed !in startDate..endDate) {
-                null
-            } else {
-                entry to parsed
+    ): DatedCalendar {
+        val inRange = mutableListOf<Pair<EspnCalendarEntry, LocalDate>>()
+        val unparseable = mutableListOf<SkippedEntry>()
+        for (entry in calendar) {
+            val date = parseEspnDate(entry.startDate)
+            when {
+                date == null ->
+                    unparseable +=
+                        SkippedEntry(entry.id, entry.label, "could not parse ESPN start date '${entry.startDate}'")
+                date !in startDate..endDate -> Unit
+                else -> inRange += entry to date
             }
         }
+        return DatedCalendar(inRange = inRange, unparseable = unparseable)
+    }
 
     /**
      * Assign sequential week labels (1, 2, 3a, 3b, …) to [items] in
@@ -344,15 +346,11 @@ class AdminService(
                         teamNumber = team.teamNumber,
                     ),
             )
-        var newGolfers = 0
         for (pick in team.picks) {
             val golferId =
                 when (val assignment = pick.assignment) {
                     is GolferAssignment.Existing -> assignment.golferId
-                    is GolferAssignment.New -> {
-                        newGolfers++
-                        golferRepository.create(assignment.toCreateRequest()).id
-                    }
+                    is GolferAssignment.New -> golferRepository.create(assignment.toCreateRequest()).id
                     is GolferAssignment.Espn -> espnGolferIds.getValue(assignment.espnId)
                 }
             teamRepository.addToRoster(
@@ -366,7 +364,7 @@ class AdminService(
                     ),
             )
         }
-        return createdTeam to newGolfers
+        return createdTeam to team.picks.count { it.assignment is GolferAssignment.New }
     }
 
     private suspend fun findMissingGolferIds(teams: List<ConfirmedTeam>): List<GolferId> {
@@ -541,6 +539,11 @@ private fun <T, K> List<T>.firstOfEachRepeat(key: (T) -> K): List<T> {
     val occurrences = groupingBy(key).eachCount()
     return filter { item -> occurrences.getValue(key(item)) > 1 }.distinctBy(key)
 }
+
+private data class DatedCalendar(
+    val inRange: List<Pair<EspnCalendarEntry, LocalDate>>,
+    val unparseable: List<SkippedEntry>,
+)
 
 private sealed interface EntryOutcome {
     data class Created(val tournament: Tournament) : EntryOutcome

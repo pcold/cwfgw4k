@@ -245,27 +245,24 @@ private fun bumpPriorTeamCells(
     val newPrevious = team.previous.add(priorWeekly)
     val newSubtotal = newPrevious.add(team.weeklyTotal)
 
-    var addedTopTens = 0
-    var addedMoney = BigDecimal.ZERO
+    val cellPayouts = team.cells.map { cell -> cell.golferId?.let { golferPayouts[team.teamId to it]?.first } }
     val updatedCells =
-        team.cells.map { cell ->
-            val payout = cell.golferId?.let { golferPayouts[team.teamId to it]?.first }
+        team.cells.zip(cellPayouts) { cell, payout ->
             if (payout == null) {
                 cell
             } else {
-                addedTopTens += 1
-                addedMoney = addedMoney.add(payout)
                 cell.copy(seasonEarnings = cell.seasonEarnings.add(payout), seasonTopTens = cell.seasonTopTens + 1)
             }
         }
+    val addedPayouts = cellPayouts.filterNotNull()
 
     return team.copy(
         previous = newPrevious,
         subtotal = newSubtotal,
         totalCash = newSubtotal.add(team.sideBets),
         cells = updatedCells,
-        topTenCount = team.topTenCount + addedTopTens,
-        topTenMoney = team.topTenMoney.add(addedMoney),
+        topTenCount = team.topTenCount + addedPayouts.size,
+        topTenMoney = team.topTenMoney.add(addedPayouts.fold(BigDecimal.ZERO, BigDecimal::add)),
     )
 }
 

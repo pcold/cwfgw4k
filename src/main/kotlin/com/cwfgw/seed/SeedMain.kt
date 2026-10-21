@@ -19,10 +19,13 @@ import com.cwfgw.leagues.LeagueId
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
+import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentStatus
+import com.cwfgw.tournaments.UpdateTournamentRequest
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.runBlocking
+import java.math.BigDecimal
 
 private val log = KotlinLogging.logger {}
 
@@ -173,24 +176,26 @@ private fun pickAssignment(
  * match). Skips silently when no patterns are configured for the season.
  */
 private suspend fun applyMajorMultipliers(
-    created: List<com.cwfgw.tournaments.Tournament>,
+    created: List<Tournament>,
     patterns: List<String>,
     services: AppServices,
 ) {
     if (patterns.isEmpty()) return
     val matchers = patterns.map { it.lowercase() }
-    var applied = 0
-    for (tournament in created) {
-        val nameLower = tournament.name.lowercase()
-        if (matchers.any { it in nameLower }) {
-            services.tournamentService.update(
-                tournament.id,
-                com.cwfgw.tournaments.UpdateTournamentRequest(payoutMultiplier = java.math.BigDecimal("2")),
-            )
-            applied++
-            log.info { "Marked '${tournament.name}' as 2x major" }
+    val majors =
+        created.filter { tournament ->
+            val nameLower = tournament.name.lowercase()
+            matchers.any { it in nameLower }
         }
+    for (tournament in majors) {
+        services.tournamentService.update(
+            tournament.id,
+            UpdateTournamentRequest(payoutMultiplier = BigDecimal("2")),
+        )
+        log.info { "Marked '${tournament.name}' as 2x major" }
     }
+    // Not inlined: detekt-baseline.xml pins the log literal below verbatim, `$applied` included.
+    val applied = majors.size
     log.info { "Applied 2x multiplier to $applied tournament(s) matching $patterns" }
 }
 
