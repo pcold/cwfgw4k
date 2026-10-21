@@ -436,11 +436,12 @@ class AdminService(
 
 /**
  * Every team needs exactly one pick in each: the weekly ledger counts one pick per round into topTens but every
- * pick into the pot, so any other shape stops it summing to zero. Must agree with `WeeklyReportService`'s copy.
+ * pick into the pot, so any other shape stops it summing to zero. Must agree with `WeeklyReportService`'s copy and
+ * sit within `team_rosters_draft_round_in_range`, which refuses the rest as a 500.
  */
 internal val DRAFT_ROUNDS: IntRange = 1..8
 
-/** Must agree with RosterParser's bounds and stay inside the `team_rosters` CHECK, which refuses the rest as a 500. */
+/** Must sit within `team_rosters_ownership_pct_in_range`, which refuses the rest as a 500. */
 internal val OWNERSHIP_PCTS: IntRange = 1..100
 
 private fun findRosterProblems(teams: List<ConfirmedTeam>): List<ConfirmedRosterProblem> =
