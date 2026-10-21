@@ -168,7 +168,8 @@ overwrite; copy that into the repo file first.
 name=projects/368240674777/dashboards/cb4c689b-6a0d-4e4b-86de-f3aea0b9688b
 file=ops/dashboards/api-usage.json
 
-norm='del(.etag, .name) | walk(if type == "object" then with_entries(select(.value | IN(0, false, "", {}, []) | not)) else . end)'
+norm='del(.etag, .name)
+  | walk(if type == "object" then with_entries(select(.value | IN(0, false, "", {}, []) | not)) else . end)'
 diff <(gcloud monitoring dashboards describe "$name" --project=cwfgw4k --format=json | jq -S "$norm") \
   <(jq -S "$norm" "$file")
 ```
