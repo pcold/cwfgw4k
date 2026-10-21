@@ -199,7 +199,7 @@ class TeamStandingSpec : FunSpec({
             TeamStanding.Leader(teamId = teamId(2), tied = false, aheadOf = gap(position = 2, amount = "10"))
     }
 
-    test("every standing ranks its own total against all the others, with gaps upward that are positive") {
+    test("every standing ranks its own total against all the others, each gap the distance to the nearest total") {
         checkAll(Arb.list(Arb.int(-2_000..2_000), 0..13)) { dollars ->
             val teams = rankingsOf(*dollars.map(Int::toString).toTypedArray())
             val standings = TeamStanding.over(teams)
@@ -211,12 +211,13 @@ class TeamStandingSpec : FunSpec({
                 (standing is TeamStanding.Leader) shouldBe (total == dollars.max())
                 if (standing is TeamStanding.Chaser) {
                     standing.behind.position shouldBeLessThan standing.position
-                    standing.behind.amount.signum() shouldBe 1
+                    standing.behind.amount shouldBe BigDecimal(dollars.filter { it > total }.min() - total)
                     standing.behindLeader shouldBe BigDecimal(dollars.max() - total)
                 }
                 if (standing is TeamStanding.Leader) {
                     standing.aheadOf?.position?.shouldBeGreaterThan(1)
-                    standing.aheadOf?.amount?.signum()?.shouldBe(1)
+                    standing.aheadOf?.amount shouldBe
+                        dollars.filter { it < total }.maxOrNull()?.let { BigDecimal(total - it) }
                 }
             }
         }

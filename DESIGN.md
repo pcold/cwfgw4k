@@ -368,7 +368,7 @@ Each family takes only the rungs it uses. `-tint` is a wash, always at an opacit
 ### Known gaps on the light canvas
 Tokens only re-colour what the dark theme drew; the component treatment has restyled the app chrome (CWF-231) and begun on the tables (CWF-232) with the standings' and scoreboard's card rows and the report grids, and these are the gaps it has to close.
 - **Red is both brand and loss.** Primary buttons and the LIVE chip are the brand red; destructive buttons and losses are red-700, and so are the standings' and scoreboard's loss boxes, never the brand red. Beside a loss, a primary button can still read as a warning.
-- **No gold text role.** The team picker's eyebrow is drawn gold on the navy band in the design, but no text role pairs `{colors.gold}` with `{colors.header-band}`, so it renders `{colors.on-fill}` until one is added, with its backdrop row in `ui/src/index.css.test.ts`. The your-team card's `Your team` label waits on the same role, drawn `{colors.on-chrome-muted}`.
+- **No gold text role.** The team picker's eyebrow is drawn gold on the navy band in the design, but no text role pairs `{colors.gold}` with `{colors.header-band}`, so it renders `{colors.on-fill}` until one is added, with its backdrop row in `ui/src/index.css.test.ts`. The your-team card's `Your team` label is gold in the design too, and waits on a gold role for `{colors.chrome}`, drawn `{colors.on-chrome-muted}` until then.
 - **Green outside money.** `{colors.semantic-success}` still colours success messages, exact roster matches, the amounts in the Rules page's text (its payout tiles take ink) and the complete banner; the report grid's payouts no longer take it. Green is meant for gains alone.
 
 ### Outside the token set
