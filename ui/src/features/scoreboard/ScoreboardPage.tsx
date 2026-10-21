@@ -4,6 +4,8 @@ import { api } from '@/shared/api/client';
 import { invalidateAfterScoreChange, queryKeys } from '@/shared/api/queryKeys';
 import { useAuth } from '@/features/auth/AuthContext';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
+import { useMyTeam } from '@/features/myTeam/MyTeamContext';
+import { chosenTeamName } from '@/features/myTeam/myTeamModel';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
@@ -27,6 +29,7 @@ import { scoreboardPhase, scoreboardSubtitle } from './scoreboardModel';
 
 function ScoreboardPage(): ReactNode {
   const { seasonId } = useLeagueSeason();
+  const myTeamName = chosenTeamName(useMyTeam().choice);
   const { authenticated, isAdmin } = useAuth();
   const leaguesGate = useLeaguesGate();
   const queryClient = useQueryClient();
@@ -143,6 +146,7 @@ function ScoreboardPage(): ReactNode {
                 {(report) => (
                   <ScoreboardView
                     report={report}
+                    myTeamName={myTeamName}
                     finalizeSlot={buildFinalizeSlot(report)}
                     onGolferClick={setHistoryGolferId}
                   />

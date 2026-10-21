@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, waitForElementToBeRemoved, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import OpenQuery from '@/shared/test/OpenQuery';
+import { nth } from '@/shared/test/nth';
 import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
@@ -13,6 +14,7 @@ import type {
   FinalizedTournament,
   Golfer,
   League,
+  RosterTeam,
   Season,
   Tournament,
   WeeklyReport,
@@ -35,6 +37,7 @@ const golferHistoryMock = vi.fn<typeof api.golferHistory>();
 const otherTournamentReportMock = vi.fn();
 const rankingsMock = vi.fn();
 const dataHealthMock = vi.fn();
+const rostersMock = vi.fn<typeof api.rosters>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -42,7 +45,7 @@ vi.mock('@/shared/api/client', () => ({
     seasons: (id: string) => seasonsMock(id),
     seasonReport: (id: string) => seasonReportMock(id),
     rankings: vi.fn(),
-    rosters: vi.fn(),
+    rosters: (id: string) => rostersMock(id),
     tournaments: (id: string) => tournamentsMock(id),
     currentTournament: (id: string) => currentTournamentMock(id),
     tournamentReport: (seasonId: string, tournamentId: string, live: boolean) =>
@@ -92,6 +95,12 @@ const activeTournament: Tournament = {
   status: 'in_progress',
   week: '10',
 };
+
+const MY_TEAM_KEY = 'cwfg.myTeam';
+const newestRoster: RosterTeam[] = [
+  { teamId: 'team-1', teamNumber: 1, teamName: 'Aces', picks: [] },
+  { teamId: 'team-2', teamNumber: 2, teamName: 'Birdies', picks: [] },
+];
 
 function buildReport(name: string): WeeklyReport {
   return {
@@ -218,6 +227,12 @@ describe('ScoreboardPage', () => {
       competitors: [],
     });
     golfersMock.mockResolvedValue([]);
+    rostersMock.mockResolvedValue(newestRoster);
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
   });
 
   it('auto-selects an active tournament over a completed one', async () => {
@@ -231,7 +246,7 @@ describe('ScoreboardPage', () => {
       ),
     );
 
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     expect(await screen.findByText('Current Open · Week 9')).toBeInTheDocument();
     expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 10 · Current Open' }))).toContainElement(
@@ -253,7 +268,7 @@ describe('ScoreboardPage', () => {
     );
 
     const user = userEvent.setup();
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     await user.click(await screen.findByRole('button', { name: 'Wk 10 · Current Open' }));
     const sheet = screen.getByRole('dialog', { name: 'League, season and tournament' });
@@ -275,7 +290,7 @@ describe('ScoreboardPage', () => {
       Promise.resolve(buildReport(id === 'tn-latest' ? 'Latest Open' : 'Early Open')),
     );
 
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     expect(await screen.findByText('Latest Open · Week 9')).toBeInTheDocument();
     await waitFor(() => {
@@ -303,7 +318,7 @@ describe('ScoreboardPage', () => {
       ),
     );
 
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     expect(await screen.findByText('Next Week Open · Week 9')).toBeInTheDocument();
     expect(screen.getByLabelText<HTMLSelectElement>(/Tournament/i).value).toBe('tn-active-b');
@@ -317,7 +332,7 @@ describe('ScoreboardPage', () => {
     tournamentsMock.mockResolvedValue([activeTournament]);
     currentTournamentMock.mockRejectedValue(new Error('down'));
 
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     expect(await screen.findByText(/Failed to load current tournament/i)).toBeInTheDocument();
     expect(tournamentReportMock).not.toHaveBeenCalled();
@@ -329,7 +344,7 @@ describe('ScoreboardPage', () => {
     tournamentsMock.mockResolvedValue([activeTournament]);
     currentTournamentMock.mockReturnValue(new Promise(() => {}));
 
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     expect(await screen.findByText(/Loading current tournament/i)).toBeInTheDocument();
     expect(tournamentReportMock).not.toHaveBeenCalled();
@@ -346,7 +361,7 @@ describe('ScoreboardPage', () => {
       }),
     );
 
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     const loading = await screen.findByText(/Loading current tournament/i);
     answer.release();
@@ -365,7 +380,7 @@ describe('ScoreboardPage', () => {
     );
 
     const user = userEvent.setup();
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     await screen.findByText('Current Open · Week 9');
     const select = screen.getByLabelText(/Tournament/i);
@@ -396,7 +411,7 @@ describe('ScoreboardPage', () => {
     );
 
     const user = userEvent.setup();
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     await screen.findByText('Current Open · Week 9');
     await waitFor(() => {
@@ -432,7 +447,7 @@ describe('ScoreboardPage', () => {
     );
 
     const user = userEvent.setup();
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     await screen.findByText('Current Open · Week 9');
     expect(screen.queryByRole('checkbox', { name: /Live overlay/i })).not.toBeInTheDocument();
@@ -451,7 +466,7 @@ describe('ScoreboardPage', () => {
     tournamentsMock.mockResolvedValue([]);
     currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
 
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
     expect(
       await screen.findByText(/No tournaments scheduled for this season/i),
     ).toBeInTheDocument();
@@ -482,7 +497,7 @@ describe('ScoreboardPage', () => {
     finalizeMock.mockResolvedValue(finalizedWith([]));
 
     const user = userEvent.setup();
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     const button = await screen.findByRole('button', { name: /Finalize Results/i });
     expect(button).toHaveClass(TAP_TARGET_CLASS);
@@ -513,7 +528,7 @@ describe('ScoreboardPage', () => {
     finalizeMock.mockResolvedValue(finalizedWith(importWarnings));
 
     const user = userEvent.setup();
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     expect(screen.queryByText(shown)).not.toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: /Finalize Results/i }));
@@ -541,7 +556,7 @@ describe('ScoreboardPage', () => {
     finalizeMock.mockResolvedValue(finalizedWith([twinWarnings]));
 
     const user = userEvent.setup();
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     await user.click(await screen.findByRole('button', { name: /Finalize Results/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/Possible duplicate of a rostered golfer/);
@@ -573,7 +588,7 @@ describe('ScoreboardPage', () => {
     finalizeMock.mockResolvedValue(finalizedWith([]));
 
     const user = userEvent.setup();
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     const button = await screen.findByRole('button', { name: /Finalize Results/i });
     expect(currentTournamentMock).toHaveBeenCalledTimes(1);
@@ -618,7 +633,7 @@ describe('ScoreboardPage', () => {
         <ScoreboardPage />
         <OpenSeasonReport />
       </>,
-      { withAuthProvider: true },
+      { withAuthProvider: true, withMyTeamProvider: true },
     );
 
     const button = await screen.findByRole('button', { name: /Finalize Results/i });
@@ -692,7 +707,7 @@ describe('ScoreboardPage', () => {
         <ScoreboardPage />
         {openQuery}
       </>,
-      { withAuthProvider: true },
+      { withAuthProvider: true, withMyTeamProvider: true },
     );
 
     const button = await screen.findByRole('button', { name: /Finalize Results/i });
@@ -723,7 +738,7 @@ describe('ScoreboardPage', () => {
       },
     });
 
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     await screen.findByText('Current Open · Week 10');
     expect(
@@ -744,7 +759,7 @@ describe('ScoreboardPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-completed' });
     tournamentReportMock.mockResolvedValue(buildReport('Sample Open'));
 
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     await screen.findByText('Sample Open · Week 9');
     expect(
@@ -759,7 +774,7 @@ describe('ScoreboardPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-completed' });
     tournamentReportMock.mockResolvedValue(buildReport('Sample Open'));
 
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     const subtitle = await screen.findByText('Sample Open · Week 9');
     expect(within(pageTitleRow(subtitle)).getByText('Final')).toHaveClass('bg-chrome');
@@ -772,11 +787,65 @@ describe('ScoreboardPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
     tournamentReportMock.mockResolvedValue({ ...buildReport('Current Open'), live: true, liveEligible: true });
 
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     const subtitle = await screen.findByText('Current Open · Week 9');
     expect(within(pageTitleRow(subtitle)).getByText('Live')).toHaveClass('bg-primary');
     expect(screen.queryByText('Final')).not.toBeInTheDocument();
+  });
+
+  describe("the visitor's own team", () => {
+    function twoTeams(awaitingTeeOff: boolean): WeeklyReport {
+      const report = buildReport('Current Open');
+      const [aces] = report.teams;
+      if (!aces) throw new Error('the report has no team');
+      return {
+        ...report,
+        tournament: { ...report.tournament, status: 'in_progress' },
+        teams: [aces, { ...aces, teamId: 'team-2', teamName: 'Birdies' }],
+        weeklyStandings: ['team-1', 'team-2'],
+        awaitingTeeOff,
+      };
+    }
+
+    async function renderScoreboard(awaitingTeeOff: boolean): Promise<void> {
+      leaguesMock.mockResolvedValue([league]);
+      seasonsMock.mockResolvedValue([season]);
+      tournamentsMock.mockResolvedValue([activeTournament]);
+      currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
+      tournamentReportMock.mockResolvedValue(twoTeams(awaitingTeeOff));
+      renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
+      await screen.findByRole('list', { name: 'Weekly results' });
+    }
+
+    function teamRow(teamName: string): HTMLElement {
+      const found = within(nth(screen.getAllByRole('table'), 0)).getByText(teamName).closest('tr');
+      if (!found) throw new Error(`no table row for ${teamName}`);
+      return found;
+    }
+
+    it.each([
+      ['live', false],
+      ['before tee-off', true],
+    ])('tags the saved team on its card and its row, and no other, %s', async (_phase, awaitingTeeOff) => {
+      window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"BIRDIES"}');
+      await renderScoreboard(awaitingTeeOff);
+
+      expect(within(teamRow('Birdies')).getByText('your team')).toBeInTheDocument();
+      expect(within(screen.getByRole('list', { name: 'Weekly results' })).getByText('your team')).toBeInTheDocument();
+      expect(screen.getAllByText('your team')).toHaveLength(2);
+    });
+
+    it.each([
+      ['browsing', '{"kind":"browsing"}'],
+      ['never asked', null],
+    ])('tags nothing when %s', async (_choice, stored) => {
+      if (stored !== null) window.localStorage.setItem(MY_TEAM_KEY, stored);
+      await renderScoreboard(false);
+
+      expect(teamRow('Birdies')).toBeInTheDocument();
+      expect(screen.queryByText('your team')).toBeNull();
+    });
   });
 
   it('shows an error message when the report fails to load', async () => {
@@ -786,7 +855,7 @@ describe('ScoreboardPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-completed' });
     tournamentReportMock.mockRejectedValue(new Error('boom'));
 
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
     expect(await screen.findByText(/Failed to load scoreboard/i)).toBeInTheDocument();
   });
 
@@ -814,7 +883,7 @@ describe('ScoreboardPage', () => {
     });
 
     const user = userEvent.setup();
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     const button = await screen.findByRole('button', { name: /Manage player links/i });
     expect(button).toHaveClass(TAP_TARGET_CLASS);
@@ -850,7 +919,7 @@ describe('ScoreboardPage', () => {
       awaitingTeeOff: true,
     });
 
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     expect(await screen.findByRole('button', { name: /Manage player links/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Finalize Results/i })).not.toBeInTheDocument();
@@ -879,7 +948,7 @@ describe('ScoreboardPage', () => {
       },
     });
 
-    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true });
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
     await screen.findByText('Current Open · Week 10');
 
     expect(

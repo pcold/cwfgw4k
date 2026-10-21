@@ -3,6 +3,8 @@ import { skipToken, useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
+import { useMyTeam } from '@/features/myTeam/MyTeamContext';
+import { chosenTeamName } from '@/features/myTeam/myTeamModel';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
@@ -34,6 +36,7 @@ function pdfFailureMessage(error: Error): string {
 
 function WeeklyReportPage(): ReactNode {
   const { seasonId, seasons } = useLeagueSeason();
+  const myTeamName = chosenTeamName(useMyTeam().choice);
   const currentSeason = seasons?.find((s) => s.id === seasonId) ?? null;
   const leaguesGate = useLeaguesGate();
   const [userTournamentId, setUserTournamentId] = useState<string | null>(null);
@@ -142,6 +145,7 @@ function WeeklyReportPage(): ReactNode {
             <WeeklyReportView
               report={report}
               selectedTeamId={selectedTeamId}
+              myTeamName={myTeamName}
               onSelectTeam={setSelectedTeamId}
               onGolferClick={setHistoryGolferId}
             />

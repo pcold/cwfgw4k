@@ -79,7 +79,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
 
 const NO_PROVIDERS = { withLeagueSeasonProvider: false };
 
-const FIRST_TEAM = { selectedTeamId: null, onSelectTeam: () => undefined };
+const FIRST_TEAM = { selectedTeamId: null, myTeamName: null, onSelectTeam: () => undefined };
 
 function grid(): HTMLElement {
   return screen.getByRole('table');
@@ -470,7 +470,12 @@ describe('WeeklyReportView', () => {
 
     it('shows the selected team', () => {
       renderWithProviders(
-        <WeeklyReportView report={report({ teams: twoTeams() })} selectedTeamId="t-2" onSelectTeam={vi.fn()} />,
+        <WeeklyReportView
+          report={report({ teams: twoTeams() })}
+          selectedTeamId="t-2"
+          myTeamName={null}
+          onSelectTeam={vi.fn()}
+        />,
         NO_PROVIDERS,
       );
 
@@ -480,7 +485,12 @@ describe('WeeklyReportView', () => {
 
     it('falls back to the first team when the selected one is not in the report', () => {
       renderWithProviders(
-        <WeeklyReportView report={report({ teams: twoTeams() })} selectedTeamId="t-gone" onSelectTeam={vi.fn()} />,
+        <WeeklyReportView
+          report={report({ teams: twoTeams() })}
+          selectedTeamId="t-gone"
+          myTeamName={null}
+          onSelectTeam={vi.fn()}
+        />,
         NO_PROVIDERS,
       );
 
@@ -491,11 +501,67 @@ describe('WeeklyReportView', () => {
       );
     });
 
+    function pressedChip(): string | null {
+      const pressed = within(screen.getByRole('group', { name: 'Team' }))
+        .getAllByRole('button')
+        .find((chip) => chip.getAttribute('aria-pressed') === 'true');
+      return pressed?.textContent ?? null;
+    }
+
+    it("opens on the visitor's own team, however its name is cased, before any tap", () => {
+      renderWithProviders(
+        <WeeklyReportView
+          report={report({ teams: twoTeams() })}
+          selectedTeamId={null}
+          myTeamName="BIRDIES"
+          onSelectTeam={vi.fn()}
+        />,
+        NO_PROVIDERS,
+      );
+
+      expect(pressedChip()).toBe('Birdies');
+      expect(teamTotals()).toHaveTextContent('Birdies');
+    });
+
+    it("shows a tapped team over the visitor's own", () => {
+      renderWithProviders(
+        <WeeklyReportView
+          report={report({ teams: twoTeams() })}
+          selectedTeamId="t-1"
+          myTeamName="Birdies"
+          onSelectTeam={vi.fn()}
+        />,
+        NO_PROVIDERS,
+      );
+
+      expect(pressedChip()).toBe('Aces');
+      expect(teamTotals()).toHaveTextContent('Aces');
+    });
+
+    it("opens on the first team when the visitor's own is not in the report", () => {
+      renderWithProviders(
+        <WeeklyReportView
+          report={report({ teams: twoTeams() })}
+          selectedTeamId={null}
+          myTeamName="Eagles"
+          onSelectTeam={vi.fn()}
+        />,
+        NO_PROVIDERS,
+      );
+
+      expect(pressedChip()).toBe('Aces');
+    });
+
     it('reports the tapped team', async () => {
       const onSelectTeam = vi.fn();
       const user = userEvent.setup();
       renderWithProviders(
-        <WeeklyReportView report={report({ teams: twoTeams() })} selectedTeamId={null} onSelectTeam={onSelectTeam} />,
+        <WeeklyReportView
+          report={report({ teams: twoTeams() })}
+          selectedTeamId={null}
+          myTeamName={null}
+          onSelectTeam={onSelectTeam}
+        />,
         NO_PROVIDERS,
       );
 

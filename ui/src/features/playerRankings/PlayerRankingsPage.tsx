@@ -3,6 +3,8 @@ import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
+import { useMyTeam } from '@/features/myTeam/MyTeamContext';
+import { chosenTeamName } from '@/features/myTeam/myTeamModel';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
@@ -22,6 +24,7 @@ import PlayerRankingsView from './PlayerRankingsView';
 
 function PlayerRankingsPage(): ReactNode {
   const { seasonId } = useLeagueSeason();
+  const myTeamName = chosenTeamName(useMyTeam().choice);
   const leaguesGate = useLeaguesGate();
   const [throughOverride, setThroughOverride] = useState<string | null>(null);
   const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
@@ -99,7 +102,11 @@ function PlayerRankingsPage(): ReactNode {
         ) : playerRankingsQuery.isLoading ? (
           <p className="text-ink-muted">Loading player rankings…</p>
         ) : (
-          <PlayerRankingsView players={playerRankings?.players ?? []} onGolferClick={setHistoryGolferId} />
+          <PlayerRankingsView
+            players={playerRankings?.players ?? []}
+            myTeamName={myTeamName}
+            onGolferClick={setHistoryGolferId}
+          />
         )}
       </>
     );

@@ -3,6 +3,8 @@ import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
+import { useMyTeam } from '@/features/myTeam/MyTeamContext';
+import { chosenTeamName } from '@/features/myTeam/myTeamModel';
 import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
 import GolferHistoryModal from '@/shared/components/GolferHistoryModal';
 import PageTitle from '@/shared/components/PageTitle';
@@ -12,6 +14,7 @@ import RostersView from './RostersView';
 
 function RostersPage(): ReactNode {
   const { seasonId } = useLeagueSeason();
+  const myTeamName = chosenTeamName(useMyTeam().choice);
   const leaguesGate = useLeaguesGate();
   const [historyGolferId, setHistoryGolferId] = useState<string | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
@@ -48,6 +51,7 @@ function RostersPage(): ReactNode {
               teams={teams}
               sideBetRounds={sideBetRounds}
               selectedTeamId={selectedTeamId}
+              myTeamName={myTeamName}
               onSelectTeam={setSelectedTeamId}
               onGolferClick={setHistoryGolferId}
             />

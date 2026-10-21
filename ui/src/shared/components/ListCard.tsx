@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from 'react';
 import { TAP_TARGET_CLASS } from './formFields';
 import PositionCell, { type PositionCellKind } from './PositionCell';
+import YouTag from './YouTag';
 
 /** @see ListCard */
 export const CARD_LIST_CLASS = 'flex flex-col gap-1';
@@ -16,15 +17,29 @@ const NAME_CASE_CLASS: Readonly<Record<ListCardNameCase, string>> = {
   golfer: 'normal-case',
 };
 
-/** @see ReportGridCellFill */
-export type ListCardFill = 'plain' | 'late-row-leader';
+/** `my-team` also sets a `YouTag` after the name, so the visitor's team never rests on the fill alone. */
+export type ListCardFill = 'plain' | 'late-row-leader' | 'my-team';
 
 const MIDDLE_CLASS = 'flex-1 min-w-0 px-3 py-2 flex flex-col justify-center';
 
-// The gold edge sits on the middle, beside the box, as the grid cell's does: the fill alone is 1.07:1 on white.
+// A late-row leader's gold edge sits on the middle, beside the box, as the grid cell's does; my team's is a ring
+// on the card. Either way the fill alone is 1.07:1 on white.
 const FILL_CLASS: Readonly<Record<ListCardFill, { card: string; middle: string }>> = {
   plain: { card: 'bg-surface-card', middle: MIDDLE_CLASS },
   'late-row-leader': { card: 'bg-late-row-leader', middle: `${MIDDLE_CLASS} border-l-4 border-gold` },
+  'my-team': { card: 'bg-my-team ring-2 ring-gold', middle: MIDDLE_CLASS },
+};
+
+/**
+ * A table card row's look; `my-team` is `ListCard`'s, its ring the `tr`'s outline. Inset, since the table's
+ * `overflow-x-auto` wrapper clips the sides of an outline drawn outside the row.
+ */
+export type CardRowFill = Extract<ListCardFill, 'plain' | 'my-team'>;
+
+/** @see CardRowFill; `cell` fills each cell after the row's position box but its money box, if any. */
+export const CARD_ROW_CLASS: Readonly<Record<CardRowFill, { row: string; cell: string }>> = {
+  plain: { row: 'h-11', cell: 'bg-surface-card' },
+  'my-team': { row: 'h-11 rounded outline-2 -outline-offset-2 outline-gold', cell: 'bg-my-team' },
 };
 
 interface ListCardProps {
@@ -51,11 +66,21 @@ export default function ListCard({
   total,
   fill = 'plain',
 }: ListCardProps): ReactElement {
+  const nameLine = (
+    <div className={`font-display font-bold text-lg text-ink truncate min-w-0 ${NAME_CASE_CLASS[nameCase]}`}>{name}</div>
+  );
   return (
     <li className={`flex min-h-13.5 rounded ${FILL_CLASS[fill].card}`}>
       <PositionCell position={position} shape="card-start" kind={positionKind} />
       <div className={FILL_CLASS[fill].middle}>
-        <div className={`font-display font-bold text-lg text-ink truncate ${NAME_CASE_CLASS[nameCase]}`}>{name}</div>
+        {fill === 'my-team' ? (
+          <div className="flex items-center">
+            {nameLine}
+            <YouTag />
+          </div>
+        ) : (
+          nameLine
+        )}
         <div className="text-sm text-ink-muted">{detail}</div>
       </div>
       {total}

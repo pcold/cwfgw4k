@@ -73,3 +73,21 @@ export function validateMyTeam(choice: MyTeamChoice, newestSeasonTeamNames: read
 export function sortTeamNames(teamNames: readonly string[]): string[] {
   return teamNames.map(normaliseTeamName).sort((left, right) => left.localeCompare(right));
 }
+
+/** Browsing and never asked both give null, so they highlight nothing. */
+export function chosenTeamName(choice: MyTeamChoice): string | null {
+  switch (choice.kind) {
+    case 'team':
+      return choice.teamName;
+    case 'browsing':
+    case 'unasked':
+      return null;
+    default:
+      return choice satisfies never;
+  }
+}
+
+/** Matched by name, not id, so the choice finds its team in whichever season the page shows. */
+export function isMyTeam(teamName: string, myTeamName: string | null): boolean {
+  return myTeamName !== null && normaliseTeamName(teamName) === normaliseTeamName(myTeamName);
+}

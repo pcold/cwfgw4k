@@ -15,6 +15,7 @@ import ReportGridHead from '@/shared/components/ReportGridHead';
 import ReportGridRoundLabel from '@/shared/components/ReportGridRoundLabel';
 import { REPORT_GRID_TABLE_CLASS } from '@/shared/components/reportGrid';
 import TeamStrip from '@/shared/components/TeamStrip';
+import { isMyTeam } from '@/features/myTeam/myTeamModel';
 import {
   ROUNDS,
   cellEarnings,
@@ -274,15 +275,20 @@ function PhoneReport({
 
 interface Props {
   readonly report: WeeklyReport;
-  /** Null, or an id the report no longer has, shows the first team. */
+  /** Null, or an id the report no longer has, shows the visitor's own team, else the first. */
   readonly selectedTeamId: string | null;
+  /** @see isMyTeam */
+  readonly myTeamName: string | null;
   readonly onSelectTeam: (teamId: string) => void;
   readonly onGolferClick?: (golferId: string) => void;
 }
 
-function WeeklyReportView({ report, selectedTeamId, onSelectTeam, onGolferClick }: Props): ReactNode {
+function WeeklyReportView({ report, selectedTeamId, myTeamName, onSelectTeam, onGolferClick }: Props): ReactNode {
   const { teams, undraftedTopTens, sideBetDetail, cashTotals } = report;
-  const selectedTeam = teams.find((team) => team.teamId === selectedTeamId) ?? teams[0];
+  const selectedTeam =
+    teams.find((team) => team.teamId === selectedTeamId) ??
+    teams.find((team) => isMyTeam(team.teamName, myTeamName)) ??
+    teams[0];
   const seasonMode = isSeasonReport(report);
   const showSeasonFooter = !seasonMode;
   const winnersByRound = sideBetWinnersByRound(sideBetDetail);

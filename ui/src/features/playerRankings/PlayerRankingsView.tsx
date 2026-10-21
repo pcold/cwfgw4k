@@ -7,9 +7,13 @@ import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import ListCard, { CARD_LIST_CLASS } from '@/shared/components/ListCard';
 import { MONEY_FIGURE_CLASS } from '@/shared/components/MoneyCell';
 import PhoneFilter from '@/shared/components/PhoneFilter';
+import YouTag from '@/shared/components/YouTag';
+import { isMyTeam } from '@/features/myTeam/myTeamModel';
 
 interface Props {
   players: PlayerRankingsRow[];
+  /** @see isMyTeam */
+  myTeamName: string | null;
   onGolferClick?: (golferId: string) => void;
 }
 
@@ -19,6 +23,7 @@ const FILTERED_EMPTY = 'No players match this filter.';
 
 interface PlayerListProps {
   readonly players: readonly PlayerRankingsRow[];
+  readonly myTeamName: string | null;
   readonly onGolferClick: ((golferId: string) => void) | undefined;
 }
 
@@ -47,21 +52,37 @@ function GolferName({ player, onGolferClick }: GolferNameProps): ReactNode {
   );
 }
 
-interface PlayerDetailProps {
-  readonly player: PlayerRankingsRow;
+interface DraftingTeamProps {
+  readonly teamName: string;
+  readonly myTeamName: string | null;
 }
 
-function PlayerDetail({ player }: PlayerDetailProps): ReactNode {
+/** The tag alone: the row is a golfer's, so a team's fill and ring would mark the wrong thing. */
+function DraftingTeam({ teamName, myTeamName }: DraftingTeamProps): ReactNode {
   return (
     <>
-      {player.teamName ? <span className="uppercase">{player.teamName}</span> : 'Undrafted'}
+      <span className="uppercase">{teamName}</span>
+      {isMyTeam(teamName, myTeamName) ? <YouTag /> : null}
+    </>
+  );
+}
+
+interface PlayerDetailProps {
+  readonly player: PlayerRankingsRow;
+  readonly myTeamName: string | null;
+}
+
+function PlayerDetail({ player, myTeamName }: PlayerDetailProps): ReactNode {
+  return (
+    <>
+      {player.teamName ? <DraftingTeam teamName={player.teamName} myTeamName={myTeamName} /> : 'Undrafted'}
       {player.draftRound !== null && ` · Rd ${player.draftRound}`}
       {` · ${player.topTens} ${player.topTens === 1 ? 'top 10' : 'top 10s'}`}
     </>
   );
 }
 
-function PlayerCards({ players, onGolferClick }: PlayerListProps): ReactNode {
+function PlayerCards({ players, myTeamName, onGolferClick }: PlayerListProps): ReactNode {
   if (players.length === 0) return <p className="text-ink-soft italic">{FILTERED_EMPTY}</p>;
   return (
     <ol aria-label="Players" className={CARD_LIST_CLASS}>
@@ -73,7 +94,7 @@ function PlayerCards({ players, onGolferClick }: PlayerListProps): ReactNode {
             position={index + 1}
             name={<GolferName player={player} onGolferClick={onGolferClick} />}
             nameCase="golfer"
-            detail={<PlayerDetail player={player} />}
+            detail={<PlayerDetail player={player} myTeamName={myTeamName} />}
             total={
               <div className={`px-3 shrink-0 flex items-center ${MONEY_FIGURE_CLASS} ${moneyToneClass(totalEarnings)}`}>
                 {totalEarnings}
@@ -86,7 +107,7 @@ function PlayerCards({ players, onGolferClick }: PlayerListProps): ReactNode {
   );
 }
 
-function PlayerRows({ players, onGolferClick }: PlayerListProps): ReactNode {
+function PlayerRows({ players, myTeamName, onGolferClick }: PlayerListProps): ReactNode {
   return (
     <tbody className="divide-y divide-hairline-soft">
       {players.length === 0 ? (
@@ -122,7 +143,7 @@ function PlayerRows({ players, onGolferClick }: PlayerListProps): ReactNode {
               </td>
               <td className="px-3 py-2 text-ink-secondary">
                 {player.teamName ? (
-                  <span className="uppercase">{player.teamName}</span>
+                  <DraftingTeam teamName={player.teamName} myTeamName={myTeamName} />
                 ) : (
                   <span className="text-ink-soft italic">undrafted</span>
                 )}
@@ -138,7 +159,7 @@ function PlayerRows({ players, onGolferClick }: PlayerListProps): ReactNode {
   );
 }
 
-function PlayerRankingsView({ players, onGolferClick }: Props): ReactNode {
+function PlayerRankingsView({ players, myTeamName, onGolferClick }: Props): ReactNode {
   const [teamFilter, setTeamFilter] = useState<string>(ALL);
   const [roundFilter, setRoundFilter] = useState<string>(ALL);
 
@@ -205,7 +226,7 @@ function PlayerRankingsView({ players, onGolferClick }: Props): ReactNode {
             onChange={setRoundFilter}
           />
         </div>
-        <PlayerCards players={filtered} onGolferClick={onGolferClick} />
+        <PlayerCards players={filtered} myTeamName={myTeamName} onGolferClick={onGolferClick} />
       </div>
       <div className="hidden sm:block overflow-x-auto -mx-3 sm:mx-0">
         <table className="min-w-full text-sm">
@@ -233,7 +254,7 @@ function PlayerRankingsView({ players, onGolferClick }: Props): ReactNode {
               </th>
             </tr>
           </thead>
-          <PlayerRows players={filtered} onGolferClick={onGolferClick} />
+          <PlayerRows players={filtered} myTeamName={myTeamName} onGolferClick={onGolferClick} />
         </table>
       </div>
     </section>
