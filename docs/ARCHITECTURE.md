@@ -527,6 +527,7 @@ Request and response shapes are the `@Serializable` types in each package's `*Ro
 | GET | `/seasons/{id}/rosters` | Teams with their rosters | Public |
 | GET | `/tournaments` | List tournaments, optional `season_id` | Public |
 | GET | `/tournaments/current` | The tournament a season's pages open on: earliest unfinalized, else latest; `season_id` required | Public |
+| GET | `/tournaments/resettable` | The completed tournaments reset accepts: none completed after them; `season_id` required | Admin |
 | PUT | `/tournaments/{id}` | Edit a tournament (name, dates, multiplier, status, ...) | Admin |
 | POST | `/tournaments/{id}/finalize` | Import ESPN results and compute scores | Admin |
 | POST | `/tournaments/{id}/reset` | Delete results and scores, back to upcoming | Admin |

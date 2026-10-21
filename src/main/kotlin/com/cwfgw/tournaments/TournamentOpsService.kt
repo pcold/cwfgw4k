@@ -14,6 +14,7 @@ import com.cwfgw.scoring.ScoringError
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.scoring.WeeklyScoreResult
+import com.cwfgw.seasons.SeasonId
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.LocalDate
 
@@ -115,6 +116,13 @@ class TournamentOpsService(
                 )
             log.info { "Reset complete for '${tournament.name}'" }
             Result.Ok(updated ?: tournament)
+        }
+
+    /** The completed tournaments [resetTournament] would accept, judged by its own guard. */
+    suspend fun listResettable(seasonId: SeasonId): List<Tournament> =
+        tx.read {
+            val completed = TournamentFilter(seasonId = seasonId, statuses = setOf(TournamentStatus.Completed))
+            tournamentRepository.findAll(completed).filter { tournamentRepository.findLaterCompleted(it).isEmpty() }
         }
 
     context(ctx: WriteTransactionContext)

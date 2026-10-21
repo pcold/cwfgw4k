@@ -830,6 +830,25 @@ class ReportRoutesSpec : FunSpec({
         }
     }
 
+    test("GET /api/v1/seasons/{id}/report/{tid} sends whether the tournament is finalizable, not what decided it") {
+        apiTest(reportFixture(initialTournaments = listOf(MASTERS_IN_PLAY))) { client ->
+            val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}").bodyAsText()
+            val report = wireReport(body)
+
+            report["finalizable"] shouldBe JsonPrimitive(true)
+            report.keys shouldNotContain "earlier_finalized"
+        }
+    }
+
+    test("GET /api/v1/seasons/{id}/report/{tid} sends a finalized tournament as not finalizable") {
+        val masters = tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")
+        apiTest(reportFixture(initialTournaments = listOf(masters))) { client ->
+            val body = client.get("/api/v1/seasons/${SEASON_ID.value}/report/${MASTERS_ID.value}").bodyAsText()
+
+            wireReport(body)["finalizable"] shouldBe JsonPrimitive(false)
+        }
+    }
+
     // ----- GET /api/v1/seasons/{id}/rankings -----
 
     test("GET /api/v1/seasons/{id}/rankings returns 200 with team rankings + per-tournament series") {
