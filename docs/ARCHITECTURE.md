@@ -367,8 +367,9 @@ where `totalPot` is all teams' payouts summed. Finalize computes this (`ScoringS
 (`WeeklyReportService.buildReportTeamColumn`). There `topTens` sums the eight draft-round cells, one pick per
 round, while `totalPot` sums every score, so the two agree only while each team has exactly one pick in each of
 rounds 1–8. Roster confirm refuses any other roster (`AdminService.findRosterProblems`;
-`AdminServiceConfirmRosterRoundsSpec`). Standings rank teams by their season total with sequential ranks; equal
-totals still get distinct ranks (`ReportHelpersSpec`).
+`AdminServiceConfirmRosterRoundsSpec`). The weekly report's standings order ranks teams by season total with sequential
+ranks, equal totals still distinct (`ReportHelpersSpec`). The rankings response's `standings` place them competition
+style instead, equal totals sharing a position (1, 2, 2, 4; `TeamStandingSpec`).
 
 ### Late-row side bets
 

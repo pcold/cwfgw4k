@@ -4,7 +4,13 @@ import com.cwfgw.teams.TeamId
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.ints.shouldBeGreaterThan
+import io.kotest.matchers.ints.shouldBeLessThan
 import io.kotest.matchers.shouldBe
+import io.kotest.property.Arb
+import io.kotest.property.arbitrary.int
+import io.kotest.property.arbitrary.list
+import io.kotest.property.checkAll
 import java.math.BigDecimal
 import java.util.UUID
 
@@ -31,6 +37,12 @@ private fun gap(
     amount: String,
     tied: Boolean = false,
 ): StandingGap = StandingGap(position = position, tied = tied, amount = BigDecimal(amount))
+
+private fun positionOf(standing: TeamStanding): Int =
+    when (standing) {
+        is TeamStanding.Leader -> 1
+        is TeamStanding.Chaser -> standing.position
+    }
 
 class TeamStandingSpec : FunSpec({
 
@@ -185,5 +197,28 @@ class TeamStandingSpec : FunSpec({
         reordered.standings.map(TeamStanding::teamId) shouldContainExactly listOf(teamId(2), teamId(1))
         reordered.standings.firstOrNull() shouldBe
             TeamStanding.Leader(teamId = teamId(2), tied = false, aheadOf = gap(position = 2, amount = "10"))
+    }
+
+    test("every standing ranks its own total against all the others, with gaps upward that are positive") {
+        checkAll(Arb.list(Arb.int(-2_000..2_000), 0..13)) { dollars ->
+            val teams = rankingsOf(*dollars.map(Int::toString).toTypedArray())
+            val standings = TeamStanding.over(teams)
+
+            standings.map(TeamStanding::teamId) shouldContainExactly teams.map(TeamRanking::teamId)
+            standings.zip(dollars).forEach { (standing, total) ->
+                positionOf(standing) shouldBe 1 + dollars.count { it > total }
+                standing.tied shouldBe (dollars.count { it == total } > 1)
+                (standing is TeamStanding.Leader) shouldBe (total == dollars.max())
+                if (standing is TeamStanding.Chaser) {
+                    standing.behind.position shouldBeLessThan standing.position
+                    standing.behind.amount.signum() shouldBe 1
+                    standing.behindLeader shouldBe BigDecimal(dollars.max() - total)
+                }
+                if (standing is TeamStanding.Leader) {
+                    standing.aheadOf?.position?.shouldBeGreaterThan(1)
+                    standing.aheadOf?.amount?.signum()?.shouldBe(1)
+                }
+            }
+        }
     }
 })

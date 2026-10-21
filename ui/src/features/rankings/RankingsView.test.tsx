@@ -206,9 +206,10 @@ describe('RankingsView', () => {
     }
 
     function statsOf(card: HTMLElement): string[] {
+      const definitions = within(card).getAllByRole('definition');
       return within(card)
         .getAllByRole('term')
-        .map((term) => `${term.textContent}: ${term.nextElementSibling?.textContent ?? ''}`);
+        .map((term, index) => `${term.textContent}: ${definitions[index]?.textContent ?? ''}`);
     }
 
     it('opens the standings with a chasing team, its total box and three stats from its standing', () => {

@@ -269,10 +269,10 @@ data class TeamRanking(
     val series: List<BigDecimal>,
 )
 
-/** Full rankings response — teams plus the column headers for the series chart. */
+/** Full rankings response — teams with their standings, plus the column headers for the series chart. */
 @Serializable
 data class Rankings(
-    /** Ranked by [TeamRanking.totalCash] descending; the UI numbers the standings in the order they arrive. */
+    /** Ranked by [TeamRanking.totalCash] descending; the UI numbers the rows in the order they arrive. */
     val teams: List<TeamRanking>,
     val weeks: List<String>,
     val tournamentNames: List<String>,

@@ -155,7 +155,7 @@ export interface TeamRanking {
 }
 
 export interface Rankings {
-  /** Best `totalCash` first. Number the standings in this order; never re-sort. */
+  /** Best `totalCash` first. Number the rows in this order; never re-sort. */
   teams: TeamRanking[];
   weeks: string[];
   tournamentNames: string[];
@@ -164,7 +164,10 @@ export interface Rankings {
   liveEligible: boolean;
   /** @see WeeklyReport.cashTotals */
   cashTotals: WonLostTotals;
-  /** One per `teams` entry, matched by `teamId`. Show a team's place and gaps from it; never derive them from `teams`. */
+  /**
+   * One per `teams` entry, matched by `teamId`: a team's tie-aware place and its gaps, never derived from `teams`.
+   * The rows keep their arrival numbering, so a tied team's row number can differ from its place here.
+   */
   standings: TeamStanding[];
 }
 
