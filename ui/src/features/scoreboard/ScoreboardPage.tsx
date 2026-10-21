@@ -95,7 +95,7 @@ function ScoreboardPage(): ReactNode {
     const showFinalize = isAdmin && scoreboardPhase(report) === 'live';
     if (!showLinks && !showFinalize) return null;
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         {finalizeErr ? (
           <span role="alert" className="text-semantic-danger-strong text-xs">
             {finalizeErr}

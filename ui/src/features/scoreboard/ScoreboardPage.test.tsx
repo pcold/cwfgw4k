@@ -507,6 +507,34 @@ describe('ScoreboardPage', () => {
     });
   });
 
+  it('keeps both admin actions on the in-progress banner beside the error when finalizing fails', async () => {
+    authMeMock.mockResolvedValue({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
+    tournamentReportMock.mockResolvedValue({
+      ...buildReport('Current Open'),
+      tournament: { ...buildReport('Current Open').tournament, status: 'in_progress' },
+    });
+    finalizeMock.mockRejectedValue(new Error('ESPN is unreachable'));
+
+    const user = userEvent.setup();
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
+
+    expect(await screen.findByText(/Tournament in progress/i)).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: /Finalize Results/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('ESPN is unreachable');
+    expect(screen.getByRole('button', { name: /Manage player links/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Finalize Results/i })).toBeEnabled();
+  });
+
   it.each([
     ['the warnings the server returned', [twinWarnings], /Possible duplicate of a rostered golfer/],
     ['that the import raised none', [cleanWarnings], /No ESPN import warnings from finalizing Current Open/],
