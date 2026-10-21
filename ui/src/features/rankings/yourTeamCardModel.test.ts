@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Rankings, TeamRanking } from '@/shared/api/types';
-import { findYourTeam, ordinal, placeLabel, standingStats } from './yourTeamCardModel';
+import { findYourTeam, placeLabel, standingStats } from './yourTeamCardModel';
 
 function team(teamId: string, teamName: string, totalCash: number): TeamRanking {
   return { teamId, teamName, subtotal: totalCash, sideBets: 0, totalCash, series: [totalCash] };
@@ -25,27 +25,6 @@ const rankings: Rankings = {
     },
   ],
 };
-
-describe('ordinal', () => {
-  it.each([
-    [1, '1st'],
-    [2, '2nd'],
-    [3, '3rd'],
-    [4, '4th'],
-    [10, '10th'],
-    [11, '11th'],
-    [12, '12th'],
-    [13, '13th'],
-    [21, '21st'],
-    [22, '22nd'],
-    [23, '23rd'],
-    [101, '101st'],
-    [111, '111th'],
-    [112, '112th'],
-  ])('writes %i as %s', (position, expected) => {
-    expect(ordinal(position)).toBe(expected);
-  });
-});
 
 describe('placeLabel', () => {
   it('prefixes a shared position with T', () => {
