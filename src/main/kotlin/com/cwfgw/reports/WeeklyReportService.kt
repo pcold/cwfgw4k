@@ -319,7 +319,7 @@ class WeeklyReportService(
             composePlayerRankings(
                 finalAcc,
                 prepared.rosterIndex,
-                prepared.golferMap,
+                prepared.golfersById,
                 liveEligible = prepared.liveEligible,
             ),
         )
@@ -342,7 +342,7 @@ class WeeklyReportService(
             val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
             val teams = teamRepository.findBySeason(seasonId)
             val allGolfers = golferRepository.findAll(search = null)
-            val golferMap = allGolfers.associateBy { it.id }
+            val golfersById = allGolfers.associateBy { it.id }
             val included = filterThroughTournament(findCompletedIn(seasonId), through)
             val includedIds = included.map { it.id }
             val allRosters = teamRepository.findRostersBySeason(seasonId)
@@ -355,7 +355,7 @@ class WeeklyReportService(
                     allResults = allResults,
                     tournamentsById = included.associateBy { it.id },
                     rosteredGolferIds = rosteredGolferIds,
-                    golferMap = golferMap,
+                    golfersById = golfersById,
                     rules = rules,
                 )
             val liveCandidates = liveCandidatesIn(seasonId, today, through)
@@ -365,8 +365,8 @@ class WeeklyReportService(
                     liveEligible = liveCandidates.isNotEmpty(),
                     overlay = overlayIn(seasonId, liveCandidates, live = live),
                     rules = rules,
-                    rosterIndex = buildRosterIndex(teams, allRosters, golferMap),
-                    golferMap = golferMap,
+                    rosterIndex = buildRosterIndex(teams, allRosters, golfersById),
+                    golfersById = golfersById,
                 ),
             )
         }
@@ -519,7 +519,7 @@ private data class PlayerRankingsPrepared(
     val overlay: PreparedOverlay?,
     val rules: SeasonRules,
     val rosterIndex: Map<GolferId, PlayerRosterInfo>,
-    val golferMap: Map<GolferId, Golfer>,
+    val golfersById: Map<GolferId, Golfer>,
 )
 
 /**
@@ -565,16 +565,16 @@ internal fun assembleWeeklyReport(inputs: WeeklyReportInputs): WeeklyReport {
         buildUndraftedForTournament(
             results = inputs.results,
             rosteredGolferIds = rosteredGolferIds,
-            golferMap = derived.golferMap,
+            golfersById = derived.golfersById,
             multiplier = inputs.tournament.payoutMultiplier,
             rules = inputs.rules,
             isTeamEvent = inputs.tournament.isTeamEvent,
         )
-    val sideBetDetail = buildSideBetDetail(derived.sideBetPerRound, inputs.teams, inputs.allRosters, derived.golferMap)
+    val sideBetDetail = buildSideBetDetail(derived.sideBetPerRound, inputs.teams, inputs.allRosters, derived.golfersById)
     val leaderboard =
         buildPersistedLeaderboard(
             results = inputs.results,
-            golferMap = derived.golferMap,
+            golfersById = derived.golfersById,
             teamsByGolfer = teamNamesByGolfer(inputs.allRosters, inputs.teams),
         )
 
@@ -602,7 +602,7 @@ private fun teamNamesByGolfer(
 
 internal fun buildPersistedLeaderboard(
     results: List<TournamentResult>,
-    golferMap: Map<GolferId, Golfer>,
+    golfersById: Map<GolferId, Golfer>,
     teamsByGolfer: Map<GolferId, List<String>>,
 ): List<LiveLeaderboardEntry> =
     results
@@ -617,7 +617,7 @@ internal fun buildPersistedLeaderboard(
                 players =
                     slot.members.map { result ->
                         LeaderboardPlayer(
-                            name = golferMap[result.golferId]?.let { "${it.firstName} ${it.lastName}" } ?: "?",
+                            name = golfersById[result.golferId]?.let { "${it.firstName} ${it.lastName}" } ?: "?",
                             teamNames = teamsByGolfer[result.golferId].orEmpty(),
                         )
                     },
@@ -632,7 +632,7 @@ internal fun buildPersistedLeaderboard(
  * against shared maps rather than O(N) walks of the loaded data.
  */
 private data class ReportContext(
-    val golferMap: Map<GolferId, Golfer>,
+    val golfersById: Map<GolferId, Golfer>,
     val resultsByGolfer: Map<GolferId, TournamentResult>,
     val scoresByTeamGolfer: Map<Pair<TeamId, GolferId>, FantasyScore>,
     val cumulativeByTeamGolfer: Map<Pair<TeamId, GolferId>, Pair<BigDecimal, Int>>,
@@ -655,7 +655,7 @@ private fun deriveReportContext(inputs: WeeklyReportInputs): ReportContext {
             inputs.rules.sideBetAmount,
         )
     return ReportContext(
-        golferMap = inputs.allGolfers.associateBy { it.id },
+        golfersById = inputs.allGolfers.associateBy { it.id },
         resultsByGolfer = inputs.results.associateBy { it.golferId },
         scoresByTeamGolfer = inputs.scores.associateBy { it.teamId to it.golferId },
         cumulativeByTeamGolfer =
@@ -691,7 +691,7 @@ private fun buildTeamColumnFromContext(
     buildReportTeamColumn(
         team = team,
         allRosters = inputs.allRosters,
-        golferMap = ctx.golferMap,
+        golfersById = ctx.golfersById,
         resultsByGolfer = ctx.resultsByGolfer,
         scoresByTeamGolfer = ctx.scoresByTeamGolfer,
         tournamentScores = inputs.scores,
@@ -736,7 +736,7 @@ private fun seasonTournamentInfo(): ReportTournamentInfo =
  * counts ("3x") in place of a position string.
  */
 internal fun assembleSeasonReport(inputs: SeasonReportInputs): WeeklyReport {
-    val golferMap = inputs.allGolfers.associateBy { it.id }
+    val golfersById = inputs.allGolfers.associateBy { it.id }
     val numTeams = inputs.teams.size
     val cumulativeByTeamGolfer =
         inputs.allScores.groupBy { it.teamId to it.golferId }
@@ -753,7 +753,7 @@ internal fun assembleSeasonReport(inputs: SeasonReportInputs): WeeklyReport {
         inputs.teams.map { team ->
             val roster =
                 inputs.allRosters.filter { it.teamId == team.id }.sortedBy { it.draftRound ?: Int.MAX_VALUE }
-            val cells = buildSeasonCells(roster, golferMap, cumulativeByTeamGolfer, team.id)
+            val cells = buildSeasonCells(roster, golfersById, cumulativeByTeamGolfer, team.id)
             val teamTopTenEarnings = topTensByTeam[team.id] ?: BigDecimal.ZERO
             val weeklyTotal = teamTopTenEarnings.multiply(BigDecimal(numTeams)).subtract(totalPot)
             val sideBetTotal = sideBetResults[team.id] ?: BigDecimal.ZERO
@@ -774,8 +774,8 @@ internal fun assembleSeasonReport(inputs: SeasonReportInputs): WeeklyReport {
 
     val rosteredGolferIds = inputs.allRosters.map { it.golferId }.toSet()
     val undraftedAgg =
-        buildUndraftedAgg(inputs.allResults, inputs.completed, rosteredGolferIds, golferMap, inputs.rules)
-    val sideBetDetail = buildSideBetDetail(sideBetPerRound, inputs.teams, inputs.allRosters, golferMap)
+        buildUndraftedAgg(inputs.allResults, inputs.completed, rosteredGolferIds, golfersById, inputs.rules)
+    val sideBetDetail = buildSideBetDetail(sideBetPerRound, inputs.teams, inputs.allRosters, golfersById)
 
     return WeeklyReport(
         scope = ReportScope.Season,
@@ -790,14 +790,14 @@ internal fun assembleSeasonReport(inputs: SeasonReportInputs): WeeklyReport {
 
 private fun buildSeasonCells(
     roster: List<RosterEntry>,
-    golferMap: Map<GolferId, Golfer>,
+    golfersById: Map<GolferId, Golfer>,
     cumulative: Map<Pair<TeamId, GolferId>, Pair<BigDecimal, Int>>,
     teamId: TeamId,
 ): List<ReportCell> =
     (1..ROUNDS_PER_REPORT).map { round ->
         val entry = roster.firstOrNull { it.draftRound == round } ?: return@map emptyCell(round)
         val (earnings, topTens) = cumulative[teamId to entry.golferId] ?: (BigDecimal.ZERO to 0)
-        val golferName = golferMap[entry.golferId]?.lastName?.uppercase() ?: "?"
+        val golferName = golfersById[entry.golferId]?.lastName?.uppercase() ?: "?"
         val positionStr = if (topTens > 0) "${topTens}x" else null
         ReportCell(
             round = round,
@@ -823,7 +823,7 @@ internal fun buildUndraftedAgg(
     allResults: List<TournamentResult>,
     completed: List<Tournament>,
     rosteredGolferIds: Set<GolferId>,
-    golferMap: Map<GolferId, Golfer>,
+    golfersById: Map<GolferId, Golfer>,
     rules: SeasonRules,
 ): List<UndraftedGolfer> {
     val resultsByTournament = allResults.groupBy { it.tournamentId }
@@ -835,7 +835,7 @@ internal fun buildUndraftedAgg(
         }
         .groupBy { it.golferId }
         .map { (golferId, results) ->
-            val golfer = golferMap[golferId]
+            val golfer = golfersById[golferId]
             val name = golfer?.let { "${it.firstName.firstOrNull() ?: '?'}. ${it.lastName}" } ?: "?"
             val totalPayout =
                 results.fold(BigDecimal.ZERO) { acc, result ->
@@ -925,7 +925,7 @@ internal fun buildPriorWeekly(
 internal fun buildReportTeamColumn(
     team: Team,
     allRosters: List<RosterEntry>,
-    golferMap: Map<GolferId, Golfer>,
+    golfersById: Map<GolferId, Golfer>,
     resultsByGolfer: Map<GolferId, TournamentResult>,
     scoresByTeamGolfer: Map<Pair<TeamId, GolferId>, FantasyScore>,
     tournamentScores: List<FantasyScore>,
@@ -944,7 +944,7 @@ internal fun buildReportTeamColumn(
     val cells =
         buildWeeklyCells(
             roster = roster,
-            golferMap = golferMap,
+            golfersById = golfersById,
             resultsByGolfer = resultsByGolfer,
             scoresByTeamGolfer = scoresByTeamGolfer,
             cumulativeByTeamGolfer = cumulativeByTeamGolfer,
@@ -979,7 +979,7 @@ internal fun buildReportTeamColumn(
 
 private fun buildWeeklyCells(
     roster: List<RosterEntry>,
-    golferMap: Map<GolferId, Golfer>,
+    golfersById: Map<GolferId, Golfer>,
     resultsByGolfer: Map<GolferId, TournamentResult>,
     scoresByTeamGolfer: Map<Pair<TeamId, GolferId>, FantasyScore>,
     cumulativeByTeamGolfer: Map<Pair<TeamId, GolferId>, Pair<BigDecimal, Int>>,
@@ -995,7 +995,7 @@ private fun buildWeeklyCells(
                 round = round,
                 entry = entry,
                 teamId = teamId,
-                golferMap = golferMap,
+                golfersById = golfersById,
                 resultsByGolfer = resultsByGolfer,
                 scoresByTeamGolfer = scoresByTeamGolfer,
                 cumulativeByTeamGolfer = cumulativeByTeamGolfer,
@@ -1008,13 +1008,13 @@ private fun cellForEntry(
     round: Int,
     entry: RosterEntry,
     teamId: TeamId,
-    golferMap: Map<GolferId, Golfer>,
+    golfersById: Map<GolferId, Golfer>,
     resultsByGolfer: Map<GolferId, TournamentResult>,
     scoresByTeamGolfer: Map<Pair<TeamId, GolferId>, FantasyScore>,
     cumulativeByTeamGolfer: Map<Pair<TeamId, GolferId>, Pair<BigDecimal, Int>>,
     finishByPosition: Map<Int, ReportCellFinish>,
 ): ReportCell {
-    val golferName = golferMap[entry.golferId]?.lastName?.uppercase() ?: "?"
+    val golferName = golfersById[entry.golferId]?.lastName?.uppercase() ?: "?"
     val result = resultsByGolfer[entry.golferId]
     val score = scoresByTeamGolfer[teamId to entry.golferId]
     val finish = result?.position?.let { finishByPosition[it] }
@@ -1051,7 +1051,7 @@ private fun emptyCell(round: Int): ReportCell =
 internal fun buildUndraftedForTournament(
     results: List<TournamentResult>,
     rosteredGolferIds: Set<GolferId>,
-    golferMap: Map<GolferId, Golfer>,
+    golfersById: Map<GolferId, Golfer>,
     multiplier: BigDecimal,
     rules: SeasonRules,
     isTeamEvent: Boolean,
@@ -1063,7 +1063,7 @@ internal fun buildUndraftedForTournament(
         }
         .sortedBy { it.position ?: Int.MAX_VALUE }
         .map { result ->
-            val golfer = golferMap[result.golferId]
+            val golfer = golfersById[result.golferId]
             val name = golfer?.let { "${it.firstName.firstOrNull() ?: '?'}. ${it.lastName}" } ?: "?"
             val numTied = results.count { it.position == result.position }
             val payout =
@@ -1129,14 +1129,14 @@ internal fun buildSideBetDetail(
     perRound: List<SideBetRoundSnapshot>,
     teams: List<Team>,
     allRosters: List<RosterEntry>,
-    golferMap: Map<GolferId, Golfer>,
+    golfersById: Map<GolferId, Golfer>,
 ): List<ReportSideBetRound> =
     perRound.map { snapshot ->
         val outcomes = settleSideBetOutcomes(snapshot.teamCumulativeEarnings)
         val teamEntries =
             teams.map { team ->
                 val entry = allRosters.firstOrNull { it.teamId == team.id && it.draftRound == snapshot.round }
-                val golferName = entry?.let { golferMap[it.golferId]?.lastName?.uppercase() } ?: "—"
+                val golferName = entry?.let { golfersById[it.golferId]?.lastName?.uppercase() } ?: "—"
                 ReportSideBetTeamEntry(
                     teamId = team.id,
                     teamName = team.teamName,
@@ -1180,21 +1180,21 @@ internal data class PlayerRosterInfo(
 internal fun buildRosterIndex(
     teams: List<Team>,
     allRosters: List<RosterEntry>,
-    golferMap: Map<GolferId, Golfer>,
+    golfersById: Map<GolferId, Golfer>,
 ): Map<GolferId, PlayerRosterInfo> {
     val teamNameById = teams.associate { it.id to it.teamName }
     return allRosters
-        .mapNotNull { entry -> rosterIndexEntry(entry, teamNameById, golferMap) }
+        .mapNotNull { entry -> rosterIndexEntry(entry, teamNameById, golfersById) }
         .toMap()
 }
 
 private fun rosterIndexEntry(
     entry: RosterEntry,
     teamNameById: Map<TeamId, String>,
-    golferMap: Map<GolferId, Golfer>,
+    golfersById: Map<GolferId, Golfer>,
 ): Pair<GolferId, PlayerRosterInfo>? {
     val teamName = teamNameById[entry.teamId] ?: return null
-    val golfer = golferMap[entry.golferId] ?: return null
+    val golfer = golfersById[entry.golferId] ?: return null
     val draftRound = entry.draftRound ?: return null
     return entry.golferId to
         PlayerRosterInfo(
@@ -1223,7 +1223,7 @@ internal fun buildPlayerRankingsAcc(
     allResults: List<TournamentResult>,
     tournamentsById: Map<TournamentId, Tournament>,
     rosteredGolferIds: Set<GolferId>,
-    golferMap: Map<GolferId, Golfer>,
+    golfersById: Map<GolferId, Golfer>,
     rules: SeasonRules,
 ): PlayerRankingsAcc {
     val drafted = mutableMapOf<GolferId, DraftedAgg>()
@@ -1239,7 +1239,7 @@ internal fun buildPlayerRankingsAcc(
     val resultsByTournament = allResults.groupBy { it.tournamentId }
     val undrafted = mutableMapOf<String, UndraftedAgg>()
     allResults.forEach { result ->
-        undraftedRowFromResult(result, tournamentsById, rosteredGolferIds, golferMap, resultsByTournament, rules)
+        undraftedRowFromResult(result, tournamentsById, rosteredGolferIds, golfersById, resultsByTournament, rules)
             ?.let { (name, payout) ->
                 val existing = undrafted[name] ?: UndraftedAgg(topTens = 0, totalEarnings = BigDecimal.ZERO)
                 undrafted[name] =
@@ -1265,7 +1265,7 @@ private fun undraftedRowFromResult(
     result: TournamentResult,
     tournamentsById: Map<TournamentId, Tournament>,
     rosteredGolferIds: Set<GolferId>,
-    golferMap: Map<GolferId, Golfer>,
+    golfersById: Map<GolferId, Golfer>,
     resultsByTournament: Map<TournamentId, List<TournamentResult>>,
     rules: SeasonRules,
 ): Pair<String, BigDecimal>? {
@@ -1273,7 +1273,7 @@ private fun undraftedRowFromResult(
     if (position > TOP_TEN_CUTOFF) return null
     if (result.golferId in rosteredGolferIds) return null
     val tournament = tournamentsById[result.tournamentId] ?: return null
-    val golfer = golferMap[result.golferId] ?: return null
+    val golfer = golfersById[result.golferId] ?: return null
     val numTied = resultsByTournament[result.tournamentId].orEmpty().count { it.position == position }
     val payout =
         PayoutTable.tieSplitPayout(
@@ -1290,13 +1290,13 @@ private fun undraftedRowFromResult(
 internal fun composePlayerRankings(
     acc: PlayerRankingsAcc,
     rosterIndex: Map<GolferId, PlayerRosterInfo>,
-    golferMap: Map<GolferId, Golfer>,
+    golfersById: Map<GolferId, Golfer>,
     liveEligible: Boolean,
 ): PlayerRankings {
     val draftedRows =
         acc.drafted.entries.map { (golferId, agg) ->
             val roster = rosterIndex[golferId]
-            val golfer = golferMap[golferId]
+            val golfer = golfersById[golferId]
             PlayerRankingsRow(
                 key = "g:${golferId.value}",
                 golferId = golferId,
