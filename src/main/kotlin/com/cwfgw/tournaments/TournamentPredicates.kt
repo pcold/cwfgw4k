@@ -32,6 +32,12 @@ val ESPN_SCHEDULE_ZONE: ZoneId = ZoneId.of("America/New_York")
 private const val LIVE_OVERLAY_LOOKAHEAD_DAYS: Long = 3
 
 /**
+ * Exclusive, as [TournamentFilter.startsBefore] is, so a query takes it as is. [isLiveOverlayCandidate] judges
+ * from it too: a query and the per-tournament check that each did their own arithmetic could drift apart.
+ */
+fun liveOverlayWindowEnd(today: LocalDate): LocalDate = today.plusDays(LIVE_OVERLAY_LOOKAHEAD_DAYS + 1)
+
+/**
  * True when [this] tournament is eligible for an ESPN live-overlay pull
  * as of [today]: not already finalized, and its start date is within
  * [LIVE_OVERLAY_LOOKAHEAD_DAYS] of today (or already in the past).
@@ -43,4 +49,4 @@ private const val LIVE_OVERLAY_LOOKAHEAD_DAYS: Long = 3
  */
 fun Tournament.isLiveOverlayCandidate(today: LocalDate): Boolean =
     status != TournamentStatus.Completed &&
-        !startDate.isAfter(today.plusDays(LIVE_OVERLAY_LOOKAHEAD_DAYS))
+        startDate.isBefore(liveOverlayWindowEnd(today))

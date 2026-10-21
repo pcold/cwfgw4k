@@ -309,7 +309,7 @@
                 "plotType": "LINE",
                 "targetAxis": "Y1",
                 "timeSeriesQuery": {
-                  "timeSeriesQueryLanguage": "fetch cloud_run_revision::logging.googleapis.com/user/cwfgw4k_cache | filter resource.service_name == 'cwfgw4k' && (metric.event == 'hit' || metric.event == 'miss') | align rate(5m) | every 1m | group_by [metric.route, metric.event], .sum | { hit: filter metric.event == 'hit'; miss: filter metric.event == 'miss' } | ratio | window 5m"
+                  "timeSeriesQueryLanguage": "fetch cloud_run_revision::logging.googleapis.com/user/cwfgw4k_cache | filter resource.service_name == 'cwfgw4k' && (metric.event == 'hit' || metric.event == 'miss') | align rate(5m) | every 1m | { filter metric.event == 'hit' ; ident } | group_by [metric.route], .sum | ratio"
                 }
               }
             ]

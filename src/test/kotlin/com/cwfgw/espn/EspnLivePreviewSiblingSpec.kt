@@ -50,7 +50,7 @@ class EspnLivePreviewSiblingSpec : FunSpec({
     test("a preview pays each sibling event what the unlinked finalize importing both of them scores") {
         val week = tx.update { seedWeek() }
         val espn = espnService(tx)
-        val ctx = espn.loadLivePreviewContext(week.seasonId, listOf(week.guessing))
+        val ctx = tx.read { espn.loadLivePreviewContextIn(week.seasonId, listOf(week.guessing)) }
         val previewed = week.linked.associate { it.id to espn.previewForTournament(ctx, it).orFail().payouts() }
 
         opsService(tx, espn).finalizeAndReport(week.unlinked.id).orFail()
@@ -89,7 +89,7 @@ class EspnLivePreviewSiblingSpec : FunSpec({
         val completed = UpdateTournamentRequest(status = TournamentStatus.Completed)
         tx.update { TournamentRepository().update(week.unlinked.id, completed) }
         val espn = espnService(tx)
-        val ctx = espn.loadLivePreviewContext(week.seasonId, listOf(week.guessing))
+        val ctx = tx.read { espn.loadLivePreviewContextIn(week.seasonId, listOf(week.guessing)) }
         val previewed = espn.previewForTournament(ctx, week.guessing).orFail().payouts()
 
         opsService(tx, espn).finalizeAndReport(week.guessing.id).orFail()

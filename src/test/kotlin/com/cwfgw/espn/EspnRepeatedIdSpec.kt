@@ -37,7 +37,7 @@ class EspnRepeatedIdSpec : FunSpec({
         val tournament = seeded.tournaments.single()
         val event = listedTwice("evt-a")
         val espn = espnService(tx, mapOf(tournament.startDate to listOf(event)))
-        val ctx = espn.loadLivePreviewContext(seeded.seasonId, seeded.tournaments)
+        val ctx = tx.read { espn.loadLivePreviewContextIn(seeded.seasonId, seeded.tournaments) }
 
         val preview = espn.previewForTournament(ctx, tournament).orFail()
         val warnings = tx.update { espn.persistImportIn(tournament, event) }

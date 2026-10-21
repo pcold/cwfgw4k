@@ -183,14 +183,15 @@ if [[ -z "$TOURNAMENT_ID" ]]; then
   echo "ERROR: no non-completed tournament in cloned season — live-overlay path can't trigger." >&2
   exit 1
 fi
-echo "==> season=$SEASON_ID tournament=$TOURNAMENT_ID (non-completed → ?live=true exercises the overlay)"
+echo "==> season=$SEASON_ID tournament=$TOURNAMENT_ID (?live=true overlays it only inside the live look-ahead)"
 
 # Three heavy report paths used for the burst. In `live` mode each carries
-# `?live=true` so the handler fans into the overlay (ESPN previews via
-# Caffeine, per-candidate loadLivePreviewContext). In `nonlive` mode the
-# same routes are hit without the query — the handler only runs
-# gatherReport (one tx.read). Comparing wedge rates between the two modes
-# is the CWF-23 bisect.
+# `?live=true`, but only the report target can overlay, and only when its
+# tournament starts inside the live look-ahead: its one tx.read then also
+# loads the overlay's context, and the ESPN previews (via Caffeine) run after
+# it closes. The rollups carry no `through`, so they never overlay and go
+# through the response cache, as every target does in `nonlive` mode.
+# Comparing wedge rates between the two modes is the CWF-23 bisect.
 case $MODE in
   live) QS="?live=true" ;;
   nonlive) QS="" ;;

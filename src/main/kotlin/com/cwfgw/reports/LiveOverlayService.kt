@@ -1,5 +1,6 @@
 package com.cwfgw.reports
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.espn.EspnLivePreview
 import com.cwfgw.espn.EspnService
 import com.cwfgw.espn.LivePreviewContext
@@ -28,6 +29,18 @@ private val log = KotlinLogging.logger {}
  */
 class LiveOverlayService(private val espnService: EspnService) {
     /**
+     * The overlays below take what this returns rather than reading it themselves, so no transaction spans their ESPN
+     * calls.
+     *
+     * @see EspnService.loadLivePreviewContextIn
+     */
+    context(ctx: TransactionContext)
+    internal fun loadLivePreviewContextIn(
+        seasonId: SeasonId,
+        candidates: List<Tournament>,
+    ): LivePreviewContext = espnService.loadLivePreviewContextIn(seasonId, candidates)
+
+    /**
      * Fold ESPN previews for each non-completed candidate into a player-
      * rankings accumulator. Drafted golfers gain one increment + their
      * ownership-adjusted live payout per (team rostering them, projected
@@ -40,20 +53,17 @@ class LiveOverlayService(private val espnService: EspnService) {
      * locked-in numbers rather than an error banner.
      */
     internal suspend fun overlayPlayerRankings(
-        seasonId: SeasonId,
+        previewCtx: LivePreviewContext,
         base: PlayerRankingsAcc,
         candidates: List<Tournament>,
         rules: SeasonRules,
-    ): PlayerRankingsAcc {
-        if (candidates.isEmpty()) return base
-        val previewCtx = espnService.loadLivePreviewContext(seasonId, candidates)
-        return candidates.sortedWith(tournamentOrdering).fold(base) { acc, tournament ->
+    ): PlayerRankingsAcc =
+        candidates.sortedWith(tournamentOrdering).fold(base) { acc, tournament ->
             val matched =
                 fetchPreviewOrLog(previewCtx, tournament, "player rankings live overlay ${tournament.name}")
                     ?: return@fold acc
             foldLivePlayerRankings(acc, matched, rules)
         }
-    }
 
     /**
      * Overlay live data onto the rankings response. Each non-completed
@@ -62,17 +72,14 @@ class LiveOverlayService(private val espnService: EspnService) {
      * cumulative side-bet totals + each team's live weekly.
      */
     internal suspend fun overlayRankings(
-        seasonId: SeasonId,
+        previewCtx: LivePreviewContext,
         baseRankings: Rankings,
         liveCandidates: List<Tournament>,
         ctx: RankingsContext,
-    ): Rankings {
-        if (liveCandidates.isEmpty()) return baseRankings
-        val previewCtx = espnService.loadLivePreviewContext(seasonId, liveCandidates)
-        return liveCandidates.fold(baseRankings to ctx) { (rankings, rollingCtx), tournament ->
+    ): Rankings =
+        liveCandidates.fold(baseRankings to ctx) { (rankings, rollingCtx), tournament ->
             tryOverlayCandidate(previewCtx, rankings, tournament, rollingCtx) ?: (rankings to rollingCtx)
         }.first
-    }
 
     internal suspend fun tryOverlayCandidate(
         previewCtx: LivePreviewContext,
@@ -93,8 +100,8 @@ class LiveOverlayService(private val espnService: EspnService) {
      * if the selected tournament is itself not yet completed, overlays
      * the projected ESPN leaderboard onto the report's cells.
      */
-    suspend fun overlayReport(
-        seasonId: SeasonId,
+    internal suspend fun overlayReport(
+        previewCtx: LivePreviewContext,
         baseReport: WeeklyReport,
         rules: SeasonRules,
         priorNonCompleted: List<Tournament>,
@@ -104,8 +111,6 @@ class LiveOverlayService(private val espnService: EspnService) {
         // Finalized tournaments are immutable from the report's perspective;
         // hitting ESPN can't change the numbers and just costs latency / quota.
         if (selectedTournament.status == TournamentStatus.Completed) return baseReport
-
-        val previewCtx = espnService.loadLivePreviewContext(seasonId, priorNonCompleted + selectedTournament)
 
         val withPrior =
             priorNonCompleted.sortedWith(tournamentOrdering)

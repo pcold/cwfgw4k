@@ -208,8 +208,11 @@ private class PreviewFixture(
 }
 
 // The context loads link overrides only for its candidates and the season's unfinalized tournaments.
+private fun PreviewFixture.previewContext(): LivePreviewContext =
+    with(noopTransactionContext) { service.loadLivePreviewContextIn(SEASON_ID, initialTournaments) }
+
 private suspend fun PreviewFixture.previewFor(candidate: Tournament): Result<EspnLivePreview, LivePreviewError> =
-    service.previewForTournament(service.loadLivePreviewContext(SEASON_ID, initialTournaments), candidate)
+    service.previewForTournament(previewContext(), candidate)
 
 class EspnLivePreviewSpec : FunSpec({
 
@@ -334,7 +337,7 @@ class EspnLivePreviewSpec : FunSpec({
                 initialRosters = listOf(rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1)),
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
-        val ctx = fixture.service.loadLivePreviewContext(SEASON_ID, fixture.initialTournaments)
+        val ctx = fixture.previewContext()
 
         fixture.service.previewForTournament(ctx, stale) shouldBe Result.Err(LivePreviewError.NoMatchingEvent)
         val preview = fixture.service.previewForTournament(ctx, linkedToEvent).orFail()
@@ -419,7 +422,7 @@ class EspnLivePreviewSpec : FunSpec({
                         heritageStart to listOf(espnTournament(espnId = "espn-heritage", competitors = shared)),
                     ),
             )
-        val ctx = fixture.service.loadLivePreviewContext(SEASON_ID, fixture.initialTournaments)
+        val ctx = fixture.previewContext()
 
         val mastersBoard = fixture.service.previewForTournament(ctx, masters).orFail().leaderboard
         val heritageBoard = fixture.service.previewForTournament(ctx, heritage).orFail().leaderboard
