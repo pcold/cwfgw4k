@@ -56,8 +56,6 @@ private val NON_WIRE_TYPES =
         "com.cwfgw.espn.EspnScoreboardResponse",
         "com.cwfgw.espn.EspnStatusJson",
         "com.cwfgw.espn.EspnStatusType",
-        // An in-process command the admin and ESPN imports build; no route receives it.
-        "com.cwfgw.golfers.CreateGolferRequest",
         // A log line on stdout, for Cloud Logging.
         "com.cwfgw.logging.CloudLogEntry",
         // The session cookie's payload, which the client never parses.
@@ -127,8 +125,8 @@ class WireContractSpec : FunSpec({
         withClue(
             """
             |@Serializable type(s) that no WIRE_TYPES root reaches and NON_WIRE_TYPES does not excuse. If a
-            |route receives or responds with one, add it to WIRE_TYPES; if no client can see it, add it to
-            |NON_WIRE_TYPES beside the others and say which category it joins.
+            |route responds with one, add it to RESPONDED_TYPES, and if one receives it, to RECEIVED_TYPES; if
+            |no client can see it, add it to NON_WIRE_TYPES beside the others and say which category it joins.
             """.trimMargin(),
         ) {
             scanned.filterNot { it in reached || it in NON_WIRE_TYPES }.sorted() shouldBe emptyList()
@@ -182,7 +180,7 @@ class WireContractSpec : FunSpec({
 
     test("the emitted TypeScript assertions match the file tsc reads") {
         val committed = File(ASSERTIONS_PATH)
-        val actual = wireContractAssertions(WIRE_TYPES)
+        val actual = wireContractAssertions(responded = RESPONDED_TYPES, received = RECEIVED_TYPES)
         if (committed.exists() && committed.readText() == actual) return@test
 
         val regenerated = File(REGENERATED_ASSERTIONS_PATH).also { it.parentFile.mkdirs() }

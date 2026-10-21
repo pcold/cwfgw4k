@@ -312,8 +312,7 @@ describe('api client', () => {
 
   it('previewSeasonSchedule() POSTs the date range with the season in the path', async () => {
     fetchMock.mockResolvedValueOnce(mockJson({ entries: [], skipped: [] }));
-    await api.previewSeasonSchedule({
-      seasonId: 'sn 1',
+    await api.previewSeasonSchedule('sn 1', {
       startDate: '2026-01-01',
       endDate: '2026-04-01',
     });
@@ -328,8 +327,7 @@ describe('api client', () => {
 
   it('confirmSeasonSchedule() POSTs the kept entries with the season in the path', async () => {
     fetchMock.mockResolvedValueOnce(mockJson({ created: [], skipped: [] }));
-    await api.confirmSeasonSchedule({
-      seasonId: 'sn 1',
+    await api.confirmSeasonSchedule('sn 1', {
       entries: [
         { espnEventId: 'e-1', name: 'Sony Open', startDate: '2026-01-15', endDate: '2026-01-18' },
       ],

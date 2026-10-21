@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ExactFields, ExactValues } from './exactFields';
+import type { ExactFields, ExactRequestFields, ExactValues } from './exactFields';
 
 // The verdicts are checked by tsc, not at runtime: each `@ts-expect-error` fails the typecheck if the
 // line beneath it ever compiles, and each `true` annotation fails it if the verdict stops being `true`.
@@ -61,6 +61,48 @@ describe('ExactFields', () => {
     type Standing = { type: 'leader' } | { type: 'chaser' };
     // @ts-expect-error verdict: no such variant in types.ts
     const verdict: ExactFields<Extract<Standing, { type: 'trailer' }>, 'type'> = true;
+
+    expect(verdict).toBe(true);
+  });
+});
+
+describe('ExactRequestFields', () => {
+  it('accepts a type optional exactly where the server defaults', () => {
+    const verdict: ExactRequestFields<{ name: string; maxTeams?: number }, 'name', 'maxTeams'> = true;
+
+    expect(verdict).toBe(true);
+  });
+
+  it('accepts a type with no defaulted key', () => {
+    const verdict: ExactRequestFields<{ name: string }, 'name', never> = true;
+
+    expect(verdict).toBe(true);
+  });
+
+  it('refuses an optional key the server requires', () => {
+    // @ts-expect-error verdict: 'name' is optional in types.ts, required by the server
+    const verdict: ExactRequestFields<{ name?: string }, 'name', never> = true;
+
+    expect(verdict).toBe(true);
+  });
+
+  it('refuses a required key the server defaults', () => {
+    // @ts-expect-error verdict: 'maxTeams' is required in types.ts, defaulted by the server
+    const verdict: ExactRequestFields<{ name: string; maxTeams: number }, 'name', 'maxTeams'> = true;
+
+    expect(verdict).toBe(true);
+  });
+
+  it('does not read a nullable key as an optional one', () => {
+    // @ts-expect-error verdict: 'maxTeams' is required in types.ts, however nullable
+    const verdict: ExactRequestFields<{ maxTeams: number | null }, never, 'maxTeams'> = true;
+
+    expect(verdict).toBe(true);
+  });
+
+  it('still refuses a key renamed on the wire', () => {
+    // @ts-expect-error verdict: 'teamName' is not on the wire, 'name' is absent from types.ts
+    const verdict: ExactRequestFields<{ teamName: string }, 'name', never> = true;
 
     expect(verdict).toBe(true);
   });

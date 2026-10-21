@@ -1,4 +1,4 @@
-import type { CurrentTournament, FinalizedTournament, Tournament } from '../types';
+import type { CurrentTournament, FinalizedTournament, Tournament, UpdateTournamentRequest } from '../types';
 import { getJson, postJson, putJson } from './core';
 
 export const tournamentsApi = {
@@ -8,7 +8,7 @@ export const tournamentsApi = {
     getJson<Tournament[]>(`/tournaments/resettable?season_id=${encodeURIComponent(seasonId)}`),
   currentTournament: (seasonId: string): Promise<CurrentTournament> =>
     getJson<CurrentTournament>(`/tournaments/current?season_id=${encodeURIComponent(seasonId)}`),
-  updateTournament: (id: string, body: { payoutMultiplier?: number }): Promise<Tournament> =>
+  updateTournament: (id: string, body: UpdateTournamentRequest): Promise<Tournament> =>
     putJson<Tournament>(`/tournaments/${encodeURIComponent(id)}`, body),
   finalizeTournament: (tournamentId: string): Promise<FinalizedTournament> =>
     postJson<FinalizedTournament>(`/tournaments/${tournamentId}/finalize`),

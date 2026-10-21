@@ -31,7 +31,6 @@ data class Golfer(
     @Transient val tombstonedAt: Instant? = null,
 )
 
-@Serializable
 data class CreateGolferRequest(
     val pgaPlayerId: String? = null,
     val firstName: String,

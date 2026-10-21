@@ -38,18 +38,13 @@ import java.io.File
 internal val MAIN_SOURCE_ROOTS = listOf(File("src/main/kotlin"))
 
 /**
- * Every type a route receives or responds with, as a list's element where it responds with a list: the
- * roots of the wire-contract snapshot. Listed, not scanned: a handler responds with a service result, so
- * no route file names the type. A type left off fails the accounting test, being `@Serializable` and unreached.
+ * Every type a route responds with, as a list's element where it responds with a list. Listed, not scanned:
+ * a handler responds with a service result, so no route file names the type. A type left off fails the
+ * accounting test, being `@Serializable` and unreached.
  */
-internal val WIRE_TYPES: List<SerialDescriptor> =
+internal val RESPONDED_TYPES: List<SerialDescriptor> =
     listOf(
         serializer<CleanSeasonResult>(),
-        serializer<ConfirmRosterRequest>(),
-        serializer<ConfirmSeasonScheduleRequest>(),
-        serializer<CreateLeagueRequest>(),
-        serializer<CreateLinkedGolferRequest>(),
-        serializer<CreateSeasonRequest>(),
         serializer<CurrentTournament>(),
         serializer<DataHealthReport>(),
         serializer<ErrorBody>(),
@@ -58,7 +53,6 @@ internal val WIRE_TYPES: List<SerialDescriptor> =
         serializer<GolferHistory>(),
         serializer<HealthResponse>(),
         serializer<League>(),
-        serializer<LoginRequest>(),
         serializer<PlayerRankings>(),
         serializer<Rankings>(),
         serializer<RefusalBody>(),
@@ -72,9 +66,23 @@ internal val WIRE_TYPES: List<SerialDescriptor> =
         serializer<Tournament>(),
         serializer<TournamentCompetitorListing>(),
         serializer<TournamentPlayerOverride>(),
-        serializer<UpdateTournamentRequest>(),
-        serializer<UploadSeasonRequest>(),
-        serializer<UpsertTournamentPlayerOverrideRequest>(),
         serializer<User>(),
         serializer<WeeklyReport>(),
     ).map { it.descriptor }
+
+/** Every type a route reads with `call.receive`. The server decodes these, so which keys may be omitted is wire too. */
+internal val RECEIVED_TYPES: List<SerialDescriptor> =
+    listOf(
+        serializer<ConfirmRosterRequest>(),
+        serializer<ConfirmSeasonScheduleRequest>(),
+        serializer<CreateLeagueRequest>(),
+        serializer<CreateLinkedGolferRequest>(),
+        serializer<CreateSeasonRequest>(),
+        serializer<LoginRequest>(),
+        serializer<UpdateTournamentRequest>(),
+        serializer<UploadSeasonRequest>(),
+        serializer<UpsertTournamentPlayerOverrideRequest>(),
+    ).map { it.descriptor }
+
+/** The roots of the wire-contract snapshot. */
+internal val WIRE_TYPES: List<SerialDescriptor> = RESPONDED_TYPES + RECEIVED_TYPES

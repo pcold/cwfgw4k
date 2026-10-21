@@ -1,4 +1,4 @@
-import type { User } from '../types';
+import type { LoginRequest, User } from '../types';
 import { ApiError, getJson, postJson, postNoContent } from './core';
 
 export const authApi = {
@@ -14,6 +14,6 @@ export const authApi = {
     }
   },
   login: (username: string, password: string): Promise<User> =>
-    postJson<User>('/auth/login', { username, password }),
+    postJson<User>('/auth/login', { username, password } satisfies LoginRequest),
   logout: (): Promise<void> => postNoContent('/auth/logout'),
 };

@@ -58,7 +58,7 @@ function UploadScheduleSection(): ReactNode {
   const [skippedSummary, setSkippedSummary] = useState<SeasonImportResult['skipped']>([]);
 
   const previewMutation = useMutation({
-    mutationFn: () => api.previewSeasonSchedule({ seasonId, startDate, endDate }),
+    mutationFn: () => api.previewSeasonSchedule(seasonId, { startDate, endDate }),
     onSuccess: (result) => {
       setPreviewResult(result);
       setCreatedTournaments([]);
@@ -68,10 +68,7 @@ function UploadScheduleSection(): ReactNode {
 
   const confirmMutation = useMutation({
     mutationFn: () =>
-      api.confirmSeasonSchedule({
-        seasonId,
-        entries: (previewResult?.entries ?? []).map(toConfirmedEntry),
-      }),
+      api.confirmSeasonSchedule(seasonId, { entries: (previewResult?.entries ?? []).map(toConfirmedEntry) }),
     onSuccess: (result) => {
       setCreatedTournaments(result.created);
       setSkippedSummary(result.skipped);
