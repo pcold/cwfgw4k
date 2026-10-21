@@ -2,18 +2,17 @@ import { useState, type ReactNode } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreChange, queryKeys } from '@/shared/api/queryKeys';
-import type { League, Season, Tournament } from '@/shared/api/types';
+import type { Season, Tournament } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
 import { SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
+import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
 import AdminSection from './AdminSection';
 
 function ResetTournamentSection(): ReactNode {
   const queryClient = useQueryClient();
 
-  const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
-  // No UI to pick a league — just default to the first one.
-  const leagueId = leaguesQuery.data?.[0]?.id ?? '';
+  const { leagues, leagueId, setLeagueId } = useAdminLeague();
 
   const seasonsQuery = useQuery<Season[]>({
     queryKey: queryKeys.seasons.byLeague(leagueId),
@@ -66,6 +65,16 @@ function ResetTournamentSection(): ReactNode {
       }
     >
       <div className="flex flex-wrap items-end gap-4">
+        <AdminLeagueField
+          id="reset-league"
+          leagues={leagues}
+          leagueId={leagueId}
+          onChange={(id) => {
+            setLeagueId(id);
+            setUserSeasonId('');
+            setTournamentId('');
+          }}
+        />
         <SelectField
           id="reset-season"
           label="Season"
