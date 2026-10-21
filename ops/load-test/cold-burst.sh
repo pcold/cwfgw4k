@@ -186,11 +186,11 @@ fi
 echo "==> season=$SEASON_ID tournament=$TOURNAMENT_ID (non-completed → ?live=true exercises the overlay)"
 
 # Three heavy report paths used for the burst. In `live` mode each carries
-# `?live=true` so the handler fans into the overlay (ESPN previews via
-# Caffeine, per-candidate loadLivePreviewContext). In `nonlive` mode the
-# same routes are hit without the query — the handler only runs
-# gatherReport (one tx.read). Comparing wedge rates between the two modes
-# is the CWF-23 bisect.
+# `?live=true` so the handler fans into the overlay: the gather's one tx.read
+# also loads the overlay's context, and the ESPN previews (via Caffeine) run
+# after it closes. In `nonlive` mode the same routes are hit without the
+# query, and that tx.read loads no overlay context. Comparing wedge rates
+# between the two modes is the CWF-23 bisect.
 case $MODE in
   live) QS="?live=true" ;;
   nonlive) QS="" ;;
