@@ -34,7 +34,7 @@ const SHEET_PANEL =
   'pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] ' +
   'transition-transform duration-200 ease-out starting:translate-y-full motion-reduce:transition-none';
 
-// The sheet's geometry below `sm`, the centred `detail` panel's from it: each `sm:` class undoes a sheet one.
+// The sheet's geometry below `sm`; from it, the `sm:` classes centre and cap the panel as `detail` does.
 const RESPONSIVE_OVERLAY = `${SHEET_OVERLAY} sm:items-center sm:justify-center sm:p-4`;
 
 const RESPONSIVE_PANEL = `${SHEET_PANEL} sm:starting:translate-y-0 sm:w-[min(92vw,28rem)] sm:rounded-lg sm:border sm:shadow-xl`;
@@ -153,9 +153,9 @@ function useModalDialog(onClose: () => void): RefObject<HTMLDivElement | null> {
 }
 
 /**
- * For a modal gating its body on a query, whose `QueryState` must sit inside the panel, and for a sheet: the phone's
- * More sheet and the team picker; all else uses `FormModal`. The cap is `dvh`: mobile `vh` ignores the on-screen
- * keyboard and pushes the footer off-screen.
+ * For a modal gating its body on a query, whose `QueryState` must sit inside the panel, and for a `sheet` or
+ * `responsive` placement, which `FormModal` lacks; all else uses `FormModal`. The cap is `dvh`: mobile `vh` ignores
+ * the on-screen keyboard and pushes the footer off-screen.
  */
 export default function ModalShell({
   title,

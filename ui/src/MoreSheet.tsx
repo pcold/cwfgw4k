@@ -40,7 +40,7 @@ interface MoreSheetProps {
 
 /** Never closes itself on navigation: `TabBar` remounts it. @see ModalShell */
 export default function MoreSheet({ id, onClose }: MoreSheetProps): ReactNode {
-  const { choice, changeTeam } = useMyTeam();
+  const { choice, canAsk, changeTeam } = useMyTeam();
   return (
     <ModalShell title="More" onClose={onClose} placement="sheet" dismissOnBackdrop>
       <div id={id}>
@@ -52,18 +52,20 @@ export default function MoreSheet({ id, onClose }: MoreSheetProps): ReactNode {
               </NavLink>
             </li>
           ))}
-          <li>
-            <button
-              type="button"
-              className={`w-full text-left ${rowClass({ isActive: false })}`}
-              onClick={() => {
-                changeTeam();
-                onClose();
-              }}
-            >
-              {myTeamRowLabel(choice)}
-            </button>
-          </li>
+          {canAsk ? (
+            <li>
+              <button
+                type="button"
+                className={`w-full text-left ${rowClass({ isActive: false })}`}
+                onClick={() => {
+                  changeTeam();
+                  onClose();
+                }}
+              >
+                {myTeamRowLabel(choice)}
+              </button>
+            </li>
+          ) : null}
         </ul>
         <hr className="my-3 border-hairline" />
         <NavLink to={ADMIN_PATH} className={rowClass}>

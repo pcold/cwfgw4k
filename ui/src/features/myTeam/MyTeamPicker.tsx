@@ -1,12 +1,8 @@
 import { useState, type ReactNode } from 'react';
-import { useMatch } from 'react-router';
 import Button from '@/shared/components/Button';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import ModalShell from '@/shared/components/ModalShell';
 import { useMyTeam } from './MyTeamContext';
-
-/** Admin is the commissioner's tool, not a page a visitor lands on; a team preference has nothing to offer it. */
-const NO_PICKER_PATH = '/admin';
 
 const TEAM_BUTTON_CLASS =
   `min-w-0 break-words rounded border-2 px-3 py-2 text-left font-display font-bold uppercase tracking-wider ${TAP_TARGET_CLASS}`;
@@ -21,8 +17,7 @@ const JUST_BROWSING_CLASS =
 /** Mounted once beside the routes; opens itself on a first visit. */
 export default function MyTeamPicker(): ReactNode {
   const { asking } = useMyTeam();
-  const onNoPickerPage = useMatch(NO_PICKER_PATH) !== null;
-  if (!asking || onNoPickerPage) return null;
+  if (!asking) return null;
   return <TeamPickerDialog />;
 }
 

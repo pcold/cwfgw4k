@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMatch, useSearchParams } from 'react-router';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
@@ -19,12 +19,16 @@ import { readStoredMyTeam, writeStoredMyTeam } from './myTeamStorage';
 /** A personal link, `/?team=womble`, which sets the team on a fresh device. */
 const TEAM_PARAM = 'team';
 
+/** Admin is the commissioner's tool, not a page a visitor lands on; a team preference has nothing to offer it. */
+const NO_PICKER_PATH = '/admin';
+
 interface MyTeamValue {
   /** Already checked against the newest season's teams. */
   readonly choice: MyTeamChoice;
   /** The newest season's teams, alphabetical; empty until they load. */
   readonly teamNames: readonly string[];
-  /** Not route-aware: the picker decides where it may open. */
+  /** False on Admin, and until the newest season has names to offer; Change is only offered where it can ask. */
+  readonly canAsk: boolean;
   readonly asking: boolean;
   readonly chooseTeam: (teamName: string) => void;
   readonly chooseBrowsing: () => void;
@@ -42,7 +46,7 @@ function persist(choice: MyTeamChoice, setSaved: (choice: MyTeamChoice) => void)
 }
 
 /**
- * Validates against `seasons[0]` and reads the rosters cache the Rosters page fills, so nothing new is fetched.
+ * Validates against `seasons[0]` through the Rosters page's own query key, so the two share one request and cache.
  * Reads no auth state and writes nothing but its own storage key: the choice is a preference and unlocks nothing.
  */
 export function MyTeamProvider({ children }: { children: ReactNode }): ReactNode {
@@ -52,8 +56,7 @@ export function MyTeamProvider({ children }: { children: ReactNode }): ReactNode
     queryKey: queryKeys.rosters.bySeason(newestSeasonId),
     queryFn: newestSeasonId === null ? skipToken : () => api.rosters(newestSeasonId),
   });
-  const newestRosters = rostersQuery.data;
-  const newestTeamNames = newestRosters?.map((team) => team.teamName);
+  const newestTeamNames = useMemo(() => rostersQuery.data?.map((team) => team.teamName), [rostersQuery.data]);
 
   const [saved, setSaved] = useState<MyTeamChoice>(() => parseMyTeam(readStoredMyTeam()));
   const [dismissed, setDismissed] = useState(false);
@@ -62,11 +65,8 @@ export function MyTeamProvider({ children }: { children: ReactNode }): ReactNode
 
   // Waits for the names, so an unmatched link can't be told from one read too early. Removed matched or not.
   useEffect(() => {
-    if (linkedTeam === null || newestRosters === undefined) return;
-    const matched = matchTeamName(
-      linkedTeam,
-      newestRosters.map((team) => team.teamName),
-    );
+    if (linkedTeam === null || newestTeamNames === undefined) return;
+    const matched = matchTeamName(linkedTeam, newestTeamNames);
     if (matched !== null) persist({ kind: 'team', teamName: matched }, setSaved);
     setSearchParams(
       (current) => {
@@ -76,26 +76,37 @@ export function MyTeamProvider({ children }: { children: ReactNode }): ReactNode
       },
       { replace: true },
     );
-  }, [linkedTeam, newestRosters, setSearchParams]);
+  }, [linkedTeam, newestTeamNames, setSearchParams]);
 
+  const onNoPickerPage = useMatch(NO_PICKER_PATH) !== null;
+  const canAsk = !onNoPickerPage && newestTeamNames !== undefined && newestTeamNames.length > 0;
   const choice = validateMyTeam(saved, newestTeamNames);
-  const value: MyTeamValue = {
-    choice,
-    teamNames: sortTeamNames(newestTeamNames ?? []),
-    asking:
-      choice.kind === 'unasked' &&
-      newestTeamNames !== undefined &&
-      newestTeamNames.length > 0 &&
-      linkedTeam === null &&
-      !dismissed,
-    chooseTeam: (teamName) => persist({ kind: 'team', teamName: normaliseTeamName(teamName) }, setSaved),
-    chooseBrowsing: () => persist({ kind: 'browsing' }, setSaved),
-    dismissPicker: () => setDismissed(true),
-    changeTeam: () => {
-      persist(UNASKED, setSaved);
-      setDismissed(false);
-    },
-  };
+  const asking = choice.kind === 'unasked' && canAsk && linkedTeam === null && !dismissed;
+
+  const chooseTeam = useCallback(
+    (teamName: string) => persist({ kind: 'team', teamName: normaliseTeamName(teamName) }, setSaved),
+    [],
+  );
+  const chooseBrowsing = useCallback(() => persist({ kind: 'browsing' }, setSaved), []);
+  const dismissPicker = useCallback(() => setDismissed(true), []);
+  const changeTeam = useCallback(() => {
+    persist(UNASKED, setSaved);
+    setDismissed(false);
+  }, []);
+
+  const value = useMemo<MyTeamValue>(
+    () => ({
+      choice,
+      teamNames: sortTeamNames(newestTeamNames ?? []),
+      canAsk,
+      asking,
+      chooseTeam,
+      chooseBrowsing,
+      dismissPicker,
+      changeTeam,
+    }),
+    [choice, newestTeamNames, canAsk, asking, chooseTeam, chooseBrowsing, dismissPicker, changeTeam],
+  );
 
   return <MyTeamContext.Provider value={value}>{children}</MyTeamContext.Provider>;
 }
