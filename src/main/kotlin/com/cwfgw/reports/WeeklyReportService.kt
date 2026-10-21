@@ -570,7 +570,8 @@ internal fun assembleWeeklyReport(inputs: WeeklyReportInputs): WeeklyReport {
             rules = inputs.rules,
             isTeamEvent = inputs.tournament.isTeamEvent,
         )
-    val sideBetDetail = buildSideBetDetail(derived.sideBetPerRound, inputs.teams, inputs.allRosters, derived.golfersById)
+    val sideBetDetail =
+        buildSideBetDetail(derived.sideBetPerRound, inputs.teams, inputs.allRosters, derived.golfersById)
     val leaderboard =
         buildPersistedLeaderboard(
             results = inputs.results,
