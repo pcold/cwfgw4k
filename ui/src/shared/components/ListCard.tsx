@@ -67,7 +67,7 @@ export default function ListCard({
   fill = 'plain',
 }: ListCardProps): ReactElement {
   const nameLine = (
-    <div className={`font-display font-bold text-lg text-ink truncate ${NAME_CASE_CLASS[nameCase]}`}>{name}</div>
+    <div className={`font-display font-bold text-lg text-ink truncate min-w-0 ${NAME_CASE_CLASS[nameCase]}`}>{name}</div>
   );
   return (
     <li className={`flex min-h-13.5 rounded ${FILL_CLASS[fill].card}`}>

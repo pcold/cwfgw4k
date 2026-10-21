@@ -106,7 +106,7 @@ describe('ListCard', () => {
 
     expect(card).toHaveClass('bg-my-team', 'ring-2', 'ring-gold');
     expect(card).not.toHaveClass('bg-surface-card');
-    expect(within(card).getByText('Womble')).toHaveClass('truncate');
+    expect(within(card).getByText('Womble')).toHaveClass('truncate', 'min-w-0');
     expect(within(card).getByText('Womble').nextElementSibling).toHaveTextContent('your team');
   });
 
