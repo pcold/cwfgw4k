@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Level
 import com.cwfgw.db.LOCK_NOT_AVAILABLE
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
+import com.cwfgw.http.DomainError
 import com.cwfgw.http.installErrorHandling
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.captureLogs
@@ -24,8 +25,11 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import org.jooq.exception.DataAccessException
 import java.sql.SQLException
@@ -44,6 +48,9 @@ private const val NEXT_REVISION = "cwfgw4k-00042-new"
 // Brief pause to let all concurrent callers register on the in-flight map
 // before the gated fetch resolves.
 private const val SETTLE_MS: Long = 50
+
+// Long enough that a waiter still suspended past it is hung, not slow.
+private const val HANG_DEADLINE_MS: Long = 2_000
 
 private class StepClock(start: Instant = Instant.parse("2026-05-03T00:00:00Z")) : Clock() {
     private var current: Instant = start
@@ -113,6 +120,59 @@ class RequestCacheSpec : FunSpec({
         cache.cachedJsonGet(TEST_KEY, TEST_ROUTE, fetch = fetch) shouldBe "[\"recovered\"]"
 
         calls.get() shouldBe 2
+    }
+
+    test("a coalesced waiter re-throws the loader's own exception, and the next call fetches fresh") {
+        val cache =
+            RequestCache(FakeCacheRepository(), FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
+        val fetchStarted = CompletableDeferred<Unit>()
+        val failNow = CompletableDeferred<Unit>()
+
+        supervisorScope {
+            val loader =
+                async {
+                    cache.cachedJsonGet(TEST_KEY, TEST_ROUTE) {
+                        fetchStarted.complete(Unit)
+                        failNow.await()
+                        throw DomainError.NotFound("season not found")
+                    }
+                }
+            fetchStarted.await()
+            val waiter =
+                async(start = CoroutineStart.UNDISPATCHED) {
+                    cache.cachedJsonGet(TEST_KEY, TEST_ROUTE) { "[\"waiter fetched\"]" }
+                }
+            failNow.complete(Unit)
+
+            shouldThrow<DomainError.NotFound> { waiter.await() }
+            shouldThrow<DomainError.NotFound> { loader.await() }
+        }
+        cache.cachedJsonGet(TEST_KEY, TEST_ROUTE) { "[\"recovered\"]" } shouldBe "[\"recovered\"]"
+    }
+
+    test("a loader cancelled mid-fetch ends its coalesced waiter instead of leaving it hung") {
+        val cache =
+            RequestCache(FakeCacheRepository(), FakeTransactor(), TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
+        val fetchStarted = CompletableDeferred<Unit>()
+
+        coroutineScope {
+            val loader =
+                async {
+                    cache.cachedJsonGet(TEST_KEY, TEST_ROUTE) {
+                        fetchStarted.complete(Unit)
+                        awaitCancellation()
+                    }
+                }
+            fetchStarted.await()
+            val waiter =
+                async(start = CoroutineStart.UNDISPATCHED) {
+                    cache.cachedJsonGet(TEST_KEY, TEST_ROUTE) { "[\"waiter fetched\"]" }
+                }
+            loader.cancel()
+
+            withTimeoutOrNull(HANG_DEADLINE_MS) { waiter.join() } shouldBe Unit
+            waiter.isCancelled shouldBe true
+        }
     }
 
     test("entries beyond TTL are not returned and the fetch runs again") {
