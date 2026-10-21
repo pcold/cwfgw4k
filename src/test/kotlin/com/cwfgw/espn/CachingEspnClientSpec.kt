@@ -5,12 +5,15 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.time.Duration
 import java.time.LocalDate
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
@@ -94,11 +97,24 @@ class CachingEspnClientSpec : FunSpec({
         val delegate = CountingEspnClient()
         val ticker = StepTicker()
         val ttl = Duration.ofMinutes(5)
-        val client = CachingEspnClient(delegate, scoreboardTtl = ttl, scoreboardMaxSize = 256, ticker = ticker)
 
-        client.fetchScoreboard(DATE_A)
-        ticker.advance(ttl.plusNanos(1))
-        client.fetchScoreboard(DATE_A)
+        // Caffeine stamps the write in a completion callback on the loading thread, and await() can resume
+        // before it runs. Sharing one thread queues the resume behind the stamp, so advance() can't overtake it.
+        Executors.newSingleThreadExecutor().asCoroutineDispatcher().use { loadThread ->
+            val client =
+                CachingEspnClient(
+                    delegate,
+                    scoreboardTtl = ttl,
+                    scoreboardMaxSize = 256,
+                    ticker = ticker,
+                    loadDispatcher = loadThread,
+                )
+            withContext(loadThread) {
+                client.fetchScoreboard(DATE_A)
+                ticker.advance(ttl.plusNanos(1))
+                client.fetchScoreboard(DATE_A)
+            }
+        }
 
         delegate.scoreboardCalls.get() shouldBe 2
     }

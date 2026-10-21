@@ -10,6 +10,7 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -111,10 +112,11 @@ internal class CachingEspnClient(
     scoreboardTtl: Duration,
     scoreboardMaxSize: Long,
     ticker: Ticker = Ticker.systemTicker(),
+    loadDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : EspnClient {
     // Long-lived scope tied to the JVM lifetime. SupervisorJob so one
     // failed ESPN load doesn't poison sibling loads.
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + loadDispatcher)
 
     private val scoreboardCache: AsyncCache<LocalDate, List<EspnTournament>> =
         Caffeine.newBuilder()
