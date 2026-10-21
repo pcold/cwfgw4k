@@ -110,26 +110,26 @@ private class MixedFieldFixture(
                         },
                 ),
         )
-
-    fun persistImport() = with(noopTransactionContext) { service.persistImportIn(MASTERS, event) }
-
-    fun golferByPosition(): Map<Int?, GolferId> =
-        with(noopTransactionContext) { tournamentRepo.getResults(MASTERS.id) }.associate { it.position to it.golferId }
-
-    suspend fun linkedGolfers(): Map<String, GolferId?> =
-        service.listCompetitorsForLinking(MASTERS.id).orFail().competitors
-            .associate { it.espnCompetitorId to it.linkedGolfer?.id }
-
-    fun pointLookups(): Int = golferRepo.findByIdCalls + golferRepo.findByPgaPlayerIdCalls
 }
+
+private fun MixedFieldFixture.persistImport() = with(noopTransactionContext) { service.persistImportIn(MASTERS, event) }
+
+private fun MixedFieldFixture.golferByPosition(): Map<Int?, GolferId> =
+    with(noopTransactionContext) { tournamentRepo.getResults(MASTERS.id) }.associate { it.position to it.golferId }
+
+private suspend fun MixedFieldFixture.linkedGolfers(): Map<String, GolferId?> =
+    service.listCompetitorsForLinking(MASTERS.id).orFail().competitors
+        .associate { it.espnCompetitorId to it.linkedGolfer?.id }
+
+private fun MixedFieldFixture.pointLookups(): Int = golferRepo.findByIdCalls + golferRepo.findByPgaPlayerIdCalls
 
 private val COLLIN = golfer(1, "Collin", "Morikawa", pgaPlayerId = "c1")
 private val ADAM = golfer(2, "Adam", "Scott", pgaPlayerId = "a1")
 private val BRYSON = golfer(3, "Bryson", "DeChambeau")
 
 /**
- * With its step skipped, each competitor would be linked elsewhere: Tom Kim has no row but his override's, and by
- * name alone Adam Scott's row reads as a namesake's, since the matcher takes any id a name finds to be another's.
+ * With its step skipped, the listing links Tom Kim and Adam Scott to no row: Tom Kim has no row but his override's, and
+ * by name alone Adam Scott's row reads as a namesake's. An import still credits Adam, through his id's holder.
  */
 private fun mixedField(): MixedFieldFixture =
     MixedFieldFixture(
