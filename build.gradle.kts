@@ -1,4 +1,6 @@
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import java.security.MessageDigest
+import java.util.HexFormat
 import java.util.Properties
 
 plugins {
@@ -465,6 +467,34 @@ tasks.named<Copy>("processResources") {
     from("ui/dist") {
         into("static")
     }
+}
+
+// The response cache's revision wherever K_REVISION is unset. A hash of the code, not the git commit, which
+// stays put across an uncommitted edit; and not a timestamp, which would orphan every row on each run.
+val generateBuildId =
+    tasks.register("generateBuildId") {
+        group = "build"
+        description = "Hash the compiled main classes and their runtime dependencies into build-id.txt."
+        val compiledCode = files(sourceSets.main.get().output.classesDirs, configurations.runtimeClasspath)
+        inputs.files(compiledCode).withPropertyName("compiledCode").withPathSensitivity(PathSensitivity.RELATIVE)
+        val buildIdFile = layout.buildDirectory.file("generated/buildId/build-id.txt")
+        outputs.file(buildIdFile).withPropertyName("buildId")
+        outputs.cacheIf { true }
+        doLast {
+            val sha256 = { bytes: ByteArray ->
+                HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes))
+            }
+            // A visit names each file as the RELATIVE fingerprint does, so this hash moves only when that check does.
+            val manifest =
+                buildList {
+                    compiledCode.asFileTree.visit { if (!isDirectory) add("$path ${sha256(file.readBytes())}") }
+                }.sorted()
+            buildIdFile.get().asFile.writeText(sha256(manifest.joinToString("\n").toByteArray()).take(16))
+        }
+    }
+
+tasks.named<Copy>("processResources") {
+    from(generateBuildId)
 }
 
 tasks.named("check") {
