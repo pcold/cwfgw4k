@@ -11,11 +11,15 @@ import type {
   Tournament,
 } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
-import { DateField, FieldShell, SelectField, TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import DateField from '@/shared/components/DateField';
+import FieldShell from '@/shared/components/FieldShell';
+import SelectField from '@/shared/components/SelectField';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
-import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
+import AdminLeagueField from './AdminLeagueField';
+import { useAdminLeague } from './useAdminLeague';
 import AdminSection from './AdminSection';
 
 const SKIPPED_BANNER_CLASS =

@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import PhoneFilter from './PhoneFilter';
-import { FIELD_CLASS } from './formFields';
+import { FIELD_CLASS } from './formControls';
 
 const NO_PROVIDERS = { withLeagueSeasonProvider: false };
 

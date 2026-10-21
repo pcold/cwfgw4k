@@ -15,10 +15,13 @@ import type {
   Season,
 } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
-import { FieldShell, SelectField, TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import FieldShell from '@/shared/components/FieldShell';
+import SelectField from '@/shared/components/SelectField';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
-import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
+import AdminLeagueField from './AdminLeagueField';
+import { useAdminLeague } from './useAdminLeague';
 import AdminSection from './AdminSection';
 
 function pickKey(teamNumber: number, pick: RosterPreviewPick): string {

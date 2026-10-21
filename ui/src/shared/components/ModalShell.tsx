@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactElement, type ReactNode, type RefObject } from 'react';
-import { TAP_TARGET_CLASS } from './formFields';
+import { TAP_TARGET_CLASS } from './formControls';
 
 /** Unconditional: a modal covers the viewport at every width. */
 export const MODAL_SCROLL_LOCK_CLASS = 'overflow-hidden';

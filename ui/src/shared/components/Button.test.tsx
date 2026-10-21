@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import Button from './Button';
-import { TAP_TARGET_CLASS } from './formFields';
+import { TAP_TARGET_CLASS } from './formControls';
 
 const NO_PROVIDERS = { withLeagueSeasonProvider: false };
 

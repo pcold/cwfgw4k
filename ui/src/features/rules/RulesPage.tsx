@@ -4,7 +4,7 @@ import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type { SeasonRules, Tournament } from '@/shared/api/types';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
-import { QueryState } from '@/shared/components/QueryState';
+import QueryState from '@/shared/components/QueryState';
 import PageTitle from '@/shared/components/PageTitle';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicker';

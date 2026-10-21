@@ -3,7 +3,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { RosterTeam } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import RostersView from './RostersView';

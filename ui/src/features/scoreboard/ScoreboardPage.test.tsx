@@ -19,7 +19,7 @@ import type {
   Tournament,
   WeeklyReport,
 } from '@/shared/api/types';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import ScoreboardPage from './ScoreboardPage';
 
 const leaguesMock = vi.fn<typeof api.leagues>();

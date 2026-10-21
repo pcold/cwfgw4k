@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useAuth } from '@/features/auth/AuthContext';
 import FormModal from '@/shared/components/FormModal';
-import { TextField } from '@/shared/components/formFields';
+import TextField from '@/shared/components/TextField';
 
 interface Props {
   onClose: () => void;

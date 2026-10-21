@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeSeason } from '@/shared/test/fixtures';
 import { ApiError } from '@/shared/api/client';

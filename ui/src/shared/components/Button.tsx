@@ -1,5 +1,5 @@
 import type { MouseEventHandler, ReactElement, ReactNode } from 'react';
-import { TAP_TARGET_CLASS } from './formFields';
+import { TAP_TARGET_CLASS } from './formControls';
 
 /** @see Button */
 export type ButtonTone = 'primary' | 'secondary' | 'danger';

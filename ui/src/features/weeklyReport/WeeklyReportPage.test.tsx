@@ -8,7 +8,7 @@ import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
 import type { League, ReportTeamColumn, RosterTeam, Season, Tournament, WeeklyReport } from '@/shared/api/types';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import WeeklyReportPage from './WeeklyReportPage';
 import type { downloadWeeklyReportPdf } from './weeklyReportPdf';
 

@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
 import { makeLeaderboardEntry, makeWonLostTotals } from '@/shared/test/fixtures';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import ScoreboardView from './ScoreboardView';

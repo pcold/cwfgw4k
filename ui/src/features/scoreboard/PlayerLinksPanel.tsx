@@ -4,9 +4,11 @@ import { api } from '@/shared/api/client';
 import { invalidateAfterScoreOwnerChange, queryKeys } from '@/shared/api/queryKeys';
 import Button from '@/shared/components/Button';
 import Chip from '@/shared/components/Chip';
-import { FIELD_CLASS, FieldShell, TAP_TARGET_CLASS, TextField } from '@/shared/components/formFields';
+import FieldShell from '@/shared/components/FieldShell';
+import TextField from '@/shared/components/TextField';
+import { FIELD_CLASS, TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import ModalShell from '@/shared/components/ModalShell';
-import { QueryState } from '@/shared/components/QueryState';
+import QueryState from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
 import type {
   Golfer,

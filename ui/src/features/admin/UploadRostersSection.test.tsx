@@ -9,7 +9,7 @@ import { nth } from '@/shared/test/nth';
 import OpenQuery from '@/shared/test/OpenQuery';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeSeason } from '@/shared/test/fixtures';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import UploadRostersSection, { buildConfirmTeams } from './UploadRostersSection';
 
 const leaguesMock = vi.fn<typeof api.leagues>();

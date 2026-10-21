@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { skipToken, useQuery, type QueryKey, type UseQueryResult } from '@tanstack/react-query';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
-import { TAP_TARGET_CLASS } from './formFields';
+import { TAP_TARGET_CLASS } from './formControls';
 
 /** @see useLiveOverlayQuery */
 export interface LiveOverlayState {

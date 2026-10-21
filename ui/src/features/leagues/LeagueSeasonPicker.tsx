@@ -1,7 +1,7 @@
 import { useId, type ReactNode } from 'react';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { seasonLabel } from '@/shared/util/season';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 
 const FIELD_CLASS = 'flex items-center gap-2 w-full sm:w-auto';
 const LABEL_CLASS = 'text-xs text-ink-soft font-medium uppercase tracking-wider w-14 sm:w-auto shrink-0';

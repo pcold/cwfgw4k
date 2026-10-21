@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { NavLink } from 'react-router';
 import ModalShell from '@/shared/components/ModalShell';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { useMyTeam } from '@/features/myTeam/MyTeamContext';
 import type { MyTeamChoice } from '@/features/myTeam/myTeamModel';
 

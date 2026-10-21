@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
-import { TAP_TARGET_CLASS } from './formFields';
+import { TAP_TARGET_CLASS } from './formControls';
 import PositionCell, { type PositionCellKind } from './PositionCell';
 import YouTag from './YouTag';
 

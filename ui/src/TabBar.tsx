@@ -1,6 +1,6 @@
 import { useId, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import MoreSheet, { SHEET_PATHS } from './MoreSheet';
 
 const ROUTE_TABS: ReadonlyArray<{ readonly to: string; readonly label: string }> = [

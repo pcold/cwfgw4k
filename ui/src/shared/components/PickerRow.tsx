@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { CONTROL_CLASS, TAP_TARGET_CLASS, type SelectOption } from './formFields';
+import { CONTROL_CLASS, TAP_TARGET_CLASS, type SelectOption } from './formControls';
 
 const PICKER_SELECT_CLASS = `bg-surface-card ${CONTROL_CLASS} ${TAP_TARGET_CLASS} w-full min-w-0 truncate sm:w-auto`;
 

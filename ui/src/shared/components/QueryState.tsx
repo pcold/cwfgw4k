@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 
 export interface QueryStateLike<T> {
   isLoading: boolean;
@@ -14,7 +13,7 @@ interface QueryStateProps<T> {
   children: (data: T) => ReactNode;
 }
 
-export function QueryState<T>({ query, label, children }: QueryStateProps<T>): ReactNode {
+export default function QueryState<T>({ query, label, children }: QueryStateProps<T>): ReactNode {
   if (query.isLoading) {
     return <p className="text-ink-muted">Loading {label}…</p>;
   }
@@ -27,20 +26,4 @@ export function QueryState<T>({ query, label, children }: QueryStateProps<T>): R
   }
   if (query.data === undefined) return null;
   return <>{children(query.data)}</>;
-}
-
-export function useLeaguesGate(): ReactNode | null {
-  const { leagues, leaguesLoading, leaguesError } = useLeagueSeason();
-  if (leaguesLoading) {
-    return <p className="text-ink-muted">Loading leagues…</p>;
-  }
-  if (leaguesError) {
-    return (
-      <p className="text-semantic-danger">Failed to load leagues: {String(leaguesError)}</p>
-    );
-  }
-  if (!leagues || leagues.length === 0) {
-    return <p className="text-ink-muted">No leagues configured.</p>;
-  }
-  return null;
 }
