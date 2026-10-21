@@ -24,15 +24,10 @@ fun UUID.toUserId(): UserId = UserId(this)
 fun String.toUserId(): UserId? = toUUIDOrNull()?.toUserId()
 
 /**
- * The set of recognized user roles. Stays as an enum (not sealed interface)
- * because roles are pure tags with no per-variant state — when permission
- * checks land they'll be exhaustive `when` branches over this set.
+ * An enum, not a sealed interface: roles are pure tags with no per-variant state.
  *
- * [fromValue] defaults unrecognized DB values to [User] rather than failing
- * — fail-closed: if the DB grew a role we don't understand, the safer
- * outcome is "least privilege" rather than "treat as admin." Migrations
- * are write-controlled by us, so this is defense-in-depth for stray writes
- * rather than a regular code path.
+ * [fromValue] reads an unknown value as [User], least privilege rather than admin or a failed read. With the
+ * `users_role_known` CHECK in place, only a migration widening it ahead of this enum can store one.
  */
 @Serializable(with = UserRoleSerializer::class)
 enum class UserRole(val value: String) {
