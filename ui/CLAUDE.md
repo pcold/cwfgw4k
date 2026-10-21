@@ -356,7 +356,7 @@ What stays in the UI:
       scoreboard/   ScoreboardPage + View + scoreboardModel + tests
       rankings/     RankingsPage + View + RankingsChart + rankingsChartModel
       admin/        AdminPage + all admin sections + tests
-      auth/         AuthContext, LoginModal, useAuth
+      auth/         AuthContext (AuthProvider + useAuth), LoginModal
       ...
     shared/
       api/          client/ (core + per-domain slices), queryKeys, types

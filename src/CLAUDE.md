@@ -67,8 +67,10 @@ Policy, in order of preference:
    "tournament not found," "tournament finalized," and "golfer not found"
    must each produce a different HTTP status). The error type lives in the
    domain package and stays free of HTTP imports; routes map it to
-   `DomainError` via a tiny `.orThrow()` extension. The `TournamentLinkService`
-   / `TournamentLinkRoutes` pair is the reference shape.
+   `DomainError` via a tiny `.orThrow()` extension. `AdminRoutes`'
+   `orThrow()` over `AdminError` is the reference shape; a route mapping two
+   error types names each mapper for its type, as `TournamentLinkRoutes`'
+   `orThrowLink()` / `orThrowEspn()` do.
 3. **Exceptions** for truly exceptional conditions: programmer errors
    (`IllegalArgumentException`, `IllegalStateException`), infrastructure
    failures, and at HTTP/framework boundaries — specifically `DomainError`
@@ -435,13 +437,13 @@ Rules:
 When a service operation needs read-then-write atomicity — or a consistent
 read snapshot — across more than one repository, the gate checks, data
 gather, and write all need to run inside a single `tx.read` / `tx.update`.
-Two rules follow from that:
+Three rules follow from that:
 
 - **MUST** depend on the relevant repositories directly when the flow needs
   to thread them through one transaction. Do not call into another service
-  (e.g. `tournamentService.get(...)`) from inside a transactional flow:
-  every service captures its own `Transactor` and would open a new
-  transaction on a fresh connection, breaking the snapshot.
+  (e.g. `tournamentService.get(...)`) from inside a transactional flow: its
+  method opens a new transaction on a fresh connection, breaking the
+  snapshot. The `…In` methods below are the one exception.
 
   ```kotlin
   // RIGHT — gate + write share one tx
@@ -480,6 +482,11 @@ Two rules follow from that:
   }
   ```
 
+- **MAY** call another service's `…In` method inside the flow: an `internal`
+  method declaring `context(ctx: WriteTransactionContext)` that opens no
+  `tx.*`, so its writes commit or roll back with the caller's.
+  `ScoringService.calculateScoresIn` is the reference shape.
+
 - **MAY** use other services for top-level guards that don't need to share
   the transaction with subsequent work — e.g. an early
   `service.get(id) ?: return Result.Err(NotFound)` that just produces a
@@ -488,8 +495,8 @@ Two rules follow from that:
 
 `TournamentOpsService.resetTournament` is the reference shape: take the
 relevant repositories as constructor parameters alongside any services used
-for non-transactional work, and run the whole gather + write sequence inside
-one `tx.update`.
+for non-transactional work or through their `…In` methods, and run the whole
+gather + write sequence inside one `tx.update`.
 
 #### Combining data across repositories (reads)
 
