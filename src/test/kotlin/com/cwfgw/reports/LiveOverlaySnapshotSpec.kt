@@ -188,4 +188,24 @@ class LiveOverlaySnapshotSpec : FunSpec({
             fixture.espn.fetchCalls.shouldBeEmpty()
         }
     }
+
+    test("a live report on a completed tournament has no candidate, so it never loads the overlay's context") {
+        val fixture = SnapshotFixture()
+
+        fixture.service.getReport(SEASON_ID, SONY_ID, live = true).orFail()
+
+        fixture.transactor.opened shouldBe 1
+        fixture.links.overrideReads shouldBe 0
+        fixture.espn.fetchCalls.shouldBeEmpty()
+    }
+
+    test("live rankings without a cutoff have no candidate, so they never load the overlay's context") {
+        val fixture = SnapshotFixture()
+
+        fixture.service.getRankings(SEASON_ID, throughTournamentId = null, live = true).orFail()
+
+        fixture.transactor.opened shouldBe 1
+        fixture.links.overrideReads shouldBe 0
+        fixture.espn.fetchCalls.shouldBeEmpty()
+    }
 })
