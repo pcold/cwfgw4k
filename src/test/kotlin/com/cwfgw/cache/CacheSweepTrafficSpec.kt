@@ -1,14 +1,13 @@
 package com.cwfgw.cache
 
-import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.testing.seedCache
 import io.kotest.assertions.nondeterministic.continually
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import io.ktor.client.request.get
-import java.time.Duration
 import java.time.Instant
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -23,7 +22,7 @@ class CacheSweepTrafficSpec : FunSpec({
 
     test("an app that serves no request never sweeps") {
         val rows = staleRows()
-        apiTest(configure = { cacheOver(rows) }) {
+        apiTest(configure = { seedCache(rows) }) {
             startApplication()
 
             continually(IDLE_WATCH) { rows.storedKeys() shouldBe setOf(STALE_KEY) }
@@ -32,7 +31,7 @@ class CacheSweepTrafficSpec : FunSpec({
 
     test("the first request sweeps the expired rows before it is answered") {
         val rows = staleRows()
-        apiTest(configure = { cacheOver(rows) }) { client ->
+        apiTest(configure = { seedCache(rows) }) { client ->
             client.get("/api/v1/health")
 
             rows.storedKeys().shouldBeEmpty()
@@ -41,7 +40,7 @@ class CacheSweepTrafficSpec : FunSpec({
 
     test("a request inside the interval after a sweep does not sweep again") {
         val rows = staleRows()
-        apiTest(configure = { cacheOver(rows) }) { client ->
+        apiTest(configure = { seedCache(rows) }) { client ->
             client.get("/api/v1/health")
             with(noopTransactionContext) { rows.put(LATER_STALE_KEY, "{}", EXPIRED_AT, CacheGeneration(0)) }
 
@@ -54,7 +53,3 @@ class CacheSweepTrafficSpec : FunSpec({
 
 private fun staleRows(): FakeCacheRepository =
     FakeCacheRepository(initial = mapOf(STALE_KEY to FakeEntry(value = "{}", expiresAt = EXPIRED_AT)))
-
-private fun ApiFixture.cacheOver(rows: CacheRepository) {
-    requestCache = RequestCache(rows, transactor, "sweep-test", defaultTtl = Duration.ofMinutes(5))
-}

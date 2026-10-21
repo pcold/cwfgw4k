@@ -139,8 +139,8 @@ private fun messageArgumentOf(expression: KtCallExpression, callable: String): K
 }
 
 /**
- * Resolved, never spelled: this repo's loggers are variously `log`, `poolMetricsLog`,
- * `acquireLog` and `cacheSweepLog`, and matching a receiver's name would be the
+ * Resolved, never spelled: this repo's loggers are variously `log`, `poolMetricsLog`
+ * and `acquireLog`, and matching a receiver's name would be the
  * forgeable check this rule exists to replace.
  */
 @OptIn(KaExperimentalApi::class)

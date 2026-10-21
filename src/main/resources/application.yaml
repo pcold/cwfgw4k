@@ -37,9 +37,8 @@ cache:
   # Start at 5 minutes; tune up if upstream load is still high, down if liveness
   # complaints come in.
   defaultTtlSeconds: ${CACHE_DEFAULT_TTL_SECONDS:-300}
-  # Interval for the background coroutine that deletes expired rows. Default
-  # matches TTL: at steady state the table holds at most ~1 TTL window of stale
-  # rows before sweep clears them.
+  # Least time between two request-run sweeps of expired rows. Default matches
+  # TTL: under traffic the table holds about one TTL window of stale rows.
   sweepIntervalSeconds: ${CACHE_SWEEP_INTERVAL_SECONDS:-300}
   # Joins every cache key, so one revision never serves a body another encoded.
   # Cloud Run sets K_REVISION on each revision. Anywhere else every build shares

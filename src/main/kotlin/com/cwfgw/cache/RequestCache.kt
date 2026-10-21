@@ -180,7 +180,7 @@ class RequestCache(
     // key always ends the revision, whatever characters the revision has.
     private fun versioned(key: String): String = "$revision $key"
 
-    /** Background-sweep entry point. Logs how many rows were deleted for dashboard tracking. */
+    /** Logs how many rows were deleted for dashboard tracking. @see CacheSweep */
     suspend fun deleteExpired(): Int {
         val deleted = tx.update { repository.deleteExpired() }
         log.info { "cwfgw4k.cache event=sweep deleted=$deleted" }
