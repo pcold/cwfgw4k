@@ -12,7 +12,7 @@ import javax.sql.DataSource
 private const val PG_CONNECT_TIMEOUT_SECONDS: String = "10"
 private const val PG_SOCKET_TIMEOUT_SECONDS: String = "30"
 
-// With minimumIdle below the pool size, Hikari silently resets an idle timeout under 10s to its 10-minute default.
+// With minimumIdle below the pool size, Hikari resets an idle timeout under 10s to its 10-minute default.
 private const val IDLE_CONNECTION_TIMEOUT_MS: Long = 30_000
 private const val KEEPALIVE_DISABLED: Long = 0
 

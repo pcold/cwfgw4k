@@ -24,6 +24,7 @@ import kotlin.time.TestTimeSource
 
 private val INTERVAL = 5.minutes
 private const val CONCURRENT_CALLERS = 32
+private val SWEEP_FAILURE: String = DataAccessException::class.java.name
 
 class CacheSweepSpec : FunSpec({
 
@@ -80,8 +81,8 @@ class CacheSweepSpec : FunSpec({
         captureLogs { logs ->
             runBlocking { sweep.sweepIfDue() }
 
-            logs.events().map { it.level to it.formattedMessage } shouldContain
-                (Level.WARN to "Cache sweep failed; the next request due retries it")
+            logs.events().map { Triple(it.level, it.formattedMessage, it.throwableProxy?.className) } shouldContain
+                Triple(Level.WARN, "Cache sweep failed; the next request due retries it", SWEEP_FAILURE)
         }
         clock += INTERVAL
         sweep.sweepIfDue()

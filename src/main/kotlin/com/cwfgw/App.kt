@@ -3,6 +3,7 @@ package com.cwfgw
 import com.cwfgw.admin.adminRoutes
 import com.cwfgw.cache.CacheSweep
 import com.cwfgw.cache.clearResponseCacheOnWrite
+import com.cwfgw.cache.sweepCacheOnRequests
 import com.cwfgw.datahealth.dataHealthRoutes
 import com.cwfgw.db.PoolMetrics
 import com.cwfgw.debug.buildDebugDump
@@ -28,7 +29,6 @@ import com.cwfgw.users.installSessionAuth
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationCallPipeline
 import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.Routing
@@ -54,7 +54,6 @@ fun Application.module(
     installRequestLogging()
     installCompression()
     installErrorHandling()
-    sweepCacheOnRequests(CacheSweep(services.requestCache, services.sweepIntervalSeconds.seconds))
     poolMetrics?.let(::launchPoolMetricsLog)
     if (services.debugEnabled) launchDebugProbeLog()
     routing {
@@ -63,11 +62,6 @@ fun Application.module(
         staticRoutes()
         spaFallback()
     }
-}
-
-/** Before the handler, so the sweep runs on the CPU the request was given. @see CacheSweep */
-private fun Application.sweepCacheOnRequests(sweep: CacheSweep) {
-    intercept(ApplicationCallPipeline.Monitoring) { sweep.sweepIfDue() }
 }
 
 /**
@@ -115,6 +109,7 @@ private const val DEBUG_PROBE_INTERVAL_SECONDS: Long = 10
 private fun Routing.apiRoutes(services: AppServices) {
     route("/api/v1") {
         clearResponseCacheOnWrite(services.requestCache)
+        sweepCacheOnRequests(CacheSweep(services.requestCache, services.sweepIntervalSeconds.seconds))
         healthRoutes(services.healthProbe)
         leagueRoutes(services.leagueService)
         golferRoutes(services.golferService)

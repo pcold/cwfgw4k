@@ -38,6 +38,15 @@ class CacheSweepTrafficSpec : FunSpec({
         }
     }
 
+    test("a request outside the API does not sweep") {
+        val rows = staleRows()
+        apiTest(configure = { seedCache(rows) }) { client ->
+            client.get("/")
+
+            rows.storedKeys() shouldBe setOf(STALE_KEY)
+        }
+    }
+
     test("a request inside the interval after a sweep does not sweep again") {
         val rows = staleRows()
         apiTest(configure = { seedCache(rows) }) { client ->
