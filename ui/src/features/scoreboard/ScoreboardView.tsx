@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import type { LiveLeaderboardEntry, WeeklyReport } from '@/shared/api/types';
 import { formatDollarsAndCents } from '@/shared/util/money';
 import Chip from '@/shared/components/Chip';
@@ -350,6 +350,15 @@ function LeaderboardTable({ entries, teamFilter, onTeamFilterChange, teamOptions
   );
 }
 
+function filterLeaderboard(
+  leaderboard: readonly LiveLeaderboardEntry[],
+  teamFilter: string,
+): readonly LiveLeaderboardEntry[] {
+  if (teamFilter === ALL) return leaderboard;
+  if (teamFilter === UNDRAFTED) return leaderboard.filter(hasUndraftedPlayer);
+  return leaderboard.filter((entry) => hasPlayerOn(entry, teamFilter));
+}
+
 interface LeaderboardCardProps {
   leaderboard: readonly LiveLeaderboardEntry[];
   tournamentName: string | null;
@@ -358,19 +367,11 @@ interface LeaderboardCardProps {
 function LeaderboardCard({ leaderboard, tournamentName }: LeaderboardCardProps): ReactNode {
   const [teamFilter, setTeamFilter] = useState<string>(ALL);
 
-  const teamChoices = useMemo<readonly SelectOption[]>(
-    () => [
-      ...leaderboardTeamNames(leaderboard).map((name) => ({ value: name, label: name })),
-      ...(leaderboard.some(hasUndraftedPlayer) ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
-    ],
-    [leaderboard],
-  );
-
-  const filteredLeaderboard = useMemo(() => {
-    if (teamFilter === ALL) return leaderboard;
-    if (teamFilter === UNDRAFTED) return leaderboard.filter(hasUndraftedPlayer);
-    return leaderboard.filter((entry) => hasPlayerOn(entry, teamFilter));
-  }, [leaderboard, teamFilter]);
+  const teamChoices: readonly SelectOption[] = [
+    ...leaderboardTeamNames(leaderboard).map((name) => ({ value: name, label: name })),
+    ...(leaderboard.some(hasUndraftedPlayer) ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
+  ];
+  const filteredLeaderboard = filterLeaderboard(leaderboard, teamFilter);
 
   return (
     <div className="bg-surface-card rounded-lg">

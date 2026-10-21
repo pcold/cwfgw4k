@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreOwnerChange, queryKeys } from '@/shared/api/queryKeys';
@@ -301,19 +301,16 @@ function RosterReviewStep({
   confirming,
   errorMessage,
 }: ReviewStepProps) {
-  const summary = useMemo(
-    () => [
-      { label: 'Total Picks', value: preview.totalPicks, color: 'text-ink-strong' },
-      { label: 'Exact Matches', value: preview.matchedCount, color: 'text-semantic-success' },
-      preview.ambiguousCount > 0
-        ? { label: 'Ambiguous', value: preview.ambiguousCount, color: 'text-semantic-warning' }
-        : null,
-      preview.unmatchedCount > 0
-        ? { label: 'No Match', value: preview.unmatchedCount, color: 'text-semantic-danger' }
-        : null,
-    ],
-    [preview],
-  );
+  const summary = [
+    { label: 'Total Picks', value: preview.totalPicks, color: 'text-ink-strong' },
+    { label: 'Exact Matches', value: preview.matchedCount, color: 'text-semantic-success' },
+    preview.ambiguousCount > 0
+      ? { label: 'Ambiguous', value: preview.ambiguousCount, color: 'text-semantic-warning' }
+      : null,
+    preview.unmatchedCount > 0
+      ? { label: 'No Match', value: preview.unmatchedCount, color: 'text-semantic-danger' }
+      : null,
+  ];
   const confirmTeams = buildConfirmTeams(preview, selections);
 
   return (

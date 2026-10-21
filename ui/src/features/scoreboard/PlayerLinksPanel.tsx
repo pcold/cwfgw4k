@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreOwnerChange, queryKeys } from '@/shared/api/queryKeys';
@@ -164,14 +164,12 @@ function CompetitorRow({
   const hasChange = draftGolferId !== '' && draftGolferId !== competitor.linkedGolfer?.id;
 
   const linkedGolfer = competitor.linkedGolfer;
-  const sortedGolfers = useMemo(() => {
-    // The list leaves tombstones out, but a row may still link one, and the select must not read it as unlinked.
-    const choices = linkedGolfer && !golfers.some((g) => g.id === linkedGolfer.id) ? [...golfers, linkedGolfer] : [...golfers];
-    return choices.sort((a, b) => {
-      const last = a.lastName.localeCompare(b.lastName);
-      return last !== 0 ? last : a.firstName.localeCompare(b.firstName);
-    });
-  }, [golfers, linkedGolfer]);
+  // The list leaves tombstones out, but a row may still link one, and the select must not read it as unlinked.
+  const choices = linkedGolfer && !golfers.some((g) => g.id === linkedGolfer.id) ? [...golfers, linkedGolfer] : [...golfers];
+  const sortedGolfers = choices.sort((a, b) => {
+    const last = a.lastName.localeCompare(b.lastName);
+    return last !== 0 ? last : a.firstName.localeCompare(b.firstName);
+  });
 
   const selectId = `golfer-select-${competitor.espnCompetitorId}`;
 
