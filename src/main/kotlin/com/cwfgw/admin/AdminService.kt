@@ -440,7 +440,7 @@ class AdminService(
  */
 internal val DRAFT_ROUNDS: IntRange = 1..8
 
-/** Must agree with RosterParser's bounds and with the `team_rosters` CHECK, which would refuse any other as a 500. */
+/** Must agree with RosterParser's bounds and stay inside the `team_rosters` CHECK, which refuses the rest as a 500. */
 internal val OWNERSHIP_PCTS: IntRange = 1..100
 
 private fun findRosterProblems(teams: List<ConfirmedTeam>): List<ConfirmedRosterProblem> =

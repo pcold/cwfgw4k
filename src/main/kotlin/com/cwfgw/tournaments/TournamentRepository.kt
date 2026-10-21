@@ -115,8 +115,8 @@ private class JooqTournamentRepository : TournamentRepository {
         val conditions =
             buildList {
                 filter.seasonId?.let { add(TOURNAMENTS.SEASON_ID.eq(it.value)) }
-                // The full set adds no clause: status has no CHECK, and a row outside the enum must fail decoding
-                // rather than silently drop out of every unfiltered read.
+                // The full set adds no clause, so a status the CHECK admits but the enum lacks fails decoding rather
+                // than silently dropping out of every unfiltered read.
                 if (!filter.statuses.containsAll(TournamentStatus.entries)) {
                     add(TOURNAMENTS.STATUS.`in`(filter.statuses.map(TournamentStatus::value)))
                 }
