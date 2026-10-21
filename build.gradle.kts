@@ -123,6 +123,9 @@ tasks.withType<Test>().configureEach {
 
 tasks.test {
     useJUnitPlatform()
+    // WireContractSpec compares it with what the descriptors generate. Type-only, so an edit to it leaves
+    // ui/dist and every other test input unchanged, and the stale file would pass on an up-to-date check.
+    inputs.file("ui/src/shared/api/wireContract.generated.ts")
 }
 
 ktor {
