@@ -55,7 +55,11 @@ private val REPOSITORY_REFERENCE = Regex("""\w*Repository\b""")
 private val WRITE_CALL =
     Regex("""\.(insertInto|update|deleteFrom|delete|mergeInto|forUpdate|forNoKeyUpdate|forShare|forKeyShare)\(""")
 
-private val CONTEXT_CLAUSE_AT_END = Regex("""context\([^()]*\)\s*$""")
+private val LEADING_KDOC = Regex("""^/\*\*.*?\*/""", RegexOption.DOT_MATCHES_ALL)
+
+private val FUN_KEYWORD = Regex("""\bfun\b""")
+
+private val CONTEXT_CLAUSE = Regex("""\bcontext\([^()]*\)""")
 
 private fun KoFileDeclaration.isRepository(): Boolean = name.endsWith("Repository")
 
@@ -68,16 +72,13 @@ private fun KoFileDeclaration.linesMatching(pattern: Regex): List<String> =
     }
 
 /**
- * Konsist 0.17.3 parses with Kotlin 2.0's PSI, which leaves a `context(...)` clause outside the function it
- * belongs to, so the clause is read from the file text directly before the declaration.
+ * Konsist has no API for context parameters, so the clause is read from the declaration's text: past a KDoc that
+ * may quote one, and before `fun`, where the stdlib's `context(...) { }` call in a body can't stand in for it.
  */
 private fun KoFunctionDeclaration.declaresWriteContext(): Boolean {
-    val fileText = containingFile.text
-    val lineAndColumn = location.removePrefix("${containingFile.path}:")
-    val line = lineAndColumn.substringBefore(":").toInt()
-    val column = lineAndColumn.substringAfter(":").toInt()
-    val start = fileText.lines().take(line - 1).sumOf { above -> above.length + 1 } + column - 1
-    val clause = CONTEXT_CLAUSE_AT_END.find(fileText.substring(0, start))?.value
+    val declaration = text.replaceFirst(LEADING_KDOC, "")
+    val header = FUN_KEYWORD.find(declaration)?.let { keyword -> declaration.substring(0, keyword.range.first) }
+    val clause = header?.let { CONTEXT_CLAUSE.find(it)?.value }
 
     return clause?.contains("WriteTransactionContext") == true
 }
