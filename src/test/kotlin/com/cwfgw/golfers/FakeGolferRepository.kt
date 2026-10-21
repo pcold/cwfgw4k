@@ -18,6 +18,14 @@ class FakeGolferRepository(
 ) : GolferRepository {
     private val store = fakeTableOf<GolferId, Golfer>()
 
+    /** Counts a caller's point lookups only: the fake's own writes look rows up without going through them. */
+    var findByIdCalls: Int = 0
+        private set
+
+    /** @see findByIdCalls */
+    var findByPgaPlayerIdCalls: Int = 0
+        private set
+
     init {
         initial.forEach { golfer -> store[golfer.id] = golfer }
     }
@@ -34,17 +42,22 @@ class FakeGolferRepository(
     override fun findLinkable(search: String?): List<Golfer> = findAll(search).filter { it.tombstonedAt == null }
 
     context(ctx: TransactionContext)
-    override fun findById(id: GolferId): Golfer? = store[id]
+    override fun findById(id: GolferId): Golfer? {
+        findByIdCalls++
+        return store[id]
+    }
 
     context(ctx: TransactionContext)
     override fun findByIds(ids: Collection<GolferId>): List<Golfer> = store.values.filter { it.id in ids }
 
     context(ctx: WriteTransactionContext)
-    override fun findByIdForShare(id: GolferId): Golfer? = findById(id)
+    override fun findByIdForShare(id: GolferId): Golfer? = store[id]
 
     context(ctx: TransactionContext)
-    override fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
-        store.values.firstOrNull { it.pgaPlayerId == pgaPlayerId }
+    override fun findByPgaPlayerId(pgaPlayerId: String): Golfer? {
+        findByPgaPlayerIdCalls++
+        return holderOf(pgaPlayerId)
+    }
 
     context(ctx: TransactionContext)
     override fun findByPgaPlayerIds(pgaPlayerIds: Collection<String>): List<Golfer> =
@@ -52,7 +65,7 @@ class FakeGolferRepository(
 
     context(ctx: WriteTransactionContext)
     override fun create(request: CreateGolferRequest): Golfer {
-        if (request.pgaPlayerId != null && findByPgaPlayerId(request.pgaPlayerId) != null) {
+        if (request.pgaPlayerId != null && holderOf(request.pgaPlayerId) != null) {
             throw uniqueViolation(UNIQUE_PGA_PLAYER_ID)
         }
         val golfer =
@@ -71,7 +84,7 @@ class FakeGolferRepository(
 
     context(ctx: WriteTransactionContext)
     override fun findOrCreate(request: CreateGolferRequest): Golfer =
-        request.pgaPlayerId?.let { findByPgaPlayerId(it) } ?: create(request)
+        request.pgaPlayerId?.let(::holderOf) ?: create(request)
 
     /** One fake transaction at a time, so there is nothing to wait on. */
     context(ctx: WriteTransactionContext)
@@ -86,7 +99,7 @@ class FakeGolferRepository(
         pgaPlayerId: String,
     ): Golfer? {
         val row = store[id]?.takeIf { it.pgaPlayerId == null } ?: return null
-        if (findByPgaPlayerId(pgaPlayerId) != null) return null
+        if (holderOf(pgaPlayerId) != null) return null
         return row.copy(pgaPlayerId = pgaPlayerId).also { store[id] = it }
     }
 
@@ -94,6 +107,8 @@ class FakeGolferRepository(
     fun tombstone(id: GolferId) {
         store[id] = checkNotNull(store[id]) { "no golfer $id to tombstone" }.copy(tombstonedAt = clock())
     }
+
+    private fun holderOf(pgaPlayerId: String): Golfer? = store.values.firstOrNull { it.pgaPlayerId == pgaPlayerId }
 
     private fun Golfer.matchesSearch(term: String?): Boolean {
         if (term == null) return true

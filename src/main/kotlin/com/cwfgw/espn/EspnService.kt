@@ -43,7 +43,7 @@ private val log = KotlinLogging.logger {}
 private val UNFINALIZED: Set<TournamentStatus> = setOf(TournamentStatus.Upcoming, TournamentStatus.InProgress)
 
 /**
- * A named competitor [locateExistingGolferIn] credits to no row becomes a new golfer, unless names can't tell which
+ * A named competitor [locateExistingGolfer] credits to no row becomes a new golfer, unless names can't tell which
  * existing row it is. A team-partner row gets no `pga_player_id`, because its ESPN id is synthetic (`team:X:N`).
  */
 class EspnService(
@@ -188,7 +188,7 @@ class EspnService(
         val views =
             tx.read {
                 val context = buildMatchingContextIn(tournament.seasonId, tournamentId)
-                val located = event.competitors.map { it to locateExistingGolferIn(it, context) }
+                val located = event.competitors.map { it to context.locateExistingGolfer(it) }
                 val sameDay = findUnfinalizedIn(tournament.seasonId, startsOn = tournament.startDate)
                 val siblings =
                     findSiblingImports(tournament, event, events, sameDay)
@@ -252,7 +252,7 @@ class EspnService(
     context(ctx: TransactionContext)
     private fun locateEventIn(import: EventImport): MatchedEvent {
         val context = buildMatchingContextIn(import.tournament.seasonId, import.tournament.id)
-        val located = import.event.competitors.map { it to locateExistingGolferIn(it, context) }
+        val located = import.event.competitors.map { it to context.locateExistingGolfer(it) }
         return MatchedEvent(import = import, matches = located, context = context)
     }
 
@@ -261,15 +261,17 @@ class EspnService(
         seasonId: SeasonId,
         tournamentId: TournamentId,
     ): MatchingContext {
+        // Overrides before golfers: under READ COMMITTED, a golfer committed between the two reads would otherwise
+        // be named by an override and missing from the maps, and the override would be skipped.
+        val overrides =
+            linkRepository.listByTournament(tournamentId)
+                .associate { it.espnCompetitorId to it.golferId }
         val names = GolferNameIndex(golferRepository.findAll(search = null))
         val rosterIds =
             teamRepository.getRosterView(seasonId)
                 .flatMap { it.picks }
                 .map { it.golferId }
                 .toSet()
-        val overrides =
-            linkRepository.listByTournament(tournamentId)
-                .associate { it.espnCompetitorId to it.golferId }
         return MatchingContext(names = names, rosterGolferIds = rosterIds, overrides = overrides)
     }
 
@@ -309,20 +311,6 @@ class EspnService(
     private fun createPartnerIn(competitor: EspnCompetitor): Golfer? {
         val (firstName, lastName) = GolferName.splitName(competitor.name) ?: return null
         return golferRepository.findOrCreate(CreateGolferRequest(firstName = firstName, lastName = lastName))
-    }
-
-    context(ctx: TransactionContext)
-    private fun locateExistingGolferIn(
-        competitor: EspnCompetitor,
-        context: MatchingContext,
-    ): CompetitorMatch {
-        // Manual override wins. Lets an admin disambiguate ESPN partner rows
-        // (last-name only) when multiple rostered golfers share the surname.
-        val overridden = context.overrides[competitor.espnId]?.let { golferId -> golferRepository.findById(golferId) }
-        if (overridden != null) return CompetitorMatch.Credited(overridden)
-        val byEspnId = if (competitor.isTeamPartner) null else golferRepository.findByPgaPlayerId(competitor.espnId)
-        if (byEspnId != null) return CompetitorMatch.Credited(byEspnId)
-        return resolveByName(competitor, context.names, context.rosterGolferIds)
     }
 
     context(ctx: WriteTransactionContext)
@@ -511,7 +499,23 @@ private data class MatchingContext(
     val names: GolferNameIndex,
     val rosterGolferIds: Set<GolferId>,
     val overrides: Map<String, GolferId>,
-)
+) {
+    val golferById: Map<GolferId, Golfer> = names.golfers.associateBy(Golfer::id)
+
+    /** `golfers.pga_player_id` is UNIQUE, so no two rows contend for one key. */
+    val golferByEspnId: Map<String, Golfer> =
+        names.golfers.mapNotNull { golfer -> golfer.pgaPlayerId?.let { it to golfer } }.toMap()
+}
+
+private fun MatchingContext.locateExistingGolfer(competitor: EspnCompetitor): CompetitorMatch {
+    // Manual override wins. Lets an admin disambiguate ESPN partner rows
+    // (last-name only) when multiple rostered golfers share the surname.
+    val overridden = overrides[competitor.espnId]?.let(golferById::get)
+    if (overridden != null) return CompetitorMatch.Credited(overridden)
+    val byEspnId = if (competitor.isTeamPartner) null else golferByEspnId[competitor.espnId]
+    if (byEspnId != null) return CompetitorMatch.Credited(byEspnId)
+    return resolveByName(competitor, names, rosterGolferIds)
+}
 
 private data class MatchedEvent(
     val import: EventImport,
