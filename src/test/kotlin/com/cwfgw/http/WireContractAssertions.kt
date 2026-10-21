@@ -179,7 +179,9 @@ private data class AssertionMember(
 private data class WireKey(val name: String, val optional: Boolean)
 
 private fun wireKeys(descriptor: SerialDescriptor): List<WireKey> =
-    descriptor.elementIndices().map { WireKey(descriptor.getElementName(it), descriptor.isElementOptional(it)) }
+    descriptor.elementIndices().map { index ->
+        WireKey(name = descriptor.getElementName(index), optional = descriptor.isElementOptional(index))
+    }
 
 /** Flat, as an accounting question over a serial name needs: a hierarchy's discriminator and every variant's keys. */
 internal fun wireFieldNames(descriptor: SerialDescriptor): Set<String> =

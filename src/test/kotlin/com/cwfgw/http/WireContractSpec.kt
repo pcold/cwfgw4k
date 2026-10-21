@@ -125,8 +125,8 @@ class WireContractSpec : FunSpec({
         withClue(
             """
             |@Serializable type(s) that no WIRE_TYPES root reaches and NON_WIRE_TYPES does not excuse. If a
-            |route receives or responds with one, add it to WIRE_TYPES; if no client can see it, add it to
-            |NON_WIRE_TYPES beside the others and say which category it joins.
+            |route responds with one, add it to RESPONDED_TYPES, and if one receives it, to RECEIVED_TYPES; if
+            |no client can see it, add it to NON_WIRE_TYPES beside the others and say which category it joins.
             """.trimMargin(),
         ) {
             scanned.filterNot { it in reached || it in NON_WIRE_TYPES }.sorted() shouldBe emptyList()
