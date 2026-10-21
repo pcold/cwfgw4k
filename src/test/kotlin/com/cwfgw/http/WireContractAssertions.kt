@@ -35,8 +35,10 @@ private const val WIRE_CONTRACT_DOC =
 internal fun wireContractAssertions(roots: List<SerialDescriptor>): String {
     val members = assertionMembers(roots)
     val imports = members.mapTo(sortedSetOf()) { it.importedType }
+    // Only the verdicts in use: an unused import is a noUnusedLocals error naming nothing about its cause.
+    val verdicts = members.mapTo(sortedSetOf()) { it.verdict }
     return GENERATED_HEADER +
-        "\nimport type { ExactFields, ExactValues } from './exactFields';\n" +
+        "\nimport type { ${verdicts.joinToString()} } from './exactFields';\n" +
         imports.joinToString(separator = "\n", prefix = "import type {\n", postfix = "\n} from './types';\n") {
             "  $it,"
         } +
@@ -68,11 +70,27 @@ private fun membersOf(
     return when (descriptor.kind) {
         PolymorphicKind.SEALED -> variantMembers(serialName, descriptor, modelled, declared)
         SerialKind.ENUM ->
-            listOf(AssertionMember(serialName, "ExactValues", modelled, modelled, descriptor.elementNames()))
+            listOf(
+                AssertionMember(
+                    key = serialName,
+                    verdict = "ExactValues",
+                    typeScriptType = modelled,
+                    importedType = modelled,
+                    names = descriptor.elementNames(),
+                ),
+            )
         else -> {
             val typeArguments = List(wireTypeParameterCount(descriptor)) { "unknown" }
             val typeScriptType = if (typeArguments.isEmpty()) modelled else "$modelled<${typeArguments.joinToString()}>"
-            listOf(AssertionMember(serialName, "ExactFields", typeScriptType, modelled, declared(wireKeys(descriptor))))
+            listOf(
+                AssertionMember(
+                    key = serialName,
+                    verdict = "ExactFields",
+                    typeScriptType = typeScriptType,
+                    importedType = modelled,
+                    names = declared(wireKeys(descriptor)),
+                ),
+            )
         }
     }
 }
@@ -84,6 +102,8 @@ private fun variantMembers(
     declared: (List<String>) -> List<String>,
 ): List<AssertionMember> {
     val discriminator = sealedDiscriminator(descriptor)
+    // `camelizeKeys` renames the discriminator key too, so a multi-word one would name no types.ts field.
+    check('_' !in discriminator) { "$serialName: discriminator '$discriminator' would need camelizing here" }
     return sealedVariants(descriptor).map { variant ->
         AssertionMember(
             key = "$serialName#${variant.serialName}",
