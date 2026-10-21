@@ -8,7 +8,7 @@ import { teamsApi } from './teams';
 import { tournamentLinksApi } from './tournamentLinks';
 import { tournamentsApi } from './tournaments';
 
-export { ApiError, camelizeKeys, snakeifyKeys } from './core';
+export { ApiError } from './core';
 
 /**
  * Every HTTP call goes through this object (ui/CLAUDE.md → Data Fetching); a call site never imports

@@ -239,9 +239,9 @@ export default tseslint.config(
       'no-restricted-syntax': [
         'error',
         {
-          selector: `${AS_CAST_SELECTOR}:not([expression.callee.name="camelizeKeys"][typeAnnotation.typeName.name="T"])`,
+          selector: `${AS_CAST_SELECTOR}:not([expression.name="parsed"][typeAnnotation.typeName.name="T"])`,
           message:
-            'The only `as` this file may use is the `camelizeKeys(parsed) as T` JSON boundary ' +
+            'The only `as` this file may use is the `parsed as T` JSON boundary ' +
             '(ui/CLAUDE.md). Any other cast belongs behind a type guard.',
         },
         ...PALETTE_RESTRICTIONS,
