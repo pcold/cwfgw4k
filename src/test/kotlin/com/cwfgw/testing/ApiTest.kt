@@ -2,6 +2,7 @@ package com.cwfgw.testing
 
 import com.cwfgw.AppRepositories
 import com.cwfgw.AppServices
+import com.cwfgw.cache.CacheRepository
 import com.cwfgw.cache.FakeCacheRepository
 import com.cwfgw.cache.RequestCache
 import com.cwfgw.datahealth.DataHealthRepository
@@ -88,7 +89,7 @@ class ApiFixture {
     var espnClient: EspnClient = FakeEspnClient()
     var loginThrottle: LoginThrottle = LoginThrottle(maxFailures = TEST_LOGIN_MAX_FAILURES, window = TEST_LOGIN_WINDOW)
     var requestCache: RequestCache =
-        RequestCache(FakeCacheRepository(), transactor, TEST_REVISION, defaultTtl = Duration.ofMinutes(5))
+        RequestCache(FakeCacheRepository(), transactor, TEST_REVISION, defaultTtl = TEST_CACHE_TTL)
     var authSetup: AuthSetup =
         AuthSetup(
             sessionSecret = TEST_SESSION_SECRET.toByteArray(),
@@ -99,14 +100,13 @@ class ApiFixture {
 
 private const val TEST_BCRYPT_COST = 4
 private const val TEST_REVISION = "api-test"
+private val TEST_CACHE_TTL: Duration = Duration.ofMinutes(5)
 private const val TEST_LOGIN_MAX_FAILURES = 5
 private val TEST_LOGIN_WINDOW: Duration = Duration.ofMinutes(15)
 private const val TEST_SESSION_MAX_AGE = 3_600L
 private const val TEST_SESSION_SECRET = "test-only-session-secret-not-used-in-prod"
 
-// Long enough that the launchCacheSweep coroutine never fires inside a single
-// test's lifetime. The fake transactor + fake cache repo would be safe to
-// call, but skipping the loop entirely avoids stray log lines.
+// Long enough that only a test's first request sweeps, so a spec counting a transactor's calls sees at most one.
 private const val TEST_SWEEP_INTERVAL_SECONDS: Long = 3_600L
 
 /**
@@ -186,6 +186,11 @@ fun ApiFixture.seedUser(
             userRepository.create(NewUser(username = username, passwordHash = hash, role = role))
         }
     }
+}
+
+/** Binds the cache to [ApiFixture.transactor] as it is now, so call it after replacing that. */
+fun ApiFixture.seedCache(rows: CacheRepository, revision: String = TEST_REVISION) {
+    requestCache = RequestCache(rows, transactor, revision, defaultTtl = TEST_CACHE_TTL)
 }
 
 private fun ApiFixture.toAppServices(): AppServices =

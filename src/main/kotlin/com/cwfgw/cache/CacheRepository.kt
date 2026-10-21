@@ -16,8 +16,8 @@ import java.time.ZoneOffset
  * and the full request URI, and valued by the JSON-serialized response body.
  *
  * TTL semantics: [get] only returns rows whose `expires_at > now()`,
- * so consumers always see fresh-or-nothing. [deleteExpired] is a periodic
- * background sweep — without it the table would grow indefinitely.
+ * so consumers always see fresh-or-nothing. [deleteExpired] is the sweep a
+ * request runs at most once per interval — without it the table would grow.
  *
  * Postgres JSONB normalizes whitespace on read: a value stored as
  * `{"foo":"bar"}` returns as `{"foo": "bar"}`. The body bytes a client sees

@@ -1,8 +1,9 @@
 package com.cwfgw
 
 import com.cwfgw.admin.adminRoutes
-import com.cwfgw.cache.RequestCache
+import com.cwfgw.cache.CacheSweep
 import com.cwfgw.cache.clearResponseCacheOnWrite
+import com.cwfgw.cache.sweepCacheOnRequests
 import com.cwfgw.datahealth.dataHealthRoutes
 import com.cwfgw.db.PoolMetrics
 import com.cwfgw.debug.buildDebugDump
@@ -36,8 +37,7 @@ import io.ktor.server.routing.routing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import org.jooq.exception.DataAccessException
-import java.sql.SQLException
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Apart from `Main.kt` because no spec can start the process entry point, and every route spec
@@ -54,7 +54,6 @@ fun Application.module(
     installRequestLogging()
     installCompression()
     installErrorHandling()
-    launchCacheSweep(services.requestCache, services.sweepIntervalSeconds)
     poolMetrics?.let(::launchPoolMetricsLog)
     if (services.debugEnabled) launchDebugProbeLog()
     routing {
@@ -64,31 +63,6 @@ fun Application.module(
         spaFallback()
     }
 }
-
-/**
- * The one loop that catches, as the only pass here that reaches the database: a sweep ended by one
- * blip would leave expired rows piling up until the process restarts.
- */
-private fun Application.launchCacheSweep(
-    requestCache: RequestCache,
-    sweepIntervalSeconds: Long,
-) {
-    val intervalMs = sweepIntervalSeconds * 1000L
-    launch {
-        while (isActive) {
-            try {
-                requestCache.deleteExpired()
-            } catch (e: SQLException) {
-                cacheSweepLog.warn(e) { "Cache sweep failed; retrying after interval" }
-            } catch (e: DataAccessException) {
-                cacheSweepLog.warn(e) { "Cache sweep failed; retrying after interval" }
-            }
-            delay(intervalMs)
-        }
-    }
-}
-
-private val cacheSweepLog = KotlinLogging.logger("com.cwfgw.cache.Sweep")
 
 /**
  * `ops/` filters logs on the `cwfgw4k.db.pool …` line format, so it is a contract. A sustained
@@ -135,6 +109,7 @@ private const val DEBUG_PROBE_INTERVAL_SECONDS: Long = 10
 private fun Routing.apiRoutes(services: AppServices) {
     route("/api/v1") {
         clearResponseCacheOnWrite(services.requestCache)
+        sweepCacheOnRequests(CacheSweep(services.requestCache, services.sweepIntervalSeconds.seconds))
         healthRoutes(services.healthProbe)
         leagueRoutes(services.leagueService)
         golferRoutes(services.golferService)

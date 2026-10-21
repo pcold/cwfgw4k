@@ -27,9 +27,8 @@ private val log = KotlinLogging.logger {}
  * sending it.
  *
  * The underlying [CacheRepository.get] only returns non-expired rows.
- * [deleteExpired] is the periodic sweep that keeps the table small; it's
- * invoked from a background coroutine launched at boot (see App.kt), not on
- * every read.
+ * [deleteExpired] is the sweep that keeps the table small; [CacheSweep] runs
+ * it from a request at most once per interval, not on every read.
  *
  * A write invalidates: [clearResponseCacheOnWrite] runs [clear] before any
  * admin write under `/api/v1` answers. The generation it advances lives in
@@ -181,7 +180,7 @@ class RequestCache(
     // key always ends the revision, whatever characters the revision has.
     private fun versioned(key: String): String = "$revision $key"
 
-    /** Background-sweep entry point. Logs how many rows were deleted for dashboard tracking. */
+    /** Logs how many rows were deleted for dashboard tracking. @see CacheSweep */
     suspend fun deleteExpired(): Int {
         val deleted = tx.update { repository.deleteExpired() }
         log.info { "cwfgw4k.cache event=sweep deleted=$deleted" }

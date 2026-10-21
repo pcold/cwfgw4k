@@ -7,11 +7,11 @@ import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.Season
-import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.captureLogs
 import com.cwfgw.testing.regularUserApiTest
+import com.cwfgw.testing.seedCache
 import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -34,7 +34,6 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingRoot
 import org.jooq.exception.DataAccessException
 import java.sql.SQLException
-import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -123,10 +122,6 @@ private fun seededRows(): FakeCacheRepository =
             mapOf(SEEDED_KEY to FakeEntry(value = "[]", expiresAt = Instant.now().plusSeconds(300))),
     )
 
-private fun ApiFixture.cacheOver(rows: CacheRepository) {
-    requestCache = RequestCache(rows, transactor, CACHE_REVISION, defaultTtl = Duration.ofMinutes(5))
-}
-
 private suspend fun HttpClient.createSeason(): Season =
     post("/api/v1/seasons") {
         contentType(ContentType.Application.Json)
@@ -173,7 +168,7 @@ class ResponseCacheInvalidationSpec : FunSpec({
     WRITE_CASES.forEach { case ->
         test("a successful admin ${case.description} empties the cache before answering ${case.expectedStatus}") {
             val rows = FakeCacheRepository()
-            authenticatedApiTest(configure = { cacheOver(rows) }) { client ->
+            authenticatedApiTest(configure = { seedCache(rows, CACHE_REVISION) }) { client ->
                 val season = client.createSeason()
                 client.get("/api/v1/seasons/${season.id.value}/rankings").status shouldBe HttpStatusCode.OK
                 rows.storedKeys().shouldNotBeEmpty()
@@ -189,10 +184,11 @@ class ResponseCacheInvalidationSpec : FunSpec({
         val seasonsAtClear = mutableListOf<List<Season>>()
         authenticatedApiTest(
             configure = {
-                cacheOver(
+                seedCache(
                     ObservedClearRepository(FakeCacheRepository()) {
                         seasonsAtClear += seasonRepository.findAll(leagueId = null, seasonYear = null)
                     },
+                    CACHE_REVISION,
                 )
             },
         ) { client ->
@@ -207,7 +203,7 @@ class ResponseCacheInvalidationSpec : FunSpec({
 
     test("an admin write answered with an error still empties the cache, since an error can follow a commit") {
         val rows = seededRows()
-        authenticatedApiTest(configure = { cacheOver(rows) }) { client ->
+        authenticatedApiTest(configure = { seedCache(rows, CACHE_REVISION) }) { client ->
             client.delete("/api/v1/seasons/${UUID.randomUUID()}").status shouldBe HttpStatusCode.NotFound
 
             rows.storedKeys().shouldBeEmpty()
@@ -216,7 +212,7 @@ class ResponseCacheInvalidationSpec : FunSpec({
 
     test("a write refused to a non-admin leaves the cache alone") {
         val rows = seededRows()
-        regularUserApiTest(configure = { cacheOver(rows) }) { client ->
+        regularUserApiTest(configure = { seedCache(rows, CACHE_REVISION) }) { client ->
             val response =
                 client.post("/api/v1/leagues") {
                     contentType(ContentType.Application.Json)
@@ -230,7 +226,7 @@ class ResponseCacheInvalidationSpec : FunSpec({
 
     test("an anonymous logout answers 204 without clearing the cache") {
         val rows = seededRows()
-        apiTest(configure = { cacheOver(rows) }) { client ->
+        apiTest(configure = { seedCache(rows, CACHE_REVISION) }) { client ->
             client.post("/api/v1/auth/logout").status shouldBe HttpStatusCode.NoContent
 
             rows.storedKeys() shouldBe setOf(SEEDED_KEY)
@@ -239,7 +235,9 @@ class ResponseCacheInvalidationSpec : FunSpec({
 
     test("a clear that fails still answers the committed write's success, logging it at WARN") {
         captureLogs { logs ->
-            authenticatedApiTest(configure = { cacheOver(FailingClearRepository(seededRows())) }) { client ->
+            authenticatedApiTest(configure = {
+                seedCache(FailingClearRepository(seededRows()), CACHE_REVISION)
+            }) { client ->
                 val response =
                     client.post("/api/v1/leagues") {
                         contentType(ContentType.Application.Json)

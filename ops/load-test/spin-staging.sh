@@ -22,7 +22,7 @@
 # Usage:
 #   ops/load-test/spin-staging.sh                    # defaults: -c 10 -d 30s
 #   ops/load-test/spin-staging.sh -c 25 -d 60s       # heavier burst
-#   ops/load-test/spin-staging.sh -m 1               # match prod min-instances=0;
+#   ops/load-test/spin-staging.sh -m 0               # match prod min-instances=0;
 #                                                     # default 1 here for clean
 #                                                     # latency measurement.
 #   ops/load-test/spin-staging.sh --keep             # skip teardown (dev only)
