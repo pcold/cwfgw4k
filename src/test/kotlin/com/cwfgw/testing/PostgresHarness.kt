@@ -109,6 +109,21 @@ internal fun migrateTemplateDatabase() {
     templateMigrated.set(true)
 }
 
+/** A migration spec's own [schema], stopped at [version]: the harness's schema is already at the latest one. */
+internal fun PostgresHarness.migrateSchemaTo(
+    schema: String,
+    version: String,
+) {
+    Flyway.configure()
+        .dataSource(dataSource)
+        .schemas(schema)
+        .createSchemas(true)
+        .locations("classpath:db/migration")
+        .target(version)
+        .load()
+        .migrate()
+}
+
 private fun databaseUrl(database: String): String =
     "jdbc:postgresql://${sharedPostgres.host}:${sharedPostgres.firstMappedPort}/$database"
 
