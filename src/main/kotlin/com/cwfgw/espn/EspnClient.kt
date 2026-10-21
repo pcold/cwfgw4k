@@ -31,9 +31,8 @@ private val log = KotlinLogging.logger {}
 /**
  * Fetches PGA leaderboards from ESPN's public scoreboard API.
  *
- * ESPN's JSON is read with the implementation's own [Json], never `appJson`, whose
- * settings are our API's contract and change without regard to ESPN. Exposing the response types
- * internally keeps that boundary clean.
+ * ESPN's JSON is read with the implementation's own [Json], never `appJson`, whose settings are our API's
+ * contract and change without regard to ESPN. Exposing the response types internally keeps that boundary clean.
  *
  * Scope: one responsibility — fetch, deserialize, and parse. HTTP retries
  * and error policy belong to the caller (EspnService).
