@@ -167,6 +167,17 @@ fun recomputeSideBetPayouts(
 }
 
 /**
+ * Ties go by [teamOrder], never by arrival as a stable sort would leave them: a live overlay re-ranks a round the
+ * base report already ranked.
+ */
+internal fun List<ReportSideBetTeamEntry>.rankedByCumulative(teamOrder: List<TeamId>): List<ReportSideBetTeamEntry> {
+    val placeInTeamOrder = teamOrder.withIndex().associate { (index, teamId) -> teamId to index }
+    return sortedWith(
+        compareByDescending(ReportSideBetTeamEntry::cumulativeEarnings).thenBy { placeInTeamOrder[it.teamId] },
+    )
+}
+
+/**
  * Trim a list of completed tournaments to those at or before a cutoff.
  * `null` cutoff returns the input unchanged; used by rankings so a
  * viewer can replay standings as of any prior week.

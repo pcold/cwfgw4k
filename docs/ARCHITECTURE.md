@@ -391,6 +391,8 @@ For each side-bet round, every team's pick from that draft round races for the s
   `amount × (numTeams − winners)`.
 - Winners split the pool evenly; when it does not divide to the cent, the last winner by team id takes the
   remainder.
+- Each round's entries, and the report's `side_bet_standings`, rank best first. A tie keeps the report's team
+  order (team number, then name), as `weekly_standings` does.
 - A side-bet amount of 0, or an empty round list, turns the bets off for the season. A season created without
   rules gets rounds 5–8 written as rows; no rows reads back as no rounds.
 

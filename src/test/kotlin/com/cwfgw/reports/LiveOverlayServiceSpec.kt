@@ -462,8 +462,27 @@ class LiveOverlayServiceSpec : FunSpec({
         overlaid.sideBetRules shouldBe TWENTY_ON_ROUND_EIGHT
         val roundEight = overlaid.sideBetDetail.single().teams
         roundEight.map { it.teamName to it.outcome } shouldContainExactly
-            listOf("BROWN" to SideBetOutcome.Lost, "WOMBLE" to SideBetOutcome.Won)
-        roundEight.map { it.payout } shouldContainExactly listOf(BigDecimal(-20), BigDecimal(20))
+            listOf("WOMBLE" to SideBetOutcome.Won, "BROWN" to SideBetOutcome.Lost)
+        roundEight.map { it.payout } shouldContainExactly listOf(BigDecimal(20), BigDecimal(-20))
+    }
+
+    test("mergeLiveData re-ranks a side-bet round the live week ties in the report's team order, not the base's") {
+        val wombleFirst = brownLeadingRoundEight().let { base -> base.copy(teams = base.teams.reversed()) }
+        val roryTiesScottie =
+            preview(
+                teams =
+                    listOf(
+                        previewTeam(teamId = TEAM_A_ID),
+                        previewTeam(
+                            teamId = TEAM_B_ID,
+                            golfers = listOf(previewGolfer(RORY_ID, position = 2, payout = BigDecimal(10))),
+                        ),
+                    ),
+            )
+
+        val overlaid = mergeLiveData(wombleFirst, listOf(roryTiesScottie), DEFAULT_RULES)
+
+        overlaid.sideBetDetail.single().teams.map { it.teamName } shouldContainExactly listOf("WOMBLE", "BROWN")
     }
 
     test("mergeLiveData computes weekly +/- as zero-sum across teams") {
@@ -587,8 +606,8 @@ class LiveOverlayServiceSpec : FunSpec({
         overlaid.sideBetRules shouldBe TWENTY_ON_ROUND_EIGHT
         val roundEight = overlaid.sideBetDetail.single().teams
         roundEight.map { it.teamName to it.outcome } shouldContainExactly
-            listOf("BROWN" to SideBetOutcome.Lost, "WOMBLE" to SideBetOutcome.Won)
-        roundEight.map { it.payout } shouldContainExactly listOf(BigDecimal(-20), BigDecimal(20))
+            listOf("WOMBLE" to SideBetOutcome.Won, "BROWN" to SideBetOutcome.Lost)
+        roundEight.map { it.payout } shouldContainExactly listOf(BigDecimal(20), BigDecimal(-20))
     }
 
     // ----- totals after an overlay -----
@@ -638,7 +657,7 @@ class LiveOverlayServiceSpec : FunSpec({
         overlaid.weeklyTotals.net.signum() shouldBe 0
     }
 
-    // ----- weekly standings -----
+    // ----- weekly and side-bet standings -----
 
     test("mergeLiveData reorders the weekly standings by the overlaid weekly +/-") {
         val base = brownLeadingRoundEight()
@@ -647,6 +666,16 @@ class LiveOverlayServiceSpec : FunSpec({
 
         base.weeklyStandings shouldContainExactly listOf(TEAM_A_ID, TEAM_B_ID)
         overlaid.weeklyStandings shouldContainExactly listOf(TEAM_B_ID, TEAM_A_ID)
+    }
+
+    test("mergeLiveData reorders the side-bet standings by the overlaid side bets") {
+        val base = brownLeadingRoundEight()
+        val twentyPerTeam = DEFAULT_RULES.copy(sideBetAmount = BigDecimal(20))
+
+        val overlaid = mergeLiveData(base, listOf(roryWinsLive()), twentyPerTeam)
+
+        base.sideBetStandings shouldContainExactly listOf(TEAM_A_ID, TEAM_B_ID)
+        overlaid.sideBetStandings shouldContainExactly listOf(TEAM_B_ID, TEAM_A_ID)
     }
 
     test("weekly standings keep the report's team order through a tie, whatever each total's scale") {
@@ -660,6 +689,19 @@ class LiveOverlayServiceSpec : FunSpec({
             )
 
         report.weeklyStandings shouldContainExactly listOf(TEAM_B_ID, TEAM_C_ID, TEAM_A_ID)
+    }
+
+    test("side-bet standings keep the report's team order through a tie, whatever each total's scale") {
+        val report =
+            emptyReport(
+                listOf(
+                    teamColumn(TEAM_A_ID).copy(sideBets = BigDecimal("-40")),
+                    teamColumn(TEAM_B_ID).copy(sideBets = BigDecimal("20.00")),
+                    teamColumn(TEAM_C_ID).copy(sideBets = BigDecimal("20")),
+                ),
+            )
+
+        report.sideBetStandings shouldContainExactly listOf(TEAM_B_ID, TEAM_C_ID, TEAM_A_ID)
     }
 
     // ----- overlayLiveRankings -----

@@ -1141,7 +1141,7 @@ internal fun buildSideBetDetail(
                     outcome = outcomes[team.id],
                 )
             }
-        ReportSideBetRound(round = snapshot.round, teams = teamEntries)
+        ReportSideBetRound(round = snapshot.round, teams = teamEntries.rankedByCumulative(teams.map(Team::id)))
     }
 
 private fun List<FantasyScore>.sumPoints(): BigDecimal = fold(BigDecimal.ZERO) { acc, score -> acc.add(score.points) }
