@@ -72,8 +72,14 @@ function TeamPickerDialog(): ReactNode {
           Just browsing
         </button>
       </div>
+      {/* The More sheet is the phone and tablet nav; from `lg` the header carries My team instead. */}
       <p className="mt-2 text-center sm:text-left text-sm font-display text-ink-muted">
-        Change anytime from <span className="font-semibold text-ink-secondary">More → My team</span>
+        <span className="lg:hidden">
+          Change anytime from <span className="font-semibold text-ink-secondary">More → My team</span>
+        </span>
+        <span className="hidden lg:inline">
+          Change anytime from <span className="font-semibold text-ink-secondary">My team</span> in the header
+        </span>
       </p>
     </ModalShell>
   );

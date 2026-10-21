@@ -10,8 +10,9 @@ import RulesPage from '@/features/rules/RulesPage';
 import AdminPage from '@/features/admin/AdminPage';
 import { LeagueSeasonProvider } from '@/features/leagues/LeagueSeasonContext';
 import { AuthProvider } from '@/features/auth/AuthContext';
-import { MyTeamProvider } from '@/features/myTeam/MyTeamContext';
+import { MyTeamProvider, useMyTeam } from '@/features/myTeam/MyTeamContext';
 import MyTeamPicker from '@/features/myTeam/MyTeamPicker';
+import type { MyTeamChoice } from '@/features/myTeam/myTeamModel';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import { HeaderSlotProvider } from '@/shared/components/HeaderSlot';
 import TabBar from './TabBar';
@@ -34,6 +35,34 @@ const navLinkTone = (isActive: boolean): string =>
 
 const desktopLinkClass = ({ isActive }: { isActive: boolean }): string =>
   `inline-flex items-center ${TAP_TARGET_CLASS} px-3 rounded text-sm ${NAV_LABEL_CLASS} transition ${navLinkTone(isActive)}`;
+
+function myTeamNavName(choice: MyTeamChoice): string {
+  switch (choice.kind) {
+    case 'team':
+      return `My team: ${choice.teamName}, change`;
+    case 'browsing':
+    case 'unasked':
+      return 'My team, choose';
+    default:
+      return choice satisfies never;
+  }
+}
+
+/** Shows no team name: a long one overflows the nav at `lg`, so the state rides on the accessible name. */
+function DesktopMyTeamButton(): ReactNode {
+  const { choice, canAsk, changeTeam } = useMyTeam();
+  if (!canAsk) return null;
+  return (
+    <button
+      type="button"
+      aria-label={myTeamNavName(choice)}
+      onClick={changeTeam}
+      className={desktopLinkClass({ isActive: false })}
+    >
+      My team
+    </button>
+  );
+}
 
 function SiteFooter(): ReactNode {
   return (
@@ -74,6 +103,7 @@ function App(): ReactNode {
                   {item.label}
                 </NavLink>
               ))}
+              <DesktopMyTeamButton />
             </div>
 
             <div ref={setHeaderSlot} className="sm:hidden flex items-center min-w-0" />

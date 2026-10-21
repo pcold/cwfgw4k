@@ -115,6 +115,16 @@ describe('MyTeamPicker', () => {
     expect(teams).toHaveClass('grid', 'grid-cols-2');
   });
 
+  it.each([
+    ['Change anytime from More → My team', 'lg:hidden'],
+    ['Change anytime from My team in the header', 'lg:inline'],
+  ])('points at where to change the team: "%s" carries %s', async (footer, breakpointClass) => {
+    renderPicker();
+
+    const line = within(await picker()).getByText((_content, element) => element?.textContent === footer);
+    expect(line).toHaveClass(breakpointClass);
+  });
+
   it('only selects on a team button; the primary button names the team and alone saves it', async () => {
     const user = userEvent.setup();
     renderPicker();

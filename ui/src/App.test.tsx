@@ -282,4 +282,44 @@ describe('App my team', () => {
     expect(screen.queryByRole('dialog', { name: 'More' })).toBeNull();
     expect(window.localStorage.getItem(MY_TEAM_KEY)).toBeNull();
   });
+
+  it('asks again from My team in the header, naming the saved team only to assistive tech', async () => {
+    window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"WOMBLE"}');
+    const user = userEvent.setup();
+    renderWithProviders(<App />, { initialPath: '/scoreboard', withLeagueSeasonProvider: false });
+
+    const myTeam = await within(mainNavigation()).findByRole('button', { name: 'My team: WOMBLE, change' });
+    expect(myTeam).toHaveTextContent(/^My team$/);
+    await user.click(myTeam);
+
+    expect(await picker()).toBeInTheDocument();
+    expect(window.localStorage.getItem(MY_TEAM_KEY)).toBeNull();
+  });
+
+  it('offers a choice from My team in the header to a visitor who is just browsing', async () => {
+    window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"browsing"}');
+    renderWithProviders(<App />, { initialPath: '/scoreboard', withLeagueSeasonProvider: false });
+
+    expect(await within(mainNavigation()).findByRole('button', { name: 'My team, choose' })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['on Admin', '/admin', ['Womble']],
+    ['while the newest season has no teams', '/scoreboard', []],
+  ])('offers no My team in the header %s', async (_case, path, teamNames) => {
+    window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"WOMBLE"}');
+    vi.mocked(api.rosters).mockResolvedValue(teamNames.map(rosterTeam));
+    renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
+
+    await waitFor(() => {
+      expect(api.rosters).toHaveBeenCalledWith(season.id);
+    });
+    await act(async () => {
+      await vi.mocked(api.rosters).mock.results.at(-1)?.value;
+      await new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      });
+    });
+    expect(within(mainNavigation()).queryByRole('button', { name: /^My team/ })).toBeNull();
+  });
 });
