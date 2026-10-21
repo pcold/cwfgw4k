@@ -467,6 +467,22 @@ class AdminRoutesSpec : FunSpec({
             response.bodyAsString().shouldContain("team 'BROWN' has no pick in round 3, round 8")
         }
     }
+
+    test("POST /api/v1/admin/roster/confirm returns 400 naming a pick's ownership outside the range") {
+        authenticatedApiTest(adminFixture()) { client ->
+            val unowned = ConfirmedPick(round = 2, ownershipPct = 0, assignment = GolferAssignment.New("Tom Kim"))
+            val response =
+                client.post("/api/v1/admin/roster/confirm") {
+                    contentType(ContentType.Application.Json)
+                    val brown = fullTeam(number = 1, name = "BROWN", unowned)
+                    setBody(ConfirmRosterRequest(seasonId = SEASON_ID, teams = listOf(brown)))
+                }
+
+            response.status shouldBe HttpStatusCode.BadRequest
+            response.bodyAsString()
+                .shouldContain("team 'BROWN' gives its round 2 pick an ownership of 0%, outside 1–100%")
+        }
+    }
 })
 
 private suspend fun io.ktor.client.statement.HttpResponse.bodyAsString(): String = body()

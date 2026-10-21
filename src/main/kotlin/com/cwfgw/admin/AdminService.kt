@@ -440,9 +440,12 @@ class AdminService(
  */
 internal val DRAFT_ROUNDS: IntRange = 1..8
 
+/** Must agree with RosterParser's bounds and with the `team_rosters` CHECK, which would refuse any other as a 500. */
+internal val OWNERSHIP_PCTS: IntRange = 1..100
+
 private fun findRosterProblems(teams: List<ConfirmedTeam>): List<ConfirmedRosterProblem> =
     repeatedTeamNames(teams) + teams.flatMap(::repeatedGolfers) + teams.flatMap(::blankEspnNames) +
-        teams.flatMap(::blankNewNames) + teams.flatMap(::draftRoundProblems)
+        teams.flatMap(::blankNewNames) + teams.flatMap(::draftRoundProblems) + teams.flatMap(::ownershipProblems)
 
 private fun repeatedTeamNames(teams: List<ConfirmedTeam>): List<ConfirmedRosterProblem> =
     teams.firstOfEachRepeat(ConfirmedTeam::teamName)
@@ -528,6 +531,10 @@ private fun draftRoundProblems(team: ConfirmedTeam): List<ConfirmedRosterProblem
             ?.let { absent -> ConfirmedRosterProblem.MissingRounds(team.teamName, absent) }
     return outOfRange + repeated + listOfNotNull(missing)
 }
+
+private fun ownershipProblems(team: ConfirmedTeam): List<ConfirmedRosterProblem> =
+    team.picks.filterNot { it.ownershipPct in OWNERSHIP_PCTS }
+        .map { pick -> ConfirmedRosterProblem.OwnershipPctOutOfRange(team.teamName, pick.round, pick.ownershipPct) }
 
 private fun <T, K> List<T>.firstOfEachRepeat(key: (T) -> K): List<T> {
     val occurrences = groupingBy(key).eachCount()
