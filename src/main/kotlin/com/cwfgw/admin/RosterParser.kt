@@ -201,15 +201,21 @@ object RosterParser {
  * ("Jean-Paul", "O'Connor") capitalize correctly. Lowercases everything
  * else, so "JUSTIN ROSE" and "justin rose" both land as "Justin Rose".
  */
-private fun String.toInitCap(): String =
-    mapIndexed { index, ch ->
-        val previous = getOrNull(index - 1)
-        when {
-            ch.isNameTokenBoundary() -> ch
-            previous == null || previous.isNameTokenBoundary() -> ch.uppercaseChar()
-            else -> ch.lowercaseChar()
+private fun String.toInitCap(): String {
+    val name = this
+    return buildString(name.length) {
+        name.forEachIndexed { index, ch ->
+            val previous = name.getOrNull(index - 1)
+            append(
+                when {
+                    ch.isNameTokenBoundary() -> ch
+                    previous == null || previous.isNameTokenBoundary() -> ch.uppercaseChar()
+                    else -> ch.lowercaseChar()
+                },
+            )
         }
-    }.joinToString(separator = "")
+    }
+}
 
 private fun Char.isNameTokenBoundary(): Boolean = isWhitespace() || this in NAME_PUNCTUATION_BOUNDARIES
 
