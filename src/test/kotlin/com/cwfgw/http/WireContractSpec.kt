@@ -190,9 +190,10 @@ class WireContractSpec : FunSpec({
         regenerated.writeText(actual)
         fail(
             """
-            |$ASSERTIONS_PATH is stale, so tsc is checking types.ts against a wire shape the backend no
-            |longer has. Regenerate it, then make types.ts match what tsc reports. Rerunning needs
-            |-x uiBuild until it does: :test compiles the UI first, and failing that compile is the point.
+            |$ASSERTIONS_PATH is stale,
+            |so tsc is checking types.ts against a wire shape the backend no longer has. Regenerate it, then
+            |make types.ts match what tsc reports. Rerunning needs -x uiBuild until it does: :test compiles
+            |the UI first, and failing that compile is the point.
             |
             |    cp ${regenerated.path} $ASSERTIONS_PATH
             """.trimMargin(),
