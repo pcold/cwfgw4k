@@ -2,6 +2,7 @@ package com.cwfgw.teams
 
 import com.cwfgw.db.TransactionContext
 import com.cwfgw.db.WriteTransactionContext
+import com.cwfgw.jooq.keys.TEAM_ROSTERS_TEAM_ID_DRAFT_ROUND_KEY
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.testing.POSTGRES_UUID_ORDER
 import com.cwfgw.testing.fakeTableOf
@@ -84,6 +85,10 @@ class FakeTeamRepository(
         teamId: TeamId,
         request: NewRosterEntry,
     ): RosterEntry {
+        val round = request.draftRound
+        if (round != null && rosters.values.any { it.teamId == teamId && it.draftRound == round }) {
+            throw uniqueViolation(TEAM_ROSTERS_TEAM_ID_DRAFT_ROUND_KEY.name)
+        }
         val entry =
             RosterEntry(
                 id = rosterIdFactory(),

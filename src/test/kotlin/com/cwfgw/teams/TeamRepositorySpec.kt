@@ -10,6 +10,7 @@ import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.testing.postgresHarness
+import com.cwfgw.testing.seedTeams
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
@@ -81,9 +82,6 @@ class TeamRepositorySpec : FunSpec({
         }
     }
 
-    suspend fun seedTeam(teamName: String = "Eagles"): TeamId =
-        tx.update { repository.create(seasonId, NewTeam(ownerName = "Alice", teamName = teamName)) }.id
-
     suspend fun refusal(
         teamId: TeamId,
         entry: (GolferId) -> NewRosterEntry,
@@ -96,7 +94,7 @@ class TeamRepositorySpec : FunSpec({
         }.message.shouldNotBeNull()
 
     test("the schema refuses a draft round outside the draft, and admits both ends and two undrafted nulls") {
-        val teamId = seedTeam()
+        val teamId = tx.update { seedTeams(seasonId) }.first()
 
         listOf(0, 9).forEach { round ->
             refusal(teamId) { golfer -> NewRosterEntry(golfer, draftRound = round) } shouldContain
@@ -112,22 +110,8 @@ class TeamRepositorySpec : FunSpec({
         admitted.map { it.draftRound } shouldContainExactly listOf(1, 8, null, null)
     }
 
-    test("the schema refuses a second pick in one round of a team, and admits that round on another team") {
-        val eagles = seedTeam("Eagles")
-        val hawks = seedTeam("Hawks")
-        val scottie =
-            CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler").let { request ->
-                tx.update { golferRepo.create(request) }
-            }
-        tx.update { repository.addToRoster(eagles, NewRosterEntry(scottie.id, draftRound = 3)) }
-
-        refusal(eagles) { golfer -> NewRosterEntry(golfer, draftRound = 3) } shouldContain
-            "team_rosters_team_id_draft_round_key"
-        tx.update { repository.addToRoster(hawks, NewRosterEntry(scottie.id, draftRound = 3)) }.draftRound shouldBe 3
-    }
-
     test("the schema refuses an ownership of zero, below it, or past 100, and admits a sliver and the whole") {
-        val teamId = seedTeam()
+        val teamId = tx.update { seedTeams(seasonId) }.first()
 
         listOf("0", "-50", "100.01").forEach { pct ->
             refusal(teamId) { golfer -> NewRosterEntry(golfer, ownershipPct = BigDecimal(pct)) } shouldContain
