@@ -131,23 +131,27 @@ class AdminService(
         seasonId: SeasonId,
         entries: List<ConfirmedTournamentEntry>,
     ): SeasonImportResult {
+        val labelled = assignSequentialWeekLabels(entries) { it.startDate }
         val linked =
             tournamentRepository.findByPgaTournamentIds(entries.map(ConfirmedTournamentEntry::espnEventId))
                 .associateByTo(mutableMapOf(), Tournament::pgaTournamentId)
-        val created = mutableListOf<Tournament>()
-        val skipped = mutableListOf<SkippedEntry>()
-        for ((entry, week) in assignSequentialWeekLabels(entries) { it.startDate }) {
+        val created = sortedMapOf<Int, Tournament>()
+        val skipped = sortedMapOf<Int, SkippedEntry>()
+        // Event-id order, not week order: two imports sharing events then take their unique-key entries in one order
+        // rather than crossed, which would deadlock instead of answering EspnEventTaken.
+        for (position in labelled.indices.sortedBy { labelled[it].first.espnEventId }) {
+            val (entry, week) = labelled[position]
             val existing = linked[entry.espnEventId]
             if (existing != null) {
-                skipped +=
+                skipped[position] =
                     SkippedEntry(entry.espnEventId, entry.name, "already linked to tournament ${existing.id.value}")
             } else {
                 val tournament = tournamentRepository.create(entry.toNewTournament(seasonId, week))
                 linked[entry.espnEventId] = tournament
-                created += tournament
+                created[position] = tournament
             }
         }
-        return SeasonImportResult(created = created, skipped = skipped)
+        return SeasonImportResult(created = created.values.toList(), skipped = skipped.values.toList())
     }
 
     private fun parseAndFilterByRange(

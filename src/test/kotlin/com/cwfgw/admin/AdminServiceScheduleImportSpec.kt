@@ -20,6 +20,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import java.time.LocalDate
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 
 class AdminServiceScheduleImportSpec : FunSpec({
@@ -64,6 +65,18 @@ class AdminServiceScheduleImportSpec : FunSpec({
             listOf("already linked to tournament ${result.created.single().id.value}")
         scheduleOf(seasonId).map(Tournament::pgaTournamentId) shouldContainExactly listOf("e-1")
     }
+
+    test("an import inserts in ESPN event id order and reports in week order") {
+        val seasonId = tx.update { seedSeason() }
+        val recorded = CreatesRecorded(TournamentRepository())
+
+        val entries = listOf(entry("e-2", "2026-01-15"), entry("e-1", "2026-01-22"))
+
+        val result = service(recorded).confirmSeasonSchedule(seasonId, entries).orFail()
+
+        recorded.pgaTournamentIds shouldContainExactly listOf("e-1", "e-2")
+        result.created.map { it.pgaTournamentId to it.week } shouldContainExactly listOf("e-2" to "1", "e-1" to "2")
+    }
 })
 
 private fun entry(
@@ -87,4 +100,19 @@ private class SecondCreateRefused(
     context(ctx: WriteTransactionContext)
     override fun create(request: NewTournament): Tournament =
         if (creates.incrementAndGet() == 2) error("second insert refused") else inner.create(request)
+}
+
+private class CreatesRecorded(
+    delegate: TournamentRepository,
+) : TournamentRepository by delegate {
+    private val inner = delegate
+    private val created = ConcurrentLinkedQueue<String?>()
+
+    val pgaTournamentIds: List<String?> get() = created.toList()
+
+    context(ctx: WriteTransactionContext)
+    override fun create(request: NewTournament): Tournament {
+        created += request.pgaTournamentId
+        return inner.create(request)
+    }
 }
