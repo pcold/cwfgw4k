@@ -16,6 +16,7 @@ import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
 import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
+import AdminSection from './AdminSection';
 
 const SKIPPED_BANNER_CLASS =
   'mb-4 px-3 py-2 bg-semantic-warning-tint/30 border border-semantic-warning-soft rounded ' +
@@ -87,20 +88,20 @@ function UploadScheduleSection(): ReactNode {
     );
 
   return (
-    <div className="bg-surface-card rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
-        Import Season Schedule from ESPN
-      </h3>
-      <p className="text-xs text-ink-muted mb-4">
-        Pulls the PGA tour calendar from ESPN for the date range and previews a tournament for
-        every event whose start date falls inside it — nothing is created yet. Remove any events
-        that aren&apos;t part of this league&apos;s season (e.g. the Presidents Cup), then confirm.
-        Week labels (1, 2, 3a, 3b…) are assigned chronologically over whatever you keep, so
-        removing an event closes its numbering gap. Re-running on a season skips events already
-        linked. After confirming, edit the per-tournament payout multiplier inline and Save each
-        row to push the change.
-      </p>
-
+    <AdminSection
+      title="Import Season Schedule from ESPN"
+      description={
+        <>
+          Pulls the PGA tour calendar from ESPN for the date range and previews a tournament for
+          every event whose start date falls inside it — nothing is created yet. Remove any events
+          that aren&apos;t part of this league&apos;s season (e.g. the Presidents Cup), then confirm.
+          Week labels (1, 2, 3a, 3b…) are assigned chronologically over whatever you keep, so
+          removing an event closes its numbering gap. Re-running on a season skips events already
+          linked. After confirming, edit the per-tournament payout multiplier inline and Save each
+          row to push the change.
+        </>
+      }
+    >
       <div className="flex flex-wrap gap-4 mb-4">
         <AdminLeagueField
           id="schedule-league"
@@ -158,7 +159,7 @@ function UploadScheduleSection(): ReactNode {
           }
         />
       ) : null}
-    </div>
+    </AdminSection>
   );
 }
 

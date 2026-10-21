@@ -4,7 +4,6 @@ import {
   formatDollarsAndCents,
   formatUnsignedDollarsAndCents,
   formatWholeDollars,
-  moneyToneClass,
 } from '@/shared/util/money';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import LateRowTag from '@/shared/components/LateRowTag';
@@ -15,6 +14,7 @@ import ReportGridHead from '@/shared/components/ReportGridHead';
 import ReportGridRoundLabel from '@/shared/components/ReportGridRoundLabel';
 import { REPORT_GRID_TABLE_CLASS } from '@/shared/components/reportGrid';
 import TeamStrip from '@/shared/components/TeamStrip';
+import WonLostNetCards from '@/shared/components/WonLostNetCards';
 import { isMyTeam } from '@/features/myTeam/myTeamModel';
 import {
   ROUNDS,
@@ -117,16 +117,6 @@ interface SummaryLabelProps {
 function SummaryLabel({ className, children }: SummaryLabelProps) {
   return (
     <td className={`px-1 py-1.5 text-right align-middle sticky left-0 z-10 bg-canvas ${className}`}>{children}</td>
-  );
-}
-
-function StatCard({ label, value }: { readonly label: string; readonly value: number }) {
-  const amount = formatWholeDollars(value);
-  return (
-    <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
-      <span className="text-ink-soft">{label}</span>
-      <span className={`font-semibold tabular-nums ${moneyToneClass(amount)}`}>{amount}</span>
-    </div>
   );
 }
 
@@ -414,11 +404,11 @@ function WeeklyReportView({ report, selectedTeamId, myTeamName, onSelectTeam, on
       ) : null}
 
       {teams.length > 0 ? (
-        <div className="flex flex-wrap gap-3 text-sm">
-          <StatCard label="Won" value={cashTotals.won} />
-          <StatCard label="Lost" value={cashTotals.lost} />
-          <StatCard label="Net" value={cashTotals.net} />
-        </div>
+        <WonLostNetCards
+          won={formatWholeDollars(cashTotals.won)}
+          lost={formatWholeDollars(cashTotals.lost)}
+          net={formatWholeDollars(cashTotals.net)}
+        />
       ) : null}
     </section>
   );

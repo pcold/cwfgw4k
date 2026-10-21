@@ -570,8 +570,8 @@ From `sm` a table card per side-bet round, then the all-rounds total table (`hid
 - No leader yet: `No team has earned in round N yet.` in `{colors.ink-muted}`, then every team in that list under `Round N`.
 - Totals: a white card per team, the name, then a `card-end` `MoneyCell` of its all-rounds total.
 
-### Money summary chips — `ScoreboardView.tsx`, `RankingsView.tsx`, `LateRowBetsView.tsx`, `WeeklyReportView.tsx` (`StatCard`)
-A `flex flex-wrap gap-3 text-sm` row of `bg-surface-card rounded px-3 py-2` chips: a `{colors.ink-soft}` label (Won, Lost, Net), then a `font-semibold tabular-nums` amount coloured by the sign it prints, so a `$0` Won reads `{colors.ink-soft}`.
+### Money summary chips — `ui/src/shared/components/WonLostNetCards.tsx`, `StatCard.tsx`
+A `flex flex-wrap gap-3 text-sm` row of `bg-surface-card rounded px-3 py-2` chips: a `{colors.ink-soft}` label (Won, Lost, Net), then a `font-semibold tabular-nums` amount coloured by the sign it prints, so a `$0` Won reads `{colors.ink-soft}`. The scoreboard, standings, late row bets and weekly report each pass their own formatted amounts: whole dollars on the standings and weekly report, cents on the other two.
 
 ### Banners — `ScoreboardView.tsx`, `UploadScheduleSection.tsx` (`SKIPPED_BANNER_CLASS`), `PlayerLinksPanel.tsx`
 `px-3 py-2` (scoreboard `px-4 py-2`) `border rounded`, in one of two pairs: complete is `bg-semantic-success-tint/30 border-semantic-success-soft text-semantic-success-ink`; in progress or needing attention is `bg-semantic-warning-tint/30` (`/40` on the scoreboard) `border-semantic-warning-soft text-semantic-warning-ink`.

@@ -4,6 +4,7 @@ import ChipStrip, { type StripChip } from '@/shared/components/ChipStrip';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import { CARD_LIST_CLASS } from '@/shared/components/ListCard';
 import MoneyCell, { MONEY_FIGURE_CLASS } from '@/shared/components/MoneyCell';
+import WonLostNetCards from '@/shared/components/WonLostNetCards';
 import {
   formatDollarsAndCents,
   formatUnsignedDollarsAndCents,
@@ -320,26 +321,7 @@ function LateRowBetsView({ report, selectedTab, onSelectTab }: Props): ReactNode
       </div>
 
       {report.teams.length > 0 ? (
-        <div className="flex flex-wrap gap-3 text-sm">
-          <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
-            <span className="text-ink-soft">Won</span>
-            <span className={`font-semibold tabular-nums ${moneyToneClass(won)}`}>
-              {won}
-            </span>
-          </div>
-          <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
-            <span className="text-ink-soft">Lost</span>
-            <span className={`font-semibold tabular-nums ${moneyToneClass(lost)}`}>
-              {lost}
-            </span>
-          </div>
-          <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
-            <span className="text-ink-soft">Net</span>
-            <span className={`font-semibold tabular-nums ${moneyToneClass(net)}`}>
-              {net}
-            </span>
-          </div>
-        </div>
+        <WonLostNetCards won={won} lost={lost} net={net} />
       ) : null}
     </section>
   );

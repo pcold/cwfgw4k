@@ -1,10 +1,11 @@
 import { Fragment, useMemo, useState, type ReactNode } from 'react';
-import type { LiveLeaderboardEntry, WeeklyReport, WonLostTotals } from '@/shared/api/types';
-import { formatDollarsAndCents, moneyToneClass } from '@/shared/util/money';
+import type { LiveLeaderboardEntry, WeeklyReport } from '@/shared/api/types';
+import { formatDollarsAndCents } from '@/shared/util/money';
 import Chip from '@/shared/components/Chip';
 import ListCard, { CARD_LIST_CLASS, CARD_ROW_CLASS } from '@/shared/components/ListCard';
 import MoneyCell from '@/shared/components/MoneyCell';
 import PositionCell from '@/shared/components/PositionCell';
+import WonLostNetCards from '@/shared/components/WonLostNetCards';
 import YouTag from '@/shared/components/YouTag';
 import ColumnHeaderFilter, {
   type ColumnHeaderFilterOption,
@@ -235,34 +236,6 @@ function FieldTable({ teams, myTeamName, onGolferClick }: TeamListProps): ReactN
   );
 }
 
-function MoneySummary({ totals }: { totals: WonLostTotals }): ReactNode {
-  const won = formatDollarsAndCents(totals.won);
-  const lost = formatDollarsAndCents(totals.lost);
-  const net = formatDollarsAndCents(totals.net);
-  return (
-    <div className="flex flex-wrap gap-3 text-sm">
-      <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
-        <span className="text-ink-soft">Won</span>
-        <span className={`font-semibold tabular-nums ${moneyToneClass(won)}`}>
-          {won}
-        </span>
-      </div>
-      <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
-        <span className="text-ink-soft">Lost</span>
-        <span className={`font-semibold tabular-nums ${moneyToneClass(lost)}`}>
-          {lost}
-        </span>
-      </div>
-      <div className="bg-surface-card rounded px-3 py-2 flex items-center gap-2">
-        <span className="text-ink-soft">Net</span>
-        <span className={`font-semibold tabular-nums ${moneyToneClass(net)}`}>
-          {net}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 interface TeamChipsProps {
   entry: LiveLeaderboardEntry;
 }
@@ -463,7 +436,11 @@ function ScoreboardView({ report, myTeamName, finalizeSlot, onGolferClick }: Pro
               <TeamTable teams={teams} myTeamName={myTeamName} onGolferClick={onGolferClick} />
             </>
           )}
-          <MoneySummary totals={weeklyTotals} />
+          <WonLostNetCards
+            won={formatDollarsAndCents(weeklyTotals.won)}
+            lost={formatDollarsAndCents(weeklyTotals.lost)}
+            net={formatDollarsAndCents(weeklyTotals.net)}
+          />
         </div>
         {hasLeaderboard ? <LeaderboardCard leaderboard={leaderboard} tournamentName={tournament.name} /> : null}
       </div>

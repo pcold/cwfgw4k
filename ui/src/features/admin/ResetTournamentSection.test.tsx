@@ -178,6 +178,40 @@ describe('ResetTournamentSection', () => {
     expect(screen.getByRole('button', { name: /Reset Results/i })).toBeDisabled();
   });
 
+  it('lists the resettable tournaments of a season in the league the admin picks, not only the first', async () => {
+    leaguesMock.mockResolvedValue([
+      { id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' },
+      { id: 'lg-2', name: 'Beta', createdAt: '2026-01-01T00:00:00Z' },
+    ]);
+    seasonsMock.mockImplementation((leagueId) =>
+      Promise.resolve(
+        leagueId === 'lg-2'
+          ? [makeSeason({ id: 'sn-beta', leagueId: 'lg-2', name: 'Fall' })]
+          : [makeSeason()],
+      ),
+    );
+    resettableTournamentsMock.mockImplementation((seasonId) =>
+      Promise.resolve(
+        seasonId === 'sn-beta'
+          ? [makeTournament({ id: 'tn-beta', seasonId: 'sn-beta', name: 'Fall Classic', week: '2' })]
+          : [makeTournament({ id: 'tn-1', name: 'Sony Open', week: '1' })],
+      ),
+    );
+
+    const user = userEvent.setup();
+    renderWithProviders(<ResetTournamentSection />, { withLeagueSeasonProvider: false });
+
+    await screen.findByRole('option', { name: /Wk 1 — Sony Open/ });
+    await user.selectOptions(screen.getByLabelText(/Completed tournament/i), 'tn-1');
+    await user.selectOptions(screen.getByLabelText('League'), 'lg-2');
+
+    await screen.findByRole('option', { name: /Wk 2 — Fall Classic/ });
+    expect(screen.queryByRole('option', { name: /Sony Open/ })).not.toBeInTheDocument();
+    expect(seasonsMock).toHaveBeenCalledWith('lg-2');
+    expect(resettableTournamentsMock).toHaveBeenCalledWith('sn-beta');
+    expect(screen.getByRole('button', { name: /Reset Results/i })).toBeDisabled();
+  });
+
   it('names both pickers with visible labels', () => {
     renderWithProviders(<ResetTournamentSection />, { withLeagueSeasonProvider: false });
     expect(screen.getByText('Season')).toBeInTheDocument();

@@ -2,18 +2,18 @@ import { useState, type ReactNode } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { invalidateAfterScoreChange, queryKeys } from '@/shared/api/queryKeys';
-import type { League, Season } from '@/shared/api/types';
+import type { Season } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
 import { SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
+import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
+import AdminSection from './AdminSection';
 
 function CleanSeasonSection(): ReactNode {
   const queryClient = useQueryClient();
 
-  const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
-  // No UI to pick a league — just default to the first one when leagues load.
-  const leagueId = leaguesQuery.data?.[0]?.id ?? '';
+  const { leagues, leagueId, setLeagueId } = useAdminLeague();
 
   const seasonsQuery = useQuery<Season[]>({
     queryKey: queryKeys.seasons.byLeague(leagueId),
@@ -47,16 +47,25 @@ function CleanSeasonSection(): ReactNode {
   const errorMessage = mutationError(cleanMutation.error);
 
   return (
-    <div className="bg-surface-card rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
-        Clean All Season Results
-      </h3>
-      <p className="text-xs text-ink-muted mb-4">
-        Delete all scores, results, and standings for an entire season, resetting every
-        tournament back to upcoming.
-      </p>
-
+    <AdminSection
+      title="Clean All Season Results"
+      description={
+        <>
+          Delete all scores, results, and standings for an entire season, resetting every
+          tournament back to upcoming.
+        </>
+      }
+    >
       <div className="flex flex-wrap items-end gap-4">
+        <AdminLeagueField
+          id="clean-season-league"
+          leagues={leagues}
+          leagueId={leagueId}
+          onChange={(id) => {
+            setLeagueId(id);
+            setSeasonId('');
+          }}
+        />
         <SelectField
           id="clean-season"
           label="Season to clean"
@@ -89,7 +98,7 @@ function CleanSeasonSection(): ReactNode {
           {errorMessage}
         </span>
       ) : null}
-    </div>
+    </AdminSection>
   );
 }
 
