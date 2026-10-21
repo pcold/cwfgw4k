@@ -116,6 +116,10 @@ private class MixedFieldFixture(
     fun golferByPosition(): Map<Int?, GolferId> =
         with(noopTransactionContext) { tournamentRepo.getResults(MASTERS.id) }.associate { it.position to it.golferId }
 
+    suspend fun linkedGolfers(): Map<String, GolferId?> =
+        service.listCompetitorsForLinking(MASTERS.id).orFail().competitors
+            .associate { it.espnCompetitorId to it.linkedGolfer?.id }
+
     fun pointLookups(): Int = golferRepo.findByIdCalls + golferRepo.findByPgaPlayerIdCalls
 }
 
@@ -190,10 +194,7 @@ class EspnServiceMixedFieldSpec : FunSpec({
                     ),
             )
 
-        fixture.persistImport()
-
-        fixture.golferByPosition() shouldBe mapOf(1 to heldId.id, 2 to overridden.id)
-        with(noopTransactionContext) { fixture.golferRepo.findAll(search = null) }.size shouldBe 2
+        fixture.linkedGolfers() shouldBe mapOf("k1" to heldId.id, "o2" to overridden.id)
     }
 
     test("an override naming no golfer falls through to the PGA-id match") {
@@ -204,8 +205,6 @@ class EspnServiceMixedFieldSpec : FunSpec({
                 event = masters(competitor("a1", "Adam Scott", position = 1)),
             )
 
-        fixture.persistImport()
-
-        fixture.golferByPosition() shouldBe mapOf(1 to ADAM.id)
+        fixture.linkedGolfers() shouldBe mapOf("a1" to ADAM.id)
     }
 })
