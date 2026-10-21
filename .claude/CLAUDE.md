@@ -346,8 +346,8 @@ and parallel subagents often have not.
 The `deny` list matches the command string, so a flag in an unusual position
 can slip past it. It is a speed bump for the common shape; branch protection
 remains the guarantee. An allow rule's text is no tighter: `Bash(sed -n *)`,
-kept because `sed` is outside the built-in read-only set, also approves sed's
-`w`, which writes a file.
+kept because `sed` is outside the built-in read-only set, also approves `-i`
+and sed's `w` command, both of which write files.
 
 ---
 
