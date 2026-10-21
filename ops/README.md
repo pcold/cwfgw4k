@@ -32,14 +32,14 @@ ingestion cost — the charts read from:
 
 ## One-time setup
 
-Run these three commands against the project that hosts the service
+Run the steps below against the project that hosts the service
 (`cwfgw4k`, the `GCP_PROJECT_ID` repository variable). Adjust `--project` if you're
 targeting a different environment.
 
 ### 1. Create the `unhandled_errors` log-based metric
 
 Counts unhandled exceptions surfaced by `installErrorHandling`, which logs
-`Unhandled error on {method} {uri}` at ERROR severity for anything that escapes
+`Unhandled error on {method} {path}` at ERROR severity for anything that escapes
 the route handlers.
 
 ```bash
