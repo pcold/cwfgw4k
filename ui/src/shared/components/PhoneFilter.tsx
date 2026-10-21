@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from 'react';
-import { FIELD_CLASS, FieldShell, type SelectOption } from './formFields';
+import FieldShell from './FieldShell';
+import { FIELD_CLASS, type SelectOption } from './formControls';
 
 interface PhoneFilterProps {
   readonly label: string;

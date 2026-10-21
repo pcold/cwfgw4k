@@ -13,7 +13,7 @@ import { AuthProvider } from '@/features/auth/AuthContext';
 import { MyTeamProvider, useMyTeam } from '@/features/myTeam/MyTeamContext';
 import MyTeamPicker from '@/features/myTeam/MyTeamPicker';
 import type { MyTeamChoice } from '@/features/myTeam/myTeamModel';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { HeaderSlotProvider } from '@/shared/components/HeaderSlot';
 import TabBar from './TabBar';
 

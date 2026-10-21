@@ -4,7 +4,7 @@ import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type { League } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
-import { TextField } from '@/shared/components/formFields';
+import TextField from '@/shared/components/TextField';
 import { mutationError } from '@/shared/util/mutationError';
 import AdminSection from './AdminSection';
 

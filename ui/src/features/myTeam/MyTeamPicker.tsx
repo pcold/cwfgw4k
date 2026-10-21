@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import Button from '@/shared/components/Button';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import ModalShell from '@/shared/components/ModalShell';
 import { useMyTeam } from './MyTeamContext';
 

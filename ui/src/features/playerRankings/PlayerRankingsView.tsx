@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { formatDollarsAndCents, moneyToneClass } from '@/shared/util/money';
 import ColumnHeaderFilter from '@/shared/components/ColumnHeaderFilter';
 import type { PlayerRankingsRow } from '@/shared/api/types';
-import { TAP_TARGET_CLASS, type SelectOption } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS, type SelectOption } from '@/shared/components/formControls';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import ListCard, { CARD_LIST_CLASS } from '@/shared/components/ListCard';
 import { MONEY_FIGURE_CLASS } from '@/shared/components/MoneyCell';

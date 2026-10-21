@@ -1,23 +1,7 @@
-import { useState, type ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/shared/api/client';
-import { queryKeys } from '@/shared/api/queryKeys';
+import type { ReactNode } from 'react';
 import type { League } from '@/shared/api/types';
-import { FIELD_CLASS, FieldShell } from '@/shared/components/formFields';
-
-export interface AdminLeagueChoice {
-  leagues: League[];
-  /** Empty until the leagues load. */
-  leagueId: string;
-  setLeagueId: (id: string) => void;
-}
-
-export function useAdminLeague(): AdminLeagueChoice {
-  const leaguesQuery = useQuery<League[]>({ queryKey: queryKeys.leagues.root, queryFn: api.leagues });
-  const [userLeagueId, setUserLeagueId] = useState<string>('');
-  const leagues = leaguesQuery.data ?? [];
-  return { leagues, leagueId: userLeagueId || (leagues[0]?.id ?? ''), setLeagueId: setUserLeagueId };
-}
+import FieldShell from '@/shared/components/FieldShell';
+import { FIELD_CLASS } from '@/shared/components/formControls';
 
 interface AdminLeagueFieldProps {
   id: string;
@@ -26,7 +10,8 @@ interface AdminLeagueFieldProps {
   onChange: (id: string) => void;
 }
 
-export function AdminLeagueField({ id, leagues, leagueId, onChange }: AdminLeagueFieldProps): ReactNode {
+/** Offers no unset option, so `leagueId` must name one of `leagues` once they load. */
+export default function AdminLeagueField({ id, leagues, leagueId, onChange }: AdminLeagueFieldProps): ReactNode {
   return (
     <FieldShell id={id} label="League" error={undefined} width="sm:w-64">
       <select id={id} value={leagueId} onChange={(e) => onChange(e.target.value)} className={FIELD_CLASS}>

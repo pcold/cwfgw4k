@@ -5,7 +5,7 @@ import { api } from '@/shared/api/client';
 import type { RosterTeam } from '@/shared/api/types';
 import { makeLeague, makeSeason } from '@/shared/test/fixtures';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import MoreSheet from './MoreSheet';
 
 vi.mock('@/shared/api/client', () => ({

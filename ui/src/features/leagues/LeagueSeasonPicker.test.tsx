@@ -5,7 +5,7 @@ import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeSeason } from '@/shared/test/fixtures';
 import type { League, Season } from '@/shared/api/types';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import LeagueSeasonPicker from './LeagueSeasonPicker';
 
 const leaguesMock = vi.fn<typeof api.leagues>();

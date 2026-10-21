@@ -3,7 +3,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import TabBar from './TabBar';
 
 // The More sheet reads the team preference, whose provider sits under the league and season one.

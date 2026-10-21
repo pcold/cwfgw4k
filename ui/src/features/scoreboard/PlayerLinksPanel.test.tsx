@@ -10,7 +10,7 @@ import type {
   Golfer,
   TournamentCompetitorListing,
 } from '@/shared/api/types';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import PlayerLinksPanel from './PlayerLinksPanel';
 
 const competitorsMock = vi.fn<typeof api.tournamentCompetitors>();

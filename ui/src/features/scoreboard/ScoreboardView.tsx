@@ -11,7 +11,7 @@ import ColumnHeaderFilter, {
   type ColumnHeaderFilterOption,
 } from '@/shared/components/ColumnHeaderFilter';
 import PhoneFilter from '@/shared/components/PhoneFilter';
-import { TAP_TARGET_CLASS, type SelectOption } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS, type SelectOption } from '@/shared/components/formControls';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import { isMyTeam } from '@/features/myTeam/myTeamModel';
 import {

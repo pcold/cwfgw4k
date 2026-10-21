@@ -1,7 +1,7 @@
 import { useId, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import type { Tournament } from '@/shared/api/types';
-import { CONTROL_CLASS, TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { CONTROL_CLASS, TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { useHeaderSlot } from '@/shared/components/HeaderSlot';
 import ModalShell from '@/shared/components/ModalShell';
 import { seasonLabel } from '@/shared/util/season';

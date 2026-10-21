@@ -519,9 +519,9 @@ Every filled button is a `Button`, picked by `tone` and `size`. It takes no `cla
 
 Every tone adds `rounded font-medium disabled:bg-disabled` and its size: `size="regular"` is `px-4 py-2 text-sm`, and `size="compact"` is `px-3 py-1 text-xs`, for a button in the scoreboard's tournament header, a panel row or a table row (Finalize Results and Manage player links, Save link and Create & link in the player-links panel, the schedule import's Save). A disabled filled button switches to `{colors.disabled}`; a disabled text button takes `disabled:opacity-50`.
 
-Every button, every tone and size included, carries `TAP_TARGET_CLASS` (`min-h-11`, 44px) from `formFields.tsx`; `Button` adds it itself. The compact padding narrows a button; it never makes it shorter than a thumb.
+Every button, every tone and size included, carries `TAP_TARGET_CLASS` (`min-h-11`, 44px) from `formControls.ts`; `Button` adds it itself. The compact padding narrows a button; it never makes it shorter than a thumb.
 
-### Form fields — `ui/src/shared/components/formFields.tsx`
+### Form fields — `ui/src/shared/components/formControls.ts`, `FieldShell.tsx`, `TextField.tsx`, `DateField.tsx`, `SelectField.tsx`
 `FIELD_CLASS` is `bg-surface-raised border border-control-border rounded px-3 py-2 text-base min-h-11 w-full`, built on `CONTROL_CLASS` and `TAP_TARGET_CLASS` and shared by `TextField`, `DateField` and `SelectField`. `FieldShell` puts a `block text-xs text-ink-muted mb-1` label above the control and a `mt-1 text-semantic-danger text-xs` error, with `role="alert"`, below it. Size a field with the `width` prop, not by appending a width class.
 
 A select in a page's toolbar rather than a form — the scoreboard's tournament, player rankings' Through — is `PickerRow.tsx`: an uppercase label, then the select on `bg-surface-card` rather than a field's raised fill, over the same `CONTROL_CLASS` and `TAP_TARGET_CLASS`, then any trailing controls. A page's toolbar row hides below `sm:` (`DESKTOP_PICKER_CLASS`), and the phone picker's sheet holds a second copy. The row is `flex-wrap`; below `sm:`, in the sheet, the select is `w-full min-w-0 truncate`, so a long tournament name truncates rather than scroll the page sideways. The admin payout input is `CONTROL_CLASS` at `w-16`. The schedule-multiplier input and the roster-match select copy its sizing by hand: each has a border colour of its own, and two border colours would tie on stylesheet order.
@@ -634,8 +634,8 @@ Use these when building UI here:
 
 - **A card:** `bg-surface-card rounded-lg p-6`, opening with `<h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">`.
 - **A filled button:** `<Button tone="primary" size="regular">` from `@/shared/components/Button`, with `tone="secondary"` or `tone="danger"` for the other fills and `size="compact"` in a header, panel or table row; never a hand-rolled fill.
-- **A field:** `TextField` / `SelectField` / `DateField` from `@/shared/components/formFields`; never a hand-rolled input class.
-- **A tap target:** append `TAP_TARGET_CLASS` from `@/shared/components/formFields` to any text button, link, select or input (`Button` carries its own); a link adds `inline-flex items-center`.
+- **A field:** `TextField` / `SelectField` / `DateField`, each from its own file in `@/shared/components/`; never a hand-rolled input class.
+- **A tap target:** append `TAP_TARGET_CLASS` from `@/shared/components/formControls` to any text button, link, select or input (`Button` carries its own); a link adds `inline-flex items-center`.
 - **A toolbar select:** `PickerRow` from `@/shared/components/PickerRow`, with the row's other controls as its children.
 - **A page title:** `<PageTitle title="…" subtitle="…" actions={<><StatusChip variant={statusChipVariant(query.data)} /><div className={DESKTOP_PICKER_CLASS}><LeagueSeasonPicker /></div><PhonePicker tournament={…} renderField={…} /></>} />`, outside the page's loading gates.
 - **A table head:** `<thead className={COLUMN_HEADER_CLASS}>` from `@/shared/components/columnHeader`, with no type on its rows or cells but an ink its fill needs, as a report team head's `text-on-fill`; body `divide-y divide-hairline-soft`, or for card rows a `border-separate border-spacing-y-1` table (see List tables).

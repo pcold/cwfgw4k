@@ -5,7 +5,7 @@ import { api } from '@/shared/api/client';
 import type { League, RosterTeam, Season } from '@/shared/api/types';
 import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import App from './App';
 
 vi.mock('@/shared/api/client', () => ({

@@ -6,7 +6,7 @@ import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { ApiError } from '@/shared/api/client';
 import { notifySessionExpired } from '@/shared/api/sessionExpiry';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import AdminPage from './AdminPage';
 

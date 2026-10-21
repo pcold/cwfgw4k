@@ -9,7 +9,8 @@ import StatusChip, { statusChipVariant } from '@/shared/components/StatusChip';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicker';
 import type { Tournament } from '@/shared/api/types';
-import { QueryState, useLeaguesGate } from '@/shared/components/QueryState';
+import QueryState from '@/shared/components/QueryState';
+import { useLeaguesGate } from '@/shared/components/useLeaguesGate';
 import {
   ALL_TOURNAMENTS,
   defaultReportSelection,

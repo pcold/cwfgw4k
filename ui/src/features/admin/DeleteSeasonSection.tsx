@@ -4,10 +4,11 @@ import { api } from '@/shared/api/client';
 import { invalidateAfterScoreChange, queryKeys } from '@/shared/api/queryKeys';
 import type { Season } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
-import { SelectField } from '@/shared/components/formFields';
+import SelectField from '@/shared/components/SelectField';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
-import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
+import AdminLeagueField from './AdminLeagueField';
+import { useAdminLeague } from './useAdminLeague';
 import AdminSection from './AdminSection';
 
 function DeleteSeasonSection(): ReactNode {

@@ -11,7 +11,7 @@ import type {
 } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import WeeklyReportView from './WeeklyReportView';

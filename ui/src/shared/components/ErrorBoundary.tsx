@@ -1,6 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import Button from './Button';
-import { TAP_TARGET_CLASS } from './formFields';
+import { TAP_TARGET_CLASS } from './formControls';
 
 interface ErrorBoundaryProps {
   children: ReactNode;

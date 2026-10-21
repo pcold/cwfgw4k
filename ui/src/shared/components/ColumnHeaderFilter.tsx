@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { TAP_TARGET_CLASS } from './formFields';
+import { TAP_TARGET_CLASS } from './formControls';
 
 export interface ColumnHeaderFilterOption {
   value: string;

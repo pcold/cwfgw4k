@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { TAP_TARGET_CLASS } from './formFields';
+import { TAP_TARGET_CLASS } from './formControls';
 
 /** @see ChipStrip */
 export interface StripChip {

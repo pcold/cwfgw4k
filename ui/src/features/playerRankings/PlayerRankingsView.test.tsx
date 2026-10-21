@@ -5,7 +5,7 @@ import type { PlayerRankingsRow } from '@/shared/api/types';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { nth } from '@/shared/test/nth';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { MONEY_FIGURE_CLASS } from '@/shared/components/MoneyCell';
 import PlayerRankingsView from './PlayerRankingsView';
 

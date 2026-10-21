@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type { DataHealthGolfer, DataHealthReport, RosteredTwinGroup } from '@/shared/api/types';
-import { QueryState } from '@/shared/components/QueryState';
+import QueryState from '@/shared/components/QueryState';
 import AdminSection from './AdminSection';
 
 function DataHealthSection(): ReactNode {

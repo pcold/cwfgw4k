@@ -5,7 +5,7 @@ import {
   formatUnsignedDollarsAndCents,
   formatWholeDollars,
 } from '@/shared/util/money';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import LateRowTag from '@/shared/components/LateRowTag';
 import ListCard, { CARD_LIST_CLASS, CARD_NAME_BUTTON_CLASS } from '@/shared/components/ListCard';
 import MoneyCell from '@/shared/components/MoneyCell';

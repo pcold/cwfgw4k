@@ -4,10 +4,13 @@ import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type { Season, SeasonRules } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
-import { CONTROL_CLASS, FIELD_CLASS, FieldShell, TAP_TARGET_CLASS, TextField } from '@/shared/components/formFields';
-import { QueryState } from '@/shared/components/QueryState';
+import FieldShell from '@/shared/components/FieldShell';
+import TextField from '@/shared/components/TextField';
+import { CONTROL_CLASS, FIELD_CLASS, TAP_TARGET_CLASS } from '@/shared/components/formControls';
+import QueryState from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
-import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
+import AdminLeagueField from './AdminLeagueField';
+import { useAdminLeague } from './useAdminLeague';
 import AdminSection from './AdminSection';
 import { buildRules, formatSideBetRounds, isReadableSideBetRounds } from './rulesInput';
 

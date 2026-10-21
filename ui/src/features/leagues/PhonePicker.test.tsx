@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import type { api } from '@/shared/api/client';
 import PickerRow from '@/shared/components/PickerRow';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { makeLeague, makeSeason, makeTournament } from '@/shared/test/fixtures';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import PhonePicker from './PhonePicker';
