@@ -34,10 +34,36 @@ const SHEET_PANEL =
   'pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] ' +
   'transition-transform duration-200 ease-out starting:translate-y-full motion-reduce:transition-none';
 
-/** A sheet spans the viewport, so it takes no width. */
+// The sheet's geometry below `sm`, the centred `detail` panel's from it: each `sm:` class undoes a sheet one.
+const RESPONSIVE_OVERLAY = `${SHEET_OVERLAY} sm:items-center sm:justify-center sm:p-4`;
+
+const RESPONSIVE_PANEL = `${SHEET_PANEL} sm:starting:translate-y-0 sm:w-[min(92vw,28rem)] sm:rounded-lg sm:border sm:shadow-xl`;
+
+type ModalPlacementName = 'centred' | 'sheet' | 'responsive';
+
+const OVERLAY_CLASS: Readonly<Record<ModalPlacementName, string>> = {
+  centred: CENTRED_OVERLAY,
+  sheet: SHEET_OVERLAY,
+  responsive: RESPONSIVE_OVERLAY,
+};
+
+function panelClass(placement: ModalPlacementName, width: ModalWidth): string {
+  switch (placement) {
+    case 'centred':
+      return `${PANEL_GEOMETRY} ${PANEL_WIDTH[width]}`;
+    case 'sheet':
+      return SHEET_PANEL;
+    case 'responsive':
+      return RESPONSIVE_PANEL;
+    default:
+      return placement satisfies never;
+  }
+}
+
+/** A sheet spans the viewport, and `responsive` is one below `sm`, so neither takes a width. */
 type ModalPlacement =
   | { readonly placement?: 'centred'; readonly width?: ModalWidth }
-  | { readonly placement: 'sheet'; readonly width?: never };
+  | { readonly placement: 'sheet' | 'responsive'; readonly width?: never };
 
 type ModalShellProps = ModalPlacement & {
   /** Also supplies the dialog's accessible name. */
@@ -127,8 +153,9 @@ function useModalDialog(onClose: () => void): RefObject<HTMLDivElement | null> {
 }
 
 /**
- * For a modal gating its body on a query, whose `QueryState` must sit inside the panel, and for the phone's More
- * sheet; all else uses `FormModal`. The cap is `dvh`: mobile `vh` ignores the on-screen keyboard and pushes the footer off-screen.
+ * For a modal gating its body on a query, whose `QueryState` must sit inside the panel, and for a sheet: the phone's
+ * More sheet and the team picker; all else uses `FormModal`. The cap is `dvh`: mobile `vh` ignores the on-screen
+ * keyboard and pushes the footer off-screen.
  */
 export default function ModalShell({
   title,
@@ -144,7 +171,7 @@ export default function ModalShell({
     /* eslint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions --
        a backdrop click is a mouse shortcut; Escape and the Close button are the keyboard paths. */
     <div
-      className={placement === 'sheet' ? SHEET_OVERLAY : CENTRED_OVERLAY}
+      className={OVERLAY_CLASS[placement]}
       onClick={(event) => {
         if (dismissOnBackdrop && event.target === event.currentTarget) {
           onClose();
@@ -158,7 +185,7 @@ export default function ModalShell({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={placement === 'sheet' ? SHEET_PANEL : `${PANEL_GEOMETRY} ${PANEL_WIDTH[width]}`}
+        className={panelClass(placement, width)}
       >
         <div className="px-5 py-4 border-b border-hairline flex items-center justify-between">
           <h2 id={titleId} className="text-lg font-bold">

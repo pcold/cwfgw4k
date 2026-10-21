@@ -196,6 +196,21 @@ describe('ModalShell', () => {
     expect(panel).not.toHaveClass('rounded-lg', 'shadow-xl');
   });
 
+  it('sets a responsive panel as a sheet below sm and centres it at the detail width from sm', () => {
+    renderWithProviders(
+      <ModalShell title="Which team is yours?" onClose={() => {}} placement="responsive">
+        <p>Body</p>
+      </ModalShell>,
+      { withLeagueSeasonProvider: false },
+    );
+
+    const panel = screen.getByRole('dialog', { name: 'Which team is yours?' });
+    expect(panel.parentElement).toHaveClass('fixed', 'inset-0', 'items-end', 'z-50', 'sm:items-center', 'sm:justify-center');
+    expect(panel).toHaveClass('w-full', 'rounded-t-lg', 'border-t', 'pb-[env(safe-area-inset-bottom)]', 'starting:translate-y-full');
+    expect(panel).toHaveClass('sm:w-[min(92vw,28rem)]', 'sm:rounded-lg', 'sm:border', 'sm:shadow-xl', 'sm:starting:translate-y-0');
+    expect(panel).not.toHaveClass('rounded-lg', 'shadow-xl');
+  });
+
   it('ignores a backdrop click by default', async () => {
     const onClose = vi.fn();
     const backdrop = renderShell(onClose, false);
