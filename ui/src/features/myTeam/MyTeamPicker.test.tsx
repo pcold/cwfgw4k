@@ -257,9 +257,9 @@ describe('MyTeamPicker', () => {
     renderPicker('/?team=Poczik');
 
     await waitFor(() => {
-      expect(choice()).toHaveTextContent('team POCZIK');
+      expect(screen.getByRole('status', { name: 'Location' })).toHaveTextContent(/^\/$/);
     });
-    expect(screen.getByRole('status', { name: 'Location' })).toHaveTextContent(/^\/$/);
+    expect(choice()).toHaveTextContent('team POCZIK');
   });
 
   it('removes an unmatched ?team= link, saves nothing and asks as on any first visit', async () => {
