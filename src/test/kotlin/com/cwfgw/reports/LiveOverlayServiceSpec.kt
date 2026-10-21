@@ -5,14 +5,19 @@ import com.cwfgw.espn.PreviewGolferScore
 import com.cwfgw.espn.PreviewLeaderboardEntry
 import com.cwfgw.espn.PreviewTeamScore
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRules
 import com.cwfgw.teams.TeamId
+import com.cwfgw.tournaments.Tournament
+import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentStatus
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import java.math.BigDecimal
+import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 
 private val TEAM_A_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c01"))
@@ -193,6 +198,36 @@ private fun roryWinsLive(): EspnLivePreview =
                     golfers = listOf(previewGolfer(RORY_ID, position = 1, payout = BigDecimal(18))),
                 ),
             ),
+    )
+
+private fun teamRanking(
+    teamId: TeamId,
+    totalCash: BigDecimal = BigDecimal.ZERO,
+): TeamRanking =
+    TeamRanking(
+        teamId = teamId,
+        teamName = "TEAM",
+        subtotal = totalCash,
+        sideBets = BigDecimal.ZERO,
+        totalCash = totalCash,
+        series = emptyList(),
+    )
+
+private val MASTERS_IN_PLAY =
+    Tournament(
+        id = TournamentId(UUID.fromString("00000000-0000-0000-0000-000000000e01")),
+        pgaTournamentId = null,
+        name = "The Masters",
+        seasonId = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000a01")),
+        startDate = LocalDate.parse("2026-04-09"),
+        endDate = LocalDate.parse("2026-04-12"),
+        courseName = null,
+        status = TournamentStatus.InProgress,
+        purseAmount = null,
+        payoutMultiplier = BigDecimal.ONE,
+        week = "15",
+        isTeamEvent = false,
+        createdAt = Instant.parse("2026-01-01T00:00:00Z"),
     )
 
 class LiveOverlayServiceSpec : FunSpec({
@@ -625,6 +660,43 @@ class LiveOverlayServiceSpec : FunSpec({
             )
 
         report.weeklyStandings shouldContainExactly listOf(TEAM_B_ID, TEAM_C_ID, TEAM_A_ID)
+    }
+
+    // ----- overlayLiveRankings -----
+
+    test("overlayLiveRankings ranks the standings on the overlaid totals, not the stored ones") {
+        val brownLeadsByTen =
+            Rankings(
+                teams = listOf(teamRanking(TEAM_A_ID, totalCash = BigDecimal(10)), teamRanking(TEAM_B_ID)),
+                weeks = emptyList(),
+                tournamentNames = emptyList(),
+            )
+        val context =
+            RankingsContext(
+                allRosters = emptyList(),
+                rules = DEFAULT_RULES,
+                sideBetPerRound = emptyList(),
+                numTeams = 2,
+            )
+
+        val (overlaid, _) = overlayLiveRankings(brownLeadsByTen, MASTERS_IN_PLAY, roryWinsLive(), context)
+
+        // Rory's 18 is +18 for WOMBLE and -18 for BROWN: WOMBLE 18, BROWN -8.
+        overlaid.standings shouldContainExactly
+            listOf(
+                TeamStanding.Leader(
+                    teamId = TEAM_B_ID,
+                    tied = false,
+                    aheadOf = StandingGap(position = 2, tied = false, amount = BigDecimal(26)),
+                ),
+                TeamStanding.Chaser(
+                    teamId = TEAM_A_ID,
+                    tied = false,
+                    position = 2,
+                    behind = StandingGap(position = 1, tied = false, amount = BigDecimal(26)),
+                    behindLeader = BigDecimal(26),
+                ),
+            )
     }
 
     // ----- buildLiveLeaderboard / buildUndraftedFromLeaderboard -----
