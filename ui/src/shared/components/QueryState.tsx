@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+/** @see QueryState */
 export interface QueryStateLike<T> {
   isLoading: boolean;
   isError: boolean;
@@ -13,6 +14,10 @@ interface QueryStateProps<T> {
   children: (data: T) => ReactNode;
 }
 
+/**
+ * A query neither loading nor failed with no data, such as a disabled one, renders nothing rather than a
+ * loading line.
+ */
 export default function QueryState<T>({ query, label, children }: QueryStateProps<T>): ReactNode {
   if (query.isLoading) {
     return <p className="text-ink-muted">Loading {label}…</p>;

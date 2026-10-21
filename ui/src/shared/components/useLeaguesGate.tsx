@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 
+/** Null once at least one league has loaded; anything else is the line a page renders in its body's place. */
 export function useLeaguesGate(): ReactNode | null {
   const { leagues, leaguesLoading, leaguesError } = useLeagueSeason();
   if (leaguesLoading) {
