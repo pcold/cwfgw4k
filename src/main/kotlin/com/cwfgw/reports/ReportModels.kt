@@ -9,6 +9,7 @@ import com.cwfgw.tournaments.TournamentStatus
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.UseSerializers
 import kotlinx.serialization.json.JsonClassDiscriminator
 import java.math.BigDecimal
@@ -241,6 +242,11 @@ data class WeeklyReport(
     val liveEligible: Boolean = false,
     /** Set only when the live overlay matched an ESPN event nobody has teed off, listed field or not. */
     val awaitingTeeOff: Boolean = false,
+    /**
+     * No earlier tournament in the season is unfinalized, by finalize's own guard. False unless a builder asks, so a
+     * report that never does offers no finalize; off the wire, where [finalizable] carries it.
+     */
+    @Transient val earlierFinalized: Boolean = false,
 ) {
     val cashTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::totalCash))
     val sideBetTotals: WonLostTotals = WonLostTotals.over(teams.map(ReportTeamColumn::sideBets))
@@ -256,6 +262,10 @@ data class WeeklyReport(
     /** @see weeklyStandings */
     val sideBetStandings: List<TeamId> =
         teams.sortedByDescending(ReportTeamColumn::sideBets).map(ReportTeamColumn::teamId)
+
+    /** False before tee-off, though the finalize endpoint itself does not refuse then. */
+    val finalizable: Boolean =
+        earlierFinalized && tournament.status != TournamentStatus.Completed && !awaitingTeeOff
 }
 
 /**

@@ -1353,6 +1353,46 @@ class WeeklyReportServiceSpec : FunSpec({
             listOf(listOf(LeaderboardPlayer("Scottie Scheffler", listOf(TEAM_A.teamName, TEAM_B.teamName))))
     }
 
+    test("getReport is not finalizable while an earlier tournament in the season is unfinalized") {
+        val sonyInProgress = tournamentFixture(SONY_ID, "Sony Open", "2026-01-15", status = TournamentStatus.InProgress)
+        val mastersInProgress =
+            tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09", status = TournamentStatus.InProgress)
+        val fixture = Fixture(initialTournaments = listOf(sonyInProgress, mastersInProgress))
+
+        fixture.mastersReport().finalizable shouldBe false
+    }
+
+    test("getReport is finalizable for an unfinalized tournament once every earlier one is finalized") {
+        val fixture = mastersInPlayAfterFinalizedSony()
+
+        fixture.mastersReport().finalizable shouldBe true
+        fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true).orFail().finalizable shouldBe true
+    }
+
+    test("getReport of a finalized tournament is not finalizable") {
+        val fixture = Fixture(initialTournaments = listOf(tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")))
+
+        fixture.mastersReport().finalizable shouldBe false
+    }
+
+    test("getReport with live=true before anyone tees off is not finalizable") {
+        val scottie = golferFixture("201", "Scottie", "Scheffler").copy(pgaPlayerId = "espn-p1")
+        val fixture =
+            liveFieldFixture(
+                field = listOf(notTeedOffRow("espn-p1", "Scottie Scheffler")),
+                picks = listOf(TEAM_A to scottie),
+            )
+
+        fixture.mastersReport().finalizable shouldBe true
+        fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true).orFail().finalizable shouldBe false
+    }
+
+    test("getSeasonReport is not finalizable, whatever its tournaments' state") {
+        val fixture = mastersInPlayAfterFinalizedSony()
+
+        fixture.service.getSeasonReport(SEASON_ID).orFail().finalizable shouldBe false
+    }
+
     test("getReport with live=true on a completed tournament skips the ESPN call entirely") {
         val mastersDone =
             tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
