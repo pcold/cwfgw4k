@@ -41,9 +41,9 @@ cache:
   # TTL: under traffic the table holds about one TTL window of stale rows.
   sweepIntervalSeconds: ${CACHE_SWEEP_INTERVAL_SECONDS:-300}
   # Joins every cache key, so one revision never serves a body another encoded.
-  # Cloud Run sets K_REVISION on each revision. Anywhere else every build shares
-  # the default, and new code can read what the old build cached until it expires.
-  revision: ${K_REVISION:-local}
+  # Cloud Run sets K_REVISION on each revision. Left blank anywhere else, the key
+  # takes a hash of the build's code instead (CacheConfig.revision).
+  deployRevision: ${K_REVISION:-}
 
 espn:
   # In-process Caffeine cache for ESPN scoreboard responses keyed by date.
