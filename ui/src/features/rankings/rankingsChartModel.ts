@@ -74,7 +74,7 @@ export function teamColor(index: number): string {
   return CHART_COLORS[index % CHART_COLORS.length] ?? CHART_COLORS[0];
 }
 
-function seriesValues(teams: TeamRanking[]): number[] {
+function seriesValues(teams: readonly TeamRanking[]): number[] {
   const values: number[] = [];
   for (const team of teams) {
     for (const v of team.series) values.push(v);

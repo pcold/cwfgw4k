@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { formatDollarsAndCents, moneyToneClass } from '@/shared/util/money';
 import ColumnHeaderFilter from '@/shared/components/ColumnHeaderFilter';
 import type { PlayerRankingsRow } from '@/shared/api/types';
@@ -11,10 +11,10 @@ import YouTag from '@/shared/components/YouTag';
 import { isMyTeam } from '@/features/myTeam/myTeamModel';
 
 interface Props {
-  players: PlayerRankingsRow[];
+  readonly players: readonly PlayerRankingsRow[];
   /** @see isMyTeam */
-  myTeamName: string | null;
-  onGolferClick?: (golferId: string) => void;
+  readonly myTeamName: string | null;
+  readonly onGolferClick?: (golferId: string) => void;
 }
 
 const ALL = '';
@@ -159,51 +159,59 @@ function PlayerRows({ players, myTeamName, onGolferClick }: PlayerListProps): Re
   );
 }
 
+function listTeamChoices(players: readonly PlayerRankingsRow[]): readonly SelectOption[] {
+  const names = new Set<string>();
+  let hasUndrafted = false;
+  for (const p of players) {
+    if (p.teamName) names.add(p.teamName);
+    else hasUndrafted = true;
+  }
+  const sorted = Array.from(names).sort((a, b) => a.localeCompare(b));
+  return [
+    ...sorted.map((name) => ({ value: name, label: name })),
+    ...(hasUndrafted ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
+  ];
+}
+
+function listRoundChoices(players: readonly PlayerRankingsRow[]): readonly SelectOption[] {
+  const rounds = new Set<number>();
+  let hasUndrafted = false;
+  for (const p of players) {
+    if (p.draftRound !== null) rounds.add(p.draftRound);
+    else hasUndrafted = true;
+  }
+  const sorted = Array.from(rounds).sort((a, b) => a - b);
+  return [
+    ...sorted.map((r) => ({ value: String(r), label: String(r) })),
+    ...(hasUndrafted ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
+  ];
+}
+
+function filterPlayers(
+  players: readonly PlayerRankingsRow[],
+  teamFilter: string,
+  roundFilter: string,
+): readonly PlayerRankingsRow[] {
+  const matchesTeam = (p: PlayerRankingsRow) => {
+    if (teamFilter === ALL) return true;
+    if (teamFilter === UNDRAFTED) return !p.teamName;
+    return p.teamName === teamFilter;
+  };
+  const matchesRound = (p: PlayerRankingsRow) => {
+    if (roundFilter === ALL) return true;
+    if (roundFilter === UNDRAFTED) return p.draftRound === null;
+    return String(p.draftRound) === roundFilter;
+  };
+  return players.filter((p) => matchesTeam(p) && matchesRound(p));
+}
+
 function PlayerRankingsView({ players, myTeamName, onGolferClick }: Props): ReactNode {
   const [teamFilter, setTeamFilter] = useState<string>(ALL);
   const [roundFilter, setRoundFilter] = useState<string>(ALL);
 
-  const teamChoices = useMemo<readonly SelectOption[]>(() => {
-    const names = new Set<string>();
-    let hasUndrafted = false;
-    for (const p of players) {
-      if (p.teamName) names.add(p.teamName);
-      else hasUndrafted = true;
-    }
-    const sorted = Array.from(names).sort((a, b) => a.localeCompare(b));
-    return [
-      ...sorted.map((name) => ({ value: name, label: name })),
-      ...(hasUndrafted ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
-    ];
-  }, [players]);
-
-  const roundChoices = useMemo<readonly SelectOption[]>(() => {
-    const rounds = new Set<number>();
-    let hasUndrafted = false;
-    for (const p of players) {
-      if (p.draftRound !== null) rounds.add(p.draftRound);
-      else hasUndrafted = true;
-    }
-    const sorted = Array.from(rounds).sort((a, b) => a - b);
-    return [
-      ...sorted.map((r) => ({ value: String(r), label: String(r) })),
-      ...(hasUndrafted ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
-    ];
-  }, [players]);
-
-  const filtered = useMemo(() => {
-    const matchesTeam = (p: PlayerRankingsRow) => {
-      if (teamFilter === ALL) return true;
-      if (teamFilter === UNDRAFTED) return !p.teamName;
-      return p.teamName === teamFilter;
-    };
-    const matchesRound = (p: PlayerRankingsRow) => {
-      if (roundFilter === ALL) return true;
-      if (roundFilter === UNDRAFTED) return p.draftRound === null;
-      return String(p.draftRound) === roundFilter;
-    };
-    return players.filter((p) => matchesTeam(p) && matchesRound(p));
-  }, [players, teamFilter, roundFilter]);
+  const teamChoices = listTeamChoices(players);
+  const roundChoices = listRoundChoices(players);
+  const filtered = filterPlayers(players, teamFilter, roundFilter);
 
   if (players.length === 0) {
     return <p className="text-ink-muted">No players with a top 10 finish yet.</p>;

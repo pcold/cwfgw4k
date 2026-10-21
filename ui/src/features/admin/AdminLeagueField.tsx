@@ -5,7 +5,7 @@ import { FIELD_CLASS } from '@/shared/components/formControls';
 
 interface AdminLeagueFieldProps {
   id: string;
-  leagues: League[];
+  leagues: readonly League[];
   leagueId: string;
   onChange: (id: string) => void;
 }

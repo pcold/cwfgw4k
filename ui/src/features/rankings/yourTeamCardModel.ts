@@ -1,6 +1,7 @@
 import type { Rankings, StandingGap, TeamRanking, TeamStanding } from '@/shared/api/types';
 import { isMyTeam } from '@/features/myTeam/myTeamModel';
 import { formatWholeDollars } from '@/shared/util/money';
+import { ordinal } from '@/shared/util/ordinal';
 
 export interface YourTeam {
   readonly team: TeamRanking;
@@ -17,21 +18,6 @@ export function findYourTeam(rankings: Rankings, myTeamName: string | null): You
   if (!team) return null;
   const standing = rankings.standings.find((candidate) => candidate.teamId === team.teamId);
   return standing ? { team, standing } : null;
-}
-
-export function ordinal(position: number): string {
-  const lastTwo = position % 100;
-  if (lastTwo >= 11 && lastTwo <= 13) return `${position}th`;
-  switch (position % 10) {
-    case 1:
-      return `${position}st`;
-    case 2:
-      return `${position}nd`;
-    case 3:
-      return `${position}rd`;
-    default:
-      return `${position}th`;
-  }
 }
 
 export function placeLabel(position: number, tied: boolean): string {

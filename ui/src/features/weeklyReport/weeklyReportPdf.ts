@@ -206,7 +206,7 @@ function drawHeader(
 // Returns the last entry's baseline, which the header grows to clear.
 function drawStandings(
   doc: jsPDF,
-  standings: StandingsEntry[],
+  standings: readonly StandingsEntry[],
   weekLabel: string,
   x: number,
   y: number,

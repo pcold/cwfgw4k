@@ -9,7 +9,8 @@ import PageTitle from '@/shared/components/PageTitle';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicker';
 import { formatUnsignedDollarsAndCents } from '@/shared/util/money';
-import { ordinal, payoutsByPlace } from './rulesModel';
+import { ordinal } from '@/shared/util/ordinal';
+import { payoutsByPlace } from './rulesModel';
 
 const BULLET_LIST_CLASS = 'text-ink-secondary space-y-1 text-sm list-disc list-inside';
 
