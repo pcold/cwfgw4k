@@ -136,19 +136,19 @@ class AdminService(
         startDate: LocalDate,
         endDate: LocalDate,
     ): DatedCalendar {
-        val parsedDates = calendar.map { entry -> entry to parseEspnDate(entry.startDate) }
-        return DatedCalendar(
-            inRange =
-                parsedDates.mapNotNull { (entry, date) ->
-                    date?.takeIf { it in startDate..endDate }?.let { entry to it }
-                },
-            unparseable =
-                parsedDates
-                    .filter { (_, date) -> date == null }
-                    .map { (entry, _) ->
+        val inRange = mutableListOf<Pair<EspnCalendarEntry, LocalDate>>()
+        val unparseable = mutableListOf<SkippedEntry>()
+        for (entry in calendar) {
+            val date = parseEspnDate(entry.startDate)
+            when {
+                date == null ->
+                    unparseable +=
                         SkippedEntry(entry.id, entry.label, "could not parse ESPN start date '${entry.startDate}'")
-                    },
-        )
+                date !in startDate..endDate -> Unit
+                else -> inRange += entry to date
+            }
+        }
+        return DatedCalendar(inRange = inRange, unparseable = unparseable)
     }
 
     /**
