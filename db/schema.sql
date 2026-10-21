@@ -200,7 +200,9 @@ CREATE TABLE cwfgw4k.team_rosters (
     acquired_via text DEFAULT 'draft'::text NOT NULL,
     draft_round integer,
     ownership_pct numeric(5,2) DEFAULT 100.00 NOT NULL,
-    acquired_at timestamp with time zone DEFAULT now() NOT NULL
+    acquired_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT team_rosters_draft_round_in_range CHECK (((draft_round >= 1) AND (draft_round <= 8))),
+    CONSTRAINT team_rosters_ownership_pct_in_range CHECK (((ownership_pct > (0)::numeric) AND (ownership_pct <= (100)::numeric)))
 );
 
 
@@ -269,7 +271,8 @@ CREATE TABLE cwfgw4k.tournaments (
     payout_multiplier numeric(6,4) DEFAULT 1.00 NOT NULL,
     week text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    is_team_event boolean DEFAULT false NOT NULL
+    is_team_event boolean DEFAULT false NOT NULL,
+    CONSTRAINT tournaments_status_known CHECK ((status = ANY (ARRAY['upcoming'::text, 'in_progress'::text, 'completed'::text])))
 );
 
 
@@ -282,7 +285,8 @@ CREATE TABLE cwfgw4k.users (
     username text NOT NULL,
     password_hash text NOT NULL,
     role text DEFAULT 'user'::text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT users_role_known CHECK ((role = ANY (ARRAY['admin'::text, 'user'::text])))
 );
 
 
@@ -396,6 +400,14 @@ ALTER TABLE ONLY cwfgw4k.seasons
 
 ALTER TABLE ONLY cwfgw4k.team_rosters
     ADD CONSTRAINT team_rosters_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: team_rosters team_rosters_team_id_draft_round_key; Type: CONSTRAINT; Schema: cwfgw4k; Owner: -
+--
+
+ALTER TABLE ONLY cwfgw4k.team_rosters
+    ADD CONSTRAINT team_rosters_team_id_draft_round_key UNIQUE (team_id, draft_round);
 
 
 --

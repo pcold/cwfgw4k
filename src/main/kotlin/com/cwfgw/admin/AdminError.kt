@@ -81,4 +81,8 @@ sealed interface ConfirmedRosterProblem {
 
     /** Ascending, every absent round of the team in one problem rather than one each. */
     data class MissingRounds(val teamName: String, val rounds: List<Int>) : ConfirmedRosterProblem
+
+    /** @see OWNERSHIP_PCTS */
+    data class OwnershipPctOutOfRange(val teamName: String, val round: Int, val ownershipPct: Int) :
+        ConfirmedRosterProblem
 }

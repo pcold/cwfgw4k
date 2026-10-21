@@ -436,13 +436,17 @@ class AdminService(
 
 /**
  * Every team needs exactly one pick in each: the weekly ledger counts one pick per round into topTens but every
- * pick into the pot, so any other shape stops it summing to zero. Must agree with `WeeklyReportService`'s copy.
+ * pick into the pot, so any other shape stops it summing to zero. Must agree with `WeeklyReportService`'s copy and
+ * sit within `team_rosters_draft_round_in_range`, which refuses the rest as a 500.
  */
 internal val DRAFT_ROUNDS: IntRange = 1..8
 
+/** Must sit within `team_rosters_ownership_pct_in_range`, which refuses the rest as a 500. */
+internal val OWNERSHIP_PCTS: IntRange = 1..100
+
 private fun findRosterProblems(teams: List<ConfirmedTeam>): List<ConfirmedRosterProblem> =
     repeatedTeamNames(teams) + teams.flatMap(::repeatedGolfers) + teams.flatMap(::blankEspnNames) +
-        teams.flatMap(::blankNewNames) + teams.flatMap(::draftRoundProblems)
+        teams.flatMap(::blankNewNames) + teams.flatMap(::draftRoundProblems) + teams.flatMap(::ownershipProblems)
 
 private fun repeatedTeamNames(teams: List<ConfirmedTeam>): List<ConfirmedRosterProblem> =
     teams.firstOfEachRepeat(ConfirmedTeam::teamName)
@@ -528,6 +532,10 @@ private fun draftRoundProblems(team: ConfirmedTeam): List<ConfirmedRosterProblem
             ?.let { absent -> ConfirmedRosterProblem.MissingRounds(team.teamName, absent) }
     return outOfRange + repeated + listOfNotNull(missing)
 }
+
+private fun ownershipProblems(team: ConfirmedTeam): List<ConfirmedRosterProblem> =
+    team.picks.filterNot { it.ownershipPct in OWNERSHIP_PCTS }
+        .map { pick -> ConfirmedRosterProblem.OwnershipPctOutOfRange(team.teamName, pick.round, pick.ownershipPct) }
 
 private fun <T, K> List<T>.firstOfEachRepeat(key: (T) -> K): List<T> {
     val occurrences = groupingBy(key).eachCount()

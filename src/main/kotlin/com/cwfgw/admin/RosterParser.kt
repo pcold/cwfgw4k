@@ -137,10 +137,13 @@ object RosterParser {
         val playerName = rawPlayerName.toInitCap()
         val ownership =
             when (val raw = cells.getOrNull(4)?.trim().orEmpty()) {
-                "" -> MAX_OWNERSHIP
+                "" -> OWNERSHIP_PCTS.last
                 else ->
-                    raw.toIntOrNull()?.takeIf { it in MIN_OWNERSHIP..MAX_OWNERSHIP }
-                        ?: return RowResult.Err("ownership_pct must be 1–100 or empty (got: '$raw')")
+                    raw.toIntOrNull()?.takeIf { it in OWNERSHIP_PCTS }
+                        ?: return RowResult.Err(
+                            "ownership_pct must be ${OWNERSHIP_PCTS.first}–${OWNERSHIP_PCTS.last} or empty " +
+                                "(got: '$raw')",
+                        )
             }
         return RowResult.Ok(
             ParsedRow(
@@ -189,9 +192,6 @@ object RosterParser {
 
     /** Header columns, in required order. Exposed so test fixtures can build matching rows. */
     val EXPECTED_HEADER: List<String> = listOf("team_number", "team_name", "round", "player_name", "ownership_pct")
-
-    private const val MIN_OWNERSHIP = 1
-    private const val MAX_OWNERSHIP = 100
 }
 
 /**

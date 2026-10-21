@@ -1,6 +1,7 @@
 package com.cwfgw.testing
 
 import com.cwfgw.db.Transactor
+import com.cwfgw.jooq.keys.TEAM_ROSTERS_TEAM_ID_DRAFT_ROUND_KEY
 import com.cwfgw.result.Result
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.teams.NewRosterEntry
@@ -80,6 +81,24 @@ private val teamContract: List<ContractCase<TeamRepository>> =
             drafted.acquiredVia shouldBe "draft"
             drafted.draftRound shouldBe 1
             drafted.ownershipPct.toPlainString() shouldBe "50.00"
+        },
+        ContractCase("a second pick in one round of a team is outraced; another team, or an undrafted entry, is not") {
+            val seasonId = seeds.season()
+            val (brown, green) =
+                listOf("BROWN", "GREEN").map { name ->
+                    tx.update { repository.create(seasonId, NewTeam(ownerName = name, teamName = name)) }
+                }
+            val firstThirdRounder = NewRosterEntry(seeds.golfer(), draftRound = 3)
+            tx.update { repository.addToRoster(brown.id, firstThirdRounder) }
+            val secondThirdRounder = NewRosterEntry(seeds.golfer(), draftRound = 3)
+
+            tx.updateUnlessOutraced(TEAM_ROSTERS_TEAM_ID_DRAFT_ROUND_KEY.name) {
+                repository.addToRoster(brown.id, secondThirdRounder)
+            } shouldBe Result.Err(Outraced)
+            tx.update { repository.addToRoster(green.id, secondThirdRounder) }.draftRound shouldBe 3
+            val undrafted = List(2) { NewRosterEntry(seeds.golfer()) }
+            undrafted.forEach { entry -> tx.update { repository.addToRoster(brown.id, entry) } }
+            tx.get { repository.findRostersBySeason(seasonId) }.count { it.teamId == brown.id } shouldBe 3
         },
         ContractCase("findRostersBySeason orders by team id as Postgres orders uuid, then by round, undrafted last") {
             val seasonId = seeds.season()

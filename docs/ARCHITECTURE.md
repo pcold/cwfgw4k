@@ -80,7 +80,7 @@ User (username, role admin | user)
   `payout_multiplier` (default 1) scales every payout for that event. `is_team_event` marks two-player events
   such as the Zurich Classic. `week` is the display label from the schedule upload.
 - **Team and roster.** Teams belong to one season. A roster entry puts a golfer on a team with a `draft_round`
-  and an `ownership_pct`; two teams can each own a share of one golfer.
+  and an `ownership_pct`; two teams can each own a share of one golfer. A team holds at most one pick per round.
 - **Golfer.** Global across seasons, unique by `pga_player_id`. A golfer imported from an ESPN team entry has
   no PGA id.
 - **Side bets.** Not stored. Derived in the report from the fantasy scores of each team's pick in the season's
@@ -169,14 +169,14 @@ Tables in schema `cwfgw4k`, as dumped in `db/schema.sql`:
 | `seasons` | year, number, tie floor, side-bet amount | defaults: `tie_floor` 1, `side_bet_amount` 15, `max_teams` 10 |
 | `season_rule_payouts` | payout per place | unique `(season_id, position)` |
 | `season_rule_side_bet_rounds` | side-bet rounds | unique `(season_id, round)`; `round` within 1–8, the draft's rounds |
-| `tournaments` | schedule, status, multiplier | `pga_tournament_id` unique; `status` default `upcoming`; `payout_multiplier` `NUMERIC(6,4)` default 1 |
+| `tournaments` | schedule, status, multiplier | `pga_tournament_id` unique; `status` one of `upcoming`, `in_progress`, `completed`, default `upcoming`; `payout_multiplier` `NUMERIC(6,4)` default 1 |
 | `tournament_results` | one row per golfer per tournament | unique `(tournament_id, golfer_id)` |
 | `tournament_player_overrides` | ESPN competitor -> golfer | PK `(tournament_id, espn_competitor_id)`; a trigger refuses any link write naming a tombstoned golfer |
 | `teams` | a season's teams | unique `(season_id, team_name)` |
-| `team_rosters` | golfer on a team | unique `(team_id, golfer_id, acquired_at)`; `ownership_pct` `NUMERIC(5,2)` default 100 |
+| `team_rosters` | golfer on a team | unique `(team_id, golfer_id, acquired_at)` and `(team_id, draft_round)`; `draft_round` within 1–8, the draft's rounds; `ownership_pct` `NUMERIC(5,2)` above 0 and at most 100, default 100 |
 | `golfers` | golfers; a tombstoned row (`tombstoned_at` set) keeps its history but no name match finds it | `pga_player_id` unique; `merged_into` -> `golfers`, only on a tombstone and never itself |
 | `fantasy_scores` | a team's payout for a golfer in a tournament | unique `(season_id, team_id, tournament_id, golfer_id)` |
-| `users` | accounts | `role` default `user` |
+| `users` | accounts | `role` one of `admin`, `user`, default `user` |
 | `cache`, `cache_generation` | response cache | `cache` is `UNLOGGED` |
 
 Deleting a season cascades to its teams, rosters, tournaments, results and scores. Flyway migrates at boot.

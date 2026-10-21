@@ -89,6 +89,9 @@ private fun ConfirmedRosterProblem.describe(): String =
         is ConfirmedRosterProblem.RepeatedRound -> "team '$teamName' has more than one pick in round $round"
         is ConfirmedRosterProblem.MissingRounds ->
             "team '$teamName' has no pick in " + rounds.joinToString(", ") { round -> "round $round" }
+        is ConfirmedRosterProblem.OwnershipPctOutOfRange ->
+            "team '$teamName' gives its round $round pick an ownership of $ownershipPct%, outside " +
+                "${OWNERSHIP_PCTS.first}–${OWNERSHIP_PCTS.last}%"
     }
 
 private fun RosterParseError.flattenMessage(): String =
