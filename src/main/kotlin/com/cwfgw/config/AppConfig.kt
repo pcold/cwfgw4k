@@ -79,14 +79,18 @@ data class LoginThrottleConfig(
 /**
  * [defaultTtlSeconds] is the expiry a route's own TTL overrides. [sweepIntervalSeconds] is the least time between two
  * sweeps of expired rows, each run by a request: at the TTL, a busy table holds about one TTL window of them.
- * [revision] joins every cache key, and only Cloud Run supplies one per deploy; elsewhere every build shares the
- * default and can read another's entries.
+ * [deployRevision] is blank off Cloud Run, the only host that supplies one per deploy.
  */
 data class CacheConfig(
     val defaultTtlSeconds: Long,
     val sweepIntervalSeconds: PositiveSeconds,
-    val revision: String,
-)
+    val deployRevision: String,
+) {
+    /** Off Cloud Run, [buildId] stands in, so a rebuild never reads a body an older build encoded. @see readBuildId */
+    fun revision(buildId: String?): String = deployRevision.ifBlank { buildId ?: LOCAL_REVISION }
+}
+
+internal const val LOCAL_REVISION: String = "local"
 
 /**
  * One cache per JVM, so each Cloud Run instance holds its own. A `live=true` report during a

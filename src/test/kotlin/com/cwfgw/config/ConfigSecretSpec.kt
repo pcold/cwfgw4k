@@ -45,7 +45,7 @@ private val CONFIG =
                 cookieSecure = true,
             ),
         loginThrottle = LoginThrottleConfig(maxFailures = 5, windowSeconds = 900),
-        cache = CacheConfig(defaultTtlSeconds = 300, sweepIntervalSeconds = SWEEP_INTERVAL, revision = "local"),
+        cache = CacheConfig(defaultTtlSeconds = 300, sweepIntervalSeconds = SWEEP_INTERVAL, deployRevision = ""),
         espn = EspnConfig(scoreboardCacheTtlSeconds = 300, scoreboardCacheMaxSize = 256),
         debug = DebugConfig(enabled = false),
     )

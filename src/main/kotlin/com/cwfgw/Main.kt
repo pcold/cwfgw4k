@@ -7,6 +7,7 @@ import com.cwfgw.cache.RequestCache
 import com.cwfgw.config.AppConfig
 import com.cwfgw.config.AuthConfig
 import com.cwfgw.config.LoginThrottleConfig
+import com.cwfgw.config.readBuildId
 import com.cwfgw.datahealth.DataHealthRepository
 import com.cwfgw.db.Database
 import com.cwfgw.db.Transactor
@@ -81,7 +82,7 @@ internal fun buildServices(
             RequestCache(
                 repository = CacheRepository(),
                 tx = transactor,
-                revision = config.cache.revision,
+                revision = config.cache.revision(buildId = readBuildId()),
                 defaultTtl = Duration.ofSeconds(config.cache.defaultTtlSeconds),
             ),
         sweepIntervalSeconds = config.cache.sweepIntervalSeconds.value,
