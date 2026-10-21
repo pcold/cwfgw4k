@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
+import type { ReportCell, ReportTeamColumn, ReportTournamentInfo, WeeklyReport } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
 import { makeLeaderboardEntry, makeWonLostTotals } from '@/shared/test/fixtures';
 import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
@@ -692,7 +692,7 @@ describe('ScoreboardView', () => {
       team({ teamId: 't-2', teamName: 'Birdies', cells: [] }),
       team({ teamId: 't-3', teamName: 'Cuts', cells: [] }),
     ];
-    const inProgress = { ...report().tournament, status: 'in_progress' };
+    const inProgress: ReportTournamentInfo = { ...report().tournament, status: 'in_progress' };
     const phases = [
       ['live', report({ teams: threeTeams, tournament: inProgress })],
       ['before tee-off', report({ teams: threeTeams, tournament: inProgress, awaitingTeeOff: true })],
@@ -1035,7 +1035,7 @@ describe('ScoreboardView', () => {
     it.each([
       ['live', { status: 'in_progress', awaitingTeeOff: false }],
       ['finalized', { status: 'completed', awaitingTeeOff: false }],
-    ])('lists only the paid, with their money, once %s', (_phase, { status, awaitingTeeOff }) => {
+    ] as const)('lists only the paid, with their money, once %s', (_phase, { status, awaitingTeeOff }) => {
       const cells = [
         row({ golferId: 'g-1', golferName: 'Scottie Scheffler', inField: true, earnings: 18, finish: { position: 1, tied: false } }),
         row({ round: 2, golferId: 'g-2', golferName: 'Rory McIlroy', inField: true, earnings: 0, finish: null }),

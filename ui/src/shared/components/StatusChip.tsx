@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { TournamentStatus } from '@/shared/api/types';
 
 /** @see statusChipVariant */
 export type StatusChipVariant = 'live' | 'final' | 'upcoming';
@@ -6,7 +7,7 @@ export type StatusChipVariant = 'live' | 'final' | 'upcoming';
 /** @see statusChipVariant */
 export interface StatusChipSource {
   readonly live: boolean | null;
-  readonly tournament?: { readonly status: string | null };
+  readonly tournament?: { readonly status: TournamentStatus | null };
 }
 
 /**
@@ -16,13 +17,18 @@ export interface StatusChipSource {
 export function statusChipVariant(source: StatusChipSource | undefined): StatusChipVariant | null {
   if (source === undefined) return null;
   if (source.live === true) return 'live';
-  switch (source.tournament?.status) {
+  const status = source.tournament?.status;
+  switch (status) {
     case 'completed':
       return 'final';
     case 'upcoming':
       return 'upcoming';
-    default:
+    case 'in_progress':
+    case null:
+    case undefined:
       return null;
+    default:
+      return status satisfies never;
   }
 }
 
