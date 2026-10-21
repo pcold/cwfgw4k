@@ -190,9 +190,12 @@ class AdminServiceRosterBackfillSpec : FunSpec({
         val winner = tx.update { GolferRepository().create(KOIVUN.copy(pgaPlayerId = "espn-koivun")) }
         val womble = fullTeam(1, "WOMBLE", espnPick(1, "espn-koivun", "Jackson Koivun"))
 
-        service(golferRepository = OnceStaleGolferRepository(GolferRepository()))
+        val golfers = OnceStaleGolferRepository(GolferRepository())
+        service(golferRepository = golfers)
             .confirmRoster(ConfirmRosterRequest(seasonId, listOf(womble)))
             .orFail()
+
+        golfers.windowFired shouldBe true
 
         koivunRows() shouldContainExactly listOf(winner)
         rosterGolferIds(seasonId) shouldContain winner.id
@@ -209,6 +212,9 @@ private class OnceStaleGolferRepository(
     private val inner = delegate
     private val staleById = AtomicBoolean(true)
     private val staleAll = AtomicBoolean(true)
+
+    /** The race path ends where the plain one does, so only this tells a stale read nobody makes. */
+    val windowFired: Boolean get() = !staleById.get() && !staleAll.get()
 
     context(ctx: TransactionContext)
     override fun findByPgaPlayerIds(pgaPlayerIds: Collection<String>): List<Golfer> =

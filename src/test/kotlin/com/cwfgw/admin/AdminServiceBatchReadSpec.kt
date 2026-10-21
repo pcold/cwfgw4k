@@ -31,6 +31,7 @@ import io.kotest.matchers.shouldBe
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 
 private val SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000bbb"))
 
@@ -49,10 +50,24 @@ private fun golfer(
         updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
     )
 
-/** Every single-key read AdminService once made per row fails the spec, so each path must answer from its batch. */
+/**
+ * Every single-key read AdminService once made per row fails the spec, and each batch read is counted, so a path
+ * must answer from one batch rather than a loop of either.
+ */
 private class SingleKeyGolferReadsRefused(
-    delegate: GolferRepository,
+    private val delegate: GolferRepository,
 ) : GolferRepository by delegate {
+    val idBatches = AtomicInteger()
+    val pgaIdBatches = AtomicInteger()
+
+    context(ctx: TransactionContext)
+    override fun findByIds(ids: Collection<GolferId>): List<Golfer> =
+        delegate.findByIds(ids).also { idBatches.incrementAndGet() }
+
+    context(ctx: TransactionContext)
+    override fun findByPgaPlayerIds(pgaPlayerIds: Collection<String>): List<Golfer> =
+        delegate.findByPgaPlayerIds(pgaPlayerIds).also { pgaIdBatches.incrementAndGet() }
+
     context(ctx: TransactionContext)
     override fun findById(id: GolferId): Golfer? = fail("golfer ${id.value} was read on its own")
 
@@ -62,8 +77,14 @@ private class SingleKeyGolferReadsRefused(
 
 /** @see SingleKeyGolferReadsRefused */
 private class SingleKeyTournamentReadsRefused(
-    delegate: TournamentRepository,
+    private val delegate: TournamentRepository,
 ) : TournamentRepository by delegate {
+    val pgaIdBatches = AtomicInteger()
+
+    context(ctx: TransactionContext)
+    override fun findByPgaTournamentIds(pgaTournamentIds: Collection<String>): List<Tournament> =
+        delegate.findByPgaTournamentIds(pgaTournamentIds).also { pgaIdBatches.incrementAndGet() }
+
     context(ctx: TransactionContext)
     override fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
         fail("ESPN event $pgaTournamentId was read on its own")
@@ -76,6 +97,8 @@ private class BatchFixture(
     val tournamentRepo = FakeTournamentRepository()
     val golferRepo = FakeGolferRepository(initial = seedGolfers)
     val teamRepo = FakeTeamRepository()
+    val golfers = SingleKeyGolferReadsRefused(golferRepo)
+    val tournaments = SingleKeyTournamentReadsRefused(tournamentRepo)
     val service: AdminService
 
     init {
@@ -83,8 +106,6 @@ private class BatchFixture(
         val season = CreateSeasonRequest(leagueId = LeagueId(UUID.randomUUID()), name = "2026", seasonYear = 2026)
         with(noopTransactionContext) { seasonRepo.create(season) }
         val transactor = FakeTransactor()
-        val golfers = SingleKeyGolferReadsRefused(golferRepo)
-        val tournaments = SingleKeyTournamentReadsRefused(tournamentRepo)
         service =
             AdminService(
                 tx = transactor,
@@ -129,6 +150,7 @@ class AdminServiceBatchReadSpec : FunSpec({
 
         preview.entries.map { it.espnEventId } shouldContainExactly listOf("e-1", "e-3")
         preview.skipped.map { it.reason } shouldContainExactly listOf("already linked to tournament ${linked.id.value}")
+        fixture.tournaments.pgaIdBatches.get() shouldBe 1
     }
 
     test("a roster confirm checks its existing picks and finds its persisted ESPN athletes in one read each") {
@@ -153,6 +175,8 @@ class AdminServiceBatchReadSpec : FunSpec({
         val roster = with(noopTransactionContext) { fixture.teamRepo.findRostersBySeason(SEASON_ID) }
         roster.filter { it.draftRound in 1..2 }.sortedBy { it.draftRound }.map { it.golferId } shouldContainExactly
             listOf(scottie.id, rory.id)
+        fixture.golfers.idBatches.get() shouldBe 1
+        fixture.golfers.pgaIdBatches.get() shouldBe 1
     }
 
     test("a roster confirm naming an unknown golfer refuses it from the same one read") {
@@ -169,5 +193,6 @@ class AdminServiceBatchReadSpec : FunSpec({
 
         fixture.service.confirmRoster(ConfirmRosterRequest(seasonId = SEASON_ID, teams = listOf(team))) shouldBe
             Result.Err(AdminError.GolferIdsNotFound(listOf(ghost)))
+        fixture.golfers.idBatches.get() shouldBe 1
     }
 })

@@ -145,9 +145,12 @@ class AdminServiceRaceSpec : FunSpec({
         val brown =
             fullTeam(number = 1, name = "BROWN", ConfirmedPick(round = 1, ownershipPct = 100, assignment = scottie))
 
-        service(golferRepository = OnceBlindPgaIdGolferRepository(GolferRepository()))
+        val golfers = OnceBlindPgaIdGolferRepository(GolferRepository())
+        service(golferRepository = golfers)
             .confirmRoster(ConfirmRosterRequest(seasonId = seasonId, teams = listOf(brown)))
             .orFail()
+
+        golfers.windowFired shouldBe true
 
         tx.read { GolferRepository().findAll(search = null) }.filter { it.pgaPlayerId == "espn-1" } shouldContainExactly
             listOf(winner)
@@ -185,6 +188,9 @@ private class OnceBlindPgaIdGolferRepository(
 ) : GolferRepository by delegate {
     private val inner = delegate
     private val blind = AtomicBoolean(true)
+
+    /** The race path ends where the plain one does, so only this tells a blind on a read nobody makes. */
+    val windowFired: Boolean get() = !blind.get()
 
     context(ctx: TransactionContext)
     override fun findByPgaPlayerIds(pgaPlayerIds: Collection<String>): List<Golfer> =
