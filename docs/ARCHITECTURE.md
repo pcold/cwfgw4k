@@ -200,6 +200,10 @@ more, queue wait included, logs WARN `cwfgw4k.db.slow_tx kind=<read|get|update>`
 connection setup at 10 s and a single read at 30 s, so a stuck socket fails fast instead of hanging until
 Cloud Run's timeout (`db/Database.kt`). Pool occupancy logs every 30 s as `cwfgw4k.db.pool`.
 
+Cloud Run throttles CPU between requests, and a connection opened then can stall its TLS handshake to Cloud SQL.
+So nothing opens one off a request: the pool keeps no idle floor, closes a connection idle for 30 s, and sends
+no keepalive pings, and a borrow validates a connection idle for over 500 ms. Pinned by `PoolConfigSpec`.
+
 ### WriteTransactionContext
 
 Only `update` provides a `WriteTransactionContext` (`db/TransactionContext.kt`). Every repository write, and
@@ -211,8 +215,9 @@ every read that takes a row lock, declares it as a context parameter. Calling a 
 The report routes cache their responses in the `cache` table (`cache/RequestCache.kt`):
 
 - The key is the deploy revision (`K_REVISION`) plus the request URI, so a deploy starts cold.
-- Entries live `CACHE_DEFAULT_TTL_SECONDS` (300); a sweeper deletes expired rows every
-  `CACHE_SWEEP_INTERVAL_SECONDS` (300).
+- Entries live `CACHE_DEFAULT_TTL_SECONDS` (300). A read skips an expired row, and a request deletes them before
+  its handler at most once per `CACHE_SWEEP_INTERVAL_SECONDS` (300), so an idle instance never sweeps
+  (`cache/CacheSweep.kt`, pinned by `CacheSweepSpec` and `CacheSweepTrafficSpec`).
 - Fills are single-flight per key: concurrent misses share one loader. A loader that fails stores nothing.
 - `cache_generation` is a counter bumped on every clear. A fill that started before a clear and finishes after
   it stores nothing, so a stale report cannot outlive the write that invalidated it.
@@ -591,7 +596,8 @@ shared code in `shared/`.
 - **Runtime.** Cloud Run, 1 GiB and 2 CPU, 20 concurrent requests per instance, 0 to 6 instances, 90 s
   request timeout. The JVM heap is capped at 512 MiB in the image.
 - **Database.** Cloud SQL Postgres instance `cwfgw4k-prod`, reached through the Cloud SQL socket factory.
-  Each instance runs a pool of 15, so 6 instances stay under the instance's 100 connections.
+  Each instance runs a pool of up to 15, so 6 instances stay under the instance's 100 connections, and an
+  idle instance's pool empties to 0 (see [Transactor](#transactor)).
 - **Secrets.** `DB_PASSWORD`, `AUTH_SESSION_SECRET` and `AUTH_ADMIN_PASSWORD` come from Secret Manager.
 - **Setup.** `deploy/setup.sh` and `deploy/setup-github-deploy.sh` record the one-time GCP and GitHub setup.
 

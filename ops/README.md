@@ -323,6 +323,13 @@ occasionally hits Broken Pipe during the TLS handshake to Cloud SQL via
 the in-process socket factory). `ops/load-test/soak.sh` reproduces
 that timeline end-to-end.
 
+Cloud Run throttles an idle instance's CPU, so the pool keeps no
+connection idle for more than 30s and pings none, and the cache sweep
+runs only on a request. An idle instance should log
+`cwfgw4k.db.pool … total=0` within about a minute of its last request,
+and its first canary opens a fresh connection on request CPU: no
+`cwfgw4k.db.slow_acquire` line, no Broken Pipe.
+
 ```bash
 # Default: 30-min idle, 5-min canary window @ 30s interval.
 ops/load-test/soak.sh
@@ -336,9 +343,11 @@ ops/load-test/soak.sh --keep
 
 A wedge looks like one row in the canary table at >5s flanked by
 sub-second rows. A healthy run shows every canary <1s. Staging
-instances created by soak.sh use `min-instances=1`, matching the
-production config — soak is testing whether *that* config holds up
-under idle, not whether a cold-start path is fast.
+instances created by soak.sh use `min-instances=1`, where production
+runs `min-instances=0`: it keeps one instance alive and throttled for
+the whole idle window, the shape a production instance has between
+its last request and scale-in. With 0, the instance could scale in
+and the first canary would measure a cold start instead.
 
 ## Cost expectations
 
