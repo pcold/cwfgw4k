@@ -166,7 +166,7 @@ describe('RankingsView', () => {
       renderWithProviders(<RankingsView myTeamName="CUTS" rankings={buildRankings()} />, NO_PROVIDERS);
 
       const row = screen.getByRole('row', { name: /Cuts/ });
-      expect(row).toHaveClass('outline-2', 'outline-gold');
+      expect(row).toHaveClass('outline-2', '-outline-offset-2', 'outline-gold');
       const [, name, subtotal, sideBets] = within(row).getAllByRole('cell');
       for (const cardCell of [name, subtotal, sideBets]) expect(cardCell).toHaveClass('bg-my-team');
       expect(screen.getByRole('row', { name: /Aces/ })).not.toHaveClass('outline-2');

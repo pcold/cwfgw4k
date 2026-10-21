@@ -29,13 +29,16 @@ const FILL_CLASS: Readonly<Record<ListCardFill, { card: string; middle: string }
   'my-team': { card: 'bg-my-team ring-2 ring-gold', middle: MIDDLE_CLASS },
 };
 
-/** A table card row's look; `my-team` is `ListCard`'s, its ring drawn by the `tr`'s outline. */
+/**
+ * A table card row's look; `my-team` is `ListCard`'s, its ring the `tr`'s outline. Inset, since the table's
+ * `overflow-x-auto` wrapper clips the sides of an outline drawn outside the row.
+ */
 export type CardRowFill = Extract<ListCardFill, 'plain' | 'my-team'>;
 
 /** @see CardRowFill; `cell` fills each cell between the row's position and money boxes. */
 export const CARD_ROW_CLASS: Readonly<Record<CardRowFill, { row: string; cell: string }>> = {
   plain: { row: 'h-11', cell: 'bg-surface-card' },
-  'my-team': { row: 'h-11 outline-2 outline-gold', cell: 'bg-my-team' },
+  'my-team': { row: 'h-11 rounded outline-2 -outline-offset-2 outline-gold', cell: 'bg-my-team' },
 };
 
 interface ListCardProps {

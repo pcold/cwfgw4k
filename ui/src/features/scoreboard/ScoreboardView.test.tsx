@@ -713,7 +713,7 @@ describe('ScoreboardView', () => {
     it.each(phases)('rings its row in gold and fills its card and team cell pale gold, %s', (_phase, scoreboard) => {
       renderWithProviders(<ScoreboardView myTeamName="Birdies" report={scoreboard} />, NO_PROVIDERS);
 
-      expect(teamRow('Birdies')).toHaveClass('outline-2', 'outline-gold');
+      expect(teamRow('Birdies')).toHaveClass('outline-2', '-outline-offset-2', 'outline-gold');
       expect(teamCell('Birdies')).toHaveClass('bg-my-team');
       expect(phoneCard('Birdies')).toHaveClass('bg-my-team', 'ring-gold');
       expect(teamRow('Aces')).not.toHaveClass('outline-2');
