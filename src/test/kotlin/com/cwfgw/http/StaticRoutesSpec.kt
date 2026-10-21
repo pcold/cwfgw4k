@@ -60,7 +60,7 @@ class StaticRoutesSpec : FunSpec({
 
             response.status shouldBe HttpStatusCode.NotFound
             response.contentType()?.withoutParameters() shouldBe ContentType.Application.Json
-            response.body<ErrorBody>().error shouldBe "not found"
+            response.body<ErrorBody>().error shouldBe "route not found"
         }
     }
 })

@@ -43,7 +43,7 @@ fun Route.spaFallback() {
 
 private suspend fun RoutingContext.serveShellOrApiMiss() {
     val segments = call.parameters.getAll("path").orEmpty()
-    if (segments.firstOrNull() == "api") throw DomainError.NotFound("not found")
+    if (segments.firstOrNull() == "api") throw DomainError.NotFound("route not found")
     serveIndex()
 }
 
@@ -61,8 +61,8 @@ private suspend fun RoutingContext.serveBundle(resourceDir: String) {
 }
 
 /**
- * The loader that loaded this file, not the thread's context loader: on [Dispatchers.IO] that is
- * whichever pool thread runs the read, not the request's.
+ * This file's own loader, not the thread's context loader, which on [Dispatchers.IO] belongs to
+ * whichever pool thread runs the read rather than to the request.
  */
 private suspend fun readClasspathBytes(path: String): ByteArray? =
     withContext(Dispatchers.IO) {
