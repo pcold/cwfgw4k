@@ -36,12 +36,19 @@ class FakeGolferRepository(
     context(ctx: TransactionContext)
     override fun findById(id: GolferId): Golfer? = store[id]
 
+    context(ctx: TransactionContext)
+    override fun findByIds(ids: Collection<GolferId>): List<Golfer> = store.values.filter { it.id in ids }
+
     context(ctx: WriteTransactionContext)
     override fun findByIdForShare(id: GolferId): Golfer? = findById(id)
 
     context(ctx: TransactionContext)
     override fun findByPgaPlayerId(pgaPlayerId: String): Golfer? =
         store.values.firstOrNull { it.pgaPlayerId == pgaPlayerId }
+
+    context(ctx: TransactionContext)
+    override fun findByPgaPlayerIds(pgaPlayerIds: Collection<String>): List<Golfer> =
+        store.values.filter { it.pgaPlayerId in pgaPlayerIds }
 
     context(ctx: WriteTransactionContext)
     override fun create(request: CreateGolferRequest): Golfer {

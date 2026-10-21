@@ -22,12 +22,20 @@ interface GolferRepository {
     context(ctx: TransactionContext)
     fun findById(id: GolferId): Golfer?
 
+    /** Tombstones included, as [findById] includes them: a tombstone still exists for a pick naming it. */
+    context(ctx: TransactionContext)
+    fun findByIds(ids: Collection<GolferId>): List<Golfer>
+
     /** Waits out an uncommitted tombstone that [findById] would read past. */
     context(ctx: WriteTransactionContext)
     fun findByIdForShare(id: GolferId): Golfer?
 
     context(ctx: TransactionContext)
     fun findByPgaPlayerId(pgaPlayerId: String): Golfer?
+
+    /** @see findByIds */
+    context(ctx: TransactionContext)
+    fun findByPgaPlayerIds(pgaPlayerIds: Collection<String>): List<Golfer>
 
     context(ctx: WriteTransactionContext)
     fun create(request: CreateGolferRequest): Golfer
@@ -100,6 +108,14 @@ private class JooqGolferRepository : GolferRepository {
             .fetchOne()
             ?.let(::toGolfer)
 
+    context(ctx: TransactionContext)
+    override fun findByIds(ids: Collection<GolferId>): List<Golfer> {
+        if (ids.isEmpty()) return emptyList()
+        return ctx.dsl.selectFrom(GOLFERS)
+            .where(GOLFERS.ID.`in`(ids.map(GolferId::value)))
+            .fetch(::toGolfer)
+    }
+
     context(ctx: WriteTransactionContext)
     override fun findByIdForShare(id: GolferId): Golfer? =
         ctx.dsl.selectFrom(GOLFERS)
@@ -114,6 +130,14 @@ private class JooqGolferRepository : GolferRepository {
             .where(GOLFERS.PGA_PLAYER_ID.eq(pgaPlayerId))
             .fetchOne()
             ?.let(::toGolfer)
+
+    context(ctx: TransactionContext)
+    override fun findByPgaPlayerIds(pgaPlayerIds: Collection<String>): List<Golfer> {
+        if (pgaPlayerIds.isEmpty()) return emptyList()
+        return ctx.dsl.selectFrom(GOLFERS)
+            .where(GOLFERS.PGA_PLAYER_ID.`in`(pgaPlayerIds))
+            .fetch(::toGolfer)
+    }
 
     context(ctx: WriteTransactionContext)
     override fun create(request: CreateGolferRequest): Golfer = toGolfer(insert(request).returning().fetchSingle())
