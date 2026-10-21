@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- **JDK 25** — the Gradle toolchain provisions one if your system version is wrong
+- **JDK 25** — install it yourself where Gradle can detect it (`JAVA_HOME` or a standard install location); no toolchain resolver is configured, so nothing downloads one
 - **Docker** — used by docker-compose for Postgres, and by Testcontainers during the test suite
 - **Node** — *not* required directly; the `node-gradle` plugin downloads its own copy on first build
 
@@ -62,9 +62,9 @@ Vite serves the UI at `http://localhost:5173` with hot module reload, proxying `
 ./gradlew check --rerun-tasks
 ```
 
-Runs the full gate: backend tests + ktlint + detekt + Kover coverage verify + UI unit tests. This is the canonical command — `./gradlew test` skips coverage and the UI tests, so don't trust it alone. `--rerun-tasks` is part of it: the build cache is on, and a cached or up-to-date `:test` verifies nothing. [`.claude/CLAUDE.md`](../.claude/CLAUDE.md) → Verification says how to read the result.
+Runs the full gate: backend tests + ktlint + detekt + Kover coverage verify + the schema-dump check (`checkSchemaDump`) + UI lint (`uiLint`) + UI unit tests. This is the canonical command — `./gradlew test` skips coverage and the UI tests, so don't trust it alone. `--rerun-tasks` is part of it: the build cache is on, and a cached or up-to-date `:test` verifies nothing. [`.claude/CLAUDE.md`](../.claude/CLAUDE.md) → Verification says how to read the result.
 
-GitHub Actions runs the same gate on every pull request and on `main` after a merge (`.github/workflows/check.yml`, job `gradle check`), and then asserts from the log that `:test` and `:detekt` really ran. A pull request that changes only `.md` files reports the check without running it.
+GitHub Actions runs the same gate on every pull request and on `main` after a merge (`.github/workflows/check.yml`, job `gradle check`), and then asserts from the log that `:test` and `:detekt` really ran. It reports the check without running it for a pull request that changes only `.md` files, and for a push to `main` whose exact tree an earlier run already passed.
 
 `scripts/setup-branch-protection.sh` records the protection `main` is meant to carry and applies it.
 
@@ -74,7 +74,7 @@ GitHub Actions runs the same gate on every pull request and on `main` after a me
 |------|-------------|
 | `./gradlew run` | Run the backend locally, serving the bundled UI. |
 | `./gradlew seed` | Reset Postgres and populate the 2026 Spring + Summer seasons end-to-end. |
-| `./gradlew check --rerun-tasks` | Full verification gate (tests + lint + coverage + UI tests). |
+| `./gradlew check --rerun-tasks` | Full verification gate (tests + lint + coverage + schema dump + UI lint + UI tests). |
 | `./gradlew uiBuild` | Build the production UI bundle into `ui/dist/`. |
 | `./gradlew uiTest` | Run UI unit tests with coverage. |
 | `./gradlew buildFatJar` | Build the deployable fatJar (`build/libs/cwfgw4k-all.jar`). |
@@ -83,7 +83,7 @@ GitHub Actions runs the same gate on every pull request and on `main` after a me
 
 ## Deploying
 
-`.github/workflows/deploy.yml` ships `main` to Cloud Run. It starts when the `Check` workflow passes for a push to `main`. It builds the fat jar and the image, tags the image with the commit SHA, runs `gcloud run deploy`, and then calls `/api/v1/health` on the new revision.
+`.github/workflows/deploy.yml` ships `main` to Cloud Run. It starts when the `Check` workflow passes for a push to `main`. It builds the fat jar and the image, tags the image with the commit SHA, runs `gcloud run deploy`, and then calls `/api/v1/health` on the service URL, which serves the new revision unless traffic is pinned to another.
 
 - **Approval.** The job runs in the `production` environment. While that environment has a required reviewer, each deploy waits in the Actions tab until it is approved or rejected.
 - **By hand.** `gh workflow run deploy.yml` deploys the tip of `main`. Add `-f sha=<commit>` for an earlier commit; it must be on `main`.
