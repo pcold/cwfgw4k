@@ -451,15 +451,20 @@ class EspnLivePreviewSpec : FunSpec({
         leaderboard.forEach { it.rostered shouldBe false }
     }
 
-    test("previewForTournament answers NotStarted with the field unplaced when no competitor has teed off") {
+    test("previewForTournament answers NotStarted with the field unplaced and every credited golfer in it") {
         val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
+        val rory = golfer(RORY_ID, "Rory", "McIlroy", pgaPlayerId = "p2")
         val event =
-            espnField(notTeedOff("p1", "Scottie Scheffler", order = 1), notTeedOff("p2", "Undrafted", order = 2))
+            espnField(
+                notTeedOff("p1", "Scottie Scheffler", order = 1),
+                notTeedOff("p2", "Rory McIlroy", order = 2),
+                notTeedOff("p3", "Undrafted", order = 3),
+            )
         val fixture =
             PreviewFixture(
                 initialTournaments = listOf(tournament()),
                 initialTeams = listOf(team(TEAM_A_ID, "BROWN")),
-                initialGolfers = listOf(scottie),
+                initialGolfers = listOf(scottie, rory),
                 initialRosters = listOf(rosterEntry(TEAM_A_ID, SCOTTIE_ID, draftRound = 1)),
                 tournamentsByDate = mapOf(START_DATE to listOf(event)),
             )
@@ -467,9 +472,44 @@ class EspnLivePreviewSpec : FunSpec({
         val unplacedField =
             listOf(
                 PreviewLeaderboardEntry("Scottie Scheffler", position = null, scoreToPar = null, listOf("BROWN")),
+                PreviewLeaderboardEntry("Rory McIlroy", position = null, scoreToPar = null, emptyList()),
                 PreviewLeaderboardEntry("Undrafted", position = null, scoreToPar = null, emptyList()),
             )
-        fixture.previewFor(tournament()) shouldBe Result.Err(LivePreviewError.NotStarted(unplacedField))
+        fixture.previewFor(tournament()) shouldBe
+            Result.Err(LivePreviewError.NotStarted(unplacedField, fieldGolferIds = setOf(SCOTTIE_ID, RORY_ID)))
+    }
+
+    test("previewForTournament puts who has teed off and who has yet to in the field of a part-started event") {
+        val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
+        val rory = golfer(RORY_ID, "Rory", "McIlroy", pgaPlayerId = "p2")
+        val event = espnField(espnCompetitor("p1", "Scottie Scheffler", 1, -2), notTeedOff("p2", "Rory McIlroy", 2))
+        val fixture =
+            PreviewFixture(
+                initialTournaments = listOf(tournament()),
+                initialGolfers = listOf(scottie, rory),
+                tournamentsByDate = mapOf(START_DATE to listOf(event)),
+            )
+
+        fixture.previewFor(tournament()).orFail().fieldGolferIds shouldBe setOf(SCOTTIE_ID, RORY_ID)
+    }
+
+    test("previewForTournament leaves a cut, withdrawn or disqualified golfer out of the field and keeps Unknown") {
+        val byStatus = EspnStatus.entries.associateWith { GolferId(UUID.randomUUID()) }
+        val golfers = byStatus.map { (status, id) -> golfer(id, "Golfer", status.name, pgaPlayerId = status.name) }
+        val competitors =
+            byStatus.keys.mapIndexed { index, status ->
+                espnCompetitor(status.name, "Golfer ${status.name}", position = index + 1, scoreToPar = index)
+                    .copy(status = status)
+            }
+        val fixture =
+            PreviewFixture(
+                initialTournaments = listOf(tournament()),
+                initialGolfers = golfers,
+                tournamentsByDate = mapOf(START_DATE to listOf(espnField(*competitors.toTypedArray()))),
+            )
+
+        fixture.previewFor(tournament()).orFail().fieldGolferIds shouldBe
+            setOf(byStatus.getValue(EspnStatus.Active), byStatus.getValue(EspnStatus.Unknown))
     }
 
     test("previewForTournament places and pays only who has teed off, listing the rest unplaced after them") {

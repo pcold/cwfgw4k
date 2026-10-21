@@ -121,7 +121,7 @@ class LiveOverlayService(private val espnService: EspnService) {
             is Result.Err -> {
                 logIfUnavailable(selected.error, "live overlay $tournamentId")
                 when (val error = selected.error) {
-                    is LivePreviewError.NotStarted -> withPrior.withAwaitingTeeOff(error.field)
+                    is LivePreviewError.NotStarted -> withPrior.withAwaitingTeeOff(error.field, error.fieldGolferIds)
                     LivePreviewError.NoMatchingEvent, is LivePreviewError.EspnUnavailable -> withPrior
                 }
             }
@@ -150,11 +150,18 @@ class LiveOverlayService(private val espnService: EspnService) {
 }
 
 /**
- * A field nobody has teed off pays nothing, so only its leaderboard is shown and [WeeklyReport.live] is left as is.
- * ESPN can match the event before it lists a field; the persisted rows are then the only leaderboard.
+ * A field nobody has teed off pays nothing, so only its leaderboard and who is in it are shown, and [WeeklyReport.live]
+ * is left as is. ESPN can match the event before it lists a field; the persisted rows are then the only leaderboard.
  */
-private fun WeeklyReport.withAwaitingTeeOff(field: List<PreviewLeaderboardEntry>): WeeklyReport =
+private fun WeeklyReport.withAwaitingTeeOff(
+    field: List<PreviewLeaderboardEntry>,
+    fieldGolferIds: Set<GolferId>,
+): WeeklyReport =
     copy(
+        teams =
+            teams.map { team ->
+                team.copy(cells = team.cells.map { cell -> cell.copy(inField = cell.golferId in fieldGolferIds) })
+            },
         awaitingTeeOff = true,
         liveLeaderboard = if (field.isEmpty()) liveLeaderboard else buildLiveLeaderboard(field),
     )
@@ -272,7 +279,7 @@ internal fun mergeLiveData(
     val livePayout = livePayoutMap(liveData)
 
     val numTeams = report.teams.size
-    val phase1 = report.teams.map { team -> overlayTeamCells(team, livePayout) }
+    val phase1 = report.teams.map { team -> overlayTeamCells(team, livePayout, liveData.fieldGolferIds) }
     val totalPot = phase1.fold(BigDecimal.ZERO) { acc, snapshot -> acc.add(snapshot.weeklyTopTenEarnings) }
     val liveSideBetDetail =
         updateSideBetDetailWith(
@@ -434,14 +441,17 @@ private data class LiveCellInputs(
 private fun overlayTeamCells(
     team: ReportTeamColumn,
     livePayout: Map<Pair<TeamId, GolferId>, LiveCellInputs>,
+    fieldGolferIds: Set<GolferId>,
 ): TeamPhase1 {
     val updatedCells =
         team.cells.map { cell ->
             val live = cell.golferId?.let { livePayout[team.teamId to it] }
+            val inField = cell.golferId in fieldGolferIds
             if (live == null) {
-                cell.copy(earnings = BigDecimal.ZERO)
+                cell.copy(earnings = BigDecimal.ZERO, inField = inField)
             } else {
                 cell.copy(
+                    inField = inField,
                     earnings = live.payout,
                     positionStr = live.finish.label(),
                     finish = live.finish,

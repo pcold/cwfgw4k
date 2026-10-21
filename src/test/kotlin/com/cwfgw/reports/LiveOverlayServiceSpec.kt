@@ -20,6 +20,7 @@ private val TEAM_B_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-00000000
 private val TEAM_C_ID = TeamId(UUID.fromString("00000000-0000-0000-0000-000000000c03"))
 private val SCOTTIE_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d01"))
 private val RORY_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d02"))
+private val XANDER_ID = GolferId(UUID.fromString("00000000-0000-0000-0000-000000000d03"))
 
 private val DEFAULT_RULES =
     SeasonRules(
@@ -34,12 +35,14 @@ private fun preview(
     leaderboard: List<PreviewLeaderboardEntry> = emptyList(),
     multiplier: BigDecimal = BigDecimal.ONE,
     isTeamEvent: Boolean = false,
+    fieldGolferIds: Set<GolferId> = emptySet(),
 ): EspnLivePreview =
     EspnLivePreview(
         espnName = "The Masters",
         payoutMultiplier = multiplier,
         teams = teams,
         leaderboard = leaderboard,
+        fieldGolferIds = fieldGolferIds,
         isTeamEvent = isTeamEvent,
     )
 
@@ -98,6 +101,7 @@ private fun cell(
         ownershipPct = BigDecimal(100),
         seasonEarnings = seasonEarnings,
         seasonTopTens = seasonTopTens,
+        inField = false,
     )
 
 private fun teamColumn(
@@ -455,7 +459,55 @@ class LiveOverlayServiceSpec : FunSpec({
         a.weeklyTotal.add(b.weeklyTotal).compareTo(BigDecimal.ZERO) shouldBe 0
     }
 
+    test("mergeLiveData marks every cell whose golfer is in the field, paid or yet to tee off, and pays the paid") {
+        val base =
+            emptyReport(
+                listOf(
+                    teamColumn(
+                        TEAM_A_ID,
+                        cells =
+                            listOf(
+                                cell(round = 1, golferId = SCOTTIE_ID),
+                                cell(round = 2, golferId = RORY_ID),
+                                cell(round = 3, golferId = XANDER_ID),
+                                cell(round = 4),
+                            ),
+                    ),
+                ),
+            )
+        val live =
+            preview(
+                teams =
+                    listOf(
+                        previewTeam(
+                            teamId = TEAM_A_ID,
+                            golfers = listOf(previewGolfer(SCOTTIE_ID, position = 1, payout = BigDecimal(18))),
+                        ),
+                    ),
+                fieldGolferIds = setOf(SCOTTIE_ID, RORY_ID),
+            )
+
+        val cells = mergeLiveData(base, listOf(live), DEFAULT_RULES).teams.single().cells
+
+        cells.map { it.inField } shouldContainExactly listOf(true, true, false, false)
+        cells.map { it.earnings.toInt() } shouldContainExactly listOf(18, 0, 0, 0)
+    }
+
+    test("mergeLiveData marks cells from the selected preview's field alone") {
+        val base = emptyReport(listOf(teamColumn(TEAM_A_ID, cells = listOf(cell(round = 1, golferId = SCOTTIE_ID)))))
+        val previews = listOf(preview(), preview(fieldGolferIds = setOf(SCOTTIE_ID)))
+
+        mergeLiveData(base, previews, DEFAULT_RULES).teams.single().cells.single().inField shouldBe false
+    }
+
     // ----- overlayPriorLivePreview -----
+
+    test("overlayPriorLivePreview never marks a cell from a prior tournament's field") {
+        val base = emptyReport(listOf(teamColumn(TEAM_A_ID, cells = listOf(cell(round = 1, golferId = SCOTTIE_ID)))))
+        val priorLive = preview(teams = listOf(previewTeam(TEAM_A_ID)), fieldGolferIds = setOf(SCOTTIE_ID))
+
+        overlayPriorLivePreview(base, priorLive, DEFAULT_RULES).teams.single().cells.single().inField shouldBe false
+    }
 
     test("overlayPriorLivePreview bumps previous + seasonEarnings without touching this-tournament earnings") {
         val base =

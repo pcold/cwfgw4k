@@ -99,6 +99,8 @@ data class EspnLivePreview(
     val payoutMultiplier: BigDecimal,
     val teams: List<PreviewTeamScore>,
     val leaderboard: List<PreviewLeaderboardEntry>,
+    /** @see LivePreviewError.NotStarted.fieldGolferIds */
+    val fieldGolferIds: Set<GolferId>,
     val isTeamEvent: Boolean = false,
 )
 

@@ -48,6 +48,11 @@ data class ReportCell(
     val ownershipPct: BigDecimal,
     val seasonEarnings: BigDecimal,
     val seasonTopTens: Int,
+    /**
+     * Set only by the live overlay, from the selected event's ESPN field; a persisted report is false throughout.
+     * Says nothing about money: a cell pays only once its golfer has a round score.
+     */
+    val inField: Boolean,
 )
 
 /**

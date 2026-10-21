@@ -698,7 +698,14 @@ internal sealed interface LivePreviewError {
     data object NoMatchingEvent : LivePreviewError
 
     /** Nobody has teed off, so every entry of [field] is unplaced. */
-    data class NotStarted(val field: List<PreviewLeaderboardEntry>) : LivePreviewError
+    data class NotStarted(
+        val field: List<PreviewLeaderboardEntry>,
+        /**
+         * Credited golfers whose ESPN status is Active or Unknown: one cut, withdrawn or disqualified is no longer
+         * playing, and Unknown is ESPN not saying. Carries no money, so it may include who has yet to tee off.
+         */
+        val fieldGolferIds: Set<GolferId>,
+    ) : LivePreviewError
 
     /** @see LivePreviewError */
     data class EspnUnavailable(val cause: EspnError.UpstreamUnavailable) : LivePreviewError
@@ -750,13 +757,16 @@ internal fun buildLivePreviewForEvent(
     val siblingFields =
         siblings.map { sibling -> sibling.event.competitors.map { it to ctx.match(it, sibling.tournament.id) } }
     // Settled whole before the split, as finalize settles it, so an unstarted claimant still withholds a guess.
-    val (teedOff, unstarted) =
-        located.settledBeside(siblingFields)
-            .map { (competitor, match) -> competitor to match.creditedGolfer }
-            .partition { (competitor, _) -> competitor.hasTeedOff }
+    val credited =
+        located.settledBeside(siblingFields).map { (competitor, match) -> competitor to match.creditedGolfer }
+    val fieldGolferIds = credited.fieldGolferIds()
+    val (teedOff, unstarted) = credited.partition { (competitor, _) -> competitor.hasTeedOff }
     if (teedOff.isEmpty()) {
         return Result.Err(
-            LivePreviewError.NotStarted(buildLivePreviewLeaderboard(emptyList(), unstarted, ctx.teams, ctx.rosters)),
+            LivePreviewError.NotStarted(
+                field = buildLivePreviewLeaderboard(emptyList(), unstarted, ctx.teams, ctx.rosters),
+                fieldGolferIds = fieldGolferIds,
+            ),
         )
     }
     val matchedCompetitors = teedOff.ranked(completed = event.completed)
@@ -774,9 +784,20 @@ internal fun buildLivePreviewForEvent(
             teams = teamPreviews,
             isTeamEvent = isTeamEvent,
             leaderboard = buildLivePreviewLeaderboard(matchedCompetitors, unstarted, ctx.teams, ctx.rosters),
+            fieldGolferIds = fieldGolferIds,
         ),
     )
 }
+
+private fun List<Pair<EspnCompetitor, Golfer?>>.fieldGolferIds(): Set<GolferId> =
+    mapNotNull { (competitor, golfer) -> golfer?.id?.takeIf { competitor.isStillPlaying } }.toSet()
+
+private val EspnCompetitor.isStillPlaying: Boolean
+    get() =
+        when (status) {
+            EspnStatus.Active, EspnStatus.Unknown -> true
+            EspnStatus.Cut, EspnStatus.Withdrawn, EspnStatus.Disqualified -> false
+        }
 
 /** Re-placed among those who have teed off alone: no strokes means no finish, so no place and no share of a tie. */
 private fun List<Pair<EspnCompetitor, Golfer?>>.ranked(completed: Boolean): List<Pair<EspnCompetitor, Golfer?>> {
