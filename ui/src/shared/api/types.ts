@@ -136,6 +136,8 @@ export interface WeeklyReport {
    * infer it from the rows.
    */
   awaitingTeeOff: boolean;
+  /** Offer finalize on it; never infer it from the tournament's status or `awaitingTeeOff`. */
+  finalizable: boolean;
   /** Over every team's `totalCash`. Display it; never re-sum `totalCash`. */
   cashTotals: WonLostTotals;
   /** Over every team's `sideBets`. @see WeeklyReport.cashTotals */

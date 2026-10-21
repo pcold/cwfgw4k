@@ -19,6 +19,10 @@ const KEY_CHAINS: Record<keyof typeof queryKeys, readonly QueryKey[]> = {
     queryKeys.tournaments.bySeason('sn-1'),
     queryKeys.tournaments.current('sn-1'),
   ],
+  resettableTournaments: [
+    queryKeys.resettableTournaments.root,
+    queryKeys.resettableTournaments.bySeason('sn-1'),
+  ],
   tournamentCompetitors: [
     queryKeys.tournamentCompetitors.root,
     queryKeys.tournamentCompetitors.byTournament('tn-1'),
@@ -63,6 +67,7 @@ it('pins the value of every key, root first', () => {
     leagues: [['leagues']],
     seasons: [['seasons'], ['seasons', 'lg-1']],
     tournaments: [['tournaments'], ['tournaments', 'sn-1'], ['tournaments', 'sn-1', 'current']],
+    resettableTournaments: [['resettableTournaments'], ['resettableTournaments', 'sn-1']],
     tournamentCompetitors: [['tournamentCompetitors'], ['tournamentCompetitors', 'tn-1']],
     rosters: [['rosters'], ['rosters', 'sn-1']],
     seasonRules: [['seasonRules'], ['seasonRules', 'sn-1']],
@@ -133,7 +138,14 @@ const STALE_AFTER: [
   [
     'a score change',
     invalidateAfterScoreChange,
-    ['tournamentReport', 'report', 'rankings', 'playerRankings', 'golferHistory'],
+    [
+      'tournamentReport',
+      'report',
+      'rankings',
+      'playerRankings',
+      'golferHistory',
+      'resettableTournaments',
+    ],
   ],
   [
     'a score-owner change',

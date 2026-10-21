@@ -52,6 +52,7 @@ function baseReport(): WeeklyReport {
     live: false,
     liveEligible: false,
     awaitingTeeOff: false,
+    finalizable: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),

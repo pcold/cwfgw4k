@@ -25,7 +25,7 @@ import Button from '@/shared/components/Button';
 import FinalizeWarnings from './FinalizeWarnings';
 import PlayerLinksPanel from './PlayerLinksPanel';
 import ScoreboardView from './ScoreboardView';
-import { scoreboardPhase, scoreboardSubtitle } from './scoreboardModel';
+import { scoreboardSubtitle } from './scoreboardModel';
 
 function ScoreboardPage(): ReactNode {
   const { seasonId } = useLeagueSeason();
@@ -92,7 +92,7 @@ function ScoreboardPage(): ReactNode {
   function buildFinalizeSlot(report: WeeklyReport): ReactNode {
     if (!authenticated || !tournamentId) return null;
     const showLinks = isAdmin;
-    const showFinalize = isAdmin && scoreboardPhase(report) === 'live';
+    const showFinalize = isAdmin && report.finalizable;
     if (!showLinks && !showFinalize) return null;
     return (
       <div className="flex flex-wrap items-center gap-3">

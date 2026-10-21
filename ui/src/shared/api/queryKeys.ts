@@ -36,6 +36,15 @@ export const queryKeys = {
     ],
   },
 
+  /** Staled by `invalidateAfterScoreChange`: only a write that finalizes or wipes scores moves it. */
+  resettableTournaments: {
+    root: ['resettableTournaments'] as const,
+    bySeason: (seasonId: string | null): QueryKey => [
+      ...queryKeys.resettableTournaments.root,
+      seasonId,
+    ],
+  },
+
   /** @see queryKeys */
   tournamentCompetitors: {
     root: ['tournamentCompetitors'] as const,
@@ -184,11 +193,16 @@ function invalidateEach(
 }
 
 /**
- * For a write that stores, deletes or finalizes scores. `golferHistory` goes stale after these
- * alone: it reads a golfer's results and no team, roster or link row.
+ * For a write that stores, deletes or finalizes scores. `golferHistory` and `resettableTournaments`
+ * go stale after these alone: they read results and finalized tournaments, and no team, roster or
+ * link row.
  */
 export function invalidateAfterScoreChange(queryClient: QueryClient, scope: ReportScope): void {
-  invalidateEach(queryClient, [...TEAM_REPORTS, queryKeys.golferHistory], scope);
+  invalidateEach(
+    queryClient,
+    [...TEAM_REPORTS, queryKeys.golferHistory, queryKeys.resettableTournaments],
+    scope,
+  );
 }
 
 /**

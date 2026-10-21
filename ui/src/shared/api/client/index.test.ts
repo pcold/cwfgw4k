@@ -318,6 +318,12 @@ describe('api client', () => {
     expect(current).toEqual({ type: 'unfinalized', tournamentId: 'tn-1' });
   });
 
+  it('resettableTournaments() url-encodes the season id', async () => {
+    fetchMock.mockResolvedValueOnce(mockJson([]));
+    await api.resettableTournaments('sn/1 a');
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/tournaments/resettable?season_id=sn%2F1%20a');
+  });
+
   it('tournamentReport() appends live=true only when requested', async () => {
     fetchMock.mockImplementation(() => Promise.resolve(mockJson({})));
     await api.tournamentReport('sn-1', 'tn-1', false);
