@@ -38,6 +38,12 @@ sealed interface AdminError {
     data class TeamNameTaken(val seasonId: SeasonId) : AdminError
 
     /**
+     * An ESPN event in a confirmed schedule was linked to a tournament, in any season, after the import read the links.
+     * The whole schedule rolls back; a rerun skips the event as already linked.
+     */
+    data class EspnEventTaken(val seasonId: SeasonId) : AdminError
+
+    /**
      * The [espnIds] picks name one lone row without a `pga_player_id`, so which athlete it is would be a guess. The
      * preview never offers this against the rows it read; a hand-built payload, or such a row added since, can.
      */

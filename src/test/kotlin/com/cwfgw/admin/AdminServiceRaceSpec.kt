@@ -10,24 +10,21 @@ import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.golfers.GolferService
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournaments.NewTournament
 import com.cwfgw.tournaments.Tournament
+import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentRepository
-import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import java.time.LocalDate
@@ -63,17 +60,15 @@ class AdminServiceRaceSpec : FunSpec({
             )
         return AdminService(
             tx = tx,
-            seasonService = SeasonService(SeasonRepository(), tx),
-            tournamentService = TournamentService(tournamentRepository, tx),
+            seasonRepository = SeasonRepository(),
             tournamentRepository = tournamentRepository,
             espnService = testEspnService(client = client, golferRepository = golferRepository, tx = tx),
-            golferService = GolferService(golferRepository, tx),
             golferRepository = golferRepository,
             teamRepository = TeamRepository(),
         )
     }
 
-    test("a season confirm that loses the race on an ESPN event skips it as already linked") {
+    test("a season confirm that loses the race on an ESPN event rolls back whole and answers EspnEventTaken") {
         val seasonId = seedSeason()
         val winner =
             tx.update {
@@ -87,21 +82,27 @@ class AdminServiceRaceSpec : FunSpec({
                     ),
                 )
             }
-        val entry =
-            ConfirmedTournamentEntry(
-                espnEventId = "evt-401",
-                name = "Masters",
-                startDate = LocalDate.parse("2026-04-09"),
-                endDate = LocalDate.parse("2026-04-12"),
+        val entries =
+            listOf(
+                ConfirmedTournamentEntry(
+                    espnEventId = "evt-400",
+                    name = "Valero",
+                    startDate = LocalDate.parse("2026-04-02"),
+                    endDate = LocalDate.parse("2026-04-05"),
+                ),
+                ConfirmedTournamentEntry(
+                    espnEventId = "evt-401",
+                    name = "Masters",
+                    startDate = LocalDate.parse("2026-04-09"),
+                    endDate = LocalDate.parse("2026-04-12"),
+                ),
             )
 
-        val result =
-            service(tournamentRepository = OnceBlindTournamentRepository(TournamentRepository()))
-                .confirmSeasonSchedule(seasonId, listOf(entry))
-                .orFail()
+        service(tournamentRepository = OnceBlindTournamentRepository(TournamentRepository()))
+            .confirmSeasonSchedule(seasonId, entries) shouldBe Result.Err(AdminError.EspnEventTaken(seasonId))
 
-        result.created.shouldBeEmpty()
-        result.skipped.map { it.reason } shouldContainExactly listOf("already linked to tournament ${winner.id.value}")
+        tx.get { TournamentRepository().findAll(TournamentFilter(seasonId = seasonId)) } shouldContainExactly
+            listOf(winner)
     }
 
     test("a roster confirm that loses the race on a team name answers TeamNameTaken") {
@@ -166,8 +167,8 @@ private class OnceBlindTournamentRepository(
     private val blind = AtomicBoolean(true)
 
     context(ctx: TransactionContext)
-    override fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
-        if (blind.getAndSet(false)) null else inner.findByPgaTournamentId(pgaTournamentId)
+    override fun findByPgaTournamentIds(pgaTournamentIds: Collection<String>): List<Tournament> =
+        if (blind.getAndSet(false)) emptyList() else inner.findByPgaTournamentIds(pgaTournamentIds)
 }
 
 /** @see OnceBlindTournamentRepository */

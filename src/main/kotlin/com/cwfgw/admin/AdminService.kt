@@ -13,14 +13,13 @@ import com.cwfgw.golfers.GolferName
 import com.cwfgw.golfers.GolferNameIndex
 import com.cwfgw.golfers.GolferNameMatch
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.golfers.GolferService
 import com.cwfgw.golfers.PgaPlayerIdClaim
 import com.cwfgw.golfers.findOrCreateAll
 import com.cwfgw.golfers.normalizeName
 import com.cwfgw.result.Result
 import com.cwfgw.result.map
 import com.cwfgw.seasons.SeasonId
-import com.cwfgw.seasons.SeasonService
+import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.teams.NewRosterEntry
 import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.Team
@@ -29,7 +28,7 @@ import com.cwfgw.teams.UNIQUE_TEAM_NAME_PER_SEASON
 import com.cwfgw.tournaments.NewTournament
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentRepository
-import com.cwfgw.tournaments.TournamentService
+import com.cwfgw.tournaments.UNIQUE_PGA_TOURNAMENT_ID
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -61,11 +60,9 @@ private val log = KotlinLogging.logger {}
  */
 class AdminService(
     private val tx: Transactor,
-    private val seasonService: SeasonService,
-    private val tournamentService: TournamentService,
+    private val seasonRepository: SeasonRepository,
     private val tournamentRepository: TournamentRepository,
     private val espnService: EspnService,
-    private val golferService: GolferService,
     private val golferRepository: GolferRepository,
     private val teamRepository: TeamRepository,
 ) {
@@ -74,7 +71,7 @@ class AdminService(
         startDate: LocalDate,
         endDate: LocalDate,
     ): Result<SeasonSchedulePreviewResult, AdminError> {
-        seasonService.get(seasonId) ?: return Result.Err(AdminError.SeasonNotFound(seasonId))
+        tx.get { seasonRepository.findById(seasonId) } ?: return Result.Err(AdminError.SeasonNotFound(seasonId))
 
         val calendar =
             try {
@@ -114,21 +111,43 @@ class AdminService(
         return Result.Ok(SeasonSchedulePreviewResult(entries = entries, skipped = skipped))
     }
 
+    /**
+     * One transaction, so a failure partway leaves no tournament. The linked read takes no lock: a skip writes nothing,
+     * and a link committed after it trips `pga_tournament_id`'s unique key, refused as [AdminError.EspnEventTaken].
+     */
     suspend fun confirmSeasonSchedule(
         seasonId: SeasonId,
         entries: List<ConfirmedTournamentEntry>,
-    ): Result<SeasonImportResult, AdminError> {
-        seasonService.get(seasonId) ?: return Result.Err(AdminError.SeasonNotFound(seasonId))
+    ): Result<SeasonImportResult, AdminError> =
+        tx.updateOrOutraced(UNIQUE_PGA_TOURNAMENT_ID, outraced = { AdminError.EspnEventTaken(seasonId) }) {
+            tournamentRepository.lockSeason(seasonId)
+            seasonRepository.findById(seasonId)
+                ?: return@updateOrOutraced Result.Err(AdminError.SeasonNotFound(seasonId))
+            Result.Ok(importSchedule(seasonId, entries))
+        }
 
+    context(ctx: WriteTransactionContext)
+    private fun importSchedule(
+        seasonId: SeasonId,
+        entries: List<ConfirmedTournamentEntry>,
+    ): SeasonImportResult {
+        val linked =
+            tournamentRepository.findByPgaTournamentIds(entries.map(ConfirmedTournamentEntry::espnEventId))
+                .associateByTo(mutableMapOf(), Tournament::pgaTournamentId)
         val created = mutableListOf<Tournament>()
         val skipped = mutableListOf<SkippedEntry>()
         for ((entry, week) in assignSequentialWeekLabels(entries) { it.startDate }) {
-            when (val outcome = createOrSkip(entry, week, seasonId)) {
-                is EntryOutcome.Created -> created += outcome.tournament
-                is EntryOutcome.Skipped -> skipped += outcome.entry
+            val existing = linked[entry.espnEventId]
+            if (existing != null) {
+                skipped +=
+                    SkippedEntry(entry.espnEventId, entry.name, "already linked to tournament ${existing.id.value}")
+            } else {
+                val tournament = tournamentRepository.create(entry.toNewTournament(seasonId, week))
+                linked[entry.espnEventId] = tournament
+                created += tournament
             }
         }
-        return Result.Ok(SeasonImportResult(created = created, skipped = skipped))
+        return SeasonImportResult(created = created, skipped = skipped)
     }
 
     private fun parseAndFilterByRange(
@@ -191,7 +210,7 @@ class AdminService(
                 is Result.Err -> return Result.Err(AdminError.InvalidRoster(r.error))
             }
 
-        val golfers = GolferNameIndex(golferService.list(search = null))
+        val golfers = GolferNameIndex(tx.get { golferRepository.findAll(search = null) })
         val anyUnmatched =
             parsed.flatMap { it.picks }.any { pick ->
                 golfers.matchFullName(pick.playerName) == GolferNameMatch.NoMatch
@@ -238,23 +257,23 @@ class AdminService(
 
     /**
      * One transaction, so a mid-loop failure leaves no half-built team and no golfer a `New` or `Espn` pick inserted.
-     * `Existing` ids are checked before it opens, so the operator sees every bad reference at once.
+     * The season lock comes before any golfer's, the order a finalize takes them. `Existing` ids are read unlocked, so
+     * every bad one is refused at once; no path deletes a golfer, and [resolveEspnGolfers] locks the found ones.
      */
-    suspend fun confirmRoster(request: ConfirmRosterRequest): Result<RosterUploadResult, AdminError> {
-        seasonService.get(request.seasonId) ?: return Result.Err(AdminError.SeasonNotFound(request.seasonId))
-
-        val problems = findRosterProblems(request.teams)
-        if (problems.isNotEmpty()) return Result.Err(AdminError.InvalidConfirmedRoster(problems))
-        val missingGolferIds = findMissingGolferIds(request.teams)
-        if (missingGolferIds.isNotEmpty()) return Result.Err(AdminError.GolferIdsNotFound(missingGolferIds))
-        if (request.teams.isEmpty()) {
-            return Result.Ok(RosterUploadResult(teamsCreated = 0, golfersCreated = 0, teams = emptyList()))
-        }
-
-        return tx.updateOrOutraced(
+    suspend fun confirmRoster(request: ConfirmRosterRequest): Result<RosterUploadResult, AdminError> =
+        tx.updateOrOutraced(
             UNIQUE_TEAM_NAME_PER_SEASON,
             outraced = { AdminError.TeamNameTaken(request.seasonId) },
         ) {
+            tournamentRepository.lockSeason(request.seasonId)
+            seasonRepository.findById(request.seasonId)
+                ?: return@updateOrOutraced Result.Err(AdminError.SeasonNotFound(request.seasonId))
+            val problems = findRosterProblems(request.teams)
+            if (problems.isNotEmpty()) return@updateOrOutraced Result.Err(AdminError.InvalidConfirmedRoster(problems))
+            val missingGolferIds = findMissingGolferIds(request.teams)
+            if (missingGolferIds.isNotEmpty()) {
+                return@updateOrOutraced Result.Err(AdminError.GolferIdsNotFound(missingGolferIds))
+            }
             resolveEspnGolfers(request.teams).map { espnGolfers ->
                 val builtTeams =
                     request.teams.map { team -> persistConfirmedTeam(request.seasonId, team, espnGolfers.golferIds) }
@@ -265,7 +284,6 @@ class AdminService(
                 )
             }
         }
-    }
 
     /**
      * Before any team, so an athlete two teams share is one row, and every refusal is decided before the first write
@@ -327,9 +345,6 @@ class AdminService(
         }
     }
 
-    // Repos are the right surface here: every write needs to join the
-    // surrounding tx, and the services capture their own Transactor and
-    // would each open a fresh nested transaction.
     context(ctx: WriteTransactionContext)
     private fun persistConfirmedTeam(
         seasonId: SeasonId,
@@ -367,47 +382,16 @@ class AdminService(
         return createdTeam to team.picks.count { it.assignment is GolferAssignment.New }
     }
 
-    private suspend fun findMissingGolferIds(teams: List<ConfirmedTeam>): List<GolferId> {
+    context(ctx: WriteTransactionContext)
+    private fun findMissingGolferIds(teams: List<ConfirmedTeam>): List<GolferId> {
         val referencedIds =
             teams.asSequence()
                 .flatMap { it.picks.asSequence() }
                 .mapNotNull { (it.assignment as? GolferAssignment.Existing)?.golferId }
                 .toSet()
-        val found = tx.get { golferRepository.findByIds(referencedIds) }.map(Golfer::id).toSet()
+        val found = golferRepository.findByIds(referencedIds).map(Golfer::id).toSet()
         return referencedIds.filterNot { it in found }
     }
-
-    private suspend fun createOrSkip(
-        entry: ConfirmedTournamentEntry,
-        week: String,
-        seasonId: SeasonId,
-    ): EntryOutcome {
-        findLinked(entry)?.let { return it }
-        val created =
-            tournamentService.create(
-                NewTournament(
-                    pgaTournamentId = entry.espnEventId,
-                    name = entry.name,
-                    seasonId = seasonId,
-                    startDate = entry.startDate,
-                    endDate = entry.endDate,
-                    week = week,
-                ),
-            )
-        return when (created) {
-            is Result.Ok -> EntryOutcome.Created(created.value)
-            is Result.Err ->
-                checkNotNull(findLinked(entry)) { "a tournament that outraced this confirm is no longer linked" }
-        }
-    }
-
-    /** Read in a fresh transaction, so it sees a tournament a concurrent confirm committed after our first look. */
-    private suspend fun findLinked(entry: ConfirmedTournamentEntry): EntryOutcome.Skipped? =
-        tournamentService.findByPgaTournamentId(entry.espnEventId)?.let { existing ->
-            EntryOutcome.Skipped(
-                SkippedEntry(entry.espnEventId, entry.name, "already linked to tournament ${existing.id.value}"),
-            )
-        }
 
     /**
      * Parse the ISO-8601 prefix of an ESPN calendar entry's startDate
@@ -545,8 +529,15 @@ private data class DatedCalendar(
     val unparseable: List<SkippedEntry>,
 )
 
-private sealed interface EntryOutcome {
-    data class Created(val tournament: Tournament) : EntryOutcome
-
-    data class Skipped(val entry: SkippedEntry) : EntryOutcome
-}
+private fun ConfirmedTournamentEntry.toNewTournament(
+    seasonId: SeasonId,
+    week: String,
+): NewTournament =
+    NewTournament(
+        pgaTournamentId = espnEventId,
+        name = name,
+        seasonId = seasonId,
+        startDate = startDate,
+        endDate = endDate,
+        week = week,
+    )

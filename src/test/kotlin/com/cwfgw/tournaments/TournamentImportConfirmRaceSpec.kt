@@ -16,12 +16,10 @@ import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.golfers.GolferService
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.Pause
 import com.cwfgw.testing.orFail
@@ -174,11 +172,9 @@ private fun opsService(
 private fun adminService(tx: Transactor): AdminService =
     AdminService(
         tx = tx,
-        seasonService = SeasonService(SeasonRepository(), tx),
-        tournamentService = TournamentService(TournamentRepository(), tx),
+        seasonRepository = SeasonRepository(),
         tournamentRepository = TournamentRepository(),
         espnService = testEspnService(client = FakeEspnClient(), tx = tx),
-        golferService = GolferService(GolferRepository(), tx),
         golferRepository = GolferRepository(),
         teamRepository = TeamRepository(),
     )

@@ -7,13 +7,11 @@ import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.golfers.GolferService
 import com.cwfgw.leagues.LeagueId
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.FakeSeasonRepository
 import com.cwfgw.seasons.SeasonId
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.FakeTeamRepository
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
@@ -23,7 +21,6 @@ import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.NewTournament
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentRepository
-import com.cwfgw.tournaments.TournamentService
 import io.kotest.assertions.fail
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
@@ -109,11 +106,9 @@ private class BatchFixture(
         service =
             AdminService(
                 tx = transactor,
-                seasonService = SeasonService(seasonRepo, transactor),
-                tournamentService = TournamentService(tournaments, transactor),
+                seasonRepository = seasonRepo,
                 tournamentRepository = tournaments,
                 espnService = testEspnService(client = FakeEspnClient(calendar = calendar), tx = transactor),
-                golferService = GolferService(golfers, transactor),
                 golferRepository = golfers,
                 teamRepository = teamRepo,
             )
