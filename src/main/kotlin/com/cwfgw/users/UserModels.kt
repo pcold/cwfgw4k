@@ -26,7 +26,7 @@ fun String.toUserId(): UserId? = toUUIDOrNull()?.toUserId()
 /**
  * An enum, not a sealed interface: roles are pure tags with no per-variant state.
  *
- * [fromValue] reads an unknown value as [User], least privilege rather than admin or a failed read. With the
+ * [fromValue] falls back to least privilege on purpose, not to admin and not to a failed read. With the
  * `users_role_known` CHECK in place, only a migration widening it ahead of this enum can store one.
  */
 @Serializable(with = UserRoleSerializer::class)
