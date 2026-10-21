@@ -2,6 +2,7 @@ package com.cwfgw.teams
 
 import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
+import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
@@ -9,11 +10,15 @@ import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
 import com.cwfgw.testing.postgresHarness
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
+import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import org.jooq.exception.DataAccessException
 import java.math.BigDecimal
 import java.util.UUID
 
@@ -74,6 +79,68 @@ class TeamRepositorySpec : FunSpec({
             entry.acquiredVia shouldBe "free_agent"
             entry.ownershipPct.compareTo(BigDecimal("100")) shouldBe 0
         }
+    }
+
+    suspend fun seedTeam(teamName: String = "Eagles"): TeamId =
+        tx.update { repository.create(seasonId, NewTeam(ownerName = "Alice", teamName = teamName)) }.id
+
+    suspend fun refusal(
+        teamId: TeamId,
+        entry: (GolferId) -> NewRosterEntry,
+    ): String =
+        shouldThrow<DataAccessException> {
+            tx.update {
+                val golfer = golferRepo.create(CreateGolferRequest(firstName = "Rory", lastName = "McIlroy"))
+                repository.addToRoster(teamId, entry(golfer.id))
+            }
+        }.message.shouldNotBeNull()
+
+    test("the schema refuses a draft round outside the draft, and admits both ends and two undrafted nulls") {
+        val teamId = seedTeam()
+
+        listOf(0, 9).forEach { round ->
+            refusal(teamId) { golfer -> NewRosterEntry(golfer, draftRound = round) } shouldContain
+                "team_rosters_draft_round_in_range"
+        }
+        val admitted =
+            tx.update {
+                listOf(1, 8, null, null).map { round ->
+                    val golfer = golferRepo.create(CreateGolferRequest(firstName = "Round", lastName = "$round"))
+                    repository.addToRoster(teamId, NewRosterEntry(golfer.id, draftRound = round))
+                }
+            }
+        admitted.map { it.draftRound } shouldContainExactly listOf(1, 8, null, null)
+    }
+
+    test("the schema refuses a second pick in one round of a team, and admits that round on another team") {
+        val eagles = seedTeam("Eagles")
+        val hawks = seedTeam("Hawks")
+        val scottie =
+            CreateGolferRequest(firstName = "Scottie", lastName = "Scheffler").let { request ->
+                tx.update { golferRepo.create(request) }
+            }
+        tx.update { repository.addToRoster(eagles, NewRosterEntry(scottie.id, draftRound = 3)) }
+
+        refusal(eagles) { golfer -> NewRosterEntry(golfer, draftRound = 3) } shouldContain
+            "team_rosters_one_pick_per_round"
+        tx.update { repository.addToRoster(hawks, NewRosterEntry(scottie.id, draftRound = 3)) }.draftRound shouldBe 3
+    }
+
+    test("the schema refuses an ownership of zero, below it, or past 100, and admits a sliver and the whole") {
+        val teamId = seedTeam()
+
+        listOf("0", "-50", "100.01").forEach { pct ->
+            refusal(teamId) { golfer -> NewRosterEntry(golfer, ownershipPct = BigDecimal(pct)) } shouldContain
+                "team_rosters_ownership_pct_in_range"
+        }
+        val admitted =
+            tx.update {
+                listOf("0.01", "100").map { pct ->
+                    val golfer = golferRepo.create(CreateGolferRequest(firstName = "Share", lastName = pct))
+                    repository.addToRoster(teamId, NewRosterEntry(golfer.id, ownershipPct = BigDecimal(pct)))
+                }
+            }
+        admitted.map { it.ownershipPct.toPlainString() } shouldContainExactly listOf("0.01", "100.00")
     }
 
     test("findRostersBySeason orders a team's entries by draft_round asc nulls last") {

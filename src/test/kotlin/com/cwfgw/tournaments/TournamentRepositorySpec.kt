@@ -1,6 +1,5 @@
 package com.cwfgw.tournaments
 
-import com.cwfgw.db.ColumnDomainViolation
 import com.cwfgw.db.Transactor
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
@@ -14,12 +13,13 @@ import com.cwfgw.testing.POSTGRES_UUID_ORDER
 import com.cwfgw.testing.postgresHarness
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
+import org.jooq.exception.DataAccessException
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.util.UUID
@@ -139,16 +139,28 @@ class TournamentRepositorySpec : FunSpec({
         result.map { it.id } shouldContainExactly listOf(upcoming.id)
     }
 
-    test("findAll over every status refuses a stored status outside the enum rather than dropping it") {
-        val rainedOut = tx.update { repository.create(create(name = "Rained Out")) }
-        postgres.dsl.update(TOURNAMENTS)
-            .set(TOURNAMENTS.STATUS, "rained_out")
-            .where(TOURNAMENTS.ID.eq(rainedOut.id.value))
-            .execute()
+    test("the schema refuses a status outside TournamentStatus") {
+        val masters = tx.update { repository.create(create()) }
 
-        shouldThrow<ColumnDomainViolation> { tx.read { repository.findAll(TournamentFilter(seasonId)) } }
-        tx.read { repository.findAll(TournamentFilter(seasonId, statuses = setOf(TournamentStatus.Upcoming))) }
-            .shouldBeEmpty()
+        val refusal =
+            shouldThrow<DataAccessException> {
+                postgres.dsl.update(TOURNAMENTS)
+                    .set(TOURNAMENTS.STATUS, "rained_out")
+                    .where(TOURNAMENTS.ID.eq(masters.id.value))
+                    .execute()
+            }
+
+        refusal.message.shouldNotBeNull() shouldContain "tournaments_status_known"
+        tx.read { repository.findById(masters.id) }.shouldNotBeNull().status shouldBe TournamentStatus.Upcoming
+    }
+
+    test("the schema admits every TournamentStatus") {
+        val masters = tx.update { repository.create(create()) }
+
+        TournamentStatus.entries.forEach { status ->
+            tx.update { repository.update(masters.id, UpdateTournamentRequest(status = status)) }
+            tx.read { repository.findById(masters.id) }.shouldNotBeNull().status shouldBe status
+        }
     }
 
     test("findById returns null for unknown id") {
