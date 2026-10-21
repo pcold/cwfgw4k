@@ -10,7 +10,7 @@ interface AdminLeagueFieldProps {
   onChange: (id: string) => void;
 }
 
-/** Offers no unset option, so pair it with `useAdminLeague`, whose choice falls back to the first league. */
+/** Offers no unset option, so `leagueId` must name one of `leagues` once they load. */
 export default function AdminLeagueField({ id, leagues, leagueId, onChange }: AdminLeagueFieldProps): ReactNode {
   return (
     <FieldShell id={id} label="League" error={undefined} width="sm:w-64">
