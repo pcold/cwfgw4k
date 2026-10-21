@@ -6,6 +6,7 @@ import type { League, Season, Tournament } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
 import { SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
+import AdminSection from './AdminSection';
 
 function ResetTournamentSection(): ReactNode {
   const queryClient = useQueryClient();
@@ -55,15 +56,15 @@ function ResetTournamentSection(): ReactNode {
   const errorMessage = mutationError(resetMutation.error);
 
   return (
-    <div className="bg-surface-card rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
-        Reset Tournament Results
-      </h3>
-      <p className="text-xs text-ink-muted mb-4">
-        Delete all scores and results for a finalized tournament, resetting it back to upcoming
-        status.
-      </p>
-
+    <AdminSection
+      title="Reset Tournament Results"
+      description={
+        <>
+          Delete all scores and results for a finalized tournament, resetting it back to upcoming
+          status.
+        </>
+      }
+    >
       <div className="flex flex-wrap items-end gap-4">
         <SelectField
           id="reset-season"
@@ -102,7 +103,7 @@ function ResetTournamentSection(): ReactNode {
           {errorMessage}
         </span>
       ) : null}
-    </div>
+    </AdminSection>
   );
 }
 

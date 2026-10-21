@@ -8,6 +8,7 @@ import { CONTROL_CLASS, FIELD_CLASS, FieldShell, TAP_TARGET_CLASS, TextField } f
 import { QueryState } from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
 import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
+import AdminSection from './AdminSection';
 import { buildRules, formatSideBetRounds, isReadableSideBetRounds } from './rulesInput';
 
 function CreateSeasonSection(): ReactNode {
@@ -19,14 +20,11 @@ function CreateSeasonSection(): ReactNode {
   });
 
   return (
-    <div className="bg-surface-card rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
-        Create Season
-      </h3>
+    <AdminSection title="Create Season">
       <QueryState query={defaultsQuery} label="default season rules">
         {(defaults) => <CreateSeasonForm defaults={defaults} />}
       </QueryState>
-    </div>
+    </AdminSection>
   );
 }
 

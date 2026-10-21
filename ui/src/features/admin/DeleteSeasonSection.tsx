@@ -8,6 +8,7 @@ import { SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
 import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
+import AdminSection from './AdminSection';
 
 function DeleteSeasonSection(): ReactNode {
   const queryClient = useQueryClient();
@@ -50,15 +51,15 @@ function DeleteSeasonSection(): ReactNode {
   const errorMessage = mutationError(deleteMutation.error);
 
   return (
-    <div className="bg-surface-card rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
-        Delete Season
-      </h3>
-      <p className="text-xs text-ink-muted mb-4">
-        Permanently delete a season along with its schedule, drafted teams, rosters, picks,
-        scores, and standings. This cannot be undone.
-      </p>
-
+    <AdminSection
+      title="Delete Season"
+      description={
+        <>
+          Permanently delete a season along with its schedule, drafted teams, rosters, picks,
+          scores, and standings. This cannot be undone.
+        </>
+      }
+    >
       <div className="flex flex-wrap items-end gap-4">
         <AdminLeagueField
           id="delete-season-league"
@@ -97,7 +98,7 @@ function DeleteSeasonSection(): ReactNode {
           {errorMessage}
         </span>
       ) : null}
-    </div>
+    </AdminSection>
   );
 }
 

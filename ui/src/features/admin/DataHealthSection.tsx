@@ -4,6 +4,7 @@ import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import type { DataHealthGolfer, DataHealthReport, RosteredTwinGroup } from '@/shared/api/types';
 import { QueryState } from '@/shared/components/QueryState';
+import AdminSection from './AdminSection';
 
 function DataHealthSection(): ReactNode {
   const healthQuery = useQuery<DataHealthReport>({
@@ -12,14 +13,15 @@ function DataHealthSection(): ReactNode {
   });
 
   return (
-    <div className="bg-surface-card rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
-        Golfer Data Health
-      </h3>
-      <p className="text-xs text-ink-muted mb-4">
-        Golfer rows that score wrongly until an operator fixes them. Currently rostered means on a
-        team in its league&apos;s latest season.
-      </p>
+    <AdminSection
+      title="Golfer Data Health"
+      description={
+        <>
+          Golfer rows that score wrongly until an operator fixes them. Currently rostered means on a
+          team in its league&apos;s latest season.
+        </>
+      }
+    >
       <QueryState query={healthQuery} label="golfer data health">
         {(report) => (
           <div className="space-y-6">
@@ -60,7 +62,7 @@ function DataHealthSection(): ReactNode {
           </div>
         )}
       </QueryState>
-    </div>
+    </AdminSection>
   );
 }
 

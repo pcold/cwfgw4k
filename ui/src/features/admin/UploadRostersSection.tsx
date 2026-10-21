@@ -19,6 +19,7 @@ import { FieldShell, SelectField, TAP_TARGET_CLASS } from '@/shared/components/f
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
 import { AdminLeagueField, useAdminLeague } from './AdminLeagueField';
+import AdminSection from './AdminSection';
 
 function pickKey(teamNumber: number, pick: RosterPreviewPick): string {
   return `${teamNumber}|${pick.round}|${pick.playerName}`;
@@ -154,11 +155,7 @@ function UploadRostersSection(): ReactNode {
   };
 
   return (
-    <div className="bg-surface-card rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
-        Upload Team Rosters
-      </h3>
-
+    <AdminSection title="Upload Team Rosters">
       {!preview && !result ? (
         <RosterInputStep
           leagues={leagues}
@@ -194,7 +191,7 @@ function UploadRostersSection(): ReactNode {
       ) : null}
 
       {result ? <RosterResultView result={result} /> : null}
-    </div>
+    </AdminSection>
   );
 }
 

@@ -6,6 +6,7 @@ import type { League } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
 import { TextField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
+import AdminSection from './AdminSection';
 
 function CreateLeagueSection(): ReactNode {
   const queryClient = useQueryClient();
@@ -25,10 +26,7 @@ function CreateLeagueSection(): ReactNode {
   const errorMessage = mutationError(createMutation.error);
 
   return (
-    <div className="bg-surface-card rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
-        Create League
-      </h3>
+    <AdminSection title="Create League">
       <div className="flex flex-wrap items-end gap-4">
         <TextField
           id="new-league-name"
@@ -52,7 +50,7 @@ function CreateLeagueSection(): ReactNode {
         ) : null}
         {success ? <span className="text-semantic-success text-sm">{success}</span> : null}
       </div>
-    </div>
+    </AdminSection>
   );
 }
 

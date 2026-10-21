@@ -7,6 +7,7 @@ import Button from '@/shared/components/Button';
 import { SelectField } from '@/shared/components/formFields';
 import { mutationError } from '@/shared/util/mutationError';
 import { seasonLabel } from '@/shared/util/season';
+import AdminSection from './AdminSection';
 
 function CleanSeasonSection(): ReactNode {
   const queryClient = useQueryClient();
@@ -47,15 +48,15 @@ function CleanSeasonSection(): ReactNode {
   const errorMessage = mutationError(cleanMutation.error);
 
   return (
-    <div className="bg-surface-card rounded-lg p-6">
-      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
-        Clean All Season Results
-      </h3>
-      <p className="text-xs text-ink-muted mb-4">
-        Delete all scores, results, and standings for an entire season, resetting every
-        tournament back to upcoming.
-      </p>
-
+    <AdminSection
+      title="Clean All Season Results"
+      description={
+        <>
+          Delete all scores, results, and standings for an entire season, resetting every
+          tournament back to upcoming.
+        </>
+      }
+    >
       <div className="flex flex-wrap items-end gap-4">
         <SelectField
           id="clean-season"
@@ -89,7 +90,7 @@ function CleanSeasonSection(): ReactNode {
           {errorMessage}
         </span>
       ) : null}
-    </div>
+    </AdminSection>
   );
 }
 
