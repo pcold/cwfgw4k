@@ -48,6 +48,7 @@ function buildTournament(overrides: { id: string; name: string; week: string; pa
     purseAmount: null,
     payoutMultiplier: overrides.payoutMultiplier ?? 1,
     week: overrides.week,
+    isTeamEvent: false,
     createdAt: '2026-01-01T00:00:00Z',
   };
 }

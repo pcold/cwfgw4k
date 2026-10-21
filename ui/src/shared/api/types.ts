@@ -238,6 +238,7 @@ export interface Tournament {
   purseAmount: number | null;
   payoutMultiplier: number;
   week: string | null;
+  isTeamEvent: boolean;
   createdAt: string;
 }
 
