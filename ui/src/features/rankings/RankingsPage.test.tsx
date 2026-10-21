@@ -73,6 +73,7 @@ const rankings: Rankings = {
   live: false,
   liveEligible: false,
   cashTotals: { won: 150, lost: 0, net: 150 },
+  standings: [{ type: 'leader', teamId: 'team-1', tied: false, aheadOf: null }],
 };
 
 const MY_TEAM_KEY = 'cwfg.myTeam';
@@ -376,6 +377,17 @@ describe('RankingsPage', () => {
         ...rankings.teams,
         { teamId: 'team-2', teamName: 'Birdies', subtotal: 10, sideBets: 0, totalCash: 10, series: [0, 5, 10] },
       ],
+      standings: [
+        { type: 'leader', teamId: 'team-1', tied: false, aheadOf: { position: 2, tied: false, amount: 140 } },
+        {
+          type: 'chaser',
+          teamId: 'team-2',
+          tied: false,
+          position: 2,
+          behind: { position: 1, tied: false, amount: 140 },
+          behindLeader: 140,
+        },
+      ],
     };
 
     async function renderStandings(): Promise<void> {
@@ -396,6 +408,19 @@ describe('RankingsPage', () => {
       expect(screen.getAllByText('your team')).toHaveLength(2);
     });
 
+    it('opens the standings on the saved team\'s card', async () => {
+      window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"Birdies"}');
+      await renderStandings();
+
+      const card = screen.getByRole('region', { name: 'Your team' });
+      expect(within(card).getByText('Birdies')).toBeInTheDocument();
+      expect(within(card).getAllByRole('term').map((term) => term.textContent)).toEqual([
+        'Pos',
+        'Behind 1st',
+        'Behind leader',
+      ]);
+    });
+
     it.each([
       ['browsing', '{"kind":"browsing"}'],
       ['never asked', null],
@@ -405,6 +430,14 @@ describe('RankingsPage', () => {
 
       expect(screen.getByRole('row', { name: /Birdies/ })).toBeInTheDocument();
       expect(screen.queryByText('your team')).toBeNull();
+      expect(screen.queryByRole('region', { name: 'Your team' })).toBeNull();
+    });
+
+    it('shows no card for a saved team this season does not have', async () => {
+      window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"Eagles"}');
+      await renderStandings();
+
+      expect(screen.queryByRole('region', { name: 'Your team' })).toBeNull();
     });
   });
 

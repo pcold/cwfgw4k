@@ -8,6 +8,8 @@ import YouTag from '@/shared/components/YouTag';
 import { isMyTeam } from '@/features/myTeam/myTeamModel';
 import { formatDollarsAndCents, formatWholeDollars, moneyToneClass } from '@/shared/util/money';
 import RankingsChart from './RankingsChart';
+import YourTeamCard from './YourTeamCard';
+import { findYourTeam } from './yourTeamCardModel';
 
 const CARD_CELL_CLASS = 'px-3 py-2';
 
@@ -21,9 +23,11 @@ function RankingsView({ rankings, myTeamName }: Props): ReactNode {
   const wonText = formatWholeDollars(rankings.cashTotals.won);
   const lostText = formatWholeDollars(rankings.cashTotals.lost);
   const netText = formatWholeDollars(rankings.cashTotals.net);
+  const yourTeam = findYourTeam(rankings, myTeamName);
 
   return (
     <section className="space-y-6">
+      {yourTeam ? <YourTeamCard yourTeam={yourTeam} teamCount={rankings.teams.length} /> : null}
       <ol aria-label="Standings" className={`sm:hidden ${CARD_LIST_CLASS}`}>
         {rankings.teams.map((team, index) => (
           <ListCard

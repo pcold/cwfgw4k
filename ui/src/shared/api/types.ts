@@ -164,6 +164,21 @@ export interface Rankings {
   liveEligible: boolean;
   /** @see WeeklyReport.cashTotals */
   cashTotals: WonLostTotals;
+  /** One per `teams` entry, matched by `teamId`. Show a team's place and gaps from it; never derive them from `teams`. */
+  standings: TeamStanding[];
+}
+
+// Mirrors the backend's sealed TeamStanding (com.cwfgw.reports), discriminated by `type`. A leader has no position
+// field because it is always 1.
+export type TeamStanding =
+  | { type: 'leader'; teamId: string; tied: boolean; aheadOf: StandingGap | null }
+  | { type: 'chaser'; teamId: string; tied: boolean; position: number; behind: StandingGap; behindLeader: number };
+
+/** The other team's place, and the distance to it, never negative. */
+export interface StandingGap {
+  position: number;
+  tied: boolean;
+  amount: number;
 }
 
 export interface PlayerRankingsRow {
