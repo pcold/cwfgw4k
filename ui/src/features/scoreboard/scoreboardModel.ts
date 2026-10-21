@@ -15,12 +15,18 @@ export interface ScoreboardGolfer {
   ownershipPct: number;
 }
 
+export interface FieldGolfer {
+  golferId: string;
+  golferName: string;
+}
+
 export interface ScoreboardTeam {
   teamId: string;
   teamName: string;
   topTenEarnings: number;
   weeklyTotal: number;
   golferScores: ScoreboardGolfer[];
+  fieldGolfers: FieldGolfer[];
 }
 
 type PaidCell = ReportCell & { golferName: string };
@@ -41,6 +47,20 @@ function golferScoresFor(team: ReportTeamColumn): ScoreboardGolfer[] {
   }));
 }
 
+type InFieldCell = ReportCell & { golferId: string; golferName: string };
+
+function isInField(cell: ReportCell): cell is InFieldCell {
+  return cell.inField && cell.golferId !== null && cell.golferName !== null;
+}
+
+function fieldGolfersFor(team: ReportTeamColumn): FieldGolfer[] {
+  return team.cells.filter(isInField).map((cell) => ({ golferId: cell.golferId, golferName: cell.golferName }));
+}
+
+export function playingLabel(team: ScoreboardTeam): string {
+  return `${team.fieldGolfers.length} playing`;
+}
+
 function scoreboardTeamFor(team: ReportTeamColumn): ScoreboardTeam {
   return {
     teamId: team.teamId,
@@ -48,6 +68,7 @@ function scoreboardTeamFor(team: ReportTeamColumn): ScoreboardTeam {
     topTenEarnings: team.topTenEarnings,
     weeklyTotal: team.weeklyTotal,
     golferScores: golferScoresFor(team),
+    fieldGolfers: fieldGolfersFor(team),
   };
 }
 

@@ -26,6 +26,11 @@ export interface ReportCell {
   ownershipPct: number;
   seasonEarnings: number;
   seasonTopTens: number;
+  /**
+   * Set only on a live report, from the selected event's field; a persisted one is false throughout.
+   * Says nothing about money: an in-field cell may be unpaid.
+   */
+  inField: boolean;
 }
 
 export interface ReportTeamColumn {

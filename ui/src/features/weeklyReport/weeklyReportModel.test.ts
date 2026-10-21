@@ -139,6 +139,7 @@ function reportRow(round: number): ReportCell {
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
+    inField: false,
   };
 }
 

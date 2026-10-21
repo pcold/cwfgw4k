@@ -10,6 +10,7 @@ import {
   leaderboardTeamChips,
   leaderboardTeamNames,
   playerNames,
+  playingLabel,
   scoreboardPhase,
   scoreboardSubtitle,
   scoreboardTeams,
@@ -26,6 +27,7 @@ function row(overrides: Partial<ReportCell> = {}): ReportCell {
     ownershipPct: 100,
     seasonEarnings: 100,
     seasonTopTens: 1,
+    inField: false,
     ...overrides,
   };
 }
@@ -152,6 +154,48 @@ describe('scoreboardTeams', () => {
     const golfer = nth(nth(teams, 0).golferScores, 0);
     expect(golfer.position).toBe(1);
     expect(golfer.tied).toBe(false);
+  });
+});
+
+describe('fieldGolfers', () => {
+  it('lists the cells the server marked in the field, in cell order, paid or not', () => {
+    const teams = scoreboardTeams(
+      report({
+        teams: [
+          teamColumn({
+            cells: [
+              row({ round: 1, golferId: 'g-1', golferName: 'Alpha', inField: true, earnings: 0 }),
+              row({ round: 2, golferId: 'g-2', golferName: 'Beta', inField: false, earnings: 0 }),
+              row({ round: 3, golferId: 'g-3', golferName: 'Gamma', inField: true, earnings: 12 }),
+            ],
+          }),
+        ],
+      }),
+    );
+    expect(nth(teams, 0).fieldGolfers).toEqual([
+      { golferId: 'g-1', golferName: 'Alpha' },
+      { golferId: 'g-3', golferName: 'Gamma' },
+    ]);
+  });
+
+  it('leaves an in-field cell with no golfer out', () => {
+    const teams = scoreboardTeams(
+      report({ teams: [teamColumn({ cells: [row({ golferId: null, golferName: null, inField: true })] })] }),
+    );
+    expect(nth(teams, 0).fieldGolfers).toEqual([]);
+  });
+
+  it('counts the golfers in the field, none included', () => {
+    const teams = scoreboardTeams(
+      report({
+        teams: [
+          teamColumn({ teamId: 't-1', cells: [row({ inField: true }), row({ round: 2, golferId: 'g-2', inField: true })] }),
+          teamColumn({ teamId: 't-2', cells: [row({ inField: false })] }),
+        ],
+        weeklyStandings: ['t-1', 't-2'],
+      }),
+    );
+    expect(teams.map(playingLabel)).toEqual(['2 playing', '0 playing']);
   });
 });
 
