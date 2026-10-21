@@ -18,8 +18,10 @@ vi.mock('@/shared/api/client', () => ({
   api: {
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
-    previewSeasonSchedule: (input: Parameters<typeof api.previewSeasonSchedule>[0]) => previewSeasonScheduleMock(input),
-    confirmSeasonSchedule: (input: Parameters<typeof api.confirmSeasonSchedule>[0]) => confirmSeasonScheduleMock(input),
+    previewSeasonSchedule: (seasonId: string, body: Parameters<typeof api.previewSeasonSchedule>[1]) =>
+      previewSeasonScheduleMock(seasonId, body),
+    confirmSeasonSchedule: (seasonId: string, body: Parameters<typeof api.confirmSeasonSchedule>[1]) =>
+      confirmSeasonScheduleMock(seasonId, body),
     updateTournament: (id: string, body: Parameters<typeof api.updateTournament>[1]) => updateTournamentMock(id, body),
   },
   ApiError: class ApiError extends Error {},
@@ -105,8 +107,7 @@ describe('UploadScheduleSection', () => {
     await user.click(screen.getByRole('button', { name: /Confirm Import/i }));
 
     await waitFor(() => {
-      expect(confirmSeasonScheduleMock).toHaveBeenCalledWith({
-        seasonId: 'sn-1',
+      expect(confirmSeasonScheduleMock).toHaveBeenCalledWith('sn-1', {
         entries: [
           {
             espnEventId: 'e-1',
