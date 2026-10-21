@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, waitForElementToBeRemoved, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
@@ -7,7 +7,7 @@ import QueryAnswered from '@/shared/test/QueryAnswered';
 import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
-import type { League, Season, Tournament, WeeklyReport } from '@/shared/api/types';
+import type { League, ReportTeamColumn, RosterTeam, Season, Tournament, WeeklyReport } from '@/shared/api/types';
 import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
 import WeeklyReportPage from './WeeklyReportPage';
 import type { downloadWeeklyReportPdf } from './weeklyReportPdf';
@@ -18,6 +18,7 @@ const tournamentsMock = vi.fn<typeof api.tournaments>();
 const currentTournamentMock = vi.fn<typeof api.currentTournament>();
 const seasonReportMock = vi.fn<typeof api.seasonReport>();
 const tournamentReportMock = vi.fn<typeof api.tournamentReport>();
+const rostersMock = vi.fn<typeof api.rosters>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
@@ -25,7 +26,7 @@ vi.mock('@/shared/api/client', () => ({
     seasons: (id: string) => seasonsMock(id),
     seasonReport: (...args: Parameters<typeof api.seasonReport>) => seasonReportMock(...args),
     rankings: vi.fn(),
-    rosters: vi.fn(),
+    rosters: (id: string) => rostersMock(id),
     tournaments: (id: string) => tournamentsMock(id),
     currentTournament: (id: string) => currentTournamentMock(id),
     tournamentReport: (seasonId: string, tournamentId: string, live: boolean) =>
@@ -68,6 +69,13 @@ const tournament: Tournament = {
   week: '9',
   createdAt: '2026-01-01T00:00:00Z',
 };
+
+const MY_TEAM_KEY = 'cwfg.myTeam';
+const WITH_MY_TEAM = { withMyTeamProvider: true };
+const newestRoster: RosterTeam[] = [
+  { teamId: 'team-1', teamNumber: 1, teamName: 'Aces', picks: [] },
+  { teamId: 'team-2', teamNumber: 2, teamName: 'Birdies', picks: [] },
+];
 
 function buildReport(name: string, tournamentId: string | null = null): WeeklyReport {
   return {
@@ -162,6 +170,12 @@ describe('WeeklyReportPage', () => {
     seasonReportMock.mockReset();
     tournamentReportMock.mockReset();
     downloadPdfMock.mockReset();
+    rostersMock.mockResolvedValue(newestRoster);
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
   });
 
   it('loads the season report by default (All Tournaments) when the season has no tournaments yet', async () => {
@@ -171,7 +185,7 @@ describe('WeeklyReportPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
 
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     expect(await screen.findByText('All Tournaments · Season totals')).toBeInTheDocument();
     expect(seasonReportMock).toHaveBeenCalledWith('sn-1');
@@ -188,7 +202,7 @@ describe('WeeklyReportPage', () => {
     tournamentReportMock.mockResolvedValue({ ...buildReport('Sample Open', 'tn-1'), liveEligible: true });
 
     const user = userEvent.setup();
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     expect(await screen.findByText('Sample Open · 2026-03-01 – 2026-03-04')).toBeInTheDocument();
     expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
@@ -213,7 +227,7 @@ describe('WeeklyReportPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-1' });
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
 
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     expect(await screen.findByText('All Tournaments · Season totals')).toBeInTheDocument();
     expect(seasonReportMock).toHaveBeenCalledWith('sn-1');
@@ -235,7 +249,7 @@ describe('WeeklyReportPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-2' });
     tournamentReportMock.mockResolvedValue({ ...buildReport('Second Open', 'tn-2'), liveEligible: true });
 
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     expect(await screen.findByText('Second Open · 2026-03-01 – 2026-03-04')).toBeInTheDocument();
     expect(screen.getByLabelText<HTMLSelectElement>(/Tournament/i).value).toBe('tn-2');
@@ -271,7 +285,7 @@ describe('WeeklyReportPage', () => {
     );
 
     const user = userEvent.setup();
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     await user.selectOptions(await screen.findByLabelText(/Tournament/i), spring.id);
     await waitFor(() => expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', false));
@@ -287,7 +301,7 @@ describe('WeeklyReportPage', () => {
     tournamentsMock.mockResolvedValue([tournament]);
     currentTournamentMock.mockRejectedValue(new Error('down'));
 
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     expect(await screen.findByText(/Failed to load current tournament/i)).toBeInTheDocument();
     expect(seasonReportMock).not.toHaveBeenCalled();
@@ -300,7 +314,7 @@ describe('WeeklyReportPage', () => {
     tournamentsMock.mockResolvedValue([tournament]);
     currentTournamentMock.mockReturnValue(new Promise(() => {}));
 
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     expect(await screen.findByText(/Loading current tournament/i)).toBeInTheDocument();
     expect(seasonReportMock).not.toHaveBeenCalled();
@@ -321,6 +335,7 @@ describe('WeeklyReportPage', () => {
           fetcher={() => currentTournamentMock('sn-1')}
         />
       </>,
+      WITH_MY_TEAM,
     );
 
     expect(await screen.findByText(/Loading tournaments/i)).toBeInTheDocument();
@@ -341,7 +356,7 @@ describe('WeeklyReportPage', () => {
       }),
     );
 
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     const loading = await screen.findByText(/Loading current tournament/i);
     answer.release();
@@ -353,13 +368,13 @@ describe('WeeklyReportPage', () => {
 
   it('shows an empty state when there are no leagues', async () => {
     leaguesMock.mockResolvedValue([]);
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
     expect(await screen.findByText(/No leagues configured/i)).toBeInTheDocument();
   });
 
   it('surfaces an error when the leagues query fails', async () => {
     leaguesMock.mockRejectedValue(new Error('network down'));
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
     expect(await screen.findByText(/Failed to load leagues/i)).toBeInTheDocument();
   });
 
@@ -370,7 +385,7 @@ describe('WeeklyReportPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-1' });
     seasonReportMock.mockRejectedValue(new Error('kaboom'));
 
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
     expect(await screen.findByText(/Failed to load report/i)).toBeInTheDocument();
   });
 
@@ -381,7 +396,7 @@ describe('WeeklyReportPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
 
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     const grid = await screen.findByRole('table');
     expect(within(grid).getByText('ROWS 2-3')).toBeInTheDocument();
@@ -396,7 +411,7 @@ describe('WeeklyReportPage', () => {
     // @ts-expect-error -- a body cached before the server sent these fields no longer satisfies WeeklyReport.
     seasonReportMock.mockResolvedValue(buildReportWithoutSideBetFacts('All Tournaments'));
 
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     const grid = await screen.findByRole('table');
     expect(within(grid).getByText('SIDE BETS')).toBeInTheDocument();
@@ -417,7 +432,7 @@ describe('WeeklyReportPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-1' });
     tournamentReportMock.mockResolvedValue({ ...report, ...overrides, tournament: { ...report.tournament, status } });
 
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     const subtitle = await screen.findByText('Sample Open · 2026-03-01 – 2026-03-04');
     expect(within(pageTitleRow(subtitle)).getByText(chip)).toBeInTheDocument();
@@ -430,7 +445,7 @@ describe('WeeklyReportPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-1' });
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
 
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     await screen.findByText('All Tournaments · Season totals');
     expect(screen.queryByText(/^(Live|Final|Upcoming)$/)).not.toBeInTheDocument();
@@ -443,7 +458,7 @@ describe('WeeklyReportPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
     seasonReportMock.mockResolvedValue(buildReport('All Tournaments'));
 
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     const button = await screen.findByRole('button', { name: /Download PDF/i });
     await screen.findByText('All Tournaments · Season totals');
@@ -458,7 +473,7 @@ describe('WeeklyReportPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
     seasonReportMock.mockImplementation(() => new Promise(() => {}));
 
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     const button = await screen.findByRole('button', { name: /Download PDF/i });
     expect(button).toBeDisabled();
@@ -475,7 +490,7 @@ describe('WeeklyReportPage', () => {
     });
 
     const user = userEvent.setup();
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
     await screen.findByText('All Tournaments · Season totals');
     const button = screen.getByRole('button', { name: /Download PDF/i });
     await user.click(button);
@@ -495,7 +510,7 @@ describe('WeeklyReportPage', () => {
     });
 
     const user = userEvent.setup();
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
     await screen.findByText('All Tournaments · Season totals');
     await user.click(screen.getByRole('button', { name: '2026 Season 1' }));
     const sheet = screen.getByRole('dialog', { name: 'League, season and tournament' });
@@ -520,7 +535,7 @@ describe('WeeklyReportPage', () => {
     });
 
     const user = userEvent.setup();
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
     await screen.findByText('All Tournaments · Season totals');
     const button = screen.getByRole('button', { name: /Download PDF/i });
     await user.click(button);
@@ -548,7 +563,7 @@ describe('WeeklyReportPage', () => {
     seasonReportMock.mockResolvedValue({ ...report, teams: [aces, birdies] });
     const user = userEvent.setup();
 
-    renderWithProviders(<WeeklyReportPage />);
+    renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
 
     const strip = await screen.findByRole('group', { name: 'Team' });
     expect(within(screen.getByRole('list', { name: 'Picks' })).getByText('Golfer 1')).toBeInTheDocument();
@@ -561,5 +576,84 @@ describe('WeeklyReportPage', () => {
     expect(within(picks).getByText('Birdie 1')).toBeInTheDocument();
     expect(within(picks).queryByText('Golfer 1')).not.toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Team totals' })).toHaveTextContent('Birdies');
+  });
+
+  describe("the strip on the visitor's own team", () => {
+    function seasonReport(...teamNames: string[]): WeeklyReport {
+      const report = buildReport('All Tournaments');
+      const [aces] = report.teams;
+      if (!aces) throw new Error('the report fixture has no team');
+      const teams: ReportTeamColumn[] = teamNames.map((teamName, index) => ({
+        ...aces,
+        teamId: `team-${index + 1}`,
+        teamName,
+      }));
+      return { ...report, teams };
+    }
+
+    function pressedChip(): string | null {
+      const pressed = within(screen.getByRole('group', { name: 'Team' }))
+        .getAllByRole('button')
+        .find((chip) => chip.getAttribute('aria-pressed') === 'true');
+      return pressed?.textContent ?? null;
+    }
+
+    async function renderReport(): Promise<void> {
+      leaguesMock.mockResolvedValue([league]);
+      seasonsMock.mockResolvedValue([season]);
+      tournamentsMock.mockResolvedValue([]);
+      currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
+      seasonReportMock.mockResolvedValue(seasonReport('Aces', 'Birdies'));
+      renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
+      await screen.findByRole('group', { name: 'Team' });
+    }
+
+    it('opens on the saved team', async () => {
+      window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"BIRDIES"}');
+      await renderReport();
+
+      expect(pressedChip()).toBe('Birdies');
+      expect(screen.getByRole('group', { name: 'Team totals' })).toHaveTextContent('Birdies');
+    });
+
+    it('switches to a tapped team', async () => {
+      window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"BIRDIES"}');
+      const user = userEvent.setup();
+      await renderReport();
+
+      await user.click(within(screen.getByRole('group', { name: 'Team' })).getByRole('button', { name: 'Aces' }));
+
+      expect(pressedChip()).toBe('Aces');
+    });
+
+    it.each([
+      ['browsing', '{"kind":"browsing"}'],
+      ['never asked', null],
+    ])('opens on the first team when %s', async (_choice, stored) => {
+      if (stored !== null) window.localStorage.setItem(MY_TEAM_KEY, stored);
+      await renderReport();
+
+      expect(pressedChip()).toBe('Aces');
+    });
+
+    it('opens an older season without the saved team on its first team', async () => {
+      const older: Season = { ...season, id: 'sn-0', name: 'Season 0', seasonYear: 2025 };
+      window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"BIRDIES"}');
+      leaguesMock.mockResolvedValue([league]);
+      seasonsMock.mockResolvedValue([season, older]);
+      tournamentsMock.mockResolvedValue([]);
+      currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
+      seasonReportMock.mockImplementation((seasonId) =>
+        Promise.resolve(seasonId === 'sn-0' ? seasonReport('Condors', 'Eagles') : seasonReport('Aces', 'Birdies')),
+      );
+      const user = userEvent.setup();
+      renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
+      await screen.findByRole('group', { name: 'Team' });
+      expect(pressedChip()).toBe('Birdies');
+
+      await user.selectOptions(screen.getByLabelText(/^Season$/), 'sn-0');
+
+      await waitFor(() => expect(pressedChip()).toBe('Condors'));
+    });
   });
 });

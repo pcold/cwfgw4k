@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { api } from '@/shared/api/client';
+import { nth } from '@/shared/test/nth';
 import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import type { League, RosterTeam, Season, SeasonRules } from '@/shared/api/types';
@@ -57,6 +58,9 @@ const teams: RosterTeam[] = [
   },
 ];
 
+const MY_TEAM_KEY = 'cwfg.myTeam';
+const WITH_MY_TEAM = { withMyTeamProvider: true };
+
 async function findGrid(): Promise<HTMLElement> {
   return screen.findByRole('table');
 }
@@ -75,6 +79,11 @@ describe('RostersPage', () => {
     rostersMock.mockReset();
     seasonRulesMock.mockReset();
     seasonRulesMock.mockResolvedValue(rules);
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
   });
 
   it("tags the late-row rounds the season's rules name", async () => {
@@ -82,7 +91,7 @@ describe('RostersPage', () => {
     seasonsMock.mockResolvedValue([season]);
     rostersMock.mockResolvedValue(teams);
 
-    renderWithProviders(<RostersPage />);
+    renderWithProviders(<RostersPage />, WITH_MY_TEAM);
 
     const grid = await findGrid();
     await waitFor(() => {
@@ -99,7 +108,7 @@ describe('RostersPage', () => {
     rostersMock.mockResolvedValue(teams);
     seasonRulesMock.mockRejectedValue(new Error('nope'));
 
-    renderWithProviders(<RostersPage />);
+    renderWithProviders(<RostersPage />, WITH_MY_TEAM);
 
     expect(within(await findGrid()).getByText('Scottie Scheffler')).toBeInTheDocument();
   });
@@ -109,7 +118,7 @@ describe('RostersPage', () => {
     seasonsMock.mockResolvedValue([season]);
     rostersMock.mockResolvedValue(teams);
 
-    renderWithProviders(<RostersPage />);
+    renderWithProviders(<RostersPage />, WITH_MY_TEAM);
 
     expect(within(await findGrid()).getByText('Scottie Scheffler')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Team Rosters/i })).toBeInTheDocument();
@@ -124,7 +133,7 @@ describe('RostersPage', () => {
     seasonsMock.mockResolvedValue([season]);
     rostersMock.mockRejectedValue(new Error('nope'));
 
-    renderWithProviders(<RostersPage />);
+    renderWithProviders(<RostersPage />, WITH_MY_TEAM);
     expect(await screen.findByText(/Failed to load rosters/i)).toBeInTheDocument();
   });
 
@@ -134,7 +143,7 @@ describe('RostersPage', () => {
     rostersMock.mockResolvedValue(teams);
     const user = userEvent.setup();
 
-    renderWithProviders(<RostersPage />);
+    renderWithProviders(<RostersPage />, WITH_MY_TEAM);
 
     const strip = await screen.findByRole('group', { name: 'Team' });
     const picks = screen.getByRole('list', { name: 'Picks' });
@@ -147,5 +156,70 @@ describe('RostersPage', () => {
     const switched = screen.getByRole('list', { name: 'Picks' });
     expect(within(switched).getByText('Jon Rahm')).toBeInTheDocument();
     expect(within(switched).queryByText('Scottie Scheffler')).not.toBeInTheDocument();
+  });
+
+  describe("the strip on the visitor's own team", () => {
+    function pressedChip(): string | null {
+      const pressed = within(screen.getByRole('group', { name: 'Team' }))
+        .getAllByRole('button')
+        .find((chip) => chip.getAttribute('aria-pressed') === 'true');
+      return pressed?.textContent ?? null;
+    }
+
+    async function renderRosters(): Promise<void> {
+      leaguesMock.mockResolvedValue([league]);
+      seasonsMock.mockResolvedValue([season]);
+      rostersMock.mockResolvedValue(teams);
+      renderWithProviders(<RostersPage />, WITH_MY_TEAM);
+      await screen.findByRole('group', { name: 'Team' });
+    }
+
+    it('opens on the saved team', async () => {
+      window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"BIRDIES"}');
+      await renderRosters();
+
+      expect(pressedChip()).toBe('Birdies');
+      expect(within(screen.getByRole('list', { name: 'Picks' })).getByText('Jon Rahm')).toBeInTheDocument();
+    });
+
+    it('switches to a tapped team', async () => {
+      window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"BIRDIES"}');
+      const user = userEvent.setup();
+      await renderRosters();
+
+      await user.click(within(screen.getByRole('group', { name: 'Team' })).getByRole('button', { name: 'Aces' }));
+
+      expect(pressedChip()).toBe('Aces');
+    });
+
+    it.each([
+      ['browsing', '{"kind":"browsing"}'],
+      ['never asked', null],
+    ])('opens on the first team when %s', async (_choice, stored) => {
+      if (stored !== null) window.localStorage.setItem(MY_TEAM_KEY, stored);
+      await renderRosters();
+
+      expect(pressedChip()).toBe('Aces');
+    });
+
+    it('opens an older season without the saved team on its first team', async () => {
+      const older: Season = { ...season, id: 'sn-0', name: 'Season 0', seasonYear: 2025 };
+      const olderTeams: RosterTeam[] = [
+        { ...nth(teams, 0), teamId: 't-8', teamName: 'Condors' },
+        { ...nth(teams, 1), teamId: 't-9', teamName: 'Eagles' },
+      ];
+      window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"BIRDIES"}');
+      leaguesMock.mockResolvedValue([league]);
+      seasonsMock.mockResolvedValue([season, older]);
+      rostersMock.mockImplementation((seasonId) => Promise.resolve(seasonId === 'sn-0' ? olderTeams : teams));
+      const user = userEvent.setup();
+      renderWithProviders(<RostersPage />, WITH_MY_TEAM);
+      await screen.findByRole('group', { name: 'Team' });
+      expect(pressedChip()).toBe('Birdies');
+
+      await user.selectOptions(screen.getByLabelText(/^Season$/), 'sn-0');
+
+      await waitFor(() => expect(pressedChip()).toBe('Condors'));
+    });
   });
 });

@@ -8,12 +8,15 @@ import ReportGridHead from '@/shared/components/ReportGridHead';
 import ReportGridRoundLabel from '@/shared/components/ReportGridRoundLabel';
 import { REPORT_GRID_TABLE_CLASS } from '@/shared/components/reportGrid';
 import TeamStrip from '@/shared/components/TeamStrip';
+import { isMyTeam } from '@/features/myTeam/myTeamModel';
 
 interface Props {
   readonly teams: readonly RosterTeam[];
   readonly sideBetRounds: readonly number[];
-  /** Null, or an id the season no longer has, shows the first team. */
+  /** Null, or an id the season no longer has, shows the visitor's own team, else the first. */
   readonly selectedTeamId: string | null;
+  /** @see isMyTeam */
+  readonly myTeamName: string | null;
   readonly onSelectTeam: (teamId: string) => void;
   readonly onGolferClick?: (golferId: string) => void;
 }
@@ -100,8 +103,18 @@ function TeamPicks({ team, sideBetRounds, onGolferClick }: TeamPicksProps): Reac
   );
 }
 
-function RostersView({ teams, sideBetRounds, selectedTeamId, onSelectTeam, onGolferClick }: Props): ReactNode {
-  const selectedTeam = teams.find((team) => team.teamId === selectedTeamId) ?? teams[0];
+function RostersView({
+  teams,
+  sideBetRounds,
+  selectedTeamId,
+  myTeamName,
+  onSelectTeam,
+  onGolferClick,
+}: Props): ReactNode {
+  const selectedTeam =
+    teams.find((team) => team.teamId === selectedTeamId) ??
+    teams.find((team) => isMyTeam(team.teamName, myTeamName)) ??
+    teams[0];
   if (selectedTeam === undefined) {
     return (
       <p className="text-ink-muted text-center py-12">
