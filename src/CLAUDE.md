@@ -324,8 +324,10 @@ Rules:
   key. `installErrorHandling()` is the
   canonical sink that maps each variant to its status plus a JSON
   `ErrorBody`, or a `RefusalBody` for `Refused`. The `exception<Throwable>`
-  handler in `ErrorHandling.kt` is the single documented place in the
-  codebase where `Throwable` is caught — do not replicate in business logic.
+  handler in `ErrorHandling.kt` is one of two documented places in the
+  codebase where `Throwable` is caught; the other is the loader in
+  `RequestCache.cachedJsonGet`, which rethrows and exists so coalesced
+  waiters never hang. Do not replicate in business logic.
 - **MUST NOT** push HTTP error semantics into the domain or service layer.
   Services return `T?` for "not found"; routes bridge with
   `?: throw DomainError.NotFound("<label> ${id.value} not found")`.
