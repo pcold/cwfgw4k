@@ -1,3 +1,4 @@
+/** Written for a 1-based place: zero, a negative or a fraction comes back suffixed "th". */
 export function ordinal(position: number): string {
   const lastTwo = position % 100;
   if (lastTwo >= 11 && lastTwo <= 13) return `${position}th`;
