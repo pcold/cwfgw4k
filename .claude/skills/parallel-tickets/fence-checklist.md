@@ -14,6 +14,7 @@ Collisions a footprint map misses and brief wording that has misfired. Phase 1 o
 - Wire types live in each domain's `XModels.kt`, and `ui/src/shared/api/types.ts` mirrors them all by
   hand in one file. A ticket that changes a response shape takes both, and the domain's
   `shared/api/client/<domain>.ts` slice when it adds a call (`client/index.ts` too if it adds a slice).
+  It also regenerates `wire-contract.txt` and `wireContract.generated.ts` (command in either header).
 - `docs/ARCHITECTURE.md` lists every endpoint in one HTTP table, so a ticket that adds or changes a
   route has it in its fence. Landing the code without it turns that doc false.
 - A file that holds one entry per case of a type is taken by every ticket adding a case, whatever it

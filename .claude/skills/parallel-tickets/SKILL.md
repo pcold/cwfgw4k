@@ -25,9 +25,11 @@ parallelize only genuinely disjoint sets.
   file. Almost every sequencing problem comes from tickets that *read*
   independent but share one file.
 - A **generated** file is not one of those. The jOOQ classes under
-  `build/generated/jooq` are written by `generateJooq` and never committed. No
-  tracked file here is generated, so every tracked file two tickets share is a
-  genuine collision.
+  `build/generated/jooq` are written by `generateJooq` and never committed. The
+  two tracked ones, `src/test/resources/wire-contract.txt` and
+  `ui/src/shared/api/wireContract.generated.ts`, are regenerated on a conflict
+  rather than merged, so tickets sharing only those may run together; every
+  other tracked file two tickets share is a genuine collision.
 - **MUST** treat an open PR's files as taken. A branch that is merged is free; a
   branch that is in review is not.
 - **MUST** read the board for tickets already **In Progress** — the counterpart
