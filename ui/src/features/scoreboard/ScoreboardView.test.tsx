@@ -21,6 +21,7 @@ function row(overrides: Partial<ReportCell> = {}): ReportCell {
     ownershipPct: 100,
     seasonEarnings: 50,
     seasonTopTens: 1,
+    inField: false,
     ...overrides,
   };
 }
@@ -887,6 +888,107 @@ describe('ScoreboardView', () => {
         .filter((message) => !leaderboardTable().contains(message));
       expect(phoneMessage).toHaveLength(1);
       expect(nth(phoneMessage, 0).parentElement).toHaveClass('sm:hidden');
+    });
+  });
+
+  describe('before tee-off', () => {
+    function playing(round: number, golferId: string, golferName: string): ReportCell {
+      return row({ round, golferId, golferName, inField: true, positionStr: null, finish: null, earnings: 0 });
+    }
+
+    const fieldTeams = [
+      team({
+        teamId: 't-1',
+        teamName: 'Aces',
+        weeklyTotal: 0,
+        cells: [
+          playing(1, 'g-1', 'Scottie Scheffler'),
+          row({ round: 2, golferId: 'g-2', golferName: 'Rory McIlroy', earnings: 0, finish: null }),
+          playing(3, 'g-3', 'Xander Schauffele'),
+        ],
+      }),
+      team({ teamId: 't-2', teamName: 'Birdies', weeklyTotal: 0, cells: [playing(1, 'g-4', 'Ludvig Aberg')] }),
+      team({ teamId: 't-3', teamName: 'Cuts', weeklyTotal: 0, cells: [] }),
+    ];
+
+    function preStart(teams: ReportTeamColumn[]): WeeklyReport {
+      return report({ teams, tournament: { ...report().tournament, status: 'in_progress' }, awaitingTeeOff: true });
+    }
+
+    it('lists each team\'s golfers in the field in draft order after a count, with no finish or money', () => {
+      renderWithProviders(<ScoreboardView report={preStart(fieldTeams)} />, NO_PROVIDERS);
+
+      expect(golferLine('Aces')).toHaveTextContent(/^2 playing · Scottie Scheffler · Xander Schauffele$/);
+      expect(phoneDetailLine('Aces')).toHaveTextContent(/^2 playing · Scottie Scheffler · Xander Schauffele$/);
+      expect(golferLine('Birdies')).toHaveTextContent(/^1 playing · Ludvig Aberg$/);
+      expect(phoneDetailLine('Birdies')).toHaveTextContent(/^1 playing · Ludvig Aberg$/);
+    });
+
+    it('says a team with nobody in the field has 0 playing and nothing else', () => {
+      renderWithProviders(<ScoreboardView report={preStart(fieldTeams)} />, NO_PROVIDERS);
+
+      expect(golferLine('Cuts')).toHaveTextContent(/^0 playing$/);
+      expect(phoneDetailLine('Cuts')).toHaveTextContent(/^0 playing$/);
+    });
+
+    it('shows the cards below sm and the table from sm up, as the paid list does', () => {
+      renderWithProviders(<ScoreboardView report={preStart(fieldTeams)} />, NO_PROVIDERS);
+
+      expect(screen.getByRole('list', { name: 'Weekly results' })).toHaveClass('sm:hidden');
+      expect(teamTable().parentElement).toHaveClass('hidden', 'sm:block');
+    });
+
+    it('sets no money box on a card and no money column in the table', () => {
+      renderWithProviders(<ScoreboardView report={preStart(fieldTeams)} />, NO_PROVIDERS);
+
+      expect(within(teamTable()).getAllByRole('columnheader').map((head) => head.textContent)).toEqual(['#', 'Team']);
+      expect(teamTable()).not.toHaveTextContent('$');
+      expect(phoneCard('Aces').children).toHaveLength(2);
+      expect(screen.getByRole('list', { name: 'Weekly results' })).not.toHaveTextContent('$');
+    });
+
+    it('makes each name in the field a tap-target button that opens the golfer, in the table and on the phone', async () => {
+      const onGolferClick = vi.fn();
+      const user = userEvent.setup();
+      renderWithProviders(<ScoreboardView report={preStart(fieldTeams)} onGolferClick={onGolferClick} />, NO_PROVIDERS);
+
+      const tableButton = within(golferLine('Aces')).getByRole('button', { name: 'Xander Schauffele' });
+      expect(tableButton).toHaveClass(TAP_TARGET_CLASS);
+      await user.click(tableButton);
+      expect(onGolferClick).toHaveBeenLastCalledWith('g-3');
+      await user.click(within(phoneDetailLine('Birdies')).getByRole('button', { name: 'Ludvig Aberg' }));
+      expect(onGolferClick).toHaveBeenLastCalledWith('g-4');
+    });
+
+    it('prints the names as plain text when no onGolferClick is provided', () => {
+      renderWithProviders(<ScoreboardView report={preStart(fieldTeams)} />, NO_PROVIDERS);
+
+      expect(within(golferLine('Aces')).queryByRole('button')).not.toBeInTheDocument();
+      expect(within(golferLine('Aces')).getByText('Scottie Scheffler')).toHaveClass('text-ink-secondary');
+    });
+
+    it.each([
+      ['live', { status: 'in_progress', awaitingTeeOff: false }],
+      ['finalized', { status: 'completed', awaitingTeeOff: false }],
+    ])('lists only the paid, with their money, once %s', (_phase, { status, awaitingTeeOff }) => {
+      const cells = [
+        row({ golferId: 'g-1', golferName: 'Scottie Scheffler', inField: true, earnings: 18, finish: { position: 1, tied: false } }),
+        row({ round: 2, golferId: 'g-2', golferName: 'Rory McIlroy', inField: true, earnings: 0, finish: null }),
+      ];
+      renderWithProviders(
+        <ScoreboardView
+          report={report({
+            teams: [team({ teamName: 'Aces', cells })],
+            tournament: { ...report().tournament, status },
+            awaitingTeeOff,
+          })}
+        />,
+        NO_PROVIDERS,
+      );
+
+      expect(golferLine('Aces')).toHaveTextContent(/^Scottie Scheffler 1 \+\$18\.00$/);
+      expect(phoneDetailLine('Aces')).toHaveTextContent(/^Scottie Scheffler 1 \+\$18\.00$/);
+      expect(screen.queryByText(/playing/)).not.toBeInTheDocument();
     });
   });
 });

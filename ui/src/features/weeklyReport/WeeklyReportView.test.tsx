@@ -27,6 +27,7 @@ function row(round: number, overrides: Partial<ReportCell> = {}): ReportCell {
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
+    inField: false,
     ...overrides,
   };
 }
@@ -237,6 +238,21 @@ describe('WeeklyReportView', () => {
     const blank = within(grid()).getByText('Blank');
     expect(blank).toHaveClass('text-ink-muted');
     expect(blank).not.toHaveClass('font-bold');
+  });
+
+  it('marks an unpaid pick in the field Playing in muted ink, a paid one its money, and one out of it a dash', () => {
+    const cells = [
+      row(1, { golferName: 'Earner', positionStr: '1', earnings: 18, inField: true }),
+      row(2, { golferName: 'Teeing', inField: true }),
+      row(3, { golferName: 'Absent' }),
+    ];
+    renderWithProviders(<WeeklyReportView {...FIRST_TEAM} report={report({ teams: [team({ cells })] })} />, NO_PROVIDERS);
+
+    const earningsLine = (name: string) => within(grid()).getByText(name).nextElementSibling;
+    expect(earningsLine('Earner')).toHaveTextContent(/^1 - \+\$18\.00$/);
+    expect(earningsLine('Teeing')).toHaveTextContent(/^Playing$/);
+    expect(earningsLine('Teeing')).toHaveClass('text-ink-muted');
+    expect(earningsLine('Absent')).toHaveTextContent(/^-$/);
   });
 
   it('flips the header row label when rendering the season total', () => {
@@ -544,6 +560,18 @@ describe('WeeklyReportView', () => {
       expect(earner).toHaveTextContent('+$30.00 · 2 top 10s');
       expect(once).toHaveTextContent(/-\+\$18\.00 · 1 top 10$/);
       expect(within(once ?? document.body).getByText('Once')).toHaveClass('text-ink-muted');
+    });
+
+    it('marks an unpaid pick in the field Playing in muted ink, and leaves one out of it a dash', () => {
+      const cells = [row(1, { golferName: 'Teeing', inField: true }), row(2, { golferName: 'Absent' })];
+      renderWithProviders(<WeeklyReportView {...FIRST_TEAM} report={report({ teams: [team({ cells })] })} />, NO_PROVIDERS);
+
+      const [teeing, absent] = pickCards();
+      const playing = within(teeing ?? document.body).getByText('Playing');
+      expect(playing).toHaveClass('text-ink-muted');
+      expect(playing).not.toHaveClass('font-bold');
+      expect(absent).not.toHaveTextContent('Playing');
+      expect(within(absent ?? document.body).getByText('-')).toHaveClass('font-bold', 'text-ink');
     });
 
     it('leaves the season-to-date line off a season report', () => {

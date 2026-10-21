@@ -473,6 +473,10 @@ Only competitors with a round score recorded are placed, tied and paid; the rest
 are listed after them with no position or score. An event nobody has teed off pays nothing and leaves `live` unset,
 but the weekly report still shows its field as the leaderboard and sets `awaiting_tee_off`, even before ESPN lists
 a field; the UI shows the pre-start phase on that flag alone. Finalize imports the whole field either way.
+Before tee-off and while live, each team cell sets `in_field` when the selected event credits its golfer and ESPN
+lists him active or unknown; a cut, withdrawn or disqualified one drops out. The mark carries no money, so the
+UI lists who is playing before anyone is paid. A prior tournament's preview never marks a cell, and a persisted
+report leaves every cell unmarked.
 Only a view of one tournament is overlaid: its weekly report, or rankings and player rankings `through` it.
 Rankings gain a column per live candidate up to that tournament; player rankings fold in the live payouts. The
 All Tournaments rollups (the season report, and rankings without a `through`) count finalized results alone and

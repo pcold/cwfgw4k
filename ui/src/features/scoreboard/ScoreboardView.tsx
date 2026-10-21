@@ -19,6 +19,7 @@ import {
   leaderboardTeamChips,
   leaderboardTeamNames,
   playerNames,
+  playingLabel,
   scoreboardPhase,
   scoreboardTeams,
   type ScoreboardPhase,
@@ -138,6 +139,72 @@ function TeamTable({ teams, onGolferClick }: TeamListProps): ReactNode {
                 {formatDollarsAndCents(team.topTenEarnings)}
               </td>
               <MoneyCell display={formatDollarsAndCents(team.weeklyTotal)} />
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Before tee-off nothing is paid, so the team list names who is in the field instead of money and finishes.
+function FieldLine({ team, onGolferClick }: GolferLineProps): ReactNode {
+  return (
+    <div className="text-sm text-ink-muted">
+      {playingLabel(team)}
+      {team.fieldGolfers.map(({ golferId, golferName }) => (
+        <Fragment key={golferId}>
+          {' · '}
+          <span className="whitespace-nowrap">
+            {onGolferClick ? (
+              <button type="button" onClick={() => onGolferClick(golferId)} className={GOLFER_BUTTON_CLASS}>
+                {golferName}
+              </button>
+            ) : (
+              <span className="text-ink-secondary">{golferName}</span>
+            )}
+          </span>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+function FieldCards({ teams, onGolferClick }: TeamListProps): ReactNode {
+  return (
+    <ol aria-label="Weekly results" className={`sm:hidden ${CARD_LIST_CLASS}`}>
+      {teams.map((team, index) => (
+        <ListCard
+          key={team.teamId}
+          position={index + 1}
+          name={team.teamName}
+          nameCase="team"
+          detail={<FieldLine team={team} onGolferClick={onGolferClick} />}
+          total={null}
+        />
+      ))}
+    </ol>
+  );
+}
+
+function FieldTable({ teams, onGolferClick }: TeamListProps): ReactNode {
+  return (
+    <div className="hidden sm:block overflow-x-auto -mx-3 sm:mx-0">
+      <table className="w-full min-w-[500px] text-sm border-separate border-spacing-y-1">
+        <thead className={COLUMN_HEADER_CLASS}>
+          <tr className="text-left">
+            <th className="px-3 py-2 w-14 text-center">#</th>
+            <th className="px-3 py-2">Team</th>
+          </tr>
+        </thead>
+        <tbody>
+          {teams.map((team, index) => (
+            <tr key={team.teamId} className="h-11">
+              <PositionCell position={index + 1} />
+              <td className={CARD_CELL_CLASS}>
+                <div className="font-display font-bold text-lg uppercase text-ink">{team.teamName}</div>
+                <FieldLine team={team} onGolferClick={onGolferClick} />
+              </td>
             </tr>
           ))}
         </tbody>
@@ -361,8 +428,17 @@ function ScoreboardView({ report, finalizeSlot, onGolferClick }: Props): ReactNo
 
       <div className={hasLeaderboard ? TWO_COLUMN_CLASS : undefined}>
         <div className="space-y-6">
-          <TeamCards teams={teams} onGolferClick={onGolferClick} />
-          <TeamTable teams={teams} onGolferClick={onGolferClick} />
+          {phase === 'preStart' ? (
+            <>
+              <FieldCards teams={teams} onGolferClick={onGolferClick} />
+              <FieldTable teams={teams} onGolferClick={onGolferClick} />
+            </>
+          ) : (
+            <>
+              <TeamCards teams={teams} onGolferClick={onGolferClick} />
+              <TeamTable teams={teams} onGolferClick={onGolferClick} />
+            </>
+          )}
           <MoneySummary totals={weeklyTotals} />
         </div>
         {hasLeaderboard ? <LeaderboardCard leaderboard={leaderboard} tournamentName={tournament.name} /> : null}

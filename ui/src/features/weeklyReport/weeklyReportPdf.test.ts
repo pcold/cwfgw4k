@@ -26,6 +26,7 @@ function row(overrides: Partial<ReportCell> = {}): ReportCell {
     ownershipPct: 100,
     seasonEarnings: 0,
     seasonTopTens: 0,
+    inField: false,
     ...overrides,
   };
 }

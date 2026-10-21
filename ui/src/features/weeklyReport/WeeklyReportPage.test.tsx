@@ -96,6 +96,7 @@ function buildReport(name: string, tournamentId: string | null = null): WeeklyRe
           ownershipPct: 100,
           seasonEarnings: 0,
           seasonTopTens: 0,
+          inField: false,
           pairKey: null,
         })),
         topTenEarnings: 0,
