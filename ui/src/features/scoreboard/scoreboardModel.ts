@@ -98,6 +98,15 @@ export function formatScoreToPar(score: number | null): string {
   return score > 0 ? `+${score}` : `${score}`;
 }
 
+const ROUND_SEPARATOR = ' · ';
+
+export function leaderboardRoundLine(entry: LiveLeaderboardEntry): string | null {
+  const rounds = entry.roundScores.map((strokes, index) => `R${index + 1} ${strokes}`);
+  const total = entry.totalStrokes === null ? [] : [`Tot ${entry.totalStrokes}`];
+  const parts = [...rounds, ...total];
+  return parts.length === 0 ? null : parts.join(ROUND_SEPARATOR);
+}
+
 export type ScoreboardPhase = 'finalized' | 'preStart' | 'live';
 
 export function scoreboardPhase(report: WeeklyReport): ScoreboardPhase {

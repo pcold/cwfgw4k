@@ -8,12 +8,14 @@ import PositionCell from '@/shared/components/PositionCell';
 import ColumnHeaderFilter, {
   type ColumnHeaderFilterOption,
 } from '@/shared/components/ColumnHeaderFilter';
-import { TAP_TARGET_CLASS } from '@/shared/components/formFields';
+import PhoneFilter from '@/shared/components/PhoneFilter';
+import { TAP_TARGET_CLASS, type SelectOption } from '@/shared/components/formFields';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import {
   formatScoreToPar,
   hasPlayerOn,
   hasUndraftedPlayer,
+  leaderboardRoundLine,
   leaderboardTeamChips,
   leaderboardTeamNames,
   playerNames,
@@ -40,6 +42,7 @@ const STATUS_BANNERS: Record<ScoreboardPhase, { text: string; className: string 
 
 const ALL = '';
 const UNDRAFTED = '__undrafted__';
+const FILTERED_EMPTY = 'No players match this filter.';
 
 const GOLFER_BUTTON_CLASS = `text-ink-secondary hover:underline cursor-pointer bg-transparent border-0 p-0 ${TAP_TARGET_CLASS}`;
 
@@ -192,6 +195,99 @@ function TeamChips({ entry }: TeamChipsProps): ReactNode {
   );
 }
 
+interface LeaderboardListProps {
+  entries: readonly LiveLeaderboardEntry[];
+}
+
+function LeaderboardRows({ entries }: LeaderboardListProps): ReactNode {
+  if (entries.length === 0) return <p className="px-3 py-6 text-center text-sm text-ink-soft italic">{FILTERED_EMPTY}</p>;
+  return (
+    <ol aria-label="Leaderboard" className="text-sm divide-y divide-hairline-soft">
+      {entries.map((entry) => {
+        const roundLine = leaderboardRoundLine(entry);
+        return (
+          <li key={playerNames(entry)} className="flex items-baseline gap-3 px-3 py-2">
+            <span className="w-8 shrink-0 text-ink-muted tabular-nums">{entry.position ?? '—'}</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-ink">{playerNames(entry)}</div>
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <TeamChips entry={entry} />
+                {roundLine ? <span className="text-xs text-ink-muted tabular-nums">{roundLine}</span> : null}
+              </div>
+            </div>
+            <span className="shrink-0 font-semibold tabular-nums">{formatScoreToPar(entry.scoreToPar)}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+interface LeaderboardTableProps extends LeaderboardListProps {
+  teamFilter: string;
+  onTeamFilterChange: (value: string) => void;
+  teamOptions: readonly ColumnHeaderFilterOption[];
+}
+
+function LeaderboardTable({ entries, teamFilter, onTeamFilterChange, teamOptions }: LeaderboardTableProps): ReactNode {
+  return (
+    <div className="hidden sm:block overflow-x-auto">
+      <table className="w-full min-w-[480px] text-sm">
+        <thead className={COLUMN_HEADER_CLASS}>
+          <tr>
+            <th className="pl-3 pr-2 py-2 text-left">Pos</th>
+            <th className="px-2 py-2 text-left">Player</th>
+            <th className="px-2 py-2 text-left">
+              <ColumnHeaderFilter
+                ariaLabel="Filter leaderboard by team"
+                value={teamFilter}
+                onChange={onTeamFilterChange}
+                options={teamOptions}
+              />
+            </th>
+            <th className="px-2 py-2 text-right">Score</th>
+            <th className="px-2 py-2 text-right">R1</th>
+            <th className="px-2 py-2 text-right">R2</th>
+            <th className="px-2 py-2 text-right">R3</th>
+            <th className="px-2 py-2 text-right">R4</th>
+            <th className="pl-2 pr-3 py-2 text-right">Tot</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-hairline-soft">
+          {entries.length === 0 ? (
+            <tr>
+              <td colSpan={9} className="px-3 py-6 text-center text-ink-soft italic">
+                {FILTERED_EMPTY}
+              </td>
+            </tr>
+          ) : (
+            entries.map((entry) => (
+              <tr key={playerNames(entry)}>
+                <td className="pl-3 pr-2 py-2 text-ink-muted tabular-nums">{entry.position ?? '—'}</td>
+                <td className="px-2 py-2 text-ink">{playerNames(entry)}</td>
+                <td className="px-2 py-2">
+                  <TeamChips entry={entry} />
+                </td>
+                <td className="px-2 py-2 text-right tabular-nums font-semibold">
+                  {formatScoreToPar(entry.scoreToPar)}
+                </td>
+                {[0, 1, 2, 3].map((idx) => (
+                  <td key={idx} className="px-2 py-2 text-right tabular-nums text-ink-muted">
+                    {entry.roundScores[idx] ?? '—'}
+                  </td>
+                ))}
+                <td className="pl-2 pr-3 py-2 text-right tabular-nums font-semibold">
+                  {entry.totalStrokes ?? '—'}
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 interface LeaderboardCardProps {
   leaderboard: readonly LiveLeaderboardEntry[];
   tournamentName: string | null;
@@ -200,9 +296,8 @@ interface LeaderboardCardProps {
 function LeaderboardCard({ leaderboard, tournamentName }: LeaderboardCardProps): ReactNode {
   const [teamFilter, setTeamFilter] = useState<string>(ALL);
 
-  const teamOptions = useMemo<ColumnHeaderFilterOption[]>(
+  const teamChoices = useMemo<readonly SelectOption[]>(
     () => [
-      { value: ALL, label: 'Team' },
       ...leaderboardTeamNames(leaderboard).map((name) => ({ value: name, label: name })),
       ...(leaderboard.some(hasUndraftedPlayer) ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
     ],
@@ -221,60 +316,23 @@ function LeaderboardCard({ leaderboard, tournamentName }: LeaderboardCardProps):
         <h3 className="text-sm font-semibold uppercase tracking-wider">Leaderboard</h3>
         {tournamentName ? <span className="text-sm uppercase tracking-wider truncate">{tournamentName}</span> : null}
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[480px] text-sm">
-          <thead className={COLUMN_HEADER_CLASS}>
-            <tr>
-              <th className="pl-3 pr-2 py-2 text-left">Pos</th>
-              <th className="px-2 py-2 text-left">Player</th>
-              <th className="px-2 py-2 text-left">
-                <ColumnHeaderFilter
-                  ariaLabel="Filter leaderboard by team"
-                  value={teamFilter}
-                  onChange={setTeamFilter}
-                  options={teamOptions}
-                />
-              </th>
-              <th className="px-2 py-2 text-right">Score</th>
-              <th className="px-2 py-2 text-right">R1</th>
-              <th className="px-2 py-2 text-right">R2</th>
-              <th className="px-2 py-2 text-right">R3</th>
-              <th className="px-2 py-2 text-right">R4</th>
-              <th className="pl-2 pr-3 py-2 text-right">Tot</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-hairline-soft">
-            {filteredLeaderboard.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="px-3 py-6 text-center text-ink-soft italic">
-                  No players match this filter.
-                </td>
-              </tr>
-            ) : (
-              filteredLeaderboard.map((entry) => (
-                <tr key={playerNames(entry)}>
-                  <td className="pl-3 pr-2 py-2 text-ink-muted tabular-nums">{entry.position ?? '—'}</td>
-                  <td className="px-2 py-2 text-ink">{playerNames(entry)}</td>
-                  <td className="px-2 py-2">
-                    <TeamChips entry={entry} />
-                  </td>
-                  <td className="px-2 py-2 text-right tabular-nums font-semibold">
-                    {formatScoreToPar(entry.scoreToPar)}
-                  </td>
-                  {[0, 1, 2, 3].map((idx) => (
-                    <td key={idx} className="px-2 py-2 text-right tabular-nums text-ink-muted">
-                      {entry.roundScores[idx] ?? '—'}
-                    </td>
-                  ))}
-                  <td className="pl-2 pr-3 py-2 text-right tabular-nums font-semibold">
-                    {entry.totalStrokes ?? '—'}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="sm:hidden">
+        <div className="p-3">
+          <PhoneFilter
+            label="Team"
+            value={teamFilter}
+            options={[{ value: ALL, label: 'All teams' }, ...teamChoices]}
+            onChange={setTeamFilter}
+          />
+        </div>
+        <LeaderboardRows entries={filteredLeaderboard} />
       </div>
+      <LeaderboardTable
+        entries={filteredLeaderboard}
+        teamFilter={teamFilter}
+        onTeamFilterChange={setTeamFilter}
+        teamOptions={[{ value: ALL, label: 'Team' }, ...teamChoices]}
+      />
     </div>
   );
 }
