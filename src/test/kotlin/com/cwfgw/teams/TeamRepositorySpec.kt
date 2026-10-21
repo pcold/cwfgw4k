@@ -122,7 +122,7 @@ class TeamRepositorySpec : FunSpec({
         tx.update { repository.addToRoster(eagles, NewRosterEntry(scottie.id, draftRound = 3)) }
 
         refusal(eagles) { golfer -> NewRosterEntry(golfer, draftRound = 3) } shouldContain
-            "team_rosters_one_pick_per_round"
+            "team_rosters_team_id_draft_round_key"
         tx.update { repository.addToRoster(hawks, NewRosterEntry(scottie.id, draftRound = 3)) }.draftRound shouldBe 3
     }
 

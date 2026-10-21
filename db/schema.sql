@@ -395,19 +395,19 @@ ALTER TABLE ONLY cwfgw4k.seasons
 
 
 --
--- Name: team_rosters team_rosters_one_pick_per_round; Type: CONSTRAINT; Schema: cwfgw4k; Owner: -
---
-
-ALTER TABLE ONLY cwfgw4k.team_rosters
-    ADD CONSTRAINT team_rosters_one_pick_per_round UNIQUE (team_id, draft_round);
-
-
---
 -- Name: team_rosters team_rosters_pkey; Type: CONSTRAINT; Schema: cwfgw4k; Owner: -
 --
 
 ALTER TABLE ONLY cwfgw4k.team_rosters
     ADD CONSTRAINT team_rosters_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: team_rosters team_rosters_team_id_draft_round_key; Type: CONSTRAINT; Schema: cwfgw4k; Owner: -
+--
+
+ALTER TABLE ONLY cwfgw4k.team_rosters
+    ADD CONSTRAINT team_rosters_team_id_draft_round_key UNIQUE (team_id, draft_round);
 
 
 --

@@ -4,7 +4,7 @@
 ALTER TABLE team_rosters
     ADD CONSTRAINT team_rosters_draft_round_in_range CHECK (draft_round BETWEEN 1 AND 8),
     ADD CONSTRAINT team_rosters_ownership_pct_in_range CHECK (ownership_pct > 0 AND ownership_pct <= 100),
-    ADD CONSTRAINT team_rosters_one_pick_per_round UNIQUE (team_id, draft_round);
+    ADD CONSTRAINT team_rosters_team_id_draft_round_key UNIQUE (team_id, draft_round);
 
 -- Exactly the values of TournamentStatus and UserRole: a variant added there needs a migration widening its list.
 ALTER TABLE tournaments
