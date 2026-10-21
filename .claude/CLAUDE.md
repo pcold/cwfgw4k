@@ -326,9 +326,9 @@ record of that configuration.
 
 `.claude/settings.json` carries the permission rules for this repo and is
 checked in so they are reviewed like code. Its `deny` list mechanizes the
-Iteration and Pushing rules above — force-push, `--amend`, and hard reset —
-because prose in this file only binds an agent that happens to have read it,
-and parallel subagents often have not.
+Iteration and Pushing rules above — force-push, `--amend`, hard reset, and
+merging a PR — because prose in this file only binds an agent that happens
+to have read it, and parallel subagents often have not.
 
 - **MUST NOT** add a bare-verb wildcard (`Bash(git *)`, `Bash(cd *)`) to
   either settings file. `deny` is checked before any allow, but matches only
