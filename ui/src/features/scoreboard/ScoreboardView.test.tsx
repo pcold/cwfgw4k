@@ -931,6 +931,13 @@ describe('ScoreboardView', () => {
       expect(phoneDetailLine('Cuts')).toHaveTextContent(/^0 playing$/);
     });
 
+    it('shows the cards below sm and the table from sm up, as the paid list does', () => {
+      renderWithProviders(<ScoreboardView report={preStart(fieldTeams)} />, NO_PROVIDERS);
+
+      expect(screen.getByRole('list', { name: 'Weekly results' })).toHaveClass('sm:hidden');
+      expect(teamTable().parentElement).toHaveClass('hidden', 'sm:block');
+    });
+
     it('sets no money box on a card and no money column in the table', () => {
       renderWithProviders(<ScoreboardView report={preStart(fieldTeams)} />, NO_PROVIDERS);
 

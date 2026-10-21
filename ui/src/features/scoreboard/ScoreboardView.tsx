@@ -189,8 +189,8 @@ function FieldCards({ teams, onGolferClick }: TeamListProps): ReactNode {
 
 function FieldTable({ teams, onGolferClick }: TeamListProps): ReactNode {
   return (
-    <div className="hidden sm:block">
-      <table className="w-full text-sm border-separate border-spacing-y-1">
+    <div className="hidden sm:block overflow-x-auto -mx-3 sm:mx-0">
+      <table className="w-full min-w-[500px] text-sm border-separate border-spacing-y-1">
         <thead className={COLUMN_HEADER_CLASS}>
           <tr className="text-left">
             <th className="px-3 py-2 w-14 text-center">#</th>
