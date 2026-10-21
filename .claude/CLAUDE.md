@@ -331,9 +331,10 @@ because prose in this file only binds an agent that happens to have read it,
 and parallel subagents often have not.
 
 - **MUST NOT** add a bare-verb wildcard (`Bash(git *)`, `Bash(cd *)`) to
-  either settings file. A wildcard on a verb supersedes every narrower rule
-  beneath it, and the git one silently re-permits exactly what `deny`
-  forbids. Grant the specific subcommands instead.
+  either settings file. `deny` is checked before any allow, but matches only
+  the spellings it names. The wildcard approves every other form of the verb,
+  reviewed or not, including a forbidden one with its flag moved. Grant the
+  specific subcommands instead.
 - **SHOULD** keep one-shot approvals out of the checked-in file. An entry
   pinned to a single file and line range can never match again; enough of
   them make the list unreadable, which is how a bare wildcard goes
@@ -344,7 +345,9 @@ and parallel subagents often have not.
 
 The `deny` list matches the command string, so a flag in an unusual position
 can slip past it. It is a speed bump for the common shape; branch protection
-remains the guarantee.
+remains the guarantee. An allow rule's text is no tighter: `Bash(sed -n *)`,
+kept because `sed` is outside the built-in read-only set, also approves `-i`
+and sed's `w` command, both of which write files.
 
 ---
 
