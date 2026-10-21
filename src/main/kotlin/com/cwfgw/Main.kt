@@ -26,6 +26,7 @@ import com.cwfgw.users.AuthSetup
 import com.cwfgw.users.LoginThrottle
 import com.cwfgw.users.UserRepository
 import com.cwfgw.users.seedAdminIfEmpty
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
@@ -34,10 +35,17 @@ import io.ktor.server.netty.Netty
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.debug.DebugProbes
 import kotlinx.coroutines.runBlocking
+import java.io.IOException
 import java.security.KeyStore
+import java.security.KeyStoreException
+import java.security.NoSuchAlgorithmException
+import java.security.NoSuchProviderException
+import java.security.cert.CertificateException
 import java.time.Duration
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
+
+private val log = KotlinLogging.logger {}
 
 fun main() {
     val config = AppConfig.load()
@@ -125,9 +133,24 @@ private fun systemKeychainTrustManager(): X509TrustManager? =
         val keychain = KeyStore.getInstance("KeychainStore", "Apple")
         keychain.load(null, null)
         firstX509(TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply { init(keychain) })
-    } catch (_: Exception) {
+    } catch (notOnMac: NoSuchProviderException) {
+        // Every boot off a Mac, Cloud Run's included, lands here; at WARN it would flag each healthy boot.
+        log.debug(notOnMac) { "No Apple keychain provider; using the JDK trust store" }
         null
+    } catch (failure: KeyStoreException) {
+        warnUnreadableKeychain(failure)
+    } catch (failure: NoSuchAlgorithmException) {
+        warnUnreadableKeychain(failure)
+    } catch (failure: CertificateException) {
+        warnUnreadableKeychain(failure)
+    } catch (failure: IOException) {
+        warnUnreadableKeychain(failure)
     }
+
+private fun warnUnreadableKeychain(failure: Exception): X509TrustManager? {
+    log.warn(failure) { "System keychain unreadable; using the JDK trust store" }
+    return null
+}
 
 private fun defaultJdkTrustManager(): X509TrustManager? {
     val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
