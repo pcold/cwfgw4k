@@ -491,7 +491,7 @@ internal fun assignPositions(
     }
     val rankedGroups: List<List<EspnCompetitor>> = if (completed) breakLeadTie(groups) else groups
     val teamCounts = rankedGroups.map { group -> group.map { it.pairKey ?: it.espnId }.distinct().size }
-    val groupPositions = teamCounts.runningFold(1, Int::plus)
+    val groupPositions = teamCounts.runningFold(1, Int::plus).dropLast(1)
     return rankedGroups
         .zip(groupPositions) { group, position -> group.map { it.copy(position = position) } }
         .flatten()
