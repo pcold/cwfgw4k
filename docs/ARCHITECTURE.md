@@ -135,7 +135,8 @@ A `Refused` carries a stable code the UI branches on: `tournament_out_of_order`,
 
 ### JSON, IDs and parameters
 
-- `appJson` (`http/AppJson.kt`) is snake_case on the wire, ignores unknown keys, and encodes defaults.
+- `appJson` (`http/AppJson.kt`) writes each key as its Kotlin property name, ignores unknown keys, and encodes
+  defaults.
 - Sealed types serialize with a `type` discriminator.
 - IDs are value classes (`SeasonId`, `TournamentId`, ...). A path id that is not a UUID answers 400
   "invalid season id" and the like.

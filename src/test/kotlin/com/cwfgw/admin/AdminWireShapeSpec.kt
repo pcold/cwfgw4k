@@ -22,17 +22,17 @@ class AdminWireShapeSpec : FunSpec({
                 "matched" to
                     WireCase(
                         PickMatch.Matched(FLEETWOOD_ID, "Tommy Fleetwood"),
-                        """{"type": "matched", "golfer_id": "$FLEETWOOD_UUID", "golfer_name": "Tommy Fleetwood"}""",
+                        """{"type": "matched", "golferId": "$FLEETWOOD_UUID", "golferName": "Tommy Fleetwood"}""",
                     ),
                 "matched_espn" to
                     WireCase(
                         PickMatch.MatchedEspn(espnId = "300", golferName = "Ludvig Aberg"),
-                        """{"type": "matched_espn", "espn_id": "300", "golfer_name": "Ludvig Aberg"}""",
+                        """{"type": "matched_espn", "espnId": "300", "golferName": "Ludvig Aberg"}""",
                     ),
                 "matched_backfill" to
                     WireCase(
                         PickMatch.MatchedBackfill(espnId = "100", golferName = "Tommy Fleetwood"),
-                        """{"type": "matched_backfill", "espn_id": "100", "golfer_name": "Tommy Fleetwood"}""",
+                        """{"type": "matched_backfill", "espnId": "100", "golferName": "Tommy Fleetwood"}""",
                     ),
                 "ambiguous" to
                     WireCase(
@@ -44,8 +44,8 @@ class AdminWireShapeSpec : FunSpec({
                         ),
                         """
                         {"type": "ambiguous", "candidates": [
-                            {"type": "existing", "golfer_id": "$FLEETWOOD_UUID", "name": "Tommy Fleetwood"},
-                            {"type": "espn", "espn_id": "200", "name": "Tom Fleetwood"}
+                            {"type": "existing", "golferId": "$FLEETWOOD_UUID", "name": "Tommy Fleetwood"},
+                            {"type": "espn", "espnId": "200", "name": "Tom Fleetwood"}
                         ]}
                         """,
                     ),
@@ -60,12 +60,12 @@ class AdminWireShapeSpec : FunSpec({
                 "existing" to
                     WireCase(
                         GolferCandidate.Existing(FLEETWOOD_ID, "Tommy Fleetwood"),
-                        """{"type": "existing", "golfer_id": "$FLEETWOOD_UUID", "name": "Tommy Fleetwood"}""",
+                        """{"type": "existing", "golferId": "$FLEETWOOD_UUID", "name": "Tommy Fleetwood"}""",
                     ),
                 "espn" to
                     WireCase(
                         GolferCandidate.Espn(espnId = "200", name = "Tom Fleetwood"),
-                        """{"type": "espn", "espn_id": "200", "name": "Tom Fleetwood"}""",
+                        """{"type": "espn", "espnId": "200", "name": "Tom Fleetwood"}""",
                     ),
             ),
         ) { case -> case.shouldRoundTrip(serializer<GolferCandidate>()) }
@@ -77,14 +77,14 @@ class AdminWireShapeSpec : FunSpec({
                 "existing" to
                     WireCase(
                         GolferAssignment.Existing(FLEETWOOD_ID),
-                        """{"type": "existing", "golfer_id": "$FLEETWOOD_UUID"}""",
+                        """{"type": "existing", "golferId": "$FLEETWOOD_UUID"}""",
                     ),
                 "new" to
                     WireCase(GolferAssignment.New("Tommy Fleetwood"), """{"type": "new", "name": "Tommy Fleetwood"}"""),
                 "espn" to
                     WireCase(
                         GolferAssignment.Espn(espnId = "100", name = "Tommy Fleetwood"),
-                        """{"type": "espn", "espn_id": "100", "name": "Tommy Fleetwood"}""",
+                        """{"type": "espn", "espnId": "100", "name": "Tommy Fleetwood"}""",
                     ),
             ),
         ) { case -> case.shouldRoundTrip(serializer<GolferAssignment>()) }

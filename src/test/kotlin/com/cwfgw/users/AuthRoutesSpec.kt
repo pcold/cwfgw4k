@@ -1,5 +1,6 @@
 package com.cwfgw.users
 
+import com.cwfgw.http.appJson
 import com.cwfgw.testing.TEST_ADMIN_PASSWORD
 import com.cwfgw.testing.TEST_ADMIN_USERNAME
 import com.cwfgw.testing.apiTest
@@ -24,22 +25,11 @@ import io.ktor.http.contentType
 import io.ktor.http.setCookie
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.ApplicationTestBuilder
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNamingStrategy
-
-@OptIn(ExperimentalSerializationApi::class)
-private val TEST_JSON =
-    Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-        namingStrategy = JsonNamingStrategy.SnakeCase
-    }
 
 private fun ApplicationTestBuilder.cookieClient(): HttpClient =
     createClient {
         install(ContentNegotiation) {
-            json(TEST_JSON)
+            json(appJson)
         }
         install(HttpCookies)
     }

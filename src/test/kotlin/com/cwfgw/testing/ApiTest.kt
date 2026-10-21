@@ -13,6 +13,7 @@ import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.GolferRepository
 import com.cwfgw.health.HealthProbe
+import com.cwfgw.http.appJson
 import com.cwfgw.leagues.FakeLeagueRepository
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.module
@@ -45,18 +46,7 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.testing.ApplicationTestBuilder
 import io.ktor.server.testing.testApplication
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNamingStrategy
 import java.time.Duration
-
-@OptIn(ExperimentalSerializationApi::class)
-private val TEST_JSON =
-    Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-        namingStrategy = JsonNamingStrategy.SnakeCase
-    }
 
 /** Shared credentials for [authenticatedApiTest] — seeded by the helper before `block` runs. */
 const val TEST_ADMIN_USERNAME: String = "test-admin"
@@ -112,7 +102,7 @@ private const val TEST_SWEEP_INTERVAL_SECONDS: Long = 3_600L
 /**
  * Spin up a Ktor test application with every domain wired to fake-backed services; the optional
  * `configure` block overrides specific leaves (typically the repository under test), and `block` runs
- * with an HttpClient configured to use the same SnakeCase JSON serialization as production.
+ * with an HttpClient configured to use the same JSON serialization as production.
  */
 fun apiTest(
     configure: ApiFixture.() -> Unit = {},
@@ -222,14 +212,14 @@ private fun ApiFixture.toAppServices(): AppServices =
 private fun ApplicationTestBuilder.createJsonClient(): HttpClient =
     createClient {
         install(ContentNegotiation) {
-            json(TEST_JSON)
+            json(appJson)
         }
     }
 
 private fun ApplicationTestBuilder.createCookieClient(): HttpClient =
     createClient {
         install(ContentNegotiation) {
-            json(TEST_JSON)
+            json(appJson)
         }
         install(HttpCookies)
     }

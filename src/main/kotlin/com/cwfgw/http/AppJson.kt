@@ -1,8 +1,6 @@
 package com.cwfgw.http
 
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNamingStrategy
 
 /**
  * Shared JSON config used by Ktor's [io.ktor.server.plugins.contentnegotiation.ContentNegotiation]
@@ -10,13 +8,11 @@ import kotlinx.serialization.json.JsonNamingStrategy
  * exact byte sequence the framework would emit (e.g. the request cache,
  * which stores serialized response bodies and replays them on hit).
  *
- * SnakeCase here is load-bearing: domain types declare camelCase property
- * names but the API contract is snake_case.
+ * A JSON key is the Kotlin property name verbatim: the UI's types spell the same names and convert none,
+ * so a naming strategy here renames every key out from under them.
  */
-@OptIn(ExperimentalSerializationApi::class)
 val appJson: Json =
     Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
-        namingStrategy = JsonNamingStrategy.SnakeCase
     }

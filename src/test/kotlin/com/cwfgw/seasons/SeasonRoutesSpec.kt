@@ -121,10 +121,10 @@ class SeasonRoutesSpec : FunSpec({
         }
     }
 
-    test("POST /api/v1/seasons drops a flat tie_floor and side_bet_amount, creating the season at the defaults") {
+    test("POST /api/v1/seasons drops a flat tieFloor and sideBetAmount, creating the season at the defaults") {
         val flatOnly =
-            """{"league_id":"${CASTLEWOOD_ID.value}","name":"Flat","season_year":2026,""" +
-                """"tie_floor":"0.5","side_bet_amount":"-15"}"""
+            """{"leagueId":"${CASTLEWOOD_ID.value}","name":"Flat","seasonYear":2026,""" +
+                """"tieFloor":"0.5","sideBetAmount":"-15"}"""
 
         authenticatedApiTest { client ->
             val response =
