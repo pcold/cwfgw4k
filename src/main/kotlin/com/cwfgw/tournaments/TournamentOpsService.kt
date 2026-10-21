@@ -14,6 +14,7 @@ import com.cwfgw.scoring.ScoringError
 import com.cwfgw.scoring.ScoringRepository
 import com.cwfgw.scoring.ScoringService
 import com.cwfgw.scoring.WeeklyScoreResult
+import com.cwfgw.seasons.SeasonId
 import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.LocalDate
 
@@ -68,7 +69,7 @@ class TournamentOpsService(
             return Result.Err(TournamentOpsError.StartDateChanged(fetchedFor, tournament.startDate))
         }
 
-        val blocking = findEarlierUnfinalized(tournament)
+        val blocking = tournamentRepository.findEarlierUnfinalized(tournament)
         if (blocking.isNotEmpty()) {
             return Result.Err(TournamentOpsError.OutOfOrder(TournamentOpsError.Action.Finalize, blocking))
         }
@@ -100,7 +101,7 @@ class TournamentOpsService(
                 tournamentRepository.findByIdForUpdate(tournamentId)
                     ?: return@update Result.Err(TournamentOpsError.TournamentNotFound(tournamentId))
 
-            val blocking = findLaterCompleted(tournament)
+            val blocking = tournamentRepository.findLaterCompleted(tournament)
             if (blocking.isNotEmpty()) {
                 return@update Result.Err(TournamentOpsError.OutOfOrder(TournamentOpsError.Action.Reset, blocking))
             }
@@ -115,6 +116,17 @@ class TournamentOpsService(
                 )
             log.info { "Reset complete for '${tournament.name}'" }
             Result.Ok(updated ?: tournament)
+        }
+
+    /**
+     * Reset refuses a tournament with any completed one after it, so it accepts exactly the completed ones on the
+     * latest completed start date. That restates [findLaterCompleted]; the spec resetting each listed one holds them.
+     */
+    suspend fun listResettable(seasonId: SeasonId): List<Tournament> =
+        tx.read {
+            val completed = TournamentFilter(seasonId = seasonId, statuses = setOf(TournamentStatus.Completed))
+            val latestStart = tournamentRepository.findAll(completed).lastOrNull()?.startDate
+            latestStart?.let { tournamentRepository.findAll(completed.copy(startsOn = it)) }.orEmpty()
         }
 
     context(ctx: WriteTransactionContext)
@@ -158,31 +170,6 @@ class TournamentOpsService(
             false
         }
     }
-
-    /**
-     * Sound only under findByIdForUpdate's season lock, without which a sibling's finalize or reset can commit after
-     * this read.
-     */
-    context(ctx: TransactionContext)
-    private fun findEarlierUnfinalized(tournament: Tournament): List<Tournament> =
-        tournamentRepository.findAll(
-            TournamentFilter(
-                seasonId = tournament.seasonId,
-                statuses = UNFINALIZED,
-                startsBefore = tournament.startDate,
-            ),
-        )
-
-    /** @see findEarlierUnfinalized */
-    context(ctx: TransactionContext)
-    private fun findLaterCompleted(tournament: Tournament): List<Tournament> =
-        tournamentRepository.findAll(
-            TournamentFilter(
-                seasonId = tournament.seasonId,
-                statuses = setOf(TournamentStatus.Completed),
-                startsAfter = tournament.startDate,
-            ),
-        )
 }
 
 /** [matches] are the tournaments an unlinked finalize imported into; a linked one imports into itself alone. */
@@ -192,6 +179,31 @@ private data class ImportedEvents(
 )
 
 private val UNFINALIZED: Set<TournamentStatus> = setOf(TournamentStatus.Upcoming, TournamentStatus.InProgress)
+
+/**
+ * Sound only under findByIdForUpdate's season lock; read without it, as a report does, it is advisory, since a
+ * sibling's finalize or reset can commit after the read.
+ */
+context(ctx: TransactionContext)
+internal fun TournamentRepository.findEarlierUnfinalized(tournament: Tournament): List<Tournament> =
+    findAll(
+        TournamentFilter(
+            seasonId = tournament.seasonId,
+            statuses = UNFINALIZED,
+            startsBefore = tournament.startDate,
+        ),
+    )
+
+/** @see findEarlierUnfinalized */
+context(ctx: TransactionContext)
+private fun TournamentRepository.findLaterCompleted(tournament: Tournament): List<Tournament> =
+    findAll(
+        TournamentFilter(
+            seasonId = tournament.seasonId,
+            statuses = setOf(TournamentStatus.Completed),
+            startsAfter = tournament.startDate,
+        ),
+    )
 
 /** Logged by name as a skip's `reason=`, so a rename changes what a search of the logs matches. */
 private enum class MatchSkip { OtherSeason, Completed, OutOfOrder }

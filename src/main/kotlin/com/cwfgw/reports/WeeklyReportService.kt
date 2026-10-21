@@ -26,6 +26,7 @@ import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentRepository
 import com.cwfgw.tournaments.TournamentResult
 import com.cwfgw.tournaments.TournamentStatus
+import com.cwfgw.tournaments.findEarlierUnfinalized
 import com.cwfgw.tournaments.isLiveOverlayCandidate
 import com.cwfgw.tournaments.liveOverlayWindowEnd
 import java.math.BigDecimal
@@ -131,7 +132,11 @@ class WeeklyReportService(
             val liveEligible = tournament.isLiveOverlayCandidate(today)
             Result.Ok(
                 ReportPrepared(
-                    baseReport = assembleWeeklyReport(inputs).copy(liveEligible = liveEligible),
+                    baseReport =
+                        assembleWeeklyReport(inputs).copy(
+                            liveEligible = liveEligible,
+                            earlierFinalized = tournamentRepository.findEarlierUnfinalized(tournament).isEmpty(),
+                        ),
                     tournament = tournament,
                     rules = rules,
                     overlay = if (live && liveEligible) reportOverlayIn(seasonId, tournament, today) else null,

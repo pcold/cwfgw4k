@@ -135,6 +135,7 @@ function buildReport(name: string): WeeklyReport {
     live: false,
     liveEligible: false,
     awaitingTeeOff: false,
+    finalizable: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
@@ -494,6 +495,7 @@ describe('ScoreboardPage', () => {
         payoutMultiplier: 1,
         week: '10',
       },
+      finalizable: true,
     });
     finalizeMock.mockResolvedValue(finalizedWith([]));
 
@@ -522,6 +524,7 @@ describe('ScoreboardPage', () => {
     tournamentReportMock.mockResolvedValue({
       ...buildReport('Current Open'),
       tournament: { ...buildReport('Current Open').tournament, status: 'in_progress' },
+      finalizable: true,
     });
     finalizeMock.mockRejectedValue(new Error('ESPN is unreachable'));
 
@@ -553,6 +556,7 @@ describe('ScoreboardPage', () => {
     tournamentReportMock.mockResolvedValue({
       ...buildReport('Current Open'),
       tournament: { ...buildReport('Current Open').tournament, status: 'in_progress' },
+      finalizable: true,
     });
     finalizeMock.mockResolvedValue(finalizedWith(importWarnings));
 
@@ -581,6 +585,7 @@ describe('ScoreboardPage', () => {
     tournamentReportMock.mockResolvedValue({
       ...buildReport('Current Open'),
       tournament: { ...buildReport('Current Open').tournament, status: 'in_progress' },
+      finalizable: true,
     });
     finalizeMock.mockResolvedValue(finalizedWith([twinWarnings]));
 
@@ -613,6 +618,7 @@ describe('ScoreboardPage', () => {
     tournamentReportMock.mockResolvedValue({
       ...buildReport('Current Open'),
       tournament: { ...buildReport('Current Open').tournament, status: 'in_progress' },
+      finalizable: true,
     });
     finalizeMock.mockResolvedValue(finalizedWith([]));
 
@@ -649,6 +655,7 @@ describe('ScoreboardPage', () => {
         payoutMultiplier: 1,
         week: '10',
       },
+      finalizable: true,
     });
     seasonReportMock.mockResolvedValue({
       ...buildReport('All Tournaments'),
@@ -726,6 +733,7 @@ describe('ScoreboardPage', () => {
         payoutMultiplier: 1,
         week: '10',
       },
+      finalizable: true,
     });
     readMock.mockResolvedValue({});
     finalizeMock.mockResolvedValue(finalizedWith([]));
@@ -765,6 +773,7 @@ describe('ScoreboardPage', () => {
         payoutMultiplier: 1,
         week: '10',
       },
+      finalizable: true,
     });
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
@@ -947,6 +956,56 @@ describe('ScoreboardPage', () => {
       },
       awaitingTeeOff: true,
     });
+
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
+
+    expect(await screen.findByRole('button', { name: /Manage player links/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Finalize Results/i })).not.toBeInTheDocument();
+  });
+
+  it('follows the server on finalizable, not an in-progress status past tee-off', async () => {
+    authMeMock.mockResolvedValue({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([activeTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active' });
+    tournamentReportMock.mockResolvedValue({
+      ...buildReport('Current Open'),
+      tournament: {
+        name: 'Current Open',
+        startDate: '2026-03-01',
+        endDate: '2026-03-04',
+        status: 'in_progress',
+        payoutMultiplier: 1,
+        week: '10',
+      },
+      awaitingTeeOff: false,
+      finalizable: false,
+    });
+
+    renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
+
+    expect(await screen.findByRole('button', { name: /Manage player links/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Finalize Results/i })).not.toBeInTheDocument();
+  });
+
+  it('shows an admin Manage player links on a finalized tournament', async () => {
+    authMeMock.mockResolvedValue({
+      id: 'u-1',
+      username: 'admin',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    leaguesMock.mockResolvedValue([league]);
+    seasonsMock.mockResolvedValue([season]);
+    tournamentsMock.mockResolvedValue([completedTournament]);
+    currentTournamentMock.mockResolvedValue({ type: 'season_finalized', tournamentId: 'tn-completed' });
+    tournamentReportMock.mockResolvedValue(buildReport('Sample Open'));
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 

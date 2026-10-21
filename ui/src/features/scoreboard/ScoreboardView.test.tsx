@@ -84,6 +84,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     live: false,
     liveEligible: false,
     awaitingTeeOff: false,
+    finalizable: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),
@@ -243,16 +244,17 @@ describe('ScoreboardView', () => {
     expect(screen.getByRole('button', { name: /Finalize Results/i })).toBeInTheDocument();
   });
 
-  it('does not render the finalize slot for completed tournaments', () => {
+  it('renders the slot it is given on a finalized tournament, leaving what it holds to the page', () => {
     renderWithProviders(
       <ScoreboardView
         myTeamName={null}
         report={report()}
-        finalizeSlot={<button type="button">Finalize Results</button>}
+        finalizeSlot={<button type="button">Manage player links</button>}
       />,
       NO_PROVIDERS,
     );
-    expect(screen.queryByRole('button', { name: /Finalize Results/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/Results finalized/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Manage player links/i })).toBeInTheDocument();
   });
 
   it('numbers the team rows in the server\'s weekly standings, even against their weekly totals', () => {

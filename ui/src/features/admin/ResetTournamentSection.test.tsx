@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { QueryKey } from '@tanstack/react-query';
 import type { api } from '@/shared/api/client';
@@ -11,14 +11,14 @@ import ResetTournamentSection from './ResetTournamentSection';
 
 const leaguesMock = vi.fn<typeof api.leagues>();
 const seasonsMock = vi.fn<typeof api.seasons>();
-const tournamentsMock = vi.fn<typeof api.tournaments>();
+const resettableTournamentsMock = vi.fn<typeof api.resettableTournaments>();
 const resetTournamentMock = vi.fn<typeof api.resetTournament>();
 
 vi.mock('@/shared/api/client', () => ({
   api: {
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
-    tournaments: (id: string) => tournamentsMock(id),
+    resettableTournaments: (id: string) => resettableTournamentsMock(id),
     resetTournament: (id: string) => resetTournamentMock(id),
   },
   ApiError: class ApiError extends Error {},
@@ -38,41 +38,14 @@ describe('ResetTournamentSection', () => {
   beforeEach(() => {
     leaguesMock.mockReset();
     seasonsMock.mockReset();
-    tournamentsMock.mockReset();
+    resettableTournamentsMock.mockReset();
     resetTournamentMock.mockReset();
     leaguesMock.mockResolvedValue([
       { id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' },
     ]);
     seasonsMock.mockResolvedValue([makeSeason()]);
-    tournamentsMock.mockResolvedValue([
-      {
-        id: 'tn-1',
-        name: 'Sony Open',
-        seasonId: 'sn-1',
-        startDate: '2026-01-15',
-        endDate: '2026-01-18',
-        status: 'completed',
-        payoutMultiplier: 1,
-        week: '1',
-        pgaTournamentId: null,
-        courseName: null,
-        purseAmount: null,
-        createdAt: '2026-01-01T00:00:00Z',
-      },
-      {
-        id: 'tn-2',
-        name: 'Upcoming Open',
-        seasonId: 'sn-1',
-        startDate: '2026-05-15',
-        endDate: '2026-05-18',
-        status: 'upcoming',
-        payoutMultiplier: 1,
-        week: '20',
-        pgaTournamentId: null,
-        courseName: null,
-        purseAmount: null,
-        createdAt: '2026-01-01T00:00:00Z',
-      },
+    resettableTournamentsMock.mockResolvedValue([
+      makeTournament({ id: 'tn-1', name: 'Sony Open', startDate: '2026-01-15', endDate: '2026-01-18', week: '1' }),
     ]);
   });
 
@@ -80,7 +53,7 @@ describe('ResetTournamentSection', () => {
     vi.restoreAllMocks();
   });
 
-  it('lists only completed tournaments and resets on confirm', async () => {
+  it("lists exactly the season's tournaments the server says reset accepts, and resets on confirm", async () => {
     resetTournamentMock.mockResolvedValue({
       id: 'tn-1',
       pgaTournamentId: null,
@@ -103,7 +76,12 @@ describe('ResetTournamentSection', () => {
     await waitFor(() => {
       expect(screen.getByRole('option', { name: /Wk 1 — Sony Open/ })).toBeInTheDocument();
     });
-    expect(screen.queryByRole('option', { name: /Upcoming Open/ })).not.toBeInTheDocument();
+    expect(resettableTournamentsMock).toHaveBeenCalledWith('sn-1');
+    const picker = screen.getByLabelText(/Completed tournament/i);
+    expect(within(picker).getAllByRole('option').map((option) => option.textContent)).toEqual([
+      '-- select completed tournament --',
+      'Wk 1 — Sony Open',
+    ]);
 
     await user.selectOptions(screen.getByLabelText(/Completed tournament/i), 'tn-1');
     await user.click(screen.getByRole('button', { name: /Reset Results/i }));
@@ -145,6 +123,26 @@ describe('ResetTournamentSection', () => {
       });
     },
   );
+
+  it('asks the server for the resettable list again after a reset', async () => {
+    resetTournamentMock.mockResolvedValue(makeTournament({ name: 'Sony Open', status: 'upcoming' }));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    const user = userEvent.setup();
+    renderWithProviders(<ResetTournamentSection />, { withLeagueSeasonProvider: false });
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: /Wk 1 — Sony Open/ })).toBeInTheDocument();
+    });
+    expect(resettableTournamentsMock).toHaveBeenCalledTimes(1);
+
+    await user.selectOptions(screen.getByLabelText(/Completed tournament/i), 'tn-1');
+    await user.click(screen.getByRole('button', { name: /Reset Results/i }));
+
+    await waitFor(() => {
+      expect(resettableTournamentsMock).toHaveBeenCalledTimes(2);
+    });
+  });
 
   it('does not call the API when the user cancels the confirm dialog', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false);

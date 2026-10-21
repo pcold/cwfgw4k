@@ -1,18 +1,21 @@
 package com.cwfgw.tournaments
 
 import com.cwfgw.http.DomainError
+import com.cwfgw.http.optionalQueryParam
 import com.cwfgw.result.Result
+import com.cwfgw.seasons.toSeasonId
 import com.cwfgw.users.SESSION_AUTH_NAME
 import com.cwfgw.users.requireAdmin
 import io.ktor.server.auth.authenticate
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RoutingContext
+import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 
 /**
- * Per-tournament state-transition routes (finalize, reset). Lives in
+ * Per-tournament state-transition routes (finalize, reset), and the list reset accepts. Lives in
  * its own file rather than [tournamentRoutes] because the ops service
  * composes ESPN + scoring and shouldn't be mixed into the basic
  * tournament CRUD wiring. Season-scope ops live in
@@ -20,6 +23,7 @@ import io.ktor.server.routing.route
  */
 fun Route.tournamentOpsRoutes(service: TournamentOpsService) {
     authenticate(SESSION_AUTH_NAME) {
+        get("/tournaments/resettable") { listResettable(service) }
         route("/tournaments/{id}") {
             post("/finalize") { finalizeTournament(service) }
             post("/reset") { resetTournament(service) }
@@ -29,6 +33,14 @@ fun Route.tournamentOpsRoutes(service: TournamentOpsService) {
 
 private fun RoutingContext.tournamentId(): TournamentId =
     call.parameters["id"]?.toTournamentId() ?: throw DomainError.Validation("invalid tournament id")
+
+private suspend fun RoutingContext.listResettable(service: TournamentOpsService) {
+    requireAdmin()
+    val seasonId =
+        optionalQueryParam("season_id", String::toSeasonId)
+            ?: throw DomainError.Validation("missing query parameter season_id")
+    call.respond(service.listResettable(seasonId))
+}
 
 private suspend fun RoutingContext.finalizeTournament(service: TournamentOpsService) {
     requireAdmin()

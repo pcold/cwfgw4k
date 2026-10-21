@@ -54,6 +54,7 @@ function buildReport(overrides: {
     live: false,
     liveEligible: false,
     awaitingTeeOff: false,
+    finalizable: false,
     liveLeaderboard: [],
     cashTotals: makeWonLostTotals(),
     sideBetTotals: makeWonLostTotals(),

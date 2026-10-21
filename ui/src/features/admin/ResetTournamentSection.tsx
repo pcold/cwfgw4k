@@ -22,9 +22,9 @@ function ResetTournamentSection(): ReactNode {
   // User's pick wins; otherwise default to the first loaded season.
   const seasonId = userSeasonId || (seasonsQuery.data?.[0]?.id ?? '');
 
-  const tournamentsQuery = useQuery<Tournament[]>({
-    queryKey: queryKeys.tournaments.bySeason(seasonId),
-    queryFn: seasonId === '' ? skipToken : () => api.tournaments(seasonId),
+  const resettableQuery = useQuery<Tournament[]>({
+    queryKey: queryKeys.resettableTournaments.bySeason(seasonId),
+    queryFn: seasonId === '' ? skipToken : () => api.resettableTournaments(seasonId),
   });
 
   const [tournamentId, setTournamentId] = useState<string>('');
@@ -38,7 +38,7 @@ function ResetTournamentSection(): ReactNode {
     },
   });
 
-  const tournaments = (tournamentsQuery.data ?? []).filter((t) => t.status === 'completed');
+  const tournaments = resettableQuery.data ?? [];
 
   const onReset = () => {
     if (!tournamentId) return;
