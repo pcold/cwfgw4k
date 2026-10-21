@@ -23,6 +23,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.runBlocking
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -125,7 +126,7 @@ private class Fixture(
 
     init {
         if (seedSeason) {
-            kotlinx.coroutines.runBlocking {
+            runBlocking {
                 with(noopTransactionContext) {
 
                     seasonRepo.create(
@@ -135,7 +136,7 @@ private class Fixture(
             }
         }
         initialResults.forEach { result ->
-            kotlinx.coroutines.runBlocking {
+            runBlocking {
                 with(noopTransactionContext) {
                     tournamentRepo.upsertResult(result.tournamentId, asUpsertRequest(result))
                 }

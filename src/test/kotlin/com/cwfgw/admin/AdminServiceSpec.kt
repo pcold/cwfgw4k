@@ -34,6 +34,7 @@ import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.runBlocking
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -159,7 +160,7 @@ class AdminServiceSpec : FunSpec({
                 .single()
 
         tournament.pgaTournamentId shouldBe "e-1"
-        tournament.payoutMultiplier.compareTo(java.math.BigDecimal.ONE) shouldBe 0
+        tournament.payoutMultiplier.compareTo(BigDecimal.ONE) shouldBe 0
     }
 
     test("week labels are 1-indexed by chronological position; same-ISO-week tournaments suffix a/b") {

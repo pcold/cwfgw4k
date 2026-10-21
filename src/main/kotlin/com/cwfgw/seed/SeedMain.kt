@@ -25,6 +25,7 @@ import com.cwfgw.tournaments.TournamentStatus
 import com.cwfgw.tournaments.UpdateTournamentRequest
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.runBlocking
+import java.io.Closeable
 import java.math.BigDecimal
 
 private val log = KotlinLogging.logger {}
@@ -64,7 +65,7 @@ fun main() {
         log.info { "SeedMain: done" }
     } finally {
         httpClient.close()
-        (database.dataSource as? java.io.Closeable)?.close()
+        (database.dataSource as? Closeable)?.close()
     }
 }
 

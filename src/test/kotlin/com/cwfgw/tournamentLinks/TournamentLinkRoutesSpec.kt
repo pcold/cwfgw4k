@@ -7,6 +7,7 @@ import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.FakeGolferRepository
 import com.cwfgw.golfers.Golfer
 import com.cwfgw.golfers.GolferId
+import com.cwfgw.seasons.SeasonId
 import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
@@ -49,7 +50,7 @@ private fun tournament(
         id = id,
         pgaTournamentId = pgaTournamentId,
         name = "Zurich Classic",
-        seasonId = com.cwfgw.seasons.SeasonId(UUID.randomUUID()),
+        seasonId = SeasonId(UUID.randomUUID()),
         startDate = START_DATE,
         endDate = START_DATE.plusDays(3),
         courseName = null,

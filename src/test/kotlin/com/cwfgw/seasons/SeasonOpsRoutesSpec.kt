@@ -16,6 +16,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.post
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.runBlocking
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -50,7 +51,7 @@ private fun tournament(
 private fun opsFixture(initialTournaments: List<Tournament> = emptyList()): ApiFixture.() -> Unit =
     {
         val seasonRepo = FakeSeasonRepository(idFactory = { SEASON_ID })
-        kotlinx.coroutines.runBlocking {
+        runBlocking {
             with(noopTransactionContext) {
                 seasonRepo.create(
                     CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),

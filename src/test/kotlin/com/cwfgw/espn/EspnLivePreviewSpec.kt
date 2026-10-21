@@ -30,6 +30,7 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
+import kotlinx.coroutines.runBlocking
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -185,7 +186,7 @@ private class PreviewFixture(
     val service: EspnService
 
     init {
-        kotlinx.coroutines.runBlocking {
+        runBlocking {
             with(noopTransactionContext) {
                 seasonRepo.create(
                     CreateSeasonRequest(leagueId = LEAGUE_ID, name = "2026 Season", seasonYear = 2026),

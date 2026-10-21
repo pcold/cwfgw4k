@@ -2,6 +2,7 @@ package com.cwfgw.users
 
 import com.cwfgw.config.AuthConfig
 import com.cwfgw.config.ConfigSecret
+import com.cwfgw.result.Result
 import com.cwfgw.testing.FakeTransactor
 import com.cwfgw.testing.noopTransactionContext
 import io.kotest.core.spec.style.FunSpec
@@ -89,6 +90,6 @@ class AdminSeederSpec : FunSpec({
         users.shouldHaveSize(1)
         // The stored hash actually verifies against the original plaintext (round-trip check).
         val login = authService.login("admin", "hunter2")
-        login shouldBe com.cwfgw.result.Result.Ok(users.single().shouldNotBeNull())
+        login shouldBe Result.Ok(users.single().shouldNotBeNull())
     }
 })
