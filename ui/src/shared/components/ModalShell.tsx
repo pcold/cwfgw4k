@@ -37,7 +37,10 @@ const SHEET_PANEL =
 // The sheet's geometry below `sm`; from it, the `sm:` classes centre and cap the panel as `detail` does.
 const RESPONSIVE_OVERLAY = `${SHEET_OVERLAY} sm:items-center sm:justify-center sm:p-4`;
 
-const RESPONSIVE_PANEL = `${SHEET_PANEL} sm:starting:translate-y-0 sm:w-[min(92vw,28rem)] sm:rounded-lg sm:border sm:shadow-xl`;
+// A centred panel clears no screen edge, so the sheet's safe-area insets drop from `sm`.
+const RESPONSIVE_PANEL =
+  `${SHEET_PANEL} sm:starting:translate-y-0 sm:w-[min(92vw,28rem)] sm:rounded-lg sm:border sm:shadow-xl ` +
+  'sm:pb-0 sm:pl-0 sm:pr-0';
 
 type ModalPlacementName = 'centred' | 'sheet' | 'responsive';
 
