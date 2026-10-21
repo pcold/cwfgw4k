@@ -598,6 +598,48 @@ class LiveOverlayServiceSpec : FunSpec({
         overlaid.live shouldBe true
     }
 
+    test("overlayPriorLivePreview bumps team.topTenMoney + topTenCount for the prior tournament's paid cells only") {
+        val base =
+            emptyReport(
+                listOf(
+                    teamColumn(
+                        TEAM_A_ID,
+                        cells =
+                            listOf(
+                                cell(
+                                    round = 1,
+                                    golferId = SCOTTIE_ID,
+                                    seasonEarnings = BigDecimal(5),
+                                    seasonTopTens = 1,
+                                ),
+                                cell(round = 2, golferId = XANDER_ID),
+                                cell(round = 3, golferId = RORY_ID),
+                            ),
+                    ).copy(topTenMoney = BigDecimal(5), topTenCount = 1),
+                ),
+            )
+        val priorLive =
+            preview(
+                teams =
+                    listOf(
+                        previewTeam(
+                            teamId = TEAM_A_ID,
+                            golfers =
+                                listOf(
+                                    previewGolfer(SCOTTIE_ID, position = 1, payout = BigDecimal(18)),
+                                    previewGolfer(RORY_ID, position = 2, payout = BigDecimal(10)),
+                                ),
+                        ),
+                    ),
+            )
+
+        val team = overlayPriorLivePreview(base, priorLive, DEFAULT_RULES).teams.single()
+
+        team.topTenMoney.compareTo(BigDecimal(33)) shouldBe 0
+        team.topTenCount shouldBe 3
+        team.cells.map { it.seasonTopTens } shouldContainExactly listOf(2, 0, 1)
+    }
+
     test("overlayPriorLivePreview re-settles each side-bet outcome and keeps the season's rules") {
         val twentyPerTeam = DEFAULT_RULES.copy(sideBetAmount = BigDecimal(20))
 
