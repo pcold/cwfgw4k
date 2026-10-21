@@ -505,7 +505,7 @@ class ReportRoutesSpec : FunSpec({
             }
         }
 
-        test("$route puts the weekly standings on the wire, best weekly +/- first") {
+        test("$route puts the weekly and side-bet standings on the wire, best first") {
             val wombleOutEarnsBrown =
                 reportFixture(
                     initialTournaments = listOf(tournamentRow(MASTERS_ID, "The Masters", "2026-04-09")),
@@ -518,10 +518,13 @@ class ReportRoutesSpec : FunSpec({
             apiTest(wombleOutEarnsBrown) { client ->
                 val report = wireReport(client.get(url).bodyAsText())
                 val teamNames = report.getValue("teams").jsonArray.map { it.jsonObject.getValue("team_name") }
-                val standings = report.getValue("weekly_standings").jsonArray.map { it.jsonPrimitive.content }
+                val weeklyStandings = report.getValue("weekly_standings").jsonArray.map { it.jsonPrimitive.content }
+                val sideBetStandings = report.getValue("side_bet_standings").jsonArray.map { it.jsonPrimitive.content }
+                val wombleFirst = listOf(TEAM_B.value.toString(), TEAM_A.value.toString())
 
                 teamNames.map { it.jsonPrimitive.content } shouldContainExactly listOf("BROWN", "WOMBLE")
-                standings shouldContainExactly listOf(TEAM_B.value.toString(), TEAM_A.value.toString())
+                weeklyStandings shouldContainExactly wombleFirst
+                sideBetStandings shouldContainExactly wombleFirst
             }
         }
     }

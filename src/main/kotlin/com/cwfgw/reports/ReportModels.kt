@@ -141,7 +141,7 @@ data class ReportSideBetTeamEntry(
     val outcome: SideBetOutcome?,
 )
 
-/** All teams' side-bet entries for one draft round; the report stacks one of these per round. */
+/** [teams] ranks best [ReportSideBetTeamEntry.cumulativeEarnings] first; a tie keeps [WeeklyReport.teams]' order. */
 @Serializable
 data class ReportSideBetRound(
     val round: Int,
@@ -252,6 +252,10 @@ data class WeeklyReport(
      */
     val weeklyStandings: List<TeamId> =
         teams.sortedByDescending(ReportTeamColumn::weeklyTotal).map(ReportTeamColumn::teamId)
+
+    /** @see weeklyStandings */
+    val sideBetStandings: List<TeamId> =
+        teams.sortedByDescending(ReportTeamColumn::sideBets).map(ReportTeamColumn::teamId)
 }
 
 /**

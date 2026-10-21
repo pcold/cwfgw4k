@@ -273,6 +273,22 @@ private fun sideBetFixture(
     )
 }
 
+/**
+ * Round 2 staking 20, where ALVAREZ leads and WOMBLE ties BROWN behind it. Team numbers put WOMBLE first,
+ * so a tie kept in team order differs from one broken by name.
+ */
+private fun wombleTiesBrownBehindAlvarez(): Fixture =
+    sideBetFixture(
+        rules = sideBetRules(amount = BigDecimal(20), rounds = listOf(2)),
+        round = 2,
+        earnedByTeam =
+            listOf(
+                TEAM_B.copy(teamNumber = 1) to BigDecimal(4),
+                TEAM_A.copy(teamNumber = 2) to BigDecimal(4),
+                TEAM_C.copy(teamNumber = 3) to BigDecimal(10),
+            ),
+    )
+
 private data class DraftPick(val team: Team, val round: Int, val golfer: Golfer)
 
 /**
@@ -724,9 +740,9 @@ class WeeklyReportServiceSpec : FunSpec({
         report.sideBetRules shouldBe ReportSideBetRules(amountPerTeam = BigDecimal("20.0000"), rounds = listOf(2, 3))
         report.sideBetDetail.map { it.round } shouldContainExactly listOf(2, 3)
         val thirdRound = report.sideBetDetail.last().teams
-        thirdRound.map { it.teamName } shouldContainExactly listOf("BROWN", "WOMBLE")
-        thirdRound.map { it.payout.toPlainString() } shouldContainExactly listOf("-20.0000", "20.0000")
-        thirdRound.map { it.outcome } shouldContainExactly listOf(SideBetOutcome.Lost, SideBetOutcome.Won)
+        thirdRound.map { it.teamName } shouldContainExactly listOf("WOMBLE", "BROWN")
+        thirdRound.map { it.payout.toPlainString() } shouldContainExactly listOf("20.0000", "-20.0000")
+        thirdRound.map { it.outcome } shouldContainExactly listOf(SideBetOutcome.Won, SideBetOutcome.Lost)
     }
 
     test("a tied side-bet round marks every tied team a winner and no other") {
@@ -743,6 +759,22 @@ class WeeklyReportServiceSpec : FunSpec({
             mapOf("BROWN" to SideBetOutcome.Won, "WOMBLE" to SideBetOutcome.Lost, "ALVAREZ" to SideBetOutcome.Won)
         tiedRound.associate { it.teamName to it.payout.toPlainString() } shouldBe
             mapOf("BROWN" to "10.0000", "WOMBLE" to "-20.0000", "ALVAREZ" to "10.0000")
+    }
+
+    test("getReport ranks each side-bet round best cumulative first, a tie keeping the report's team order") {
+        val report = wombleTiesBrownBehindAlvarez().mastersReport()
+
+        report.teams.map { it.teamName } shouldContainExactly listOf("WOMBLE", "BROWN", "ALVAREZ")
+        report.sideBetDetail.single().teams.map { it.teamName } shouldContainExactly
+            listOf("ALVAREZ", "WOMBLE", "BROWN")
+    }
+
+    test("getReport ranks side-bet standings best side-bet total first, a tie keeping the report's team order") {
+        val report = wombleTiesBrownBehindAlvarez().mastersReport()
+        val nameById = report.teams.associate { it.teamId to it.teamName }
+
+        report.sideBetStandings.map(nameById::getValue) shouldContainExactly listOf("ALVAREZ", "WOMBLE", "BROWN")
+        report.teams.map { it.sideBets.toPlainString() } shouldContainExactly listOf("-20.0000", "-20.0000", "40.0000")
     }
 
     test("a side-bet round every team ties is won by all of them even though nobody is paid") {

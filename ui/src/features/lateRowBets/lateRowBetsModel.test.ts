@@ -57,6 +57,7 @@ function baseReport(): WeeklyReport {
     sideBetTotals: makeWonLostTotals(),
     weeklyTotals: makeWonLostTotals(),
     weeklyStandings: [],
+    sideBetStandings: [],
   };
 }
 
@@ -65,7 +66,7 @@ describe('lateRowBetRounds', () => {
     expect(lateRowBetRounds(baseReport())).toEqual([]);
   });
 
-  it('sorts entries by cumulative earnings descending', () => {
+  it('carries every field of a ranked round onto its entries', () => {
     const report: WeeklyReport = {
       ...baseReport(),
       sideBetRules: { amountPerTeam: 20, rounds: [2] },
@@ -73,9 +74,9 @@ describe('lateRowBetRounds', () => {
         {
           round: 2,
           teams: [
-            entry({ teamId: 't-2', teamName: 'Birdies', cumulativeEarnings: 50, payout: -20 }),
             entry({ teamId: 't-1', teamName: 'Aces', cumulativeEarnings: 200, payout: 40, outcome: 'won' }),
             entry({ teamId: 't-3', teamName: 'Eagles', cumulativeEarnings: 100, payout: -20 }),
+            entry({ teamId: 't-2', teamName: 'Birdies', cumulativeEarnings: 50, payout: -20 }),
           ],
         },
       ],
@@ -92,6 +93,24 @@ describe('lateRowBetRounds', () => {
       payout: 40,
       outcome: 'won',
     });
+  });
+
+  it("keeps a round's entries in the order they arrive, even against their cumulative earnings", () => {
+    const report: WeeklyReport = {
+      ...baseReport(),
+      sideBetDetail: [
+        {
+          round: 2,
+          teams: [
+            entry({ teamId: 't-2', teamName: 'Birdies', cumulativeEarnings: 50 }),
+            entry({ teamId: 't-1', teamName: 'Aces', cumulativeEarnings: 200 }),
+            entry({ teamId: 't-3', teamName: 'Eagles', cumulativeEarnings: 100 }),
+          ],
+        },
+      ],
+    };
+    const { entries } = nth(lateRowBetRounds(report), 0);
+    expect(entries.map((e) => e.teamName)).toEqual(['Birdies', 'Aces', 'Eagles']);
   });
 
   it("keeps the server's outcome on every entry, a round nobody has earned in left null", () => {
@@ -130,19 +149,28 @@ describe('lateRowBetRounds', () => {
 });
 
 describe('lateRowBetTeamTotals', () => {
-  it('sorts teams by sideBets descending', () => {
-    const report: WeeklyReport = {
-      ...baseReport(),
-      teams: [
-        team({ teamId: 't-1', teamName: 'Aces', sideBets: -30 }),
-        team({ teamId: 't-2', teamName: 'Birdies', sideBets: 60 }),
-        team({ teamId: 't-3', teamName: 'Eagles', sideBets: 0 }),
-      ],
-    };
-    expect(lateRowBetTeamTotals(report).map((t) => t.teamName)).toEqual([
-      'Birdies',
-      'Eagles',
-      'Aces',
+  const teams = [
+    team({ teamId: 't-1', teamName: 'Aces', sideBets: -30 }),
+    team({ teamId: 't-2', teamName: 'Birdies', sideBets: 60 }),
+    team({ teamId: 't-3', teamName: 'Eagles', sideBets: 0 }),
+  ];
+
+  it("lays the totals out in the server's side-bet standings", () => {
+    const report: WeeklyReport = { ...baseReport(), teams, sideBetStandings: ['t-2', 't-3', 't-1'] };
+    expect(lateRowBetTeamTotals(report)).toEqual([
+      { teamId: 't-2', teamName: 'Birdies', sideBets: 60 },
+      { teamId: 't-3', teamName: 'Eagles', sideBets: 0 },
+      { teamId: 't-1', teamName: 'Aces', sideBets: -30 },
     ]);
+  });
+
+  it('keeps the standings order it is sent, even against their sideBets', () => {
+    const report: WeeklyReport = { ...baseReport(), teams, sideBetStandings: ['t-1', 't-3', 't-2'] };
+    expect(lateRowBetTeamTotals(report).map((t) => t.teamName)).toEqual(['Aces', 'Eagles', 'Birdies']);
+  });
+
+  it('skips a standings id the teams list does not carry', () => {
+    const report: WeeklyReport = { ...baseReport(), teams, sideBetStandings: ['t-2', 't-9', 't-3', 't-1'] };
+    expect(lateRowBetTeamTotals(report).map((t) => t.teamId)).toEqual(['t-2', 't-3', 't-1']);
   });
 });

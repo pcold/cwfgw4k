@@ -85,6 +85,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     sideBetTotals: makeWonLostTotals(),
     weeklyTotals: makeWonLostTotals(),
     weeklyStandings: [],
+    sideBetStandings: ['t-1', 't-3', 't-2'],
     ...overrides,
   };
 }
@@ -151,14 +152,14 @@ describe('LateRowBetsView', () => {
     expect(within(desktop()).getByRole('heading', { name: 'Round 3' })).toBeInTheDocument();
   });
 
-  it("shows each entry's team name from the entry itself, sorted by cumulative earnings", () => {
+  it("shows each entry's team name from the entry itself, in the order the round arrives in", () => {
     render(<LateRowBetsView report={report({ teams: [] })} {...FIRST_TAB} />);
     const rows = within(roundTable(2)).getAllByRole('row').slice(1);
     const teamCells = rows.map((r) => within(r).getAllByRole('cell')[0]?.textContent);
     expect(teamCells).toEqual(['Aces', 'Birdies', 'Eagles']);
   });
 
-  it('renders the totals table sorted by sideBets descending', () => {
+  it("renders the totals table in the report's side-bet standings", () => {
     render(<LateRowBetsView report={report()} {...FIRST_TAB} />);
     const rows = within(totalsTable()).getAllByRole('row').slice(1);
     const teamCells = rows.map((r) => within(r).getAllByRole('cell')[0]?.textContent);

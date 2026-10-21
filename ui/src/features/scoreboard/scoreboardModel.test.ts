@@ -74,6 +74,7 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
     sideBetTotals: makeWonLostTotals(),
     weeklyTotals: makeWonLostTotals(),
     weeklyStandings: teams.map((team) => team.teamId),
+    sideBetStandings: teams.map((team) => team.teamId),
     ...overrides,
   };
 }

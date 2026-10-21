@@ -43,6 +43,7 @@ function reportScoped(scope: ReportScope, status: string | null = null): WeeklyR
     sideBetTotals: makeWonLostTotals(),
     weeklyTotals: makeWonLostTotals(),
     weeklyStandings: [],
+    sideBetStandings: [],
   };
 }
 

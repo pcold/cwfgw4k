@@ -547,7 +547,8 @@ internal fun updateSideBetDetailWith(
                 val liveEarnings = if (gid == null) BigDecimal.ZERO else earningsLookup(entry.teamId, gid)
                 entry.copy(cumulativeEarnings = entry.cumulativeEarnings.add(liveEarnings))
             }
-        round.copy(teams = recomputeSideBetPayouts(updatedEntries, numTeams, sideBetPerTeam))
+        val settledEntries = recomputeSideBetPayouts(updatedEntries, numTeams, sideBetPerTeam)
+        round.copy(teams = settledEntries.rankedByCumulative(teams.map(ReportTeamColumn::teamId)))
     }
 
 internal fun aggregateSideBetTotals(sideBetDetail: List<ReportSideBetRound>): Map<TeamId, BigDecimal> =
