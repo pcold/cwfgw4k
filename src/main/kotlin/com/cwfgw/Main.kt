@@ -26,6 +26,7 @@ import com.cwfgw.users.AuthSetup
 import com.cwfgw.users.LoginThrottle
 import com.cwfgw.users.UserRepository
 import com.cwfgw.users.seedAdminIfEmpty
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
@@ -34,10 +35,17 @@ import io.ktor.server.netty.Netty
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.debug.DebugProbes
 import kotlinx.coroutines.runBlocking
+import java.io.IOException
 import java.security.KeyStore
+import java.security.KeyStoreException
+import java.security.NoSuchAlgorithmException
+import java.security.Security
+import java.security.cert.CertificateException
 import java.time.Duration
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
+
+private val log = KotlinLogging.logger {}
 
 fun main() {
     val config = AppConfig.load()
@@ -102,8 +110,8 @@ private const val HTTP_CLIENT_REQUEST_TIMEOUT_MS: Long = 30_000
  * service). On macOS we initialize the trust manager from the system Keychain
  * so corporate/MITM proxies (Zscaler, etc.) that have a trusted root in the
  * user's keychain don't fail TLS validation. On other platforms (Linux Cloud
- * Run, etc.) the keychain lookup throws and we fall through to the JDK default
- * trust store, which is what we want there.
+ * Run, etc.) there is no Apple security provider and we fall through to the JDK
+ * default trust store, which is what we want there.
  */
 internal fun buildHttpClient(): HttpClient {
     val trustManager = systemKeychainTrustManager() ?: defaultJdkTrustManager()
@@ -120,14 +128,27 @@ internal fun buildHttpClient(): HttpClient {
     }
 }
 
-private fun systemKeychainTrustManager(): X509TrustManager? =
-    try {
-        val keychain = KeyStore.getInstance("KeychainStore", "Apple")
+private fun systemKeychainTrustManager(): X509TrustManager? {
+    val apple = Security.getProvider("Apple") ?: return null
+    return try {
+        val keychain = KeyStore.getInstance("KeychainStore", apple)
         keychain.load(null, null)
         firstX509(TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply { init(keychain) })
-    } catch (_: Exception) {
-        null
+    } catch (failure: KeyStoreException) {
+        warnUnreadableKeychain(failure)
+    } catch (failure: NoSuchAlgorithmException) {
+        warnUnreadableKeychain(failure)
+    } catch (failure: CertificateException) {
+        warnUnreadableKeychain(failure)
+    } catch (failure: IOException) {
+        warnUnreadableKeychain(failure)
     }
+}
+
+private fun warnUnreadableKeychain(failure: Exception): X509TrustManager? {
+    log.warn(failure) { "System keychain unreadable; using the JDK trust store" }
+    return null
+}
 
 private fun defaultJdkTrustManager(): X509TrustManager? {
     val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())

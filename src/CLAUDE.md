@@ -110,7 +110,8 @@ Rules:
 - **MUST NOT** introduce Arrow's `Either`. `Result<T, E>` covers the use
   case and `arrow.*` is excluded by the "what we do not use" list.
 - **MUST NOT** catch `Throwable` or bare `Exception` outside of
-  `installErrorHandling()`. Catch specific types.
+  `installErrorHandling()` and the `RequestCache` loader (see HTTP boundary
+  below). Catch specific types.
 - **MUST NOT** swallow exceptions silently. If catching, log at appropriate
   level with the caught throwable attached.
 - **MUST NOT** use `runCatching { }.getOrNull()` as a general pattern. It
@@ -324,8 +325,10 @@ Rules:
   key. `installErrorHandling()` is the
   canonical sink that maps each variant to its status plus a JSON
   `ErrorBody`, or a `RefusalBody` for `Refused`. The `exception<Throwable>`
-  handler in `ErrorHandling.kt` is the single documented place in the
-  codebase where `Throwable` is caught — do not replicate in business logic.
+  handler in `ErrorHandling.kt` is one of two documented places in the
+  codebase where `Throwable` is caught; the other is the loader in
+  `RequestCache.cachedJsonGet`, which rethrows and exists so coalesced
+  waiters never hang. Do not replicate in business logic.
 - **MUST NOT** push HTTP error semantics into the domain or service layer.
   Services return `T?` for "not found"; routes bridge with
   `?: throw DomainError.NotFound("<label> ${id.value} not found")`.

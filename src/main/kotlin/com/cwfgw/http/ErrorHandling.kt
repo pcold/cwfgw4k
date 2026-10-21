@@ -96,15 +96,12 @@ private val logger = LoggerFactory.getLogger("com.cwfgw.http.ErrorHandling")
 private const val NETTY_UNDECODABLE_QUERY = "Unable to decode query parameters"
 
 /**
- * Install StatusPages with per-variant DomainError mappings, a request Ktor
- * cannot parse as 400 / 415, a timed-out lock wait as 409, and a last-resort 500
- * handler that logs the exception and returns a generic message so internal
- * detail doesn't leak to clients.
+ * Install StatusPages with per-variant DomainError mappings, a request Ktor cannot parse as 400 / 415, a
+ * timed-out lock wait as 409, and a last-resort 500 that logs the exception and answers a generic message, so
+ * internal detail doesn't leak to clients.
  *
- * The `exception<Throwable>` handler is the one place in this codebase that
- * catches Throwable on purpose — StatusPages is the canonical HTTP-boundary
- * sink for uncaught exceptions. Do not replicate this pattern in business
- * logic (CLAUDE.md forbids catching Throwable outside framework boundaries).
+ * Its `exception<Throwable>` handler is one of two sanctioned Throwable catches. The other is the loader's catch
+ * in [com.cwfgw.cache.RequestCache.cachedJsonGet], which rethrows and exists so coalesced waiters never hang.
  */
 internal fun Application.installErrorHandling() {
     install(StatusPages) {
