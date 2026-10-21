@@ -69,7 +69,8 @@ Policy, in order of preference:
    domain package and stays free of HTTP imports; routes map it to
    `DomainError` via a tiny `.orThrow()` extension. `AdminRoutes`'
    `orThrow()` over `AdminError` is the reference shape; a route mapping two
-   error types names each mapper for its type (`orThrowLink()`, `orThrowEspn()`).
+   error types names each mapper for its type, as `TournamentLinkRoutes`'
+   `orThrowLink()` / `orThrowEspn()` do.
 3. **Exceptions** for truly exceptional conditions: programmer errors
    (`IllegalArgumentException`, `IllegalStateException`), infrastructure
    failures, and at HTTP/framework boundaries — specifically `DomainError`
