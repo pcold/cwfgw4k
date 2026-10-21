@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  chosenTeamName,
+  isMyTeam,
   matchTeamName,
   normaliseTeamName,
   parseMyTeam,
@@ -94,5 +96,29 @@ describe('validateMyTeam', () => {
 describe('sortTeamNames', () => {
   it('sorts the normalised names alphabetically', () => {
     expect(sortTeamNames(TEAMS)).toEqual(['BLAU', 'ROSE H2O', 'WOMBLE']);
+  });
+});
+
+describe('chosenTeamName', () => {
+  it('names the team a team choice holds', () => {
+    expect(chosenTeamName({ kind: 'team', teamName: 'WOMBLE' })).toBe('WOMBLE');
+  });
+
+  it.each<MyTeamChoice>([{ kind: 'browsing' }, { kind: 'unasked' }])('names no team for %o', (choice) => {
+    expect(chosenTeamName(choice)).toBeNull();
+  });
+});
+
+describe('isMyTeam', () => {
+  it.each(['WOMBLE', 'Womble', ' womble '])('matches %j to WOMBLE, ignoring case and outer spaces', (teamName) => {
+    expect(isMyTeam(teamName, 'WOMBLE')).toBe(true);
+  });
+
+  it('matches no other team', () => {
+    expect(isMyTeam('BLAU', 'WOMBLE')).toBe(false);
+  });
+
+  it('matches nothing when no team is chosen', () => {
+    expect(isMyTeam('WOMBLE', null)).toBe(false);
   });
 });

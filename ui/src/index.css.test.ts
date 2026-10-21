@@ -35,14 +35,15 @@ const NON_TEXT_CONTRAST = 3;
 // blend's luminance lies between theirs, so it contrasts no less than the weaker of the two.
 const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
   'ink-strong': ['canvas', 'surface-card'],
-  ink: ['canvas', 'surface-card', 'surface-raised', 'surface-raised-hover', 'late-row-leader'],
+  ink: ['canvas', 'surface-card', 'surface-raised', 'surface-raised-hover', 'late-row-leader', 'my-team'],
   'ink-body': ['surface-card', 'surface-raised'],
-  'ink-secondary': ['canvas', 'surface-card', 'surface-raised'],
+  'ink-secondary': ['canvas', 'surface-card', 'surface-raised', 'my-team'],
   'ink-label': ['canvas', 'surface-card', 'surface-raised'],
   'ink-muted': [
     'canvas',
     'surface-card',
     'late-row-leader',
+    'my-team',
     { token: 'surface-raised', percent: 50, over: 'surface-card' },
   ],
   'ink-soft': ['canvas', 'surface-card', 'surface-raised'],

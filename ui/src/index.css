@@ -109,6 +109,9 @@
   /* A report-grid cell whose pick leads its late-row round; a fill, edged in `gold`. */
   --color-late-row-leader: var(--color-yellow-100);
 
+  /* The visitor's own team's card or row; a fill, ringed in `gold`. Not `late-row-leader`, which marks a lead. */
+  --color-my-team: var(--color-yellow-100);
+
   --font-sans:
     "Saira Variable", "Saira Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }

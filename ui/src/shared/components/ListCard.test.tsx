@@ -84,6 +84,32 @@ describe('ListCard', () => {
     expect(within(card).getByText('Aces').parentElement).toHaveClass('border-l-4', 'border-gold');
   });
 
+  it("tags the visitor's own team after its name, and only that card", () => {
+    renderWithProviders(
+      <ol className={CARD_LIST_CLASS}>
+        <ListCard position={1} name="Aces" nameCase="team" detail="detail" total={null} />
+        <ListCard position={2} name="Womble" nameCase="team" detail="detail" total={null} fill="my-team" />
+      </ol>,
+      NO_PROVIDERS,
+    );
+
+    const cards = screen.getAllByRole('listitem');
+    expect(within(nth(cards, 1)).getByText('your team')).toBeInTheDocument();
+    expect(within(nth(cards, 0)).queryByText('your team')).toBeNull();
+  });
+
+  // Styling alone, so the classes are what there is to assert.
+  it("fills the visitor's own team pale gold inside a gold ring, its name still truncating beside the tag", () => {
+    const card = renderInList(
+      <ListCard position={8} name="Womble" nameCase="team" detail="detail" total={null} fill="my-team" />,
+    );
+
+    expect(card).toHaveClass('bg-my-team', 'ring-2', 'ring-gold');
+    expect(card).not.toHaveClass('bg-surface-card');
+    expect(within(card).getByText('Womble')).toHaveClass('truncate');
+    expect(within(card).getByText('Womble').nextElementSibling).toHaveTextContent('your team');
+  });
+
   it('numbers a round box 1 in navy, where a position 1 is gold', () => {
     const card = renderInList(
       <ListCard position={1} positionKind="round" name="Aces" nameCase="golfer" detail="detail" total={null} />,

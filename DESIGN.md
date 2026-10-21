@@ -57,6 +57,7 @@ colors:
   gold: "#ffd23f"
   on-gold: "#0a1d38"
   late-row-leader: "#fef9c2"
+  my-team: "#fef9c2"
 
 typography:
   display:
@@ -256,6 +257,18 @@ components:
     typography: "{typography.card-row-name}"
     rounded: "{rounded.sm}"
     height: 54px
+  list-card-my-team:
+    backgroundColor: "{colors.my-team}"
+    borderColor: "{colors.gold}"
+    textColor: "{colors.ink}"
+    typography: "{typography.card-row-name}"
+    rounded: "{rounded.sm}"
+    height: 54px
+  you-tag:
+    backgroundColor: "{colors.chrome}"
+    textColor: "{colors.on-chrome}"
+    rounded: "{rounded.sm}"
+    padding: 2px 6px
   header-band:
     backgroundColor: "{colors.header-band}"
     textColor: "{colors.on-fill}"
@@ -297,8 +310,8 @@ The contrast table in `ui/src/index.css.test.ts` pins every text token at WCAG A
 - **Overlay** (`{colors.overlay}`, black): the modal scrim, the More sheet's, the picker sheet's and the team picker's included, at `/60`.
 
 ### Chrome
-- **Chrome** (`{colors.chrome}`, the brand navy): the bar behind the top nav, the tab bar and the footer, the FINAL chip, a chip strip's selected chip, and the team picker's selected team.
-- **On Chrome** (`{colors.on-chrome}`, white): the nav's week button, a nav or footer link hovered, the current tab's label, the FINAL chip's label, a chip strip's selected chip's label, the team picker's selected team's name.
+- **Chrome** (`{colors.chrome}`, the brand navy): the bar behind the top nav, the tab bar and the footer, the FINAL chip, a chip strip's selected chip, the team picker's selected team, and the `YOU` tag.
+- **On Chrome** (`{colors.on-chrome}`, white): the nav's week button, a nav or footer link hovered, the current tab's label, the FINAL chip's label, a chip strip's selected chip's label, the team picker's selected team's name, the `YOU` tag's label.
 - **On Chrome Muted** (`{colors.on-chrome-muted}`, slate-300): an idle nav or footer link.
 - **On Chrome Tab Idle** (`{colors.on-chrome-tab-idle}`, the brand steel #8ea2c2): an idle tab's label, 6.50:1 on the bar. Not `{colors.on-chrome-muted}`: dimmer, so the current tab's white stands out from the other four.
 
@@ -314,7 +327,7 @@ These three inks are light, so they are for a `{colors.chrome}` fill alone; on t
 - **Ink Strong** (`{colors.ink-strong}`, the brand navy #0a1d38): every page title, the UPCOMING chip's text and outline, the active nav link on its white block, the current page's row in the More sheet, the phone picker's summary button, the close button and a text button hovered, a competitor's name in the player-links panel, the counts on the roster upload. On a light canvas the darkest ink is the strongest, so it shares navy with `{colors.ink}`.
 - **Ink** (`{colors.ink}`, the brand navy): the default text colour, set on `body` and the app root; team names in the scoreboard and standings tables, a player's name on the leaderboard, the standings' Subtotal and Late Row Bets, and in the report grid the round numbers, the bold summary rows' labels, every summary figure but PREVIOUS and the top-ten line under SUBTOTAL, and the name of a pick that earned; on a phone, an idle strip chip's label, the Team totals figures, a pick card's payout, and on Late Row Bets a leader card's `TEAM · Golfer` line, a team name in the list or a Totals card, and a listed team's season earnings; on the Rules page, the payout tiles' amounts but first place's, and the formula block.
 - **Ink Body** (`{colors.ink-body}`, the brand navy): golfer names inside the roster grid cells, and the neutral tag chip's text.
-- **Ink Secondary** (`{colors.ink-secondary}`, the brand secondary navy #13305a): running text on the Rules page, golfer names and the Top 10 Earnings column on the scoreboard, the control named in the team picker's footer.
+- **Ink Secondary** (`{colors.ink-secondary}`, the brand secondary navy #13305a): running text on the Rules page, golfer names and the Top 10 Earnings column on the scoreboard, on `{colors.my-team}` too (12.23:1), the control named in the team picker's footer.
 - **Ink Label** (`{colors.ink-label}`, the brand muted blue #4a5f80): uppercase card headings, the Rules payout tiles' ordinals, every table head but the report grids' team heads, a column-filter select on hover or focus, the Team totals card's labels, the rosters' team heading and Late Row Bets' `Leading round N`, `Chasing` and `Round N` labels on a phone.
 - **Ink Muted** (`{colors.ink-muted}`, the brand muted blue #4a5f80): helper and caption text — field labels, the subtitle under a page title, loading messages, chart axis labels (`fill-ink-muted`), the golfer line under a scoreboard team, a phone list card's second line, the leaderboard's positions and round scores, the outlined chip's label, and in the report grids the Late row tag and the report's stake under it, a pick's payout lines, the name of a pick that earned nothing, the PREVIOUS and side-bet rows' labels, the PREVIOUS figures and the top-ten line under SUBTOTAL; on a phone the outlined late-row tag, a report pick card's season line and its `Playing` mark, the Team totals card's top-ten line, and on Late Row Bets a leader card's season-earnings line, a listed team's golfer and the no-leader line — and every text button but a Remove link, which is `{colors.semantic-danger}`.
 - **Ink Soft** (`{colors.ink-soft}`, the brand muted blue #4a5f80): rank numbers in player rankings, the labels on the money summary chips, empty-state lines, the picker's labels, a bottom-line amount that prints as `$0`, and the ownership share under a roster-grid pick.
@@ -345,9 +358,12 @@ Each family takes only the rungs it uses. `-tint` is a wash, always at an opacit
 - **Money** — the standings' and the weekly report's Total Cash box and the scoreboard's Weekly +/- box, one fill per `moneyTone`: `{colors.money-up-fill}` (the brand green, 4.40:1 under white, so large text only), `{colors.money-down-fill}` (red-700, 6.42:1) and `{colors.money-even-fill}` (the brand muted blue, 6.48:1). Not `{colors.semantic-danger-fill}` on the same step: that is the destructive button's fill, and `FILLED_BUTTON_RESTRICTIONS` keeps it in `Button.tsx`.
 
 ### Report grids
-- **Gold** (`{colors.gold}`, the brand gold #ffd23f): the left edge of a late-row leader's cell, phone pick card or Late Row Bets leader card, the `Leads late row` tag, the position box of the standings' and scoreboard's first row, the Rules page's first-place payout tile, and the border of the team picker's selected team.
+- **Gold** (`{colors.gold}`, the brand gold #ffd23f): the left edge of a late-row leader's cell, phone pick card or Late Row Bets leader card, the `Leads late row` tag, the position box of the standings' and scoreboard's first row, the Rules page's first-place payout tile, the border of the team picker's selected team, and the ring around the visitor's own team's standings or scoreboard card or row.
 - **On Gold** (`{colors.on-gold}`, the brand navy): the leader's position number, the `Leads late row` label and both lines of the first-place payout tile on `{colors.gold}`.
 - **Late Row Leader** (`{colors.late-row-leader}`, yellow-100): the weekly-report cell, the phone pick card and the Late Row Bets phone leader card of every pick that leads its late-row round, ties included. Its text keeps the cell's inks: `{colors.ink}` 15.69:1, `{colors.ink-muted}` 6.03:1. At 1.07:1 on white it is emphasis, not the only cue; Late Row Bets prints the payouts.
+
+### My team
+- **My Team** (`{colors.my-team}`, yellow-100): the standings' and scoreboard's card or row of the team this device chose, ringed in `{colors.gold}`. Not `{colors.late-row-leader}` on the same step, which marks a lead. Its text keeps the row's inks: `{colors.ink}` 15.69:1, `{colors.ink-secondary}` 12.23:1, `{colors.ink-muted}` 6.03:1. The fill is 1.07:1 on white and the ring 1.24:1 on the canvas, so the `YOU` tag is the cue and they are emphasis.
 
 ### Known gaps on the light canvas
 Tokens only re-colour what the dark theme drew; the component treatment has restyled the app chrome (CWF-231) and begun on the tables (CWF-232) with the standings' and scoreboard's card rows and the report grids, and these are the gaps it has to close.
@@ -520,6 +536,8 @@ A fixed scrim `bg-overlay/60`, centring a panel `bg-surface-card rounded-lg shad
 
 Rankings (the standings) sets each row as a card instead: the table is `border-separate border-spacing-y-1`, each row `h-11`, every cell between the boxes `bg-surface-card`, a `PositionCell` first and a `MoneyCell` last. No divider and no hover: the canvas between cards separates them, and a `/60` tint does not read on a white card. The scoreboard's team table is set the same way, its name cell holding the team's paid golfers on a second line: `text-sm {colors.ink-muted}`, joined by ` · `, each golfer's name, finish (`T` when tied), payout and a share under 100% kept to one line, so a wrap falls only between golfers. Each name is a button with `TAP_TARGET_CLASS`, so a row with golfers is 88px (the name, then a 44px line) and 132px where the line wraps; `h-11` is the floor a team with no golfer keeps. Before tee-off the scoreboard sets the team table with `#` and Team alone — a `PositionCell` and no `MoneyCell` — in the same wrapper, `min-w-[500px]` floor and `h-11` rows: the name cell's second line is `N playing`, then the team's golfers in the field in draft-round order, joined by ` · `, each name a `TAP_TARGET_CLASS` button kept to one line, with no finish or payout. A team with nobody in the field reads `0 playing` and nothing else. PlayerRankings stays on divided rows.
 
+The team this device chose is marked in every one of these tables and in their phone cards; browsing, or never having been asked, marks nothing. Its standings or scoreboard row takes `CARD_ROW_CLASS`'s `my-team` look: the `tr` a `outline-2 {colors.gold}` ring and each cell between the boxes `{colors.my-team}` in place of white; its phone card is `ListCard`'s `fill="my-team"`, `{colors.my-team}` inside a `ring-2 {colors.gold}`. Either way a `YouTag` follows the team's name. On PlayerRankings, whose rows are golfers, the tag alone follows the team name of each golfer that team drafted, in the table and on the card's second line.
+
 Below `sm` each of the three renders as a list of cards instead, an `<ol>` of `ListCard.tsx` (`sm:hidden`), and its table only from `sm` (`hidden sm:block`). A card is a white `rounded` flex row, at least 54px (`min-h-13.5`), the cards `gap-1` apart, with no bleed: a position box, then the name over a second line, then the total. The name is `{typography.card-row-name}` and `truncate`s, its column `min-w-0`, so a long name never pushes the total off the screen; the second line is `text-sm {colors.ink-muted}`. Standings: `Sub … · Bets …` in cents, the box Total Cash in whole dollars. Scoreboard: the team's golfer line, or "No golfers in the top 10", the box the week's +/- in cents; before tee-off, the `N playing` line and no box. PlayerRankings: the golfer's name in `normal-case`, still a `TAP_TARGET_CLASS` button, over `TEAM · Rd N · K top 10s` (Undrafted for no team, the round left out when there is none, `1 top 10` singular); its total takes no box, a plain `{typography.money-figure}` in `moneyToneClass`. Its team and round filters move above the cards as two `FIELD_CLASS` selects, `grid-cols-2 gap-2`, each first offering all. Their labels are screen-reader only, so a round option reads `Rd N`; one filter state drives them and the header's filters both. Each is a `PhoneFilter.tsx`, a `FieldShell` with a hidden label rather than a `SelectField`, whose placeholder can't be picked back.
 
 The scoreboard's leaderboard keeps its band card below `sm`, and under the band, in place of the table, a Team `PhoneFilter` padded `p-3` (All teams, each team, and Undrafted while an undrafted golfer is on the board), then an `<ol>` of divided rows running to the card's edges (`sm:hidden`), not `ListCard`s: the navy and gold position boxes and the money boxes are the league's own standings, and a golfer field is not that. A row is `px-3 py-2`, `items-baseline`: the position in a `w-8` column, `{colors.ink-muted}` and `tabular-nums`, "—" for a competitor yet to tee off; the player name in `{colors.ink}`, `truncate`s in a `min-w-0 flex-1` column, over a wrapping line of the row's chips and its round line, `R1 68 · R2 70 · Tot 138` in `text-xs {colors.ink-muted} tabular-nums`, the rounds played so far and the total once there is one, left out before tee-off; then the score to par, `font-semibold tabular-nums`. Nothing in a row is tappable, so it keeps the dense padding. The one filter state drives the select and the header's filter both.
@@ -538,7 +556,7 @@ One column per team, one row per draft round. Both grids are built from the same
 - Summary rows: labels on the canvas, right-aligned and sticky; cells white, figures right-aligned. PREVIOUS is italic and muted. One transparent `h-2` spacer row sets the summary rows apart from the rounds.
 - TOTAL CASH: a bold label on the canvas, then a square `MoneyCell` per team (`shape="standalone"`), in whole dollars — the only summary row toned by sign.
 
-Below `sm` neither grid shows: the page shows one team at a time, chosen from a `TeamStrip` above its cards, the first team until a chip is tapped and whenever the chosen id leaves the data. Each round is a `ListCard` whose box is `PositionCell`'s `kind="round"`; an empty round's name is a `{colors.ink-faint}` em dash. What prints once under the grid — Shared Players, the undrafted top tens, the Won/Lost/Net chips — prints once, under either layout.
+Below `sm` neither grid shows: the page shows one team at a time, chosen from a `TeamStrip` above its cards, the team this device chose until a chip is tapped and whenever the chosen id leaves the data, or the first team when that team is not in this season or none was chosen. Each round is a `ListCard` whose box is `PositionCell`'s `kind="round"`; an empty round's name is a `{colors.ink-faint}` em dash. What prints once under the grid — Shared Players, the undrafted top tens, the Won/Lost/Net chips — prints once, under either layout.
 - Rosters: an `h3`, `TEAM · N picks` in `font-display font-bold text-sm uppercase tracking-wider text-ink-label`, over the cards: the golfer's name, a share under 100% on the second line, and an outlined `LateRowTag` in the total's place on a late-row round.
 - Report Team totals: a `rounded bg-surface-card` group. `Total cash` over the team name, then a `card-end` `MoneyCell` in whole dollars; a `grid-cols-3 divide-x divide-hairline-soft` row of Previous, Week (Season in season mode) and Late row in signed cents; a `{colors.ink-muted}` line `N top 10s this season · +$M`. Total cash is those three figures' sum, so the card prints no Subtotal.
 - Report pick card: the name, a share under 100% in brackets, `{colors.ink-muted}` when the pick earned nothing; a late-row round's `LateRowTag` on the second line, so the right column keeps the money: the payout (`T3 - +$18.00`, `Playing` in `{colors.ink-muted}` at body weight for an unpaid pick in the field, or `-`) over `+$season · N top 10s` outside season mode. A round the team leads takes `fill="late-row-leader"`, the grid cell's fill and gold edge, and the `late-row-leader` tag.
@@ -561,6 +579,9 @@ A `flex flex-wrap gap-3 text-sm` row of `bg-surface-card rounded px-3 py-2` chip
 
 ### Chip strip — `ui/src/shared/components/ChipStrip.tsx`, `TeamStrip.tsx`
 A `role="group"` with a caller's label, one chip per `{id, label}`, scrolling sideways (`overflow-x-auto`) rather than wrapping, so the cards keep the top of the screen. Each chip is a button with `aria-pressed` and `TAP_TARGET_CLASS`, `rounded border px-3 font-display font-bold text-sm uppercase tracking-wider`: the selected one `{colors.chrome}` under `{colors.on-chrome}` (16.86:1), the rest `{colors.surface-card}` with a `{colors.hairline-strong}` border under `{colors.ink}`. Not `{colors.position-fill}`, the box's. The end fades (`mask-r-from-[calc(100%-2rem)]`) to show there is more, and pads `pr-8`, the fade's width, so the last chip scrolls clear of it. The chips are `aria-pressed` buttons, not a `tablist`, which promises arrow-key focus the strip does not move. `TeamStrip` is the strip labelled `Team` over a report's teams; Late Row Bets labels its rounds `Late row round`.
+
+### You tag — `ui/src/shared/components/YouTag.tsx`
+The team this device chose, after its name: `ml-2 inline-flex shrink-0 rounded px-1.5 py-0.5 font-display font-bold text-xs uppercase tracking-wider`, `{colors.chrome}` under `{colors.on-chrome}`. It reads `YOU` but a screen reader hears `your team`: the visible word is `aria-hidden` and an `sr-only` span carries the name. White, not gold: no text role pairs `{colors.gold}` with a navy fill. Like `LateRowTag`, it takes no `className`.
 
 ### Late-row tags — `ui/src/shared/components/LateRowTag.tsx`
 A phone pick card's late-row round: `inline-flex items-center whitespace-nowrap rounded border px-1.5 py-0.5 font-display font-bold text-xs uppercase tracking-wider`. `late-row` reads `Late row`, outlined in `{colors.hairline-strong}` with `{colors.ink-muted}` text; `late-row-leader` reads `Leads late row`, `{colors.gold}` under `{colors.on-gold}`, so the lead never rests on the fill alone. Not `Chip`, which is body type and has no gold; like it, the tag takes no `className`.
@@ -588,7 +609,7 @@ An SVG line chart in a `p-4` card. Gridlines `stroke-hairline`, axis labels `fil
 ### Don't
 - Don't use a Tailwind shade, a hex, a ramp variable or a `--brand-*` palette variable in a component (`text-gray-400`, `#fff`, `var(--color-gray-400)`, `var(--brand-red)`). `PALETTE_RESTRICTIONS` in `ui/eslint.config.js` fails the lint on each.
 - Don't merge two tokens because they share a step today (`ink` and `ink-strong`, `ink-soft` and `ink-faint`, `surface-raised` and `canvas`). They hold different roles and move separately.
-- Don't use gold as text: the brand gold is 1.44:1 on white. It marks a leader: the standings' and scoreboard's first position box, a late-row round's leader in the report grid, on its phone pick card and on Late Row Bets' phone leader card, and first place in the Rules payout grid.
+- Don't use gold as text: the brand gold is 1.44:1 on white. It marks a leader: the standings' and scoreboard's first position box, a late-row round's leader in the report grid, on its phone pick card and on Late Row Bets' phone leader card, and first place in the Rules payout grid. It also rings the visitor's own team's row.
 - Don't add shadows to cards or borders to them. White on sky carries depth; the modal, centred or a sheet, is the only floating surface.
 - Don't add a dark theme piecemeal: the ink steps are chosen for the light canvas and the contrast table only measures that.
 
@@ -619,4 +640,4 @@ Use these when building UI here:
 - **A money value:** `tabular-nums`, or `font-mono` in the grids; a bottom-line amount adds `moneyToneClass` of the text it prints and keeps its table's weight, or in a card row is a `<MoneyCell display={…} />` (`shape="card-end"` on a phone list card).
 - **A modal:** `FormModal` for a form, `ModalShell` when the body waits on a query, `ModalShell placement="sheet"` for a phone sheet (More, the phone picker), and `ModalShell placement="responsive"` for a sheet that centres from `sm` (the team picker).
 
-Quick reference: nav, tab bar and footer on a navy bar, the current tab white over a red bar, canvas the brand sky, cards white, controls sky; text the brand navy, down to its muted blue (`ink-label`, `ink-muted`, `ink-soft`, `ink-faint`); brand red as a fill, red-700 as type; page titles navy, italic, condensed and uppercase; money green-800 / red-700, or on the standings, scoreboard, report and phone late row bets a filled box; report team heads the navy band, a late-row leader pale gold; Saira, condensed to 75% with `font-display`.
+Quick reference: nav, tab bar and footer on a navy bar, the current tab white over a red bar, canvas the brand sky, cards white, controls sky; text the brand navy, down to its muted blue (`ink-label`, `ink-muted`, `ink-soft`, `ink-faint`); brand red as a fill, red-700 as type; page titles navy, italic, condensed and uppercase; money green-800 / red-700, or on the standings, scoreboard, report and phone late row bets a filled box; report team heads the navy band, a late-row leader pale gold, your own team pale gold in a gold ring with a navy YOU tag; Saira, condensed to 75% with `font-display`.
