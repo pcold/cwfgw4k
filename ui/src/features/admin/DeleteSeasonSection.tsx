@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
-import { queryKeys } from '@/shared/api/queryKeys';
+import { invalidateAfterScoreChange, queryKeys } from '@/shared/api/queryKeys';
 import type { Season } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
 import { SelectField } from '@/shared/components/formFields';
@@ -23,12 +23,14 @@ function DeleteSeasonSection(): ReactNode {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.deleteSeason(id),
-    onSuccess: () => {
+    onSuccess: (_data, deletedSeasonId) => {
       setSeasonId('');
       void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.root });
       void queryClient.invalidateQueries({ queryKey: queryKeys.tournaments.root });
       void queryClient.invalidateQueries({ queryKey: queryKeys.leagues.root });
       void queryClient.invalidateQueries({ queryKey: queryKeys.dataHealth.root });
+      // A season's scores live only in its own tournaments, so no other season's report moves.
+      invalidateAfterScoreChange(queryClient, { type: 'season', seasonId: deletedSeasonId });
     },
   });
 
