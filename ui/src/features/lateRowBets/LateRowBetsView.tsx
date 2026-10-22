@@ -3,7 +3,8 @@ import { m } from 'motion/react';
 import type { ReportSideBetRules, WeeklyReport } from '@/shared/api/types';
 import ChipStrip, { type StripChip } from '@/shared/components/ChipStrip';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
-import { CARD_LIST_CLASS, GLIDE_LAYOUT } from '@/shared/components/ListCard';
+import { glideAt } from '@/shared/components/glide';
+import { CARD_LIST_CLASS } from '@/shared/components/ListCard';
 import MoneyCell, { MONEY_FIGURE_CLASS } from '@/shared/components/MoneyCell';
 import WonLostNetCards from '@/shared/components/WonLostNetCards';
 import {
@@ -48,8 +49,8 @@ function RoundTable({ round, entries, selectionKey }: RoundTableProps) {
             </tr>
           </thead>
           <tbody key={selectionKey}>
-            {entries.map((entry) => (
-              <m.tr key={entry.teamId} layout={GLIDE_LAYOUT} className="border-t border-hairline">
+            {entries.map((entry, index) => (
+              <m.tr key={entry.teamId} {...glideAt(index)} className="border-t border-hairline">
                 <td className="px-2 py-1.5 uppercase">{entry.teamName}</td>
                 <td className="px-2 py-1.5 font-mono">{entry.golferName}</td>
                 <td className="px-2 py-1.5 text-right font-mono">
@@ -122,11 +123,13 @@ function tabChips(rounds: readonly LateRowBetRound[]): readonly TabChip[] {
 interface LeaderCardProps {
   readonly round: number;
   readonly entry: LateRowBetEntry;
+  /** @see glideAt */
+  readonly index: number;
 }
 
-function LeaderCard({ round, entry }: LeaderCardProps): ReactNode {
+function LeaderCard({ round, entry, index }: LeaderCardProps): ReactNode {
   return (
-    <m.li layout={GLIDE_LAYOUT} className="flex min-h-13.5 rounded border-l-4 border-gold bg-late-row-leader">
+    <m.li {...glideAt(index)} className="flex min-h-13.5 rounded border-l-4 border-gold bg-late-row-leader">
       <div className="flex-1 min-w-0 px-3 py-2 flex flex-col justify-center">
         <div className={LABEL_CLASS}>Leading round {round}</div>
         <div className={CARD_NAME_CLASS}>
@@ -156,8 +159,8 @@ function EntryList({ heading, entries, listKey }: EntryListProps): ReactNode {
         {heading}
       </h3>
       <ol key={listKey} aria-labelledby={headingId} className="rounded bg-surface-card divide-y divide-hairline-soft">
-        {entries.map((entry) => (
-          <m.li key={entry.teamId} layout={GLIDE_LAYOUT} className="flex items-center gap-3 min-h-13.5 px-3 py-2">
+        {entries.map((entry, index) => (
+          <m.li key={entry.teamId} {...glideAt(index)} className="flex items-center gap-3 min-h-13.5 px-3 py-2">
             <div className="flex-1 min-w-0">
               <div className={`${CARD_NAME_CLASS} uppercase`}>{entry.teamName}</div>
               <div className="text-sm text-ink-muted truncate">{entry.golferName}</div>
@@ -197,8 +200,8 @@ function RoundCards({ round, rules, selectionKey }: RoundCardsProps): ReactNode 
   return (
     <>
       <ul key={listKey} aria-label="Leaders" className={CARD_LIST_CLASS}>
-        {leaders.map((entry) => (
-          <LeaderCard key={entry.teamId} round={round.round} entry={entry} />
+        {leaders.map((entry, index) => (
+          <LeaderCard key={entry.teamId} round={round.round} entry={entry} index={index} />
         ))}
       </ul>
       {chasers.length > 0 ? <EntryList heading={`Chasing${eachPays}`} entries={chasers} listKey={listKey} /> : null}
@@ -215,8 +218,8 @@ interface TotalsCardsProps {
 function TotalsCards({ totals, selectionKey }: TotalsCardsProps): ReactNode {
   return (
     <ol key={selectionKey} aria-label="Totals" className={CARD_LIST_CLASS}>
-      {totals.map((team) => (
-        <m.li key={team.teamId} layout={GLIDE_LAYOUT} className="flex min-h-13.5 rounded bg-surface-card">
+      {totals.map((team, index) => (
+        <m.li key={team.teamId} {...glideAt(index)} className="flex min-h-13.5 rounded bg-surface-card">
           <div className={`flex-1 min-w-0 px-3 py-2 self-center uppercase ${CARD_NAME_CLASS}`}>{team.teamName}</div>
           <MoneyCell display={formatDollarsAndCents(team.sideBets)} shape="card-end" />
         </m.li>
@@ -321,10 +324,10 @@ function LateRowBetsView({ report, selectionKey, selectedTab, onSelectTab }: Pro
                   </tr>
                 </thead>
                 <tbody key={selectionKey}>
-                  {totals.map((team) => {
+                  {totals.map((team, index) => {
                     const total = formatDollarsAndCents(team.sideBets);
                     return (
-                      <m.tr key={team.teamId} layout={GLIDE_LAYOUT} className="border-t border-hairline">
+                      <m.tr key={team.teamId} {...glideAt(index)} className="border-t border-hairline">
                         <td className="px-2 py-1.5 uppercase">{team.teamName}</td>
                         <td className={`px-2 py-1.5 text-right font-mono font-bold ${moneyToneClass(total)}`}>
                           {total}

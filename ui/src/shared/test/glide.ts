@@ -3,21 +3,29 @@ import { onTestFinished, vi } from 'vitest';
 
 const ROW_HEIGHT = 40;
 
+function rowsAbove(element: Element): number {
+  const parent = element.parentElement;
+  return parent === null ? 0 : Array.from(parent.children).indexOf(element) + rowsAbove(parent);
+}
+
 /**
  * jsdom lays nothing out, so every box measures zero and a reorder moves nothing for motion to animate. This stacks
- * each element by its index among its siblings, for the rest of the test.
+ * each element by its index among its siblings plus each ancestor's, so content mounted above a list shifts its
+ * rows as a browser would, for the rest of the test.
  */
-export function stackBySiblingIndex(): void {
+export function stackByTreeIndex(): void {
   const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function stacked(this: Element) {
-    const siblings = this.parentElement ? Array.from(this.parentElement.children) : [];
-    return DOMRect.fromRect({ x: 0, y: siblings.indexOf(this) * ROW_HEIGHT, width: 100, height: ROW_HEIGHT });
+    return DOMRect.fromRect({ x: 0, y: rowsAbove(this) * ROW_HEIGHT, width: 100, height: ROW_HEIGHT });
   });
   onTestFinished(() => spy.mockRestore());
 }
 
-/** Motion measures and animates on animation frames, which jsdom runs on a timer. */
+/**
+ * Waits on frames, not a time, so a slow runner can't let a no-glide assertion pass before motion has measured.
+ * Motion measures in one frame and sets the glide's first transform in the next.
+ */
 export async function elapseFrames(): Promise<void> {
-  await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+  await act(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
 /** A glide plays as a translate from the old place; a remounted row has no transform, a reduced-motion one `none`. */

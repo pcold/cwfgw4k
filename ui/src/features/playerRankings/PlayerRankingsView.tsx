@@ -5,7 +5,8 @@ import ColumnHeaderFilter from '@/shared/components/ColumnHeaderFilter';
 import type { PlayerRankingsRow } from '@/shared/api/types';
 import { TAP_TARGET_CLASS, type SelectOption } from '@/shared/components/formControls';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
-import ListCard, { CARD_LIST_CLASS, GLIDE_LAYOUT } from '@/shared/components/ListCard';
+import { glideAt } from '@/shared/components/glide';
+import ListCard, { CARD_LIST_CLASS } from '@/shared/components/ListCard';
 import { MONEY_FIGURE_CLASS } from '@/shared/components/MoneyCell';
 import PhoneFilter from '@/shared/components/PhoneFilter';
 import YouTag from '@/shared/components/YouTag';
@@ -105,7 +106,7 @@ function PlayerCards({ players, myTeamName, onGolferClick, listKey }: PlayerList
                 {totalEarnings}
               </div>
             }
-            glide
+            glideIndex={index}
           />
         );
       })}
@@ -128,7 +129,7 @@ function PlayerRows({ players, myTeamName, onGolferClick, listKey }: PlayerListP
           const clickable = golferId && onGolferClick ? { golferId, onGolferClick } : null;
           const totalEarnings = formatDollarsAndCents(player.totalEarnings);
           return (
-            <m.tr key={player.key} layout={GLIDE_LAYOUT} className="hover:bg-surface-card/60">
+            <m.tr key={player.key} {...glideAt(index)} className="hover:bg-surface-card/60">
               <td className="px-3 py-2 text-ink-soft tabular-nums">{index + 1}</td>
               <td className="px-3 py-2 font-medium text-ink">
                 {clickable ? (

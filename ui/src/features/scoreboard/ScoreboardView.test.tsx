@@ -8,7 +8,7 @@ import { makeLeaderboardEntry, makeWonLostTotals } from '@/shared/test/fixtures'
 import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import { elapseFrames, isGliding, stackBySiblingIndex } from '@/shared/test/glide';
+import { elapseFrames, isGliding, stackByTreeIndex } from '@/shared/test/glide';
 import ScoreboardView from './ScoreboardView';
 
 const SELECTION_KEY = 'selection';
@@ -201,7 +201,7 @@ function Refetching({ first, second, secondSelectionKey = SELECTION_KEY }: Refet
 const WITH_MOTION = { ...NO_PROVIDERS, withMotionProvider: true };
 
 async function renderRefetching(props: RefetchingProps): Promise<void> {
-  stackBySiblingIndex();
+  stackByTreeIndex();
   renderWithProviders(<Refetching {...props} />, WITH_MOTION);
   await elapseFrames();
 }

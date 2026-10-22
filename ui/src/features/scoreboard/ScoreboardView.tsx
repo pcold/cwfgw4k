@@ -3,7 +3,8 @@ import { m } from 'motion/react';
 import type { LiveLeaderboardEntry, WeeklyReport } from '@/shared/api/types';
 import { formatDollarsAndCents } from '@/shared/util/money';
 import Chip from '@/shared/components/Chip';
-import ListCard, { CARD_LIST_CLASS, CARD_ROW_CLASS, GLIDE_LAYOUT } from '@/shared/components/ListCard';
+import { glideAt } from '@/shared/components/glide';
+import ListCard, { CARD_LIST_CLASS, CARD_ROW_CLASS } from '@/shared/components/ListCard';
 import MoneyCell from '@/shared/components/MoneyCell';
 import PositionCell from '@/shared/components/PositionCell';
 import WonLostNetCards from '@/shared/components/WonLostNetCards';
@@ -129,7 +130,7 @@ function TeamCards({ teams, myTeamName, onGolferClick, selectionKey }: RankedTea
             )
           }
           total={<MoneyCell display={formatDollarsAndCents(team.weeklyTotal)} shape="card-end" />}
-          glide
+          glideIndex={index}
         />
       ))}
     </ol>
@@ -153,7 +154,7 @@ function TeamTable({ teams, myTeamName, onGolferClick, selectionKey }: RankedTea
             const mine = isMyTeam(team.teamName, myTeamName);
             const look = CARD_ROW_CLASS[mine ? 'my-team' : 'plain'];
             return (
-              <m.tr key={team.teamId} layout={GLIDE_LAYOUT} className={look.row}>
+              <m.tr key={team.teamId} {...glideAt(index)} className={look.row}>
                 <PositionCell position={index + 1} />
                 <td className={`${CARD_CELL_CLASS} ${look.cell}`}>
                   <TeamName teamName={team.teamName} mine={mine} />
@@ -274,10 +275,10 @@ function LeaderboardRows({ entries, listKey }: LeaderboardListProps): ReactNode 
   if (entries.length === 0) return <p className="px-3 py-6 text-center text-sm text-ink-soft italic">{FILTERED_EMPTY}</p>;
   return (
     <ol key={listKey} aria-label="Leaderboard" className="text-sm divide-y divide-hairline-soft">
-      {entries.map((entry) => {
+      {entries.map((entry, index) => {
         const roundLine = leaderboardRoundLine(entry);
         return (
-          <m.li key={playerNames(entry)} layout={GLIDE_LAYOUT} className="flex items-baseline gap-3 px-3 py-2">
+          <m.li key={playerNames(entry)} {...glideAt(index)} className="flex items-baseline gap-3 px-3 py-2">
             <span className="w-8 shrink-0 text-ink-muted tabular-nums">{entry.position ?? '—'}</span>
             <div className="min-w-0 flex-1">
               <div className="truncate text-ink">{playerNames(entry)}</div>
@@ -338,8 +339,8 @@ function LeaderboardTable({
               </td>
             </tr>
           ) : (
-            entries.map((entry) => (
-              <m.tr key={playerNames(entry)} layout={GLIDE_LAYOUT}>
+            entries.map((entry, index) => (
+              <m.tr key={playerNames(entry)} {...glideAt(index)}>
                 <td className="pl-3 pr-2 py-2 text-ink-muted tabular-nums">{entry.position ?? '—'}</td>
                 <td className="px-2 py-2 text-ink">{playerNames(entry)}</td>
                 <td className="px-2 py-2">

@@ -3,8 +3,8 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { m } from 'motion/react';
-import { elapseFrames, isGliding, stackBySiblingIndex } from '@/shared/test/glide';
-import { GLIDE_LAYOUT } from './ListCard';
+import { elapseFrames, isGliding, stackByTreeIndex } from '@/shared/test/glide';
+import { glideAt } from './glide';
 import MotionProvider from './MotionProvider';
 
 /** Motion reads the media query once per module and then only listens, so each test flips it through the listener. */
@@ -23,8 +23,8 @@ function Standings(): ReactNode {
         Refetch
       </button>
       <ol>
-        {order.map((name) => (
-          <m.li key={name} layout={GLIDE_LAYOUT}>
+        {order.map((name, index) => (
+          <m.li key={name} {...glideAt(index)}>
             {name}
           </m.li>
         ))}
@@ -34,7 +34,7 @@ function Standings(): ReactNode {
 }
 
 async function reorder(): Promise<HTMLElement> {
-  stackBySiblingIndex();
+  stackByTreeIndex();
   const user = userEvent.setup();
   render(
     <MotionProvider>

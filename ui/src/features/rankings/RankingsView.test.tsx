@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Rankings } from '@/shared/api/types';
-import { elapseFrames, isGliding, stackBySiblingIndex } from '@/shared/test/glide';
+import { elapseFrames, isGliding, stackByTreeIndex } from '@/shared/test/glide';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import RankingsView from './RankingsView';
@@ -328,22 +328,31 @@ describe('RankingsView', () => {
       second: Rankings;
       /** Unset, the second rankings are a refetch of the first's selection. */
       secondSelectionKey?: string;
+      secondMyTeamName?: string;
     }
 
-    function Refetching({ first, second, secondSelectionKey = SELECTION_KEY }: RefetchingProps): ReactNode {
-      const [current, setCurrent] = useState({ rankings: first, selectionKey: SELECTION_KEY });
+    interface Shown {
+      rankings: Rankings;
+      selectionKey: string;
+      myTeamName: string | null;
+    }
+
+    function Refetching({ first, second, secondSelectionKey = SELECTION_KEY, secondMyTeamName }: RefetchingProps): ReactNode {
+      const [current, setCurrent] = useState<Shown>({ rankings: first, selectionKey: SELECTION_KEY, myTeamName: null });
+      const showSecond = (): void =>
+        setCurrent({ rankings: second, selectionKey: secondSelectionKey, myTeamName: secondMyTeamName ?? null });
       return (
         <>
-          <button type="button" onClick={() => setCurrent({ rankings: second, selectionKey: secondSelectionKey })}>
+          <button type="button" onClick={showSecond}>
             Refetch
           </button>
-          <RankingsView selectionKey={current.selectionKey} myTeamName={null} rankings={current.rankings} />
+          <RankingsView selectionKey={current.selectionKey} myTeamName={current.myTeamName} rankings={current.rankings} />
         </>
       );
     }
 
     async function refetch(props: RefetchingProps): Promise<void> {
-      stackBySiblingIndex();
+      stackByTreeIndex();
       renderWithProviders(<Refetching {...props} />, { ...NO_PROVIDERS, withMotionProvider: true });
       await elapseFrames();
       await userEvent.click(screen.getByRole('button', { name: 'Refetch' }));
@@ -367,6 +376,13 @@ describe('RankingsView', () => {
     it('redraws the standings in place, without gliding, for a new selection', async () => {
       await refetch({ first: standings, second: reordered, secondSelectionKey: 'another selection' });
 
+      expect(teamRows('Aces').map(isGliding)).toEqual([false, false]);
+    });
+
+    it('holds the standings still when only the card above them mounts', async () => {
+      await refetch({ first: standings, second: standings, secondMyTeamName: 'Birdies' });
+
+      expect(screen.getByRole('region', { name: 'Your team' })).toBeInTheDocument();
       expect(teamRows('Aces').map(isGliding)).toEqual([false, false]);
     });
   });

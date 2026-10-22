@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { m } from 'motion/react';
 import type { Rankings } from '@/shared/api/types';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
-import ListCard, { CARD_LIST_CLASS, CARD_ROW_CLASS, GLIDE_LAYOUT } from '@/shared/components/ListCard';
+import { glideAt } from '@/shared/components/glide';
+import ListCard, { CARD_LIST_CLASS, CARD_ROW_CLASS } from '@/shared/components/ListCard';
 import MoneyCell from '@/shared/components/MoneyCell';
 import PositionCell from '@/shared/components/PositionCell';
 import WonLostNetCards from '@/shared/components/WonLostNetCards';
@@ -42,7 +43,7 @@ function RankingsView({ rankings, myTeamName, selectionKey }: Props): ReactNode 
             fill={isMyTeam(team.teamName, myTeamName) ? 'my-team' : 'plain'}
             detail={`Sub ${formatDollarsAndCents(team.subtotal)} · Bets ${formatDollarsAndCents(team.sideBets)}`}
             total={<MoneyCell display={formatWholeDollars(team.totalCash)} shape="card-end" />}
-            glide
+            glideIndex={index}
           />
         ))}
       </ol>
@@ -64,7 +65,7 @@ function RankingsView({ rankings, myTeamName, selectionKey }: Props): ReactNode 
               const look = CARD_ROW_CLASS[mine ? 'my-team' : 'plain'];
               const cellClass = `${CARD_CELL_CLASS} ${look.cell}`;
               return (
-                <m.tr key={team.teamId} layout={GLIDE_LAYOUT} className={look.row}>
+                <m.tr key={team.teamId} {...glideAt(index)} className={look.row}>
                   <PositionCell position={index + 1} />
                   <td className={`${cellClass} font-display font-bold text-lg uppercase text-ink`}>
                     {team.teamName}

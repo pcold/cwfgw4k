@@ -10,8 +10,8 @@ function loadFeatures(): Promise<FeatureBundle> {
 }
 
 /**
- * `strict` makes a `motion.*` component throw: use `m.*`, which carries only the features loaded here. Layout
- * animation needs `domMax`. `reducedMotion="user"` drops movement for a visitor who asks the OS for less.
+ * `strict` makes a `motion.*` component throw in development: use `m.*`, which carries only the features loaded
+ * here. Layout animation needs `domMax`. `reducedMotion="user"` drops movement for a visitor who asks the OS for less.
  */
 export default function MotionProvider({ children }: { children: ReactNode }): ReactNode {
   return (
