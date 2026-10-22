@@ -1,8 +1,9 @@
 import { useId, type ReactNode } from 'react';
+import { m } from 'motion/react';
 import type { ReportSideBetRules, WeeklyReport } from '@/shared/api/types';
 import ChipStrip, { type StripChip } from '@/shared/components/ChipStrip';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
-import { CARD_LIST_CLASS } from '@/shared/components/ListCard';
+import { CARD_LIST_CLASS, GLIDE_LAYOUT } from '@/shared/components/ListCard';
 import MoneyCell, { MONEY_FIGURE_CLASS } from '@/shared/components/MoneyCell';
 import WonLostNetCards from '@/shared/components/WonLostNetCards';
 import {
@@ -26,9 +27,11 @@ const TOTALS_TAB: LateRowTab = { kind: 'totals' };
 interface RoundTableProps {
   readonly round: number;
   readonly entries: readonly LateRowBetEntry[];
+  /** @see LiveOverlayQuery.selectionKey */
+  readonly selectionKey: string;
 }
 
-function RoundTable({ round, entries }: RoundTableProps) {
+function RoundTable({ round, entries, selectionKey }: RoundTableProps) {
   return (
     <div className="bg-surface-card rounded-lg p-4">
       <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
@@ -44,9 +47,9 @@ function RoundTable({ round, entries }: RoundTableProps) {
               <th className="text-right px-2 py-1">Late Row Bet</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody key={selectionKey}>
             {entries.map((entry) => (
-              <tr key={entry.teamId} className="border-t border-hairline">
+              <m.tr key={entry.teamId} layout={GLIDE_LAYOUT} className="border-t border-hairline">
                 <td className="px-2 py-1.5 uppercase">{entry.teamName}</td>
                 <td className="px-2 py-1.5 font-mono">{entry.golferName}</td>
                 <td className="px-2 py-1.5 text-right font-mono">
@@ -55,7 +58,7 @@ function RoundTable({ round, entries }: RoundTableProps) {
                 <td className="px-2 py-1.5 text-right font-mono font-bold">
                   {formatDollarsAndCents(entry.payout)}
                 </td>
-              </tr>
+              </m.tr>
             ))}
           </tbody>
         </table>
@@ -123,7 +126,7 @@ interface LeaderCardProps {
 
 function LeaderCard({ round, entry }: LeaderCardProps): ReactNode {
   return (
-    <li className="flex min-h-13.5 rounded border-l-4 border-gold bg-late-row-leader">
+    <m.li layout={GLIDE_LAYOUT} className="flex min-h-13.5 rounded border-l-4 border-gold bg-late-row-leader">
       <div className="flex-1 min-w-0 px-3 py-2 flex flex-col justify-center">
         <div className={LABEL_CLASS}>Leading round {round}</div>
         <div className={CARD_NAME_CLASS}>
@@ -134,25 +137,27 @@ function LeaderCard({ round, entry }: LeaderCardProps): ReactNode {
         </div>
       </div>
       <MoneyCell display={formatDollarsAndCents(entry.payout)} shape="card-end" />
-    </li>
+    </m.li>
   );
 }
 
 interface EntryListProps {
   readonly heading: string;
   readonly entries: readonly LateRowBetEntry[];
+  /** The selection's key and the round's, so a round change remounts the rows rather than gliding them. */
+  readonly listKey: string;
 }
 
-function EntryList({ heading, entries }: EntryListProps): ReactNode {
+function EntryList({ heading, entries, listKey }: EntryListProps): ReactNode {
   const headingId = useId();
   return (
     <div className="space-y-1">
       <h3 id={headingId} className={LABEL_CLASS}>
         {heading}
       </h3>
-      <ol aria-labelledby={headingId} className="rounded bg-surface-card divide-y divide-hairline-soft">
+      <ol key={listKey} aria-labelledby={headingId} className="rounded bg-surface-card divide-y divide-hairline-soft">
         {entries.map((entry) => (
-          <li key={entry.teamId} className="flex items-center gap-3 min-h-13.5 px-3 py-2">
+          <m.li key={entry.teamId} layout={GLIDE_LAYOUT} className="flex items-center gap-3 min-h-13.5 px-3 py-2">
             <div className="flex-1 min-w-0">
               <div className={`${CARD_NAME_CLASS} uppercase`}>{entry.teamName}</div>
               <div className="text-sm text-ink-muted truncate">{entry.golferName}</div>
@@ -160,7 +165,7 @@ function EntryList({ heading, entries }: EntryListProps): ReactNode {
             <div className={`shrink-0 text-ink ${MONEY_FIGURE_CLASS}`}>
               {formatDollarsAndCents(entry.cumulativeEarnings)}
             </div>
-          </li>
+          </m.li>
         ))}
       </ol>
     </div>
@@ -170,17 +175,20 @@ function EntryList({ heading, entries }: EntryListProps): ReactNode {
 interface RoundCardsProps {
   readonly round: LateRowBetRound;
   readonly rules: ReportSideBetRules | null;
+  /** @see LiveOverlayQuery.selectionKey */
+  readonly selectionKey: string;
 }
 
 // Leadership is the server's `outcome`, never the top payout or rank: a round every team ties is all `won` at $0.
-function RoundCards({ round, rules }: RoundCardsProps): ReactNode {
+function RoundCards({ round, rules, selectionKey }: RoundCardsProps): ReactNode {
+  const listKey = `${selectionKey}|${round.round}`;
   const leaders = round.entries.filter((entry) => entry.outcome === 'won');
   const chasers = round.entries.filter((entry) => entry.outcome !== 'won');
   if (leaders.length === 0) {
     return (
       <>
         <p className="text-sm text-ink-muted">No team has earned in round {round.round} yet.</p>
-        <EntryList heading={`Round ${round.round}`} entries={round.entries} />
+        <EntryList heading={`Round ${round.round}`} entries={round.entries} listKey={listKey} />
       </>
     );
   }
@@ -188,28 +196,30 @@ function RoundCards({ round, rules }: RoundCardsProps): ReactNode {
   const eachPays = rules === null ? '' : ` · each pays ${formatUnsignedDollarsAndCents(rules.amountPerTeam)}`;
   return (
     <>
-      <ul aria-label="Leaders" className={CARD_LIST_CLASS}>
+      <ul key={listKey} aria-label="Leaders" className={CARD_LIST_CLASS}>
         {leaders.map((entry) => (
           <LeaderCard key={entry.teamId} round={round.round} entry={entry} />
         ))}
       </ul>
-      {chasers.length > 0 ? <EntryList heading={`Chasing${eachPays}`} entries={chasers} /> : null}
+      {chasers.length > 0 ? <EntryList heading={`Chasing${eachPays}`} entries={chasers} listKey={listKey} /> : null}
     </>
   );
 }
 
 interface TotalsCardsProps {
   readonly totals: readonly LateRowBetTeamTotal[];
+  /** @see LiveOverlayQuery.selectionKey */
+  readonly selectionKey: string;
 }
 
-function TotalsCards({ totals }: TotalsCardsProps): ReactNode {
+function TotalsCards({ totals, selectionKey }: TotalsCardsProps): ReactNode {
   return (
-    <ol aria-label="Totals" className={CARD_LIST_CLASS}>
+    <ol key={selectionKey} aria-label="Totals" className={CARD_LIST_CLASS}>
       {totals.map((team) => (
-        <li key={team.teamId} className="flex min-h-13.5 rounded bg-surface-card">
+        <m.li key={team.teamId} layout={GLIDE_LAYOUT} className="flex min-h-13.5 rounded bg-surface-card">
           <div className={`flex-1 min-w-0 px-3 py-2 self-center uppercase ${CARD_NAME_CLASS}`}>{team.teamName}</div>
           <MoneyCell display={formatDollarsAndCents(team.sideBets)} shape="card-end" />
-        </li>
+        </m.li>
       ))}
     </ol>
   );
@@ -220,10 +230,12 @@ interface PhoneBetsProps {
   readonly shown: ShownTab;
   readonly totals: readonly LateRowBetTeamTotal[];
   readonly rules: ReportSideBetRules | null;
+  /** @see LiveOverlayQuery.selectionKey */
+  readonly selectionKey: string;
   readonly onSelectTab: (tab: LateRowTab) => void;
 }
 
-function PhoneBets({ rounds, shown, totals, rules, onSelectTab }: PhoneBetsProps): ReactNode {
+function PhoneBets({ rounds, shown, totals, rules, selectionKey, onSelectTab }: PhoneBetsProps): ReactNode {
   const chips = tabChips(rounds);
   const selectedId = tabId(shown.kind === 'round' ? { kind: 'round', round: shown.detail.round } : TOTALS_TAB);
   function selectChip(id: string): void {
@@ -234,13 +246,19 @@ function PhoneBets({ rounds, shown, totals, rules, onSelectTab }: PhoneBetsProps
   return (
     <div className="sm:hidden space-y-3">
       <ChipStrip groupLabel="Late row round" chips={chips} selectedId={selectedId} onSelect={selectChip} />
-      {shown.kind === 'round' ? <RoundCards round={shown.detail} rules={rules} /> : <TotalsCards totals={totals} />}
+      {shown.kind === 'round' ? (
+        <RoundCards round={shown.detail} rules={rules} selectionKey={selectionKey} />
+      ) : (
+        <TotalsCards totals={totals} selectionKey={selectionKey} />
+      )}
     </div>
   );
 }
 
 interface Props {
   readonly report: WeeklyReport;
+  /** @see LiveOverlayQuery.selectionKey */
+  readonly selectionKey: string;
   /** Null, or a round the report no longer has, shows the first round. */
   readonly selectedTab: LateRowTab | null;
   readonly onSelectTab: (tab: LateRowTab) => void;
@@ -256,7 +274,7 @@ function shownTabFor(
   return { kind: 'round', detail };
 }
 
-function LateRowBetsView({ report, selectedTab, onSelectTab }: Props): ReactNode {
+function LateRowBetsView({ report, selectionKey, selectedTab, onSelectTab }: Props): ReactNode {
   const rounds = lateRowBetRounds(report);
   const totals = lateRowBetTeamTotals(report);
   const { sideBetTotals } = report;
@@ -278,13 +296,14 @@ function LateRowBetsView({ report, selectedTab, onSelectTab }: Props): ReactNode
         shown={shownTabFor(selectedTab, rounds, firstRound)}
         totals={totals}
         rules={report.sideBetRules}
+        selectionKey={selectionKey}
         onSelectTab={onSelectTab}
       />
 
       <div className="hidden sm:block space-y-4">
         <div className="space-y-6">
           {rounds.map((rd) => (
-            <RoundTable key={rd.round} round={rd.round} entries={rd.entries} />
+            <RoundTable key={rd.round} round={rd.round} entries={rd.entries} selectionKey={selectionKey} />
           ))}
         </div>
 
@@ -301,16 +320,16 @@ function LateRowBetsView({ report, selectedTab, onSelectTab }: Props): ReactNode
                     <th className="text-right px-2 py-1">Total</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody key={selectionKey}>
                   {totals.map((team) => {
                     const total = formatDollarsAndCents(team.sideBets);
                     return (
-                      <tr key={team.teamId} className="border-t border-hairline">
+                      <m.tr key={team.teamId} layout={GLIDE_LAYOUT} className="border-t border-hairline">
                         <td className="px-2 py-1.5 uppercase">{team.teamName}</td>
                         <td className={`px-2 py-1.5 text-right font-mono font-bold ${moneyToneClass(total)}`}>
                           {total}
                         </td>
-                      </tr>
+                      </m.tr>
                     );
                   })}
                 </tbody>

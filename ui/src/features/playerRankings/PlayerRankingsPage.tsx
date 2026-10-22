@@ -45,7 +45,7 @@ function PlayerRankingsPage(): ReactNode {
       ? null
       : (pickInSeason(throughOverride, tournaments) ??
         pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
-  const { query: playerRankingsQuery, overlay: liveOverlay } = useLiveOverlayQuery(
+  const { query: playerRankingsQuery, overlay: liveOverlay, selectionKey } = useLiveOverlayQuery(
     (live) => queryKeys.playerRankings.detail(seasonId, throughTournamentId || null, live),
     seasonId === null || throughTournamentId === null
       ? null
@@ -107,6 +107,7 @@ function PlayerRankingsPage(): ReactNode {
             players={playerRankings?.players ?? []}
             myTeamName={myTeamName}
             onGolferClick={setHistoryGolferId}
+            selectionKey={selectionKey}
           />
         )}
       </>

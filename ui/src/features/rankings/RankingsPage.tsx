@@ -44,7 +44,7 @@ function RankingsPage(): ReactNode {
       : (pickInSeason(throughOverride, tournaments) ??
         pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
 
-  const { query: rankingsQuery, overlay: liveOverlay } = useLiveOverlayQuery(
+  const { query: rankingsQuery, overlay: liveOverlay, selectionKey } = useLiveOverlayQuery(
     (live) => queryKeys.rankings.detail(seasonId, live, throughTournamentId),
     seasonId === null || throughTournamentId === null
       ? null
@@ -91,7 +91,7 @@ function RankingsPage(): ReactNode {
         <div className={DESKTOP_PICKER_CLASS}>{renderThroughField(tournaments, throughTournamentId, '')}</div>
 
         <QueryState query={rankingsQuery} label="standings">
-          {(loaded) => <RankingsView rankings={loaded} myTeamName={myTeamName} />}
+          {(loaded) => <RankingsView rankings={loaded} myTeamName={myTeamName} selectionKey={selectionKey} />}
         </QueryState>
       </>
     );

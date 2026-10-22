@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router';
 import ErrorBoundary from '@/shared/components/ErrorBoundary';
+import MotionProvider from '@/shared/components/MotionProvider';
 import App from './App';
 import '@fontsource-variable/saira/wdth.css';
 import '@fontsource-variable/saira/wdth-italic.css';
@@ -25,7 +26,9 @@ createRoot(root).render(
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <App />
+          <MotionProvider>
+            <App />
+          </MotionProvider>
         </BrowserRouter>
       </QueryClientProvider>
     </ErrorBoundary>

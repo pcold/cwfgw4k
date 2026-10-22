@@ -1,7 +1,14 @@
 import type { ReactElement, ReactNode } from 'react';
+import { m } from 'motion/react';
 import { TAP_TARGET_CLASS } from './formControls';
 import PositionCell, { type PositionCellKind } from './PositionCell';
 import YouTag from './YouTag';
+
+/**
+ * A refreshed row's `layout`. Position only: a row whose height changes with its content snaps to it, where `true`
+ * would stretch its text through the change.
+ */
+export const GLIDE_LAYOUT = 'position';
 
 /** @see ListCard */
 export const CARD_LIST_CLASS = 'flex flex-col gap-1';
@@ -51,6 +58,11 @@ interface ListCardProps {
   /** A `MoneyCell` with `shape="card-end"`, a plain figure where the total takes no fill, or a pick's tag. */
   readonly total: ReactNode;
   readonly fill?: ListCardFill;
+  /**
+   * Slides the card to a new place when a refresh reorders its list. Key the list by its selection, so a new one
+   * remounts the cards rather than shuffling them.
+   */
+  readonly glide?: boolean;
 }
 
 /**
@@ -65,12 +77,13 @@ export default function ListCard({
   detail,
   total,
   fill = 'plain',
+  glide = false,
 }: ListCardProps): ReactElement {
   const nameLine = (
     <div className={`font-display font-bold text-lg text-ink truncate min-w-0 ${NAME_CASE_CLASS[nameCase]}`}>{name}</div>
   );
   return (
-    <li className={`flex min-h-13.5 rounded ${FILL_CLASS[fill].card}`}>
+    <m.li layout={glide ? GLIDE_LAYOUT : false} className={`flex min-h-13.5 rounded ${FILL_CLASS[fill].card}`}>
       <PositionCell position={position} shape="card-start" kind={positionKind} />
       <div className={FILL_CLASS[fill].middle}>
         {fill === 'my-team' ? (
@@ -84,6 +97,6 @@ export default function ListCard({
         <div className="text-sm text-ink-muted">{detail}</div>
       </div>
       {total}
-    </li>
+    </m.li>
   );
 }

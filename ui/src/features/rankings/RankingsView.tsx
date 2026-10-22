@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
+import { m } from 'motion/react';
 import type { Rankings } from '@/shared/api/types';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
-import ListCard, { CARD_LIST_CLASS, CARD_ROW_CLASS } from '@/shared/components/ListCard';
+import ListCard, { CARD_LIST_CLASS, CARD_ROW_CLASS, GLIDE_LAYOUT } from '@/shared/components/ListCard';
 import MoneyCell from '@/shared/components/MoneyCell';
 import PositionCell from '@/shared/components/PositionCell';
 import WonLostNetCards from '@/shared/components/WonLostNetCards';
@@ -18,9 +19,11 @@ interface Props {
   rankings: Rankings;
   /** @see isMyTeam */
   myTeamName: string | null;
+  /** @see LiveOverlayQuery.selectionKey */
+  selectionKey: string;
 }
 
-function RankingsView({ rankings, myTeamName }: Props): ReactNode {
+function RankingsView({ rankings, myTeamName, selectionKey }: Props): ReactNode {
   const wonText = formatWholeDollars(rankings.cashTotals.won);
   const lostText = formatWholeDollars(rankings.cashTotals.lost);
   const netText = formatWholeDollars(rankings.cashTotals.net);
@@ -29,7 +32,7 @@ function RankingsView({ rankings, myTeamName }: Props): ReactNode {
   return (
     <section className="space-y-6">
       {yourTeam ? <YourTeamCard yourTeam={yourTeam} teamCount={rankings.teams.length} /> : null}
-      <ol aria-label="Standings" className={`sm:hidden ${CARD_LIST_CLASS}`}>
+      <ol key={selectionKey} aria-label="Standings" className={`sm:hidden ${CARD_LIST_CLASS}`}>
         {rankings.teams.map((team, index) => (
           <ListCard
             key={team.teamId}
@@ -39,6 +42,7 @@ function RankingsView({ rankings, myTeamName }: Props): ReactNode {
             fill={isMyTeam(team.teamName, myTeamName) ? 'my-team' : 'plain'}
             detail={`Sub ${formatDollarsAndCents(team.subtotal)} · Bets ${formatDollarsAndCents(team.sideBets)}`}
             total={<MoneyCell display={formatWholeDollars(team.totalCash)} shape="card-end" />}
+            glide
           />
         ))}
       </ol>
@@ -54,13 +58,13 @@ function RankingsView({ rankings, myTeamName }: Props): ReactNode {
               <th className="px-3 py-2 w-36 text-right">Total Cash</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody key={selectionKey}>
             {rankings.teams.map((team, index) => {
               const mine = isMyTeam(team.teamName, myTeamName);
               const look = CARD_ROW_CLASS[mine ? 'my-team' : 'plain'];
               const cellClass = `${CARD_CELL_CLASS} ${look.cell}`;
               return (
-                <tr key={team.teamId} className={look.row}>
+                <m.tr key={team.teamId} layout={GLIDE_LAYOUT} className={look.row}>
                   <PositionCell position={index + 1} />
                   <td className={`${cellClass} font-display font-bold text-lg uppercase text-ink`}>
                     {team.teamName}
@@ -69,7 +73,7 @@ function RankingsView({ rankings, myTeamName }: Props): ReactNode {
                   <td className={`${cellClass} text-right tabular-nums`}>{formatDollarsAndCents(team.subtotal)}</td>
                   <td className={`${cellClass} text-right tabular-nums`}>{formatDollarsAndCents(team.sideBets)}</td>
                   <MoneyCell display={formatWholeDollars(team.totalCash)} />
-                </tr>
+                </m.tr>
               );
             })}
           </tbody>

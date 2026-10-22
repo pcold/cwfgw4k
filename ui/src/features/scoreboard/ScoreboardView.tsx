@@ -1,8 +1,9 @@
 import { Fragment, useState, type ReactNode } from 'react';
+import { m } from 'motion/react';
 import type { LiveLeaderboardEntry, WeeklyReport } from '@/shared/api/types';
 import { formatDollarsAndCents } from '@/shared/util/money';
 import Chip from '@/shared/components/Chip';
-import ListCard, { CARD_LIST_CLASS, CARD_ROW_CLASS } from '@/shared/components/ListCard';
+import ListCard, { CARD_LIST_CLASS, CARD_ROW_CLASS, GLIDE_LAYOUT } from '@/shared/components/ListCard';
 import MoneyCell from '@/shared/components/MoneyCell';
 import PositionCell from '@/shared/components/PositionCell';
 import WonLostNetCards from '@/shared/components/WonLostNetCards';
@@ -105,9 +106,14 @@ interface TeamListProps {
   onGolferClick?: (golferId: string) => void;
 }
 
-function TeamCards({ teams, myTeamName, onGolferClick }: TeamListProps): ReactNode {
+interface RankedTeamListProps extends TeamListProps {
+  /** @see LiveOverlayQuery.selectionKey */
+  selectionKey: string;
+}
+
+function TeamCards({ teams, myTeamName, onGolferClick, selectionKey }: RankedTeamListProps): ReactNode {
   return (
-    <ol aria-label="Weekly results" className={`sm:hidden ${CARD_LIST_CLASS}`}>
+    <ol key={selectionKey} aria-label="Weekly results" className={`sm:hidden ${CARD_LIST_CLASS}`}>
       {teams.map((team, index) => (
         <ListCard
           key={team.teamId}
@@ -123,13 +129,14 @@ function TeamCards({ teams, myTeamName, onGolferClick }: TeamListProps): ReactNo
             )
           }
           total={<MoneyCell display={formatDollarsAndCents(team.weeklyTotal)} shape="card-end" />}
+          glide
         />
       ))}
     </ol>
   );
 }
 
-function TeamTable({ teams, myTeamName, onGolferClick }: TeamListProps): ReactNode {
+function TeamTable({ teams, myTeamName, onGolferClick, selectionKey }: RankedTeamListProps): ReactNode {
   return (
     <div className="hidden sm:block overflow-x-auto -mx-3 sm:mx-0">
       <table className="w-full min-w-[500px] text-sm border-separate border-spacing-y-1">
@@ -141,12 +148,12 @@ function TeamTable({ teams, myTeamName, onGolferClick }: TeamListProps): ReactNo
             <th className="px-3 py-2 w-36 text-right">Weekly +/-</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody key={selectionKey}>
           {teams.map((team, index) => {
             const mine = isMyTeam(team.teamName, myTeamName);
             const look = CARD_ROW_CLASS[mine ? 'my-team' : 'plain'];
             return (
-              <tr key={team.teamId} className={look.row}>
+              <m.tr key={team.teamId} layout={GLIDE_LAYOUT} className={look.row}>
                 <PositionCell position={index + 1} />
                 <td className={`${CARD_CELL_CLASS} ${look.cell}`}>
                   <TeamName teamName={team.teamName} mine={mine} />
@@ -156,7 +163,7 @@ function TeamTable({ teams, myTeamName, onGolferClick }: TeamListProps): ReactNo
                   {formatDollarsAndCents(team.topTenEarnings)}
                 </td>
                 <MoneyCell display={formatDollarsAndCents(team.weeklyTotal)} />
-              </tr>
+              </m.tr>
             );
           })}
         </tbody>
@@ -259,16 +266,18 @@ function TeamChips({ entry }: TeamChipsProps): ReactNode {
 
 interface LeaderboardListProps {
   entries: readonly LiveLeaderboardEntry[];
+  /** The selection's key and the team filter's, so a filter change remounts the rows rather than gliding them. */
+  listKey: string;
 }
 
-function LeaderboardRows({ entries }: LeaderboardListProps): ReactNode {
+function LeaderboardRows({ entries, listKey }: LeaderboardListProps): ReactNode {
   if (entries.length === 0) return <p className="px-3 py-6 text-center text-sm text-ink-soft italic">{FILTERED_EMPTY}</p>;
   return (
-    <ol aria-label="Leaderboard" className="text-sm divide-y divide-hairline-soft">
+    <ol key={listKey} aria-label="Leaderboard" className="text-sm divide-y divide-hairline-soft">
       {entries.map((entry) => {
         const roundLine = leaderboardRoundLine(entry);
         return (
-          <li key={playerNames(entry)} className="flex items-baseline gap-3 px-3 py-2">
+          <m.li key={playerNames(entry)} layout={GLIDE_LAYOUT} className="flex items-baseline gap-3 px-3 py-2">
             <span className="w-8 shrink-0 text-ink-muted tabular-nums">{entry.position ?? '—'}</span>
             <div className="min-w-0 flex-1">
               <div className="truncate text-ink">{playerNames(entry)}</div>
@@ -278,7 +287,7 @@ function LeaderboardRows({ entries }: LeaderboardListProps): ReactNode {
               </div>
             </div>
             <span className="shrink-0 font-semibold tabular-nums">{formatScoreToPar(entry.scoreToPar)}</span>
-          </li>
+          </m.li>
         );
       })}
     </ol>
@@ -291,7 +300,13 @@ interface LeaderboardTableProps extends LeaderboardListProps {
   teamOptions: readonly ColumnHeaderFilterOption[];
 }
 
-function LeaderboardTable({ entries, teamFilter, onTeamFilterChange, teamOptions }: LeaderboardTableProps): ReactNode {
+function LeaderboardTable({
+  entries,
+  listKey,
+  teamFilter,
+  onTeamFilterChange,
+  teamOptions,
+}: LeaderboardTableProps): ReactNode {
   return (
     <div className="hidden sm:block overflow-x-auto">
       <table className="w-full min-w-[480px] text-sm">
@@ -315,7 +330,7 @@ function LeaderboardTable({ entries, teamFilter, onTeamFilterChange, teamOptions
             <th className="pl-2 pr-3 py-2 text-right">Tot</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-hairline-soft">
+        <tbody key={listKey} className="divide-y divide-hairline-soft">
           {entries.length === 0 ? (
             <tr>
               <td colSpan={9} className="px-3 py-6 text-center text-ink-soft italic">
@@ -324,7 +339,7 @@ function LeaderboardTable({ entries, teamFilter, onTeamFilterChange, teamOptions
             </tr>
           ) : (
             entries.map((entry) => (
-              <tr key={playerNames(entry)}>
+              <m.tr key={playerNames(entry)} layout={GLIDE_LAYOUT}>
                 <td className="pl-3 pr-2 py-2 text-ink-muted tabular-nums">{entry.position ?? '—'}</td>
                 <td className="px-2 py-2 text-ink">{playerNames(entry)}</td>
                 <td className="px-2 py-2">
@@ -341,7 +356,7 @@ function LeaderboardTable({ entries, teamFilter, onTeamFilterChange, teamOptions
                 <td className="pl-2 pr-3 py-2 text-right tabular-nums font-semibold">
                   {entry.totalStrokes ?? '—'}
                 </td>
-              </tr>
+              </m.tr>
             ))
           )}
         </tbody>
@@ -362,9 +377,11 @@ function filterLeaderboard(
 interface LeaderboardCardProps {
   leaderboard: readonly LiveLeaderboardEntry[];
   tournamentName: string | null;
+  /** @see LiveOverlayQuery.selectionKey */
+  selectionKey: string;
 }
 
-function LeaderboardCard({ leaderboard, tournamentName }: LeaderboardCardProps): ReactNode {
+function LeaderboardCard({ leaderboard, tournamentName, selectionKey }: LeaderboardCardProps): ReactNode {
   const [teamFilter, setTeamFilter] = useState<string>(ALL);
 
   const teamChoices: readonly SelectOption[] = [
@@ -372,6 +389,7 @@ function LeaderboardCard({ leaderboard, tournamentName }: LeaderboardCardProps):
     ...(leaderboard.some(hasUndraftedPlayer) ? [{ value: UNDRAFTED, label: 'Undrafted' }] : []),
   ];
   const filteredLeaderboard = filterLeaderboard(leaderboard, teamFilter);
+  const listKey = `${selectionKey}|${teamFilter}`;
 
   return (
     <div className="bg-surface-card rounded-lg">
@@ -388,10 +406,11 @@ function LeaderboardCard({ leaderboard, tournamentName }: LeaderboardCardProps):
             onChange={setTeamFilter}
           />
         </div>
-        <LeaderboardRows entries={filteredLeaderboard} />
+        <LeaderboardRows entries={filteredLeaderboard} listKey={listKey} />
       </div>
       <LeaderboardTable
         entries={filteredLeaderboard}
+        listKey={listKey}
         teamFilter={teamFilter}
         onTeamFilterChange={setTeamFilter}
         teamOptions={[{ value: ALL, label: 'Team' }, ...teamChoices]}
@@ -406,9 +425,11 @@ interface Props {
   myTeamName: string | null;
   finalizeSlot?: ReactNode;
   onGolferClick?: (golferId: string) => void;
+  /** @see LiveOverlayQuery.selectionKey */
+  selectionKey: string;
 }
 
-function ScoreboardView({ report, myTeamName, finalizeSlot, onGolferClick }: Props): ReactNode {
+function ScoreboardView({ report, myTeamName, finalizeSlot, onGolferClick, selectionKey }: Props): ReactNode {
   const teams = scoreboardTeams(report);
   const { tournament, weeklyTotals, liveLeaderboard: leaderboard } = report;
   const phase = scoreboardPhase(report);
@@ -433,8 +454,18 @@ function ScoreboardView({ report, myTeamName, finalizeSlot, onGolferClick }: Pro
             </>
           ) : (
             <>
-              <TeamCards teams={teams} myTeamName={myTeamName} onGolferClick={onGolferClick} />
-              <TeamTable teams={teams} myTeamName={myTeamName} onGolferClick={onGolferClick} />
+              <TeamCards
+                teams={teams}
+                myTeamName={myTeamName}
+                onGolferClick={onGolferClick}
+                selectionKey={selectionKey}
+              />
+              <TeamTable
+                teams={teams}
+                myTeamName={myTeamName}
+                onGolferClick={onGolferClick}
+                selectionKey={selectionKey}
+              />
             </>
           )}
           <WonLostNetCards
@@ -443,7 +474,9 @@ function ScoreboardView({ report, myTeamName, finalizeSlot, onGolferClick }: Pro
             net={formatDollarsAndCents(weeklyTotals.net)}
           />
         </div>
-        {hasLeaderboard ? <LeaderboardCard leaderboard={leaderboard} tournamentName={tournament.name} /> : null}
+        {hasLeaderboard ? (
+          <LeaderboardCard leaderboard={leaderboard} tournamentName={tournament.name} selectionKey={selectionKey} />
+        ) : null}
       </div>
     </section>
   );

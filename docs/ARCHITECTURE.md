@@ -495,7 +495,9 @@ never ask ESPN (CWF-215). A completed tournament selected in the weekly report i
 Each of the three responses carries `liveEligible`, whether a `live=true` request for that selection would
 overlay, decided by the same candidate check the overlay runs; the UI offers its live toggle on that flag alone.
 While the overlay is on, the UI refetches it every minute in a visible tab (`useLiveOverlayQuery`), matching the
-scoreboard cache's TTL.
+scoreboard cache's TTL. Late Row Bets reads the weekly report through the same hook. When a refetch reorders rows,
+they glide to their new place; a new selection, filter or round redraws them instead, and reduced motion moves them
+without gliding.
 `live` is true only when an overlay contributed; an ESPN outage, an event nobody has teed off, or a selection with
 no candidate leaves it unset (`false` on player rankings).
 

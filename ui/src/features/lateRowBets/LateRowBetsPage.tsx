@@ -11,6 +11,7 @@ import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicke
 import type { Tournament } from '@/shared/api/types';
 import QueryState from '@/shared/components/QueryState';
 import { useLeaguesGate } from '@/shared/components/useLeaguesGate';
+import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
 import {
   ALL_TOURNAMENTS,
   defaultReportSelection,
@@ -20,7 +21,7 @@ import {
 import LateRowBetsView, { type LateRowTab } from './LateRowBetsView';
 
 function LateRowBetsPage(): ReactNode {
-  const { seasonId, live } = useLeagueSeason();
+  const { seasonId } = useLeagueSeason();
   const leaguesGate = useLeaguesGate();
   const [userTournamentId, setUserTournamentId] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<LateRowTab | null>(null);
@@ -41,16 +42,15 @@ function LateRowBetsPage(): ReactNode {
       : (pickInSeason(userTournamentId, tournaments) ??
         pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
 
-  const reportQuery = useQuery({
-    queryKey: queryKeys.report.detail(seasonId, effectiveId, live),
-    queryFn:
-      seasonId === null || effectiveId === null
-        ? skipToken
-        : () =>
-            effectiveId === ALL_TOURNAMENTS
-              ? api.seasonReport(seasonId)
-              : api.tournamentReport(seasonId, effectiveId, live),
-  });
+  const { query: reportQuery, overlay: liveOverlay, selectionKey } = useLiveOverlayQuery(
+    (live) => queryKeys.report.detail(seasonId, effectiveId, live),
+    seasonId === null || effectiveId === null
+      ? null
+      : (live) =>
+          effectiveId === ALL_TOURNAMENTS
+            ? api.seasonReport(seasonId)
+            : api.tournamentReport(seasonId, effectiveId, live),
+  );
 
   function renderThroughField(loaded: readonly Tournament[], selectedId: string, idSuffix: string): ReactNode {
     const tournamentOptions = [
@@ -65,7 +65,9 @@ function LateRowBetsPage(): ReactNode {
         value={selectedId}
         options={tournamentOptions}
         onChange={setUserTournamentId}
-      />
+      >
+        <LiveOverlayCheckbox state={liveOverlay} id={`late-row-bets-live-overlay${idSuffix}`} />
+      </PickerRow>
     );
   }
 
@@ -88,7 +90,14 @@ function LateRowBetsPage(): ReactNode {
         <div className={DESKTOP_PICKER_CLASS}>{renderThroughField(tournaments, effectiveId, '')}</div>
 
         <QueryState query={reportQuery} label="report">
-          {(report) => <LateRowBetsView report={report} selectedTab={selectedTab} onSelectTab={setSelectedTab} />}
+          {(report) => (
+            <LateRowBetsView
+              report={report}
+              selectionKey={selectionKey}
+              selectedTab={selectedTab}
+              onSelectTab={setSelectedTab}
+            />
+          )}
         </QueryState>
       </>
     );
