@@ -6,10 +6,11 @@ import { glideAt } from '@/shared/components/glide';
 import ListCard, { CARD_LIST_CLASS, CARD_ROW_CLASS } from '@/shared/components/ListCard';
 import MoneyCell from '@/shared/components/MoneyCell';
 import PositionCell from '@/shared/components/PositionCell';
+import { PulseDollars } from '@/shared/components/Pulse';
 import WonLostNetCards from '@/shared/components/WonLostNetCards';
 import YouTag from '@/shared/components/YouTag';
 import { isMyTeam } from '@/features/myTeam/myTeamModel';
-import { formatDollarsAndCents, formatWholeDollars } from '@/shared/util/money';
+import { formatWholeDollars } from '@/shared/util/money';
 import RankingsChart from './RankingsChart';
 import YourTeamCard from './YourTeamCard';
 import { findYourTeam } from './yourTeamCardModel';
@@ -32,7 +33,9 @@ function RankingsView({ rankings, myTeamName, selectionKey }: Props): ReactNode 
 
   return (
     <section className="space-y-6">
-      {yourTeam ? <YourTeamCard yourTeam={yourTeam} teamCount={rankings.teams.length} /> : null}
+      {yourTeam ? (
+        <YourTeamCard yourTeam={yourTeam} teamCount={rankings.teams.length} pulseScope={selectionKey} />
+      ) : null}
       <ol key={selectionKey} aria-label="Standings" className={`sm:hidden ${CARD_LIST_CLASS}`}>
         {rankings.teams.map((team, index) => (
           <ListCard
@@ -41,8 +44,13 @@ function RankingsView({ rankings, myTeamName, selectionKey }: Props): ReactNode 
             name={team.teamName}
             nameCase="team"
             fill={isMyTeam(team.teamName, myTeamName) ? 'my-team' : 'plain'}
-            detail={`Sub ${formatDollarsAndCents(team.subtotal)} · Bets ${formatDollarsAndCents(team.sideBets)}`}
-            total={<MoneyCell display={formatWholeDollars(team.totalCash)} shape="card-end" />}
+            detail={
+              <>
+                Sub <PulseDollars amount={team.subtotal} scope={selectionKey} /> · Bets{' '}
+                <PulseDollars amount={team.sideBets} scope={selectionKey} />
+              </>
+            }
+            total={<MoneyCell display={formatWholeDollars(team.totalCash)} shape="card-end" pulseScope={selectionKey} />}
             glideIndex={index}
           />
         ))}
@@ -71,9 +79,13 @@ function RankingsView({ rankings, myTeamName, selectionKey }: Props): ReactNode 
                     {team.teamName}
                     {mine ? <YouTag /> : null}
                   </td>
-                  <td className={`${cellClass} text-right tabular-nums`}>{formatDollarsAndCents(team.subtotal)}</td>
-                  <td className={`${cellClass} text-right tabular-nums`}>{formatDollarsAndCents(team.sideBets)}</td>
-                  <MoneyCell display={formatWholeDollars(team.totalCash)} />
+                  <td className={`${cellClass} text-right tabular-nums`}>
+                    <PulseDollars amount={team.subtotal} scope={selectionKey} />
+                  </td>
+                  <td className={`${cellClass} text-right tabular-nums`}>
+                    <PulseDollars amount={team.sideBets} scope={selectionKey} />
+                  </td>
+                  <MoneyCell display={formatWholeDollars(team.totalCash)} pulseScope={selectionKey} />
                 </m.tr>
               );
             })}

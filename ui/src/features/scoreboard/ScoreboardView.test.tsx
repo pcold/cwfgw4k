@@ -1265,4 +1265,52 @@ describe('ScoreboardView', () => {
       expect(leaderboardRows('Rory').map(isGliding)).toEqual([false, false]);
     });
   });
+
+  describe('pulsing', () => {
+    function pulses(display: string): (string | null)[] {
+      return screen.getAllByText(display).map((figure) => figure.getAttribute('data-pulse'));
+    }
+
+    it("pulses a team's weekly total, in the table and on its card, when a refetch raises it", async () => {
+      await renderRefetching({
+        first: report({ teams: [team({ weeklyTotal: 25 })] }),
+        second: report({ teams: [team({ weeklyTotal: 30 })] }),
+      });
+      await refetch();
+
+      expect(pulses('+$30.00')).toEqual(['up', 'up']);
+    });
+
+    it('holds the weekly totals still for a new selection', async () => {
+      await renderRefetching({
+        first: report({ teams: [team({ weeklyTotal: 25 })] }),
+        second: report({ teams: [team({ weeklyTotal: 30 })] }),
+        secondSelectionKey: 'another selection',
+      });
+      await refetch();
+
+      expect(pulses('+$30.00')).toEqual([null, null]);
+    });
+
+    it("pulses a golfer's finish and payout as they climb", async () => {
+      await renderRefetching({
+        first: report({ teams: [team({ cells: [row({ finish: { position: 8, tied: false }, earnings: 5 })] })] }),
+        second: report({ teams: [team({ cells: [row({ finish: { position: 3, tied: true }, earnings: 40 })] })] }),
+      });
+      await refetch();
+
+      expect(pulses('T3')).toEqual(['up', 'up']);
+      expect(pulses('+$40.00')).toEqual(['up', 'up']);
+    });
+
+    it('pulses a leaderboard score to par down when it rises', async () => {
+      await renderRefetching({
+        first: report({ liveLeaderboard: [tiger] }),
+        second: report({ liveLeaderboard: [{ ...tiger, scoreToPar: -6 }] }),
+      });
+      await refetch();
+
+      expect(pulses('-6')).toEqual(['down', 'down']);
+    });
+  });
 });

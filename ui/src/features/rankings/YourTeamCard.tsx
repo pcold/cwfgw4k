@@ -6,12 +6,14 @@ import { standingStats, type YourTeam } from './yourTeamCardModel';
 interface Props {
   yourTeam: YourTeam;
   teamCount: number;
+  /** @see usePulse */
+  pulseScope: string;
 }
 
 const LABEL_CLASS = 'font-display text-xs font-semibold uppercase tracking-widest text-on-chrome-muted';
 
 /** Name and total box share the top row on a phone, the stats wrapping below; from `sm` the box ends one row. */
-function YourTeamCard({ yourTeam: { team, standing }, teamCount }: Props): ReactNode {
+function YourTeamCard({ yourTeam: { team, standing }, teamCount, pulseScope }: Props): ReactNode {
   return (
     <section aria-label="Your team" className="flex flex-wrap sm:flex-nowrap rounded-lg overflow-hidden bg-chrome">
       <div className="flex-1 min-w-0 px-4 py-3">
@@ -19,7 +21,7 @@ function YourTeamCard({ yourTeam: { team, standing }, teamCount }: Props): React
         <p className="font-display text-3xl font-bold italic uppercase truncate text-on-chrome">{team.teamName}</p>
       </div>
       <div className="flex sm:order-last">
-        <MoneyCell display={formatWholeDollars(team.totalCash)} shape="card-end" />
+        <MoneyCell display={formatWholeDollars(team.totalCash)} shape="card-end" pulseScope={pulseScope} />
       </div>
       <dl className="basis-full grid grid-flow-col auto-cols-fr sm:basis-auto sm:flex-[2]">
         {standingStats(standing, teamCount).map((stat) => (

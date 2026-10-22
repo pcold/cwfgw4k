@@ -9,6 +9,7 @@ import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import LateRowTag from '@/shared/components/LateRowTag';
 import ListCard, { CARD_LIST_CLASS, CARD_NAME_BUTTON_CLASS } from '@/shared/components/ListCard';
 import MoneyCell from '@/shared/components/MoneyCell';
+import Pulse, { PulseDollars } from '@/shared/components/Pulse';
 import ReportGridCell from '@/shared/components/ReportGridCell';
 import ReportGridHead from '@/shared/components/ReportGridHead';
 import ReportGridRoundLabel from '@/shared/components/ReportGridRoundLabel';
@@ -41,9 +42,11 @@ interface RoundCellProps {
   readonly isSideBetWinner: boolean;
   readonly showSeasonFooter: boolean;
   readonly onGolferClick?: (golferId: string) => void;
+  /** @see usePulse */
+  readonly pulseScope: string;
 }
 
-function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick }: RoundCellProps) {
+function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick, pulseScope }: RoundCellProps) {
   if (!cell || !cell.golferName) {
     return (
       <ReportGridCell>
@@ -82,8 +85,14 @@ function RoundCell({ cell, isSideBetWinner, showSeasonFooter, onGolferClick }: R
   return (
     <ReportGridCell fill={isSideBetWinner ? 'late-row-leader' : 'plain'}>
       {nameContent}
-      <div className="font-mono text-ink-muted">{earnings.label}</div>
-      {showSeasonFooter ? <div className="font-mono text-ink-muted">{seasonEarningsLabel}</div> : null}
+      <div className="font-mono text-ink-muted">
+        <Pulse display={earnings.label} measure={cell.earnings} better="higher" scope={pulseScope} />
+      </div>
+      {showSeasonFooter ? (
+        <div className="font-mono text-ink-muted">
+          <Pulse display={seasonEarningsLabel} measure={cell.seasonEarnings} better="higher" scope={pulseScope} />
+        </div>
+      ) : null}
     </ReportGridCell>
   );
 }
@@ -125,13 +134,17 @@ const FIGURE_LABEL_CLASS = 'text-xs font-semibold uppercase tracking-wider text-
 interface SeasonFigureProps {
   readonly label: string;
   readonly value: number;
+  /** @see usePulse */
+  readonly pulseScope: string;
 }
 
-function SeasonFigure({ label, value }: SeasonFigureProps): ReactNode {
+function SeasonFigure({ label, value, pulseScope }: SeasonFigureProps): ReactNode {
   return (
     <div className="px-3 py-2">
       <dt className={FIGURE_LABEL_CLASS}>{label}</dt>
-      <dd className="font-display font-bold text-lg tabular-nums text-ink">{formatDollarsAndCents(value)}</dd>
+      <dd className="font-display font-bold text-lg tabular-nums text-ink">
+        <PulseDollars amount={value} scope={pulseScope} />
+      </dd>
     </div>
   );
 }
@@ -139,9 +152,11 @@ function SeasonFigure({ label, value }: SeasonFigureProps): ReactNode {
 interface SeasonCardProps {
   readonly team: ReportTeamColumn;
   readonly seasonMode: boolean;
+  /** @see usePulse */
+  readonly pulseScope: string;
 }
 
-function SeasonCard({ team, seasonMode }: SeasonCardProps): ReactNode {
+function SeasonCard({ team, seasonMode, pulseScope }: SeasonCardProps): ReactNode {
   return (
     <div aria-label="Team totals" role="group" className="rounded bg-surface-card">
       <div className="flex min-h-13.5">
@@ -149,15 +164,21 @@ function SeasonCard({ team, seasonMode }: SeasonCardProps): ReactNode {
           <div className={FIGURE_LABEL_CLASS}>Total cash</div>
           <div className="font-display font-bold text-lg text-ink uppercase truncate">{team.teamName}</div>
         </div>
-        <MoneyCell display={formatWholeDollars(team.totalCash)} shape="card-end" />
+        <MoneyCell display={formatWholeDollars(team.totalCash)} shape="card-end" pulseScope={pulseScope} />
       </div>
       <dl className="grid grid-cols-3 divide-x divide-hairline-soft border-t border-hairline-soft">
-        <SeasonFigure label="Previous" value={team.previous} />
-        <SeasonFigure label={seasonMode ? 'Season' : 'Week'} value={team.weeklyTotal} />
-        <SeasonFigure label="Late row" value={team.sideBets} />
+        <SeasonFigure label="Previous" value={team.previous} pulseScope={pulseScope} />
+        <SeasonFigure label={seasonMode ? 'Season' : 'Week'} value={team.weeklyTotal} pulseScope={pulseScope} />
+        <SeasonFigure label="Late row" value={team.sideBets} pulseScope={pulseScope} />
       </dl>
       <p className="border-t border-hairline-soft px-3 py-2 text-sm text-ink-muted">
-        {topTensLabel(team.topTenCount)} this season · {formatDollarsAndCents(team.topTenMoney)}
+        <Pulse
+          display={topTensLabel(team.topTenCount)}
+          measure={team.topTenCount}
+          better="higher"
+          scope={pulseScope}
+        />{' '}
+        this season · <PulseDollars amount={team.topTenMoney} scope={pulseScope} />
       </p>
     </div>
   );
@@ -170,9 +191,19 @@ interface PickCardProps {
   readonly leadsLateRow: boolean;
   readonly showSeasonLine: boolean;
   readonly onGolferClick: ((golferId: string) => void) | undefined;
+  /** @see usePulse */
+  readonly pulseScope: string;
 }
 
-function PickCard({ round, cell, lateRow, leadsLateRow, showSeasonLine, onGolferClick }: PickCardProps): ReactNode {
+function PickCard({
+  round,
+  cell,
+  lateRow,
+  leadsLateRow,
+  showSeasonLine,
+  onGolferClick,
+  pulseScope,
+}: PickCardProps): ReactNode {
   const tag = leadsLateRow ? 'late-row-leader' : 'late-row';
   const detail = lateRow ? <LateRowTag variant={tag} /> : null;
   if (!cell || !cell.golferName) {
@@ -209,10 +240,18 @@ function PickCard({ round, cell, lateRow, leadsLateRow, showSeasonLine, onGolfer
       detail={detail}
       total={
         <div className="shrink-0 px-3 py-2 flex flex-col justify-center items-end text-right tabular-nums">
-          <div className={PICK_EARNINGS_CLASS[earnings.kind]}>{earnings.label}</div>
+          <div className={PICK_EARNINGS_CLASS[earnings.kind]}>
+            <Pulse display={earnings.label} measure={cell.earnings} better="higher" scope={pulseScope} />
+          </div>
           {showSeasonLine ? (
             <div className="text-sm text-ink-muted">
-              {formatDollarsAndCents(cell.seasonEarnings)} · {topTensLabel(cell.seasonTopTens)}
+              <PulseDollars amount={cell.seasonEarnings} scope={pulseScope} /> ·{' '}
+              <Pulse
+                display={topTensLabel(cell.seasonTopTens)}
+                measure={cell.seasonTopTens}
+                better="higher"
+                scope={pulseScope}
+              />
             </div>
           ) : null}
         </div>
@@ -230,6 +269,8 @@ interface PhoneReportProps {
   readonly sideBetAmounts: ReadonlyMap<number, number>;
   readonly onSelectTeam: (teamId: string) => void;
   readonly onGolferClick: ((golferId: string) => void) | undefined;
+  /** @see LiveOverlayQuery.selectionKey */
+  readonly selectionKey: string;
 }
 
 function PhoneReport({
@@ -240,12 +281,15 @@ function PhoneReport({
   sideBetAmounts,
   onSelectTeam,
   onGolferClick,
+  selectionKey,
 }: PhoneReportProps): ReactNode {
   const cells = teamCellsByRound(team);
+  // The team strip swaps every figure below it in place, which is not a refresh.
+  const pulseScope = `${selectionKey}|${team.teamId}`;
   return (
     <div className="sm:hidden space-y-3">
       <TeamStrip teams={teams} selectedTeamId={team.teamId} onSelect={onSelectTeam} />
-      <SeasonCard team={team} seasonMode={seasonMode} />
+      <SeasonCard team={team} seasonMode={seasonMode} pulseScope={pulseScope} />
       <ol aria-label="Picks" className={CARD_LIST_CLASS}>
         {ROUNDS.map((round) => (
           <PickCard
@@ -256,6 +300,7 @@ function PhoneReport({
             leadsLateRow={winnersByRound.get(round)?.has(team.teamId) ?? false}
             showSeasonLine={!seasonMode}
             onGolferClick={onGolferClick}
+            pulseScope={pulseScope}
           />
         ))}
       </ol>
@@ -271,9 +316,18 @@ interface Props {
   readonly myTeamName: string | null;
   readonly onSelectTeam: (teamId: string) => void;
   readonly onGolferClick?: (golferId: string) => void;
+  /** @see LiveOverlayQuery.selectionKey */
+  readonly selectionKey: string;
 }
 
-function WeeklyReportView({ report, selectedTeamId, myTeamName, onSelectTeam, onGolferClick }: Props): ReactNode {
+function WeeklyReportView({
+  report,
+  selectedTeamId,
+  myTeamName,
+  onSelectTeam,
+  onGolferClick,
+  selectionKey,
+}: Props): ReactNode {
   const { teams, undraftedTopTens, sideBetDetail, cashTotals } = report;
   const selectedTeam =
     teams.find((team) => team.teamId === selectedTeamId) ??
@@ -297,6 +351,7 @@ function WeeklyReportView({ report, selectedTeamId, myTeamName, onSelectTeam, on
           sideBetAmounts={sideBetAmounts}
           onSelectTeam={onSelectTeam}
           onGolferClick={onGolferClick}
+          selectionKey={selectionKey}
         />
       )}
 
@@ -321,6 +376,7 @@ function WeeklyReportView({ report, selectedTeamId, myTeamName, onSelectTeam, on
                       isSideBetWinner={winners.has(team.teamId)}
                       showSeasonFooter={showSeasonFooter}
                       onGolferClick={onGolferClick}
+                      pulseScope={selectionKey}
                     />
                   ))}
                 </tr>
@@ -336,7 +392,7 @@ function WeeklyReportView({ report, selectedTeamId, myTeamName, onSelectTeam, on
               label="TOP TENS"
               labelClass="font-bold text-ink"
               figureClass="font-bold text-ink"
-              cellContent={(t) => formatDollarsAndCents(t.topTenEarnings)}
+              cellContent={(t) => <PulseDollars amount={t.topTenEarnings} scope={selectionKey} />}
             />
 
             <SummaryRow
@@ -344,7 +400,7 @@ function WeeklyReportView({ report, selectedTeamId, myTeamName, onSelectTeam, on
               label={seasonMode ? '**SEASON' : '**WEEKLY'}
               labelClass="font-bold text-ink"
               figureClass="font-bold text-ink"
-              cellContent={(t) => formatDollarsAndCents(t.weeklyTotal)}
+              cellContent={(t) => <PulseDollars amount={t.weeklyTotal} scope={selectionKey} />}
             />
 
             <SummaryRow
@@ -352,7 +408,7 @@ function WeeklyReportView({ report, selectedTeamId, myTeamName, onSelectTeam, on
               label="PREVIOUS"
               labelClass="text-ink-muted"
               figureClass="text-ink-muted italic"
-              cellContent={(t) => formatDollarsAndCents(t.previous)}
+              cellContent={(t) => <PulseDollars amount={t.previous} scope={selectionKey} />}
             />
 
             <SummaryRow
@@ -362,9 +418,18 @@ function WeeklyReportView({ report, selectedTeamId, myTeamName, onSelectTeam, on
               figureClass="text-ink"
               cellContent={(t) => (
                 <>
-                  <div className="font-bold">{formatDollarsAndCents(t.subtotal)}</div>
+                  <div className="font-bold">
+                    <PulseDollars amount={t.subtotal} scope={selectionKey} />
+                  </div>
                   <div className="text-ink-muted">
-                    {formatDollarsAndCents(t.topTenMoney)} ({t.topTenCount})
+                    <PulseDollars amount={t.topTenMoney} scope={selectionKey} /> (
+                    <Pulse
+                      display={String(t.topTenCount)}
+                      measure={t.topTenCount}
+                      better="higher"
+                      scope={selectionKey}
+                    />
+                    )
                   </div>
                 </>
               )}
@@ -375,7 +440,7 @@ function WeeklyReportView({ report, selectedTeamId, myTeamName, onSelectTeam, on
               label={sideBetRowLabel(report.sideBetRules)}
               labelClass="text-ink-muted"
               figureClass="text-ink"
-              cellContent={(t) => formatDollarsAndCents(t.sideBets)}
+              cellContent={(t) => <PulseDollars amount={t.sideBets} scope={selectionKey} />}
             />
 
             <tr>
@@ -385,7 +450,12 @@ function WeeklyReportView({ report, selectedTeamId, myTeamName, onSelectTeam, on
                 CASH
               </SummaryLabel>
               {teams.map((team) => (
-                <MoneyCell key={team.teamId} display={formatWholeDollars(team.totalCash)} shape="standalone" />
+                <MoneyCell
+                  key={team.teamId}
+                  display={formatWholeDollars(team.totalCash)}
+                  shape="standalone"
+                  pulseScope={selectionKey}
+                />
               ))}
             </tr>
           </tbody>

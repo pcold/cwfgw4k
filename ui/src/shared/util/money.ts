@@ -63,6 +63,12 @@ export function moneyTone(display: string): MoneyTone {
   return 'down';
 }
 
+/** @see moneyTone; the amount at the precision the text prints, so two figures that print alike compare equal. */
+export function moneyAmount(display: string): number {
+  const magnitude = Number(display.replace(/[^\d.]/g, ''));
+  return moneyTone(display) === 'down' ? -magnitude : magnitude;
+}
+
 const MONEY_TONE_CLASS: Readonly<Record<MoneyTone, string>> = {
   up: 'text-semantic-success',
   down: 'text-semantic-danger',

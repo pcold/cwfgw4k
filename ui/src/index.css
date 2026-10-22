@@ -112,6 +112,36 @@
   /* The visitor's own team's card or row; a fill, ringed in `gold`. Not `late-row-leader`, which marks a lead. */
   --color-my-team: var(--color-yellow-100);
 
+  /*
+   * A refreshed figure's flash, under `ink`. Not the money fills: white on them fails small text, and an up flash
+   * on an up box would not show. `from` only, so each fades to whatever its cell paints at rest.
+   */
+  --color-pulse-up: var(--color-green-300);
+  --color-pulse-down: var(--color-red-300);
+  --color-pulse-new: var(--brand-gold);
+  --animate-pulse-up: pulse-up 1.2s ease-out;
+  --animate-pulse-down: pulse-down 1.2s ease-out;
+  --animate-pulse-new: pulse-new 1.2s ease-out;
+
+  @keyframes pulse-up {
+    from {
+      background-color: var(--color-pulse-up);
+      color: var(--color-ink);
+    }
+  }
+  @keyframes pulse-down {
+    from {
+      background-color: var(--color-pulse-down);
+      color: var(--color-ink);
+    }
+  }
+  @keyframes pulse-new {
+    from {
+      background-color: var(--color-pulse-new);
+      color: var(--color-ink);
+    }
+  }
+
   --font-sans:
     "Saira Variable", "Saira Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }

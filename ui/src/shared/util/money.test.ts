@@ -3,6 +3,7 @@ import {
   formatDollarsAndCents,
   formatUnsignedDollarsAndCents,
   formatWholeDollars,
+  moneyAmount,
   moneyTone,
   moneyToneClass,
 } from './money';
@@ -91,5 +92,17 @@ describe('moneyToneClass', () => {
     expect(moneyToneClass('+$1')).toBe('text-semantic-success');
     expect(moneyToneClass('\u2212$1')).toBe('text-semantic-danger');
     expect(moneyToneClass('$0')).toBe('text-ink-soft');
+  });
+});
+
+describe('moneyAmount', () => {
+  it('reads the amount back out of the text, signed by its tone', () => {
+    expect(moneyAmount('+$1,082.40')).toBe(1082.4);
+    expect(moneyAmount('\u2212$35')).toBe(-35);
+    expect(moneyAmount('$0')).toBe(0);
+  });
+
+  it('compares two amounts at the precision they print', () => {
+    expect(moneyAmount(formatWholeDollars(1082.4))).toBe(moneyAmount(formatWholeDollars(1082.1)));
   });
 });
