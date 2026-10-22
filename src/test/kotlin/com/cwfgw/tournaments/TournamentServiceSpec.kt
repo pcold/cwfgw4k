@@ -6,8 +6,10 @@ import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import java.math.BigDecimal
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.UUID
 
 private val SEASON_ID = SeasonId(UUID.fromString("00000000-0000-0000-0000-000000000aa1"))
@@ -30,6 +32,22 @@ class TournamentServiceSpec : FunSpec({
         val result = service(initial = listOf(masters, open)).list(TournamentFilter())
 
         result.map { it.id } shouldContainExactlyInAnyOrder listOf(masters.id, open.id)
+    }
+
+    test("list reads a started, unfinalized week as in progress, judged on the US Eastern date") {
+        // 03:00 UTC on April 9 is still April 8 in New York.
+        val eveningBefore = Clock.fixed(Instant.parse("2026-04-09T03:00:00Z"), ZoneOffset.UTC)
+        val morningOf = Clock.fixed(Instant.parse("2026-04-09T13:00:00Z"), ZoneOffset.UTC)
+        val masters = tournament(name = "Masters", startDate = APRIL_9)
+        val players = tournament(name = "Players", startDate = MARCH_12, status = TournamentStatus.Completed)
+
+        fun serviceAt(clock: Clock) =
+            TournamentService(FakeTournamentRepository(initial = listOf(players, masters)), FakeTransactor(), clock)
+
+        serviceAt(eveningBefore).list(TournamentFilter()).associate { it.name to it.status } shouldBe
+            mapOf("Players" to TournamentStatus.Completed, "Masters" to TournamentStatus.Upcoming)
+        serviceAt(morningOf).list(TournamentFilter()).associate { it.name to it.status } shouldBe
+            mapOf("Players" to TournamentStatus.Completed, "Masters" to TournamentStatus.InProgress)
     }
 
     test("current is the earliest unfinalized tournament, past a finalized one and before a later one in progress") {

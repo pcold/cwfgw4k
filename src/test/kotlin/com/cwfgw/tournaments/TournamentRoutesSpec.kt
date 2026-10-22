@@ -19,6 +19,7 @@ import io.ktor.http.contentType
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import java.math.BigDecimal
 import java.time.Instant
@@ -65,6 +66,31 @@ class TournamentRoutesSpec : FunSpec({
             response.status shouldBe HttpStatusCode.OK
             val body: List<Tournament> = response.body()
             body.map { it.id } shouldContainExactly listOf(masters.id, open.id)
+        }
+    }
+
+    test("GET /api/v1/tournaments reports a started, unfinalized week as in_progress") {
+        // Dates clear of today, so a run that crosses midnight Eastern can't move either one.
+        val today = LocalDate.now(ESPN_SCHEDULE_ZONE)
+        val started = tournament(name = "Started", startDate = today.minusDays(1))
+        val later = tournament(name = "Later", startDate = today.plusDays(2))
+        val finalized =
+            tournament(name = "Finalized", startDate = today.minusDays(7), status = TournamentStatus.Completed)
+
+        apiTest({ seedTournaments(started, later, finalized) }) { client ->
+            val response = client.get("/api/v1/tournaments")
+
+            response.status shouldBe HttpStatusCode.OK
+            val wire =
+                response.wireJson().jsonArray.associate { row ->
+                    row.jsonObject.getValue("name") to row.jsonObject.getValue("status")
+                }
+            wire shouldBe
+                mapOf(
+                    JsonPrimitive("Started") to JsonPrimitive("in_progress"),
+                    JsonPrimitive("Later") to JsonPrimitive("upcoming"),
+                    JsonPrimitive("Finalized") to JsonPrimitive("completed"),
+                )
         }
     }
 

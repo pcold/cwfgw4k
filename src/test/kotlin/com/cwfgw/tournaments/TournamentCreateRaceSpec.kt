@@ -41,6 +41,6 @@ class TournamentCreateRaceSpec : FunSpec({
 
         service.create(request.copy(name = "The Masters")) shouldBe Result.Err(TournamentError.PgaTournamentIdTaken)
 
-        service.list(TournamentFilter()) shouldContainExactly listOf(winner)
+        tx.get { TournamentRepository().findAll(TournamentFilter()) } shouldContainExactly listOf(winner)
     }
 })

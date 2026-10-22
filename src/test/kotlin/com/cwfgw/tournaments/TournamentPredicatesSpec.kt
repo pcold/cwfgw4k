@@ -59,6 +59,20 @@ class TournamentPredicatesSpec : FunSpec({
         val event = tournament(startDate = "2026-05-20", status = TournamentStatus.InProgress)
         event.isLiveOverlayCandidate(TODAY) shouldBe false
     }
+
+    test("an upcoming tournament reads as in progress from its start date, and as upcoming the day before") {
+        tournament(startDate = "2026-05-10", status = TournamentStatus.Upcoming).statusAsOf(TODAY) shouldBe
+            TournamentStatus.InProgress
+        tournament(startDate = "2026-05-08", status = TournamentStatus.Upcoming).statusAsOf(TODAY) shouldBe
+            TournamentStatus.InProgress
+        tournament(startDate = "2026-05-11", status = TournamentStatus.Upcoming).statusAsOf(TODAY) shouldBe
+            TournamentStatus.Upcoming
+    }
+
+    test("a completed tournament reads as completed whatever its date") {
+        tournament(startDate = "2026-05-08", status = TournamentStatus.Completed).statusAsOf(TODAY) shouldBe
+            TournamentStatus.Completed
+    }
 })
 
 private fun tournament(

@@ -37,3 +37,10 @@ fun liveOverlayWindowEnd(today: LocalDate): LocalDate = today.plusDays(LIVE_OVER
 fun Tournament.isLiveOverlayCandidate(today: LocalDate): Boolean =
     status != TournamentStatus.Completed &&
         startDate.isBefore(liveOverlayWindowEnd(today))
+
+/**
+ * Only an admin's PUT writes [TournamentStatus.InProgress], so a week that has started and is not finalized reads as
+ * one from its date. For display only: a gate or a write reads the stored status, which stays as it was.
+ */
+fun Tournament.statusAsOf(today: LocalDate): TournamentStatus =
+    if (status == TournamentStatus.Upcoming && !startDate.isAfter(today)) TournamentStatus.InProgress else status

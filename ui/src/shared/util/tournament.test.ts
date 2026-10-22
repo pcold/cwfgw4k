@@ -31,23 +31,22 @@ function makeTournament(overrides: Partial<Tournament> = {}): Tournament {
 
 describe('tournamentLabel', () => {
   it('omits the multiplier when it is 1', () => {
-    expect(tournamentLabel(makeTournament())).toBe('Wk 1 — Sony Open — completed');
+    expect(tournamentLabel(makeTournament())).toBe('Wk 1 — Sony Open — Final');
   });
 
   it('shows the multiplier in parens when it is not 1', () => {
     expect(tournamentLabel(makeTournament({ payoutMultiplier: 2 }))).toBe(
-      'Wk 1 — Sony Open (2x) — completed',
+      'Wk 1 — Sony Open (2x) — Final',
     );
   });
 
   it('falls back to ? when the week is null', () => {
-    expect(tournamentLabel(makeTournament({ week: null }))).toBe('Wk ? — Sony Open — completed');
+    expect(tournamentLabel(makeTournament({ week: null }))).toBe('Wk ? — Sony Open — Final');
   });
 
-  it('shows status regardless of completion', () => {
-    expect(tournamentLabel(makeTournament({ status: 'in_progress' }))).toBe(
-      'Wk 1 — Sony Open — in_progress',
-    );
+  it('names an unfinalized week in the words of the status chip', () => {
+    expect(tournamentLabel(makeTournament({ status: 'in_progress' }))).toBe('Wk 1 — Sony Open — Live');
+    expect(tournamentLabel(makeTournament({ status: 'upcoming' }))).toBe('Wk 1 — Sony Open — Upcoming');
   });
 });
 
