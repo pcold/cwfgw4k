@@ -17,6 +17,7 @@ interface Reading {
   readonly measure: number | null;
 }
 
+/** @see usePulse */
 export interface PulseAttributes {
   readonly 'data-pulse': PulseTone | undefined;
   readonly onAnimationEnd: (event: AnimationEvent) => void;
@@ -48,7 +49,7 @@ export function usePulse(
   }
   return {
     'data-pulse': tone,
-    // A pulse nested inside this one ends first, and its event bubbles.
+    // A descendant's animationend bubbles here too.
     onAnimationEnd: (event) => {
       if (event.target === event.currentTarget) setTone(undefined);
     },
@@ -65,14 +66,21 @@ interface PulseProps {
 
 /** A figure inside a cell of its own: the highlight sits behind the text and leaves the cell's fill alone. */
 export default function Pulse({ display, measure, better, scope }: PulseProps): ReactElement {
+  const pulse = usePulse(display, measure, better, scope);
   return (
-    <span className={`rounded-sm px-0.5 -mx-0.5 ${PULSE_CLASS}`} {...usePulse(display, measure, better, scope)}>
+    <span className={`rounded-sm px-0.5 -mx-0.5 ${PULSE_CLASS}`} {...pulse}>
       {display}
     </span>
   );
 }
 
+interface PulseDollarsProps {
+  readonly amount: number;
+  /** @see usePulse */
+  readonly scope: string | undefined;
+}
+
 /** @see Pulse */
-export function PulseDollars({ amount, scope }: { amount: number; scope: string | undefined }): ReactElement {
+export function PulseDollars({ amount, scope }: PulseDollarsProps): ReactElement {
   return <Pulse display={formatDollarsAndCents(amount)} measure={amount} better="higher" scope={scope} />;
 }

@@ -34,7 +34,7 @@ function RankingsView({ rankings, myTeamName, selectionKey }: Props): ReactNode 
   return (
     <section className="space-y-6">
       {yourTeam ? (
-        <YourTeamCard yourTeam={yourTeam} teamCount={rankings.teams.length} pulseScope={selectionKey} />
+        <YourTeamCard yourTeam={yourTeam} teamCount={rankings.teams.length} selectionKey={selectionKey} />
       ) : null}
       <ol key={selectionKey} aria-label="Standings" className={`sm:hidden ${CARD_LIST_CLASS}`}>
         {rankings.teams.map((team, index) => (

@@ -1303,13 +1303,14 @@ describe('ScoreboardView', () => {
       expect(pulses('+$40.00')).toEqual(['up', 'up']);
     });
 
-    it('pulses a leaderboard score to par down when it rises', async () => {
+    it('pulses a leaderboard position up as it falls, and a score to par down as it rises', async () => {
       await renderRefetching({
         first: report({ liveLeaderboard: [tiger] }),
-        second: report({ liveLeaderboard: [{ ...tiger, scoreToPar: -6 }] }),
+        second: report({ liveLeaderboard: [{ ...tiger, position: 2, scoreToPar: -6 }] }),
       });
       await refetch();
 
+      expect(pulses('2')).toEqual(['up', 'up']);
       expect(pulses('-6')).toEqual(['down', 'down']);
     });
   });

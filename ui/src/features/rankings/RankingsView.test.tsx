@@ -83,6 +83,7 @@ interface RefetchingProps {
   second: Rankings;
   /** Unset, the second rankings are a refetch of the first's selection. */
   secondSelectionKey?: string;
+  firstMyTeamName?: string;
   secondMyTeamName?: string;
 }
 
@@ -92,8 +93,18 @@ interface Shown {
   myTeamName: string | null;
 }
 
-function Refetching({ first, second, secondSelectionKey = SELECTION_KEY, secondMyTeamName }: RefetchingProps): ReactNode {
-  const [current, setCurrent] = useState<Shown>({ rankings: first, selectionKey: SELECTION_KEY, myTeamName: null });
+function Refetching({
+  first,
+  second,
+  secondSelectionKey = SELECTION_KEY,
+  firstMyTeamName,
+  secondMyTeamName,
+}: RefetchingProps): ReactNode {
+  const [current, setCurrent] = useState<Shown>({
+    rankings: first,
+    selectionKey: SELECTION_KEY,
+    myTeamName: firstMyTeamName ?? null,
+  });
   const showSecond = (): void =>
     setCurrent({ rankings: second, selectionKey: secondSelectionKey, myTeamName: secondMyTeamName ?? null });
   return (
@@ -409,6 +420,22 @@ describe('RankingsView', () => {
 
       expect(pulses('+$130.00')).toEqual([null, null]);
       expect(pulses('+$160')).toEqual([null, null]);
+    });
+
+    function yourTeamTotal(display: string): HTMLElement {
+      return within(screen.getByRole('region', { name: 'Your team' })).getByText(display);
+    }
+
+    it("pulses the your-team card's total when a refetch raises it", async () => {
+      await refetch({ first: standings, second: climbed, firstMyTeamName: 'Aces', secondMyTeamName: 'Aces' });
+
+      expect(yourTeamTotal('+$160')).toHaveAttribute('data-pulse', 'up');
+    });
+
+    it('holds the your-team card still when the visitor picks another team', async () => {
+      await refetch({ first: standings, second: standings, firstMyTeamName: 'Aces', secondMyTeamName: 'Cuts' });
+
+      expect(yourTeamTotal('+$35')).not.toHaveAttribute('data-pulse');
     });
   });
 });
