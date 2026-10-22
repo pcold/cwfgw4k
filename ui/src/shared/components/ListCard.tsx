@@ -1,5 +1,7 @@
 import type { ReactElement, ReactNode } from 'react';
+import { m } from 'motion/react';
 import { TAP_TARGET_CLASS } from './formControls';
+import { glideAt } from './glide';
 import PositionCell, { type PositionCellKind } from './PositionCell';
 import YouTag from './YouTag';
 
@@ -51,6 +53,12 @@ interface ListCardProps {
   /** A `MoneyCell` with `shape="card-end"`, a plain figure where the total takes no fill, or a pick's tag. */
   readonly total: ReactNode;
   readonly fill?: ListCardFill;
+  /**
+   * Unset, the card never glides. Key the list by its selection, so a new one remounts the cards rather than
+   * shuffling them.
+   * @see glideAt
+   */
+  readonly glideIndex?: number;
 }
 
 /**
@@ -65,12 +73,14 @@ export default function ListCard({
   detail,
   total,
   fill = 'plain',
+  glideIndex,
 }: ListCardProps): ReactElement {
   const nameLine = (
     <div className={`font-display font-bold text-lg text-ink truncate min-w-0 ${NAME_CASE_CLASS[nameCase]}`}>{name}</div>
   );
-  return (
-    <li className={`flex min-h-13.5 rounded ${FILL_CLASS[fill].card}`}>
+  const className = `flex min-h-13.5 rounded ${FILL_CLASS[fill].card}`;
+  const content = (
+    <>
       <PositionCell position={position} shape="card-start" kind={positionKind} />
       <div className={FILL_CLASS[fill].middle}>
         {fill === 'my-team' ? (
@@ -84,6 +94,13 @@ export default function ListCard({
         <div className="text-sm text-ink-muted">{detail}</div>
       </div>
       {total}
-    </li>
+    </>
+  );
+  return glideIndex === undefined ? (
+    <li className={className}>{content}</li>
+  ) : (
+    <m.li {...glideAt(glideIndex)} className={className}>
+      {content}
+    </m.li>
   );
 }

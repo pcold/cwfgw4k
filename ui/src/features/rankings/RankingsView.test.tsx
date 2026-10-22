@@ -1,9 +1,14 @@
+import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { Rankings } from '@/shared/api/types';
+import { elapseFrames, isGliding, stackByTreeIndex } from '@/shared/test/glide';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import RankingsView from './RankingsView';
+
+const SELECTION_KEY = 'selection';
 
 function buildRankings(overrides: Partial<Rankings> = {}): Rankings {
   return {
@@ -75,7 +80,7 @@ function phoneCard(teamName: string): HTMLElement {
 
 describe('RankingsView', () => {
   it('numbers the teams in the order the server sent them, without re-sorting by totalCash', () => {
-    renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
+    renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
     const table = screen.getByRole('table');
     const rows = within(table).getAllByRole('row').slice(1); // drop header row
     const ranked = rows.map((row) => {
@@ -86,7 +91,7 @@ describe('RankingsView', () => {
   });
 
   it('renders the cumulative totals chart with a legend entry per team', () => {
-    renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
+    renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
     const chart = screen.getByRole('figure', { name: /Cumulative Totals by Week/i });
     expect(within(chart).getByText('Aces')).toBeInTheDocument();
     expect(within(chart).getByText('Birdies')).toBeInTheDocument();
@@ -95,7 +100,11 @@ describe('RankingsView', () => {
 
   it('shows an empty chart message when there is no week history yet', () => {
     renderWithProviders(
-      <RankingsView myTeamName={null} rankings={buildRankings({ teams: [], weeks: [], tournamentNames: [] })} />,
+      <RankingsView
+        selectionKey={SELECTION_KEY}
+        myTeamName={null}
+        rankings={buildRankings({ teams: [], weeks: [], tournamentNames: [] })}
+      />,
       NO_PROVIDERS,
     );
     expect(screen.getByText(/No ranking history yet/i)).toBeInTheDocument();
@@ -105,7 +114,10 @@ describe('RankingsView', () => {
     const [aces, ...rest] = buildRankings().teams;
     if (!aces) throw new Error('fixture has no first team');
     const fractional = { ...aces, subtotal: 751.5715, sideBets: -1.7785, totalCash: 1082.4 };
-    renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings({ teams: [fractional, ...rest] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings({ teams: [fractional, ...rest] })} />,
+      NO_PROVIDERS,
+    );
     const row = screen.getByRole('row', { name: /Aces/ });
     expect(within(row).getByText('+$751.57')).toBeInTheDocument();
     expect(within(row).getByText('\u2212$1.78')).toBeInTheDocument();
@@ -114,7 +126,10 @@ describe('RankingsView', () => {
 
   it('shows the won, lost and net the server totalled, not a sum of the team rows', () => {
     const cashTotals = { won: 1234.4, lost: -987.6, net: 246.8 };
-    renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings({ cashTotals })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings({ cashTotals })} />,
+      NO_PROVIDERS,
+    );
     expect(screen.getByText('Won').nextSibling).toHaveTextContent(/^\+\$1,234$/);
     expect(screen.getByText('Lost').nextSibling).toHaveTextContent(/^\u2212\$988$/);
     expect(screen.getByText('Net').nextSibling).toHaveTextContent(/^\+\$247$/);
@@ -124,7 +139,11 @@ describe('RankingsView', () => {
     const [aces, birdies, cuts] = buildRankings().teams;
     if (!aces || !birdies || !cuts) throw new Error('fixture has fewer than three teams');
     renderWithProviders(
-      <RankingsView myTeamName={null} rankings={buildRankings({ teams: [aces, birdies, { ...cuts, totalCash: 0.4 }] })} />,
+      <RankingsView
+        selectionKey={SELECTION_KEY}
+        myTeamName={null}
+        rankings={buildRankings({ teams: [aces, birdies, { ...cuts, totalCash: 0.4 }] })}
+      />,
       NO_PROVIDERS,
     );
     expect(within(screen.getByRole('row', { name: /Aces/ })).getByText('+$150')).toHaveClass('bg-money-up-fill');
@@ -138,7 +157,7 @@ describe('RankingsView', () => {
   });
 
   it('sets each team as a white card between its position and money boxes, with no row hover', () => {
-    renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
+    renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
     expect(screen.getByRole('table')).toHaveClass('border-separate', 'border-spacing-y-1');
     const row = screen.getByRole('row', { name: /Aces/ });
     expect(row).toHaveClass('h-11');
@@ -148,7 +167,7 @@ describe('RankingsView', () => {
   });
 
   it('boxes the first position in gold and every other in navy', () => {
-    renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
+    renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
     const positions = within(screen.getByRole('table'))
       .getAllByRole('row')
       .slice(1)
@@ -160,20 +179,23 @@ describe('RankingsView', () => {
 
   it('tones the summary chips by the sign they print, muting one that rounds to $0', () => {
     const cashTotals = { won: 35, lost: -35.4, net: -0.4 };
-    renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings({ cashTotals })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings({ cashTotals })} />,
+      NO_PROVIDERS,
+    );
     expect(screen.getByText('Won').nextSibling).toHaveClass('text-semantic-success');
     expect(screen.getByText('Lost').nextSibling).toHaveClass('text-semantic-danger');
     expect(screen.getByText('Net').nextSibling).toHaveClass('text-ink-soft');
   });
 
   it('sets every column head in the shared column-header type', () => {
-    renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
+    renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
     expectSharedColumnHeads(1);
   });
 
   describe("the visitor's own team", () => {
     it('tags its row and its card and no other, matching the name whatever its case', () => {
-      renderWithProviders(<RankingsView myTeamName="CUTS" rankings={buildRankings()} />, NO_PROVIDERS);
+      renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName="CUTS" rankings={buildRankings()} />, NO_PROVIDERS);
 
       expect(within(screen.getByRole('row', { name: /Cuts/ })).getByText('your team')).toBeInTheDocument();
       expect(within(phoneCard('Cuts')).getByText('your team')).toBeInTheDocument();
@@ -182,7 +204,7 @@ describe('RankingsView', () => {
 
     // Styling alone, so the classes are what there is to assert.
     it('rings its row in gold and fills the cells between the boxes pale gold', () => {
-      renderWithProviders(<RankingsView myTeamName="CUTS" rankings={buildRankings()} />, NO_PROVIDERS);
+      renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName="CUTS" rankings={buildRankings()} />, NO_PROVIDERS);
 
       const row = screen.getByRole('row', { name: /Cuts/ });
       expect(row).toHaveClass('outline-2', '-outline-offset-2', 'outline-gold');
@@ -193,7 +215,7 @@ describe('RankingsView', () => {
     });
 
     it('marks nothing when no team is chosen', () => {
-      renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
+      renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
 
       expect(screen.queryByText('your team')).toBeNull();
       expect(screen.getByRole('row', { name: /Cuts/ })).not.toHaveClass('outline-2');
@@ -213,7 +235,7 @@ describe('RankingsView', () => {
     }
 
     it('opens the standings with a chasing team, its total box and three stats from its standing', () => {
-      renderWithProviders(<RankingsView myTeamName="birdies" rankings={buildRankings()} />, NO_PROVIDERS);
+      renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName="birdies" rankings={buildRankings()} />, NO_PROVIDERS);
 
       const card = yourTeamCard();
       expect(within(card).getByText('Birdies')).toBeInTheDocument();
@@ -222,19 +244,19 @@ describe('RankingsView', () => {
     });
 
     it('gives the leader two stats: its position and its lead', () => {
-      renderWithProviders(<RankingsView myTeamName="Aces" rankings={buildRankings()} />, NO_PROVIDERS);
+      renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName="Aces" rankings={buildRankings()} />, NO_PROVIDERS);
 
       expect(statsOf(yourTeamCard())).toEqual(['Pos: 1st / 3', 'Ahead of 2nd: +$115']);
     });
 
     it('shows no card when no team is chosen', () => {
-      renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
+      renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
 
       expect(screen.queryByRole('region', { name: 'Your team' })).toBeNull();
     });
 
     it('shows no card for a team these standings do not hold', () => {
-      renderWithProviders(<RankingsView myTeamName="Eagles" rankings={buildRankings()} />, NO_PROVIDERS);
+      renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName="Eagles" rankings={buildRankings()} />, NO_PROVIDERS);
 
       expect(screen.queryByRole('region', { name: 'Your team' })).toBeNull();
       expect(screen.getByRole('table')).toBeInTheDocument();
@@ -243,14 +265,14 @@ describe('RankingsView', () => {
 
   describe('on a phone', () => {
     it('shows the cards below sm and the table from sm up', () => {
-      renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
+      renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
 
       expect(screen.getByRole('list', { name: 'Standings' })).toHaveClass('sm:hidden');
       expect(screen.getByRole('table').parentElement).toHaveClass('hidden', 'sm:block');
     });
 
     it('sets a card per team in the order the server sent them', () => {
-      renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
+      renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
 
       const cards = phoneCards().map((card) => {
         const [position, middle] = Array.from(card.children);
@@ -260,7 +282,7 @@ describe('RankingsView', () => {
     });
 
     it('boxes the first position in gold and every other in navy', () => {
-      renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
+      renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
 
       const positions = phoneCards().map((card) => card.firstElementChild);
       expect(positions[0]).toHaveClass('bg-gold');
@@ -273,7 +295,10 @@ describe('RankingsView', () => {
       const [aces, ...rest] = buildRankings().teams;
       if (!aces) throw new Error('fixture has no first team');
       const fractional = { ...aces, subtotal: 751.5715, sideBets: -1.7785 };
-      renderWithProviders(<RankingsView myTeamName={null} rankings={buildRankings({ teams: [fractional, ...rest] })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings({ teams: [fractional, ...rest] })} />,
+        NO_PROVIDERS,
+      );
 
       expect(within(phoneCard('Aces')).getByText(/^Sub /)).toHaveTextContent(/^Sub \+\$751\.57 · Bets \u2212\$1\.78$/);
       expect(within(phoneCard('Birdies')).getByText(/^Sub /)).toHaveTextContent(/^Sub \u2212\$20\.00 · Bets \u2212\$15\.00$/);
@@ -283,13 +308,82 @@ describe('RankingsView', () => {
       const [aces, birdies, cuts] = buildRankings().teams;
       if (!aces || !birdies || !cuts) throw new Error('fixture has fewer than three teams');
       renderWithProviders(
-        <RankingsView myTeamName={null} rankings={buildRankings({ teams: [aces, birdies, { ...cuts, totalCash: 0.4 }] })} />,
+        <RankingsView
+          selectionKey={SELECTION_KEY}
+          myTeamName={null}
+          rankings={buildRankings({ teams: [aces, birdies, { ...cuts, totalCash: 0.4 }] })}
+        />,
         NO_PROVIDERS,
       );
 
       expect(within(phoneCard('Aces')).getByText('+$150')).toHaveClass('bg-money-up-fill', 'rounded-r');
       expect(within(phoneCard('Birdies')).getByText('\u2212$35')).toHaveClass('bg-money-down-fill');
       expect(within(phoneCard('Cuts')).getByText('$0')).toHaveClass('bg-money-even-fill');
+    });
+  });
+
+  describe('gliding', () => {
+    interface RefetchingProps {
+      first: Rankings;
+      second: Rankings;
+      /** Unset, the second rankings are a refetch of the first's selection. */
+      secondSelectionKey?: string;
+      secondMyTeamName?: string;
+    }
+
+    interface Shown {
+      rankings: Rankings;
+      selectionKey: string;
+      myTeamName: string | null;
+    }
+
+    function Refetching({ first, second, secondSelectionKey = SELECTION_KEY, secondMyTeamName }: RefetchingProps): ReactNode {
+      const [current, setCurrent] = useState<Shown>({ rankings: first, selectionKey: SELECTION_KEY, myTeamName: null });
+      const showSecond = (): void =>
+        setCurrent({ rankings: second, selectionKey: secondSelectionKey, myTeamName: secondMyTeamName ?? null });
+      return (
+        <>
+          <button type="button" onClick={showSecond}>
+            Refetch
+          </button>
+          <RankingsView selectionKey={current.selectionKey} myTeamName={current.myTeamName} rankings={current.rankings} />
+        </>
+      );
+    }
+
+    async function refetch(props: RefetchingProps): Promise<void> {
+      stackByTreeIndex();
+      renderWithProviders(<Refetching {...props} />, { ...NO_PROVIDERS, withMotionProvider: true });
+      await elapseFrames();
+      await userEvent.click(screen.getByRole('button', { name: 'Refetch' }));
+      await elapseFrames();
+    }
+
+    function teamRows(teamName: string): HTMLElement[] {
+      const tableRow = screen.getByRole('row', { name: new RegExp(teamName) });
+      return [tableRow, phoneCard(teamName)];
+    }
+
+    const standings = buildRankings();
+    const reordered = buildRankings({ teams: [...standings.teams].reverse() });
+
+    it('glides a team to its new place when a refetch reorders the standings', async () => {
+      await refetch({ first: standings, second: reordered });
+
+      expect(teamRows('Aces').map(isGliding)).toEqual([true, true]);
+    });
+
+    it('redraws the standings in place, without gliding, for a new selection', async () => {
+      await refetch({ first: standings, second: reordered, secondSelectionKey: 'another selection' });
+
+      expect(teamRows('Aces').map(isGliding)).toEqual([false, false]);
+    });
+
+    it('holds the standings still when only the card above them mounts', async () => {
+      await refetch({ first: standings, second: standings, secondMyTeamName: 'Birdies' });
+
+      expect(screen.getByRole('region', { name: 'Your team' })).toBeInTheDocument();
+      expect(teamRows('Aces').map(isGliding)).toEqual([false, false]);
     });
   });
 });

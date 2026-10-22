@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { skipToken, useQuery, type QueryKey, type UseQueryResult } from '@tanstack/react-query';
+import { hashKey, skipToken, useQuery, type QueryKey, type UseQueryResult } from '@tanstack/react-query';
 import { useLeagueSeason } from '@/features/leagues/LeagueSeasonContext';
 import { TAP_TARGET_CLASS } from './formControls';
 
@@ -24,6 +24,8 @@ interface LiveEligibleResponse {
 export interface LiveOverlayQuery<T> {
   query: UseQueryResult<T>;
   overlay: LiveOverlayState;
+  /** Stable across `query`'s refetches; new whenever the selection or the overlay changes. */
+  selectionKey: string;
 }
 
 /**
@@ -53,6 +55,7 @@ export function useLiveOverlayQuery<T extends LiveEligibleResponse>(
   return {
     query: effectiveLive ? overlaid : base,
     overlay: { eligible, liveChecked: live, toggleLive: setLive },
+    selectionKey: hashKey(queryKey(effectiveLive)),
   };
 }
 

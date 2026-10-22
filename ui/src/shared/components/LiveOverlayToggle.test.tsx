@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { focusManager } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { api } from '@/shared/api/client';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import { TAP_TARGET_CLASS } from './formControls';
@@ -52,9 +52,20 @@ interface SelectionReport {
 const fetchSelection = vi.fn<(live: boolean) => Promise<SelectionReport>>();
 
 function Probe(): ReactNode {
-  const { overlay } = useLiveOverlayQuery((live) => ['probe', live], fetchSelection);
-  return <LiveOverlayCheckbox id="live" state={overlay} />;
+  const [week, setWeek] = useState(1);
+  const { overlay, selectionKey } = useLiveOverlayQuery((live) => ['probe', week, live], fetchSelection);
+  return (
+    <>
+      <LiveOverlayCheckbox id="live" state={overlay} />
+      <button type="button" onClick={() => setWeek(week + 1)}>
+        Next week
+      </button>
+      <output aria-label="Selection key">{selectionKey}</output>
+    </>
+  );
 }
+
+const shownSelectionKey = (): string => screen.getByRole('status', { name: 'Selection key' }).textContent;
 
 const liveFetches = (): number => fetchSelection.mock.calls.filter(([live]) => live).length;
 
@@ -112,5 +123,41 @@ describe('useLiveOverlayQuery', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Live overlay' }));
     await vi.advanceTimersByTimeAsync(LIVE_REFRESH_INTERVAL_MS * 3);
     expect(liveFetches()).toBe(1);
+  });
+
+  describe('selectionKey', () => {
+    async function renderLive(): Promise<string> {
+      fetchSelection.mockResolvedValue({ liveEligible: true });
+      renderWithProviders(<Probe />);
+      await waitFor(() => expect(liveFetches()).toBe(1));
+      return shownSelectionKey();
+    }
+
+    it('keeps its key through a refetch', async () => {
+      const before = await renderLive();
+
+      await vi.advanceTimersByTimeAsync(LIVE_REFRESH_INTERVAL_MS);
+
+      expect(liveFetches()).toBe(2);
+      expect(shownSelectionKey()).toBe(before);
+    });
+
+    it('takes a new key when the overlay is switched off', async () => {
+      const before = await renderLive();
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+      await user.click(screen.getByRole('checkbox', { name: 'Live overlay' }));
+
+      expect(shownSelectionKey()).not.toBe(before);
+    });
+
+    it('takes a new key for a new selection', async () => {
+      const before = await renderLive();
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+      await user.click(screen.getByRole('button', { name: 'Next week' }));
+
+      expect(shownSelectionKey()).not.toBe(before);
+    });
   });
 });

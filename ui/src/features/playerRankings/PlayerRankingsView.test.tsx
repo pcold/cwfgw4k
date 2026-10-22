@@ -1,13 +1,17 @@
+import { useState, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PlayerRankingsRow } from '@/shared/api/types';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { elapseFrames, isGliding, stackByTreeIndex } from '@/shared/test/glide';
 import { nth } from '@/shared/test/nth';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { MONEY_FIGURE_CLASS } from '@/shared/components/MoneyCell';
 import PlayerRankingsView from './PlayerRankingsView';
+
+const SELECTION_KEY = 'selection';
 
 const NO_PROVIDERS = { withLeagueSeasonProvider: false };
 
@@ -48,13 +52,14 @@ function phoneDetailLine(name: string): HTMLElement {
 
 describe('PlayerRankingsView', () => {
   it('shows an empty state when no players qualify', () => {
-    renderWithProviders(<PlayerRankingsView myTeamName={null} players={[]} />, NO_PROVIDERS);
+    renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={[]} />, NO_PROVIDERS);
     expect(screen.getByText(/No players with a top 10 finish yet/i)).toBeInTheDocument();
   });
 
   it('renders a row per player with name, top 10s, total $, team, and round', () => {
     renderWithProviders(
       <PlayerRankingsView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         players={[
           r({ key: 'g:g-1', name: 'Scottie Scheffler', topTens: 3, totalEarnings: 50, teamName: 'Aces', draftRound: 1 }),
@@ -87,6 +92,7 @@ describe('PlayerRankingsView', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <PlayerRankingsView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         players={[r({ golferId: 'g-42', name: 'Clickable' })]}
         onGolferClick={onGolferClick}
@@ -100,6 +106,7 @@ describe('PlayerRankingsView', () => {
   it('gives each drafted player name the tap-target height', () => {
     renderWithProviders(
       <PlayerRankingsView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         players={[r({ golferId: 'g-42', name: 'Clickable' })]}
         onGolferClick={vi.fn()}
@@ -113,6 +120,7 @@ describe('PlayerRankingsView', () => {
   it('does not render undrafted players as buttons even when onGolferClick is provided', () => {
     renderWithProviders(
       <PlayerRankingsView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         players={[r({ key: 'u:Phil', golferId: null, name: 'P. Mickelson' })]}
         onGolferClick={vi.fn()}
@@ -124,7 +132,7 @@ describe('PlayerRankingsView', () => {
   });
 
   it('renders names as plain text when no onGolferClick is provided', () => {
-    renderWithProviders(<PlayerRankingsView myTeamName={null} players={[r({})]} />, NO_PROVIDERS);
+    renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={[r({})]} />, NO_PROVIDERS);
     expect(screen.queryByRole('button', { name: 'Scottie Scheffler' })).not.toBeInTheDocument();
     expect(within(playerTable()).getByText('Scottie Scheffler')).toBeInTheDocument();
   });
@@ -133,6 +141,7 @@ describe('PlayerRankingsView', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <PlayerRankingsView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         players={[
           r({ key: 'g:g-1', name: 'Scottie Scheffler', teamName: 'Aces' }),
@@ -156,6 +165,7 @@ describe('PlayerRankingsView', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <PlayerRankingsView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         players={[
           r({ key: 'g:g-1', name: 'Scottie Scheffler', teamName: 'Aces' }),
@@ -173,7 +183,10 @@ describe('PlayerRankingsView', () => {
   });
 
   it('omits the Undrafted option when no undrafted players are present', () => {
-    renderWithProviders(<PlayerRankingsView myTeamName={null} players={[r({ teamName: 'Aces' })]} />, NO_PROVIDERS);
+    renderWithProviders(
+      <PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={[r({ teamName: 'Aces' })]} />,
+      NO_PROVIDERS,
+    );
     expect(screen.queryByRole('option', { name: 'Undrafted' })).not.toBeInTheDocument();
   });
 
@@ -181,6 +194,7 @@ describe('PlayerRankingsView', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <PlayerRankingsView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         players={[r({ key: 'g:g-1', name: 'Scottie Scheffler', teamName: 'Aces' })]}
       />,
@@ -197,6 +211,7 @@ describe('PlayerRankingsView', () => {
   it('deduplicates and alphabetizes the team options', () => {
     renderWithProviders(
       <PlayerRankingsView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         players={[
           r({ key: 'g:1', teamName: 'Cuts' }),
@@ -219,6 +234,7 @@ describe('PlayerRankingsView', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <PlayerRankingsView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         players={[
           r({ key: 'g:1', name: 'R1 Guy', teamName: 'Aces', draftRound: 1 }),
@@ -240,6 +256,7 @@ describe('PlayerRankingsView', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <PlayerRankingsView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         players={[
           r({ key: 'g:1', name: 'Drafted', teamName: 'Aces', draftRound: 2 }),
@@ -259,6 +276,7 @@ describe('PlayerRankingsView', () => {
   it('sorts round options ascending and dedupes', () => {
     renderWithProviders(
       <PlayerRankingsView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         players={[
           r({ key: 'g:1', draftRound: 7 }),
@@ -281,6 +299,7 @@ describe('PlayerRankingsView', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <PlayerRankingsView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         players={[
           r({ key: 'g:1', name: 'Aces R1', teamName: 'Aces', draftRound: 1 }),
@@ -302,6 +321,7 @@ describe('PlayerRankingsView', () => {
   it('tones each season Earnings total by the sign it prints, a zero gray', () => {
     renderWithProviders(
       <PlayerRankingsView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         players={[
           r({ key: 'g:g-1', name: 'Earner', totalEarnings: 50 }),
@@ -315,7 +335,7 @@ describe('PlayerRankingsView', () => {
   });
 
   it('sets every column head in the shared column-header type', () => {
-    renderWithProviders(<PlayerRankingsView myTeamName={null} players={[r({})]} />, NO_PROVIDERS);
+    renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={[r({})]} />, NO_PROVIDERS);
     expectSharedColumnHeads(1);
   });
 
@@ -333,7 +353,7 @@ describe('PlayerRankingsView', () => {
     }
 
     it("tags the team's name beside each golfer it drafted, on the phone's detail line and in the table", () => {
-      renderWithProviders(<PlayerRankingsView myTeamName=" birdies " players={drafted} />, NO_PROVIDERS);
+      renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName=" birdies " players={drafted} />, NO_PROVIDERS);
 
       expect(within(phoneDetailLine('Rory McIlroy')).getByText('your team')).toBeInTheDocument();
       expect(within(tableRow('Rory McIlroy')).getByText('your team')).toBeInTheDocument();
@@ -341,14 +361,14 @@ describe('PlayerRankingsView', () => {
     });
 
     it('fills and rings nothing, since each card is a golfer and not the team', () => {
-      renderWithProviders(<PlayerRankingsView myTeamName="Birdies" players={drafted} />, NO_PROVIDERS);
+      renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName="Birdies" players={drafted} />, NO_PROVIDERS);
 
       expect(phoneCard('Rory McIlroy')).toHaveClass('bg-surface-card');
       expect(phoneCard('Rory McIlroy')).not.toHaveClass('bg-my-team');
     });
 
     it('tags nothing when no team is chosen', () => {
-      renderWithProviders(<PlayerRankingsView myTeamName={null} players={drafted} />, NO_PROVIDERS);
+      renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={drafted} />, NO_PROVIDERS);
 
       expect(screen.queryByText('your team')).toBeNull();
     });
@@ -362,7 +382,7 @@ describe('PlayerRankingsView', () => {
     ];
 
     it('shows the cards and their filters below sm and the table from sm up', () => {
-      renderWithProviders(<PlayerRankingsView myTeamName={null} players={roster} />, NO_PROVIDERS);
+      renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={roster} />, NO_PROVIDERS);
 
       const phoneLayout = phoneCards().parentElement;
       expect(phoneLayout).toHaveClass('sm:hidden');
@@ -371,7 +391,7 @@ describe('PlayerRankingsView', () => {
     });
 
     it('sets a card per player in the order the server sent them', () => {
-      renderWithProviders(<PlayerRankingsView myTeamName={null} players={roster} />, NO_PROVIDERS);
+      renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={roster} />, NO_PROVIDERS);
 
       const cards = within(phoneCards())
         .getAllByRole('listitem')
@@ -383,7 +403,7 @@ describe('PlayerRankingsView', () => {
     });
 
     it('boxes the first position in gold and every other in navy', () => {
-      renderWithProviders(<PlayerRankingsView myTeamName={null} players={roster} />, NO_PROVIDERS);
+      renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={roster} />, NO_PROVIDERS);
 
       const boxes = within(phoneCards())
         .getAllByRole('listitem')
@@ -398,7 +418,10 @@ describe('PlayerRankingsView', () => {
     it("keeps the golfer's name as the server spells it, a tap-target button", async () => {
       const onGolferClick = vi.fn();
       const user = userEvent.setup();
-      renderWithProviders(<PlayerRankingsView myTeamName={null} players={roster} onGolferClick={onGolferClick} />, NO_PROVIDERS);
+      renderWithProviders(
+        <PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={roster} onGolferClick={onGolferClick} />,
+        NO_PROVIDERS,
+      );
 
       const name = within(phoneCards()).getByRole('button', { name: 'Scottie Scheffler' });
       expect(name).toHaveClass(TAP_TARGET_CLASS, 'truncate');
@@ -410,27 +433,31 @@ describe('PlayerRankingsView', () => {
     });
 
     it('prints the team, the draft round and the top-10 count under the name', () => {
-      renderWithProviders(<PlayerRankingsView myTeamName={null} players={roster} />, NO_PROVIDERS);
+      renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={roster} />, NO_PROVIDERS);
 
       expect(phoneDetailLine('Scottie Scheffler')).toHaveTextContent(/^Aces · Rd 1 · 4 top 10s$/);
       expect(within(phoneDetailLine('Scottie Scheffler')).getByText('Aces')).toHaveClass('uppercase');
     });
 
     it('counts a single top 10 in the singular', () => {
-      renderWithProviders(<PlayerRankingsView myTeamName={null} players={roster} />, NO_PROVIDERS);
+      renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={roster} />, NO_PROVIDERS);
 
       expect(phoneDetailLine('Rory McIlroy')).toHaveTextContent(/^Birdies · Rd 3 · 1 top 10$/);
     });
 
     it('names an undrafted player undrafted, with no round', () => {
-      renderWithProviders(<PlayerRankingsView myTeamName={null} players={roster} />, NO_PROVIDERS);
+      renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={roster} />, NO_PROVIDERS);
 
       expect(phoneDetailLine('P. Mickelson')).toHaveTextContent(/^Undrafted · 1 top 10$/);
     });
 
     it('leaves the round out for a drafted player the server sends no round for', () => {
       renderWithProviders(
-        <PlayerRankingsView myTeamName={null} players={[r({ name: 'Roundless', topTens: 2, teamName: 'Aces', draftRound: null })]} />,
+        <PlayerRankingsView
+          selectionKey={SELECTION_KEY}
+          myTeamName={null}
+          players={[r({ name: 'Roundless', topTens: 2, teamName: 'Aces', draftRound: null })]}
+        />,
         NO_PROVIDERS,
       );
 
@@ -438,7 +465,7 @@ describe('PlayerRankingsView', () => {
     });
 
     it('sets the total as a plain figure toned by its sign, with no fill', () => {
-      renderWithProviders(<PlayerRankingsView myTeamName={null} players={roster} />, NO_PROVIDERS);
+      renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={roster} />, NO_PROVIDERS);
 
       const earner = within(phoneCard('Scottie Scheffler')).getByText('+$50.00');
       expect(earner).toHaveClass(...MONEY_FIGURE_CLASS.split(' '), 'text-semantic-success');
@@ -447,7 +474,7 @@ describe('PlayerRankingsView', () => {
     });
 
     it('offers every team and round from its phone selects, all of them first, each round named a round', () => {
-      renderWithProviders(<PlayerRankingsView myTeamName={null} players={roster} />, NO_PROVIDERS);
+      renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={roster} />, NO_PROVIDERS);
 
       const team = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Team' });
       const round = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Draft round' });
@@ -459,7 +486,7 @@ describe('PlayerRankingsView', () => {
 
     it('filters both the cards and the table by the phone team select', async () => {
       const user = userEvent.setup();
-      renderWithProviders(<PlayerRankingsView myTeamName={null} players={roster} />, NO_PROVIDERS);
+      renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={roster} />, NO_PROVIDERS);
 
       await user.selectOptions(screen.getByRole('combobox', { name: 'Team' }), 'Birdies');
 
@@ -472,7 +499,7 @@ describe('PlayerRankingsView', () => {
 
     it('filters both the cards and the table by the phone round select', async () => {
       const user = userEvent.setup();
-      renderWithProviders(<PlayerRankingsView myTeamName={null} players={roster} />, NO_PROVIDERS);
+      renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={roster} />, NO_PROVIDERS);
 
       await user.selectOptions(screen.getByRole('combobox', { name: 'Draft round' }), 'Undrafted');
 
@@ -484,7 +511,7 @@ describe('PlayerRankingsView', () => {
 
     it('says no player matches in place of the cards when the filters leave none', async () => {
       const user = userEvent.setup();
-      renderWithProviders(<PlayerRankingsView myTeamName={null} players={roster} />, NO_PROVIDERS);
+      renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={roster} />, NO_PROVIDERS);
 
       await user.selectOptions(screen.getByRole('combobox', { name: 'Team' }), 'Aces');
       await user.selectOptions(screen.getByRole('combobox', { name: 'Draft round' }), 'Rd 3');
@@ -495,6 +522,80 @@ describe('PlayerRankingsView', () => {
         .filter((message) => !playerTable().contains(message));
       expect(phoneMessage).toHaveLength(1);
       expect(nth(phoneMessage, 0).parentElement).toHaveClass('sm:hidden');
+    });
+  });
+
+  describe('gliding', () => {
+    const scottie = r({ key: 'g:g-1', name: 'Scottie Scheffler', teamName: 'Aces', draftRound: 1 });
+    const rory = r({ key: 'g:g-2', golferId: 'g-2', name: 'Rory McIlroy', teamName: 'Birdies', draftRound: 2 });
+    const phil = r({ key: 'u:Phil', golferId: null, name: 'P. Mickelson', teamName: null, draftRound: null });
+
+    interface RefetchingProps {
+      first: readonly PlayerRankingsRow[];
+      second: readonly PlayerRankingsRow[];
+      /** Unset, the second players are a refetch of the first's selection. */
+      secondSelectionKey?: string;
+    }
+
+    function Refetching({ first, second, secondSelectionKey = SELECTION_KEY }: RefetchingProps): ReactNode {
+      const [current, setCurrent] = useState({ players: first, selectionKey: SELECTION_KEY });
+      return (
+        <>
+          <button type="button" onClick={() => setCurrent({ players: second, selectionKey: secondSelectionKey })}>
+            Refetch
+          </button>
+          <PlayerRankingsView selectionKey={current.selectionKey} myTeamName={null} players={current.players} />
+        </>
+      );
+    }
+
+    async function renderRefetching(props: RefetchingProps): Promise<void> {
+      stackByTreeIndex();
+      renderWithProviders(<Refetching {...props} />, { ...NO_PROVIDERS, withMotionProvider: true });
+      await elapseFrames();
+    }
+
+    async function refetch(): Promise<void> {
+      await userEvent.click(screen.getByRole('button', { name: 'Refetch' }));
+      await elapseFrames();
+    }
+
+    function playerRows(name: string): HTMLElement[] {
+      const tableRow = within(playerTable()).getByText(name).closest<HTMLElement>('tr');
+      if (!tableRow) throw new Error(`no row for ${name}`);
+      return [tableRow, phoneCard(name)];
+    }
+
+    it('glides a player to a new rank when a refetch reorders the players', async () => {
+      await renderRefetching({ first: [scottie, rory], second: [rory, scottie] });
+      await refetch();
+
+      expect(playerRows('Scottie Scheffler').map(isGliding)).toEqual([true, true]);
+    });
+
+    it('redraws the players in place, without gliding, for a new selection', async () => {
+      await renderRefetching({ first: [scottie, rory], second: [rory, scottie], secondSelectionKey: 'another selection' });
+      await refetch();
+
+      expect(playerRows('Scottie Scheffler').map(isGliding)).toEqual([false, false]);
+    });
+
+    it('redraws the players, without gliding, when the team filter changes', async () => {
+      await renderRefetching({ first: [scottie, rory, phil], second: [scottie, rory, phil] });
+
+      await userEvent.selectOptions(screen.getByLabelText(/Filter by team/i), 'Birdies');
+      await elapseFrames();
+
+      expect(playerRows('Rory McIlroy').map(isGliding)).toEqual([false, false]);
+    });
+
+    it('redraws the players, without gliding, when the draft round filter changes', async () => {
+      await renderRefetching({ first: [scottie, rory, phil], second: [scottie, rory, phil] });
+
+      await userEvent.selectOptions(screen.getByLabelText(/Filter by draft round/i), '2');
+      await elapseFrames();
+
+      expect(playerRows('Rory McIlroy').map(isGliding)).toEqual([false, false]);
     });
   });
 });

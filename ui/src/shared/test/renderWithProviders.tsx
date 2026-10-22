@@ -6,6 +6,7 @@ import { LeagueSeasonProvider } from '@/features/leagues/LeagueSeasonContext';
 import { AuthProvider } from '@/features/auth/AuthContext';
 import { MyTeamProvider } from '@/features/myTeam/MyTeamContext';
 import { HeaderSlotProvider } from '@/shared/components/HeaderSlot';
+import MotionProvider from '@/shared/components/MotionProvider';
 
 interface Options {
   readonly initialPath?: string;
@@ -19,6 +20,8 @@ interface Options {
   readonly withHeaderSlotProvider?: boolean;
   /** The nav's slot a page portals into; null is the app before the nav mounts it. */
   readonly headerSlot?: HTMLElement | null;
+  /** Off by default: without it a `m.*` element renders plain, and only a test of the motion itself needs more. */
+  readonly withMotionProvider?: boolean;
 }
 
 export function renderWithProviders(ui: ReactElement, options: Options = {}): RenderResult {
@@ -29,6 +32,7 @@ export function renderWithProviders(ui: ReactElement, options: Options = {}): Re
     withMyTeamProvider = false,
     withHeaderSlotProvider = true,
     headerSlot = null,
+    withMotionProvider = false,
   } = options;
 
   const queryClient = new QueryClient({
@@ -37,7 +41,7 @@ export function renderWithProviders(ui: ReactElement, options: Options = {}): Re
     },
   });
 
-  let tree: ReactNode = ui;
+  let tree: ReactNode = withMotionProvider ? <MotionProvider>{ui}</MotionProvider> : ui;
   if (withHeaderSlotProvider) tree = <HeaderSlotProvider slot={headerSlot}>{tree}</HeaderSlotProvider>;
   if (withMyTeamProvider) tree = <MyTeamProvider>{tree}</MyTeamProvider>;
   if (withLeagueSeasonProvider) tree = <LeagueSeasonProvider>{tree}</LeagueSeasonProvider>;

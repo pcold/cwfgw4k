@@ -1,9 +1,11 @@
 import { useState, type ReactNode } from 'react';
+import { m } from 'motion/react';
 import { formatDollarsAndCents, moneyToneClass } from '@/shared/util/money';
 import ColumnHeaderFilter from '@/shared/components/ColumnHeaderFilter';
 import type { PlayerRankingsRow } from '@/shared/api/types';
 import { TAP_TARGET_CLASS, type SelectOption } from '@/shared/components/formControls';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
+import { glideAt } from '@/shared/components/glide';
 import ListCard, { CARD_LIST_CLASS } from '@/shared/components/ListCard';
 import { MONEY_FIGURE_CLASS } from '@/shared/components/MoneyCell';
 import PhoneFilter from '@/shared/components/PhoneFilter';
@@ -15,6 +17,8 @@ interface Props {
   /** @see isMyTeam */
   readonly myTeamName: string | null;
   readonly onGolferClick?: (golferId: string) => void;
+  /** @see LiveOverlayQuery.selectionKey */
+  readonly selectionKey: string;
 }
 
 const ALL = '';
@@ -25,6 +29,8 @@ interface PlayerListProps {
   readonly players: readonly PlayerRankingsRow[];
   readonly myTeamName: string | null;
   readonly onGolferClick: ((golferId: string) => void) | undefined;
+  /** The selection's key and the filters', so a filter change remounts the rows rather than gliding them. */
+  readonly listKey: string;
 }
 
 /** The phone select shows no label, so a picked round has to name itself. */
@@ -82,10 +88,10 @@ function PlayerDetail({ player, myTeamName }: PlayerDetailProps): ReactNode {
   );
 }
 
-function PlayerCards({ players, myTeamName, onGolferClick }: PlayerListProps): ReactNode {
+function PlayerCards({ players, myTeamName, onGolferClick, listKey }: PlayerListProps): ReactNode {
   if (players.length === 0) return <p className="text-ink-soft italic">{FILTERED_EMPTY}</p>;
   return (
-    <ol aria-label="Players" className={CARD_LIST_CLASS}>
+    <ol key={listKey} aria-label="Players" className={CARD_LIST_CLASS}>
       {players.map((player, index) => {
         const totalEarnings = formatDollarsAndCents(player.totalEarnings);
         return (
@@ -100,6 +106,7 @@ function PlayerCards({ players, myTeamName, onGolferClick }: PlayerListProps): R
                 {totalEarnings}
               </div>
             }
+            glideIndex={index}
           />
         );
       })}
@@ -107,9 +114,9 @@ function PlayerCards({ players, myTeamName, onGolferClick }: PlayerListProps): R
   );
 }
 
-function PlayerRows({ players, myTeamName, onGolferClick }: PlayerListProps): ReactNode {
+function PlayerRows({ players, myTeamName, onGolferClick, listKey }: PlayerListProps): ReactNode {
   return (
-    <tbody className="divide-y divide-hairline-soft">
+    <tbody key={listKey} className="divide-y divide-hairline-soft">
       {players.length === 0 ? (
         <tr>
           <td colSpan={6} className="px-3 py-6 text-center text-ink-soft italic">
@@ -122,7 +129,7 @@ function PlayerRows({ players, myTeamName, onGolferClick }: PlayerListProps): Re
           const clickable = golferId && onGolferClick ? { golferId, onGolferClick } : null;
           const totalEarnings = formatDollarsAndCents(player.totalEarnings);
           return (
-            <tr key={player.key} className="hover:bg-surface-card/60">
+            <m.tr key={player.key} {...glideAt(index)} className="hover:bg-surface-card/60">
               <td className="px-3 py-2 text-ink-soft tabular-nums">{index + 1}</td>
               <td className="px-3 py-2 font-medium text-ink">
                 {clickable ? (
@@ -151,7 +158,7 @@ function PlayerRows({ players, myTeamName, onGolferClick }: PlayerListProps): Re
               <td className="px-3 py-2 text-right tabular-nums text-ink-muted">
                 {player.draftRound ?? '—'}
               </td>
-            </tr>
+            </m.tr>
           );
         })
       )}
@@ -205,13 +212,14 @@ function filterPlayers(
   return players.filter((p) => matchesTeam(p) && matchesRound(p));
 }
 
-function PlayerRankingsView({ players, myTeamName, onGolferClick }: Props): ReactNode {
+function PlayerRankingsView({ players, myTeamName, onGolferClick, selectionKey }: Props): ReactNode {
   const [teamFilter, setTeamFilter] = useState<string>(ALL);
   const [roundFilter, setRoundFilter] = useState<string>(ALL);
 
   const teamChoices = listTeamChoices(players);
   const roundChoices = listRoundChoices(players);
   const filtered = filterPlayers(players, teamFilter, roundFilter);
+  const listKey = `${selectionKey}|${teamFilter}|${roundFilter}`;
 
   if (players.length === 0) {
     return <p className="text-ink-muted">No players with a top 10 finish yet.</p>;
@@ -234,7 +242,7 @@ function PlayerRankingsView({ players, myTeamName, onGolferClick }: Props): Reac
             onChange={setRoundFilter}
           />
         </div>
-        <PlayerCards players={filtered} myTeamName={myTeamName} onGolferClick={onGolferClick} />
+        <PlayerCards players={filtered} myTeamName={myTeamName} onGolferClick={onGolferClick} listKey={listKey} />
       </div>
       <div className="hidden sm:block overflow-x-auto -mx-3 sm:mx-0">
         <table className="min-w-full text-sm">
@@ -262,7 +270,7 @@ function PlayerRankingsView({ players, myTeamName, onGolferClick }: Props): Reac
               </th>
             </tr>
           </thead>
-          <PlayerRows players={filtered} myTeamName={myTeamName} onGolferClick={onGolferClick} />
+          <PlayerRows players={filtered} myTeamName={myTeamName} onGolferClick={onGolferClick} listKey={listKey} />
         </table>
       </div>
     </section>

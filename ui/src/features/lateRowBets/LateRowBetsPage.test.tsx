@@ -171,17 +171,19 @@ describe('LateRowBetsPage', () => {
     tournamentsMock.mockResolvedValue([{ ...tournament, status: 'in_progress' }]);
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-1' });
     seasonReportMock.mockResolvedValue(buildReport());
-    tournamentReportMock.mockResolvedValue(buildReport());
+    tournamentReportMock.mockResolvedValue({ ...buildReport(), liveEligible: true });
 
     const user = userEvent.setup();
     renderWithProviders(<LateRowBetsPage />);
 
     await desktopBets();
-    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
+    await waitFor(() => expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true));
+    expect(screen.getByRole('checkbox', { name: /Live overlay/i })).toBeChecked();
 
     await user.selectOptions(screen.getByLabelText(/Through/i), '');
 
     await waitFor(() => expect(seasonReportMock).toHaveBeenCalledWith('sn-1'));
+    expect(screen.queryByRole('checkbox', { name: /Live overlay/i })).not.toBeInTheDocument();
   });
 
   it('marks the bets LIVE in the title row through a tournament the server overlaid', async () => {
@@ -194,6 +196,7 @@ describe('LateRowBetsPage', () => {
       ...overlaid,
       scope: 'tournament',
       live: true,
+      liveEligible: true,
       tournament: { ...overlaid.tournament, status: 'in_progress' },
     });
 
@@ -211,13 +214,13 @@ describe('LateRowBetsPage', () => {
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([first, second]);
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-2' });
-    tournamentReportMock.mockResolvedValue(buildReport());
+    tournamentReportMock.mockResolvedValue({ ...buildReport(), liveEligible: true });
 
     renderWithProviders(<LateRowBetsPage />);
 
     await desktopBets();
     expect(screen.getByLabelText<HTMLSelectElement>(/Through/i).value).toBe('tn-2');
-    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-2', true);
+    await waitFor(() => expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-2', true));
     expect(tournamentReportMock).not.toHaveBeenCalledWith('sn-1', 'tn-1', expect.anything());
     expect(seasonReportMock).not.toHaveBeenCalled();
     expect(pageTitleRow(await screen.findByRole('button', { name: 'Wk 9 · Sample Open' }))).toContainElement(
@@ -236,7 +239,9 @@ describe('LateRowBetsPage', () => {
       status: 'in_progress',
     };
     seasonReportMock.mockResolvedValue(buildReport());
-    tournamentReportMock.mockResolvedValue(buildReport());
+    tournamentReportMock.mockImplementation((_s, id) =>
+      Promise.resolve({ ...buildReport(), liveEligible: id === 'tn-fall' }),
+    );
 
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season, fall]);
@@ -255,7 +260,7 @@ describe('LateRowBetsPage', () => {
     renderWithProviders(<LateRowBetsPage />);
 
     await user.selectOptions(await screen.findByLabelText(/Through/i), spring.id);
-    await waitFor(() => expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true));
+    await waitFor(() => expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', false));
     await user.selectOptions(screen.getByLabelText(/^Season$/), 'sn-2');
 
     await waitFor(() => expect(tournamentReportMock).toHaveBeenCalledWith('sn-2', 'tn-fall', true));
@@ -418,7 +423,7 @@ describe('LateRowBetsPage', () => {
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-1');
 
-    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', true);
+    expect(tournamentReportMock).toHaveBeenCalledWith('sn-1', 'tn-1', false);
   });
 
   it('shows an empty state when there are no leagues', async () => {

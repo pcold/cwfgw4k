@@ -53,7 +53,7 @@ function ScoreboardPage(): ReactNode {
     pickInSeason(userTournamentId, tournaments) ??
     pickInSeason(defaultScoreboardSelection(currentQuery.data), tournaments);
 
-  const { query: reportQuery, overlay: liveOverlay } = useLiveOverlayQuery(
+  const { query: reportQuery, overlay: liveOverlay, selectionKey } = useLiveOverlayQuery(
     (live) => queryKeys.tournamentReport.detail(seasonId, tournamentId, live),
     seasonId === null || tournamentId === null
       ? null
@@ -150,6 +150,7 @@ function ScoreboardPage(): ReactNode {
                     myTeamName={myTeamName}
                     finalizeSlot={buildFinalizeSlot(report)}
                     onGolferClick={setHistoryGolferId}
+                    selectionKey={selectionKey}
                   />
                 )}
               </QueryState>

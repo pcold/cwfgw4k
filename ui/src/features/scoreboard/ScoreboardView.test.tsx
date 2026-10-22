@@ -8,7 +8,10 @@ import { makeLeaderboardEntry, makeWonLostTotals } from '@/shared/test/fixtures'
 import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
+import { elapseFrames, isGliding, stackByTreeIndex } from '@/shared/test/glide';
 import ScoreboardView from './ScoreboardView';
+
+const SELECTION_KEY = 'selection';
 
 function row(overrides: Partial<ReportCell> = {}): ReportCell {
   return {
@@ -178,30 +181,52 @@ function phoneTeamFilter(): HTMLElement {
 interface RefetchingProps {
   first: WeeklyReport;
   second: WeeklyReport;
+  /** Unset, the second report is a refetch of the first's selection. */
+  secondSelectionKey?: string;
 }
 
 /** The leaderboard's filter outlives a refetch, so a team it names can drop out of the rows. */
-function Refetching({ first, second }: RefetchingProps): ReactNode {
-  const [current, setCurrent] = useState(first);
+function Refetching({ first, second, secondSelectionKey = SELECTION_KEY }: RefetchingProps): ReactNode {
+  const [current, setCurrent] = useState({ report: first, selectionKey: SELECTION_KEY });
   return (
     <>
-      <button type="button" onClick={() => setCurrent(second)}>
+      <button type="button" onClick={() => setCurrent({ report: second, selectionKey: secondSelectionKey })}>
         Refetch
       </button>
-      <ScoreboardView myTeamName={null} report={current} />
+      <ScoreboardView selectionKey={current.selectionKey} myTeamName={null} report={current.report} />
     </>
   );
 }
 
+const WITH_MOTION = { ...NO_PROVIDERS, withMotionProvider: true };
+
+async function renderRefetching(props: RefetchingProps): Promise<void> {
+  stackByTreeIndex();
+  renderWithProviders(<Refetching {...props} />, WITH_MOTION);
+  await elapseFrames();
+}
+
+async function refetch(): Promise<void> {
+  await userEvent.click(screen.getByRole('button', { name: 'Refetch' }));
+  await elapseFrames();
+}
+
+function closest(element: HTMLElement, selector: string): HTMLElement {
+  const match = element.closest<HTMLElement>(selector);
+  if (!match) throw new Error(`no ${selector} around ${element.textContent}`);
+  return match;
+}
+
 describe('ScoreboardView', () => {
   it('shows the "Results finalized" banner for completed tournaments', () => {
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report()} />, NO_PROVIDERS);
+    renderWithProviders(<ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report()} />, NO_PROVIDERS);
     expect(screen.getByText(/Results finalized/i)).toBeInTheDocument();
   });
 
   it('shows the in-progress banner for non-completed tournaments', () => {
     renderWithProviders(
       <ScoreboardView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         report={report({
           tournament: { ...report().tournament, status: 'in_progress' },
@@ -215,6 +240,7 @@ describe('ScoreboardView', () => {
   it('says play has not started in a neutral banner, still holding the slot, while awaiting tee-off', () => {
     renderWithProviders(
       <ScoreboardView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         report={report({
           tournament: { ...report().tournament, status: 'in_progress' },
@@ -233,6 +259,7 @@ describe('ScoreboardView', () => {
   it('renders a finalize slot inside the in-progress banner when provided', () => {
     renderWithProviders(
       <ScoreboardView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         report={report({
           tournament: { ...report().tournament, status: 'in_progress' },
@@ -247,6 +274,7 @@ describe('ScoreboardView', () => {
   it('renders the slot it is given on a finalized tournament, leaving what it holds to the page', () => {
     renderWithProviders(
       <ScoreboardView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         report={report()}
         finalizeSlot={<button type="button">Manage player links</button>}
@@ -260,6 +288,7 @@ describe('ScoreboardView', () => {
   it('numbers the team rows in the server\'s weekly standings, even against their weekly totals', () => {
     renderWithProviders(
       <ScoreboardView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         report={report({
           teams: [
@@ -282,7 +311,10 @@ describe('ScoreboardView', () => {
   });
 
   it('renders the leaderboard the server sent, rostered and undrafted alike', () => {
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger, phil] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [tiger, phil] })} />,
+      NO_PROVIDERS,
+    );
     expect(screen.getByRole('heading', { name: /Leaderboard/i })).toBeInTheDocument();
     const leaderboard = leaderboardTable();
     const rows = within(leaderboard).getAllByRole('row').slice(1);
@@ -293,7 +325,10 @@ describe('ScoreboardView', () => {
   });
 
   it('keeps the server\'s leaderboard order rather than sorting by position', () => {
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [phil, tiger] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [phil, tiger] })} />,
+      NO_PROVIDERS,
+    );
     const leaderboard = leaderboardTable();
     const rows = within(leaderboard).getAllByRole('row').slice(1);
     expect(rows.map((r) => within(r).getAllByRole('cell')[1]?.textContent)).toEqual(['Phil', 'Tiger']);
@@ -301,7 +336,10 @@ describe('ScoreboardView', () => {
 
   it('prints a dash for the position and score of a slot yet to tee off', () => {
     const lateWave = makeLeaderboardEntry({ position: null, scoreToPar: null });
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [lateWave] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [lateWave] })} />,
+      NO_PROVIDERS,
+    );
     const leaderboard = leaderboardTable();
     const cells = within(nth(within(leaderboard).getAllByRole('row'), 1)).getAllByRole('cell');
     expect([nth(cells, 0), nth(cells, 3)].map((c) => c.textContent)).toEqual(['—', '—']);
@@ -309,7 +347,10 @@ describe('ScoreboardView', () => {
 
   it('prints round scores and the stroke total, and a dash for a round not yet played', () => {
     const leader = makeLeaderboardEntry({ scoreToPar: null, roundScores: [64, 68], totalStrokes: 132 });
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [leader] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [leader] })} />,
+      NO_PROVIDERS,
+    );
     const leaderboard = leaderboardTable();
     const cells = within(nth(within(leaderboard).getAllByRole('row'), 1)).getAllByRole('cell');
     expect(cells.slice(3).map((c) => c.textContent)).toEqual(['—', '64', '68', '—', '—', '132']);
@@ -318,6 +359,7 @@ describe('ScoreboardView', () => {
   it('shows the won, lost and net the server totalled, not a sum of the team rows', () => {
     renderWithProviders(
       <ScoreboardView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         report={report({
           teams: [team({ weeklyTotal: 25 })],
@@ -336,6 +378,7 @@ describe('ScoreboardView', () => {
     const user = userEvent.setup();
     renderWithProviders(
       <ScoreboardView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         report={report({
           teams: [
@@ -356,6 +399,7 @@ describe('ScoreboardView', () => {
   it('gives each golfer name the tap-target height, however many share the cell', () => {
     renderWithProviders(
       <ScoreboardView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         report={report({
           teams: [
@@ -379,6 +423,7 @@ describe('ScoreboardView', () => {
   it('renders golfer names as plain text when no onGolferClick is provided', () => {
     renderWithProviders(
       <ScoreboardView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         report={report({
           teams: [
@@ -395,14 +440,20 @@ describe('ScoreboardView', () => {
   });
 
   it('hides the leaderboard section when the server sent no rows, whatever the cells hold', () => {
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [] })} />,
+      NO_PROVIDERS,
+    );
     expect(screen.queryByRole('heading', { name: /Leaderboard/i })).not.toBeInTheDocument();
     expect(screen.getByRole('table').closest('.grid')).toBeNull();
   });
 
   it('filters the leaderboard to rostered golfers on the selected team', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger, rory, phil] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [tiger, rory, phil] })} />,
+      NO_PROVIDERS,
+    );
 
     await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'Aces');
 
@@ -414,7 +465,10 @@ describe('ScoreboardView', () => {
 
   it('offers Undrafted on the leaderboard filter when undrafted golfers are present', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger, phil] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [tiger, phil] })} />,
+      NO_PROVIDERS,
+    );
 
     await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'Undrafted');
 
@@ -425,7 +479,10 @@ describe('ScoreboardView', () => {
   });
 
   it('offers no Undrafted option when every leaderboard player is rostered', () => {
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger, rory] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [tiger, rory] })} />,
+      NO_PROVIDERS,
+    );
     const options = within(screen.getByLabelText(/Filter leaderboard by team/i)).getAllByRole('option');
     expect(options.map((o) => o.textContent)).toEqual(['Team', 'Aces', 'Birdies']);
   });
@@ -433,6 +490,7 @@ describe('ScoreboardView', () => {
   it('omits the T prefix on a solo position in the golfer line', () => {
     renderWithProviders(
       <ScoreboardView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         report={report({
           teams: [
@@ -460,6 +518,7 @@ describe('ScoreboardView', () => {
   it('prints a tied golfer\'s T, a split one\'s share, and a dot between golfers in the golfer line', () => {
     renderWithProviders(
       <ScoreboardView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         report={report({
           teams: [
@@ -498,7 +557,10 @@ describe('ScoreboardView', () => {
   });
 
   it('sets the golfer line in the team cell, under the team name', () => {
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report()} onGolferClick={vi.fn()} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report()} onGolferClick={vi.fn()} />,
+      NO_PROVIDERS,
+    );
 
     const name = within(teamTable()).getByText('Aces');
     expect(name).toHaveClass('font-display', 'font-bold', 'text-lg', 'uppercase', 'text-ink');
@@ -507,7 +569,10 @@ describe('ScoreboardView', () => {
   });
 
   it('gives a team no golfer line when no golfer of its was paid', () => {
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ teams: [team({ cells: [] })] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ teams: [team({ cells: [] })] })} />,
+      NO_PROVIDERS,
+    );
 
     const cell = teamCell('Aces');
     expect(cell.children).toHaveLength(1);
@@ -516,7 +581,10 @@ describe('ScoreboardView', () => {
 
   it('shows the whole leaderboard again when the filter is set back to Team', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger, rory] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [tiger, rory] })} />,
+      NO_PROVIDERS,
+    );
 
     const select = screen.getByLabelText(/Filter leaderboard by team/i);
     await user.selectOptions(select, 'Aces');
@@ -527,7 +595,10 @@ describe('ScoreboardView', () => {
   });
 
   it('renders a pair as one row, its names slash-joined and a chip per partner in player order', () => {
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [mcIlroyAndLowry] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [mcIlroyAndLowry] })} />,
+      NO_PROVIDERS,
+    );
 
     const leaderboard = leaderboardTable();
     const rows = within(leaderboard).getAllByRole('row').slice(1);
@@ -537,7 +608,10 @@ describe('ScoreboardView', () => {
   });
 
   it('outlines the Undrafted chip and fills a team chip', () => {
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [mcIlroyAndLowry] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [mcIlroyAndLowry] })} />,
+      NO_PROVIDERS,
+    );
 
     const [undrafted, payray] = teamChips(nth(within(leaderboardTable()).getAllByRole('row'), 1));
     expect(undrafted).toHaveClass('border-hairline-strong', 'text-ink-muted');
@@ -546,7 +620,10 @@ describe('ScoreboardView', () => {
 
   it('gives a golfer split across teams a chip for every team', () => {
     const rahm = makeLeaderboardEntry({ players: [{ name: 'Rahm', teamNames: ['Aces', 'Birdies'] }] });
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [rahm] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [rahm] })} />,
+      NO_PROVIDERS,
+    );
 
     const rahmRow = screen.getByRole('row', { name: /Rahm/ });
     expect(teamChips(rahmRow).map((chip) => chip.textContent)).toEqual(['Aces', 'Birdies']);
@@ -554,7 +631,10 @@ describe('ScoreboardView', () => {
 
   it('filter by a single team name matches pair rows where that team rostered one partner', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [mcIlroyAndLowry, phil] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [mcIlroyAndLowry, phil] })} />,
+      NO_PROVIDERS,
+    );
 
     await user.selectOptions(screen.getByLabelText(/Filter leaderboard by team/i), 'PAYRAY');
     const leaderboard = leaderboardTable();
@@ -564,7 +644,10 @@ describe('ScoreboardView', () => {
   });
 
   it('sets a rostered leaderboard row in no success wash or success ink', () => {
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger, phil] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [tiger, phil] })} />,
+      NO_PROVIDERS,
+    );
 
     const tigerRow = screen.getByRole('row', { name: /Tiger/ });
     expect(tigerRow.className).not.toMatch(/semantic-success/);
@@ -575,7 +658,10 @@ describe('ScoreboardView', () => {
 
   it('sets Score and Tot in semibold and the rounds in muted ink', () => {
     const leader = makeLeaderboardEntry({ scoreToPar: -8, roundScores: [64, 68, 70, 66], totalStrokes: 268 });
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [leader] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [leader] })} />,
+      NO_PROVIDERS,
+    );
 
     const cells = within(nth(within(leaderboardTable()).getAllByRole('row'), 1)).getAllByRole('cell');
     expect(nth(cells, 3)).toHaveClass('font-semibold');
@@ -584,7 +670,10 @@ describe('ScoreboardView', () => {
   });
 
   it('opens the leaderboard card with a header band naming the tournament', () => {
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [tiger] })} />,
+      NO_PROVIDERS,
+    );
 
     const band = screen.getByRole('heading', { name: 'Leaderboard' }).parentElement;
     expect(band).toHaveClass('bg-header-band', 'text-on-fill');
@@ -595,7 +684,11 @@ describe('ScoreboardView', () => {
   it('opens the band with the heading alone when the tournament has no name', () => {
     const unnamed = report({ liveLeaderboard: [tiger] });
     renderWithProviders(
-      <ScoreboardView myTeamName={null} report={{ ...unnamed, tournament: { ...unnamed.tournament, name: null } }} />,
+      <ScoreboardView
+        selectionKey={SELECTION_KEY}
+        myTeamName={null}
+        report={{ ...unnamed, tournament: { ...unnamed.tournament, name: null } }}
+      />,
       NO_PROVIDERS,
     );
 
@@ -604,7 +697,10 @@ describe('ScoreboardView', () => {
   });
 
   it('sets the teams beside the leaderboard card from xl, the teams first', () => {
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [tiger] })} />,
+      NO_PROVIDERS,
+    );
 
     const card = screen.getByRole('heading', { name: 'Leaderboard' }).closest('.bg-surface-card');
     const columns = card?.parentElement;
@@ -614,7 +710,7 @@ describe('ScoreboardView', () => {
   });
 
   it('sets each team as a white card between its position and money boxes, with no row hover', () => {
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report()} />, NO_PROVIDERS);
+    renderWithProviders(<ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report()} />, NO_PROVIDERS);
 
     expect(screen.getByRole('table')).toHaveClass('border-separate', 'border-spacing-y-1');
     const row = screen.getByRole('row', { name: /Aces/ });
@@ -627,6 +723,7 @@ describe('ScoreboardView', () => {
   it('boxes the first position in gold and every other in navy', () => {
     renderWithProviders(
       <ScoreboardView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         report={report({
           teams: [
@@ -651,6 +748,7 @@ describe('ScoreboardView', () => {
   it('fills each Weekly +/- box with the tone its cents print, and leaves Top 10 Earnings in the table ink', () => {
     renderWithProviders(
       <ScoreboardView
+        selectionKey={SELECTION_KEY}
         myTeamName={null}
         report={report({
           teams: [
@@ -673,7 +771,7 @@ describe('ScoreboardView', () => {
 
   it('tones the won, lost and net chips by the sign they print, a zero Won gray', () => {
     renderWithProviders(
-      <ScoreboardView myTeamName={null} report={report({ weeklyTotals: { won: 0, lost: -66, net: -66 } })} />,
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ weeklyTotals: { won: 0, lost: -66, net: -66 } })} />,
       NO_PROVIDERS,
     );
     expect(screen.getByText('Won').nextSibling).toHaveClass('text-ink-soft');
@@ -682,7 +780,10 @@ describe('ScoreboardView', () => {
   });
 
   it('sets every column head in the shared column-header type', () => {
-    renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [tiger] })} />,
+      NO_PROVIDERS,
+    );
     expectSharedColumnHeads(2);
   });
 
@@ -705,7 +806,7 @@ describe('ScoreboardView', () => {
     }
 
     it.each(phases)('tags its card and its table row and no other, %s', (_phase, scoreboard) => {
-      renderWithProviders(<ScoreboardView myTeamName="birdies" report={scoreboard} />, NO_PROVIDERS);
+      renderWithProviders(<ScoreboardView selectionKey={SELECTION_KEY} myTeamName="birdies" report={scoreboard} />, NO_PROVIDERS);
 
       expect(within(phoneCard('Birdies')).getByText('your team')).toBeInTheDocument();
       expect(within(teamRow('Birdies')).getByText('your team')).toBeInTheDocument();
@@ -714,7 +815,7 @@ describe('ScoreboardView', () => {
 
     // Styling alone, so the classes are what there is to assert.
     it.each(phases)('rings its row in gold and fills its card and team cell pale gold, %s', (_phase, scoreboard) => {
-      renderWithProviders(<ScoreboardView myTeamName="Birdies" report={scoreboard} />, NO_PROVIDERS);
+      renderWithProviders(<ScoreboardView selectionKey={SELECTION_KEY} myTeamName="Birdies" report={scoreboard} />, NO_PROVIDERS);
 
       expect(teamRow('Birdies')).toHaveClass('outline-2', '-outline-offset-2', 'outline-gold');
       expect(teamCell('Birdies')).toHaveClass('bg-my-team');
@@ -724,7 +825,7 @@ describe('ScoreboardView', () => {
     });
 
     it.each(phases)('marks nothing when no team is chosen, %s', (_phase, scoreboard) => {
-      renderWithProviders(<ScoreboardView myTeamName={null} report={scoreboard} />, NO_PROVIDERS);
+      renderWithProviders(<ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={scoreboard} />, NO_PROVIDERS);
 
       expect(screen.queryByText('your team')).toBeNull();
       expect(phoneCard('Birdies')).not.toHaveClass('bg-my-team');
@@ -739,7 +840,7 @@ describe('ScoreboardView', () => {
     ];
 
     it('shows the cards below sm and the team table from sm up', () => {
-      renderWithProviders(<ScoreboardView myTeamName={null} report={report()} />, NO_PROVIDERS);
+      renderWithProviders(<ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report()} />, NO_PROVIDERS);
 
       expect(screen.getByRole('list', { name: 'Weekly results' })).toHaveClass('sm:hidden');
       expect(teamTable().parentElement).toHaveClass('hidden', 'sm:block');
@@ -747,7 +848,11 @@ describe('ScoreboardView', () => {
 
     it('sets a card per team in the server\'s weekly standings', () => {
       renderWithProviders(
-        <ScoreboardView myTeamName={null} report={report({ teams: threeTeams, weeklyStandings: ['t-3', 't-1', 't-2'] })} />,
+        <ScoreboardView
+          selectionKey={SELECTION_KEY}
+          myTeamName={null}
+          report={report({ teams: threeTeams, weeklyStandings: ['t-3', 't-1', 't-2'] })}
+        />,
         NO_PROVIDERS,
       );
 
@@ -763,7 +868,10 @@ describe('ScoreboardView', () => {
     });
 
     it('boxes the first position in gold and every other in navy', () => {
-      renderWithProviders(<ScoreboardView myTeamName={null} report={report({ teams: threeTeams })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ teams: threeTeams })} />,
+        NO_PROVIDERS,
+      );
 
       const positions = phoneCards().map((card) => card.firstElementChild);
       expect(positions[0]).toHaveClass('bg-gold');
@@ -777,6 +885,7 @@ describe('ScoreboardView', () => {
       const user = userEvent.setup();
       renderWithProviders(
         <ScoreboardView
+          selectionKey={SELECTION_KEY}
           myTeamName={null}
           report={report({
             teams: [
@@ -803,14 +912,20 @@ describe('ScoreboardView', () => {
     });
 
     it('says a team with no paid golfer has none in the top 10, where the table leaves the cell bare', () => {
-      renderWithProviders(<ScoreboardView myTeamName={null} report={report({ teams: [team({ cells: [] })] })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ teams: [team({ cells: [] })] })} />,
+        NO_PROVIDERS,
+      );
 
       expect(phoneDetailLine('Aces')).toHaveTextContent(/^No golfers in the top 10$/);
       expect(teamCell('Aces')).toHaveTextContent(/^Aces$/);
     });
 
     it('fills each Weekly +/- box with the tone its cents print', () => {
-      renderWithProviders(<ScoreboardView myTeamName={null} report={report({ teams: threeTeams })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ teams: threeTeams })} />,
+        NO_PROVIDERS,
+      );
 
       expect(within(phoneCard('Aces')).getByText('+$0.40')).toHaveClass('bg-money-up-fill', 'rounded-r');
       expect(within(phoneCard('Birdies')).getByText('\u2212$0.01')).toHaveClass('bg-money-down-fill');
@@ -830,7 +945,10 @@ describe('ScoreboardView', () => {
     });
 
     it('shows the rows and their team filter below sm and the table from sm up', () => {
-      renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger] })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [tiger] })} />,
+        NO_PROVIDERS,
+      );
 
       const phoneOnly = phoneLeaderboard().parentElement;
       expect(phoneOnly).toHaveClass('sm:hidden');
@@ -841,7 +959,11 @@ describe('ScoreboardView', () => {
 
     it('sets a row per entry in the server\'s order, the unplaced last, each its position, name and score', () => {
       renderWithProviders(
-        <ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger, rory, unplacedLate, unplacedLater] })} />,
+        <ScoreboardView
+          selectionKey={SELECTION_KEY}
+          myTeamName={null}
+          report={report({ liveLeaderboard: [tiger, rory, unplacedLate, unplacedLater] })}
+        />,
         NO_PROVIDERS,
       );
 
@@ -855,7 +977,10 @@ describe('ScoreboardView', () => {
     });
 
     it('sets the position muted in a fixed column, the name truncating, and the score semibold', () => {
-      renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger] })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [tiger] })} />,
+        NO_PROVIDERS,
+      );
 
       const { position, name, score } = phoneLeaderboardRow(nth(phoneLeaderboardRows(), 0));
       expect(position).toHaveClass('w-8', 'shrink-0', 'text-ink-muted', 'tabular-nums');
@@ -867,7 +992,10 @@ describe('ScoreboardView', () => {
 
     it('gives a pair a chip per partner, the undrafted one outlined, and a split golfer a chip per team', () => {
       const rahm = makeLeaderboardEntry({ players: [{ name: 'Rahm', teamNames: ['Aces', 'Birdies'] }] });
-      renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [mcIlroyAndLowry, rahm] })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [mcIlroyAndLowry, rahm] })} />,
+        NO_PROVIDERS,
+      );
 
       const [pair, split] = phoneLeaderboardRows().map(phoneLeaderboardRow);
       expect(pair?.chips.map((chip) => chip.textContent)).toEqual(['Undrafted', 'PAYRAY']);
@@ -877,7 +1005,10 @@ describe('ScoreboardView', () => {
 
     it('prints the rounds played and the total beside the chips, in muted figures', () => {
       const leader = makeLeaderboardEntry({ roundScores: [68, 70], totalStrokes: 138 });
-      renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [leader] })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [leader] })} />,
+        NO_PROVIDERS,
+      );
 
       const { roundLine } = phoneLeaderboardRow(nth(phoneLeaderboardRows(), 0));
       expect(roundLine).toHaveTextContent(/^R1 68 · R2 70 · Tot 138$/);
@@ -885,7 +1016,10 @@ describe('ScoreboardView', () => {
     });
 
     it('shows a competitor yet to tee off with chips alone', () => {
-      renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [unplacedLate] })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [unplacedLate] })} />,
+        NO_PROVIDERS,
+      );
 
       const { chips, roundLine } = phoneLeaderboardRow(nth(phoneLeaderboardRows(), 0));
       expect(chips.map((chip) => chip.textContent)).toEqual(['Undrafted']);
@@ -893,7 +1027,10 @@ describe('ScoreboardView', () => {
     });
 
     it('offers every team and Undrafted after All teams', () => {
-      renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger, rory, phil] })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [tiger, rory, phil] })} />,
+        NO_PROVIDERS,
+      );
 
       const options = within(phoneTeamFilter()).getAllByRole('option');
       expect(options.map((option) => option.textContent)).toEqual(['All teams', 'Aces', 'Birdies', 'Undrafted']);
@@ -901,7 +1038,10 @@ describe('ScoreboardView', () => {
 
     it('filters both the rows and the table by the phone select, and the header filter follows it', async () => {
       const user = userEvent.setup();
-      renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger, rory, phil] })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [tiger, rory, phil] })} />,
+        NO_PROVIDERS,
+      );
 
       await user.selectOptions(phoneTeamFilter(), 'Aces');
 
@@ -913,7 +1053,11 @@ describe('ScoreboardView', () => {
     it('filters both lists to the rows with an undrafted player when Undrafted is picked', async () => {
       const user = userEvent.setup();
       renderWithProviders(
-        <ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger, mcIlroyAndLowry, rory, phil] })} />,
+        <ScoreboardView
+          selectionKey={SELECTION_KEY}
+          myTeamName={null}
+          report={report({ liveLeaderboard: [tiger, mcIlroyAndLowry, rory, phil] })}
+        />,
         NO_PROVIDERS,
       );
 
@@ -926,7 +1070,10 @@ describe('ScoreboardView', () => {
 
     it('shows every row again when All teams is picked back', async () => {
       const user = userEvent.setup();
-      renderWithProviders(<ScoreboardView myTeamName={null} report={report({ liveLeaderboard: [tiger, rory] })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard: [tiger, rory] })} />,
+        NO_PROVIDERS,
+      );
 
       await user.selectOptions(phoneTeamFilter(), 'Aces');
       await user.selectOptions(phoneTeamFilter(), 'All teams');
@@ -981,7 +1128,7 @@ describe('ScoreboardView', () => {
     }
 
     it('lists each team\'s golfers in the field in draft order after a count, with no finish or money', () => {
-      renderWithProviders(<ScoreboardView myTeamName={null} report={preStart(fieldTeams)} />, NO_PROVIDERS);
+      renderWithProviders(<ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={preStart(fieldTeams)} />, NO_PROVIDERS);
 
       expect(golferLine('Aces')).toHaveTextContent(/^2 playing · Scottie Scheffler · Xander Schauffele$/);
       expect(phoneDetailLine('Aces')).toHaveTextContent(/^2 playing · Scottie Scheffler · Xander Schauffele$/);
@@ -990,21 +1137,21 @@ describe('ScoreboardView', () => {
     });
 
     it('says a team with nobody in the field has 0 playing and nothing else', () => {
-      renderWithProviders(<ScoreboardView myTeamName={null} report={preStart(fieldTeams)} />, NO_PROVIDERS);
+      renderWithProviders(<ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={preStart(fieldTeams)} />, NO_PROVIDERS);
 
       expect(golferLine('Cuts')).toHaveTextContent(/^0 playing$/);
       expect(phoneDetailLine('Cuts')).toHaveTextContent(/^0 playing$/);
     });
 
     it('shows the cards below sm and the table from sm up, as the paid list does', () => {
-      renderWithProviders(<ScoreboardView myTeamName={null} report={preStart(fieldTeams)} />, NO_PROVIDERS);
+      renderWithProviders(<ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={preStart(fieldTeams)} />, NO_PROVIDERS);
 
       expect(screen.getByRole('list', { name: 'Weekly results' })).toHaveClass('sm:hidden');
       expect(teamTable().parentElement).toHaveClass('hidden', 'sm:block');
     });
 
     it('sets no money box on a card and no money column in the table', () => {
-      renderWithProviders(<ScoreboardView myTeamName={null} report={preStart(fieldTeams)} />, NO_PROVIDERS);
+      renderWithProviders(<ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={preStart(fieldTeams)} />, NO_PROVIDERS);
 
       expect(within(teamTable()).getAllByRole('columnheader').map((head) => head.textContent)).toEqual(['#', 'Team']);
       expect(teamTable()).not.toHaveTextContent('$');
@@ -1015,7 +1162,10 @@ describe('ScoreboardView', () => {
     it('makes each name in the field a tap-target button that opens the golfer, in the table and on the phone', async () => {
       const onGolferClick = vi.fn();
       const user = userEvent.setup();
-      renderWithProviders(<ScoreboardView myTeamName={null} report={preStart(fieldTeams)} onGolferClick={onGolferClick} />, NO_PROVIDERS);
+      renderWithProviders(
+        <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={preStart(fieldTeams)} onGolferClick={onGolferClick} />,
+        NO_PROVIDERS,
+      );
 
       const tableButton = within(golferLine('Aces')).getByRole('button', { name: 'Xander Schauffele' });
       expect(tableButton).toHaveClass(TAP_TARGET_CLASS);
@@ -1026,7 +1176,7 @@ describe('ScoreboardView', () => {
     });
 
     it('prints the names as plain text when no onGolferClick is provided', () => {
-      renderWithProviders(<ScoreboardView myTeamName={null} report={preStart(fieldTeams)} />, NO_PROVIDERS);
+      renderWithProviders(<ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={preStart(fieldTeams)} />, NO_PROVIDERS);
 
       expect(within(golferLine('Aces')).queryByRole('button')).not.toBeInTheDocument();
       expect(within(golferLine('Aces')).getByText('Scottie Scheffler')).toHaveClass('text-ink-secondary');
@@ -1042,6 +1192,7 @@ describe('ScoreboardView', () => {
       ];
       renderWithProviders(
         <ScoreboardView
+          selectionKey={SELECTION_KEY}
           myTeamName={null}
           report={report({
             teams: [team({ teamName: 'Aces', cells })],
@@ -1055,6 +1206,63 @@ describe('ScoreboardView', () => {
       expect(golferLine('Aces')).toHaveTextContent(/^Scottie Scheffler 1 \+\$18\.00$/);
       expect(phoneDetailLine('Aces')).toHaveTextContent(/^Scottie Scheffler 1 \+\$18\.00$/);
       expect(screen.queryByText(/playing/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('gliding', () => {
+    const aces = team({ teamId: 't-1', teamName: 'Aces', weeklyTotal: 25 });
+    const birdies = team({ teamId: 't-2', teamName: 'Birdies', weeklyTotal: 10 });
+
+    function teamRows(teamName: string): HTMLElement[] {
+      return [closest(teamCell(teamName), 'tr'), phoneCard(teamName)];
+    }
+
+    function leaderboardRows(playerName: string): HTMLElement[] {
+      return [
+        closest(within(leaderboardTable()).getByText(playerName), 'tr'),
+        closest(within(phoneLeaderboard()).getByText(playerName), 'li'),
+      ];
+    }
+
+    it('glides a team to its new rank when a refetch reorders the teams', async () => {
+      await renderRefetching({ first: report({ teams: [aces, birdies] }), second: report({ teams: [birdies, aces] }) });
+      await refetch();
+
+      expect(teamRows('Aces').map(isGliding)).toEqual([true, true]);
+    });
+
+    it('redraws the teams in place, without gliding, for a new selection', async () => {
+      await renderRefetching({
+        first: report({ teams: [aces, birdies] }),
+        second: report({ teams: [birdies, aces] }),
+        secondSelectionKey: 'another selection',
+      });
+      const before = teamRows('Aces');
+      await refetch();
+
+      const after = teamRows('Aces');
+      expect(after.map(isGliding)).toEqual([false, false]);
+      expect(after.filter((element, index) => element === before[index])).toEqual([]);
+    });
+
+    it('glides a leaderboard row to its new place when a refetch reorders the leaderboard', async () => {
+      await renderRefetching({
+        first: report({ liveLeaderboard: [tiger, rory] }),
+        second: report({ liveLeaderboard: [rory, tiger] }),
+      });
+      await refetch();
+
+      expect(leaderboardRows('Tiger').map(isGliding)).toEqual([true, true]);
+    });
+
+    it('redraws the leaderboard, without gliding, when the team filter changes', async () => {
+      const leaderboard = report({ liveLeaderboard: [tiger, rory, phil] });
+      await renderRefetching({ first: leaderboard, second: leaderboard });
+
+      await userEvent.selectOptions(phoneTeamFilter(), 'Birdies');
+      await elapseFrames();
+
+      expect(leaderboardRows('Rory').map(isGliding)).toEqual([false, false]);
     });
   });
 });
