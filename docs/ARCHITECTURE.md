@@ -276,7 +276,9 @@ an UPDATE, rolls back to a savepoint on that 23505 (`writeOrOutraced`).
 
 `tournaments/TournamentStatus.kt` defines the three values. No application code moves a tournament to
 `in_progress`; only an admin's `PUT` sets it, and nothing requires it. "Is it live?" is decided by dates, not
-by this status (see [Live overlay](#live-overlay)).
+by this status (see [Live overlay](#live-overlay)). For display, `GET /tournaments` reports an `upcoming` week
+whose start date has arrived in US Eastern time as `in_progress`; the stored status, which every gate reads, is
+unchanged.
 
 **Finalize** (`TournamentOpsService.finalizeAndReport`):
 
@@ -524,7 +526,7 @@ Request and response shapes are the `@Serializable` types in each package's `*Ro
 | DELETE | `/seasons/{id}` | Delete a season and everything under it | Admin |
 | POST | `/seasons/{id}/clean-results` | Wipe the season's results and scores, reset its tournaments | Admin |
 | GET | `/seasons/{id}/rosters` | Teams with their rosters | Public |
-| GET | `/tournaments` | List tournaments, optional `season_id` | Public |
+| GET | `/tournaments` | List tournaments, optional `season_id`; a started, unfinalized week reads `in_progress` | Public |
 | GET | `/tournaments/current` | The tournament a season's pages open on: earliest unfinalized, else latest; `season_id` required | Public |
 | GET | `/tournaments/resettable` | The completed tournaments reset accepts: none completed after them; `season_id` required | Admin |
 | PUT | `/tournaments/{id}` | Edit a tournament (name, dates, multiplier, status, ...) | Admin |

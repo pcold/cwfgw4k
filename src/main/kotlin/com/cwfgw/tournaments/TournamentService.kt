@@ -4,12 +4,19 @@ import com.cwfgw.db.Transactor
 import com.cwfgw.db.updateOrOutraced
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
+import java.time.Clock
+import java.time.LocalDate
 
 class TournamentService(
     private val repository: TournamentRepository,
     private val tx: Transactor,
+    private val clock: Clock = Clock.systemUTC(),
 ) {
-    suspend fun list(filter: TournamentFilter): List<Tournament> = tx.get { repository.findAll(filter) }
+    /** Statuses are [statusAsOf] today, while [filter] matches the stored ones. */
+    suspend fun list(filter: TournamentFilter): List<Tournament> {
+        val today = LocalDate.ofInstant(clock.instant(), ESPN_SCHEDULE_ZONE)
+        return tx.get { repository.findAll(filter) }.map { it.copy(status = it.statusAsOf(today)) }
+    }
 
     /**
      * By finalization, not today's date: a past week stays current until it is finalized. Schedule order is
