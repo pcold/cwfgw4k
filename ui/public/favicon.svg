@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="200" fill="#0a1d38"/>
+  <g transform="translate(512 512) scale(1.12) translate(-517 -548)">
+  <path d="M170 772 C162 704 270 664 392 678 C468 686 520 660 604 656 C744 650 866 694 862 764 C858 834 736 862 556 860 C376 858 178 846 170 772 Z" fill="#118a51" transform="translate(512 760) scale(1.09 1.22) translate(-512 -760)"/>
+  <path d="M170 772 C162 704 270 664 392 678 C468 686 520 660 604 656 C744 650 866 694 862 764 C858 834 736 862 556 860 C376 858 178 846 170 772 Z" fill="#17aa63"/>
+  <ellipse cx="592" cy="756" rx="50" ry="16" fill="#06331d"/>
+  <rect x="578" y="214" width="30" height="548" rx="15" fill="#fff"/>
+  <polygon points="608,226 884,226 838,408 608,408" fill="#d7263d"/>
+  <circle cx="372" cy="722" r="42" fill="#fff"/>
+  </g>
+</svg>

@@ -93,7 +93,8 @@ User (username, role admin | user)
 ### URL prefix and auth
 
 Every API route sits under `/api/v1` (`App.kt`). Anything else serves the bundled UI: `/`, `/assets/{file}`,
-`/static/{file}`, then a fallback that returns `index.html` for client routes. An unmatched path whose first
+`/static/{file}`, the app icons and web manifest at the root by name (`ROOT_FILES`, one per file in `ui/public/`),
+then a fallback that returns `index.html` for client routes. An unmatched path whose first
 segment is `api` answers 404, never the UI shell (`http/StaticRoutes.kt`).
 
 Auth is a session cookie, `cwfgw_session`: HttpOnly, SameSite=Lax, Secure unless

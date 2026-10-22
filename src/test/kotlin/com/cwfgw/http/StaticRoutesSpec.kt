@@ -2,6 +2,8 @@ package com.cwfgw.http
 
 import com.cwfgw.testing.apiTest
 import io.kotest.core.spec.style.FunSpec
+import io.kotest.datatest.withData
+import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.ktor.client.call.body
@@ -11,6 +13,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
+import java.io.File
 
 class StaticRoutesSpec : FunSpec({
     test("GET / serves the index html with no-cache so users never pin to a stale shell") {
@@ -42,6 +45,32 @@ class StaticRoutesSpec : FunSpec({
             response.contentType()?.withoutParameters() shouldBe ContentType.Application.Json
             response.body<ErrorBody>().error shouldBe "asset not found"
         }
+    }
+
+    context("a root file is served as itself for a day, not immutably, since its name never changes") {
+        withData(
+            nameFn = { (path, _) -> path },
+            "/favicon.ico" to ContentType.Image.XIcon,
+            "/favicon.svg" to ContentType.Image.SVG,
+            "/icon-192.png" to ContentType.Image.PNG,
+            "/manifest.webmanifest" to ContentType("application", "manifest+json"),
+        ) { (path, contentType) ->
+            apiTest { client ->
+                val response = client.get(path)
+
+                response.status shouldBe HttpStatusCode.OK
+                response.contentType()?.withoutParameters() shouldBe contentType
+                response.headers[HttpHeaders.CacheControl] shouldBe "public, max-age=86400"
+                response.bodyAsText() shouldContain "test-fixture-root-file"
+            }
+        }
+    }
+
+    test("every file Vite copies from ui/public to the bundle root is routed") {
+        // Finder's .DS_Store is no file of ours; git ignores it, so a clean checkout never ships one.
+        val published = File("ui/public").list().orEmpty().filterNot { name -> name.startsWith(".") }
+
+        ROOT_FILES shouldContainExactlyInAnyOrder published
     }
 
     test("GET /admin returns the SPA shell so deep links survive a refresh") {

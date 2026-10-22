@@ -128,6 +128,8 @@ tasks.test {
     // WireContractSpec compares it with what the descriptors generate. Type-only, so an edit to it leaves
     // ui/dist and every other test input unchanged, and the stale file would pass on an up-to-date check.
     inputs.file("ui/src/shared/api/wireContract.generated.ts")
+    // StaticRoutesSpec compares its listing with ROOT_FILES; under -x uiBuild nothing else carries a new file in.
+    inputs.dir("ui/public")
 }
 
 ktor {
@@ -434,6 +436,7 @@ tasks.register<com.github.gradle.node.npm.task.NpmTask>("uiBuild") {
     inputs.file("ui/package.json")
     inputs.file("ui/postcss.config.js")
     inputs.file("ui/vite.config.ts")
+    inputs.dir("ui/public")
     // `npm run build` is `tsc -b && vite build`, so the tsconfigs are what it compiles from.
     inputs.files("ui/tsconfig.json", "ui/tsconfig.app.json", "ui/tsconfig.node.json")
     outputs.dir("ui/dist")
