@@ -78,6 +78,53 @@ function phoneCard(teamName: string): HTMLElement {
   return card;
 }
 
+interface RefetchingProps {
+  first: Rankings;
+  second: Rankings;
+  /** Unset, the second rankings are a refetch of the first's selection. */
+  secondSelectionKey?: string;
+  firstMyTeamName?: string;
+  secondMyTeamName?: string;
+}
+
+interface Shown {
+  rankings: Rankings;
+  selectionKey: string;
+  myTeamName: string | null;
+}
+
+function Refetching({
+  first,
+  second,
+  secondSelectionKey = SELECTION_KEY,
+  firstMyTeamName,
+  secondMyTeamName,
+}: RefetchingProps): ReactNode {
+  const [current, setCurrent] = useState<Shown>({
+    rankings: first,
+    selectionKey: SELECTION_KEY,
+    myTeamName: firstMyTeamName ?? null,
+  });
+  const showSecond = (): void =>
+    setCurrent({ rankings: second, selectionKey: secondSelectionKey, myTeamName: secondMyTeamName ?? null });
+  return (
+    <>
+      <button type="button" onClick={showSecond}>
+        Refetch
+      </button>
+      <RankingsView selectionKey={current.selectionKey} myTeamName={current.myTeamName} rankings={current.rankings} />
+    </>
+  );
+}
+
+async function refetch(props: RefetchingProps): Promise<void> {
+  stackByTreeIndex();
+  renderWithProviders(<Refetching {...props} />, { ...NO_PROVIDERS, withMotionProvider: true });
+  await elapseFrames();
+  await userEvent.click(screen.getByRole('button', { name: 'Refetch' }));
+  await elapseFrames();
+}
+
 describe('RankingsView', () => {
   it('numbers the teams in the order the server sent them, without re-sorting by totalCash', () => {
     renderWithProviders(<RankingsView selectionKey={SELECTION_KEY} myTeamName={null} rankings={buildRankings()} />, NO_PROVIDERS);
@@ -323,42 +370,6 @@ describe('RankingsView', () => {
   });
 
   describe('gliding', () => {
-    interface RefetchingProps {
-      first: Rankings;
-      second: Rankings;
-      /** Unset, the second rankings are a refetch of the first's selection. */
-      secondSelectionKey?: string;
-      secondMyTeamName?: string;
-    }
-
-    interface Shown {
-      rankings: Rankings;
-      selectionKey: string;
-      myTeamName: string | null;
-    }
-
-    function Refetching({ first, second, secondSelectionKey = SELECTION_KEY, secondMyTeamName }: RefetchingProps): ReactNode {
-      const [current, setCurrent] = useState<Shown>({ rankings: first, selectionKey: SELECTION_KEY, myTeamName: null });
-      const showSecond = (): void =>
-        setCurrent({ rankings: second, selectionKey: secondSelectionKey, myTeamName: secondMyTeamName ?? null });
-      return (
-        <>
-          <button type="button" onClick={showSecond}>
-            Refetch
-          </button>
-          <RankingsView selectionKey={current.selectionKey} myTeamName={current.myTeamName} rankings={current.rankings} />
-        </>
-      );
-    }
-
-    async function refetch(props: RefetchingProps): Promise<void> {
-      stackByTreeIndex();
-      renderWithProviders(<Refetching {...props} />, { ...NO_PROVIDERS, withMotionProvider: true });
-      await elapseFrames();
-      await userEvent.click(screen.getByRole('button', { name: 'Refetch' }));
-      await elapseFrames();
-    }
-
     function teamRows(teamName: string): HTMLElement[] {
       const tableRow = screen.getByRole('row', { name: new RegExp(teamName) });
       return [tableRow, phoneCard(teamName)];
@@ -384,6 +395,47 @@ describe('RankingsView', () => {
 
       expect(screen.getByRole('region', { name: 'Your team' })).toBeInTheDocument();
       expect(teamRows('Aces').map(isGliding)).toEqual([false, false]);
+    });
+  });
+
+  describe('pulsing', () => {
+    function pulses(display: string): (string | null)[] {
+      return screen.getAllByText(display).map((figure) => figure.getAttribute('data-pulse'));
+    }
+
+    const standings = buildRankings();
+    const climbed = buildRankings({
+      teams: standings.teams.map((team) => (team.teamName === 'Aces' ? { ...team, subtotal: 130, totalCash: 160 } : team)),
+    });
+
+    it("pulses a team's subtotal and total cash, in the table and on its card, when a refetch raises them", async () => {
+      await refetch({ first: standings, second: climbed });
+
+      expect(pulses('+$130.00')).toEqual(['up', 'up']);
+      expect(pulses('+$160')).toEqual(['up', 'up']);
+    });
+
+    it('holds the figures still for a new selection', async () => {
+      await refetch({ first: standings, second: climbed, secondSelectionKey: 'another selection' });
+
+      expect(pulses('+$130.00')).toEqual([null, null]);
+      expect(pulses('+$160')).toEqual([null, null]);
+    });
+
+    function yourTeamTotal(display: string): HTMLElement {
+      return within(screen.getByRole('region', { name: 'Your team' })).getByText(display);
+    }
+
+    it("pulses the your-team card's total when a refetch raises it", async () => {
+      await refetch({ first: standings, second: climbed, firstMyTeamName: 'Aces', secondMyTeamName: 'Aces' });
+
+      expect(yourTeamTotal('+$160')).toHaveAttribute('data-pulse', 'up');
+    });
+
+    it('holds the your-team card still when the visitor picks another team', async () => {
+      await refetch({ first: standings, second: standings, firstMyTeamName: 'Aces', secondMyTeamName: 'Cuts' });
+
+      expect(yourTeamTotal('+$35')).not.toHaveAttribute('data-pulse');
     });
   });
 });

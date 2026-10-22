@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
-import { moneyTone, type MoneyTone } from '@/shared/util/money';
+import { moneyAmount, moneyTone, type MoneyTone } from '@/shared/util/money';
+import { PULSE_CLASS, usePulse } from './Pulse';
 
 /**
  * White on the up fill is 4.40:1, which passes only as large text: bold and at least 18.66px. The contrast
@@ -28,20 +29,31 @@ const TONE_CLASS: Readonly<Record<MoneyTone, string>> = {
 interface MoneyCellProps {
   readonly display: string;
   readonly shape?: MoneyCellShape;
+  /** @see usePulse */
+  readonly pulseScope?: string;
 }
 
 /**
  * No `className`, so a caller can't fight the fill. Takes the formatted text, as `moneyTone` does, so the box
  * tones at the precision it prints.
  */
-export default function MoneyCell({ display, shape = 'row-end' }: MoneyCellProps): ReactElement {
-  const className = `${SHAPE_CLASS[shape]} text-right text-on-fill ${MONEY_FIGURE_CLASS} ${TONE_CLASS[moneyTone(display)]}`;
+export default function MoneyCell({ display, shape = 'row-end', pulseScope }: MoneyCellProps): ReactElement {
+  const className = `${SHAPE_CLASS[shape]} text-right text-on-fill ${MONEY_FIGURE_CLASS} ${TONE_CLASS[moneyTone(display)]} ${PULSE_CLASS}`;
+  const pulse = usePulse(display, moneyAmount(display), 'higher', pulseScope);
   switch (shape) {
     case 'row-end':
     case 'standalone':
-      return <td className={className}>{display}</td>;
+      return (
+        <td className={className} {...pulse}>
+          {display}
+        </td>
+      );
     case 'card-end':
-      return <div className={className}>{display}</div>;
+      return (
+        <div className={className} {...pulse}>
+          {display}
+        </div>
+      );
     default:
       return shape satisfies never;
   }

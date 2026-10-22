@@ -9,6 +9,7 @@ import { glideAt } from '@/shared/components/glide';
 import ListCard, { CARD_LIST_CLASS } from '@/shared/components/ListCard';
 import { MONEY_FIGURE_CLASS } from '@/shared/components/MoneyCell';
 import PhoneFilter from '@/shared/components/PhoneFilter';
+import Pulse, { PulseDollars } from '@/shared/components/Pulse';
 import YouTag from '@/shared/components/YouTag';
 import { isMyTeam } from '@/features/myTeam/myTeamModel';
 
@@ -73,17 +74,28 @@ function DraftingTeam({ teamName, myTeamName }: DraftingTeamProps): ReactNode {
   );
 }
 
-interface PlayerDetailProps {
+interface PlayerFigureProps {
   readonly player: PlayerRankingsRow;
+  /** @see usePulse */
+  readonly listKey: string;
+}
+
+function TopTens({ player, listKey }: PlayerFigureProps): ReactNode {
+  return <Pulse display={String(player.topTens)} measure={player.topTens} better="higher" scope={listKey} />;
+}
+
+interface PlayerDetailProps extends PlayerFigureProps {
   readonly myTeamName: string | null;
 }
 
-function PlayerDetail({ player, myTeamName }: PlayerDetailProps): ReactNode {
+function PlayerDetail({ player, myTeamName, listKey }: PlayerDetailProps): ReactNode {
   return (
     <>
       {player.teamName ? <DraftingTeam teamName={player.teamName} myTeamName={myTeamName} /> : 'Undrafted'}
       {player.draftRound !== null && ` · Rd ${player.draftRound}`}
-      {` · ${player.topTens} ${player.topTens === 1 ? 'top 10' : 'top 10s'}`}
+      {' · '}
+      <TopTens player={player} listKey={listKey} />
+      {player.topTens === 1 ? ' top 10' : ' top 10s'}
     </>
   );
 }
@@ -100,10 +112,10 @@ function PlayerCards({ players, myTeamName, onGolferClick, listKey }: PlayerList
             position={index + 1}
             name={<GolferName player={player} onGolferClick={onGolferClick} />}
             nameCase="golfer"
-            detail={<PlayerDetail player={player} myTeamName={myTeamName} />}
+            detail={<PlayerDetail player={player} myTeamName={myTeamName} listKey={listKey} />}
             total={
               <div className={`px-3 shrink-0 flex items-center ${MONEY_FIGURE_CLASS} ${moneyToneClass(totalEarnings)}`}>
-                {totalEarnings}
+                <PulseDollars amount={player.totalEarnings} scope={listKey} />
               </div>
             }
             glideIndex={index}
@@ -144,9 +156,11 @@ function PlayerRows({ players, myTeamName, onGolferClick, listKey }: PlayerListP
                   player.name
                 )}
               </td>
-              <td className="px-3 py-2 text-right tabular-nums">{player.topTens}</td>
+              <td className="px-3 py-2 text-right tabular-nums">
+                <TopTens player={player} listKey={listKey} />
+              </td>
               <td className={`px-3 py-2 text-right tabular-nums ${moneyToneClass(totalEarnings)}`}>
-                {totalEarnings}
+                <PulseDollars amount={player.totalEarnings} scope={listKey} />
               </td>
               <td className="px-3 py-2 text-ink-secondary">
                 {player.teamName ? (

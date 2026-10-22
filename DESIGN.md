@@ -58,6 +58,9 @@ colors:
   on-gold: "#0a1d38"
   late-row-leader: "#fef9c2"
   my-team: "#fef9c2"
+  pulse-up: "#7bf1a8"
+  pulse-down: "#ffa2a2"
+  pulse-new: "#ffd23f"
 
 typography:
   display:
@@ -365,6 +368,9 @@ Each family takes only the rungs it uses. `-tint` is a wash, always at an opacit
 ### My team
 - **My Team** (`{colors.my-team}`, yellow-100): the standings' and scoreboard's card or row of the team this device chose, ringed in `{colors.gold}`. Not `{colors.late-row-leader}` on the same step, which marks a lead. Its text keeps the row's inks: `{colors.ink}` 15.69:1, `{colors.ink-secondary}` 12.23:1, `{colors.ink-muted}` 6.03:1. The fill is 1.07:1 on white, the card's ring 1.24:1 on the canvas and the row's 1.34:1 on its fill, so the `YOU` tag is the cue and they are emphasis.
 
+### Pulse
+- **Pulse Up / Down / New** (`{colors.pulse-up}` green-300, `{colors.pulse-down}` red-300, `{colors.pulse-new}` the brand gold): the flash behind a figure a live refresh changed, under `{colors.ink}` (12.03:1, 8.78:1, 11.67:1) whatever the figure's resting ink, fading in 1.2s to the cell's own fill and ink. Up and down are better and worse for that figure — more money or top 10s, a lower finish or score to par — and new is a change without a direction. Not the money fills, under which white fails small text and an up flash on an up box would not show.
+
 ### Known gaps on the light canvas
 Tokens only re-colour what the dark theme drew; the component treatment has restyled the app chrome (CWF-231) and begun on the tables (CWF-232) with the standings' and scoreboard's card rows and the report grids, and these are the gaps it has to close.
 - **Red is both brand and loss.** Primary buttons and the LIVE chip are the brand red; destructive buttons and losses are red-700, and so are the standings' and scoreboard's loss boxes, never the brand red. Beside a loss, a primary button can still read as a warning.
@@ -544,7 +550,7 @@ Below `sm` each of the three renders as a list of cards instead, an `<ol>` of `L
 
 The scoreboard's leaderboard keeps its band card below `sm`, and under the band, in place of the table, a Team `PhoneFilter` padded `p-3` (All teams, each team, and Undrafted while an undrafted golfer is on the board), then an `<ol>` of divided rows running to the card's edges (`sm:hidden`), not `ListCard`s: the navy and gold position boxes and the money boxes are the league's own standings, and a golfer field is not that. A row is `px-3 py-2`, `items-baseline`: the position in a `w-8` column, `{colors.ink-muted}` and `tabular-nums`, "—" for a competitor yet to tee off; the player name in `{colors.ink}`, `truncate`s in a `min-w-0 flex-1` column, over a wrapping line of the row's chips and its round line, `R1 68 · R2 70 · Tot 138` in `text-xs {colors.ink-muted} tabular-nums`, the rounds played so far and the total once there is one, left out before tee-off; then the score to par, `font-semibold tabular-nums`. Nothing in a row is tappable, so it keeps the dense padding. The one filter state drives the select and the header's filter both.
 
-When a live refresh reorders one of these lists, or Late Row Bets', each row and card glides to its new place (`glideAt`, `glide.ts`), moving only, never resizing. A new selection, filter or round redraws the list in place; content changing above a list shifts it without a glide; under reduced motion rows move without gliding.
+When a live refresh reorders one of these lists, or Late Row Bets', each row and card glides to its new place (`glideAt`, `glide.ts`), moving only, never resizing. A new selection, filter or round redraws the list in place; content changing above a list shifts it without a glide; under reduced motion rows move without gliding. On the scoreboard, standings, player rankings and weekly report, a figure a refresh changes in place — money, a top-10 count, a golfer's finish, a score to par — pulses in `{colors.pulse-up}`, `{colors.pulse-down}` or `{colors.pulse-new}` (`Pulse.tsx`). A position box never does, since the glide already shows the row's new rank; nor do Late Row Bets, the won/lost/net cards, the undrafted top tens or the your-team card's gaps. A colour fade, not motion, so it plays under reduced motion too.
 
 ### Position and money boxes — `ui/src/shared/components/PositionCell.tsx`, `MoneyCell.tsx`
 The first and last `<td>` of a card row; the box is the cell's fill, edge to edge, and each rounds its outer corners. `MoneyCell`'s `shape="standalone"` is the square box of a grid cell, the report's TOTAL CASH. Like `Button`, neither takes a `className`. `PositionCell` is `{typography.position-figure}` on `{colors.position-fill}` under `{colors.on-fill}`, and `{colors.gold}` under `{colors.on-gold}` for the row numbered 1. `kind="round"` numbers a draft round instead, and stays navy at 1: gold marks first place. `MoneyCell` takes the formatted amount and fills by its `moneyTone` — up `{colors.money-up-fill}`, down `{colors.money-down-fill}`, even `{colors.money-even-fill}` — under a white `{typography.money-figure}`.

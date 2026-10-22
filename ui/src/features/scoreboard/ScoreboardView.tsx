@@ -7,6 +7,7 @@ import { glideAt } from '@/shared/components/glide';
 import ListCard, { CARD_LIST_CLASS, CARD_ROW_CLASS } from '@/shared/components/ListCard';
 import MoneyCell from '@/shared/components/MoneyCell';
 import PositionCell from '@/shared/components/PositionCell';
+import Pulse, { PulseDollars } from '@/shared/components/Pulse';
 import WonLostNetCards from '@/shared/components/WonLostNetCards';
 import YouTag from '@/shared/components/YouTag';
 import ColumnHeaderFilter, {
@@ -63,8 +64,13 @@ interface GolferLineProps {
   onGolferClick?: (golferId: string) => void;
 }
 
+interface PulsingGolferLineProps extends GolferLineProps {
+  /** @see usePulse */
+  pulseScope: string;
+}
+
 // Each golfer's name, finish and payout keep to one line, so a wrap falls only between golfers.
-function GolferLine({ team, onGolferClick }: GolferLineProps): ReactNode {
+function GolferLine({ team, onGolferClick, pulseScope }: PulsingGolferLineProps): ReactNode {
   if (team.golferScores.length === 0) return null;
   return (
     <div className="text-sm text-ink-muted">
@@ -81,8 +87,15 @@ function GolferLine({ team, onGolferClick }: GolferLineProps): ReactNode {
               ) : (
                 <span className="text-ink-secondary">{golfer.golferName}</span>
               )}{' '}
-              {golfer.tied ? 'T' : null}
-              {golfer.position ?? '?'} <span className="tabular-nums">{formatDollarsAndCents(golfer.payout)}</span>
+              <Pulse
+                display={`${golfer.tied ? 'T' : ''}${golfer.position ?? '?'}`}
+                measure={golfer.position}
+                better="lower"
+                scope={pulseScope}
+              />{' '}
+              <span className="tabular-nums">
+                <PulseDollars amount={golfer.payout} scope={pulseScope} />
+              </span>
               {golfer.ownershipPct < 100 ? ` (${golfer.ownershipPct}%)` : null}
             </span>
           </Fragment>
@@ -126,10 +139,12 @@ function TeamCards({ teams, myTeamName, onGolferClick, selectionKey }: RankedTea
             team.golferScores.length === 0 ? (
               'No golfers in the top 10'
             ) : (
-              <GolferLine team={team} onGolferClick={onGolferClick} />
+              <GolferLine team={team} onGolferClick={onGolferClick} pulseScope={selectionKey} />
             )
           }
-          total={<MoneyCell display={formatDollarsAndCents(team.weeklyTotal)} shape="card-end" />}
+          total={
+            <MoneyCell display={formatDollarsAndCents(team.weeklyTotal)} shape="card-end" pulseScope={selectionKey} />
+          }
           glideIndex={index}
         />
       ))}
@@ -158,12 +173,12 @@ function TeamTable({ teams, myTeamName, onGolferClick, selectionKey }: RankedTea
                 <PositionCell position={index + 1} />
                 <td className={`${CARD_CELL_CLASS} ${look.cell}`}>
                   <TeamName teamName={team.teamName} mine={mine} />
-                  <GolferLine team={team} onGolferClick={onGolferClick} />
+                  <GolferLine team={team} onGolferClick={onGolferClick} pulseScope={selectionKey} />
                 </td>
                 <td className={`${CARD_CELL_CLASS} ${look.cell} text-right tabular-nums text-ink-secondary`}>
-                  {formatDollarsAndCents(team.topTenEarnings)}
+                  <PulseDollars amount={team.topTenEarnings} scope={selectionKey} />
                 </td>
-                <MoneyCell display={formatDollarsAndCents(team.weeklyTotal)} />
+                <MoneyCell display={formatDollarsAndCents(team.weeklyTotal)} pulseScope={selectionKey} />
               </m.tr>
             );
           })}
@@ -271,6 +286,22 @@ interface LeaderboardListProps {
   listKey: string;
 }
 
+interface LeaderboardFigureProps {
+  entry: LiveLeaderboardEntry;
+  /** @see usePulse */
+  listKey: string;
+}
+
+function LeaderboardPosition({ entry, listKey }: LeaderboardFigureProps): ReactNode {
+  return <Pulse display={String(entry.position ?? '—')} measure={entry.position} better="lower" scope={listKey} />;
+}
+
+function ScoreToPar({ entry, listKey }: LeaderboardFigureProps): ReactNode {
+  return (
+    <Pulse display={formatScoreToPar(entry.scoreToPar)} measure={entry.scoreToPar} better="lower" scope={listKey} />
+  );
+}
+
 function LeaderboardRows({ entries, listKey }: LeaderboardListProps): ReactNode {
   if (entries.length === 0) return <p className="px-3 py-6 text-center text-sm text-ink-soft italic">{FILTERED_EMPTY}</p>;
   return (
@@ -279,7 +310,9 @@ function LeaderboardRows({ entries, listKey }: LeaderboardListProps): ReactNode 
         const roundLine = leaderboardRoundLine(entry);
         return (
           <m.li key={playerNames(entry)} {...glideAt(index)} className="flex items-baseline gap-3 px-3 py-2">
-            <span className="w-8 shrink-0 text-ink-muted tabular-nums">{entry.position ?? '—'}</span>
+            <span className="w-8 shrink-0 text-ink-muted tabular-nums">
+              <LeaderboardPosition entry={entry} listKey={listKey} />
+            </span>
             <div className="min-w-0 flex-1">
               <div className="truncate text-ink">{playerNames(entry)}</div>
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -287,7 +320,9 @@ function LeaderboardRows({ entries, listKey }: LeaderboardListProps): ReactNode 
                 {roundLine ? <span className="text-xs text-ink-muted tabular-nums">{roundLine}</span> : null}
               </div>
             </div>
-            <span className="shrink-0 font-semibold tabular-nums">{formatScoreToPar(entry.scoreToPar)}</span>
+            <span className="shrink-0 font-semibold tabular-nums">
+              <ScoreToPar entry={entry} listKey={listKey} />
+            </span>
           </m.li>
         );
       })}
@@ -341,13 +376,15 @@ function LeaderboardTable({
           ) : (
             entries.map((entry, index) => (
               <m.tr key={playerNames(entry)} {...glideAt(index)}>
-                <td className="pl-3 pr-2 py-2 text-ink-muted tabular-nums">{entry.position ?? '—'}</td>
+                <td className="pl-3 pr-2 py-2 text-ink-muted tabular-nums">
+                  <LeaderboardPosition entry={entry} listKey={listKey} />
+                </td>
                 <td className="px-2 py-2 text-ink">{playerNames(entry)}</td>
                 <td className="px-2 py-2">
                   <TeamChips entry={entry} />
                 </td>
                 <td className="px-2 py-2 text-right tabular-nums font-semibold">
-                  {formatScoreToPar(entry.scoreToPar)}
+                  <ScoreToPar entry={entry} listKey={listKey} />
                 </td>
                 {[0, 1, 2, 3].map((idx) => (
                   <td key={idx} className="px-2 py-2 text-right tabular-nums text-ink-muted">

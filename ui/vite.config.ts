@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => ({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/shared/test/setup.ts'],
+    setupFiles: ['./src/shared/test/animationEvent.ts', './src/shared/test/setup.ts'],
     css: true,
     reporters: [
       'default',

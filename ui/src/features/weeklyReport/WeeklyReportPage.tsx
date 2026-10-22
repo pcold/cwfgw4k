@@ -63,7 +63,7 @@ function WeeklyReportPage(): ReactNode {
       ? null
       : (pickInSeason(userTournamentId, tournaments) ??
         pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
-  const { query: reportQuery, overlay: liveOverlay } = useLiveOverlayQuery(
+  const { query: reportQuery, overlay: liveOverlay, selectionKey } = useLiveOverlayQuery(
     (live) => queryKeys.report.detail(seasonId, effectiveId, live),
     seasonId === null || effectiveId === null
       ? null
@@ -149,6 +149,7 @@ function WeeklyReportPage(): ReactNode {
               myTeamName={myTeamName}
               onSelectTeam={setSelectedTeamId}
               onGolferClick={setHistoryGolferId}
+              selectionKey={selectionKey}
             />
           )}
         </QueryState>

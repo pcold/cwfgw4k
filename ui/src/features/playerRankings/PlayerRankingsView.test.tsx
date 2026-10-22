@@ -50,6 +50,36 @@ function phoneDetailLine(name: string): HTMLElement {
   return within(phoneCard(name)).getByText(/top 10/);
 }
 
+interface RefetchingProps {
+  first: readonly PlayerRankingsRow[];
+  second: readonly PlayerRankingsRow[];
+  /** Unset, the second players are a refetch of the first's selection. */
+  secondSelectionKey?: string;
+}
+
+function Refetching({ first, second, secondSelectionKey = SELECTION_KEY }: RefetchingProps): ReactNode {
+  const [current, setCurrent] = useState({ players: first, selectionKey: SELECTION_KEY });
+  return (
+    <>
+      <button type="button" onClick={() => setCurrent({ players: second, selectionKey: secondSelectionKey })}>
+        Refetch
+      </button>
+      <PlayerRankingsView selectionKey={current.selectionKey} myTeamName={null} players={current.players} />
+    </>
+  );
+}
+
+async function renderRefetching(props: RefetchingProps): Promise<void> {
+  stackByTreeIndex();
+  renderWithProviders(<Refetching {...props} />, { ...NO_PROVIDERS, withMotionProvider: true });
+  await elapseFrames();
+}
+
+async function refetch(): Promise<void> {
+  await userEvent.click(screen.getByRole('button', { name: 'Refetch' }));
+  await elapseFrames();
+}
+
 describe('PlayerRankingsView', () => {
   it('shows an empty state when no players qualify', () => {
     renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={[]} />, NO_PROVIDERS);
@@ -330,8 +360,9 @@ describe('PlayerRankingsView', () => {
       />,
       NO_PROVIDERS,
     );
-    expect(within(playerTable()).getByText('+$50.00')).toHaveClass('text-semantic-success');
-    expect(within(playerTable()).getByText('$0')).toHaveClass('text-ink-soft');
+    // The figure's parent: the figure itself is its pulse.
+    expect(within(playerTable()).getByText('+$50.00').parentElement).toHaveClass('text-semantic-success');
+    expect(within(playerTable()).getByText('$0').parentElement).toHaveClass('text-ink-soft');
   });
 
   it('sets every column head in the shared column-header type', () => {
@@ -467,10 +498,10 @@ describe('PlayerRankingsView', () => {
     it('sets the total as a plain figure toned by its sign, with no fill', () => {
       renderWithProviders(<PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={roster} />, NO_PROVIDERS);
 
-      const earner = within(phoneCard('Scottie Scheffler')).getByText('+$50.00');
+      const earner = within(phoneCard('Scottie Scheffler')).getByText('+$50.00').parentElement;
       expect(earner).toHaveClass(...MONEY_FIGURE_CLASS.split(' '), 'text-semantic-success');
-      expect(earner.className).not.toMatch(/\bbg-/);
-      expect(within(phoneCard('P. Mickelson')).getByText('$0')).toHaveClass('text-ink-soft');
+      expect(earner?.className).not.toMatch(/\bbg-/);
+      expect(within(phoneCard('P. Mickelson')).getByText('$0').parentElement).toHaveClass('text-ink-soft');
     });
 
     it('offers every team and round from its phone selects, all of them first, each round named a round', () => {
@@ -530,36 +561,6 @@ describe('PlayerRankingsView', () => {
     const rory = r({ key: 'g:g-2', golferId: 'g-2', name: 'Rory McIlroy', teamName: 'Birdies', draftRound: 2 });
     const phil = r({ key: 'u:Phil', golferId: null, name: 'P. Mickelson', teamName: null, draftRound: null });
 
-    interface RefetchingProps {
-      first: readonly PlayerRankingsRow[];
-      second: readonly PlayerRankingsRow[];
-      /** Unset, the second players are a refetch of the first's selection. */
-      secondSelectionKey?: string;
-    }
-
-    function Refetching({ first, second, secondSelectionKey = SELECTION_KEY }: RefetchingProps): ReactNode {
-      const [current, setCurrent] = useState({ players: first, selectionKey: SELECTION_KEY });
-      return (
-        <>
-          <button type="button" onClick={() => setCurrent({ players: second, selectionKey: secondSelectionKey })}>
-            Refetch
-          </button>
-          <PlayerRankingsView selectionKey={current.selectionKey} myTeamName={null} players={current.players} />
-        </>
-      );
-    }
-
-    async function renderRefetching(props: RefetchingProps): Promise<void> {
-      stackByTreeIndex();
-      renderWithProviders(<Refetching {...props} />, { ...NO_PROVIDERS, withMotionProvider: true });
-      await elapseFrames();
-    }
-
-    async function refetch(): Promise<void> {
-      await userEvent.click(screen.getByRole('button', { name: 'Refetch' }));
-      await elapseFrames();
-    }
-
     function playerRows(name: string): HTMLElement[] {
       const tableRow = within(playerTable()).getByText(name).closest<HTMLElement>('tr');
       if (!tableRow) throw new Error(`no row for ${name}`);
@@ -596,6 +597,31 @@ describe('PlayerRankingsView', () => {
       await elapseFrames();
 
       expect(playerRows('Rory McIlroy').map(isGliding)).toEqual([false, false]);
+    });
+  });
+
+  describe('pulsing', () => {
+    function pulses(display: string): (string | null)[] {
+      return screen.getAllByText(display).map((figure) => figure.getAttribute('data-pulse'));
+    }
+
+    const before = r({ topTens: 4, totalEarnings: 18 });
+    const after = r({ topTens: 7, totalEarnings: 25 });
+
+    it("pulses a player's top 10s and earnings, in the table and on the card, when a refetch raises them", async () => {
+      await renderRefetching({ first: [before], second: [after] });
+      await refetch();
+
+      expect(pulses('7')).toEqual(['up', 'up']);
+      expect(pulses('+$25.00')).toEqual(['up', 'up']);
+    });
+
+    it('holds the figures still for a new selection', async () => {
+      await renderRefetching({ first: [before], second: [after], secondSelectionKey: 'another selection' });
+      await refetch();
+
+      expect(pulses('7')).toEqual([null, null]);
+      expect(pulses('+$25.00')).toEqual([null, null]);
     });
   });
 });

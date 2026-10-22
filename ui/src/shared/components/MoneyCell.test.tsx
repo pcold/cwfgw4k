@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { screen } from '@testing-library/react';
-import type { ReactElement } from 'react';
+import { useState, type ReactElement, type ReactNode } from 'react';
+import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import MoneyCell from './MoneyCell';
+import { PULSE_CLASS } from './Pulse';
 
 const NO_PROVIDERS = { withLeagueSeasonProvider: false };
 
@@ -34,7 +36,7 @@ describe('MoneyCell', () => {
     renderInRow(<MoneyCell display="+$1,082" />);
 
     expect(screen.getByRole('cell', { name: '+$1,082' }).className).toBe(
-      'px-3 py-2 rounded-r text-right text-on-fill font-display font-bold text-xl tabular-nums bg-money-up-fill',
+      `px-3 py-2 rounded-r text-right text-on-fill font-display font-bold text-xl tabular-nums bg-money-up-fill ${PULSE_CLASS}`,
     );
   });
 
@@ -56,5 +58,33 @@ describe('MoneyCell', () => {
     const box = screen.getByText(display);
     expect(box.tagName).toBe('DIV');
     expect(box).toHaveClass(tone, 'rounded-r', 'min-w-24', 'shrink-0', 'text-on-fill', 'font-display', 'font-bold', 'text-xl');
+  });
+
+  describe('pulse', () => {
+    function Refreshing({ pulseScope }: { pulseScope?: string }): ReactNode {
+      const [display, setDisplay] = useState('+$40');
+      return (
+        <>
+          <button type="button" onClick={() => setDisplay('\u2212$35')}>
+            Refresh
+          </button>
+          <MoneyCell display={display} shape="card-end" pulseScope={pulseScope} />
+        </>
+      );
+    }
+
+    it('pulses its box down when a refresh lowers the amount', async () => {
+      renderWithProviders(<Refreshing pulseScope="s" />, NO_PROVIDERS);
+      await userEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+
+      expect(screen.getByText('\u2212$35')).toHaveAttribute('data-pulse', 'down');
+    });
+
+    it('holds still without a pulse scope', async () => {
+      renderWithProviders(<Refreshing />, NO_PROVIDERS);
+      await userEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+
+      expect(screen.getByText('\u2212$35')).not.toHaveAttribute('data-pulse');
+    });
   });
 });

@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -81,7 +82,14 @@ function report(overrides: Partial<WeeklyReport> = {}): WeeklyReport {
 
 const NO_PROVIDERS = { withLeagueSeasonProvider: false };
 
-const FIRST_TEAM = { selectedTeamId: null, myTeamName: null, onSelectTeam: () => undefined };
+const SELECTION_KEY = 'selection';
+
+const FIRST_TEAM = {
+  selectedTeamId: null,
+  myTeamName: null,
+  onSelectTeam: () => undefined,
+  selectionKey: SELECTION_KEY,
+};
 
 function grid(): HTMLElement {
   return screen.getByRole('table');
@@ -117,6 +125,33 @@ function roundRow(round: number): HTMLElement {
     .find((r) => within(r).queryAllByRole('cell')[0]?.textContent.startsWith(`${round}`));
   if (!found) throw new Error(`no row for round ${round}`);
   return found;
+}
+
+interface RefetchingProps {
+  first: WeeklyReport;
+  second: WeeklyReport;
+  /** Unset, the second report is a refetch of the first's selection. */
+  secondSelectionKey?: string;
+}
+
+/** The phone team strip drives the selected team, as the page does. */
+function Refetching({ first, second, secondSelectionKey = SELECTION_KEY }: RefetchingProps): ReactNode {
+  const [current, setCurrent] = useState({ report: first, selectionKey: SELECTION_KEY });
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  return (
+    <>
+      <button type="button" onClick={() => setCurrent({ report: second, selectionKey: secondSelectionKey })}>
+        Refetch
+      </button>
+      <WeeklyReportView
+        report={current.report}
+        selectionKey={current.selectionKey}
+        selectedTeamId={selectedTeamId}
+        myTeamName={null}
+        onSelectTeam={setSelectedTeamId}
+      />
+    </>
+  );
 }
 
 describe('WeeklyReportView', () => {
@@ -477,6 +512,7 @@ describe('WeeklyReportView', () => {
           selectedTeamId="t-2"
           myTeamName={null}
           onSelectTeam={vi.fn()}
+          selectionKey={SELECTION_KEY}
         />,
         NO_PROVIDERS,
       );
@@ -492,6 +528,7 @@ describe('WeeklyReportView', () => {
           selectedTeamId="t-gone"
           myTeamName={null}
           onSelectTeam={vi.fn()}
+          selectionKey={SELECTION_KEY}
         />,
         NO_PROVIDERS,
       );
@@ -517,6 +554,7 @@ describe('WeeklyReportView', () => {
           selectedTeamId={null}
           myTeamName="BIRDIES"
           onSelectTeam={vi.fn()}
+          selectionKey={SELECTION_KEY}
         />,
         NO_PROVIDERS,
       );
@@ -532,6 +570,7 @@ describe('WeeklyReportView', () => {
           selectedTeamId="t-1"
           myTeamName="Birdies"
           onSelectTeam={vi.fn()}
+          selectionKey={SELECTION_KEY}
         />,
         NO_PROVIDERS,
       );
@@ -547,6 +586,7 @@ describe('WeeklyReportView', () => {
           selectedTeamId={null}
           myTeamName="Eagles"
           onSelectTeam={vi.fn()}
+          selectionKey={SELECTION_KEY}
         />,
         NO_PROVIDERS,
       );
@@ -563,6 +603,7 @@ describe('WeeklyReportView', () => {
           selectedTeamId={null}
           myTeamName={null}
           onSelectTeam={onSelectTeam}
+          selectionKey={SELECTION_KEY}
         />,
         NO_PROVIDERS,
       );
@@ -635,11 +676,12 @@ describe('WeeklyReportView', () => {
       renderWithProviders(<WeeklyReportView {...FIRST_TEAM} report={report({ teams: [team({ cells })] })} />, NO_PROVIDERS);
 
       const [teeing, absent] = pickCards();
-      const playing = within(teeing ?? document.body).getByText('Playing');
+      // The label's parent: the label itself is its pulse.
+      const playing = within(teeing ?? document.body).getByText('Playing').parentElement;
       expect(playing).toHaveClass('text-ink-muted');
       expect(playing).not.toHaveClass('font-bold');
       expect(absent).not.toHaveTextContent('Playing');
-      expect(within(absent ?? document.body).getByText('-')).toHaveClass('font-bold', 'text-ink');
+      expect(within(absent ?? document.body).getByText('-').parentElement).toHaveClass('font-bold', 'text-ink');
     });
 
     it('leaves the season-to-date line off a season report', () => {
@@ -719,6 +761,49 @@ describe('WeeklyReportView', () => {
 
       expect(screen.getAllByText(/UNDRAFTED TOP TENS/)).toHaveLength(1);
       expect(screen.getAllByText('Won')).toHaveLength(1);
+    });
+  });
+
+  describe('pulsing', () => {
+    function pulses(display: string): (string | null)[] {
+      return screen.getAllByText(display).map((figure) => figure.getAttribute('data-pulse'));
+    }
+
+    function aces(roundOneEarnings: number): ReportTeamColumn {
+      return team({ cells: [row(1, { earnings: roundOneEarnings }), row(2)] });
+    }
+
+    it("pulses a pick's earnings, in the grid and on its card, when a refetch raises them", async () => {
+      renderWithProviders(
+        <Refetching first={report({ teams: [aces(10)] })} second={report({ teams: [aces(40)] })} />,
+        NO_PROVIDERS,
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Refetch' }));
+
+      expect(pulses('T1 - +$40.00')).toEqual(['up', 'up']);
+    });
+
+    it('holds the figures still for a new selection', async () => {
+      renderWithProviders(
+        <Refetching
+          first={report({ teams: [aces(10)] })}
+          second={report({ teams: [aces(40)] })}
+          secondSelectionKey="another selection"
+        />,
+        NO_PROVIDERS,
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Refetch' }));
+
+      expect(pulses('T1 - +$40.00')).toEqual([null, null]);
+    });
+
+    it("holds the phone's cards still when the team strip swaps their team", async () => {
+      const birdies = team({ teamId: 't-2', teamName: 'Birdies', cells: [row(1, { earnings: 40 }), row(2)] });
+      const standings = report({ teams: [aces(10), birdies] });
+      renderWithProviders(<Refetching first={standings} second={standings} />, NO_PROVIDERS);
+      await userEvent.click(within(screen.getByRole('group', { name: 'Team' })).getByRole('button', { name: 'Birdies' }));
+
+      expect(within(nth(pickCards(), 0)).getByText('T1 - +$40.00')).not.toHaveAttribute('data-pulse');
     });
   });
 });
