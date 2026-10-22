@@ -93,14 +93,14 @@ private suspend fun readClasspathBytes(path: String): ByteArray? =
 
 private object StaticRoutesMarker
 
-private fun contentTypeFor(file: String): ContentType =
+private fun contentTypeFor(path: String): ContentType =
     when {
-        file.endsWith(".js") -> ContentType.Application.JavaScript
-        file.endsWith(".css") -> ContentType.Text.CSS
-        file.endsWith(".html") -> ContentType.Text.Html
-        file.endsWith(".svg") -> ContentType.Image.SVG
-        file.endsWith(".png") -> ContentType.Image.PNG
-        file.endsWith(".ico") -> ContentType.Image.XIcon
-        file.endsWith(".webmanifest") -> MANIFEST_JSON
+        path.endsWith(".js") -> ContentType.Application.JavaScript
+        path.endsWith(".css") -> ContentType.Text.CSS
+        path.endsWith(".html") -> ContentType.Text.Html
+        path.endsWith(".svg") -> ContentType.Image.SVG
+        path.endsWith(".png") -> ContentType.Image.PNG
+        path.endsWith(".ico") -> ContentType.Image.XIcon
+        path.endsWith(".webmanifest") -> MANIFEST_JSON
         else -> ContentType.Application.OctetStream
     }
