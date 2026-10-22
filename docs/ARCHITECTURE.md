@@ -249,19 +249,16 @@ Each of these runs in exactly one `tx.update`, so it lands whole or not at all:
 - **Season clean-results** wipes every score and result in the season and returns every tournament to
   `upcoming`.
 - **Roster confirm** creates every team, golfer and roster entry in the upload together (`AdminService.kt`).
+- **Schedule confirm** creates every tournament the operator kept together. An entry already linked to the same
+  ESPN event is skipped, so re-running the confirm is safe (`AdminServiceScheduleImportSpec`).
 - **Player-override write** re-checks the tournament's link and status inside the same transaction as the
   write, so it cannot race a finalize (`TournamentLinkService.kt`).
 
 A create that loses a race on a unique key gets a typed outcome, not a 500. `Transactor.updateOrOutraced`
 (`db/OutracedWrites.kt`) turns a 23505 on the one constraint it names into a typed error and rethrows anything
-else: 409 from roster confirm, a skipped entry in schedule confirm, a log line in the boot admin seed. The finalize
+else: 409 from roster and schedule confirm, a log line in the boot admin seed. The finalize
 import creates golfers with `ON CONFLICT DO NOTHING` instead, since a 23505 would abort the finalize; its backfill,
 an UPDATE, rolls back to a savepoint on that 23505 (`writeOrOutraced`).
-
-Not atomic, deliberately or by default:
-
-- **Schedule confirm** creates each tournament in its own transaction; a failure part way leaves the earlier
-  entries. An entry already linked to the same ESPN event is skipped, so re-running the confirm is safe.
 
 ## 6. State Machines
 

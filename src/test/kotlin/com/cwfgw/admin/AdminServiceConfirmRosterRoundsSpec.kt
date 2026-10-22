@@ -3,20 +3,17 @@ package com.cwfgw.admin
 import com.cwfgw.db.Transactor
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.golfers.GolferService
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournaments.TournamentRepository
-import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
@@ -39,11 +36,9 @@ class AdminServiceConfirmRosterRoundsSpec : FunSpec({
     fun service(): AdminService =
         AdminService(
             tx = tx,
-            seasonService = SeasonService(SeasonRepository(), tx),
-            tournamentService = TournamentService(TournamentRepository(), tx),
+            seasonRepository = SeasonRepository(),
             tournamentRepository = TournamentRepository(),
             espnService = testEspnService(client = FakeEspnClient(), tx = tx),
-            golferService = GolferService(GolferRepository(), tx),
             golferRepository = GolferRepository(),
             teamRepository = TeamRepository(),
         )

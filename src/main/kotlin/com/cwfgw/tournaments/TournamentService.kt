@@ -26,9 +26,6 @@ class TournamentService(
         }
     }
 
-    suspend fun findByPgaTournamentId(pgaTournamentId: String): Tournament? =
-        tx.get { repository.findByPgaTournamentId(pgaTournamentId) }
-
     suspend fun create(request: NewTournament): Result<Tournament, TournamentError> =
         tx.updateOrOutraced(UNIQUE_PGA_TOURNAMENT_ID, outraced = { TournamentError.PgaTournamentIdTaken }) {
             Result.Ok(repository.create(request))

@@ -64,6 +64,11 @@ private fun AdminError.toDomainError(): DomainError =
             DomainError.Validation("golfer ids not found: ${ids.joinToString(", ") { it.value.toString() }}")
         is AdminError.TeamNameTaken ->
             DomainError.Conflict("a team name in this roster is already taken in season ${seasonId.value}")
+        is AdminError.EspnEventTaken ->
+            DomainError.Conflict(
+                "an ESPN event in this schedule was linked to a tournament during the import; season " +
+                    "${seasonId.value} is unchanged, so retry to skip it",
+            )
         is AdminError.UnresolvableEspnGolfers ->
             DomainError.Unprocessable(
                 "ESPN athletes ${espnIds.joinToString(", ")} each name a golfer without an ESPN id that another " +

@@ -135,11 +135,9 @@ data class AppServices private constructor(
                     )
                 val admin =
                     AdminSupport.from(
-                        seasons = seasons,
-                        tournaments = tournaments,
+                        seasonRepository = seasonRepository,
                         tournamentRepository = tournamentRepository,
                         espn = espn,
-                        golfers = golfers,
                         golferRepository = golferRepository,
                         teamRepository = teamRepository,
                         transactor = transactor,

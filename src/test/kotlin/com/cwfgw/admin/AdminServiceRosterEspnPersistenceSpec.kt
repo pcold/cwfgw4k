@@ -8,21 +8,18 @@ import com.cwfgw.espn.EspnTournament
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.golfers.GolferService
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.testing.orFail
 import com.cwfgw.testing.postgresHarness
 import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournaments.TournamentRepository
-import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContain
@@ -58,11 +55,9 @@ class AdminServiceRosterEspnPersistenceSpec : FunSpec({
         val client = FakeEspnClient(calendar = listOf(recent), tournamentsByDate = mapOf(RECENT_DATE to listOf(event)))
         return AdminService(
             tx = tx,
-            seasonService = SeasonService(SeasonRepository(), tx),
-            tournamentService = TournamentService(TournamentRepository(), tx),
+            seasonRepository = SeasonRepository(),
             tournamentRepository = TournamentRepository(),
             espnService = testEspnService(client = client, golferRepository = GolferRepository(), tx = tx),
-            golferService = GolferService(GolferRepository(), tx),
             golferRepository = GolferRepository(),
             teamRepository = TeamRepository(),
         )

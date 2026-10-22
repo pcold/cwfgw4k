@@ -1,5 +1,6 @@
 package com.cwfgw.admin
 
+import com.cwfgw.db.TransactionContext
 import com.cwfgw.espn.EspnCalendarEntry
 import com.cwfgw.espn.EspnUpstreamException
 import com.cwfgw.espn.FakeEspnClient
@@ -14,6 +15,10 @@ import com.cwfgw.testing.ApiFixture
 import com.cwfgw.testing.apiTest
 import com.cwfgw.testing.authenticatedApiTest
 import com.cwfgw.testing.noopTransactionContext
+import com.cwfgw.tournaments.FakeTournamentRepository
+import com.cwfgw.tournaments.NewTournament
+import com.cwfgw.tournaments.Tournament
+import com.cwfgw.tournaments.TournamentRepository
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
@@ -203,6 +208,40 @@ class AdminRoutesSpec : FunSpec({
                     setBody(ConfirmSeasonScheduleRequest(entries = emptyList()))
                 }
             response.status shouldBe HttpStatusCode.NotFound
+        }
+    }
+
+    test("POST /api/v1/admin/seasons/{id}/upload/confirm returns 409 when an ESPN event is linked after its read") {
+        val masters =
+            ConfirmedTournamentEntry(
+                espnEventId = "e-1",
+                name = "Masters",
+                startDate = LocalDate.parse("2026-04-09"),
+                endDate = LocalDate.parse("2026-04-12"),
+            )
+        val tournaments = FakeTournamentRepository()
+        with(noopTransactionContext) {
+            tournaments.create(
+                NewTournament(
+                    pgaTournamentId = masters.espnEventId,
+                    name = masters.name,
+                    seasonId = SEASON_ID,
+                    startDate = masters.startDate,
+                    endDate = masters.endDate,
+                ),
+            )
+        }
+        val fixture: ApiFixture.() -> Unit = {
+            adminFixture().invoke(this)
+            tournamentRepository = LinkReadsBlind(tournaments)
+        }
+        authenticatedApiTest(fixture) { client ->
+            val response =
+                client.post("/api/v1/admin/seasons/${SEASON_ID.value}/upload/confirm") {
+                    contentType(ContentType.Application.Json)
+                    setBody(ConfirmSeasonScheduleRequest(entries = listOf(masters)))
+                }
+            response.status shouldBe HttpStatusCode.Conflict
         }
     }
 
@@ -487,3 +526,11 @@ class AdminRoutesSpec : FunSpec({
 })
 
 private suspend fun HttpResponse.bodyAsString(): String = body()
+
+/** A link committed after the import's read, which only the unique key then sees. */
+private class LinkReadsBlind(
+    delegate: TournamentRepository,
+) : TournamentRepository by delegate {
+    context(ctx: TransactionContext)
+    override fun findByPgaTournamentIds(pgaTournamentIds: Collection<String>): List<Tournament> = emptyList()
+}

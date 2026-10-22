@@ -4,13 +4,11 @@ import com.cwfgw.db.Transactor
 import com.cwfgw.espn.FakeEspnClient
 import com.cwfgw.golfers.CreateGolferRequest
 import com.cwfgw.golfers.GolferRepository
-import com.cwfgw.golfers.GolferService
 import com.cwfgw.leagues.CreateLeagueRequest
 import com.cwfgw.leagues.LeagueRepository
 import com.cwfgw.result.Result
 import com.cwfgw.seasons.CreateSeasonRequest
 import com.cwfgw.seasons.SeasonRepository
-import com.cwfgw.seasons.SeasonService
 import com.cwfgw.teams.NewTeam
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.teams.TeamService
@@ -20,7 +18,6 @@ import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.TournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.TournamentRepository
-import com.cwfgw.tournaments.TournamentService
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
@@ -45,9 +42,6 @@ class AdminServiceConfirmRosterSpec : FunSpec({
         val seasonRepo = SeasonRepository()
         val tournamentRepo = TournamentRepository()
         val teamRepo = TeamRepository()
-        val seasonService = SeasonService(seasonRepo, tx)
-        val tournamentService = TournamentService(tournamentRepo, tx)
-        val golferService = GolferService(golferRepo, tx)
         val linkRepo = TournamentLinkRepository()
         val espnService =
             testEspnService(
@@ -70,11 +64,9 @@ class AdminServiceConfirmRosterSpec : FunSpec({
         }
         return AdminService(
             tx = tx,
-            seasonService = seasonService,
-            tournamentService = tournamentService,
+            seasonRepository = seasonRepo,
             tournamentRepository = tournamentRepo,
             espnService = espnService,
-            golferService = golferService,
             golferRepository = golferRepo,
             teamRepository = teamRepo,
         )
