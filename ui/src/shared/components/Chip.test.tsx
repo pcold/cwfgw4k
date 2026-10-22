@@ -22,7 +22,13 @@ describe('Chip', () => {
     expect(chip.className).not.toMatch(/(?<![\w-])bg-/);
   });
 
-  it.each(['neutral', 'outlined'] as const)('sets a %s chip in the one chip shape', (variant) => {
+  it('fills a my-team chip with the navy of the YOU tag under its white', () => {
+    renderWithProviders(<Chip variant="my-team">Aces</Chip>, NO_PROVIDERS);
+
+    expect(screen.getByText('Aces')).toHaveClass('bg-chrome', 'text-on-chrome', 'border-transparent');
+  });
+
+  it.each(['neutral', 'outlined', 'my-team'] as const)('sets a %s chip in the one chip shape', (variant) => {
     renderWithProviders(<Chip variant={variant}>Label</Chip>, NO_PROVIDERS);
 
     expect(screen.getByText('Label')).toHaveClass(

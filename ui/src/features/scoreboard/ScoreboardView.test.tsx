@@ -618,6 +618,20 @@ describe('ScoreboardView', () => {
     expect(payray).toHaveClass('bg-surface-raised', 'text-ink-body');
   });
 
+  it('fills the chosen team\'s chip navy, in the table and the phone list, and no other', () => {
+    renderWithProviders(
+      <ScoreboardView selectionKey={SELECTION_KEY} myTeamName="birdies" report={report({ liveLeaderboard: [tiger, rory] })} />,
+      NO_PROVIDERS,
+    );
+
+    const rows = within(leaderboardTable()).getAllByRole('row');
+    expect(nth(teamChips(nth(rows, 2)), 0)).toHaveClass('bg-chrome', 'text-on-chrome');
+    expect(nth(teamChips(nth(rows, 1)), 0)).toHaveClass('bg-surface-raised', 'text-ink-body');
+    const phoneList = screen.getByRole('list', { name: 'Leaderboard' });
+    expect(within(phoneList).getByText('Birdies')).toHaveClass('bg-chrome', 'text-on-chrome');
+    expect(within(phoneList).getByText('Aces')).toHaveClass('bg-surface-raised');
+  });
+
   it('gives a golfer split across teams a chip for every team', () => {
     const rahm = makeLeaderboardEntry({ players: [{ name: 'Rahm', teamNames: ['Aces', 'Birdies'] }] });
     renderWithProviders(
