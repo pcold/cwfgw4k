@@ -12,7 +12,7 @@ class TournamentService(
     private val tx: Transactor,
     private val clock: Clock = Clock.systemUTC(),
 ) {
-    /** Statuses are [statusAsOf] today, while [filter] matches the stored ones. */
+    /** [filter] matches the stored statuses, not the derived ones. */
     suspend fun list(filter: TournamentFilter): List<Tournament> {
         val today = LocalDate.ofInstant(clock.instant(), ESPN_SCHEDULE_ZONE)
         return tx.get { repository.findAll(filter) }.map { it.copy(status = it.statusAsOf(today)) }
