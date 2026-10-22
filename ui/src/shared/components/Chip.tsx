@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 /** @see Chip */
-export type ChipVariant = 'neutral' | 'outlined';
+export type ChipVariant = 'neutral' | 'outlined' | 'my-team';
 
 const CHIP_CLASS = 'inline-flex items-center whitespace-nowrap rounded border px-1.5 py-0.5 text-xs uppercase tracking-wider';
 
@@ -9,6 +9,7 @@ const CHIP_CLASS = 'inline-flex items-center whitespace-nowrap rounded border px
 const VARIANT_CLASS: Readonly<Record<ChipVariant, string>> = {
   neutral: 'bg-surface-raised border-transparent text-ink-body',
   outlined: 'border-hairline-strong text-ink-muted',
+  'my-team': 'bg-chrome border-transparent text-on-chrome',
 };
 
 interface ChipProps {
@@ -17,8 +18,8 @@ interface ChipProps {
 }
 
 /**
- * Told apart by shape and label, never by a tone: an outline marks what is absent (an undrafted golfer), and a page's
- * status is `StatusChip`, not one of these. No `className`, so a caller can't add a fill.
+ * Never a status tone: an outline marks what is absent (an undrafted golfer), the `YOU` tag's navy the visitor's own
+ * team, and a page's status is `StatusChip`, not one of these. No `className`, so a caller can't add a fill.
  */
 function Chip({ variant, children }: ChipProps): ReactNode {
   return <span className={`${CHIP_CLASS} ${VARIANT_CLASS[variant]}`}>{children}</span>;

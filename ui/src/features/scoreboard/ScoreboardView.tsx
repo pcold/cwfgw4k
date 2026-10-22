@@ -261,15 +261,21 @@ function FieldTable({ teams, myTeamName, onGolferClick }: TeamListProps): ReactN
 
 interface TeamChipsProps {
   entry: LiveLeaderboardEntry;
+  /** @see isMyTeam */
+  myTeamName: string | null;
 }
 
-function TeamChips({ entry }: TeamChipsProps): ReactNode {
+function TeamChips({ entry, myTeamName }: TeamChipsProps): ReactNode {
   return (
     <div className="flex flex-wrap gap-1">
       {leaderboardTeamChips(entry).map((chip) => {
         switch (chip.kind) {
           case 'team':
-            return <Chip key={chip.key} variant="neutral">{chip.teamName}</Chip>;
+            return (
+              <Chip key={chip.key} variant={isMyTeam(chip.teamName, myTeamName) ? 'my-team' : 'neutral'}>
+                {chip.teamName}
+              </Chip>
+            );
           case 'undrafted':
             return <Chip key={chip.key} variant="outlined">Undrafted</Chip>;
           default:
@@ -284,6 +290,8 @@ interface LeaderboardListProps {
   entries: readonly LiveLeaderboardEntry[];
   /** The selection's key and the team filter's, so a filter change remounts the rows rather than gliding them. */
   listKey: string;
+  /** @see isMyTeam */
+  myTeamName: string | null;
 }
 
 interface LeaderboardFigureProps {
@@ -302,7 +310,7 @@ function ScoreToPar({ entry, listKey }: LeaderboardFigureProps): ReactNode {
   );
 }
 
-function LeaderboardRows({ entries, listKey }: LeaderboardListProps): ReactNode {
+function LeaderboardRows({ entries, listKey, myTeamName }: LeaderboardListProps): ReactNode {
   if (entries.length === 0) return <p className="px-3 py-6 text-center text-sm text-ink-soft italic">{FILTERED_EMPTY}</p>;
   return (
     <ol key={listKey} aria-label="Leaderboard" className="text-sm divide-y divide-hairline-soft">
@@ -316,7 +324,7 @@ function LeaderboardRows({ entries, listKey }: LeaderboardListProps): ReactNode 
             <div className="min-w-0 flex-1">
               <div className="truncate text-ink">{playerNames(entry)}</div>
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                <TeamChips entry={entry} />
+                <TeamChips entry={entry} myTeamName={myTeamName} />
                 {roundLine ? <span className="text-xs text-ink-muted tabular-nums">{roundLine}</span> : null}
               </div>
             </div>
@@ -339,6 +347,7 @@ interface LeaderboardTableProps extends LeaderboardListProps {
 function LeaderboardTable({
   entries,
   listKey,
+  myTeamName,
   teamFilter,
   onTeamFilterChange,
   teamOptions,
@@ -381,7 +390,7 @@ function LeaderboardTable({
                 </td>
                 <td className="px-2 py-2 text-ink">{playerNames(entry)}</td>
                 <td className="px-2 py-2">
-                  <TeamChips entry={entry} />
+                  <TeamChips entry={entry} myTeamName={myTeamName} />
                 </td>
                 <td className="px-2 py-2 text-right tabular-nums font-semibold">
                   <ScoreToPar entry={entry} listKey={listKey} />
@@ -415,11 +424,13 @@ function filterLeaderboard(
 interface LeaderboardCardProps {
   leaderboard: readonly LiveLeaderboardEntry[];
   tournamentName: string | null;
+  /** @see isMyTeam */
+  myTeamName: string | null;
   /** @see LiveOverlayQuery.selectionKey */
   selectionKey: string;
 }
 
-function LeaderboardCard({ leaderboard, tournamentName, selectionKey }: LeaderboardCardProps): ReactNode {
+function LeaderboardCard({ leaderboard, tournamentName, myTeamName, selectionKey }: LeaderboardCardProps): ReactNode {
   const [teamFilter, setTeamFilter] = useState<string>(ALL);
 
   const teamChoices: readonly SelectOption[] = [
@@ -444,11 +455,12 @@ function LeaderboardCard({ leaderboard, tournamentName, selectionKey }: Leaderbo
             onChange={setTeamFilter}
           />
         </div>
-        <LeaderboardRows entries={filteredLeaderboard} listKey={listKey} />
+        <LeaderboardRows entries={filteredLeaderboard} listKey={listKey} myTeamName={myTeamName} />
       </div>
       <LeaderboardTable
         entries={filteredLeaderboard}
         listKey={listKey}
+        myTeamName={myTeamName}
         teamFilter={teamFilter}
         onTeamFilterChange={setTeamFilter}
         teamOptions={[{ value: ALL, label: 'Team' }, ...teamChoices]}
@@ -513,7 +525,12 @@ function ScoreboardView({ report, myTeamName, finalizeSlot, onGolferClick, selec
           />
         </div>
         {hasLeaderboard ? (
-          <LeaderboardCard leaderboard={leaderboard} tournamentName={tournament.name} selectionKey={selectionKey} />
+          <LeaderboardCard
+            leaderboard={leaderboard}
+            tournamentName={tournament.name}
+            myTeamName={myTeamName}
+            selectionKey={selectionKey}
+          />
         ) : null}
       </div>
     </section>
