@@ -10,6 +10,12 @@ export interface LiveOverlayState {
   toggleLive: (next: boolean) => void;
 }
 
+/**
+ * The server's `espn.scoreboardCacheTtlSeconds`: it holds one ESPN scoreboard that long, so a faster poll re-reads
+ * the same one. A change to that setting changes this.
+ */
+export const LIVE_REFRESH_INTERVAL_MS = 60_000;
+
 interface LiveEligibleResponse {
   liveEligible: boolean;
 }
@@ -23,6 +29,8 @@ export interface LiveOverlayQuery<T> {
 /**
  * The non-live response's `liveEligible` is the only rule: the live request waits for it, so a selection the
  * server would not overlay never asks for one. Pass a null `fetchSelection` while the selection is unresolved.
+ * The overlay refetches every `LIVE_REFRESH_INTERVAL_MS` while the tab is visible, and on return to a tab whose
+ * data is older than that.
  */
 export function useLiveOverlayQuery<T extends LiveEligibleResponse>(
   queryKey: (live: boolean) => QueryKey,
@@ -38,6 +46,9 @@ export function useLiveOverlayQuery<T extends LiveEligibleResponse>(
   const overlaid = useQuery({
     queryKey: queryKey(true),
     queryFn: fetchSelection === null || !effectiveLive ? skipToken : () => fetchSelection(true),
+    staleTime: LIVE_REFRESH_INTERVAL_MS,
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+    refetchOnWindowFocus: true,
   });
   return {
     query: effectiveLive ? overlaid : base,

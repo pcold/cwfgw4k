@@ -494,6 +494,8 @@ All Tournaments rollups (the season report, and rankings without a `through`) co
 never ask ESPN (CWF-215). A completed tournament selected in the weekly report is never overlaid.
 Each of the three responses carries `liveEligible`, whether a `live=true` request for that selection would
 overlay, decided by the same candidate check the overlay runs; the UI offers its live toggle on that flag alone.
+While the overlay is on, the UI refetches it every minute in a visible tab (`useLiveOverlayQuery`), matching the
+scoreboard cache's TTL.
 `live` is true only when an overlay contributed; an ESPN outage, an event nobody has teed off, or a selection with
 no candidate leaves it unset (`false` on player rankings).
 
