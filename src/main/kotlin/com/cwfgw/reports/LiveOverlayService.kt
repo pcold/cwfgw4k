@@ -492,6 +492,7 @@ internal fun buildLiveLeaderboard(leaderboard: List<PreviewLeaderboardEntry>): L
                 players = slot.members.map { LeaderboardPlayer(name = it.name, teamNames = it.teamNames) },
                 roundScores = slot.lead.roundScores,
                 totalStrokes = slot.lead.totalStrokes,
+                scorecards = slot.lead.scorecards,
             )
         }
 

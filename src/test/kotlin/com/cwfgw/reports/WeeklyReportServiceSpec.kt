@@ -31,7 +31,9 @@ import com.cwfgw.testing.testEspnService
 import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournaments.FakeTournamentRepository
+import com.cwfgw.tournaments.HoleScore
 import com.cwfgw.tournaments.NewTournamentResult
+import com.cwfgw.tournaments.RoundScorecard
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentResult
@@ -1328,6 +1330,7 @@ class WeeklyReportServiceSpec : FunSpec({
         leader.players shouldContainExactly listOf(LeaderboardPlayer("Scottie Scheffler", listOf("BROWN")))
         leader.roundScores shouldContainExactly listOf(68, 70, 69, 69)
         leader.totalStrokes shouldBe 276
+        leader.scorecards.shouldBeEmpty()
         leader.rostered shouldBe true
     }
 
@@ -1607,6 +1610,22 @@ class WeeklyReportServiceSpec : FunSpec({
         report.liveLeaderboard.map { row -> row.players.map { it.name } } shouldContainExactly
             listOf(listOf("Leader"), listOf("Runner-up"))
         report.liveLeaderboard.forEach { it.rostered shouldBe false }
+    }
+
+    test("getReport with live=true sends each leaderboard row the scorecards ESPN gave its competitor") {
+        val roundOne =
+            listOfNotNull(
+                RoundScorecard.of(round = 1, played = listOf(HoleScore(hole = 1, par = 4, strokes = 3))) { 4 },
+            )
+        val fixture =
+            liveFieldFixture(
+                field = listOf(espnRow(espnId = "p1", name = "Leader", position = 1).copy(scorecards = roundOne)),
+                picks = emptyList(),
+            )
+
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID, live = true).orFail()
+
+        report.liveLeaderboard.single().scorecards shouldBe roundOne
     }
 
     test("getRankings with live=true through the tournament in play appends a starred projected column") {

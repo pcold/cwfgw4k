@@ -30,6 +30,7 @@ import type {
   GolferCandidate,
   GolferHistory,
   GolferHistoryEntry,
+  HoleScore,
   LeaderboardPlayer,
   League,
   LiveLeaderboardEntry,
@@ -57,6 +58,7 @@ import type {
   RosterTeam,
   RosteredSurnameTwin,
   RosteredTwinGroup,
+  RoundScorecard,
   Season,
   SeasonImportResult,
   SeasonRules,
@@ -351,6 +353,7 @@ export interface WireContract extends Record<string, true> {
     | 'players'
     | 'roundScores'
     | 'totalStrokes'
+    | 'scorecards'
     | 'rostered'
   >;
   'com.cwfgw.reports.PlayerRankings': ExactFields<
@@ -637,6 +640,21 @@ export interface WireContract extends Record<string, true> {
     FinalizedTournament,
     | 'tournament'
     | 'importWarnings'
+  >;
+  'com.cwfgw.tournaments.HoleScore': ExactFields<
+    HoleScore,
+    | 'hole'
+    | 'par'
+    | 'strokes'
+    | 'toPar'
+  >;
+  'com.cwfgw.tournaments.RoundScorecard': ExactFields<
+    RoundScorecard,
+    | 'round'
+    | 'holes'
+    | 'frontNine'
+    | 'backNine'
+    | 'total'
   >;
   'com.cwfgw.tournaments.Tournament': ExactFields<
     Tournament,

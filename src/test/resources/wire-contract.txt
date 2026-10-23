@@ -212,6 +212,7 @@ com.cwfgw.reports.LiveLeaderboardEntry [CLASS]
   players: List<com.cwfgw.reports.LeaderboardPlayer> [LIST]
   roundScores: List<kotlin.Int> [LIST] optional
   totalStrokes: kotlin.Int? [INT] optional
+  scorecards: List<com.cwfgw.tournaments.RoundScorecard> [LIST] optional
   rostered: kotlin.Boolean [BOOLEAN] optional
 
 com.cwfgw.reports.PlayerRankings [CLASS]
@@ -451,6 +452,19 @@ com.cwfgw.tournaments.CurrentTournament [SEALED]
 com.cwfgw.tournaments.FinalizedTournament [CLASS]
   tournament: com.cwfgw.tournaments.Tournament [CLASS]
   importWarnings: List<com.cwfgw.espn.EspnImportWarnings> [LIST]
+
+com.cwfgw.tournaments.HoleScore [CLASS]
+  hole: kotlin.Int [INT]
+  par: kotlin.Int? [INT]
+  strokes: kotlin.Int? [INT]
+  toPar: kotlin.Int? [INT] optional
+
+com.cwfgw.tournaments.RoundScorecard [CLASS]
+  round: kotlin.Int [INT]
+  holes: List<com.cwfgw.tournaments.HoleScore> [LIST]
+  frontNine: kotlin.Int? [INT] optional
+  backNine: kotlin.Int? [INT] optional
+  total: kotlin.Int? [INT] optional
 
 com.cwfgw.tournaments.Tournament [CLASS]
   id: com.cwfgw.tournaments.TournamentId [INLINE]
