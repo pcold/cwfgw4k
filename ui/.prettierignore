@@ -1,0 +1,9 @@
+dist
+coverage
+test-report
+# npm writes it.
+package-lock.json
+# Hand-formatted, like the rest of the repo's Markdown.
+*.md
+# A spec compares it byte for byte with the generator's output.
+src/shared/api/wireContract.generated.ts

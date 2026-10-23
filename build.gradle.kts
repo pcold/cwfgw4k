@@ -453,10 +453,29 @@ tasks.register<com.github.gradle.node.npm.task.NpmTask>("uiLint") {
     // Type-aware rules resolve every file through these.
     inputs.files("ui/tsconfig.json", "ui/tsconfig.app.json", "ui/tsconfig.node.json")
     // `eslint .` lints the config files at the ui/ root too.
-    inputs.files("ui/postcss.config.js", "ui/vite.config.ts")
+    inputs.files("ui/postcss.config.js", "ui/prettier.config.js", "ui/vite.config.ts")
     // A stamp, not `eslint --cache`: that cache keys a file on its own text, so a type changed in one
     // file leaves the type-aware findings it causes in another unreported.
     val passedStamp = layout.buildDirectory.file("uiLint/passed")
+    outputs.file(passedStamp)
+    doLast { passedStamp.get().asFile.writeText("") }
+}
+
+tasks.register<com.github.gradle.node.npm.task.NpmTask>("uiFormatCheck") {
+    description = "Check the UI's formatting with Prettier"
+    group = "frontend"
+    dependsOn("uiInstall")
+    args.set(listOf("run", "format:check"))
+    inputs.dir("ui/src")
+    inputs.dir("ui/public")
+    inputs.files("ui/package.json", "ui/package-lock.json")
+    inputs.files("ui/prettier.config.js", "ui/.prettierignore")
+    // Prettier reads it for any option prettier.config.js leaves unset.
+    inputs.file(".editorconfig")
+    // `prettier --check .` checks the files at the ui/ root too.
+    inputs.files("ui/index.html", "ui/eslint.config.js", "ui/postcss.config.js", "ui/vite.config.ts")
+    inputs.files("ui/tsconfig.json", "ui/tsconfig.app.json", "ui/tsconfig.node.json")
+    val passedStamp = layout.buildDirectory.file("uiFormatCheck/passed")
     outputs.file(passedStamp)
     doLast { passedStamp.get().asFile.writeText("") }
 }
@@ -503,6 +522,7 @@ tasks.named<Copy>("processResources") {
 tasks.named("check") {
     dependsOn("uiTest")
     dependsOn("uiLint")
+    dependsOn("uiFormatCheck")
 }
 
 // Load dev.properties (gitignored, copied from dev.properties.example) and apply each entry
