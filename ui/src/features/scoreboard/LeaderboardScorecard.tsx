@@ -45,7 +45,7 @@ interface NineTableProps {
   caption: string;
   holes: readonly HoleScore[];
   /** The nine's own sum first, then Tot on the back nine. */
-  sums: readonly { readonly heading: string; readonly strokes: number | null }[];
+  sums: readonly { readonly heading: string; readonly par: number | null; readonly strokes: number | null }[];
 }
 
 function NineTable({ caption, holes, sums }: NineTableProps): ReactElement {
@@ -80,7 +80,9 @@ function NineTable({ caption, holes, sums }: NineTableProps): ReactElement {
             </td>
           ))}
           {sums.map((sum) => (
-            <td key={sum.heading} className={SUM_CELL_CLASS} />
+            <td key={sum.heading} className={SUM_CELL_CLASS}>
+              {sum.par}
+            </td>
           ))}
         </tr>
         <tr>
@@ -125,7 +127,6 @@ interface LeaderboardScorecardProps {
   id: string;
 }
 
-// The par row's sums stay blank: none come over the wire, and the UI doesn't add them up.
 export default function LeaderboardScorecard({ scorecards, id }: LeaderboardScorecardProps): ReactElement {
   const [pickedRound, setPickedRound] = useState<number | null>(null);
   const shown = scorecards.find((scorecard) => scorecard.round === pickedRound) ?? scorecards.at(-1);
@@ -147,14 +148,14 @@ export default function LeaderboardScorecard({ scorecards, id }: LeaderboardScor
             <NineTable
               caption={`Round ${shown.round}, front nine`}
               holes={shown.holes.slice(0, 9)}
-              sums={[{ heading: 'Out', strokes: shown.frontNine }]}
+              sums={[{ heading: 'Out', par: shown.frontPar, strokes: shown.frontNine }]}
             />
             <NineTable
               caption={`Round ${shown.round}, back nine`}
               holes={shown.holes.slice(9)}
               sums={[
-                { heading: 'In', strokes: shown.backNine },
-                { heading: 'Tot', strokes: shown.total },
+                { heading: 'In', par: shown.backPar, strokes: shown.backNine },
+                { heading: 'Tot', par: shown.totalPar, strokes: shown.total },
               ]}
             />
           </div>

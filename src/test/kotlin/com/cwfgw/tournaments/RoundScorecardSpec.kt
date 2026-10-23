@@ -54,6 +54,31 @@ class RoundScorecardSpec : FunSpec({
         scorecard.total shouldBe 8
     }
 
+    test("each nine's par counts every hole, played or not, and the total both nines") {
+        val scorecard = card(played(hole = 10, strokes = 3)).shouldNotBeNull()
+
+        scorecard.frontPar shouldBe 36
+        scorecard.backPar shouldBe 36
+        scorecard.totalPar shouldBe 72
+    }
+
+    test("a nine's par is null while any of its holes' par is unknown, and so is the total") {
+        val scorecard =
+            RoundScorecard.of(round = 1, played = listOf(played(hole = 1, strokes = 4))) { hole ->
+                if (hole == 12) null else PAR_FOUR
+            }.shouldNotBeNull()
+
+        scorecard.frontPar shouldBe 36
+        scorecard.backPar.shouldBeNull()
+        scorecard.totalPar.shouldBeNull()
+    }
+
+    test("a played hole's own par counts toward its nine's par") {
+        val scorecard = card(played(hole = 3, strokes = 3, par = 3)).shouldNotBeNull()
+
+        scorecard.frontPar shouldBe 35
+    }
+
     test("of two entries for one hole the first is kept") {
         val scorecard = card(played(hole = 1, strokes = 3), played(hole = 1, strokes = 6)).shouldNotBeNull()
 

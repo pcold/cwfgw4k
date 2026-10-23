@@ -109,5 +109,8 @@ export function makeRoundScorecard(round: number, strokes: readonly (number | nu
     frontNine: strokesSum(front),
     backNine: strokesSum(back),
     total: strokesSum([...front, ...back]),
+    frontPar: FIXTURE_PAR * 9,
+    backPar: FIXTURE_PAR * 9,
+    totalPar: FIXTURE_PAR * 18,
   };
 }

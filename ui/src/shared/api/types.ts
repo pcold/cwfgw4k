@@ -121,6 +121,7 @@ export interface HoleScore {
 /**
  * `holes` is always 1–18 by hole number, whatever order they were played in.
  * The nine and total sums count only the holes played, and are null before the first of them.
+ * The par sums are null while any of their holes' par is unknown.
  */
 export interface RoundScorecard {
   round: number;
@@ -128,6 +129,9 @@ export interface RoundScorecard {
   frontNine: number | null;
   backNine: number | null;
   total: number | null;
+  frontPar: number | null;
+  backPar: number | null;
+  totalPar: number | null;
 }
 
 /**

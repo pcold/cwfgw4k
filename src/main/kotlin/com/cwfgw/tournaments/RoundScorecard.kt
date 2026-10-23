@@ -18,7 +18,8 @@ data class HoleScore(
 
 /**
  * [holes] is always 1–18 by hole number, whatever order they were played in. [frontNine], [backNine] and [total] sum
- * only the holes played, and are null before the first of them.
+ * only the holes played, and are null before the first of them. [frontPar], [backPar] and [totalPar] are null while
+ * any of their holes' par is unknown, since a partial par would read as a short course.
  */
 @ConsistentCopyVisibility
 @Serializable
@@ -29,6 +30,9 @@ data class RoundScorecard private constructor(
     val frontNine: Int? = holes.filter { it.hole <= LAST_FRONT_NINE_HOLE }.strokesPlayed()
     val backNine: Int? = holes.filter { it.hole > LAST_FRONT_NINE_HOLE }.strokesPlayed()
     val total: Int? = holes.strokesPlayed()
+    val frontPar: Int? = holes.filter { it.hole <= LAST_FRONT_NINE_HOLE }.parOfEveryHole()
+    val backPar: Int? = holes.filter { it.hole > LAST_FRONT_NINE_HOLE }.parOfEveryHole()
+    val totalPar: Int? = holes.parOfEveryHole()
 
     companion object {
         /**
@@ -56,3 +60,5 @@ data class RoundScorecard private constructor(
 }
 
 private fun List<HoleScore>.strokesPlayed(): Int? = mapNotNull(HoleScore::strokes).takeIf { it.isNotEmpty() }?.sum()
+
+private fun List<HoleScore>.parOfEveryHole(): Int? = mapNotNull(HoleScore::par).takeIf { it.size == size }?.sum()
