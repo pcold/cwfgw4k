@@ -10,11 +10,7 @@ import { FIELD_CLASS, TAP_TARGET_CLASS } from '@/shared/components/formControls'
 import ModalShell from '@/shared/components/ModalShell';
 import QueryState from '@/shared/components/QueryState';
 import { mutationError } from '@/shared/util/mutationError';
-import type {
-  Golfer,
-  TournamentCompetitorListing,
-  TournamentCompetitorView,
-} from '@/shared/api/types';
+import type { Golfer, TournamentCompetitorListing, TournamentCompetitorView } from '@/shared/api/types';
 
 interface PlayerLinksPanelProps {
   tournamentId: string;
@@ -40,12 +36,7 @@ function PlayerLinksPanel({ tournamentId, seasonId, onClose }: PlayerLinksPanelP
           {(listing) => (
             <QueryState query={golfersQuery} label="golfers">
               {(golfers) => (
-                <PlayerLinksBody
-                  listing={listing}
-                  golfers={golfers}
-                  tournamentId={tournamentId}
-                  seasonId={seasonId}
-                />
+                <PlayerLinksBody listing={listing} golfers={golfers} tournamentId={tournamentId} seasonId={seasonId} />
               )}
             </QueryState>
           )}
@@ -62,18 +53,9 @@ interface PlayerLinksBodyProps {
   seasonId: string;
 }
 
-function PlayerLinksBody({
-  listing,
-  golfers,
-  tournamentId,
-  seasonId,
-}: PlayerLinksBodyProps) {
+function PlayerLinksBody({ listing, golfers, tournamentId, seasonId }: PlayerLinksBodyProps) {
   if (listing.competitors.length === 0) {
-    return (
-      <p className="text-ink-muted text-sm">
-        No ESPN competitors found for this tournament.
-      </p>
-    );
+    return <p className="text-ink-muted text-sm">No ESPN competitors found for this tournament.</p>;
   }
   return (
     <>
@@ -109,13 +91,7 @@ interface CompetitorRowProps {
   disabled: boolean;
 }
 
-function CompetitorRow({
-  competitor,
-  golfers,
-  tournamentId,
-  seasonId,
-  disabled,
-}: CompetitorRowProps) {
+function CompetitorRow({ competitor, golfers, tournamentId, seasonId, disabled }: CompetitorRowProps) {
   const queryClient = useQueryClient();
   // Null until picked, and again once a write's refetch lands, so the select shows the server's link.
   const [pickedGolferId, setPickedGolferId] = useState<string | null>(null);
@@ -142,8 +118,7 @@ function CompetitorRow({
   });
 
   const clearMutation = useMutation({
-    mutationFn: () =>
-      api.deleteTournamentPlayerOverride(tournamentId, competitor.espnCompetitorId),
+    mutationFn: () => api.deleteTournamentPlayerOverride(tournamentId, competitor.espnCompetitorId),
     onSuccess: invalidateAffected,
   });
 
@@ -157,15 +132,14 @@ function CompetitorRow({
     },
   });
 
-  const errorMessage = mutationError(
-    saveMutation.error ?? clearMutation.error ?? createMutation.error,
-  );
+  const errorMessage = mutationError(saveMutation.error ?? clearMutation.error ?? createMutation.error);
   const pending = saveMutation.isPending || clearMutation.isPending || createMutation.isPending;
   const hasChange = draftGolferId !== '' && draftGolferId !== competitor.linkedGolfer?.id;
 
   const linkedGolfer = competitor.linkedGolfer;
   // The list leaves tombstones out, but a row may still link one, and the select must not read it as unlinked.
-  const choices = linkedGolfer && !golfers.some((g) => g.id === linkedGolfer.id) ? [...golfers, linkedGolfer] : [...golfers];
+  const choices =
+    linkedGolfer && !golfers.some((g) => g.id === linkedGolfer.id) ? [...golfers, linkedGolfer] : [...golfers];
   const sortedGolfers = choices.sort((a, b) => {
     const last = a.lastName.localeCompare(b.lastName);
     return last !== 0 ? last : a.firstName.localeCompare(b.firstName);

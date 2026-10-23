@@ -7,11 +7,7 @@ import { glideAt } from '@/shared/components/glide';
 import { CARD_LIST_CLASS } from '@/shared/components/ListCard';
 import MoneyCell, { MONEY_FIGURE_CLASS } from '@/shared/components/MoneyCell';
 import WonLostNetCards from '@/shared/components/WonLostNetCards';
-import {
-  formatDollarsAndCents,
-  formatUnsignedDollarsAndCents,
-  moneyToneClass,
-} from '@/shared/util/money';
+import { formatDollarsAndCents, formatUnsignedDollarsAndCents, moneyToneClass } from '@/shared/util/money';
 import {
   lateRowBetRounds,
   lateRowBetTeamTotals,
@@ -35,9 +31,7 @@ interface RoundTableProps {
 function RoundTable({ round, entries, selectionKey }: RoundTableProps) {
   return (
     <div className="bg-surface-card rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
-        Round {round}
-      </h3>
+      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">Round {round}</h3>
       <div className="overflow-x-auto -mx-2 sm:mx-0">
         <table className="w-full text-xs min-w-[480px]">
           <thead className={COLUMN_HEADER_CLASS}>
@@ -53,12 +47,8 @@ function RoundTable({ round, entries, selectionKey }: RoundTableProps) {
               <m.tr key={entry.teamId} {...glideAt(index)} className="border-t border-hairline">
                 <td className="px-2 py-1.5 uppercase">{entry.teamName}</td>
                 <td className="px-2 py-1.5 font-mono">{entry.golferName}</td>
-                <td className="px-2 py-1.5 text-right font-mono">
-                  {formatDollarsAndCents(entry.cumulativeEarnings)}
-                </td>
-                <td className="px-2 py-1.5 text-right font-mono font-bold">
-                  {formatDollarsAndCents(entry.payout)}
-                </td>
+                <td className="px-2 py-1.5 text-right font-mono">{formatDollarsAndCents(entry.cumulativeEarnings)}</td>
+                <td className="px-2 py-1.5 text-right font-mono font-bold">{formatDollarsAndCents(entry.payout)}</td>
               </m.tr>
             ))}
           </tbody>
@@ -82,8 +72,8 @@ function RulesNote({ rules }: RulesNoteProps) {
   const where = rules.rounds.length === 1 ? `draft round ${rounds}` : `each of draft rounds ${rounds}`;
   return (
     <p className="text-ink-muted text-sm">
-      {amount} per team in {where}. Every team behind a round&apos;s highest cumulative earner
-      pays {amount}; teams tied for the highest split what was paid.
+      {amount} per team in {where}. Every team behind a round&apos;s highest cumulative earner pays {amount}; teams tied
+      for the highest split what was paid.
     </p>
   );
 }
@@ -135,9 +125,7 @@ function LeaderCard({ round, entry, index }: LeaderCardProps): ReactNode {
         <div className={CARD_NAME_CLASS}>
           <span className="uppercase">{entry.teamName}</span> · {entry.golferName}
         </div>
-        <div className="text-sm text-ink-muted">
-          {formatDollarsAndCents(entry.cumulativeEarnings)} season earnings
-        </div>
+        <div className="text-sm text-ink-muted">{formatDollarsAndCents(entry.cumulativeEarnings)} season earnings</div>
       </div>
       <MoneyCell display={formatDollarsAndCents(entry.payout)} shape="card-end" />
     </m.li>
@@ -342,9 +330,7 @@ function LateRowBetsView({ report, selectionKey, selectedTab, onSelectTab }: Pro
         ) : null}
       </div>
 
-      {report.teams.length > 0 ? (
-        <WonLostNetCards won={won} lost={lost} net={net} />
-      ) : null}
+      {report.teams.length > 0 ? <WonLostNetCards won={won} lost={lost} net={net} /> : null}
     </section>
   );
 }

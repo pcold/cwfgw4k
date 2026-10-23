@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Rankings } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
-import {
-  buildChartLayout,
-  DEFAULT_DIMENSIONS,
-  teamColor,
-  CHART_COLORS,
-} from './rankingsChartModel';
+import { buildChartLayout, DEFAULT_DIMENSIONS, teamColor, CHART_COLORS } from './rankingsChartModel';
 import type { ChartDimensions, ChartLayout } from './rankingsChartModel';
 
 function buildRankings(overrides: Partial<Rankings> = {}): Rankings {

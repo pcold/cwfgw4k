@@ -7,12 +7,7 @@ export type ExactFields<T, K extends string> = [T] extends [never]
   ? ['no such variant in types.ts']
   : [Exclude<WireKeys<T>, K> | Exclude<K, WireKeys<T>>] extends [never]
     ? true
-    : [
-        'not on the wire',
-        Exclude<WireKeys<T>, K>,
-        'absent from types.ts',
-        Exclude<K, WireKeys<T>>,
-      ];
+    : ['not on the wire', Exclude<WireKeys<T>, K>, 'absent from types.ts', Exclude<K, WireKeys<T>>];
 
 /**
  * [R] and [O] are a received type's keys without and with a Kotlin default. A response type stays on

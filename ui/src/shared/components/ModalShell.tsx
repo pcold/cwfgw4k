@@ -16,7 +16,8 @@ const FOCUSABLE_SELECTOR = [
 /** `wide` is for a list of editable rows, whose controls sit beside each row's label. */
 export type ModalWidth = 'form' | 'detail' | 'wide';
 
-const PANEL_GEOMETRY = 'bg-surface-card rounded-lg shadow-xl max-h-[90dvh] overflow-y-auto border border-hairline-strong';
+const PANEL_GEOMETRY =
+  'bg-surface-card rounded-lg shadow-xl max-h-[90dvh] overflow-y-auto border border-hairline-strong';
 
 const PANEL_WIDTH: Record<ModalWidth, string> = {
   form: 'w-[min(92vw,22rem)]',

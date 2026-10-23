@@ -16,11 +16,7 @@ import StatusChip, { statusChipVariant } from '@/shared/components/StatusChip';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicker';
 import { mutationError } from '@/shared/util/mutationError';
-import {
-  defaultScoreboardSelection,
-  pickInSeason,
-  tournamentLabel,
-} from '@/shared/util/tournament';
+import { defaultScoreboardSelection, pickInSeason, tournamentLabel } from '@/shared/util/tournament';
 import type { Tournament, WeeklyReport } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
 import FinalizeWarnings from './FinalizeWarnings';
@@ -53,11 +49,13 @@ function ScoreboardPage(): ReactNode {
     pickInSeason(userTournamentId, tournaments) ??
     pickInSeason(defaultScoreboardSelection(currentQuery.data), tournaments);
 
-  const { query: reportQuery, overlay: liveOverlay, selectionKey } = useLiveOverlayQuery(
+  const {
+    query: reportQuery,
+    overlay: liveOverlay,
+    selectionKey,
+  } = useLiveOverlayQuery(
     (live) => queryKeys.tournamentReport.detail(seasonId, tournamentId, live),
-    seasonId === null || tournamentId === null
-      ? null
-      : (live) => api.tournamentReport(seasonId, tournamentId, live),
+    seasonId === null || tournamentId === null ? null : (live) => api.tournamentReport(seasonId, tournamentId, live),
   );
 
   const finalizeMutation = useMutation({

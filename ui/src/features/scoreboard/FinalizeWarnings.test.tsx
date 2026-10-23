@@ -56,7 +56,9 @@ describe('FinalizeWarnings', () => {
       candidates: [golfer('g-kim-1', 'Tom', 'Kim'), golfer('g-kim-2', 'Tom', 'Kim')],
     };
     renderWithProviders(
-      <FinalizeWarnings finalized={finalizedWith([warningsFor('Zurich Classic', { contestedCompetitors: [contested] })])} />,
+      <FinalizeWarnings
+        finalized={finalizedWith([warningsFor('Zurich Classic', { contestedCompetitors: [contested] })])}
+      />,
     );
 
     expect(screen.getByText(/the name fits more than one golfer/)).toBeInTheDocument();
@@ -70,7 +72,9 @@ describe('FinalizeWarnings', () => {
   ])('lists an unmatched competitor by its ESPN id, saying so when ESPN sent %s', (_sent, name) => {
     const unmatched = { espnCompetitorId: '5502', name };
     renderWithProviders(
-      <FinalizeWarnings finalized={finalizedWith([warningsFor('Zurich Classic', { unmatchedCompetitors: [unmatched] })])} />,
+      <FinalizeWarnings
+        finalized={finalizedWith([warningsFor('Zurich Classic', { unmatchedCompetitors: [unmatched] })])}
+      />,
     );
 
     expect(screen.getByText(/matched to no golfer/)).toBeInTheDocument();

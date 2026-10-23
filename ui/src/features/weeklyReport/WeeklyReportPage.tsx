@@ -14,12 +14,7 @@ import PickerRow from '@/shared/components/PickerRow';
 import StatusChip, { statusChipVariant } from '@/shared/components/StatusChip';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicker';
-import {
-  ALL_TOURNAMENTS,
-  defaultReportSelection,
-  pickInSeason,
-  tournamentLabel,
-} from '@/shared/util/tournament';
+import { ALL_TOURNAMENTS, defaultReportSelection, pickInSeason, tournamentLabel } from '@/shared/util/tournament';
 import type { Season, Tournament, WeeklyReport } from '@/shared/api/types';
 import Button from '@/shared/components/Button';
 import WeeklyReportView from './WeeklyReportView';
@@ -63,7 +58,11 @@ function WeeklyReportPage(): ReactNode {
       ? null
       : (pickInSeason(userTournamentId, tournaments) ??
         pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
-  const { query: reportQuery, overlay: liveOverlay, selectionKey } = useLiveOverlayQuery(
+  const {
+    query: reportQuery,
+    overlay: liveOverlay,
+    selectionKey,
+  } = useLiveOverlayQuery(
     (live) => queryKeys.report.detail(seasonId, effectiveId, live),
     seasonId === null || effectiveId === null
       ? null
@@ -180,11 +179,7 @@ function WeeklyReportPage(): ReactNode {
         }
       />
       {renderBody()}
-      <GolferHistoryModal
-        seasonId={seasonId}
-        golferId={historyGolferId}
-        onClose={() => setHistoryGolferId(null)}
-      />
+      <GolferHistoryModal seasonId={seasonId} golferId={historyGolferId} onClose={() => setHistoryGolferId(null)} />
     </div>
   );
 }

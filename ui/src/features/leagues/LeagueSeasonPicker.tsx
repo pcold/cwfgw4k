@@ -5,8 +5,7 @@ import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 
 const FIELD_CLASS = 'flex items-center gap-2 w-full sm:w-auto';
 const LABEL_CLASS = 'text-xs text-ink-soft font-medium uppercase tracking-wider w-14 sm:w-auto shrink-0';
-const SELECT_CLASS =
-  `bg-surface-raised border border-control-border rounded px-2 py-2 text-base ${TAP_TARGET_CLASS} min-w-0 flex-1 sm:flex-initial`;
+const SELECT_CLASS = `bg-surface-raised border border-control-border rounded px-2 py-2 text-base ${TAP_TARGET_CLASS} min-w-0 flex-1 sm:flex-initial`;
 
 function LeagueSeasonPicker(): ReactNode {
   const ctx = useLeagueSeason();

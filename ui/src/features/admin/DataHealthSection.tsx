@@ -17,8 +17,8 @@ function DataHealthSection(): ReactNode {
       title="Golfer Data Health"
       description={
         <>
-          Golfer rows that score wrongly until an operator fixes them. Currently rostered means on a
-          team in its league&apos;s latest season.
+          Golfer rows that score wrongly until an operator fixes them. Currently rostered means on a team in its
+          league&apos;s latest season.
         </>
       }
     >
@@ -110,16 +110,11 @@ function TwinGroupRow({ group }: { group: RosteredTwinGroup }): ReactNode {
 }
 
 function GolferLabel({ golfer }: { golfer: DataHealthGolfer }): ReactNode {
-  const name =
-    golfer.firstName.trim() === ''
-      ? `(blank) ${golfer.lastName}`
-      : `${golfer.firstName} ${golfer.lastName}`;
+  const name = golfer.firstName.trim() === '' ? `(blank) ${golfer.lastName}` : `${golfer.firstName} ${golfer.lastName}`;
   return (
     <>
       {name}
-      {golfer.pgaPlayerId === null ? null : (
-        <span className="text-ink-muted"> · ESPN {golfer.pgaPlayerId}</span>
-      )}
+      {golfer.pgaPlayerId === null ? null : <span className="text-ink-muted"> · ESPN {golfer.pgaPlayerId}</span>}
       <span className="text-xs text-ink-faint font-mono"> {golfer.id}</span>
     </>
   );

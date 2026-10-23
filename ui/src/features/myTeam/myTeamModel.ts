@@ -3,9 +3,7 @@
  * picker. A preference only: nothing may unlock on it, since anyone can pick any team.
  */
 export type MyTeamChoice =
-  | { readonly kind: 'team'; readonly teamName: string }
-  | { readonly kind: 'browsing' }
-  | { readonly kind: 'unasked' };
+  { readonly kind: 'team'; readonly teamName: string } | { readonly kind: 'browsing' } | { readonly kind: 'unasked' };
 
 export const UNASKED: MyTeamChoice = { kind: 'unasked' };
 
@@ -63,7 +61,10 @@ export function serialiseMyTeam(choice: MyTeamChoice): string | null {
  * choice. Undefined names (still loading) and an empty list (before the draft) keep it too; a name missing from a
  * real list was renamed or left, and is asked again.
  */
-export function validateMyTeam(choice: MyTeamChoice, newestSeasonTeamNames: readonly string[] | undefined): MyTeamChoice {
+export function validateMyTeam(
+  choice: MyTeamChoice,
+  newestSeasonTeamNames: readonly string[] | undefined,
+): MyTeamChoice {
   if (choice.kind !== 'team' || newestSeasonTeamNames === undefined || newestSeasonTeamNames.length === 0) {
     return choice;
   }

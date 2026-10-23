@@ -17,9 +17,7 @@ export function teamCellsByRound(team: ReportTeamColumn): Map<number, ReportCell
 
 // Map of side-bet round -> set of team ids that won that round's side bet.
 // Used by the Weekly Report grid to highlight the winning cells.
-export function sideBetWinnersByRound(
-  sideBetDetail: readonly ReportSideBetRound[],
-): Map<number, Set<string>> {
+export function sideBetWinnersByRound(sideBetDetail: readonly ReportSideBetRound[]): Map<number, Set<string>> {
   const result = new Map<number, Set<string>>();
   for (const entry of sideBetDetail) {
     const winners = new Set<string>();
@@ -63,9 +61,7 @@ export function isSeasonReport(report: WeeklyReport): boolean {
 
 export function reportSubtitle(report: WeeklyReport): string {
   const { name, startDate, endDate, payoutMultiplier } = report.tournament;
-  const span = isSeasonReport(report)
-    ? 'Season totals'
-    : `${startDate ?? ''}${endDate ? ` – ${endDate}` : ''}`;
+  const span = isSeasonReport(report) ? 'Season totals' : `${startDate ?? ''}${endDate ? ` – ${endDate}` : ''}`;
   const payout = payoutMultiplier !== 1 ? [`${payoutMultiplier}x payouts`] : [];
   return [name, span, ...payout].filter(Boolean).join(' · ');
 }

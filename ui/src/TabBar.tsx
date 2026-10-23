@@ -27,9 +27,7 @@ interface TabLabelProps {
 function TabLabel({ label, isActive }: TabLabelProps): ReactNode {
   return (
     <>
-      {isActive ? (
-        <span aria-hidden="true" className="absolute top-0 inset-x-0 mx-auto w-8 h-1 bg-primary" />
-      ) : null}
+      {isActive ? <span aria-hidden="true" className="absolute top-0 inset-x-0 mx-auto w-8 h-1 bg-primary" /> : null}
       {label}
     </>
   );

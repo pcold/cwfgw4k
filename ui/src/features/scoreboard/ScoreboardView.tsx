@@ -10,9 +10,7 @@ import PositionCell from '@/shared/components/PositionCell';
 import Pulse, { PulseDollars } from '@/shared/components/Pulse';
 import WonLostNetCards from '@/shared/components/WonLostNetCards';
 import YouTag from '@/shared/components/YouTag';
-import ColumnHeaderFilter, {
-  type ColumnHeaderFilterOption,
-} from '@/shared/components/ColumnHeaderFilter';
+import ColumnHeaderFilter, { type ColumnHeaderFilterOption } from '@/shared/components/ColumnHeaderFilter';
 import PhoneFilter from '@/shared/components/PhoneFilter';
 import { TAP_TARGET_CLASS, type SelectOption } from '@/shared/components/formControls';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
@@ -278,7 +276,11 @@ function TeamChips({ entry, myTeamName }: TeamChipsProps): ReactNode {
               </Chip>
             );
           case 'undrafted':
-            return <Chip key={chip.key} variant="outlined">Undrafted</Chip>;
+            return (
+              <Chip key={chip.key} variant="outlined">
+                Undrafted
+              </Chip>
+            );
           default:
             return chip satisfies never;
         }
@@ -362,7 +364,8 @@ function PlayerName({ row }: { row: ScorecardRow }): ReactNode {
 
 function LeaderboardRows({ entries, listKey, myTeamName, ...toggling }: LeaderboardListProps): ReactNode {
   const idPrefix = useId();
-  if (entries.length === 0) return <p className="px-3 py-6 text-center text-sm text-ink-soft italic">{FILTERED_EMPTY}</p>;
+  if (entries.length === 0)
+    return <p className="px-3 py-6 text-center text-sm text-ink-soft italic">{FILTERED_EMPTY}</p>;
   return (
     <ol key={listKey} aria-label="Leaderboard" className="text-sm divide-y divide-hairline-soft">
       {entries.map((entry, index) => {

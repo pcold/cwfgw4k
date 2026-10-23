@@ -29,10 +29,7 @@ export function tournamentWeekLabel(t: Tournament): string {
  * Null once the loaded list lacks the pick, so a season change needs no handler and an answer the
  * cached list trails selects no option the dropdown lacks.
  */
-export function pickInSeason(
-  pick: string | null,
-  tournaments: readonly Tournament[],
-): string | null {
+export function pickInSeason(pick: string | null, tournaments: readonly Tournament[]): string | null {
   if (pick === ALL_TOURNAMENTS) return pick;
   return tournaments.some((t) => t.id === pick) ? pick : null;
 }

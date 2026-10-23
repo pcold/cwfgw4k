@@ -58,12 +58,7 @@ function ResetTournamentSection(): ReactNode {
   return (
     <AdminSection
       title="Reset Tournament Results"
-      description={
-        <>
-          Delete all scores and results for a finalized tournament, resetting it back to upcoming
-          status.
-        </>
-      }
+      description={<>Delete all scores and results for a finalized tournament, resetting it back to upcoming status.</>}
     >
       <div className="flex flex-wrap items-end gap-4">
         <AdminLeagueField

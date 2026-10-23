@@ -56,8 +56,8 @@ function DeleteSeasonSection(): ReactNode {
       title="Delete Season"
       description={
         <>
-          Permanently delete a season along with its schedule, drafted teams, rosters, picks,
-          scores, and standings. This cannot be undone.
+          Permanently delete a season along with its schedule, drafted teams, rosters, picks, scores, and standings.
+          This cannot be undone.
         </>
       }
     >

@@ -166,12 +166,20 @@ interface LargeTextPair extends ContrastPair {
 }
 
 const LARGE_TEXT_PAIRS: readonly LargeTextPair[] = [
-  { foreground: 'on-fill', backdrop: 'money-up-fill', label: 'on-fill on money-up-fill', typeClass: MONEY_FIGURE_CLASS },
+  {
+    foreground: 'on-fill',
+    backdrop: 'money-up-fill',
+    label: 'on-fill on money-up-fill',
+    typeClass: MONEY_FIGURE_CLASS,
+  },
 ];
 
 const themeScale = (pattern: RegExp, toValue: (raw: string) => number): ReadonlyMap<string, number> =>
   new Map(
-    [...tailwindTheme.matchAll(pattern)].map((match): [string, number] => [captured(match, 1), toValue(captured(match, 2))]),
+    [...tailwindTheme.matchAll(pattern)].map((match): [string, number] => [
+      captured(match, 1),
+      toValue(captured(match, 2)),
+    ]),
   );
 
 const themeTextSizesPx = themeScale(/--text-([\w-]+):\s*([\d.]+)rem;/g, (rem) => Number(rem) * 16);
@@ -237,8 +245,7 @@ const declaredTokens: readonly string[] = [...indexCss.matchAll(/--color-([\w-]+
   captured(match, 1),
 );
 
-const toHex = (colour: Srgb): string =>
-  `#${colour.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+const toHex = (colour: Srgb): string => `#${colour.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
 
 describe("DESIGN.md's colors", () => {
   it('name exactly the tokens index.css declares', () => {
@@ -265,7 +272,9 @@ const fontStretchOf = (source: string, block: RegExp, where: string): string => 
 
 describe("DESIGN.md's typography", () => {
   it('gives display the width the font-display utility sets', () => {
-    expect(fontStretchOf(designMd, /^ {2}display:\n(?: {4}.*\n)*? {4}fontStretch:\s*(\S+)$/m, 'DESIGN.md display')).toBe(
+    expect(
+      fontStretchOf(designMd, /^ {2}display:\n(?: {4}.*\n)*? {4}fontStretch:\s*(\S+)$/m, 'DESIGN.md display'),
+    ).toBe(
       fontStretchOf(indexCss, /@utility font-display\s*\{[^}]*font-stretch:\s*([^;]+);/, 'index.css font-display'),
     );
   });

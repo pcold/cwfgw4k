@@ -422,8 +422,7 @@ export interface ConfirmSeasonScheduleRequest {
 // Mirrors the backend's sealed GolferCandidate (com.cwfgw.admin.GolferCandidate).
 // An `espn` candidate is not yet a golfer row; confirming it as an `espn` assignment inserts one.
 export type GolferCandidate =
-  | { type: 'existing'; golferId: string; name: string }
-  | { type: 'espn'; espnId: string; name: string };
+  { type: 'existing'; golferId: string; name: string } | { type: 'espn'; espnId: string; name: string };
 
 // Mirrors the backend's sealed PickMatch hierarchy
 // (com.cwfgw.admin.PickMatch). kotlinx.serialization emits a "type"

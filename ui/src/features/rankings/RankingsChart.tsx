@@ -1,12 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Rankings } from '@/shared/api/types';
 import { formatWholeDollars } from '@/shared/util/money';
-import {
-  buildChartLayout,
-  DEFAULT_DIMENSIONS,
-  type ChartLine,
-  type ChartPoint,
-} from './rankingsChartModel';
+import { buildChartLayout, DEFAULT_DIMENSIONS, type ChartLine, type ChartPoint } from './rankingsChartModel';
 
 function polylinePath(points: readonly ChartPoint[]): string {
   return points.map((p) => `${p.x},${p.y}`).join(' ');
@@ -20,20 +15,9 @@ function TeamLine({ line }: LineProps) {
   if (line.points.length === 0) return null;
   return (
     <g>
-      <polyline
-        fill="none"
-        stroke={line.color}
-        strokeWidth={2}
-        points={polylinePath(line.points)}
-      />
+      <polyline fill="none" stroke={line.color} strokeWidth={2} points={polylinePath(line.points)} />
       {line.points.map((p) => (
-        <circle
-          key={`${line.teamId}-${p.x}`}
-          cx={p.x}
-          cy={p.y}
-          r={3}
-          fill={line.color}
-        >
+        <circle key={`${line.teamId}-${p.x}`} cx={p.x} cy={p.y} r={3} fill={line.color}>
           <title>
             {`${line.teamName.toUpperCase()} · ${p.tournamentName ?? `Wk ${p.weekLabel}`}: ${formatWholeDollars(p.value)}`}
           </title>
@@ -51,14 +35,8 @@ function RankingsChart({ rankings }: Props): ReactNode {
   const layout = buildChartLayout(rankings, DEFAULT_DIMENSIONS);
 
   return (
-    <div
-      className="bg-surface-card rounded-lg p-4"
-      aria-label="Cumulative Totals by Week"
-      role="figure"
-    >
-      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">
-        Cumulative Totals by Week
-      </h3>
+    <div className="bg-surface-card rounded-lg p-4" aria-label="Cumulative Totals by Week" role="figure">
+      <h3 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-3">Cumulative Totals by Week</h3>
 
       {!layout ? (
         <p className="text-ink-soft text-sm">No ranking history yet.</p>

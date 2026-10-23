@@ -4,15 +4,13 @@ import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import ModalShell from '@/shared/components/ModalShell';
 import { useMyTeam } from './MyTeamContext';
 
-const TEAM_BUTTON_CLASS =
-  `min-w-0 break-words rounded border-2 px-3 py-2 text-left font-display font-bold uppercase tracking-wider ${TAP_TARGET_CLASS}`;
+const TEAM_BUTTON_CLASS = `min-w-0 break-words rounded border-2 px-3 py-2 text-left font-display font-bold uppercase tracking-wider ${TAP_TARGET_CLASS}`;
 
 const SELECTED_TEAM_CLASS = 'bg-chrome border-gold text-on-chrome';
 
 const IDLE_TEAM_CLASS = 'bg-surface-raised border-hairline text-ink hover:border-hairline-strong';
 
-const JUST_BROWSING_CLASS =
-  `self-center sm:self-auto px-2 font-display font-semibold underline text-ink-muted hover:text-ink-strong ${TAP_TARGET_CLASS}`;
+const JUST_BROWSING_CLASS = `self-center sm:self-auto px-2 font-display font-semibold underline text-ink-muted hover:text-ink-strong ${TAP_TARGET_CLASS}`;
 
 /** Mounted once beside the routes; opens itself on a first visit. */
 export default function MyTeamPicker(): ReactNode {
@@ -64,11 +62,7 @@ function TeamPickerDialog(): ReactNode {
             {selected === null ? 'Set my team' : `Set ${selected} as my team`}
           </span>
         </Button>
-        <button
-          type="button"
-          onClick={chooseBrowsing}
-          className={JUST_BROWSING_CLASS}
-        >
+        <button type="button" onClick={chooseBrowsing} className={JUST_BROWSING_CLASS}>
           Just browsing
         </button>
       </div>

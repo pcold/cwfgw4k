@@ -13,10 +13,7 @@ export const tournamentLinksApi = {
     tournamentId: string,
     body: UpsertTournamentPlayerOverrideRequest,
   ): Promise<TournamentPlayerOverride> =>
-    postJson<TournamentPlayerOverride>(
-      `/admin/tournaments/${encodeURIComponent(tournamentId)}/player-overrides`,
-      body,
-    ),
+    postJson<TournamentPlayerOverride>(`/admin/tournaments/${encodeURIComponent(tournamentId)}/player-overrides`, body),
   createGolferAndLink: (tournamentId: string, body: CreateLinkedGolferRequest): Promise<TournamentPlayerOverride> =>
     postJson<TournamentPlayerOverride>(
       `/admin/tournaments/${encodeURIComponent(tournamentId)}/player-overrides/new-golfer`,

@@ -97,7 +97,7 @@ describe('scoreboardTeams', () => {
     expect(nth(teams, 0).topTenEarnings).toBe(42);
   });
 
-  it('lays the teams out in the server\'s weekly standings, even against their weeklyTotal', () => {
+  it("lays the teams out in the server's weekly standings, even against their weeklyTotal", () => {
     const teams = scoreboardTeams(
       report({
         teams: [
@@ -191,7 +191,10 @@ describe('fieldGolfers', () => {
     const teams = scoreboardTeams(
       report({
         teams: [
-          teamColumn({ teamId: 't-1', cells: [row({ inField: true }), row({ round: 2, golferId: 'g-2', inField: true })] }),
+          teamColumn({
+            teamId: 't-1',
+            cells: [row({ inField: true }), row({ round: 2, golferId: 'g-2', inField: true })],
+          }),
           teamColumn({ teamId: 't-2', cells: [row({ inField: false })] }),
         ],
         weeklyStandings: ['t-1', 't-2'],

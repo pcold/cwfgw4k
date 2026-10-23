@@ -52,8 +52,7 @@ function CleanSeasonSection(): ReactNode {
       title="Clean All Season Results"
       description={
         <>
-          Delete all scores, results, and standings for an entire season, resetting every
-          tournament back to upcoming.
+          Delete all scores, results, and standings for an entire season, resetting every tournament back to upcoming.
         </>
       }
     >
@@ -89,8 +88,7 @@ function CleanSeasonSection(): ReactNode {
       </div>
       {cleanMutation.data ? (
         <span className="block mt-3 text-sm text-semantic-success">
-          Cleaned {cleanMutation.data.scoresDeleted} scores,{' '}
-          {cleanMutation.data.resultsDeleted} results; reset{' '}
+          Cleaned {cleanMutation.data.scoresDeleted} scores, {cleanMutation.data.resultsDeleted} results; reset{' '}
           {cleanMutation.data.tournamentsReset} tournaments.
         </span>
       ) : null}

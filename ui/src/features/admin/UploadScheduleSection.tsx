@@ -80,8 +80,7 @@ function UploadScheduleSection(): ReactNode {
   const previewErrorMessage = mutationError(previewMutation.error);
   const confirmErrorMessage = mutationError(confirmMutation.error);
 
-  const previewDisabled =
-    previewMutation.isPending || !seasonId || !startDate || !endDate || startDate > endDate;
+  const previewDisabled = previewMutation.isPending || !seasonId || !startDate || !endDate || startDate > endDate;
 
   const removePreviewEntry = (espnEventId: string) =>
     setPreviewResult((prev) =>
@@ -93,13 +92,12 @@ function UploadScheduleSection(): ReactNode {
       title="Import Season Schedule from ESPN"
       description={
         <>
-          Pulls the PGA tour calendar from ESPN for the date range and previews a tournament for
-          every event whose start date falls inside it — nothing is created yet. Remove any events
-          that aren&apos;t part of this league&apos;s season (e.g. the Presidents Cup), then confirm.
-          Week labels (1, 2, 3a, 3b…) are assigned chronologically over whatever you keep, so
-          removing an event closes its numbering gap. Re-running on a season skips events already
-          linked. After confirming, edit the per-tournament payout multiplier inline and Save each
-          row to push the change.
+          Pulls the PGA tour calendar from ESPN for the date range and previews a tournament for every event whose start
+          date falls inside it — nothing is created yet. Remove any events that aren&apos;t part of this league&apos;s
+          season (e.g. the Presidents Cup), then confirm. Week labels (1, 2, 3a, 3b…) are assigned chronologically over
+          whatever you keep, so removing an event closes its numbering gap. Re-running on a season skips events already
+          linked. After confirming, edit the per-tournament payout multiplier inline and Save each row to push the
+          change.
         </>
       }
     >
@@ -154,9 +152,7 @@ function UploadScheduleSection(): ReactNode {
           created={createdTournaments}
           skipped={skippedSummary}
           onRowSaved={(updated) =>
-            setCreatedTournaments((prev) =>
-              prev.map((t) => (t.id === updated.id ? updated : t)),
-            )
+            setCreatedTournaments((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
           }
         />
       ) : null}
@@ -183,9 +179,7 @@ function SchedulePreview({
 }: SchedulePreviewProps) {
   return (
     <div className="mt-6 pt-4 border-t border-hairline">
-      <h4 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
-        Review Before Confirming
-      </h4>
+      <h4 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">Review Before Confirming</h4>
 
       {skipped.length > 0 ? (
         <div className={SKIPPED_BANNER_CLASS}>
@@ -303,11 +297,7 @@ function ImportResult({ created, skipped, onRowSaved }: ImportResultProps) {
           </thead>
           <tbody>
             {created.map((tournament) => (
-              <TournamentRow
-                key={tournament.id}
-                tournament={tournament}
-                onSaved={onRowSaved}
-              />
+              <TournamentRow key={tournament.id} tournament={tournament} onSaved={onRowSaved} />
             ))}
           </tbody>
         </table>
@@ -337,9 +327,7 @@ function TournamentRow({ tournament, onSaved }: TournamentRowProps) {
 
   const draftValue = Number.parseFloat(draftMultiplier);
   const dirty =
-    draftMultiplier.trim() !== '' &&
-    Number.isFinite(draftValue) &&
-    draftValue !== tournament.payoutMultiplier;
+    draftMultiplier.trim() !== '' && Number.isFinite(draftValue) && draftValue !== tournament.payoutMultiplier;
   const invalid = draftMultiplier.trim() !== '' && (!Number.isFinite(draftValue) || draftValue <= 0);
   const multiplierError = invalid ? 'Enter a number greater than 0' : undefined;
   // The input hand-rolls CONTROL_CLASS's sizing: that class's border colour and this one would tie, settled

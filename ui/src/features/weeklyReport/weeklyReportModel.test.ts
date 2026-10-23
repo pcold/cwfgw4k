@@ -49,11 +49,7 @@ function reportScoped(scope: ReportScope, status: TournamentStatus | null = null
   };
 }
 
-function sideBetEntry(
-  teamId: string,
-  payout: number,
-  outcome: SideBetOutcome | null,
-): ReportSideBetTeamEntry {
+function sideBetEntry(teamId: string, payout: number, outcome: SideBetOutcome | null): ReportSideBetTeamEntry {
   return { teamId, teamName: teamId, golferName: 'Golfer', cumulativeEarnings: 0, payout, outcome };
 }
 
@@ -189,7 +185,10 @@ describe('reportSubtitle', () => {
     expect(reportSubtitle(halved)).toBe('Players Championship · 2026-03-12 – 2026-03-15 · 0.5x payouts');
   });
   it('says the season report holds the season totals', () => {
-    const season = { ...reportScoped('season'), tournament: { ...event.tournament, name: 'All Tournaments', payoutMultiplier: 1 } };
+    const season = {
+      ...reportScoped('season'),
+      tournament: { ...event.tournament, name: 'All Tournaments', payoutMultiplier: 1 },
+    };
     expect(reportSubtitle(season)).toBe('All Tournaments · Season totals');
   });
   it('leaves out the parts the report lacks', () => {

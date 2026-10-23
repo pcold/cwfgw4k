@@ -29,18 +29,14 @@ const seasonsForLg1: Season[] = [
   makeSeason({ id: 'sn-1', leagueId: 'lg-1', name: 'Spring', seasonYear: 2026 }),
   makeSeason({ id: 'sn-0', leagueId: 'lg-1', name: 'Fall', seasonYear: 2025 }),
 ];
-const seasonsForLg2: Season[] = [
-  makeSeason({ id: 'sn-2', leagueId: 'lg-2', name: 'Shadow', seasonYear: 2026 }),
-];
+const seasonsForLg2: Season[] = [makeSeason({ id: 'sn-2', leagueId: 'lg-2', name: 'Shadow', seasonYear: 2026 })];
 
 describe('LeagueSeasonPicker', () => {
   beforeEach(() => {
     leaguesMock.mockReset();
     seasonsMock.mockReset();
     leaguesMock.mockResolvedValue(leagues);
-    seasonsMock.mockImplementation((id: string) =>
-      Promise.resolve(id === 'lg-1' ? seasonsForLg1 : seasonsForLg2),
-    );
+    seasonsMock.mockImplementation((id: string) => Promise.resolve(id === 'lg-1' ? seasonsForLg1 : seasonsForLg2));
   });
 
   it('renders nothing until leagues load', () => {

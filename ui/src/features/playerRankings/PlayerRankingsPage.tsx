@@ -15,12 +15,7 @@ import StatusChip, { statusChipVariant } from '@/shared/components/StatusChip';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicker';
 import type { Tournament } from '@/shared/api/types';
-import {
-  ALL_TOURNAMENTS,
-  defaultReportSelection,
-  pickInSeason,
-  tournamentLabel,
-} from '@/shared/util/tournament';
+import { ALL_TOURNAMENTS, defaultReportSelection, pickInSeason, tournamentLabel } from '@/shared/util/tournament';
 import PlayerRankingsView from './PlayerRankingsView';
 
 function PlayerRankingsPage(): ReactNode {
@@ -45,7 +40,11 @@ function PlayerRankingsPage(): ReactNode {
       ? null
       : (pickInSeason(throughOverride, tournaments) ??
         pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
-  const { query: playerRankingsQuery, overlay: liveOverlay, selectionKey } = useLiveOverlayQuery(
+  const {
+    query: playerRankingsQuery,
+    overlay: liveOverlay,
+    selectionKey,
+  } = useLiveOverlayQuery(
     (live) => queryKeys.playerRankings.detail(seasonId, throughTournamentId || null, live),
     seasonId === null || throughTournamentId === null
       ? null
@@ -93,13 +92,9 @@ function PlayerRankingsPage(): ReactNode {
         <div className={DESKTOP_PICKER_CLASS}>{renderThroughField(tournaments, throughTournamentId, '')}</div>
 
         {tournamentsQuery.isError ? (
-          <p className="text-semantic-danger">
-            Failed to load tournaments: {String(tournamentsQuery.error)}
-          </p>
+          <p className="text-semantic-danger">Failed to load tournaments: {String(tournamentsQuery.error)}</p>
         ) : playerRankingsQuery.isError ? (
-          <p className="text-semantic-danger">
-            Failed to load player rankings: {String(playerRankingsQuery.error)}
-          </p>
+          <p className="text-semantic-danger">Failed to load player rankings: {String(playerRankingsQuery.error)}</p>
         ) : playerRankingsQuery.isLoading ? (
           <p className="text-ink-muted">Loading player rankings…</p>
         ) : (
@@ -139,11 +134,7 @@ function PlayerRankingsPage(): ReactNode {
         />
         {renderBody()}
       </div>
-      <GolferHistoryModal
-        seasonId={seasonId}
-        golferId={historyGolferId}
-        onClose={() => setHistoryGolferId(null)}
-      />
+      <GolferHistoryModal seasonId={seasonId} golferId={historyGolferId} onClose={() => setHistoryGolferId(null)} />
     </>
   );
 }

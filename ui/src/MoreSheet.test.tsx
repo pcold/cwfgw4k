@@ -115,7 +115,10 @@ describe('MoreSheet', () => {
 
   it('gives every row the tap-target height across the sheet', async () => {
     const sheet = renderSheet();
-    const rows = [...within(sheet).getAllByRole('link'), await within(sheet).findByRole('button', { name: /^My team/ })];
+    const rows = [
+      ...within(sheet).getAllByRole('link'),
+      await within(sheet).findByRole('button', { name: /^My team/ }),
+    ];
 
     for (const row of rows) {
       expect(row).toHaveClass(TAP_TARGET_CLASS, 'flex', 'items-center');

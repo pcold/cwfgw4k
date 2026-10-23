@@ -22,10 +22,7 @@ function GolferHistoryModal({ seasonId, golferId, onClose }: Props): ReactNode {
 
   const historyQuery = useQuery({
     queryKey: queryKeys.golferHistory.detail(seasonId, golferId),
-    queryFn:
-      seasonId === null || golferId === null
-        ? skipToken
-        : () => api.golferHistory(seasonId, golferId),
+    queryFn: seasonId === null || golferId === null ? skipToken : () => api.golferHistory(seasonId, golferId),
   });
 
   if (!open) return null;
@@ -69,9 +66,7 @@ function GolferHistoryModal({ seasonId, golferId, onClose }: Props): ReactNode {
                   <tr key={r.tournament} className="border-t border-hairline">
                     <td className="px-2 py-1.5">{r.tournament}</td>
                     <td className="px-2 py-1.5 text-right font-mono">{r.position}</td>
-                    <td className="px-2 py-1.5 text-right font-mono">
-                      {formatDollarsAndCents(r.earnings)}
-                    </td>
+                    <td className="px-2 py-1.5 text-right font-mono">{formatDollarsAndCents(r.earnings)}</td>
                   </tr>
                 ))}
               </tbody>

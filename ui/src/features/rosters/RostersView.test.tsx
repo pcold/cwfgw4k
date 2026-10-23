@@ -39,11 +39,7 @@ const birdies: RosterTeam = {
   teamId: 't-2',
   teamNumber: 8,
   teamName: 'Birdies',
-  picks: [
-    pick(1, 'Jon Rahm'),
-    pick(2, 'Rory McIlroy', 40),
-    pick(4, 'Viktor Hovland'),
-  ],
+  picks: [pick(1, 'Jon Rahm'), pick(2, 'Rory McIlroy', 40), pick(4, 'Viktor Hovland')],
 };
 
 describe('RostersView', () => {
@@ -130,13 +126,19 @@ describe('RostersView', () => {
   it('makes pick names clickable when onGolferClick is provided', async () => {
     const onGolferClick = vi.fn();
     const user = userEvent.setup();
-    renderWithProviders(<RostersView teams={[aces]} sideBetRounds={[]} {...FIRST_TEAM} onGolferClick={onGolferClick} />, NO_PROVIDERS);
+    renderWithProviders(
+      <RostersView teams={[aces]} sideBetRounds={[]} {...FIRST_TEAM} onGolferClick={onGolferClick} />,
+      NO_PROVIDERS,
+    );
     await user.click(within(grid()).getByRole('button', { name: 'Scottie Scheffler' }));
     expect(onGolferClick).toHaveBeenCalledWith('g-1-Scottie Scheffler');
   });
 
   it('gives each pick name the tap-target height', () => {
-    renderWithProviders(<RostersView teams={[aces]} sideBetRounds={[]} {...FIRST_TEAM} onGolferClick={vi.fn()} />, NO_PROVIDERS);
+    renderWithProviders(
+      <RostersView teams={[aces]} sideBetRounds={[]} {...FIRST_TEAM} onGolferClick={vi.fn()} />,
+      NO_PROVIDERS,
+    );
 
     expect(within(grid()).getByRole('button', { name: 'Scottie Scheffler' })).toHaveClass(TAP_TARGET_CLASS);
   });
@@ -316,7 +318,7 @@ describe('RostersView', () => {
       expect(nth(cards, 3)).toHaveTextContent(/^4—$/);
     });
 
-    it('puts a shared pick\'s ownership under its name', () => {
+    it("puts a shared pick's ownership under its name", () => {
       renderWithProviders(<RostersView teams={[aces]} sideBetRounds={[]} {...FIRST_TEAM} />, NO_PROVIDERS);
 
       expect(within(nth(pickCards(), 1)).getByText('60%')).toHaveClass('text-ink-muted');

@@ -30,10 +30,7 @@ export const queryKeys = {
   tournaments: {
     root: ['tournaments'] as const,
     bySeason: (seasonId: string | null): QueryKey => [...queryKeys.tournaments.root, seasonId],
-    current: (seasonId: string | null): QueryKey => [
-      ...queryKeys.tournaments.bySeason(seasonId),
-      'current',
-    ],
+    current: (seasonId: string | null): QueryKey => [...queryKeys.tournaments.bySeason(seasonId), 'current'],
   },
 
   /**
@@ -42,19 +39,13 @@ export const queryKeys = {
    */
   resettableTournaments: {
     root: ['resettableTournaments'] as const,
-    bySeason: (seasonId: string | null): QueryKey => [
-      ...queryKeys.resettableTournaments.root,
-      seasonId,
-    ],
+    bySeason: (seasonId: string | null): QueryKey => [...queryKeys.resettableTournaments.root, seasonId],
   },
 
   /** @see queryKeys */
   tournamentCompetitors: {
     root: ['tournamentCompetitors'] as const,
-    byTournament: (tournamentId: string): QueryKey => [
-      ...queryKeys.tournamentCompetitors.root,
-      tournamentId,
-    ],
+    byTournament: (tournamentId: string): QueryKey => [...queryKeys.tournamentCompetitors.root, tournamentId],
   },
 
   /** @see queryKeys */
@@ -98,10 +89,7 @@ export const queryKeys = {
   /** @see queryKeys.report for the single-tournament report both hold. */
   tournamentReport: {
     root: ['tournamentReport'] as const,
-    bySeason: (seasonId: string | null): QueryKey => [
-      ...queryKeys.tournamentReport.root,
-      seasonId,
-    ],
+    bySeason: (seasonId: string | null): QueryKey => [...queryKeys.tournamentReport.root, seasonId],
     detail: (seasonId: string | null, tournamentId: string | null, live: boolean): QueryKey => [
       ...queryKeys.tournamentReport.bySeason(seasonId),
       tournamentId,
@@ -132,25 +120,22 @@ export const queryKeys = {
   rankings: {
     root: ['rankings'] as const,
     bySeason: (seasonId: string | null): QueryKey => [...queryKeys.rankings.root, seasonId],
-    detail: (
-      seasonId: string | null,
-      live: boolean,
-      throughTournamentId: string | null,
-    ): QueryKey => [...queryKeys.rankings.bySeason(seasonId), live, throughTournamentId],
+    detail: (seasonId: string | null, live: boolean, throughTournamentId: string | null): QueryKey => [
+      ...queryKeys.rankings.bySeason(seasonId),
+      live,
+      throughTournamentId,
+    ],
   },
 
   /** @see queryKeys.rankings for why the last two segments are not in its order. */
   playerRankings: {
     root: ['player-rankings'] as const,
-    bySeason: (seasonId: string | null): QueryKey => [
-      ...queryKeys.playerRankings.root,
-      seasonId,
+    bySeason: (seasonId: string | null): QueryKey => [...queryKeys.playerRankings.root, seasonId],
+    detail: (seasonId: string | null, throughTournamentId: string | null, live: boolean): QueryKey => [
+      ...queryKeys.playerRankings.bySeason(seasonId),
+      throughTournamentId,
+      live,
     ],
-    detail: (
-      seasonId: string | null,
-      throughTournamentId: string | null,
-      live: boolean,
-    ): QueryKey => [...queryKeys.playerRankings.bySeason(seasonId), throughTournamentId, live],
   },
 };
 
@@ -185,11 +170,7 @@ function scopedKey(keys: SeasonScopedKeys, scope: ReportScope): QueryKey {
   }
 }
 
-function invalidateEach(
-  queryClient: QueryClient,
-  stale: readonly SeasonScopedKeys[],
-  scope: ReportScope,
-): void {
+function invalidateEach(queryClient: QueryClient, stale: readonly SeasonScopedKeys[], scope: ReportScope): void {
   stale.forEach((keys) => {
     void queryClient.invalidateQueries({ queryKey: scopedKey(keys, scope) });
   });
@@ -201,11 +182,7 @@ function invalidateEach(
  * link row.
  */
 export function invalidateAfterScoreChange(queryClient: QueryClient, scope: ReportScope): void {
-  invalidateEach(
-    queryClient,
-    [...TEAM_REPORTS, queryKeys.golferHistory, queryKeys.resettableTournaments],
-    scope,
-  );
+  invalidateEach(queryClient, [...TEAM_REPORTS, queryKeys.golferHistory, queryKeys.resettableTournaments], scope);
 }
 
 /**

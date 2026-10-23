@@ -80,9 +80,7 @@ describe('api client', () => {
     await api.rankings('sn-1', false, 'tn-7');
     expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/seasons/sn-1/rankings?through=tn-7');
     await api.rankings('sn-1', true, 'tn-7');
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      '/api/v1/seasons/sn-1/rankings?live=true&through=tn-7',
-    );
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/v1/seasons/sn-1/rankings?live=true&through=tn-7');
   });
 
   it('returns the response body key for key', async () => {
@@ -99,9 +97,7 @@ describe('api client', () => {
   });
 
   it('throws ApiError with the HTTP status when the response is not ok', async () => {
-    fetchMock.mockImplementation(() =>
-      Promise.resolve(new Response('nope', { status: 503, statusText: 'Boom' })),
-    );
+    fetchMock.mockImplementation(() => Promise.resolve(new Response('nope', { status: 503, statusText: 'Boom' })));
     const err = await api.leagues().then(
       () => null,
       (e: unknown) => e,
@@ -328,17 +324,13 @@ describe('api client', () => {
   it('confirmSeasonSchedule() POSTs the kept entries with the season in the path', async () => {
     fetchMock.mockResolvedValueOnce(mockJson({ created: [], skipped: [] }));
     await api.confirmSeasonSchedule('sn 1', {
-      entries: [
-        { espnEventId: 'e-1', name: 'Sony Open', startDate: '2026-01-15', endDate: '2026-01-18' },
-      ],
+      entries: [{ espnEventId: 'e-1', name: 'Sony Open', startDate: '2026-01-15', endDate: '2026-01-18' }],
     });
     const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/admin/seasons/sn%201/upload/confirm');
     expect(requestInit(call).method).toBe('POST');
     expect(jsonBody(call)).toEqual({
-      entries: [
-        { espnEventId: 'e-1', name: 'Sony Open', startDate: '2026-01-15', endDate: '2026-01-18' },
-      ],
+      entries: [{ espnEventId: 'e-1', name: 'Sony Open', startDate: '2026-01-15', endDate: '2026-01-18' }],
     });
   });
 
@@ -513,9 +505,7 @@ describe('api client', () => {
   });
 
   it('upsertTournamentPlayerOverride() POSTs the request as the body to the player-overrides endpoint', async () => {
-    fetchMock.mockResolvedValueOnce(
-      mockJson({ tournamentId: 'tn-1', espnCompetitorId: 'abc', golferId: 'g-1' }),
-    );
+    fetchMock.mockResolvedValueOnce(mockJson({ tournamentId: 'tn-1', espnCompetitorId: 'abc', golferId: 'g-1' }));
     const result = await api.upsertTournamentPlayerOverride('tn-1', {
       espnCompetitorId: 'abc',
       golferId: 'g-1',
@@ -541,9 +531,7 @@ describe('api client', () => {
   });
 
   it('createGolferAndLink() POSTs the request as the body to the new-golfer endpoint', async () => {
-    fetchMock.mockResolvedValueOnce(
-      mockJson({ tournamentId: 'tn-1', espnCompetitorId: 'abc', golferId: 'g-99' }),
-    );
+    fetchMock.mockResolvedValueOnce(mockJson({ tournamentId: 'tn-1', espnCompetitorId: 'abc', golferId: 'g-99' }));
     const result = await api.createGolferAndLink('tn-1', { espnCompetitorId: 'abc', name: 'Alex Fitzpatrick' });
     const call = nth(fetchMock.mock.calls, 0);
     expect(call[0]).toBe('/api/v1/admin/tournaments/tn-1/player-overrides/new-golfer');

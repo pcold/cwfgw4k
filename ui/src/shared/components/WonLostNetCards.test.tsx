@@ -10,10 +10,6 @@ describe('WonLostNetCards', () => {
     renderWithProviders(<WonLostNetCards won="+$9" lost={'−$2'} net="+$7" />, NO_PROVIDERS);
 
     const strip = screen.getByText('Won').parentElement?.parentElement;
-    expect(Array.from(strip?.children ?? []).map((card) => card.textContent)).toEqual([
-      'Won+$9',
-      'Lost−$2',
-      'Net+$7',
-    ]);
+    expect(Array.from(strip?.children ?? []).map((card) => card.textContent)).toEqual(['Won+$9', 'Lost−$2', 'Net+$7']);
   });
 });

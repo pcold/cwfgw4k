@@ -14,13 +14,12 @@ import {
 const TEAMS = ['Womble', 'BLAU', 'Rose H2O'];
 
 describe('parseMyTeam and serialiseMyTeam', () => {
-  it.each<MyTeamChoice>([
-    { kind: 'team', teamName: 'WOMBLE' },
-    { kind: 'browsing' },
-    { kind: 'unasked' },
-  ])('round-trips %o', (choice) => {
-    expect(parseMyTeam(serialiseMyTeam(choice))).toEqual(choice);
-  });
+  it.each<MyTeamChoice>([{ kind: 'team', teamName: 'WOMBLE' }, { kind: 'browsing' }, { kind: 'unasked' }])(
+    'round-trips %o',
+    (choice) => {
+      expect(parseMyTeam(serialiseMyTeam(choice))).toEqual(choice);
+    },
+  );
 
   it('stores unasked as no entry at all', () => {
     expect(serialiseMyTeam({ kind: 'unasked' })).toBeNull();

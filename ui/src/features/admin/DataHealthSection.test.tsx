@@ -67,10 +67,11 @@ describe('DataHealthSection', () => {
 
     const withoutId = screen.getByRole('region', { name: 'Rostered without an ESPN id' });
     expect(within(withoutId).getByRole('heading')).toHaveTextContent('(2)');
-    expect(within(withoutId).getAllByRole('listitem').map((row) => row.textContent)).toEqual([
-      '(blank) Griffin g-3',
-      'Si Woo Kim g-1',
-    ]);
+    expect(
+      within(withoutId)
+        .getAllByRole('listitem')
+        .map((row) => row.textContent),
+    ).toEqual(['(blank) Griffin g-3', 'Si Woo Kim g-1']);
 
     const blank = screen.getByRole('region', { name: 'Blank first names' });
     expect(within(blank).getByRole('heading')).toHaveTextContent('(1)');
@@ -99,9 +100,7 @@ describe('DataHealthSection', () => {
 
     renderWithProviders(<DataHealthSection />, { withLeagueSeasonProvider: false });
 
-    expect(
-      await screen.findByText(/Failed to load golfer data health: Error: 403 forbidden/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Failed to load golfer data health: Error: 403 forbidden/)).toBeInTheDocument();
     expect(screen.queryByText('None found.')).not.toBeInTheDocument();
   });
 });
