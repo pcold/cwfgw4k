@@ -655,6 +655,9 @@ export interface WireContract extends Record<string, true> {
     | 'frontNine'
     | 'backNine'
     | 'total'
+    | 'frontPar'
+    | 'backPar'
+    | 'totalPar'
   >;
   'com.cwfgw.tournaments.Tournament': ExactFields<
     Tournament,

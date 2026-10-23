@@ -465,6 +465,9 @@ com.cwfgw.tournaments.RoundScorecard [CLASS]
   frontNine: kotlin.Int? [INT] optional
   backNine: kotlin.Int? [INT] optional
   total: kotlin.Int? [INT] optional
+  frontPar: kotlin.Int? [INT] optional
+  backPar: kotlin.Int? [INT] optional
+  totalPar: kotlin.Int? [INT] optional
 
 com.cwfgw.tournaments.Tournament [CLASS]
   id: com.cwfgw.tournaments.TournamentId [INLINE]
