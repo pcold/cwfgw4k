@@ -104,6 +104,15 @@ class EspnScorecardParseSpec : FunSpec({
         scorecard.hole(3).toPar shouldBe 4
     }
 
+    test("a hole the field splits evenly between two pars takes the lower, whichever order ESPN lists them in") {
+        val quadruple = player("1", listOf(round(1, listOf(espnHole(3, strokes = 7, toPar = "OTHER")))))
+        val parThree = player("2", listOf(round(1, parsOn(listOf(3)))))
+        val parFour = player("3", listOf(round(1, listOf(espnHole(3, strokes = 4, toPar = "E")))))
+
+        scorecardsOf(quadruple, parFour, parThree).getValue("Player 1").single().hole(3).par shouldBe 3
+        scorecardsOf(quadruple, parThree, parFour).getValue("Player 1").single().hole(3).par shouldBe 3
+    }
+
     test("a hole nobody has reached this round takes its par from the other rounds, and none from no round") {
         val leader = player("1", listOf(round(1, parsOn(1..17)), round(2, parsOn(listOf(1)))))
 
