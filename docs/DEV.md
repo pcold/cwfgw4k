@@ -62,7 +62,7 @@ Vite serves the UI at `http://localhost:5173` with hot module reload, proxying `
 ./gradlew check --rerun-tasks
 ```
 
-Runs the full gate: backend tests + ktlint + detekt + Kover coverage verify + the schema-dump check (`checkSchemaDump`) + UI lint (`uiLint`) + UI unit tests. This is the canonical command — `./gradlew test` skips coverage and the UI tests, so don't trust it alone. `--rerun-tasks` is part of it: the build cache is on, and a cached or up-to-date `:test` verifies nothing. [`.claude/CLAUDE.md`](../.claude/CLAUDE.md) → Verification says how to read the result.
+Runs the full gate: backend tests + ktlint + detekt + Kover coverage verify + the schema-dump check (`checkSchemaDump`) + UI lint (`uiLint`) + the UI's Prettier check (`uiFormatCheck`; `cd ui && npm run format` fixes it) + UI unit tests. This is the canonical command — `./gradlew test` skips coverage and the UI tests, so don't trust it alone. `--rerun-tasks` is part of it: the build cache is on, and a cached or up-to-date `:test` verifies nothing. [`.claude/CLAUDE.md`](../.claude/CLAUDE.md) → Verification says how to read the result.
 
 GitHub Actions runs the same gate on every pull request and on `main` after a merge (`.github/workflows/check.yml`, job `gradle check`), and then asserts from the log that `:test` and `:detekt` really ran. It reports the check without running it for a pull request that changes only `.md` files, and for a push to `main` whose exact tree an earlier run already passed.
 
