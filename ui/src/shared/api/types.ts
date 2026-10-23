@@ -105,7 +105,7 @@ export interface LiveLeaderboardEntry {
   players: LeaderboardPlayer[];
   roundScores: number[];
   totalStrokes: number | null;
-  /** Live rows only: a stored report's are empty, as are those of a round ESPN sent without its holes. */
+  /** Empty for a round ESPN sent without its holes, and on a stored row imported before scorecards were saved. */
   scorecards: RoundScorecard[];
   rostered: boolean;
 }

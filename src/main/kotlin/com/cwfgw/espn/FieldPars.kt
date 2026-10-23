@@ -82,4 +82,10 @@ private fun EspnHoleJson.parsed(): EspnHole? {
     return EspnHole(hole = hole, strokes = strokes, toPar = scoreType?.displayValue?.let(::parseScoreToPar))
 }
 
-private fun List<Int>.mostCommon(): Int = groupingBy { it }.eachCount().maxBy { it.value }.key
+/** A tie goes to the lower par, so the answer never hangs on the order ESPN lists the field in. */
+private fun List<Int>.mostCommon(): Int =
+    groupingBy { it }
+        .eachCount()
+        .entries
+        .maxWith(compareBy<Map.Entry<Int, Int>> { it.value }.thenByDescending { it.key })
+        .key

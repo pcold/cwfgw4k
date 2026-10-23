@@ -172,7 +172,7 @@ Tables in schema `cwfgw4k`, as dumped in `db/schema.sql`:
 | `season_rule_payouts` | payout per place | unique `(season_id, position)` |
 | `season_rule_side_bet_rounds` | side-bet rounds | unique `(season_id, round)`; `round` within 1–8, the draft's rounds |
 | `tournaments` | schedule, status, multiplier | `pga_tournament_id` unique; `status` one of `upcoming`, `in_progress`, `completed`, default `upcoming`; `payout_multiplier` `NUMERIC(6,4)` default 1 |
-| `tournament_results` | one row per golfer per tournament | unique `(tournament_id, golfer_id)` |
+| `tournament_results` | one row per golfer per tournament, with the hole-by-hole scorecards ESPN sent | unique `(tournament_id, golfer_id)`; `scorecards` a JSONB array, default empty |
 | `tournament_player_overrides` | ESPN competitor -> golfer | PK `(tournament_id, espn_competitor_id)`; a trigger refuses any link write naming a tombstoned golfer |
 | `teams` | a season's teams | unique `(season_id, team_name)` |
 | `team_rosters` | golfer on a team | unique `(team_id, golfer_id, acquired_at)` and `(team_id, draft_round)`; `draft_round` within 1–8, the draft's rounds; `ownership_pct` `NUMERIC(5,2)` above 0 and at most 100, default 100 |

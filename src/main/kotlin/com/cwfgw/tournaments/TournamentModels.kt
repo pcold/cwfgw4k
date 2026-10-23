@@ -131,4 +131,5 @@ data class NewTournamentResult(
     val round4: Int? = null,
     val madeCut: Boolean = true,
     val pairKey: String? = null,
+    val scorecards: List<RoundScorecard> = emptyList(),
 )

@@ -110,7 +110,7 @@ data class LiveLeaderboardEntry(
     val roundScores: List<Int> = emptyList(),
     /** Sum of [roundScores] when at least one round has been played; null otherwise. */
     val totalStrokes: Int? = null,
-    /** Live rows only: a stored report's are empty, as are those of a round ESPN sent without its holes. */
+    /** Empty for a round ESPN sent without its holes, and on a stored row imported before scorecards were saved. */
     val scorecards: List<RoundScorecard> = emptyList(),
 ) {
     val rostered: Boolean = players.any { it.teamNames.isNotEmpty() }
