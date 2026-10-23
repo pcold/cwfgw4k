@@ -369,15 +369,33 @@ internal data class EspnNamedJson(
     @SerialName("displayName") val displayName: String? = null,
 )
 
+/** One round: [value] is its strokes so far, and [linescores] its holes in play order, absent for some players. */
 @Serializable
-internal data class EspnLinescoreJson(val value: Double? = null)
+internal data class EspnLinescoreJson(
+    val value: Double? = null,
+    val period: Int? = null,
+    val linescores: List<EspnHoleJson> = emptyList(),
+)
+
+/** [period] is the hole number and [value] its strokes. */
+@Serializable
+internal data class EspnHoleJson(
+    val value: Double? = null,
+    val period: Int? = null,
+    val scoreType: EspnScoreTypeJson? = null,
+)
+
+/** [displayValue] is the hole's score to par ("E", "-1", "+2"), or "OTHER" for +4 and worse. */
+@Serializable
+internal data class EspnScoreTypeJson(val displayValue: String? = null)
 
 private fun parseEvent(event: EspnEventJson): EspnTournament {
     // A SerializationException, not error(): the client refuses this body as malformed rather than failing.
     val competitorRows =
         event.competitions.firstOrNull()?.competitors
             ?: throw SerializationException("ESPN event ${event.id} has no competitions")
-    val parsed = competitorRows.flatMapIndexed(::parseCompetitor)
+    val fieldPars = FieldPars.of(competitorRows)
+    val parsed = competitorRows.flatMapIndexed { index, json -> parseCompetitor(index, json, fieldPars) }
     val isTeamEvent = parsed.any { it.isTeamPartner }
     val completed = event.status?.type?.completed ?: false
     return EspnTournament(
@@ -398,6 +416,7 @@ private fun parseEvent(event: EspnEventJson): EspnTournament {
 private fun parseCompetitor(
     index: Int,
     json: EspnCompetitorJson,
+    fieldPars: FieldPars,
 ): List<EspnCompetitor> {
     val entryId = json.id ?: return emptyList()
     val displayName = json.team?.displayName ?: json.athlete?.displayName ?: return emptyList()
@@ -407,49 +426,35 @@ private fun parseCompetitor(
     val roundScores = json.linescores.mapNotNull { it.value?.toInt() }
     val totalStrokes = if (roundScores.isEmpty()) null else roundScores.sum()
     val status = json.status?.type?.id?.let(EspnStatus::fromCode) ?: EspnStatus.Active
-    val isTeamEntry = json.type == "team" || displayName.contains("/")
-
-    return if (isTeamEntry) {
-        val pairKey = "team:$entryId"
-        displayName
-            .split("/")
-            .map(String::trim)
-            .filter { it.isNotEmpty() }
-            .mapIndexed { partnerIdx, partnerName ->
-                EspnCompetitor(
-                    espnId = "$pairKey:$partnerIdx",
-                    name = partnerName,
-                    order = order,
-                    scoreStr = score,
-                    scoreToPar = scoreToPar,
-                    totalStrokes = totalStrokes,
-                    roundScores = roundScores,
-                    position = order,
-                    status = status,
-                    isTeamPartner = true,
-                    pairKey = pairKey,
-                )
-            }
-    } else {
-        listOf(
-            EspnCompetitor(
-                espnId = entryId,
-                name = displayName,
-                order = order,
-                scoreStr = score,
-                scoreToPar = scoreToPar,
-                totalStrokes = totalStrokes,
-                roundScores = roundScores,
-                position = order,
-                status = status,
-                isTeamPartner = false,
-                pairKey = null,
-            ),
+    val entry =
+        EspnCompetitor(
+            espnId = entryId,
+            name = displayName,
+            order = order,
+            scoreStr = score,
+            scoreToPar = scoreToPar,
+            totalStrokes = totalStrokes,
+            roundScores = roundScores,
+            scorecards = json.scorecards(fieldPars),
+            position = order,
+            status = status,
+            isTeamPartner = false,
+            pairKey = null,
         )
-    }
+    val isTeamEntry = json.type == "team" || displayName.contains("/")
+    if (!isTeamEntry) return listOf(entry)
+
+    val pairKey = "team:$entryId"
+    return displayName
+        .split("/")
+        .map(String::trim)
+        .filter { it.isNotEmpty() }
+        .mapIndexed { partnerIdx, partnerName ->
+            entry.copy(espnId = "$pairKey:$partnerIdx", name = partnerName, isTeamPartner = true, pairKey = pairKey)
+        }
 }
 
-private fun parseScoreToPar(score: String): Int? =
+internal fun parseScoreToPar(score: String): Int? =
     when {
         score == "E" -> 0
         else -> score.removePrefix("+").toIntOrNull()

@@ -2,6 +2,7 @@ package com.cwfgw.espn
 
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.teams.TeamId
+import com.cwfgw.tournaments.RoundScorecard
 import java.math.BigDecimal
 
 /**
@@ -33,6 +34,8 @@ data class EspnCompetitor(
     val scoreToPar: Int?,
     val totalStrokes: Int?,
     val roundScores: List<Int>,
+    /** @see RoundScorecard */
+    val scorecards: List<RoundScorecard> = emptyList(),
     val position: Int,
     val status: EspnStatus,
     val isTeamPartner: Boolean,
@@ -131,6 +134,8 @@ data class PreviewLeaderboardEntry(
     val pairKey: String? = null,
     val roundScores: List<Int> = emptyList(),
     val totalStrokes: Int? = null,
+    /** @see RoundScorecard */
+    val scorecards: List<RoundScorecard> = emptyList(),
 ) {
     val rostered: Boolean get() = teamNames.isNotEmpty()
 }

@@ -934,6 +934,7 @@ private fun buildLivePreviewLeaderboard(
             pairKey = competitor.pairKey,
             roundScores = competitor.roundScores,
             totalStrokes = competitor.totalStrokes,
+            scorecards = competitor.scorecards,
         )
     return placed.sortedBy { (competitor, _) -> competitor.position }
         .map { (competitor, golfer) -> entry(competitor, golfer, competitor.position, competitor.scoreToPar) } +

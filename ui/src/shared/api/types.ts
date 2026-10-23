@@ -105,7 +105,29 @@ export interface LiveLeaderboardEntry {
   players: LeaderboardPlayer[];
   roundScores: number[];
   totalStrokes: number | null;
+  /** Live rows only: a stored report's are empty, as are those of a round ESPN sent without its holes. */
+  scorecards: RoundScorecard[];
   rostered: boolean;
+}
+
+/** `par` is null for a hole nobody in the field has shown a par for yet; `toPar` is null until both are known. */
+export interface HoleScore {
+  hole: number;
+  par: number | null;
+  strokes: number | null;
+  toPar: number | null;
+}
+
+/**
+ * `holes` is always 1–18 by hole number, whatever order they were played in.
+ * The nine and total sums count only the holes played, and are null before the first of them.
+ */
+export interface RoundScorecard {
+  round: number;
+  holes: HoleScore[];
+  frontNine: number | null;
+  backNine: number | null;
+  total: number | null;
 }
 
 /**

@@ -5,6 +5,7 @@ package com.cwfgw.reports
 import com.cwfgw.golfers.GolferId
 import com.cwfgw.serialization.BigDecimalSerializer
 import com.cwfgw.teams.TeamId
+import com.cwfgw.tournaments.RoundScorecard
 import com.cwfgw.tournaments.TournamentStatus
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
@@ -109,6 +110,8 @@ data class LiveLeaderboardEntry(
     val roundScores: List<Int> = emptyList(),
     /** Sum of [roundScores] when at least one round has been played; null otherwise. */
     val totalStrokes: Int? = null,
+    /** Live rows only: a stored report's are empty, as are those of a round ESPN sent without its holes. */
+    val scorecards: List<RoundScorecard> = emptyList(),
 ) {
     val rostered: Boolean = players.any { it.teamNames.isNotEmpty() }
 }

@@ -80,6 +80,7 @@ export function makeLeaderboardEntry(
     scoreToPar: 0,
     roundScores: [],
     totalStrokes: null,
+    scorecards: [],
     rostered: players.some((player) => player.teamNames.length > 0),
     ...overrides,
     players,

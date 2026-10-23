@@ -665,7 +665,9 @@ class ReportRoutesSpec : FunSpec({
                     wirePlayer("Xander Schauffele") to JsonPrimitive(false),
                 )
             rows.map { it.keys }.distinct() shouldContainExactly
-                listOf(setOf("position", "scoreToPar", "players", "roundScores", "totalStrokes", "rostered"))
+                listOf(
+                    setOf("position", "scoreToPar", "players", "roundScores", "totalStrokes", "scorecards", "rostered"),
+                )
         }
     }
 
