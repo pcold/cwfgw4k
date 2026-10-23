@@ -38,9 +38,18 @@ describe('LeaderboardScorecard', () => {
     expect(within(back).getAllByRole('columnheader').map((head) => head.textContent)).toEqual(
       ['Hole', '10', '11', '12', '13', '14', '15', '16', '17', '18', 'In', 'Tot'],
     );
-    expect(rowOf(front, 'Par')).toEqual([...PARS_ON_NINE.map(String), '']);
+    expect(rowOf(front, 'Par')).toEqual([...PARS_ON_NINE.map(String), '36']);
     expect(rowOf(front, 'Score')).toEqual([...PARS_ON_NINE.map(String), '36']);
+    expect(rowOf(back, 'Par')).toEqual([...PARS_ON_NINE.map(String), '36', '72']);
     expect(rowOf(back, 'Score')).toEqual([...PARS_ON_NINE.map(String), '36', '72']);
+  });
+
+  it('leaves a par sum blank when the server sends none', () => {
+    const scorecard = { ...makeRoundScorecard(1, [4]), backPar: null, totalPar: null };
+    renderWithProviders(<LeaderboardScorecard id="card" scorecards={[scorecard]} />, NO_PROVIDERS);
+
+    expect(rowOf(nine(1, 'front'), 'Par').at(-1)).toBe('36');
+    expect(rowOf(nine(1, 'back'), 'Par').slice(-2)).toEqual(['', '']);
   });
 
   it('marks a hole by its score to par, outlining one off and filling two or more, round under and square over', () => {
