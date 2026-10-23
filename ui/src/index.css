@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 /* They spell banned shades to name or test the lint, and Tailwind would ship a rule for each. */
 @source not "../eslint.config.js";
@@ -153,13 +153,13 @@
   --color-score-double-bogey: var(--brand-steel);
 
   --font-sans:
-    'Saira Variable', 'Saira Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    "Saira Variable", "Saira Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 /* Arial scaled to Saira's width and line box, so text holds its place while the webfont swaps in. */
 @font-face {
-  font-family: 'Saira Fallback';
-  src: local('Arial');
+  font-family: "Saira Fallback";
+  src: local("Arial");
   size-adjust: 104.24%;
   ascent-override: 108.88%;
   descent-override: 42.11%;

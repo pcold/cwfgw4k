@@ -7,4 +7,6 @@ export default {
   singleQuote: true,
   semi: true,
   trailingComma: 'all',
+  // Prettier requotes declarations but not every at-rule, so single quotes would leave index.css mixed.
+  overrides: [{ files: '*.css', options: { singleQuote: false } }],
 };
