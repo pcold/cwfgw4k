@@ -19,6 +19,12 @@ echo "AUTH_SESSION_SECRET=$(openssl rand -hex 32)" >> dev.properties
 
 If you want a bootstrapped admin user on first boot (so you can log in to the UI), set `AUTH_ADMIN_USERNAME` and `AUTH_ADMIN_PASSWORD` in `dev.properties`. The seeder only fires when the users table is empty; once an admin exists, it ignores them. Set both or neither: the app refuses to boot with only one, even after an admin exists.
 
+`.git-blame-ignore-revs` lists repo-wide reformats, which GitHub's blame view already skips. To skip them in local blame too:
+
+```sh
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 ## Database
 
 ```sh
