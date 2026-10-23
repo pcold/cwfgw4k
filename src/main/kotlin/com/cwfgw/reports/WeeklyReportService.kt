@@ -20,6 +20,7 @@ import com.cwfgw.teams.TeamId
 import com.cwfgw.teams.TeamRepository
 import com.cwfgw.tournaments.ESPN_SCHEDULE_ZONE
 import com.cwfgw.tournaments.GolferFinish
+import com.cwfgw.tournaments.RoundScorecard
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentId
@@ -112,6 +113,7 @@ class WeeklyReportService(
             val rules = seasonRepository.getRules(seasonId) ?: SeasonRules.defaults()
             val teams = teamRepository.findBySeason(seasonId)
             val results = tournamentRepository.getResults(tournamentId)
+            val scorecardsByGolfer = tournamentRepository.getScorecards(tournamentId)
             val allGolfers = golferRepository.findAll(search = null)
             val scores = scoringRepository.getScores(seasonId, tournamentId)
             val throughTournaments = filterThroughTournament(findCompletedIn(seasonId), tournament)
@@ -123,6 +125,7 @@ class WeeklyReportService(
                     teams = teams,
                     tournament = tournament,
                     results = results,
+                    scorecardsByGolfer = scorecardsByGolfer,
                     allGolfers = allGolfers,
                     scores = scores,
                     throughTournaments = throughTournaments,
@@ -533,6 +536,7 @@ internal data class WeeklyReportInputs(
     val teams: List<Team>,
     val tournament: Tournament,
     val results: List<TournamentResult>,
+    val scorecardsByGolfer: Map<GolferId, List<RoundScorecard>>,
     val allGolfers: List<Golfer>,
     val scores: List<FantasyScore>,
     val throughTournaments: List<Tournament>,
@@ -575,6 +579,7 @@ internal fun assembleWeeklyReport(inputs: WeeklyReportInputs): WeeklyReport {
     val leaderboard =
         buildPersistedLeaderboard(
             results = inputs.results,
+            scorecardsByGolfer = inputs.scorecardsByGolfer,
             golfersById = derived.golfersById,
             teamsByGolfer = teamNamesByGolfer(inputs.allRosters, inputs.teams),
         )
@@ -603,6 +608,7 @@ private fun teamNamesByGolfer(
 
 internal fun buildPersistedLeaderboard(
     results: List<TournamentResult>,
+    scorecardsByGolfer: Map<GolferId, List<RoundScorecard>>,
     golfersById: Map<GolferId, Golfer>,
     teamsByGolfer: Map<GolferId, List<String>>,
 ): List<LiveLeaderboardEntry> =
@@ -624,6 +630,7 @@ internal fun buildPersistedLeaderboard(
                     },
                 roundScores = listOfNotNull(lead.round1, lead.round2, lead.round3, lead.round4),
                 totalStrokes = lead.totalStrokes,
+                scorecards = scorecardsByGolfer[lead.golferId].orEmpty(),
             )
         }
 

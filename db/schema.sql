@@ -250,7 +250,9 @@ CREATE TABLE cwfgw4k.tournament_results (
     round3 integer,
     round4 integer,
     made_cut boolean DEFAULT true NOT NULL,
-    pair_key text
+    pair_key text,
+    scorecards jsonb DEFAULT '[]'::jsonb NOT NULL,
+    CONSTRAINT tournament_results_scorecards_array CHECK ((jsonb_typeof(scorecards) = 'array'::text))
 );
 
 

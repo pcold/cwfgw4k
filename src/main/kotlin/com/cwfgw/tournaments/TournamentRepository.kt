@@ -13,6 +13,7 @@ import com.cwfgw.jooq.tables.references.TOURNAMENTS
 import com.cwfgw.jooq.tables.references.TOURNAMENT_RESULTS
 import com.cwfgw.seasons.SeasonId
 import org.jooq.Field
+import org.jooq.JSONB
 import org.jooq.Table
 import org.jooq.impl.DSL
 
@@ -79,6 +80,10 @@ interface TournamentRepository {
     context(ctx: TransactionContext)
     fun getResultsByTournaments(ids: Collection<TournamentId>): List<TournamentResult>
 
+    /** The holes [getResults] and [getResultsByTournaments] leave out. */
+    context(ctx: TransactionContext)
+    fun getScorecards(tournamentId: TournamentId): Map<GolferId, List<RoundScorecard>>
+
     /**
      * Placed finishes at or above [positionAtMost] only, ordered by tournament id. The tie count is taken over the
      * whole field before narrowing to [golferId]; counted after, every finish would read as untied.
@@ -112,6 +117,9 @@ interface TournamentRepository {
 fun TournamentRepository(): TournamentRepository = JooqTournamentRepository()
 
 internal val UNIQUE_PGA_TOURNAMENT_ID: String = TOURNAMENTS_PGA_TOURNAMENT_ID_KEY.name
+
+/** Without scorecards: a season's results would carry roughly 10MB of holes, which only one leaderboard reads. */
+private val RESULT_FIELDS = TOURNAMENT_RESULTS.fields().filterNot { it == TOURNAMENT_RESULTS.SCORECARDS }
 
 private class JooqTournamentRepository : TournamentRepository {
     context(ctx: TransactionContext)
@@ -225,23 +233,37 @@ private class JooqTournamentRepository : TournamentRepository {
 
     context(ctx: TransactionContext)
     override fun getResults(tournamentId: TournamentId): List<TournamentResult> =
-        ctx.dsl.selectFrom(TOURNAMENT_RESULTS)
+        ctx.dsl.select(RESULT_FIELDS)
+            .from(TOURNAMENT_RESULTS)
             .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.eq(tournamentId.value))
             .orderBy(TOURNAMENT_RESULTS.POSITION.asc().nullsLast(), TOURNAMENT_RESULTS.ID.asc())
-            .fetch(::toResult)
+            .fetchInto(TOURNAMENT_RESULTS)
+            .map(::toResult)
 
     context(ctx: TransactionContext)
     override fun getResultsByTournaments(ids: Collection<TournamentId>): List<TournamentResult> {
         if (ids.isEmpty()) return emptyList()
-        return ctx.dsl.selectFrom(TOURNAMENT_RESULTS)
+        return ctx.dsl.select(RESULT_FIELDS)
+            .from(TOURNAMENT_RESULTS)
             .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.`in`(ids.map { it.value }))
             .orderBy(
                 TOURNAMENT_RESULTS.TOURNAMENT_ID.asc(),
                 TOURNAMENT_RESULTS.POSITION.asc().nullsLast(),
                 TOURNAMENT_RESULTS.ID.asc(),
             )
-            .fetch(::toResult)
+            .fetchInto(TOURNAMENT_RESULTS)
+            .map(::toResult)
     }
+
+    context(ctx: TransactionContext)
+    override fun getScorecards(tournamentId: TournamentId): Map<GolferId, List<RoundScorecard>> =
+        ctx.dsl.select(TOURNAMENT_RESULTS.GOLFER_ID, TOURNAMENT_RESULTS.SCORECARDS)
+            .from(TOURNAMENT_RESULTS)
+            .where(TOURNAMENT_RESULTS.TOURNAMENT_ID.eq(tournamentId.value))
+            .fetchInto(TOURNAMENT_RESULTS)
+            .associate { record ->
+                GolferId(record.golferId) to decodeScorecards(record.required(TOURNAMENT_RESULTS.SCORECARDS).data())
+            }
 
     context(ctx: TransactionContext)
     override fun findResultsForGolfer(
@@ -318,7 +340,7 @@ private class JooqTournamentRepository : TournamentRepository {
                 .onConflict(TOURNAMENT_RESULTS.TOURNAMENT_ID, TOURNAMENT_RESULTS.GOLFER_ID)
                 .doUpdate()
                 .set(resultUpdateAssignments(request))
-                .returning()
+                .returning(RESULT_FIELDS)
                 .fetchSingle()
         return toResult(upserted)
     }
@@ -365,6 +387,7 @@ private class JooqTournamentRepository : TournamentRepository {
             TOURNAMENT_RESULTS.ROUND4 to request.round4,
             TOURNAMENT_RESULTS.MADE_CUT to request.madeCut,
             TOURNAMENT_RESULTS.PAIR_KEY to request.pairKey,
+            TOURNAMENT_RESULTS.SCORECARDS to JSONB.valueOf(encodeScorecards(request.scorecards)),
         )
 
     private fun resultUpdateAssignments(request: NewTournamentResult): Map<Field<*>, Any?> =
@@ -379,6 +402,7 @@ private class JooqTournamentRepository : TournamentRepository {
             TOURNAMENT_RESULTS.ROUND4 to request.round4,
             TOURNAMENT_RESULTS.MADE_CUT to request.madeCut,
             TOURNAMENT_RESULTS.PAIR_KEY to request.pairKey,
+            TOURNAMENT_RESULTS.SCORECARDS to JSONB.valueOf(encodeScorecards(request.scorecards)),
         )
 
     private fun toTournament(record: TournamentsRecord): Tournament =

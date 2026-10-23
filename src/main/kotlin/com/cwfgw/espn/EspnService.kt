@@ -331,6 +331,7 @@ class EspnService(
                     round4 = competitor.roundScores.getOrNull(3),
                     madeCut = competitor.madeCut,
                     pairKey = competitor.pairKey,
+                    scorecards = competitor.scorecards,
                 )
             }
         requests.forEach { tournamentRepository.upsertResult(tournamentId, it) }

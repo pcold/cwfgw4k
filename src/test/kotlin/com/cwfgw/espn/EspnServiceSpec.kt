@@ -18,6 +18,8 @@ import com.cwfgw.tournamentLinks.FakeTournamentLinkRepository
 import com.cwfgw.tournamentLinks.TournamentLinkService
 import com.cwfgw.tournamentLinks.TournamentPlayerOverride
 import com.cwfgw.tournaments.FakeTournamentRepository
+import com.cwfgw.tournaments.HoleScore
+import com.cwfgw.tournaments.RoundScorecard
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentId
 import com.cwfgw.tournaments.TournamentResult
@@ -173,6 +175,30 @@ class EspnServiceSpec : FunSpec({
 
         fixture.results().map { it.golferId } shouldBe listOf(rory.id)
         with(noopTransactionContext) { fixture.golferRepo.findAll(search = null) }.shouldHaveSize(1)
+    }
+
+    test("persistImportIn saves the scorecards ESPN sent with each matched competitor") {
+        val rory = golfer(UUID.randomUUID(), "Rory", "McIlroy", pgaPlayerId = "p1")
+        val roundOne =
+            listOfNotNull(
+                RoundScorecard.of(round = 1, played = listOf(HoleScore(hole = 1, par = 4, strokes = 3))) { 4 },
+            )
+        val event =
+            espnTournament(
+                espnId = "401580999",
+                competitors = listOf(espnCompetitor("p1", "Rory McIlroy", 1, -10).copy(scorecards = roundOne)),
+            )
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(tournament(pgaTournamentId = "401580999")),
+                initialGolfers = listOf(rory),
+                tournamentsByDate = mapOf(START_DATE to listOf(event)),
+            )
+
+        fixture.persistImport(event)
+
+        with(noopTransactionContext) { fixture.tournamentRepo.getScorecards(TOURNAMENT_ID) } shouldBe
+            mapOf(rory.id to roundOne)
     }
 
     test("persistImportIn auto-creates an unknown golfer and links the ESPN id as pga_player_id") {

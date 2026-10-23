@@ -60,6 +60,9 @@ private val NON_WIRE_TYPES =
         "com.cwfgw.espn.EspnStatusType",
         // A log line on stdout, for Cloud Logging.
         "com.cwfgw.logging.CloudLogEntry",
+        // A stored scorecard's JSONB column, rebuilt into RoundScorecard before any client sees it.
+        "com.cwfgw.tournaments.StoredHole",
+        "com.cwfgw.tournaments.StoredRound",
         // The session cookie's payload, which the client never parses.
         "com.cwfgw.users.UserSession",
     )

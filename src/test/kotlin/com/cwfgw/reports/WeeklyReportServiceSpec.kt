@@ -1334,6 +1334,26 @@ class WeeklyReportServiceSpec : FunSpec({
         leader.rostered shouldBe true
     }
 
+    test("getReport (non-live) sends each persisted leaderboard row the scorecards its import saved") {
+        val masters = tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+        val winner = golferFixture("d01", "Scottie", "Scheffler")
+        val roundOne =
+            listOfNotNull(
+                RoundScorecard.of(round = 1, played = listOf(HoleScore(hole = 1, par = 4, strokes = 3))) { 4 },
+            )
+        val fixture = Fixture(initialTournaments = listOf(masters), initialGolfers = listOf(winner))
+        with(noopTransactionContext) {
+            fixture.tournamentRepo.upsertResult(
+                MASTERS_ID,
+                NewTournamentResult(golferId = winner.id, position = 1, scorecards = roundOne),
+            )
+        }
+
+        val report = fixture.service.getReport(SEASON_ID, MASTERS_ID).orFail()
+
+        report.liveLeaderboard.single().scorecards shouldBe roundOne
+    }
+
     test("getReport lists every team rostering a split golfer on the persisted leaderboard") {
         val masters = tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
         val shared = golferFixture("d01", "Scottie", "Scheffler")

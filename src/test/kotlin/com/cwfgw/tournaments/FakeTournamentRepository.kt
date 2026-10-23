@@ -35,6 +35,9 @@ class FakeTournamentRepository(
     private val tournaments = fakeTableOf<TournamentId, Tournament>()
     private val results = fakeTableOf<TournamentResultId, TournamentResult>()
 
+    /** Encoded as Postgres holds them, so a read rebuilds each card the way the Jooq repository's does. */
+    private val storedScorecards = fakeTableOf<TournamentResultId, String>()
+
     init {
         initial.forEach { tournaments[it.id] = it }
         initialResults.forEach { results[it.id] = it }
@@ -143,6 +146,14 @@ class FakeTournamentRepository(
     }
 
     context(ctx: TransactionContext)
+    override fun getScorecards(tournamentId: TournamentId): Map<GolferId, List<RoundScorecard>> =
+        results.values
+            .filter { it.tournamentId == tournamentId }
+            .associate { result ->
+                result.golferId to storedScorecards[result.id]?.let(::decodeScorecards).orEmpty()
+            }
+
+    context(ctx: TransactionContext)
     override fun findResultsForGolfer(
         golferId: GolferId,
         tournamentIds: Collection<TournamentId>,
@@ -167,7 +178,10 @@ class FakeTournamentRepository(
     context(ctx: WriteTransactionContext)
     override fun deleteResultsByTournament(tournamentId: TournamentId): Int {
         val matching = results.values.filter { it.tournamentId == tournamentId }
-        matching.forEach { results.remove(it.id) }
+        matching.forEach { result ->
+            results.remove(result.id)
+            storedScorecards.remove(result.id)
+        }
         return matching.size
     }
 
@@ -175,7 +189,10 @@ class FakeTournamentRepository(
     override fun deleteResultsBySeason(seasonId: SeasonId): Int {
         val tournamentIds = tournaments.values.filter { it.seasonId == seasonId }.map { it.id }.toSet()
         val matching = results.values.filter { it.tournamentId in tournamentIds }
-        matching.forEach { results.remove(it.id) }
+        matching.forEach { result ->
+            results.remove(result.id)
+            storedScorecards.remove(result.id)
+        }
         return matching.size
     }
 
@@ -212,6 +229,7 @@ class FakeTournamentRepository(
                 pairKey = request.pairKey,
             )
         results[entry.id] = entry
+        storedScorecards[entry.id] = encodeScorecards(request.scorecards)
         return entry
     }
 

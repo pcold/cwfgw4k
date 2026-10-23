@@ -6,8 +6,10 @@ import com.cwfgw.result.Result
 import com.cwfgw.seasons.SeasonId
 import com.cwfgw.tournaments.FakeTournamentRepository
 import com.cwfgw.tournaments.GolferFinish
+import com.cwfgw.tournaments.HoleScore
 import com.cwfgw.tournaments.NewTournament
 import com.cwfgw.tournaments.NewTournamentResult
+import com.cwfgw.tournaments.RoundScorecard
 import com.cwfgw.tournaments.Tournament
 import com.cwfgw.tournaments.TournamentFilter
 import com.cwfgw.tournaments.TournamentId
@@ -213,6 +215,27 @@ private val tournamentResultContract: List<ContractCase<TournamentRepository>> =
 
             replaced shouldBe first.copy(position = 1, madeCut = false)
             tx.get { repository.getResults(tournament.id) } shouldContainExactly listOf(replaced)
+        },
+        ContractCase("scorecards read back by golfer apart from the results, and an upsert replaces them") {
+            val seasonId = seeds.season()
+            val (carded, uncarded) = listOf(seeds.golfer(), seeds.golfer())
+            val tournament = tx.update { repository.create(masters(seasonId)) }
+            val birdieOnOne =
+                listOfNotNull(RoundScorecard.of(1, listOf(HoleScore(hole = 1, par = 4, strokes = 3))) { 4 })
+            val doubleOnEighteen =
+                listOfNotNull(RoundScorecard.of(2, listOf(HoleScore(hole = 18, par = 5, strokes = 7))) { 4 })
+            val carding = NewTournamentResult(carded, position = 1, scorecards = birdieOnOne)
+
+            val result = tx.update { repository.upsertResult(tournament.id, carding) }
+            tx.update { repository.upsertResult(tournament.id, NewTournamentResult(uncarded, position = 2)) }
+
+            tx.get { repository.getScorecards(tournament.id) } shouldBe
+                mapOf(carded to birdieOnOne, uncarded to emptyList())
+            tx.get { repository.getResults(tournament.id) }.first() shouldBe result
+            tx.update { repository.upsertResult(tournament.id, carding.copy(scorecards = doubleOnEighteen)) }
+            val replaced = tx.get { repository.getScorecards(tournament.id) }.getValue(carded)
+            replaced shouldBe doubleOnEighteen
+            replaced.single().total shouldBe 7
         },
         ContractCase("results order by position with the unplaced last, ties by id as Postgres orders uuid") {
             val seasonId = seeds.season()
