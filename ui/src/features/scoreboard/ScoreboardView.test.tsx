@@ -4,7 +4,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReportCell, ReportTeamColumn, ReportTournamentInfo, WeeklyReport } from '@/shared/api/types';
 import { nth } from '@/shared/test/nth';
-import { makeLeaderboardEntry, makeWonLostTotals } from '@/shared/test/fixtures';
+import { makeLeaderboardEntry, makeRoundScorecard, makeWonLostTotals } from '@/shared/test/fixtures';
 import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
@@ -136,7 +136,7 @@ function teamChips(leaderboardRow: HTMLElement): Element[] {
 }
 
 function leaderboardTable(): HTMLElement {
-  return nth(screen.getAllByRole('table'), 1);
+  return screen.getByRole('table', { name: 'Leaderboard' });
 }
 
 function leaderboardTableNames(): (string | null | undefined)[] {
@@ -150,8 +150,9 @@ function phoneLeaderboard(): HTMLElement {
   return screen.getByRole('list', { name: 'Leaderboard' });
 }
 
+// The list's own items only, not those of a scorecard's legend.
 function phoneLeaderboardRows(): HTMLElement[] {
-  return within(phoneLeaderboard()).getAllByRole('listitem');
+  return Array.from(phoneLeaderboard().children).filter((item) => item instanceof HTMLElement);
 }
 
 interface PhoneLeaderboardRow {
@@ -163,7 +164,7 @@ interface PhoneLeaderboardRow {
 }
 
 function phoneLeaderboardRow(item: HTMLElement): PhoneLeaderboardRow {
-  const [position, middle, score] = Array.from(item.children);
+  const [position, middle, score] = Array.from(item.firstElementChild?.children ?? []);
   const [chips, roundLine] = Array.from(middle?.children[1]?.children ?? []);
   return {
     position,
@@ -1220,6 +1221,116 @@ describe('ScoreboardView', () => {
       expect(golferLine('Aces')).toHaveTextContent(/^Scottie Scheffler 1 \+\$18\.00$/);
       expect(phoneDetailLine('Aces')).toHaveTextContent(/^Scottie Scheffler 1 \+\$18\.00$/);
       expect(screen.queryByText(/playing/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('a leaderboard row\'s scorecard', () => {
+    const cardedTiger = { ...tiger, scorecards: [makeRoundScorecard(1, [3, 4])] };
+    const cardedRory = { ...rory, scorecards: [makeRoundScorecard(1, [5])] };
+
+    function nameButtons(playerName: string): HTMLElement[] {
+      return [
+        within(phoneLeaderboard()).getByRole('button', { name: playerName }),
+        within(leaderboardTable()).getByRole('button', { name: playerName }),
+      ];
+    }
+
+    function controlled(button: HTMLElement): HTMLElement {
+      const scorecard = document.getElementById(button.getAttribute('aria-controls') ?? '');
+      if (!scorecard) throw new Error(`${button.textContent} controls nothing`);
+      return scorecard;
+    }
+
+    function renderLeaderboard(liveLeaderboard: WeeklyReport['liveLeaderboard']): void {
+      renderWithProviders(
+        <ScoreboardView selectionKey={SELECTION_KEY} myTeamName={null} report={report({ liveLeaderboard })} />,
+        NO_PROVIDERS,
+      );
+    }
+
+    it('opens under the row from the name, on the phone and in the table, and closes from it again', async () => {
+      renderLeaderboard([cardedTiger]);
+
+      await userEvent.click(nth(nameButtons('Tiger'), 0));
+
+      for (const button of nameButtons('Tiger')) {
+        expect(button).toHaveAttribute('aria-expanded', 'true');
+        expect(within(controlled(button)).getByRole('table', { name: 'Round 1, front nine' })).toBeInTheDocument();
+      }
+      expect(within(phoneLeaderboard()).getByRole('table', { name: 'Round 1, front nine' })).toBeInTheDocument();
+      expect(within(leaderboardTable()).getByRole('table', { name: 'Round 1, front nine' })).toBeInTheDocument();
+
+      await userEvent.click(nth(nameButtons('Tiger'), 1));
+
+      for (const button of nameButtons('Tiger')) {
+        expect(button).toHaveAttribute('aria-expanded', 'false');
+        expect(button).not.toHaveAttribute('aria-controls');
+      }
+      expect(screen.queryByRole('table', { name: 'Round 1, front nine' })).not.toBeInTheDocument();
+    });
+
+    it('opens and closes from a tap anywhere on the row, on the phone and in the table', async () => {
+      renderLeaderboard([cardedTiger]);
+
+      const { position } = phoneLeaderboardRow(nth(phoneLeaderboardRows(), 0));
+      if (!position) throw new Error('no position on the phone row');
+      await userEvent.click(position);
+
+      expect(nth(nameButtons('Tiger'), 0)).toHaveAttribute('aria-expanded', 'true');
+
+      await userEvent.click(within(leaderboardTable()).getByText('-8'));
+
+      expect(nth(nameButtons('Tiger'), 1)).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('makes an expandable row a tap target, 44px tall, on the phone and in the table', () => {
+      renderLeaderboard([cardedTiger]);
+
+      expect(nth(phoneLeaderboardRows(), 0).firstElementChild).toHaveClass(TAP_TARGET_CLASS, 'cursor-pointer');
+      expect(closest(nth(nameButtons('Tiger'), 1), 'tr')).toHaveClass('h-11', 'cursor-pointer');
+    });
+
+    it('keeps one scorecard open at a time', async () => {
+      renderLeaderboard([cardedTiger, cardedRory]);
+
+      await userEvent.click(nth(nameButtons('Tiger'), 0));
+      await userEvent.click(nth(nameButtons('Rory'), 0));
+
+      expect(nameButtons('Tiger').map((button) => button.getAttribute('aria-expanded'))).toEqual(['false', 'false']);
+      expect(nameButtons('Rory').map((button) => button.getAttribute('aria-expanded'))).toEqual(['true', 'true']);
+    });
+
+    it('gives a row with no scorecard a plain name that nothing opens', async () => {
+      renderLeaderboard([phil]);
+
+      expect(screen.queryByRole('button', { name: 'Phil' })).not.toBeInTheDocument();
+      await userEvent.click(within(leaderboardTable()).getByText('Phil'));
+
+      expect(screen.queryByRole('table', { name: /nine/ })).not.toBeInTheDocument();
+      expect(closest(within(leaderboardTable()).getByText('Phil'), 'tr')).not.toHaveClass('cursor-pointer');
+    });
+
+    it('stays open through a refresh of the same selection', async () => {
+      const leaderboard = report({ liveLeaderboard: [cardedTiger] });
+      renderWithProviders(<Refetching first={leaderboard} second={leaderboard} />, NO_PROVIDERS);
+
+      await userEvent.click(nth(nameButtons('Tiger'), 0));
+      await userEvent.click(screen.getByRole('button', { name: 'Refetch' }));
+
+      expect(nth(nameButtons('Tiger'), 0)).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('starts closed for a new selection, even with the same player on it', async () => {
+      const leaderboard = report({ liveLeaderboard: [cardedTiger] });
+      renderWithProviders(
+        <Refetching first={leaderboard} second={leaderboard} secondSelectionKey="another selection" />,
+        NO_PROVIDERS,
+      );
+
+      await userEvent.click(nth(nameButtons('Tiger'), 0));
+      await userEvent.click(screen.getByRole('button', { name: 'Refetch' }));
+
+      expect(nth(nameButtons('Tiger'), 0)).toHaveAttribute('aria-expanded', 'false');
     });
   });
 

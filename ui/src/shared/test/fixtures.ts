@@ -1,6 +1,7 @@
 import type {
   League,
   LiveLeaderboardEntry,
+  RoundScorecard,
   Season,
   Tournament,
   User,
@@ -84,5 +85,29 @@ export function makeLeaderboardEntry(
     rostered: players.some((player) => player.teamNames.length > 0),
     ...overrides,
     players,
+  };
+}
+
+const FIXTURE_PAR = 4;
+
+function strokesSum(strokes: readonly (number | null)[]): number | null {
+  const played = strokes.filter((stroke) => stroke !== null);
+  return played.length === 0 ? null : played.reduce((sum, stroke) => sum + stroke, 0);
+}
+
+// Every hole a par 4. `strokes` runs from hole 1, and a hole past its end or given null is unplayed.
+export function makeRoundScorecard(round: number, strokes: readonly (number | null)[]): RoundScorecard {
+  const holes = Array.from({ length: 18 }, (_, index) => {
+    const played = strokes[index] ?? null;
+    return { hole: index + 1, par: FIXTURE_PAR, strokes: played, toPar: played === null ? null : played - FIXTURE_PAR };
+  });
+  const front = holes.slice(0, 9).map((hole) => hole.strokes);
+  const back = holes.slice(9).map((hole) => hole.strokes);
+  return {
+    round,
+    holes,
+    frontNine: strokesSum(front),
+    backNine: strokesSum(back),
+    total: strokesSum([...front, ...back]),
   };
 }

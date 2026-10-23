@@ -142,6 +142,15 @@
     }
   }
 
+  /*
+   * A scorecard hole's fill by its score to par, under `ink`. Round under par and square over carry the call where
+   * a red-green reader can't. The pulse steps reused: nothing inside a scorecard pulses.
+   */
+  --color-score-eagle: var(--brand-gold);
+  --color-score-birdie: var(--color-green-300);
+  --color-score-bogey: var(--color-red-300);
+  --color-score-double-bogey: var(--brand-steel);
+
   --font-sans:
     "Saira Variable", "Saira Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
