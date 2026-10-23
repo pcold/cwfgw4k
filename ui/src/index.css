@@ -142,6 +142,16 @@
     }
   }
 
+  /*
+   * A scorecard hole's mark by its score to par: one off is an outline on the card, two or more a fill under `ink`.
+   * Not outlines in gold and steel, which are under 3:1 on white. Round under par and square over carry the call
+   * where a red-green reader can't.
+   */
+  --color-score-eagle: var(--brand-gold);
+  --color-score-birdie: var(--brand-green);
+  --color-score-bogey: var(--brand-red);
+  --color-score-double-bogey: var(--brand-steel);
+
   --font-sans:
     "Saira Variable", "Saira Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }

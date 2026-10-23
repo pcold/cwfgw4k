@@ -26,7 +26,7 @@ const AA_NORMAL_TEXT = 4.5;
 const AA_LARGE_TEXT = 3;
 const LARGE_BOLD_TEXT_MIN_PX = (14 * 96) / 72;
 const BOLD_WEIGHT = 700;
-// WCAG 2.2 §1.4.11, for the line that bounds a control rather than a glyph.
+// WCAG 2.2 §1.4.11, for a line that bounds a control or makes a mark, rather than a glyph.
 const NON_TEXT_CONTRAST = 3;
 
 // Where each text token renders, from the call sites, inherited colour included. Hover fills are listed
@@ -45,6 +45,8 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
     'pulse-up',
     'pulse-down',
     'pulse-new',
+    'score-eagle',
+    'score-double-bogey',
   ],
   'ink-body': ['surface-card', 'surface-raised'],
   'ink-secondary': ['canvas', 'surface-card', 'surface-raised', 'my-team'],
@@ -89,8 +91,11 @@ const TEXT_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
 
 // A field's border against its own fill and against each surface a field sits on: a white card, and the canvas
 // under the league/season picker, where the fill matches the page and the border is the only boundary.
+// A scorecard's outline marks are the whole mark, on the leaderboard card.
 const BOUNDARY_BACKDROPS: Readonly<Record<string, readonly Backdrop[]>> = {
   'control-border': ['canvas', 'surface-card', 'surface-raised'],
+  'score-birdie': ['surface-card'],
+  'score-bogey': ['surface-card'],
 };
 
 // Names alone cannot say which tokens are text: `semantic-danger` is, `semantic-danger-fill` is not.
@@ -209,7 +214,7 @@ describe('the large-text carve-out', () => {
   });
 });
 
-describe('the control boundaries declared in index.css', () => {
+describe('the non-text boundaries declared in index.css', () => {
   it.each(pairsOf(BOUNDARY_BACKDROPS))('clear 3:1 for a non-text boundary where $label', (pair) => {
     expect(measure(pair)).toBeGreaterThanOrEqual(NON_TEXT_CONTRAST);
   });

@@ -1,4 +1,4 @@
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useId, useState, type ReactNode } from 'react';
 import { m } from 'motion/react';
 import type { LiveLeaderboardEntry, WeeklyReport } from '@/shared/api/types';
 import { formatDollarsAndCents } from '@/shared/util/money';
@@ -17,6 +17,7 @@ import PhoneFilter from '@/shared/components/PhoneFilter';
 import { TAP_TARGET_CLASS, type SelectOption } from '@/shared/components/formControls';
 import { COLUMN_HEADER_CLASS } from '@/shared/components/columnHeader';
 import { isMyTeam } from '@/features/myTeam/myTeamModel';
+import LeaderboardScorecard from './LeaderboardScorecard';
 import {
   formatScoreToPar,
   hasPlayerOn,
@@ -292,6 +293,9 @@ interface LeaderboardListProps {
   listKey: string;
   /** @see isMyTeam */
   myTeamName: string | null;
+  /** @see LeaderboardCard */
+  openPlayer: string | null;
+  onToggle: (player: string) => void;
 }
 
 interface LeaderboardFigureProps {
@@ -310,27 +314,83 @@ function ScoreToPar({ entry, listKey }: LeaderboardFigureProps): ReactNode {
   );
 }
 
-function LeaderboardRows({ entries, listKey, myTeamName }: LeaderboardListProps): ReactNode {
+const EXPANDABLE_ROW_CLASS = 'cursor-pointer hover:bg-surface-raised/50';
+
+// `h-11` and not `TAP_TARGET_CLASS`: a table row ignores `min-height`, and takes its `height` as the minimum.
+const EXPANDABLE_TABLE_ROW_CLASS = `h-11 ${EXPANDABLE_ROW_CLASS}`;
+
+interface ScorecardRow {
+  player: string;
+  open: boolean;
+  /** Null for a row with no scorecard to open. */
+  toggle: (() => void) | null;
+  scorecardId: string;
+}
+
+function scorecardRow(
+  entry: LiveLeaderboardEntry,
+  { openPlayer, onToggle }: Pick<LeaderboardListProps, 'openPlayer' | 'onToggle'>,
+  scorecardId: string,
+): ScorecardRow {
+  const player = playerNames(entry);
+  const expandable = entry.scorecards.length > 0;
+  return {
+    player,
+    open: expandable && openPlayer === player,
+    toggle: expandable ? () => onToggle(player) : null,
+    scorecardId,
+  };
+}
+
+// No click handler of its own: its click bubbles to the row's, so the row and the name toggle once either way.
+function PlayerName({ row }: { row: ScorecardRow }): ReactNode {
+  if (row.toggle === null) return <div className="truncate text-ink">{row.player}</div>;
+  return (
+    <button
+      type="button"
+      aria-expanded={row.open}
+      aria-controls={row.open ? row.scorecardId : undefined}
+      className="flex max-w-full items-baseline gap-1.5 bg-transparent border-0 p-0 text-left text-ink cursor-pointer"
+    >
+      <span className="truncate">{row.player}</span>
+      <span aria-hidden="true" className="shrink-0 text-xs text-ink-muted">
+        {row.open ? '▾' : '▸'}
+      </span>
+    </button>
+  );
+}
+
+function LeaderboardRows({ entries, listKey, myTeamName, ...toggling }: LeaderboardListProps): ReactNode {
+  const idPrefix = useId();
   if (entries.length === 0) return <p className="px-3 py-6 text-center text-sm text-ink-soft italic">{FILTERED_EMPTY}</p>;
   return (
     <ol key={listKey} aria-label="Leaderboard" className="text-sm divide-y divide-hairline-soft">
       {entries.map((entry, index) => {
         const roundLine = leaderboardRoundLine(entry);
+        const row = scorecardRow(entry, toggling, `${idPrefix}-${index}`);
         return (
-          <m.li key={playerNames(entry)} {...glideAt(index)} className="flex items-baseline gap-3 px-3 py-2">
-            <span className="w-8 shrink-0 text-ink-muted tabular-nums">
-              <LeaderboardPosition entry={entry} listKey={listKey} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-ink">{playerNames(entry)}</div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                <TeamChips entry={entry} myTeamName={myTeamName} />
-                {roundLine ? <span className="text-xs text-ink-muted tabular-nums">{roundLine}</span> : null}
+          <m.li key={row.player} {...glideAt(index)}>
+            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+                -- a wider tap area for the name's button, which is the keyboard and screen-reader path */}
+            <div
+              onClick={row.toggle ?? undefined}
+              className={`flex items-baseline gap-3 px-3 py-2 ${row.toggle ? `${TAP_TARGET_CLASS} ${EXPANDABLE_ROW_CLASS}` : ''}`}
+            >
+              <span className="w-8 shrink-0 text-ink-muted tabular-nums">
+                <LeaderboardPosition entry={entry} listKey={listKey} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <PlayerName row={row} />
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <TeamChips entry={entry} myTeamName={myTeamName} />
+                  {roundLine ? <span className="text-xs text-ink-muted tabular-nums">{roundLine}</span> : null}
+                </div>
               </div>
+              <span className="shrink-0 font-semibold tabular-nums">
+                <ScoreToPar entry={entry} listKey={listKey} />
+              </span>
             </div>
-            <span className="shrink-0 font-semibold tabular-nums">
-              <ScoreToPar entry={entry} listKey={listKey} />
-            </span>
+            {row.open ? <LeaderboardScorecard scorecards={entry.scorecards} id={row.scorecardId} /> : null}
           </m.li>
         );
       })}
@@ -351,10 +411,12 @@ function LeaderboardTable({
   teamFilter,
   onTeamFilterChange,
   teamOptions,
+  ...toggling
 }: LeaderboardTableProps): ReactNode {
+  const idPrefix = useId();
   return (
     <div className="hidden sm:block overflow-x-auto">
-      <table className="w-full min-w-[480px] text-sm">
+      <table aria-label="Leaderboard" className="w-full min-w-[480px] text-sm">
         <thead className={COLUMN_HEADER_CLASS}>
           <tr>
             <th className="pl-3 pr-2 py-2 text-left">Pos</th>
@@ -383,28 +445,46 @@ function LeaderboardTable({
               </td>
             </tr>
           ) : (
-            entries.map((entry, index) => (
-              <m.tr key={playerNames(entry)} {...glideAt(index)}>
-                <td className="pl-3 pr-2 py-2 text-ink-muted tabular-nums">
-                  <LeaderboardPosition entry={entry} listKey={listKey} />
-                </td>
-                <td className="px-2 py-2 text-ink">{playerNames(entry)}</td>
-                <td className="px-2 py-2">
-                  <TeamChips entry={entry} myTeamName={myTeamName} />
-                </td>
-                <td className="px-2 py-2 text-right tabular-nums font-semibold">
-                  <ScoreToPar entry={entry} listKey={listKey} />
-                </td>
-                {[0, 1, 2, 3].map((idx) => (
-                  <td key={idx} className="px-2 py-2 text-right tabular-nums text-ink-muted">
-                    {entry.roundScores[idx] ?? '—'}
-                  </td>
-                ))}
-                <td className="pl-2 pr-3 py-2 text-right tabular-nums font-semibold">
-                  {entry.totalStrokes ?? '—'}
-                </td>
-              </m.tr>
-            ))
+            entries.map((entry, index) => {
+              const row = scorecardRow(entry, toggling, `${idPrefix}-${index}`);
+              return (
+                <Fragment key={row.player}>
+                  <m.tr
+                    {...glideAt(index)}
+                    onClick={row.toggle ?? undefined}
+                    className={`${row.toggle ? EXPANDABLE_TABLE_ROW_CLASS : ''} ${row.open ? 'border-b-0' : ''}`}
+                  >
+                    <td className="pl-3 pr-2 py-2 text-ink-muted tabular-nums">
+                      <LeaderboardPosition entry={entry} listKey={listKey} />
+                    </td>
+                    <td className="px-2 py-2">
+                      <PlayerName row={row} />
+                    </td>
+                    <td className="px-2 py-2">
+                      <TeamChips entry={entry} myTeamName={myTeamName} />
+                    </td>
+                    <td className="px-2 py-2 text-right tabular-nums font-semibold">
+                      <ScoreToPar entry={entry} listKey={listKey} />
+                    </td>
+                    {[0, 1, 2, 3].map((idx) => (
+                      <td key={idx} className="px-2 py-2 text-right tabular-nums text-ink-muted">
+                        {entry.roundScores[idx] ?? '—'}
+                      </td>
+                    ))}
+                    <td className="pl-2 pr-3 py-2 text-right tabular-nums font-semibold">
+                      {entry.totalStrokes ?? '—'}
+                    </td>
+                  </m.tr>
+                  {row.open ? (
+                    <tr>
+                      <td colSpan={9} className="p-0">
+                        <LeaderboardScorecard scorecards={entry.scorecards} id={row.scorecardId} />
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })
           )}
         </tbody>
       </table>
@@ -430,8 +510,13 @@ interface LeaderboardCardProps {
   selectionKey: string;
 }
 
+// The open player is held with the selection it was opened under: the minute refresh keeps the selection, so it stays
+// open, and a new tournament or season starts closed.
 function LeaderboardCard({ leaderboard, tournamentName, myTeamName, selectionKey }: LeaderboardCardProps): ReactNode {
   const [teamFilter, setTeamFilter] = useState<string>(ALL);
+  const [expanded, setExpanded] = useState<{ selectionKey: string; player: string } | null>(null);
+  const openPlayer = expanded?.selectionKey === selectionKey ? expanded.player : null;
+  const onToggle = (player: string): void => setExpanded(openPlayer === player ? null : { selectionKey, player });
 
   const teamChoices: readonly SelectOption[] = [
     ...leaderboardTeamNames(leaderboard).map((name) => ({ value: name, label: name })),
@@ -455,7 +540,13 @@ function LeaderboardCard({ leaderboard, tournamentName, myTeamName, selectionKey
             onChange={setTeamFilter}
           />
         </div>
-        <LeaderboardRows entries={filteredLeaderboard} listKey={listKey} myTeamName={myTeamName} />
+        <LeaderboardRows
+          entries={filteredLeaderboard}
+          listKey={listKey}
+          myTeamName={myTeamName}
+          openPlayer={openPlayer}
+          onToggle={onToggle}
+        />
       </div>
       <LeaderboardTable
         entries={filteredLeaderboard}
@@ -464,6 +555,8 @@ function LeaderboardCard({ leaderboard, tournamentName, myTeamName, selectionKey
         teamFilter={teamFilter}
         onTeamFilterChange={setTeamFilter}
         teamOptions={[{ value: ALL, label: 'Team' }, ...teamChoices]}
+        openPlayer={openPlayer}
+        onToggle={onToggle}
       />
     </div>
   );
