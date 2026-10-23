@@ -496,7 +496,7 @@ describe('WeeklyReportPage', () => {
     expect(button).toBeEnabled();
   });
 
-  it("shows a PDF failure in the phone's sheet, and keeps it on the page once the sheet closes", async () => {
+  it("keeps Download PDF and its failure off a phone, out of the sheet and inside the page's desktop copy", async () => {
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season]);
     tournamentsMock.mockResolvedValue([]);
@@ -509,16 +509,17 @@ describe('WeeklyReportPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<WeeklyReportPage />, WITH_MY_TEAM);
     await screen.findByText('All Tournaments · Season totals');
+    const button = screen.getByRole('button', { name: /Download PDF/i });
+    await user.click(button);
+    const alert = await screen.findByRole('alert');
     await user.click(screen.getByRole('button', { name: '2026 Season 1' }));
     const sheet = screen.getByRole('dialog', { name: 'League, season and tournament' });
-    await user.click(within(sheet).getByRole('button', { name: /Download PDF/i }));
 
-    expect(await within(sheet).findByRole('alert')).toHaveTextContent(/Failed to generate PDF.*autoTable exploded/);
-    await user.click(within(sheet).getByRole('button', { name: 'Close' }));
-
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/Failed to generate PDF.*autoTable exploded/);
-    expect(alert.closest('.hidden')).toBeNull();
+    expect(within(sheet).getByLabelText('Tournament')).toBeInTheDocument();
+    expect(within(sheet).queryByRole('button', { name: /Download PDF/i })).not.toBeInTheDocument();
+    expect(within(sheet).queryByRole('alert')).not.toBeInTheDocument();
+    expect(button.closest('.hidden')).not.toBeNull();
+    expect(alert.closest('.hidden')).not.toBeNull();
   });
 
   it('clears the PDF error when the next download attempt starts', async () => {
