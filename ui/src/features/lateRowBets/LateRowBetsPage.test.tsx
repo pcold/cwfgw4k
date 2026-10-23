@@ -245,9 +245,7 @@ describe('LateRowBetsPage', () => {
 
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season, fall]);
-    tournamentsMock.mockImplementation((seasonId) =>
-      Promise.resolve(seasonId === 'sn-1' ? [spring] : [autumn]),
-    );
+    tournamentsMock.mockImplementation((seasonId) => Promise.resolve(seasonId === 'sn-1' ? [spring] : [autumn]));
     currentTournamentMock.mockImplementation((seasonId) =>
       Promise.resolve(
         seasonId === 'sn-1'
@@ -302,10 +300,7 @@ describe('LateRowBetsPage', () => {
     renderWithProviders(
       <>
         <LateRowBetsPage />
-        <QueryAnswered
-          queryKey={queryKeys.tournaments.current('sn-1')}
-          fetcher={() => currentTournamentMock('sn-1')}
-        />
+        <QueryAnswered queryKey={queryKeys.tournaments.current('sn-1')} fetcher={() => currentTournamentMock('sn-1')} />
       </>,
     );
 
@@ -346,9 +341,7 @@ describe('LateRowBetsPage', () => {
 
     renderWithProviders(<LateRowBetsPage />);
 
-    expect(
-      await screen.findByText(/^\$20\.00 per team in each of draft rounds 2 and 3\./),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/^\$20\.00 per team in each of draft rounds 2 and 3\./)).toBeInTheDocument();
     const desktop = await desktopBets();
     expect(within(desktop).getByRole('heading', { name: 'Round 3' })).toBeInTheDocument();
     expect(within(desktop).queryByRole('heading', { name: 'Round 5' })).not.toBeInTheDocument();

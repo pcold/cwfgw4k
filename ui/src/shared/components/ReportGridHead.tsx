@@ -26,10 +26,7 @@ export default function ReportGridHead({ cornerLabel, teams }: ReportGridHeadPro
           {cornerLabel}
         </th>
         {teams.map((team) => (
-          <th
-            key={team.teamId}
-            className="px-2 py-1.5 min-w-[90px] text-left align-bottom bg-header-band text-on-fill"
-          >
+          <th key={team.teamId} className="px-2 py-1.5 min-w-[90px] text-left align-bottom bg-header-band text-on-fill">
             <div className="font-normal">{team.number}</div>
             <div className="text-sm font-bold">{team.name}</div>
           </th>

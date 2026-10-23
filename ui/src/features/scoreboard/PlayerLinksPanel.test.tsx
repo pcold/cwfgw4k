@@ -6,10 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/shared/api/client';
 import { queryKeys } from '@/shared/api/queryKeys';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import type {
-  Golfer,
-  TournamentCompetitorListing,
-} from '@/shared/api/types';
+import type { Golfer, TournamentCompetitorListing } from '@/shared/api/types';
 import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import PlayerLinksPanel from './PlayerLinksPanel';
 
@@ -30,10 +27,8 @@ vi.mock('@/shared/api/client', () => ({
     seasons: vi.fn().mockResolvedValue([]),
     tournamentCompetitors: (id: string) => competitorsMock(id),
     golfers: (search?: string) => golfersMock(search),
-    upsertTournamentPlayerOverride: (
-      tournamentId: string,
-      body: { espnCompetitorId: string; golferId: string },
-    ) => upsertMock(tournamentId, body),
+    upsertTournamentPlayerOverride: (tournamentId: string, body: { espnCompetitorId: string; golferId: string }) =>
+      upsertMock(tournamentId, body),
     deleteTournamentPlayerOverride: (tournamentId: string, espnCompetitorId: string) =>
       deleteMock(tournamentId, espnCompetitorId),
     createGolferAndLink: (tournamentId: string, body: { espnCompetitorId: string; name: string }) =>
@@ -391,9 +386,7 @@ describe('PlayerLinksPanel', () => {
     if (!row) throw new Error('competitor row not found');
     await user.click(within(row as HTMLElement).getByRole('button', { name: /Save link/i }));
 
-    expect(await within(row as HTMLElement).findByRole('alert')).toHaveTextContent(
-      /golfer g-bogus not found/i,
-    );
+    expect(await within(row as HTMLElement).findByRole('alert')).toHaveTextContent(/golfer g-bogus not found/i);
   });
 
   it('closes via the Close button', async () => {
@@ -409,12 +402,10 @@ describe('PlayerLinksPanel', () => {
   it('renders an empty-state message when ESPN has no competitors yet', async () => {
     competitorsMock.mockResolvedValue(buildListing({ competitors: [] }));
     renderPanel();
-    expect(
-      await screen.findByText(/No ESPN competitors found for this tournament/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/No ESPN competitors found for this tournament/i)).toBeInTheDocument();
   });
 
-  it('opens the create-golfer form pre-filled with a partner row\'s lone surname', async () => {
+  it("opens the create-golfer form pre-filled with a partner row's lone surname", async () => {
     competitorsMock.mockResolvedValue(buildListing());
     const user = userEvent.setup();
     renderPanel();
@@ -470,9 +461,11 @@ describe('PlayerLinksPanel', () => {
     expect(upsertMock).not.toHaveBeenCalled();
   });
 
-  it('surfaces the server\'s refusal of a name with no first name', async () => {
+  it("surfaces the server's refusal of a name with no first name", async () => {
     competitorsMock.mockResolvedValue(buildListing());
-    createGolferAndLinkMock.mockRejectedValue(new Error('a new golfer needs a first and a last name; got "Fitzpatrick"'));
+    createGolferAndLinkMock.mockRejectedValue(
+      new Error('a new golfer needs a first and a last name; got "Fitzpatrick"'),
+    );
     const user = userEvent.setup();
     renderPanel();
 
@@ -522,9 +515,7 @@ describe('PlayerLinksPanel', () => {
     renderPanel();
     await screen.findByRole('status');
 
-    expect(
-      screen.queryByRole('button', { name: /Create new golfer/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Create new golfer/i })).not.toBeInTheDocument();
   });
 
   it('cancels back to the dropdown without creating anything', async () => {

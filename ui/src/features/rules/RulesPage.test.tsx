@@ -235,9 +235,7 @@ describe('RulesPage', () => {
 
     renderWithProviders(<RulesPage />);
 
-    expect(
-      await screen.findByText(/No tournaments scheduled for this season/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/No tournaments scheduled for this season/i)).toBeInTheDocument();
   });
 
   it('renders the side bets section with the configured rounds and amount', async () => {

@@ -76,7 +76,9 @@ export default function ListCard({
   glideIndex,
 }: ListCardProps): ReactElement {
   const nameLine = (
-    <div className={`font-display font-bold text-lg text-ink truncate min-w-0 ${NAME_CASE_CLASS[nameCase]}`}>{name}</div>
+    <div className={`font-display font-bold text-lg text-ink truncate min-w-0 ${NAME_CASE_CLASS[nameCase]}`}>
+      {name}
+    </div>
   );
   const className = `flex min-h-13.5 rounded ${FILL_CLASS[fill].card}`;
   const content = (

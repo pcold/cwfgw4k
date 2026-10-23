@@ -70,14 +70,16 @@ function sideBetEntry(
   return { teamId, teamName, golferName: `Golfer-${teamName}`, cumulativeEarnings: 0, payout, outcome };
 }
 
-function buildFixture(overrides: {
-  scope?: ReportScope;
-  week?: string | null;
-  payoutMultiplier?: number;
-  undraftedLen?: number;
-  sideBetRules?: ReportSideBetRules | null;
-  teams?: readonly ReportTeamColumn[];
-} = {}): WeeklyReport {
+function buildFixture(
+  overrides: {
+    scope?: ReportScope;
+    week?: string | null;
+    payoutMultiplier?: number;
+    undraftedLen?: number;
+    sideBetRules?: ReportSideBetRules | null;
+    teams?: readonly ReportTeamColumn[];
+  } = {},
+): WeeklyReport {
   const teams: readonly ReportTeamColumn[] = overrides.teams ?? [
     buildTeam('t1', 'Aces', 5),
     buildTeam('t2', 'Birdies'),
@@ -183,14 +185,16 @@ const contains = (rect: FilledRect, x: number, y: number): boolean =>
 function drawnPage(doc: jsPDF): { readonly runs: readonly DrawnRun[]; readonly rects: readonly FilledRect[] } {
   const source = doc.output();
   const baseFontByObject = new Map(
-    [...source.matchAll(/^(\d+) 0 obj\n<<\n\/Type \/Font\n\/BaseFont \/([\w-]+)$/gm)].map(
-      (match) => [captured(match, 1), captured(match, 2)],
-    ),
+    [...source.matchAll(/^(\d+) 0 obj\n<<\n\/Type \/Font\n\/BaseFont \/([\w-]+)$/gm)].map((match) => [
+      captured(match, 1),
+      captured(match, 2),
+    ]),
   );
   const baseFontByResource = new Map(
-    [...source.matchAll(/^\/(F\d+) (\d+) 0 R$/gm)].map(
-      (match) => [captured(match, 1), baseFontByObject.get(captured(match, 2))],
-    ),
+    [...source.matchAll(/^\/(F\d+) (\d+) 0 R$/gm)].map((match) => [
+      captured(match, 1),
+      baseFontByObject.get(captured(match, 2)),
+    ]),
   );
   const runs: DrawnRun[] = [];
   const rects: FilledRect[] = [];
@@ -246,7 +250,8 @@ function drawnFooter(doc: jsPDF): DrawnFooter {
   const won = runs.findLast((run) => run.text === '+$1,234');
   const lost = runs.findLast((run) => run.text === '\x96$987');
   const start = runs.findIndex((run) => run.text.startsWith('UNDRAFTED TOP TENS: '));
-  if (won === undefined || lost === undefined || start < 0) throw new Error('the footer drew no undrafted list or totals');
+  if (won === undefined || lost === undefined || start < 0)
+    throw new Error('the footer drew no undrafted list or totals');
   return { lines: runs.slice(start).filter((run) => run !== won && run !== lost), won, lost };
 }
 
@@ -269,9 +274,7 @@ describe('buildWeeklyReportPdf', () => {
   });
 
   it('builds a PDF for a season-mode report with no week label and an elevated payout multiplier', () => {
-    const doc = buildWeeklyReportPdf(
-      buildFixture({ scope: 'season', week: null, payoutMultiplier: 2 }),
-    );
+    const doc = buildWeeklyReportPdf(buildFixture({ scope: 'season', week: null, payoutMultiplier: 2 }));
     const blob: Blob = doc.output('blob');
     expect(blob.size).toBeGreaterThan(100);
   });
@@ -304,7 +307,10 @@ describe('buildWeeklyReportPdf', () => {
   it('titles the page in white on the header band and names the tournament in ink on bare paper', () => {
     const doc = buildWeeklyReportPdf(buildFixture());
     expect(drawnRun(doc, 'Week 1')).toMatchObject({ ink: paint('on-fill'), backdrop: paint('header-band') });
-    expect(drawnRun(doc, 'April 16 - April 19')).toMatchObject({ ink: paint('on-fill'), backdrop: paint('header-band') });
+    expect(drawnRun(doc, 'April 16 - April 19')).toMatchObject({
+      ink: paint('on-fill'),
+      backdrop: paint('header-band'),
+    });
     expect(drawnRun(doc, 'Masters')).toMatchObject({ ink: paint('ink'), backdrop: null });
   });
 
@@ -487,6 +493,8 @@ describe('buildWeeklyReportPdf', () => {
     const columnLengths = new Map<number, number>();
     for (const entry of entries) columnLengths.set(entry.x, (columnLengths.get(entry.x) ?? 0) + 1);
     expect([...columnLengths.values()]).toEqual([4, 3, 3, 3]);
-    expect(entries.map((entry) => entry.text)).toEqual(teams.map((team, i) => `${i + 1}) ${team.teamName.toUpperCase()}`));
+    expect(entries.map((entry) => entry.text)).toEqual(
+      teams.map((team, i) => `${i + 1}) ${team.teamName.toUpperCase()}`),
+    );
   });
 });

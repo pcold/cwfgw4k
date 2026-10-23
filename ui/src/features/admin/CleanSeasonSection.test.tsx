@@ -37,9 +37,7 @@ describe('CleanSeasonSection', () => {
     leaguesMock.mockReset();
     seasonsMock.mockReset();
     cleanMock.mockReset();
-    leaguesMock.mockResolvedValue([
-      { id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' },
-    ]);
+    leaguesMock.mockResolvedValue([{ id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' }]);
     seasonsMock.mockResolvedValue([makeSeason()]);
   });
 
@@ -68,46 +66,39 @@ describe('CleanSeasonSection', () => {
     await waitFor(() => {
       expect(cleanMock).toHaveBeenCalledWith('sn-1');
     });
-    expect(
-      await screen.findByText(
-        /Cleaned 12 scores, 3 results; reset 2 tournaments\./,
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Cleaned 12 scores, 3 results; reset 2 tournaments\./)).toBeInTheDocument();
   });
 
-  it.each(OPEN_WHEN_A_CLEAN_LANDS)(
-    'refetches an open %s query after a clean',
-    async (_root, queryKey) => {
-      const fetcher = vi.fn().mockResolvedValue({});
-      cleanMock.mockResolvedValue({
-        scoresDeleted: 12,
-        resultsDeleted: 3,
-        tournamentsReset: 2,
-      });
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it.each(OPEN_WHEN_A_CLEAN_LANDS)('refetches an open %s query after a clean', async (_root, queryKey) => {
+    const fetcher = vi.fn().mockResolvedValue({});
+    cleanMock.mockResolvedValue({
+      scoresDeleted: 12,
+      resultsDeleted: 3,
+      tournamentsReset: 2,
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-      const user = userEvent.setup();
-      renderWithProviders(
-        <>
-          <CleanSeasonSection />
-          <OpenQuery queryKey={queryKey} fetcher={fetcher} />
-        </>,
-        { withLeagueSeasonProvider: false },
-      );
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <CleanSeasonSection />
+        <OpenQuery queryKey={queryKey} fetcher={fetcher} />
+      </>,
+      { withLeagueSeasonProvider: false },
+    );
 
-      await waitFor(() => {
-        expect(screen.getByRole('option', { name: /^2026 Spring$/ })).toBeInTheDocument();
-      });
-      expect(fetcher).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: /^2026 Spring$/ })).toBeInTheDocument();
+    });
+    expect(fetcher).toHaveBeenCalledTimes(1);
 
-      await user.selectOptions(screen.getByLabelText(/Season to clean/i), 'sn-1');
-      await user.click(screen.getByRole('button', { name: /Clean Results/i }));
+    await user.selectOptions(screen.getByLabelText(/Season to clean/i), 'sn-1');
+    await user.click(screen.getByRole('button', { name: /Clean Results/i }));
 
-      await waitFor(() => {
-        expect(fetcher).toHaveBeenCalledTimes(2);
-      });
-    },
-  );
+    await waitFor(() => {
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    });
+  });
 
   it('does nothing when the user cancels the confirm dialog', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false);
@@ -132,9 +123,7 @@ describe('CleanSeasonSection', () => {
     ]);
     seasonsMock.mockImplementation((leagueId) =>
       Promise.resolve(
-        leagueId === 'lg-2'
-          ? [makeSeason({ id: 'sn-beta', leagueId: 'lg-2', name: 'Fall' })]
-          : [makeSeason()],
+        leagueId === 'lg-2' ? [makeSeason({ id: 'sn-beta', leagueId: 'lg-2', name: 'Fall' })] : [makeSeason()],
       ),
     );
     cleanMock.mockResolvedValue({ scoresDeleted: 1, resultsDeleted: 1, tournamentsReset: 1 });

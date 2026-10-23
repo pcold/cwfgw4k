@@ -99,9 +99,7 @@ export function leaderboardTeamChips(entry: LiveLeaderboardEntry): LeaderboardTe
 }
 
 export function leaderboardTeamNames(leaderboard: readonly LiveLeaderboardEntry[]): string[] {
-  const names = new Set(
-    leaderboard.flatMap((entry) => entry.players.flatMap((player) => player.teamNames)),
-  );
+  const names = new Set(leaderboard.flatMap((entry) => entry.players.flatMap((player) => player.teamNames)));
   return Array.from(names).sort((a, b) => a.localeCompare(b));
 }
 

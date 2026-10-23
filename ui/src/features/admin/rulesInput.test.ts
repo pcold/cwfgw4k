@@ -31,9 +31,12 @@ describe('isReadableSideBetRounds', () => {
     expect(isReadableSideBetRounds(input)).toBe(true);
   });
 
-  it.each(['five', '5-8', '5 6 7 8', '5,six', '1.5', '-1'])('refuses %j, which would parse to fewer rounds', (input) => {
-    expect(isReadableSideBetRounds(input)).toBe(false);
-  });
+  it.each(['five', '5-8', '5 6 7 8', '5,six', '1.5', '-1'])(
+    'refuses %j, which would parse to fewer rounds',
+    (input) => {
+      expect(isReadableSideBetRounds(input)).toBe(false);
+    },
+  );
 });
 
 describe('buildRules', () => {

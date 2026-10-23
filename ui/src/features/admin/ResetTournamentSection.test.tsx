@@ -40,9 +40,7 @@ describe('ResetTournamentSection', () => {
     seasonsMock.mockReset();
     resettableTournamentsMock.mockReset();
     resetTournamentMock.mockReset();
-    leaguesMock.mockResolvedValue([
-      { id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' },
-    ]);
+    leaguesMock.mockResolvedValue([{ id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' }]);
     seasonsMock.mockResolvedValue([makeSeason()]);
     resettableTournamentsMock.mockResolvedValue([
       makeTournament({ id: 'tn-1', name: 'Sony Open', startDate: '2026-01-15', endDate: '2026-01-18', week: '1' }),
@@ -79,10 +77,11 @@ describe('ResetTournamentSection', () => {
     });
     expect(resettableTournamentsMock).toHaveBeenCalledWith('sn-1');
     const picker = screen.getByLabelText(/Completed tournament/i);
-    expect(within(picker).getAllByRole('option').map((option) => option.textContent)).toEqual([
-      '-- select completed tournament --',
-      'Wk 1 — Sony Open',
-    ]);
+    expect(
+      within(picker)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['-- select completed tournament --', 'Wk 1 — Sony Open']);
 
     await user.selectOptions(screen.getByLabelText(/Completed tournament/i), 'tn-1');
     await user.click(screen.getByRole('button', { name: /Reset Results/i }));
@@ -90,40 +89,35 @@ describe('ResetTournamentSection', () => {
     await waitFor(() => {
       expect(resetTournamentMock).toHaveBeenCalledWith('tn-1');
     });
-    expect(
-      await screen.findByText(/Reset "Sony Open" to upcoming\./),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Reset "Sony Open" to upcoming\./)).toBeInTheDocument();
   });
 
-  it.each(OPEN_WHEN_A_RESET_LANDS)(
-    'refetches an open %s query after a reset',
-    async (_root, queryKey) => {
-      const fetcher = vi.fn().mockResolvedValue({});
-      resetTournamentMock.mockResolvedValue(makeTournament({ name: 'Sony Open', status: 'upcoming' }));
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it.each(OPEN_WHEN_A_RESET_LANDS)('refetches an open %s query after a reset', async (_root, queryKey) => {
+    const fetcher = vi.fn().mockResolvedValue({});
+    resetTournamentMock.mockResolvedValue(makeTournament({ name: 'Sony Open', status: 'upcoming' }));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-      const user = userEvent.setup();
-      renderWithProviders(
-        <>
-          <ResetTournamentSection />
-          <OpenQuery queryKey={queryKey} fetcher={fetcher} />
-        </>,
-        { withLeagueSeasonProvider: false },
-      );
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <ResetTournamentSection />
+        <OpenQuery queryKey={queryKey} fetcher={fetcher} />
+      </>,
+      { withLeagueSeasonProvider: false },
+    );
 
-      await waitFor(() => {
-        expect(screen.getByRole('option', { name: /Wk 1 — Sony Open/ })).toBeInTheDocument();
-      });
-      expect(fetcher).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: /Wk 1 — Sony Open/ })).toBeInTheDocument();
+    });
+    expect(fetcher).toHaveBeenCalledTimes(1);
 
-      await user.selectOptions(screen.getByLabelText(/Completed tournament/i), 'tn-1');
-      await user.click(screen.getByRole('button', { name: /Reset Results/i }));
+    await user.selectOptions(screen.getByLabelText(/Completed tournament/i), 'tn-1');
+    await user.click(screen.getByRole('button', { name: /Reset Results/i }));
 
-      await waitFor(() => {
-        expect(fetcher).toHaveBeenCalledTimes(2);
-      });
-    },
-  );
+    await waitFor(() => {
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    });
+  });
 
   it('asks the server for the resettable list again after a reset', async () => {
     resetTournamentMock.mockResolvedValue(makeTournament({ name: 'Sony Open', status: 'upcoming' }));
@@ -186,9 +180,7 @@ describe('ResetTournamentSection', () => {
     ]);
     seasonsMock.mockImplementation((leagueId) =>
       Promise.resolve(
-        leagueId === 'lg-2'
-          ? [makeSeason({ id: 'sn-beta', leagueId: 'lg-2', name: 'Fall' })]
-          : [makeSeason()],
+        leagueId === 'lg-2' ? [makeSeason({ id: 'sn-beta', leagueId: 'lg-2', name: 'Fall' })] : [makeSeason()],
       ),
     );
     resettableTournamentsMock.mockImplementation((seasonId) =>

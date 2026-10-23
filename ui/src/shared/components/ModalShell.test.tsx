@@ -283,9 +283,28 @@ describe('ModalShell', () => {
     );
 
     const panel = screen.getByRole('dialog', { name: 'Which team is yours?' });
-    expect(panel.parentElement).toHaveClass('fixed', 'inset-0', 'items-end', 'z-50', 'sm:items-center', 'sm:justify-center');
-    expect(panel).toHaveClass('w-full', 'rounded-t-lg', 'border-t', 'pb-[env(safe-area-inset-bottom)]', 'starting:translate-y-full');
-    expect(panel).toHaveClass('sm:w-[min(92vw,28rem)]', 'sm:rounded-lg', 'sm:border', 'sm:shadow-xl', 'sm:starting:translate-y-0');
+    expect(panel.parentElement).toHaveClass(
+      'fixed',
+      'inset-0',
+      'items-end',
+      'z-50',
+      'sm:items-center',
+      'sm:justify-center',
+    );
+    expect(panel).toHaveClass(
+      'w-full',
+      'rounded-t-lg',
+      'border-t',
+      'pb-[env(safe-area-inset-bottom)]',
+      'starting:translate-y-full',
+    );
+    expect(panel).toHaveClass(
+      'sm:w-[min(92vw,28rem)]',
+      'sm:rounded-lg',
+      'sm:border',
+      'sm:shadow-xl',
+      'sm:starting:translate-y-0',
+    );
     expect(panel).toHaveClass('sm:pb-0', 'sm:pl-0', 'sm:pr-0');
     expect(panel).not.toHaveClass('rounded-lg', 'shadow-xl');
   });

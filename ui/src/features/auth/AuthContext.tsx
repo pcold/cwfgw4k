@@ -43,8 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
   useEffect(() => onSessionExpired(() => expireSession(queryClient)), [queryClient]);
 
   const loginMutation = useMutation({
-    mutationFn: ({ username, password }: { username: string; password: string }) =>
-      api.login(username, password),
+    mutationFn: ({ username, password }: { username: string; password: string }) => api.login(username, password),
     onSuccess: (user) => {
       queryClient.setQueryData<User | null>(queryKeys.auth.me(), user);
     },
@@ -91,15 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactNode {
       loginError,
       loginPending: loginMutation.isPending,
     }),
-    [
-      authQuery.data,
-      authQuery.isLoading,
-      role,
-      login,
-      logout,
-      loginError,
-      loginMutation.isPending,
-    ],
+    [authQuery.data, authQuery.isLoading, role, login, logout, loginError, loginMutation.isPending],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

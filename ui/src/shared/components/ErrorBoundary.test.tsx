@@ -92,6 +92,10 @@ describe('ErrorBoundary', () => {
     );
 
     expect(screen.getByRole('button', { name: /reload/i })).toHaveClass(TAP_TARGET_CLASS);
-    expect(screen.getByRole('link', { name: /back to the scoreboard/i })).toHaveClass(TAP_TARGET_CLASS, 'flex', 'items-center');
+    expect(screen.getByRole('link', { name: /back to the scoreboard/i })).toHaveClass(
+      TAP_TARGET_CLASS,
+      'flex',
+      'items-center',
+    );
   });
 });

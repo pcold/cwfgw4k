@@ -3,8 +3,18 @@ import { MINUS_SIGN, formatDollarsAndCents, formatWholeDollars } from '@/shared/
 import { isSeasonReport } from './weeklyReportModel';
 
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 // Helvetica, a standard PDF font, has no U+2212 in its WinAnsi encoding: jsPDF writes the code point's
@@ -40,13 +50,13 @@ export function cellContent(cell: ReportCell | undefined, showSeasonFooter: bool
   if (!cell || !cell.golferName) return '-';
   const ownership = cell.ownershipPct < 100 ? ` (${cell.ownershipPct}%)` : '';
   const name = cell.golferName.toUpperCase() + ownership;
-  const earningsLine = cell.earnings > 0
-    ? `${cell.positionStr ?? ''} - ${formatPdfDollarsAndCents(cell.earnings)}`
-    : '-';
+  const earningsLine =
+    cell.earnings > 0 ? `${cell.positionStr ?? ''} - ${formatPdfDollarsAndCents(cell.earnings)}` : '-';
   if (!showSeasonFooter) return `${name}\n${earningsLine}`;
-  const cumLine = cell.seasonTopTens > 0
-    ? `${formatPdfDollarsAndCents(cell.seasonEarnings)} (${cell.seasonTopTens})`
-    : formatPdfDollarsAndCents(0);
+  const cumLine =
+    cell.seasonTopTens > 0
+      ? `${formatPdfDollarsAndCents(cell.seasonEarnings)} (${cell.seasonTopTens})`
+      : formatPdfDollarsAndCents(0);
   return `${name}\n${earningsLine}\n${cumLine}`;
 }
 

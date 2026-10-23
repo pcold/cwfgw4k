@@ -26,7 +26,12 @@ const MY_TEAM_KEY = 'cwfg.myTeam';
 const NEWEST_SEASON = makeSeason({ id: 'sn-2026', name: 'Fall', seasonYear: 2026 });
 const OLD_SEASON = makeSeason({ id: 'sn-2025', name: 'Fall', seasonYear: 2025 });
 
-const rosterTeam = (teamName: string): RosterTeam => ({ teamId: `tm-${teamName}`, teamNumber: null, teamName, picks: [] });
+const rosterTeam = (teamName: string): RosterTeam => ({
+  teamId: `tm-${teamName}`,
+  teamNumber: null,
+  teamName,
+  picks: [],
+});
 
 // PAYRAY became JURAY: the old season has the old name.
 const NEWEST_TEAMS = ['Womble', 'BLAU', 'Juray', 'Poczik'].map(rosterTeam);
@@ -106,12 +111,11 @@ describe('MyTeamPicker', () => {
     renderPicker();
 
     const teams = within(await picker()).getByRole('group', { name: 'Teams' });
-    expect(within(teams).getAllByRole('button').map((button) => button.textContent)).toEqual([
-      'BLAU',
-      'JURAY',
-      'POCZIK',
-      'WOMBLE',
-    ]);
+    expect(
+      within(teams)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['BLAU', 'JURAY', 'POCZIK', 'WOMBLE']);
     expect(teams).toHaveClass('grid', 'grid-cols-2');
   });
 
@@ -171,12 +175,12 @@ describe('MyTeamPicker', () => {
   });
 
   it.each([
-    ['Close', async (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: 'Close' }))],
-    ['Escape', async (user: ReturnType<typeof userEvent.setup>) => user.keyboard('{Escape}')],
     [
-      'the backdrop',
-      async (user: ReturnType<typeof userEvent.setup>) => user.click(backdrop()),
+      'Close',
+      async (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: 'Close' })),
     ],
+    ['Escape', async (user: ReturnType<typeof userEvent.setup>) => user.keyboard('{Escape}')],
+    ['the backdrop', async (user: ReturnType<typeof userEvent.setup>) => user.click(backdrop())],
   ])('records nothing when dismissed by %s, and asks again on the next visit', async (_how, dismiss) => {
     const user = userEvent.setup();
     const { unmount } = renderPicker();

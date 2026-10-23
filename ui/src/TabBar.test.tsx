@@ -37,7 +37,10 @@ function renderTabBar(initialPath = '/scoreboard'): void {
 
 const tabBar = (): HTMLElement => screen.getByRole('navigation', { name: 'Tabs' });
 
-const tabs = (): HTMLElement[] => within(tabBar()).getAllByRole('listitem').map((item) => item.firstElementChild as HTMLElement);
+const tabs = (): HTMLElement[] =>
+  within(tabBar())
+    .getAllByRole('listitem')
+    .map((item) => item.firstElementChild as HTMLElement);
 
 const moreTab = (): HTMLElement => within(tabBar()).getByRole('button', { name: 'More' });
 
@@ -59,7 +62,14 @@ describe('TabBar', () => {
   it('sits fixed at the foot of the viewport below lg only, clear of the home indicator', () => {
     renderTabBar();
 
-    expect(tabBar()).toHaveClass('lg:hidden', 'fixed', 'bottom-0', 'z-40', 'bg-chrome', 'pb-[env(safe-area-inset-bottom)]');
+    expect(tabBar()).toHaveClass(
+      'lg:hidden',
+      'fixed',
+      'bottom-0',
+      'z-40',
+      'bg-chrome',
+      'pb-[env(safe-area-inset-bottom)]',
+    );
     expect(within(tabBar()).getByRole('list')).toHaveClass('grid-cols-5', 'h-14');
   });
 

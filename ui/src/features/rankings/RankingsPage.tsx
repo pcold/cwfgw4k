@@ -14,12 +14,7 @@ import StatusChip, { statusChipVariant } from '@/shared/components/StatusChip';
 import LeagueSeasonPicker from '@/features/leagues/LeagueSeasonPicker';
 import PhonePicker, { DESKTOP_PICKER_CLASS } from '@/features/leagues/PhonePicker';
 import type { Tournament } from '@/shared/api/types';
-import {
-  ALL_TOURNAMENTS,
-  defaultReportSelection,
-  pickInSeason,
-  tournamentLabel,
-} from '@/shared/util/tournament';
+import { ALL_TOURNAMENTS, defaultReportSelection, pickInSeason, tournamentLabel } from '@/shared/util/tournament';
 import RankingsView from './RankingsView';
 
 function RankingsPage(): ReactNode {
@@ -44,7 +39,11 @@ function RankingsPage(): ReactNode {
       : (pickInSeason(throughOverride, tournaments) ??
         pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
 
-  const { query: rankingsQuery, overlay: liveOverlay, selectionKey } = useLiveOverlayQuery(
+  const {
+    query: rankingsQuery,
+    overlay: liveOverlay,
+    selectionKey,
+  } = useLiveOverlayQuery(
     (live) => queryKeys.rankings.detail(seasonId, live, throughTournamentId),
     seasonId === null || throughTournamentId === null
       ? null

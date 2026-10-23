@@ -93,13 +93,19 @@ const NON_UTILITY_LINES: readonly string[] = [
 ];
 
 // Matched on `@theme`, the token source the message names, so a rewording does not empty the filter.
-const paletteReports = (messages: readonly Linter.LintMessage[], lines: readonly string[]): readonly (string | undefined)[] =>
+const paletteReports = (
+  messages: readonly Linter.LintMessage[],
+  lines: readonly string[],
+): readonly (string | undefined)[] =>
   messages
     .filter((message) => message.ruleId === 'no-restricted-syntax' && message.message.includes('@theme'))
     .map((message) => lines[message.line - 1]);
 
 // Matched on `Button.tsx`, the module the message names, so a rewording does not empty the filter.
-const fillReports = (messages: readonly Linter.LintMessage[], lines: readonly string[]): readonly (string | undefined)[] =>
+const fillReports = (
+  messages: readonly Linter.LintMessage[],
+  lines: readonly string[],
+): readonly (string | undefined)[] =>
   messages
     .filter((message) => message.ruleId === 'no-restricted-syntax' && message.message.includes('Button.tsx'))
     .map((message) => lines[message.line - 1]);
@@ -169,8 +175,9 @@ describe('the `as` ban in eslint.config.js', () => {
   it('turns an angle-bracket assertion into the `as` the ban sees', async () => {
     const messages = await lintFixture([ANGLE_BRACKET_CAST_LINE], CLIENT_FILE);
 
-    expect(reportedLines(messages, '@typescript-eslint/consistent-type-assertions', [ANGLE_BRACKET_CAST_LINE]))
-      .toEqual([ANGLE_BRACKET_CAST_LINE]);
+    expect(reportedLines(messages, '@typescript-eslint/consistent-type-assertions', [ANGLE_BRACKET_CAST_LINE])).toEqual(
+      [ANGLE_BRACKET_CAST_LINE],
+    );
   });
 
   it('grants a test file DOM narrowing and nothing else', async () => {

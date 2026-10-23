@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  ReportCell,
-  ReportScope,
-  ReportTeamColumn,
-  Season,
-  WeeklyReport,
-} from '@/shared/api/types';
+import type { ReportCell, ReportScope, ReportTeamColumn, Season, WeeklyReport } from '@/shared/api/types';
 import { makeWonLostTotals } from '@/shared/test/fixtures';
 import {
   cellContent,
@@ -29,12 +23,14 @@ const season: Season = {
   updatedAt: '2026-01-01T00:00:00Z',
 };
 
-function buildReport(overrides: {
-  scope?: ReportScope;
-  week?: string | null;
-  name?: string | null;
-  teams?: ReportTeamColumn[];
-} = {}): WeeklyReport {
+function buildReport(
+  overrides: {
+    scope?: ReportScope;
+    week?: string | null;
+    name?: string | null;
+    teams?: ReportTeamColumn[];
+  } = {},
+): WeeklyReport {
   const scope = overrides.scope ?? 'tournament';
   return {
     scope,
@@ -44,7 +40,7 @@ function buildReport(overrides: {
       endDate: '2026-04-19',
       status: scope === 'season' ? null : 'completed',
       payoutMultiplier: 1,
-      week: 'week' in overrides ? overrides.week ?? null : '1',
+      week: 'week' in overrides ? (overrides.week ?? null) : '1',
     },
     teams: overrides.teams ?? [],
     undraftedTopTens: [],
@@ -140,13 +136,13 @@ describe('cellContent', () => {
   });
 
   it('appends an ownership suffix when less than 100%', () => {
-    expect(cellContent(row({ golferName: 'Scheffler', ownershipPct: 75 }), false))
-      .toBe('SCHEFFLER (75%)\n-');
+    expect(cellContent(row({ golferName: 'Scheffler', ownershipPct: 75 }), false)).toBe('SCHEFFLER (75%)\n-');
   });
 
   it('shows the position and earnings when the golfer cashed', () => {
-    expect(cellContent(row({ golferName: 'Macintyre', positionStr: 'T4', earnings: 7.5 }), false))
-      .toBe('MACINTYRE\nT4 - +$7.50');
+    expect(cellContent(row({ golferName: 'Macintyre', positionStr: 'T4', earnings: 7.5 }), false)).toBe(
+      'MACINTYRE\nT4 - +$7.50',
+    );
   });
 
   it('includes a season-footer line with cumulative earnings and top-tens count', () => {

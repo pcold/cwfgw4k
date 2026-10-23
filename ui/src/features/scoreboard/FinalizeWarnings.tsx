@@ -22,17 +22,15 @@ function golferName(golfer: Golfer): string {
 }
 
 function espnLabel(name: string, espnCompetitorId: string): string {
-  return name.trim() === ''
-    ? `an unnamed competitor (ESPN ${espnCompetitorId})`
-    : `${name} (ESPN ${espnCompetitorId})`;
+  return name.trim() === '' ? `an unnamed competitor (ESPN ${espnCompetitorId})` : `${name} (ESPN ${espnCompetitorId})`;
 }
 
 function TwinItem({ twin }: { readonly twin: RosteredSurnameTwin }): ReactNode {
   return (
     <li>
       {golferName(twin.created)} was created as a new golfer and shares a surname with rostered{' '}
-      {twin.rostered.map(golferName).join(' / ')}. If they are the same player, the results went to the new
-      golfer and the roster pick scored nothing.
+      {twin.rostered.map(golferName).join(' / ')}. If they are the same player, the results went to the new golfer and
+      the roster pick scored nothing.
     </li>
   );
 }

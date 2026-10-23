@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 /** @see Chip */
 export type ChipVariant = 'neutral' | 'outlined' | 'my-team';
 
-const CHIP_CLASS = 'inline-flex items-center whitespace-nowrap rounded border px-1.5 py-0.5 text-xs uppercase tracking-wider';
+const CHIP_CLASS =
+  'inline-flex items-center whitespace-nowrap rounded border px-1.5 py-0.5 text-xs uppercase tracking-wider';
 
 // The neutral border is transparent rather than absent, so a filled chip and an outlined one beside it share a size.
 const VARIANT_CLASS: Readonly<Record<ChipVariant, string>> = {

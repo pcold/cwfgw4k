@@ -84,8 +84,9 @@ const COLOR_UTILITY_PREFIXES =
 
 // Read from the theme that ships, so a ramp a Tailwind upgrade adds is banned with no edit here.
 const tailwindTheme = readFileSync(createRequire(import.meta.url).resolve('tailwindcss/theme.css'), 'utf8');
-const TAILWIND_COLOR_RAMPS = [...new Set([...tailwindTheme.matchAll(/--color-([a-z]+)-950:/g)].map(([, ramp]) => ramp))]
-  .join('|');
+const TAILWIND_COLOR_RAMPS = [
+  ...new Set([...tailwindTheme.matchAll(/--color-([a-z]+)-950:/g)].map(([, ramp]) => ramp)),
+].join('|');
 
 const COLOR_SHADE = `(?:(?:${TAILWIND_COLOR_RAMPS})-(?:50|950|[1-9]00)|white|black)`;
 
@@ -204,7 +205,11 @@ export default tseslint.config(
     // The one file that spells the filled fills. The `as` ban and the palette are restated, as for tests.
     files: ['src/shared/components/Button.tsx'],
     rules: {
-      'no-restricted-syntax': ['error', { selector: AS_CAST_SELECTOR, message: AS_CAST_MESSAGE }, ...PALETTE_RESTRICTIONS],
+      'no-restricted-syntax': [
+        'error',
+        { selector: AS_CAST_SELECTOR, message: AS_CAST_MESSAGE },
+        ...PALETTE_RESTRICTIONS,
+      ],
     },
   },
   {

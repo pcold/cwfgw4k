@@ -7,14 +7,7 @@ import { queryKeys } from '@/shared/api/queryKeys';
 import QueryAnswered from '@/shared/test/QueryAnswered';
 import { pageTitleRow } from '@/shared/test/pageTitleRow';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import type {
-  League,
-  PlayerRankings,
-  PlayerRankingsRow,
-  RosterTeam,
-  Season,
-  Tournament,
-} from '@/shared/api/types';
+import type { League, PlayerRankings, PlayerRankingsRow, RosterTeam, Season, Tournament } from '@/shared/api/types';
 import PlayerRankingsPage from './PlayerRankingsPage';
 
 const leaguesMock = vi.fn<typeof api.leagues>();
@@ -185,9 +178,7 @@ describe('PlayerRankingsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
     const table = await screen.findByRole('table');
-    expect(within(nth(within(table).getAllByRole('row'), 1)).getAllByRole('cell')[3]).toHaveTextContent(
-      '+$30.00',
-    );
+    expect(within(nth(within(table).getAllByRole('row'), 1)).getAllByRole('cell')[3]).toHaveTextContent('+$30.00');
 
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-a');
@@ -249,9 +240,7 @@ describe('PlayerRankingsPage', () => {
 
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season, fall]);
-    tournamentsMock.mockImplementation((seasonId) =>
-      Promise.resolve(seasonId === 'sn-1' ? [spring] : [autumn]),
-    );
+    tournamentsMock.mockImplementation((seasonId) => Promise.resolve(seasonId === 'sn-1' ? [spring] : [autumn]));
     currentTournamentMock.mockImplementation((seasonId) =>
       Promise.resolve(
         seasonId === 'sn-1'
@@ -304,10 +293,7 @@ describe('PlayerRankingsPage', () => {
     renderWithProviders(
       <>
         <PlayerRankingsPage />
-        <QueryAnswered
-          queryKey={queryKeys.tournaments.current('sn-1')}
-          fetcher={() => currentTournamentMock('sn-1')}
-        />
+        <QueryAnswered queryKey={queryKeys.tournaments.current('sn-1')} fetcher={() => currentTournamentMock('sn-1')} />
       </>,
       WITH_MY_TEAM,
     );
@@ -368,9 +354,7 @@ describe('PlayerRankingsPage', () => {
     playerRankingsMock.mockResolvedValue(rankings({ players: [] }));
 
     renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
-    expect(
-      await screen.findByText(/No players with a top 10 finish yet/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/No players with a top 10 finish yet/i)).toBeInTheDocument();
   });
 
   it('titles the page once, and marks it LIVE when the server overlaid the rankings', async () => {

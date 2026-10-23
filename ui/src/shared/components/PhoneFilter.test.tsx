@@ -16,10 +16,7 @@ describe('PhoneFilter', () => {
   it('reports the picked option by its value, and lets the all option be picked back', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
-    renderWithProviders(
-      <PhoneFilter label="Team" value="Aces" options={OPTIONS} onChange={onChange} />,
-      NO_PROVIDERS,
-    );
+    renderWithProviders(<PhoneFilter label="Team" value="Aces" options={OPTIONS} onChange={onChange} />, NO_PROVIDERS);
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Team' }), 'All teams');
 

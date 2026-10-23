@@ -40,8 +40,7 @@ const ROSTER_FILE_INPUT_CLASS =
 
 // CONTROL_CLASS's sizing without CONTROL_CLASS: its border colour and the warning one would tie, settled by
 // stylesheet order rather than class order.
-const MATCH_SELECT_CLASS =
-  `bg-surface-raised border border-semantic-warning-border rounded px-3 py-2 text-base ${TAP_TARGET_CLASS}`;
+const MATCH_SELECT_CLASS = `bg-surface-raised border border-semantic-warning-border rounded px-3 py-2 text-base ${TAP_TARGET_CLASS}`;
 
 // Prefixed by source, since a golfer id and an ESPN id share no namespace.
 function candidateValue(candidate: GolferCandidate): string {
@@ -383,9 +382,7 @@ function RosterReviewStep({
                         <select
                           aria-label={`Golfer match for ${pick.playerName}`}
                           value={selections[key] ?? ''}
-                          onChange={(e) =>
-                            onSelectionChange(team.teamNumber, pick, e.target.value)
-                          }
+                          onChange={(e) => onSelectionChange(team.teamNumber, pick, e.target.value)}
                           className={MATCH_SELECT_CLASS}
                         >
                           <option value="">-- select player --</option>
@@ -442,9 +439,7 @@ function RosterReviewStep({
 function RosterResultView({ result }: { result: RosterConfirmResult }) {
   return (
     <div className="mt-6 pt-4 border-t border-hairline">
-      <h4 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">
-        Rosters Created
-      </h4>
+      <h4 className="text-sm font-semibold text-ink-label uppercase tracking-wider mb-4">Rosters Created</h4>
       <div className="flex gap-6 mb-4 text-sm">
         <div>
           <span className="text-ink-muted">Teams:</span>

@@ -169,9 +169,7 @@ function PlayerRows({ players, myTeamName, onGolferClick, listKey }: PlayerListP
                   <span className="text-ink-soft italic">undrafted</span>
                 )}
               </td>
-              <td className="px-3 py-2 text-right tabular-nums text-ink-muted">
-                {player.draftRound ?? '—'}
-              </td>
+              <td className="px-3 py-2 text-right tabular-nums text-ink-muted">{player.draftRound ?? '—'}</td>
             </m.tr>
           );
         })

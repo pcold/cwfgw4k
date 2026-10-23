@@ -109,9 +109,7 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
       </div>
 
       <div className="mb-4">
-        <h4 className="text-xs text-ink-muted font-semibold uppercase tracking-wider mb-2">
-          Payout Rules
-        </h4>
+        <h4 className="text-xs text-ink-muted font-semibold uppercase tracking-wider mb-2">Payout Rules</h4>
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
           {payouts.map((amt, i) => (
             // eslint-disable-next-line react/no-array-index-key -- a payout row is its finishing position; rows only append or pop.
@@ -159,9 +157,7 @@ function CreateSeasonForm({ defaults }: CreateSeasonFormProps): ReactNode {
           </FieldShell>
         </div>
 
-        <h4 className="text-xs text-ink-muted font-semibold uppercase tracking-wider mb-2 mt-4">
-          Side Bets
-        </h4>
+        <h4 className="text-xs text-ink-muted font-semibold uppercase tracking-wider mb-2 mt-4">Side Bets</h4>
         <div className="flex flex-wrap gap-4 items-end">
           <TextField
             id="season-side-rounds"

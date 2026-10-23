@@ -41,23 +41,29 @@ describe('PositionCell', () => {
   it.each([
     [1, 'bg-gold', 'bg-position-fill'],
     [2, 'bg-position-fill', 'bg-gold'],
-  ] as const)('sets a card-start box for position %i as a narrow div in the same tone and figure', (position, tone, otherTone) => {
-    renderWithProviders(<PositionCell position={position} shape="card-start" />, NO_PROVIDERS);
+  ] as const)(
+    'sets a card-start box for position %i as a narrow div in the same tone and figure',
+    (position, tone, otherTone) => {
+      renderWithProviders(<PositionCell position={position} shape="card-start" />, NO_PROVIDERS);
 
-    const box = screen.getByText(String(position));
-    expect(box.tagName).toBe('DIV');
-    expect(box).toHaveClass(tone, 'w-9.5', 'shrink-0', 'rounded-l', 'font-display', 'font-bold', 'text-lg');
-    expect(box).not.toHaveClass(otherTone);
-  });
+      const box = screen.getByText(String(position));
+      expect(box.tagName).toBe('DIV');
+      expect(box).toHaveClass(tone, 'w-9.5', 'shrink-0', 'rounded-l', 'font-display', 'font-bold', 'text-lg');
+      expect(box).not.toHaveClass(otherTone);
+    },
+  );
 
-  it.each(['row-start', 'card-start'] as const)('fills a %s round box 1 in navy, never gold: gold marks first place', (shape) => {
-    if (shape === 'row-start') renderInRow(<PositionCell position={1} shape={shape} kind="round" />);
-    else renderWithProviders(<PositionCell position={1} shape={shape} kind="round" />, NO_PROVIDERS);
+  it.each(['row-start', 'card-start'] as const)(
+    'fills a %s round box 1 in navy, never gold: gold marks first place',
+    (shape) => {
+      if (shape === 'row-start') renderInRow(<PositionCell position={1} shape={shape} kind="round" />);
+      else renderWithProviders(<PositionCell position={1} shape={shape} kind="round" />, NO_PROVIDERS);
 
-    const box = screen.getByText('1');
-    expect(box).toHaveClass('bg-position-fill', 'text-on-fill');
-    expect(box).not.toHaveClass('bg-gold', 'text-on-gold');
-  });
+      const box = screen.getByText('1');
+      expect(box).toHaveClass('bg-position-fill', 'text-on-fill');
+      expect(box).not.toHaveClass('bg-gold', 'text-on-gold');
+    },
+  );
 
   it('keeps the card-start box classes unchanged for the standings and scoreboard cards', () => {
     renderWithProviders(<PositionCell position={1} shape="card-start" />, NO_PROVIDERS);

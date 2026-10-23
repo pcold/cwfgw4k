@@ -32,12 +32,16 @@ describe('LeaderboardScorecard', () => {
 
     const front = nine(1, 'front');
     const back = nine(1, 'back');
-    expect(within(front).getAllByRole('columnheader').map((head) => head.textContent)).toEqual(
-      ['Hole', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'Out'],
-    );
-    expect(within(back).getAllByRole('columnheader').map((head) => head.textContent)).toEqual(
-      ['Hole', '10', '11', '12', '13', '14', '15', '16', '17', '18', 'In', 'Tot'],
-    );
+    expect(
+      within(front)
+        .getAllByRole('columnheader')
+        .map((head) => head.textContent),
+    ).toEqual(['Hole', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'Out']);
+    expect(
+      within(back)
+        .getAllByRole('columnheader')
+        .map((head) => head.textContent),
+    ).toEqual(['Hole', '10', '11', '12', '13', '14', '15', '16', '17', '18', 'In', 'Tot']);
     expect(rowOf(front, 'Par')).toEqual([...PARS_ON_NINE.map(String), '36']);
     expect(rowOf(front, 'Score')).toEqual([...PARS_ON_NINE.map(String), '36']);
     expect(rowOf(back, 'Par')).toEqual([...PARS_ON_NINE.map(String), '36', '72']);
@@ -117,11 +121,10 @@ describe('LeaderboardScorecard', () => {
     renderWithProviders(<LeaderboardScorecard id="card" scorecards={[makeRoundScorecard(1, [4])]} />, NO_PROVIDERS);
 
     const legend = screen.getByRole('list', { name: 'Score marks' });
-    expect(within(legend).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
-      'Eagle or better',
-      'Birdie',
-      'Bogey',
-      'Double bogey or worse',
-    ]);
+    expect(
+      within(legend)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Eagle or better', 'Birdie', 'Bogey', 'Double bogey or worse']);
   });
 });

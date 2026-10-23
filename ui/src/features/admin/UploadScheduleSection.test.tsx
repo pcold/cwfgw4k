@@ -62,9 +62,7 @@ describe('UploadScheduleSection', () => {
     previewSeasonScheduleMock.mockReset();
     confirmSeasonScheduleMock.mockReset();
     updateTournamentMock.mockReset();
-    leaguesMock.mockResolvedValue([
-      { id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' },
-    ]);
+    leaguesMock.mockResolvedValue([{ id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' }]);
     seasonsMock.mockResolvedValue([makeSeason()]);
   });
 
@@ -151,9 +149,7 @@ describe('UploadScheduleSection', () => {
 
     const mastersRow = (await screen.findByText('The Masters')).closest('tr');
     if (!mastersRow) throw new Error('row not found');
-    const multiplierInput = within(mastersRow).getByLabelText<HTMLInputElement>(
-      /Payout multiplier for The Masters/i,
-    );
+    const multiplierInput = within(mastersRow).getByLabelText<HTMLInputElement>(/Payout multiplier for The Masters/i);
     const saveButton = within(mastersRow).getByRole('button', { name: /Save/i });
     expect(saveButton).toBeDisabled();
 

@@ -397,6 +397,13 @@ What stays in the UI:
   [`.claude/CLAUDE.md`](../.claude/CLAUDE.md) → Verification.
 - **MUST NOT** lower the `vitest` coverage thresholds in
   `vite.config.ts` to make a build pass. Add tests instead.
+- **MUST** run `cd ui && npm run format` before the first gate of a UI
+  change, and commit what it rewrites; `uiFormatCheck` fails the gate on
+  any file Prettier would change.
+- **MUST NOT** run `npm run format` between a red gate and a green one.
+  The green attests to a tree no commit holds.
+- Prettier corrects nothing ESLint owns. A string it joins past `max-len`
+  is a hand-fix.
 
 ---
 

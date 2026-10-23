@@ -21,8 +21,7 @@ vi.mock('@/shared/api/client', () => ({
     leagues: () => leaguesMock(),
     seasons: (id: string) => seasonsMock(id),
     seasonReport: vi.fn(),
-    rankings: (id: string, live: boolean, through?: string) =>
-      rankingsMock(id, live, through),
+    rankings: (id: string, live: boolean, through?: string) => rankingsMock(id, live, through),
     tournaments: (id: string) => tournamentsMock(id),
     currentTournament: (id: string) => currentTournamentMock(id),
     rosters: (id: string) => rostersMock(id),
@@ -195,9 +194,7 @@ describe('RankingsPage', () => {
 
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season, fall]);
-    tournamentsMock.mockImplementation((seasonId) =>
-      Promise.resolve(seasonId === 'sn-1' ? [spring] : [autumn]),
-    );
+    tournamentsMock.mockImplementation((seasonId) => Promise.resolve(seasonId === 'sn-1' ? [spring] : [autumn]));
     currentTournamentMock.mockImplementation((seasonId) =>
       Promise.resolve(
         seasonId === 'sn-1'
@@ -251,10 +248,7 @@ describe('RankingsPage', () => {
     renderWithProviders(
       <>
         <RankingsPage />
-        <QueryAnswered
-          queryKey={queryKeys.tournaments.current('sn-1')}
-          fetcher={() => currentTournamentMock('sn-1')}
-        />
+        <QueryAnswered queryKey={queryKeys.tournaments.current('sn-1')} fetcher={() => currentTournamentMock('sn-1')} />
       </>,
       WITH_MY_TEAM,
     );
@@ -409,17 +403,17 @@ describe('RankingsPage', () => {
       expect(screen.getAllByText('your team')).toHaveLength(2);
     });
 
-    it('opens the standings on the saved team\'s card', async () => {
+    it("opens the standings on the saved team's card", async () => {
       window.localStorage.setItem(MY_TEAM_KEY, '{"kind":"team","teamName":"Birdies"}');
       await renderStandings();
 
       const card = screen.getByRole('region', { name: 'Your team' });
       expect(within(card).getByText('Birdies')).toBeInTheDocument();
-      expect(within(card).getAllByRole('term').map((term) => term.textContent)).toEqual([
-        'Pos',
-        'Behind 1st',
-        'Behind leader',
-      ]);
+      expect(
+        within(card)
+          .getAllByRole('term')
+          .map((term) => term.textContent),
+      ).toEqual(['Pos', 'Behind 1st', 'Behind leader']);
     });
 
     it.each([

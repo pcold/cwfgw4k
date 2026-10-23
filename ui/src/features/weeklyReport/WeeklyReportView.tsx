@@ -1,10 +1,6 @@
 import type { ReactNode } from 'react';
 import type { ReportCell, ReportTeamColumn, WeeklyReport } from '@/shared/api/types';
-import {
-  formatDollarsAndCents,
-  formatUnsignedDollarsAndCents,
-  formatWholeDollars,
-} from '@/shared/util/money';
+import { formatDollarsAndCents, formatUnsignedDollarsAndCents, formatWholeDollars } from '@/shared/util/money';
 import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import LateRowTag from '@/shared/components/LateRowTag';
 import ListCard, { CARD_LIST_CLASS, CARD_NAME_BUTTON_CLASS } from '@/shared/components/ListCard';
@@ -172,12 +168,7 @@ function SeasonCard({ team, seasonMode, pulseScope }: SeasonCardProps): ReactNod
         <SeasonFigure label="Late row" value={team.sideBets} pulseScope={pulseScope} />
       </dl>
       <p className="border-t border-hairline-soft px-3 py-2 text-sm text-ink-muted">
-        <Pulse
-          display={topTensLabel(team.topTenCount)}
-          measure={team.topTenCount}
-          better="higher"
-          scope={pulseScope}
-        />{' '}
+        <Pulse display={topTensLabel(team.topTenCount)} measure={team.topTenCount} better="higher" scope={pulseScope} />{' '}
         this season · <PulseDollars amount={team.topTenMoney} scope={pulseScope} />
       </p>
     </div>

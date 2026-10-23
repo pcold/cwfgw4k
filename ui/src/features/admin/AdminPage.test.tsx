@@ -203,10 +203,7 @@ describe('AdminPage', () => {
     });
     await screen.findByRole('heading', { name: 'Admin' });
 
-    const fields = [
-      ...screen.getAllByRole('textbox'),
-      ...screen.queryAllByRole('combobox'),
-    ];
+    const fields = [...screen.getAllByRole('textbox'), ...screen.queryAllByRole('combobox')];
     for (const control of [...screen.getAllByRole('button'), ...fields]) {
       expect(control).toHaveClass(TAP_TARGET_CLASS);
     }

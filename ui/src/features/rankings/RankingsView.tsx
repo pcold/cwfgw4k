@@ -50,7 +50,9 @@ function RankingsView({ rankings, myTeamName, selectionKey }: Props): ReactNode 
                 <PulseDollars amount={team.sideBets} scope={selectionKey} />
               </>
             }
-            total={<MoneyCell display={formatWholeDollars(team.totalCash)} shape="card-end" pulseScope={selectionKey} />}
+            total={
+              <MoneyCell display={formatWholeDollars(team.totalCash)} shape="card-end" pulseScope={selectionKey} />
+            }
             glideIndex={index}
           />
         ))}

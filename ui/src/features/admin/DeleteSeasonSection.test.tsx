@@ -37,9 +37,7 @@ describe('DeleteSeasonSection', () => {
     leaguesMock.mockReset();
     seasonsMock.mockReset();
     deleteMock.mockReset();
-    leaguesMock.mockResolvedValue([
-      { id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' },
-    ]);
+    leaguesMock.mockResolvedValue([{ id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' }]);
     seasonsMock.mockResolvedValue([makeSeason()]);
   });
 
@@ -91,32 +89,29 @@ describe('DeleteSeasonSection', () => {
     });
   });
 
-  it.each(OPEN_WHEN_A_DELETE_LANDS)(
-    'refetches an open %s query for the deleted season',
-    async (_root, queryKey) => {
-      const fetcher = vi.fn().mockResolvedValue({});
-      deleteMock.mockResolvedValue(undefined);
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it.each(OPEN_WHEN_A_DELETE_LANDS)('refetches an open %s query for the deleted season', async (_root, queryKey) => {
+    const fetcher = vi.fn().mockResolvedValue({});
+    deleteMock.mockResolvedValue(undefined);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-      const user = userEvent.setup();
-      renderWithProviders(
-        <>
-          <DeleteSeasonSection />
-          <OpenQuery queryKey={queryKey} fetcher={fetcher} />
-        </>,
-        { withLeagueSeasonProvider: false },
-      );
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <DeleteSeasonSection />
+        <OpenQuery queryKey={queryKey} fetcher={fetcher} />
+      </>,
+      { withLeagueSeasonProvider: false },
+    );
 
-      await screen.findByRole('option', { name: /^2026 Spring$/ });
-      expect(fetcher).toHaveBeenCalledTimes(1);
-      await user.selectOptions(screen.getByLabelText(/Season to delete/i), 'sn-1');
-      await user.click(screen.getByRole('button', { name: /Delete Season/i }));
+    await screen.findByRole('option', { name: /^2026 Spring$/ });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await user.selectOptions(screen.getByLabelText(/Season to delete/i), 'sn-1');
+    await user.click(screen.getByRole('button', { name: /Delete Season/i }));
 
-      await waitFor(() => {
-        expect(fetcher).toHaveBeenCalledTimes(2);
-      });
-    },
-  );
+    await waitFor(() => {
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    });
+  });
 
   it("leaves another season's open report alone", async () => {
     const deletedSeasonFetcher = vi.fn().mockResolvedValue({});
@@ -128,14 +123,8 @@ describe('DeleteSeasonSection', () => {
     renderWithProviders(
       <>
         <DeleteSeasonSection />
-        <OpenQuery
-          queryKey={queryKeys.report.detail('sn-1', 'tn-1', false)}
-          fetcher={deletedSeasonFetcher}
-        />
-        <OpenQuery
-          queryKey={queryKeys.report.detail('sn-2', 'tn-2', false)}
-          fetcher={otherSeasonFetcher}
-        />
+        <OpenQuery queryKey={queryKeys.report.detail('sn-1', 'tn-1', false)} fetcher={deletedSeasonFetcher} />
+        <OpenQuery queryKey={queryKeys.report.detail('sn-2', 'tn-2', false)} fetcher={otherSeasonFetcher} />
       </>,
       { withLeagueSeasonProvider: false },
     );
@@ -191,9 +180,7 @@ describe('DeleteSeasonSection', () => {
     ]);
     seasonsMock.mockImplementation((leagueId) =>
       Promise.resolve(
-        leagueId === 'lg-2'
-          ? [makeSeason({ id: 'sn-beta', leagueId: 'lg-2', name: 'Fall' })]
-          : [makeSeason()],
+        leagueId === 'lg-2' ? [makeSeason({ id: 'sn-beta', leagueId: 'lg-2', name: 'Fall' })] : [makeSeason()],
       ),
     );
     deleteMock.mockResolvedValue(undefined);

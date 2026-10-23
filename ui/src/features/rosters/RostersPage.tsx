@@ -59,11 +59,7 @@ function RostersPage(): ReactNode {
           )}
         </QueryState>
       )}
-      <GolferHistoryModal
-        seasonId={seasonId}
-        golferId={historyGolferId}
-        onClose={() => setHistoryGolferId(null)}
-      />
+      <GolferHistoryModal seasonId={seasonId} golferId={historyGolferId} onClose={() => setHistoryGolferId(null)} />
     </div>
   );
 }

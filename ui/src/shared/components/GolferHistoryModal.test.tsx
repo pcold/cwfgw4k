@@ -33,20 +33,18 @@ describe('GolferHistoryModal', () => {
   });
 
   it('renders nothing when golferId is null', () => {
-    renderWithProviders(
-      <GolferHistoryModal seasonId="s-1" golferId={null} onClose={() => {}} />,
-      { withLeagueSeasonProvider: false },
-    );
+    renderWithProviders(<GolferHistoryModal seasonId="s-1" golferId={null} onClose={() => {}} />, {
+      withLeagueSeasonProvider: false,
+    });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(golferHistoryMock).not.toHaveBeenCalled();
   });
 
   it('fetches and displays a golfer history when opened', async () => {
     golferHistoryMock.mockResolvedValue(sampleHistory);
-    renderWithProviders(
-      <GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={() => {}} />,
-      { withLeagueSeasonProvider: false },
-    );
+    renderWithProviders(<GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={() => {}} />, {
+      withLeagueSeasonProvider: false,
+    });
 
     expect(await screen.findByText('Scottie Scheffler')).toBeInTheDocument();
     expect(screen.getByText(/3 top 10s/)).toBeInTheDocument();
@@ -63,20 +61,18 @@ describe('GolferHistoryModal', () => {
       totalEarnings: 0,
       results: [],
     });
-    renderWithProviders(
-      <GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={() => {}} />,
-      { withLeagueSeasonProvider: false },
-    );
+    renderWithProviders(<GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={() => {}} />, {
+      withLeagueSeasonProvider: false,
+    });
 
     expect(await screen.findByText(/No top 10 finishes this season/i)).toBeInTheDocument();
   });
 
   it('singular "top 10" label when topTens === 1', async () => {
     golferHistoryMock.mockResolvedValue({ ...sampleHistory, topTens: 1, results: sampleHistory.results.slice(0, 1) });
-    renderWithProviders(
-      <GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={() => {}} />,
-      { withLeagueSeasonProvider: false },
-    );
+    renderWithProviders(<GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={() => {}} />, {
+      withLeagueSeasonProvider: false,
+    });
 
     expect(await screen.findByText('1 top 10')).toBeInTheDocument();
   });
@@ -85,10 +81,9 @@ describe('GolferHistoryModal', () => {
     golferHistoryMock.mockResolvedValue(sampleHistory);
     const onClose = vi.fn();
     const user = userEvent.setup();
-    renderWithProviders(
-      <GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={onClose} />,
-      { withLeagueSeasonProvider: false },
-    );
+    renderWithProviders(<GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={onClose} />, {
+      withLeagueSeasonProvider: false,
+    });
 
     await screen.findByText('Scottie Scheffler');
     await user.click(screen.getByRole('button', { name: /close/i }));
@@ -99,10 +94,9 @@ describe('GolferHistoryModal', () => {
     golferHistoryMock.mockResolvedValue(sampleHistory);
     const onClose = vi.fn();
     const user = userEvent.setup();
-    renderWithProviders(
-      <GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={onClose} />,
-      { withLeagueSeasonProvider: false },
-    );
+    renderWithProviders(<GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={onClose} />, {
+      withLeagueSeasonProvider: false,
+    });
 
     await user.click(await screen.findByText('Sample Open'));
     expect(onClose).not.toHaveBeenCalled();
@@ -113,10 +107,9 @@ describe('GolferHistoryModal', () => {
 
   it('shows an error state when the fetch fails', async () => {
     golferHistoryMock.mockRejectedValue(new Error('boom'));
-    renderWithProviders(
-      <GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={() => {}} />,
-      { withLeagueSeasonProvider: false },
-    );
+    renderWithProviders(<GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={() => {}} />, {
+      withLeagueSeasonProvider: false,
+    });
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/Failed to load golfer history/i);
@@ -125,10 +118,9 @@ describe('GolferHistoryModal', () => {
 
   it('tones the season total in the header and leaves each tournament payout in the table ink', async () => {
     golferHistoryMock.mockResolvedValue(sampleHistory);
-    renderWithProviders(
-      <GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={() => {}} />,
-      { withLeagueSeasonProvider: false },
-    );
+    renderWithProviders(<GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={() => {}} />, {
+      withLeagueSeasonProvider: false,
+    });
 
     expect(await screen.findByText('+$240.00')).toHaveClass('text-semantic-success');
     expect(screen.getByText('+$120.00').className).not.toMatch(/text-semantic-|text-ink-soft/);
@@ -136,10 +128,9 @@ describe('GolferHistoryModal', () => {
 
   it('sets every column head in the shared column-header type', async () => {
     golferHistoryMock.mockResolvedValue(sampleHistory);
-    renderWithProviders(
-      <GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={() => {}} />,
-      { withLeagueSeasonProvider: false },
-    );
+    renderWithProviders(<GolferHistoryModal seasonId="s-1" golferId="g-1" onClose={() => {}} />, {
+      withLeagueSeasonProvider: false,
+    });
 
     await screen.findByText('Sample Open');
     expectSharedColumnHeads(1);

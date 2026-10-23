@@ -27,7 +27,10 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     }
     return (
       <div className="min-h-screen bg-canvas text-ink flex items-center justify-center px-4">
-        <div role="alert" className="w-full max-w-md bg-surface-card rounded-lg shadow-xl border border-hairline-strong p-8 text-center">
+        <div
+          role="alert"
+          className="w-full max-w-md bg-surface-card rounded-lg shadow-xl border border-hairline-strong p-8 text-center"
+        >
           <h1 className="text-2xl font-bold">Something went wrong</h1>
           <p className="mt-2 text-sm text-ink-muted">
             CWFG hit an unexpected error and could not finish loading this screen. Reloading usually clears it.

@@ -43,8 +43,7 @@ function RulesPage(): ReactNode {
 
   function renderBody(): ReactNode {
     if (leaguesLoading) return <p className="text-ink-muted">Loading leagues…</p>;
-    if (leaguesError)
-      return <p className="text-semantic-danger">Failed to load leagues: {String(leaguesError)}</p>;
+    if (leaguesError) return <p className="text-semantic-danger">Failed to load leagues: {String(leaguesError)}</p>;
 
     // Two slots, not one around the stack: the static cards between them hold their place while the rules load or fail.
     return (
@@ -64,8 +63,8 @@ function RulesPage(): ReactNode {
         </QueryState>
         <RulesCard title="Season Schedule">
           <p className="text-ink-secondary text-sm mb-3">
-            Tournaments on the season calendar. A highlighted multiplier means payouts are
-            boosted for that week (e.g. 2x for majors).
+            Tournaments on the season calendar. A highlighted multiplier means payouts are boosted for that week (e.g.
+            2x for majors).
           </p>
           <QueryState query={tournamentsQuery} label="schedule">
             {(tournaments) => <ScheduleList tournaments={tournaments} />}
@@ -155,10 +154,7 @@ function DraftCard(): ReactNode {
     <RulesCard title="The Draft">
       <ul className={BULLET_LIST_CLASS}>
         <li>Snake draft, each team drafts PGA Tour players</li>
-        <li>
-          Players can be split between teams with ownership percentages (earnings divided
-          proportionally)
-        </li>
+        <li>Players can be split between teams with ownership percentages (earnings divided proportionally)</li>
       </ul>
     </RulesCard>
   );
@@ -175,10 +171,7 @@ function ZeroSumCard(): ReactNode {
       </p>
       <ul className={BULLET_LIST_CLASS}>
         <li>The league is zero-sum — every dollar won is a dollar lost by someone else</li>
-        <li>
-          Undrafted players who finish in the payout zone are tracked but don't affect team
-          payouts
-        </li>
+        <li>Undrafted players who finish in the payout zone are tracked but don't affect team payouts</li>
       </ul>
     </RulesCard>
   );
@@ -195,10 +188,8 @@ function TieHandlingCard({ tieFloor }: TieHandlingCardProps): ReactNode {
         <li>Tied positions average the payouts across all tied slots</li>
         <li>
           Minimum payout of{' '}
-          <span className="text-semantic-success font-semibold">
-            {formatUnsignedDollarsAndCents(tieFloor)}
-          </span>{' '}
-          per player for any tie that overlaps the payout zone
+          <span className="text-semantic-success font-semibold">{formatUnsignedDollarsAndCents(tieFloor)}</span> per
+          player for any tie that overlaps the payout zone
         </li>
       </ul>
     </RulesCard>
@@ -221,13 +212,8 @@ function SideBetsCard({ rules }: SideBetsCardProps): ReactNode {
   return (
     <RulesCard title="Side Bets" caption={`Rounds ${rules.sideBetRounds.join(', ')}`}>
       <ul className={BULLET_LIST_CLASS}>
-        <li>
-          {rules.sideBetRounds.length} separate season-long races — one for each draft round
-        </li>
-        <li>
-          Winner = the team whose round-N pick has the highest cumulative earnings across all
-          tournaments
-        </li>
+        <li>{rules.sideBetRounds.length} separate season-long races — one for each draft round</li>
+        <li>Winner = the team whose round-N pick has the highest cumulative earnings across all tournaments</li>
         <li>
           Winner collects{' '}
           <span className="text-semantic-success font-semibold">
@@ -254,14 +240,10 @@ function ScheduleList({ tournaments }: ScheduleListProps): ReactNode {
     <ul className="text-ink-secondary text-sm space-y-0.5">
       {schedule.map((t) => (
         <li key={t.id} className="flex items-baseline gap-2">
-          <span className="text-ink-soft tabular-nums w-16 shrink-0">
-            {t.week ? `Wk ${t.week}` : ''}
-          </span>
+          <span className="text-ink-soft tabular-nums w-16 shrink-0">{t.week ? `Wk ${t.week}` : ''}</span>
           <span className="flex-1">{t.name}</span>
           {t.payoutMultiplier !== 1 ? (
-            <span className="text-semantic-warning font-semibold tabular-nums">
-              {t.payoutMultiplier}x
-            </span>
+            <span className="text-semantic-warning font-semibold tabular-nums">{t.payoutMultiplier}x</span>
           ) : null}
         </li>
       ))}

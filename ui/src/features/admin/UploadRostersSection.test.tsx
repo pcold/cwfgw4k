@@ -103,10 +103,7 @@ function espnPreview(match: PickMatch): RosterPreview {
 }
 
 /** Fails naming the blocked encoding, rather than as a missing team several lines later. */
-function encodedTeams(
-  preview: RosterPreview,
-  selections: Readonly<Record<string, string>>,
-): RosterConfirmTeamInput[] {
+function encodedTeams(preview: RosterPreview, selections: Readonly<Record<string, string>>): RosterConfirmTeamInput[] {
   const teams = buildConfirmTeams(preview, selections);
   if (teams === null) throw new Error('Expected every pick to encode, but an ambiguous pick sits on the placeholder.');
   return teams;
@@ -211,9 +208,7 @@ describe('buildConfirmTeams', () => {
         {
           teamNumber: 1,
           teamName: 'BROWN',
-          picks: [
-            { round: 1, playerName: 'Byeong Hun An', ownershipPct: 100, match: { type: 'no_match' } },
-          ],
+          picks: [{ round: 1, playerName: 'Byeong Hun An', ownershipPct: 100, match: { type: 'no_match' } }],
         },
       ],
     };
@@ -233,9 +228,7 @@ describe('UploadRostersSection', () => {
     seasonsMock.mockReset();
     previewRosterMock.mockReset();
     confirmRosterMock.mockReset();
-    leaguesMock.mockResolvedValue([
-      { id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' },
-    ]);
+    leaguesMock.mockResolvedValue([{ id: 'lg-1', name: 'Alpha', createdAt: '2026-01-01T00:00:00Z' }]);
     seasonsMock.mockResolvedValue([makeSeason()]);
   });
 
@@ -453,15 +446,11 @@ describe('UploadRostersSection', () => {
     await uploadRosterFile(user, 'TEAM 1 BROWN');
     await user.click(screen.getByRole('button', { name: /Match Players with ESPN/i }));
 
-    expect(
-      await screen.findByRole('button', { name: /Confirm & Create Teams/i }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Confirm & Create Teams/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /^Back$/i }));
 
-    expect(
-      screen.getByRole('button', { name: /Match Players with ESPN/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Match Players with ESPN/i })).toBeInTheDocument();
   });
 
   it("holds the review step's controls to the tap-target height, its match select at 16px", async () => {

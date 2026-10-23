@@ -38,8 +38,7 @@ vi.mock('@/shared/api/client', () => ({
 const downloadPdfMock = vi.fn<typeof downloadWeeklyReportPdf>();
 
 vi.mock('./weeklyReportPdf', () => ({
-  downloadWeeklyReportPdf: (report: WeeklyReport, season: Season | null) =>
-    downloadPdfMock(report, season),
+  downloadWeeklyReportPdf: (report: WeeklyReport, season: Season | null) => downloadPdfMock(report, season),
 }));
 
 const league: League = { id: 'lg-1', name: 'Test League', createdAt: '2026-01-01T00:00:00Z' };
@@ -276,9 +275,7 @@ describe('WeeklyReportPage', () => {
 
     leaguesMock.mockResolvedValue([league]);
     seasonsMock.mockResolvedValue([season, fall]);
-    tournamentsMock.mockImplementation((seasonId) =>
-      Promise.resolve(seasonId === 'sn-1' ? [spring] : [autumn]),
-    );
+    tournamentsMock.mockImplementation((seasonId) => Promise.resolve(seasonId === 'sn-1' ? [spring] : [autumn]));
     currentTournamentMock.mockImplementation((seasonId) =>
       Promise.resolve(
         seasonId === 'sn-1'
@@ -333,10 +330,7 @@ describe('WeeklyReportPage', () => {
     renderWithProviders(
       <>
         <WeeklyReportPage />
-        <QueryAnswered
-          queryKey={queryKeys.tournaments.current('sn-1')}
-          fetcher={() => currentTournamentMock('sn-1')}
-        />
+        <QueryAnswered queryKey={queryKeys.tournaments.current('sn-1')} fetcher={() => currentTournamentMock('sn-1')} />
       </>,
       WITH_MY_TEAM,
     );

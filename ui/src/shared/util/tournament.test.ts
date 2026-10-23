@@ -35,9 +35,7 @@ describe('tournamentLabel', () => {
   });
 
   it('shows the multiplier in parens when it is not 1', () => {
-    expect(tournamentLabel(makeTournament({ payoutMultiplier: 2 }))).toBe(
-      'Wk 1 — Sony Open (2x) — Final',
-    );
+    expect(tournamentLabel(makeTournament({ payoutMultiplier: 2 }))).toBe('Wk 1 — Sony Open (2x) — Final');
   });
 
   it('falls back to ? when the week is null', () => {
@@ -101,9 +99,7 @@ describe('defaultReportSelection', () => {
   });
 
   it('opens on All Tournaments once the season is finalized, not on its last event', () => {
-    expect(defaultReportSelection({ type: 'season_finalized', tournamentId: 'tn-9' })).toBe(
-      ALL_TOURNAMENTS,
-    );
+    expect(defaultReportSelection({ type: 'season_finalized', tournamentId: 'tn-9' })).toBe(ALL_TOURNAMENTS);
   });
 
   it('opens on All Tournaments for a season with none', () => {
@@ -121,9 +117,7 @@ describe('defaultScoreboardSelection', () => {
   });
 
   it('opens on the last tournament once the season is finalized', () => {
-    expect(defaultScoreboardSelection({ type: 'season_finalized', tournamentId: 'tn-9' })).toBe(
-      'tn-9',
-    );
+    expect(defaultScoreboardSelection({ type: 'season_finalized', tournamentId: 'tn-9' })).toBe('tn-9');
   });
 
   it('selects nothing for a season with none', () => {

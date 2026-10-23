@@ -86,8 +86,7 @@ function niceRound(value: number): number {
   if (value === 0) return 0;
   const magnitude = Math.pow(10, Math.floor(Math.log10(Math.abs(value))));
   const normalized = value / magnitude;
-  const rounded =
-    normalized >= 5 ? 5 : normalized >= 2 ? 2 : normalized >= 1 ? 1 : 0.5;
+  const rounded = normalized >= 5 ? 5 : normalized >= 2 ? 2 : normalized >= 1 ? 1 : 0.5;
   return rounded * magnitude * Math.sign(value);
 }
 
@@ -96,12 +95,7 @@ function niceRangeStep(min: number, max: number, targetTicks: number): number {
   return Math.max(1, niceRound(rough));
 }
 
-function buildYTicks(
-  minValue: number,
-  maxValue: number,
-  plotTop: number,
-  plotBottom: number,
-): AxisTick[] {
+function buildYTicks(minValue: number, maxValue: number, plotTop: number, plotBottom: number): AxisTick[] {
   if (minValue === maxValue) {
     const y = (plotTop + plotBottom) / 2;
     return [{ position: y, label: formatAxisMoney(minValue) }];

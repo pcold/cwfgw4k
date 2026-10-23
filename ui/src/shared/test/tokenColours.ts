@@ -47,7 +47,10 @@ const oklchToSrgb = (lightness: number, chroma: number, hueDegrees: number): Srg
 
 /** Token to the variable it aliases, prefix kept: `color-gray-900` or `brand-navy`. */
 export const aliasOf: ReadonlyMap<string, string> = new Map(
-  [...indexCss.matchAll(TOKEN_ALIAS_PATTERN)].map((match): [string, string] => [captured(match, 1), captured(match, 2)]),
+  [...indexCss.matchAll(TOKEN_ALIAS_PATTERN)].map((match): [string, string] => [
+    captured(match, 1),
+    captured(match, 2),
+  ]),
 );
 
 const paletteColours = ((): ReadonlyMap<string, Srgb> => {
@@ -73,7 +76,9 @@ export const resolveToken = (token: string): Srgb => {
   }
   const colour = paletteColours.get(variable);
   if (colour === undefined) {
-    throw new Error(`Neither tailwindcss/theme.css nor index.css declares --${variable}, which --color-${token} aliases`);
+    throw new Error(
+      `Neither tailwindcss/theme.css nor index.css declares --${variable}, which --color-${token} aliases`,
+    );
   }
   return colour;
 };

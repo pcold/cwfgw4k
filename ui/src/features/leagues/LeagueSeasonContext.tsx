@@ -41,7 +41,7 @@ export function LeagueSeasonProvider({ children }: { children: ReactNode }): Rea
   const seasonId =
     userSeasonId !== null && seasonsQuery.data?.some((s) => s.id === userSeasonId)
       ? userSeasonId
-      : seasonsQuery.data?.[0]?.id ?? null;
+      : (seasonsQuery.data?.[0]?.id ?? null);
 
   const [live, setLive] = useState(true);
 

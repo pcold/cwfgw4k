@@ -29,6 +29,8 @@ const NAV_ITEMS: Array<{ to: string; label: string }> = [
 
 const ON_CHROME_IDLE_CLASS = 'text-on-chrome-muted hover:text-on-chrome';
 const NAV_LABEL_CLASS = 'font-display font-semibold uppercase tracking-wider';
+const MAIN_CLASS =
+  'max-w-screen-2xl mx-auto px-safe-3 sm:px-safe-4 pt-4 sm:pt-6 pb-above-tab-bar-4 sm:pb-above-tab-bar-6 lg:pb-6';
 
 const navLinkTone = (isActive: boolean): string =>
   isActive ? 'bg-surface-card text-ink-strong' : ON_CHROME_IDLE_CLASS;
@@ -85,55 +87,53 @@ function App(): ReactNode {
   const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
   return (
     <AuthProvider>
-    <LeagueSeasonProvider>
-    <MyTeamProvider>
-    <HeaderSlotProvider slot={headerSlot}>
-      <div className="min-h-screen bg-canvas text-ink">
-        <nav aria-label="Main" className="bg-chrome">
-          <div className="max-w-screen-2xl mx-auto px-safe-3 sm:px-safe-4 min-h-14 flex justify-between gap-4">
-            {/* The block's skew would slant the italic face twice, so the text is skewed back. */}
-            <h1 className="flex items-center px-5 bg-primary -skew-x-12">
-              <span className="skew-x-12 font-display italic font-extrabold text-xl uppercase tracking-wide text-on-primary">
-                Castlewood FG
-              </span>
-            </h1>
+      <LeagueSeasonProvider>
+        <MyTeamProvider>
+          <HeaderSlotProvider slot={headerSlot}>
+            <div className="min-h-screen bg-canvas text-ink">
+              <nav aria-label="Main" className="bg-chrome">
+                <div className="max-w-screen-2xl mx-auto px-safe-3 sm:px-safe-4 min-h-14 flex justify-between gap-4">
+                  {/* The block's skew would slant the italic face twice, so the text is skewed back. */}
+                  <h1 className="flex items-center px-5 bg-primary -skew-x-12">
+                    <span className="skew-x-12 font-display italic font-extrabold text-xl uppercase tracking-wide text-on-primary">
+                      Castlewood FG
+                    </span>
+                  </h1>
 
-            <div className="hidden lg:flex items-center gap-1">
-              {NAV_ITEMS.map((item) => (
-                <NavLink key={item.to} to={item.to} className={desktopLinkClass}>
-                  {item.label}
-                </NavLink>
-              ))}
-              <DesktopMyTeamButton />
+                  <div className="hidden lg:flex items-center gap-1">
+                    {NAV_ITEMS.map((item) => (
+                      <NavLink key={item.to} to={item.to} className={desktopLinkClass}>
+                        {item.label}
+                      </NavLink>
+                    ))}
+                    <DesktopMyTeamButton />
+                  </div>
+
+                  <div ref={setHeaderSlot} className="sm:hidden flex items-center min-w-0" />
+                </div>
+              </nav>
+
+              <main className={MAIN_CLASS}>
+                <Routes>
+                  <Route path="/" element={<ScoreboardPage />} />
+                  <Route path="/scoreboard" element={<ScoreboardPage />} />
+                  <Route path="/report" element={<WeeklyReportPage />} />
+                  <Route path="/rankings" element={<RankingsPage />} />
+                  <Route path="/player-rankings" element={<PlayerRankingsPage />} />
+                  <Route path="/rosters" element={<RostersPage />} />
+                  <Route path="/late-row-bets" element={<LateRowBetsPage />} />
+                  <Route path="/rules" element={<RulesPage />} />
+                  <Route path="/admin" element={<AdminPage />} />
+                </Routes>
+              </main>
+
+              <SiteFooter />
+              <TabBar />
+              <MyTeamPicker />
             </div>
-
-            <div ref={setHeaderSlot} className="sm:hidden flex items-center min-w-0" />
-          </div>
-        </nav>
-
-        <main
-          className="max-w-screen-2xl mx-auto px-safe-3 sm:px-safe-4 pt-4 sm:pt-6 pb-above-tab-bar-4 sm:pb-above-tab-bar-6 lg:pb-6"
-        >
-          <Routes>
-            <Route path="/" element={<ScoreboardPage />} />
-            <Route path="/scoreboard" element={<ScoreboardPage />} />
-            <Route path="/report" element={<WeeklyReportPage />} />
-            <Route path="/rankings" element={<RankingsPage />} />
-            <Route path="/player-rankings" element={<PlayerRankingsPage />} />
-            <Route path="/rosters" element={<RostersPage />} />
-            <Route path="/late-row-bets" element={<LateRowBetsPage />} />
-            <Route path="/rules" element={<RulesPage />} />
-            <Route path="/admin" element={<AdminPage />} />
-          </Routes>
-        </main>
-
-        <SiteFooter />
-        <TabBar />
-        <MyTeamPicker />
-      </div>
-    </HeaderSlotProvider>
-    </MyTeamProvider>
-    </LeagueSeasonProvider>
+          </HeaderSlotProvider>
+        </MyTeamProvider>
+      </LeagueSeasonProvider>
     </AuthProvider>
   );
 }

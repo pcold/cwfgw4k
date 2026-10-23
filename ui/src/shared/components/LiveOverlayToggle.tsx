@@ -67,10 +67,7 @@ interface LiveOverlayCheckboxProps {
 export function LiveOverlayCheckbox({ state, id }: LiveOverlayCheckboxProps): ReactNode {
   if (!state.eligible) return null;
   return (
-    <label
-      htmlFor={id}
-      className={`flex items-center gap-2 ${TAP_TARGET_CLASS} cursor-pointer text-xs text-ink-muted`}
-    >
+    <label htmlFor={id} className={`flex items-center gap-2 ${TAP_TARGET_CLASS} cursor-pointer text-xs text-ink-muted`}>
       <input
         id={id}
         type="checkbox"

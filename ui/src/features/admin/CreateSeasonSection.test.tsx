@@ -126,9 +126,7 @@ describe('CreateSeasonSection', () => {
     await user.type(screen.getByLabelText(/Season Name/i), 'Spring');
     await user.click(screen.getByRole('button', { name: /Create Season/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      /payouts must list at least one place/i,
-    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(/payouts must list at least one place/i);
   });
 
   it('offers no form when the defaults fail to load', async () => {

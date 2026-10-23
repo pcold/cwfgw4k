@@ -1,12 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable, { type Cell, type CellDef, type RowInput } from 'jspdf-autotable';
-import type {
-  ReportCell,
-  ReportTeamColumn,
-  Season,
-  StandingsEntry,
-  WeeklyReport,
-} from '@/shared/api/types';
+import type { ReportCell, ReportTeamColumn, Season, StandingsEntry, WeeklyReport } from '@/shared/api/types';
 import { formatUnsignedDollarsAndCents, moneyTone, type MoneyTone } from '@/shared/util/money';
 import {
   ROUNDS,
@@ -152,22 +146,15 @@ function totalCashCell(team: ReportTeamColumn): CellDef {
 
 // Autotable styles a cell as a whole, so a late round's tag and stake take the number's bold ink.
 function roundLabelCell(round: number, sideBetAmount: number | undefined): CellDef {
-  const text = sideBetAmount === undefined
-    ? `${round}`
-    : `${round}\nLATE ROW\n(${formatUnsignedDollarsAndCents(sideBetAmount)})`;
+  const text =
+    sideBetAmount === undefined ? `${round}` : `${round}\nLATE ROW\n(${formatUnsignedDollarsAndCents(sideBetAmount)})`;
   return {
     content: text,
     styles: { textColor: PDF_COLOURS.ink, fontStyle: 'bold', fontSize: 7 },
   };
 }
 
-function drawHeader(
-  doc: jsPDF,
-  report: WeeklyReport,
-  marginLeft: number,
-  marginRight: number,
-  startY: number,
-): number {
+function drawHeader(doc: jsPDF, report: WeeklyReport, marginLeft: number, marginRight: number, startY: number): number {
   const { tournament, standingsOrder } = report;
   const seasonMode = isSeasonReport(report);
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -264,9 +251,7 @@ function wrappedLines(doc: jsPDF, text: string, width: number): readonly string[
 
 function undraftedLines(doc: jsPDF, report: WeeklyReport, width: number): readonly string[] {
   if (report.undraftedTopTens.length === 0) return [];
-  const parts = report.undraftedTopTens.map(
-    (u) => `${u.name.toUpperCase()} ${formatPdfDollarsAndCents(u.payout)}`,
-  );
+  const parts = report.undraftedTopTens.map((u) => `${u.name.toUpperCase()} ${formatPdfDollarsAndCents(u.payout)}`);
   return wrappedLines(doc, `UNDRAFTED TOP TENS: ${parts.join(', ')}`, width);
 }
 

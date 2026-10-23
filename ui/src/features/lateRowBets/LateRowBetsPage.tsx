@@ -12,12 +12,7 @@ import type { Tournament } from '@/shared/api/types';
 import QueryState from '@/shared/components/QueryState';
 import { useLeaguesGate } from '@/shared/components/useLeaguesGate';
 import { LiveOverlayCheckbox, useLiveOverlayQuery } from '@/shared/components/LiveOverlayToggle';
-import {
-  ALL_TOURNAMENTS,
-  defaultReportSelection,
-  pickInSeason,
-  tournamentLabel,
-} from '@/shared/util/tournament';
+import { ALL_TOURNAMENTS, defaultReportSelection, pickInSeason, tournamentLabel } from '@/shared/util/tournament';
 import LateRowBetsView, { type LateRowTab } from './LateRowBetsView';
 
 function LateRowBetsPage(): ReactNode {
@@ -42,7 +37,11 @@ function LateRowBetsPage(): ReactNode {
       : (pickInSeason(userTournamentId, tournaments) ??
         pickInSeason(defaultReportSelection(currentQuery.data), tournaments));
 
-  const { query: reportQuery, overlay: liveOverlay, selectionKey } = useLiveOverlayQuery(
+  const {
+    query: reportQuery,
+    overlay: liveOverlay,
+    selectionKey,
+  } = useLiveOverlayQuery(
     (live) => queryKeys.report.detail(seasonId, effectiveId, live),
     seasonId === null || effectiveId === null
       ? null

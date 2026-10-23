@@ -111,11 +111,7 @@ function teamTotals(): HTMLElement {
 
 const TWENTY_ON_ROUNDS_TWO_AND_THREE: ReportSideBetRules = { amountPerTeam: 20, rounds: [2, 3] };
 
-function sideBetEntry(
-  teamId: string,
-  payout: number,
-  outcome: SideBetOutcome | null,
-): ReportSideBetTeamEntry {
+function sideBetEntry(teamId: string, payout: number, outcome: SideBetOutcome | null): ReportSideBetTeamEntry {
   return { teamId, teamName: teamId, golferName: 'Golfer', cumulativeEarnings: 0, payout, outcome };
 }
 
@@ -160,10 +156,7 @@ describe('WeeklyReportView', () => {
       <WeeklyReportView
         {...FIRST_TEAM}
         report={report({
-          teams: [
-            team({ teamId: 't-1', teamName: 'Aces' }),
-            team({ teamId: 't-2', teamName: 'Birdies' }),
-          ],
+          teams: [team({ teamId: 't-1', teamName: 'Aces' }), team({ teamId: 't-2', teamName: 'Birdies' })],
         })}
       />,
       NO_PROVIDERS,
@@ -236,7 +229,10 @@ describe('WeeklyReportView', () => {
   });
 
   it('shows no amount beside any round and a totals row naming none for a season without side bets', () => {
-    renderWithProviders(<WeeklyReportView {...FIRST_TEAM} report={report({ sideBetRules: null, sideBetDetail: [] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <WeeklyReportView {...FIRST_TEAM} report={report({ sideBetRules: null, sideBetDetail: [] })} />,
+      NO_PROVIDERS,
+    );
     expect(within(grid()).queryByText(/^\(\$/)).not.toBeInTheDocument();
     expect(within(grid()).getByText('SIDE BETS')).toBeInTheDocument();
     expect(within(grid()).queryByText(/^ROWS/)).not.toBeInTheDocument();
@@ -283,7 +279,10 @@ describe('WeeklyReportView', () => {
       row(2, { golferName: 'Teeing', inField: true }),
       row(3, { golferName: 'Absent' }),
     ];
-    renderWithProviders(<WeeklyReportView {...FIRST_TEAM} report={report({ teams: [team({ cells })] })} />, NO_PROVIDERS);
+    renderWithProviders(
+      <WeeklyReportView {...FIRST_TEAM} report={report({ teams: [team({ cells })] })} />,
+      NO_PROVIDERS,
+    );
 
     const earningsLine = (name: string) => within(grid()).getByText(name).nextElementSibling;
     expect(earningsLine('Earner')).toHaveTextContent(/^1 - \+\$18\.00$/);
@@ -312,7 +311,10 @@ describe('WeeklyReportView', () => {
   it('shows the season-to-date line under each cell only on a tournament report', () => {
     const teams = [team({ cells: [row(1, { seasonEarnings: 30, seasonTopTens: 2 })] })];
 
-    const { unmount } = renderWithProviders(<WeeklyReportView {...FIRST_TEAM} report={report({ teams })} />, NO_PROVIDERS);
+    const { unmount } = renderWithProviders(
+      <WeeklyReportView {...FIRST_TEAM} report={report({ teams })} />,
+      NO_PROVIDERS,
+    );
     expect(within(grid()).getByText(/\(2\)/)).toBeInTheDocument();
     unmount();
 
@@ -325,9 +327,7 @@ describe('WeeklyReportView', () => {
       <WeeklyReportView
         {...FIRST_TEAM}
         report={report({
-          undraftedTopTens: [
-            { name: 'Lefty', payout: 8 },
-          ],
+          undraftedTopTens: [{ name: 'Lefty', payout: 8 }],
         })}
       />,
       NO_PROVIDERS,
@@ -340,9 +340,7 @@ describe('WeeklyReportView', () => {
     const withMissing = report({
       teams: [
         team({
-          cells: [1, 2, 3, 4, 5, 6, 7, 8].map((r) =>
-            r === 3 ? row(r, { golferName: null }) : row(r),
-          ),
+          cells: [1, 2, 3, 4, 5, 6, 7, 8].map((r) => (r === 3 ? row(r, { golferName: null }) : row(r))),
         }),
       ],
     });
@@ -355,7 +353,10 @@ describe('WeeklyReportView', () => {
 
   it('shows the TOTAL CASH row in whole dollars and the subtotal in cents', () => {
     renderWithProviders(
-      <WeeklyReportView {...FIRST_TEAM} report={report({ teams: [team({ subtotal: 751.5715, totalCash: 1082.4 })] })} />,
+      <WeeklyReportView
+        {...FIRST_TEAM}
+        report={report({ teams: [team({ subtotal: 751.5715, totalCash: 1082.4 })] })}
+      />,
       NO_PROVIDERS,
     );
     expect(within(grid()).getByText('+$751.57')).toBeInTheDocument();
@@ -364,10 +365,7 @@ describe('WeeklyReportView', () => {
 
   it("displays the report's cash totals, which are not a sum over its teams", () => {
     const disagreeing = report({
-      teams: [
-        team({ teamId: 't-1', totalCash: 120 }),
-        team({ teamId: 't-2', teamName: 'Birdies', totalCash: -80 }),
-      ],
+      teams: [team({ teamId: 't-1', totalCash: 120 }), team({ teamId: 't-2', teamName: 'Birdies', totalCash: -80 })],
       cashTotals: { won: 9, lost: -2, net: 7 },
       sideBetTotals: { won: 55, lost: -66, net: -11 },
     });
@@ -439,9 +437,7 @@ describe('WeeklyReportView', () => {
       NO_PROVIDERS,
     );
     const summaryRow = (label: string): HTMLElement => {
-      const found = screen
-        .getAllByRole('row')
-        .find((r) => within(r).queryAllByRole('cell')[0]?.textContent === label);
+      const found = screen.getAllByRole('row').find((r) => within(r).queryAllByRole('cell')[0]?.textContent === label);
       if (!found) throw new Error(`no summary row labelled ${label}`);
       return found;
     };
@@ -658,10 +654,20 @@ describe('WeeklyReportView', () => {
 
     it("prints a pick's name and share, its finish and money, and its season to date", () => {
       const cells = [
-        row(1, { golferName: 'Earner', ownershipPct: 60, positionStr: 'T3', earnings: 9.5, seasonEarnings: 30, seasonTopTens: 2 }),
+        row(1, {
+          golferName: 'Earner',
+          ownershipPct: 60,
+          positionStr: 'T3',
+          earnings: 9.5,
+          seasonEarnings: 30,
+          seasonTopTens: 2,
+        }),
         row(2, { golferName: 'Once', seasonEarnings: 18, seasonTopTens: 1 }),
       ];
-      renderWithProviders(<WeeklyReportView {...FIRST_TEAM} report={report({ teams: [team({ cells })] })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <WeeklyReportView {...FIRST_TEAM} report={report({ teams: [team({ cells })] })} />,
+        NO_PROVIDERS,
+      );
 
       const [earner, once] = pickCards();
       expect(earner).toHaveTextContent('Earner (60%)');
@@ -673,7 +679,10 @@ describe('WeeklyReportView', () => {
 
     it('marks an unpaid pick in the field Playing in muted ink, and leaves one out of it a dash', () => {
       const cells = [row(1, { golferName: 'Teeing', inField: true }), row(2, { golferName: 'Absent' })];
-      renderWithProviders(<WeeklyReportView {...FIRST_TEAM} report={report({ teams: [team({ cells })] })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <WeeklyReportView {...FIRST_TEAM} report={report({ teams: [team({ cells })] })} />,
+        NO_PROVIDERS,
+      );
 
       const [teeing, absent] = pickCards();
       // The label's parent: the label itself is its pulse.
@@ -696,7 +705,10 @@ describe('WeeklyReportView', () => {
 
     it('sets a dash for an empty draft slot', () => {
       const cells = [1, 2, 3, 4, 5, 6, 7, 8].map((r) => (r === 3 ? row(r, { golferName: null }) : row(r)));
-      renderWithProviders(<WeeklyReportView {...FIRST_TEAM} report={report({ teams: [team({ cells })] })} />, NO_PROVIDERS);
+      renderWithProviders(
+        <WeeklyReportView {...FIRST_TEAM} report={report({ teams: [team({ cells })] })} />,
+        NO_PROVIDERS,
+      );
 
       expect(nth(pickCards(), 2)).toHaveTextContent(/^3—$/);
     });
@@ -801,7 +813,9 @@ describe('WeeklyReportView', () => {
       const birdies = team({ teamId: 't-2', teamName: 'Birdies', cells: [row(1, { earnings: 40 }), row(2)] });
       const standings = report({ teams: [aces(10), birdies] });
       renderWithProviders(<Refetching first={standings} second={standings} />, NO_PROVIDERS);
-      await userEvent.click(within(screen.getByRole('group', { name: 'Team' })).getByRole('button', { name: 'Birdies' }));
+      await userEvent.click(
+        within(screen.getByRole('group', { name: 'Team' })).getByRole('button', { name: 'Birdies' }),
+      );
 
       expect(within(nth(pickCards(), 0)).getByText('T1 - +$40.00')).not.toHaveAttribute('data-pulse');
     });

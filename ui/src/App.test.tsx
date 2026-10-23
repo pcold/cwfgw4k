@@ -69,7 +69,12 @@ const mainNavigation = (): HTMLElement => screen.getByRole('navigation', { name:
 
 const MY_TEAM_KEY = 'cwfg.myTeam';
 
-const rosterTeam = (teamName: string): RosterTeam => ({ teamId: `tm-${teamName}`, teamNumber: null, teamName, picks: [] });
+const rosterTeam = (teamName: string): RosterTeam => ({
+  teamId: `tm-${teamName}`,
+  teamNumber: null,
+  teamName,
+  picks: [],
+});
 
 describe('App', () => {
   beforeEach(() => {
@@ -131,14 +136,21 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /navigation menu/i })).toBeNull();
   });
 
-  it.each(['/', '/scoreboard', '/report', '/rankings', '/player-rankings', '/rosters', '/late-row-bets', '/rules', '/admin'])(
-    'shows the tab bar on %s',
-    (path) => {
-      renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
+  it.each([
+    '/',
+    '/scoreboard',
+    '/report',
+    '/rankings',
+    '/player-rankings',
+    '/rosters',
+    '/late-row-bets',
+    '/rules',
+    '/admin',
+  ])('shows the tab bar on %s', (path) => {
+    renderWithProviders(<App />, { initialPath: path, withLeagueSeasonProvider: false });
 
-      expect(screen.getByRole('navigation', { name: 'Tabs' })).toBeInTheDocument();
-    },
-  );
+    expect(screen.getByRole('navigation', { name: 'Tabs' })).toBeInTheDocument();
+  });
 
   it.each(['/', '/scoreboard', '/report', '/rankings', '/player-rankings', '/rosters', '/late-row-bets', '/rules'])(
     "puts %s's picker button in the main nav below sm, opening the page's picker sheet",
@@ -174,7 +186,13 @@ describe('App', () => {
   it('pads the foot of main past the tab bar below lg, and keeps the page padding from lg', () => {
     renderWithProviders(<App />, { withLeagueSeasonProvider: false });
 
-    expect(screen.getByRole('main')).toHaveClass('pt-4', 'sm:pt-6', 'pb-above-tab-bar-4', 'sm:pb-above-tab-bar-6', 'lg:pb-6');
+    expect(screen.getByRole('main')).toHaveClass(
+      'pt-4',
+      'sm:pt-6',
+      'pb-above-tab-bar-4',
+      'sm:pb-above-tab-bar-6',
+      'lg:pb-6',
+    );
   });
 
   it('hides the footer below lg, where the More sheet reaches Admin', () => {
@@ -205,7 +223,11 @@ describe('App', () => {
     renderWithProviders(<App />, { withLeagueSeasonProvider: false });
 
     const footer = screen.getByRole('contentinfo');
-    expect(within(footer).getByRole('link', { name: 'Admin' })).toHaveClass(TAP_TARGET_CLASS, 'inline-flex', 'items-center');
+    expect(within(footer).getByRole('link', { name: 'Admin' })).toHaveClass(
+      TAP_TARGET_CLASS,
+      'inline-flex',
+      'items-center',
+    );
   });
 
   it.each([

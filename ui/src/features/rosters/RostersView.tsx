@@ -29,7 +29,7 @@ interface SharedPlayer {
 const ROUNDS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
 const GOLFER_BUTTON_CLASS =
-  `font-semibold text-ink-body truncate bg-transparent border-0 p-0 hover:underline cursor-pointer ${TAP_TARGET_CLASS}`;
+  'font-semibold text-ink-body truncate bg-transparent border-0 p-0 hover:underline cursor-pointer ' + TAP_TARGET_CLASS;
 
 function pickFor(team: RosterTeam, round: number): RosterPick | undefined {
   return team.picks.find((p) => p.round === round);
@@ -85,7 +85,13 @@ function TeamPicks({ team, sideBetRounds, onGolferClick }: TeamPicksProps): Reac
               key={round}
               position={round}
               positionKind="round"
-              name={pick ? <PickName pick={pick} onGolferClick={onGolferClick} /> : <span className="text-ink-faint">—</span>}
+              name={
+                pick ? (
+                  <PickName pick={pick} onGolferClick={onGolferClick} />
+                ) : (
+                  <span className="text-ink-faint">—</span>
+                )
+              }
               nameCase="golfer"
               detail={pick && pick.ownershipPct < 100 ? `${pick.ownershipPct}%` : null}
               total={
@@ -159,9 +165,7 @@ function RostersView({
                               {pick.golferName}
                             </button>
                           ) : (
-                            <div className="font-semibold text-ink-body truncate">
-                              {pick.golferName}
-                            </div>
+                            <div className="font-semibold text-ink-body truncate">{pick.golferName}</div>
                           )}
                           {pick.ownershipPct < 100 ? (
                             <div className="text-ink-soft text-xs">{pick.ownershipPct}%</div>

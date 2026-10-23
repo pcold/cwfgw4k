@@ -72,9 +72,7 @@ export function makeWonLostTotals(overrides: Partial<WonLostTotals> = {}): WonLo
 }
 
 // `rostered` follows `players` unless overridden, as it does on the wire.
-export function makeLeaderboardEntry(
-  overrides: Partial<LiveLeaderboardEntry> = {},
-): LiveLeaderboardEntry {
+export function makeLeaderboardEntry(overrides: Partial<LiveLeaderboardEntry> = {}): LiveLeaderboardEntry {
   const players = overrides.players ?? [{ name: 'Scottie Scheffler', teamNames: [] }];
   return {
     position: 1,

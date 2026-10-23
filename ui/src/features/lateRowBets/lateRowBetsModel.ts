@@ -1,9 +1,4 @@
-import type {
-  ReportSideBetRound,
-  ReportSideBetTeamEntry,
-  SideBetOutcome,
-  WeeklyReport,
-} from '@/shared/api/types';
+import type { ReportSideBetRound, ReportSideBetTeamEntry, SideBetOutcome, WeeklyReport } from '@/shared/api/types';
 
 /** @see ReportSideBetTeamEntry */
 export interface LateRowBetEntry {

@@ -315,9 +315,7 @@ describe('ScoreboardPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'unfinalized', tournamentId: 'tn-active-b' });
     tournamentReportMock.mockImplementation((_s, id) =>
       Promise.resolve(
-        id === 'tn-active-b'
-          ? { ...buildReport('Next Week Open'), liveEligible: true }
-          : buildReport('Current Open'),
+        id === 'tn-active-b' ? { ...buildReport('Next Week Open'), liveEligible: true } : buildReport('Current Open'),
       ),
     );
 
@@ -470,9 +468,7 @@ describe('ScoreboardPage', () => {
     currentTournamentMock.mockResolvedValue({ type: 'no_tournaments' });
 
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
-    expect(
-      await screen.findByText(/No tournaments scheduled for this season/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/No tournaments scheduled for this season/i)).toBeInTheDocument();
   });
 
   it('shows the Finalize Results button for an admin viewing an in-progress tournament', async () => {
@@ -780,9 +776,7 @@ describe('ScoreboardPage', () => {
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     await screen.findByText('Current Open · Week 10');
-    expect(
-      screen.queryByRole('button', { name: /Finalize Results/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Finalize Results/i })).not.toBeInTheDocument();
   });
 
   it('hides the Finalize Results button for completed tournaments even when admin', async () => {
@@ -801,9 +795,7 @@ describe('ScoreboardPage', () => {
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
 
     await screen.findByText('Sample Open · Week 9');
-    expect(
-      screen.queryByRole('button', { name: /Finalize Results/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Finalize Results/i })).not.toBeInTheDocument();
   });
 
   it('marks a completed tournament FINAL in the title row', async () => {
@@ -858,7 +850,9 @@ describe('ScoreboardPage', () => {
     }
 
     function teamRow(teamName: string): HTMLElement {
-      const found = within(nth(screen.getAllByRole('table'), 0)).getByText(teamName).closest('tr');
+      const found = within(nth(screen.getAllByRole('table'), 0))
+        .getByText(teamName)
+        .closest('tr');
       if (!found) throw new Error(`no table row for ${teamName}`);
       return found;
     }
@@ -1040,8 +1034,6 @@ describe('ScoreboardPage', () => {
     renderWithProviders(<ScoreboardPage />, { withAuthProvider: true, withMyTeamProvider: true });
     await screen.findByText('Current Open · Week 10');
 
-    expect(
-      screen.queryByRole('button', { name: /Manage player links/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Manage player links/i })).not.toBeInTheDocument();
   });
 });
