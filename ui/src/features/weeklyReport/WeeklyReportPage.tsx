@@ -72,7 +72,12 @@ function WeeklyReportPage(): ReactNode {
             : api.tournamentReport(seasonId, effectiveId, live),
   );
 
-  function renderTournamentField(loaded: readonly Tournament[], selectedId: string, idSuffix: string): ReactNode {
+  function renderTournamentField(
+    loaded: readonly Tournament[],
+    selectedId: string,
+    idSuffix: string,
+    pdfButton: ReactNode = null,
+  ): ReactNode {
     const tournamentOptions = [
       { value: ALL_TOURNAMENTS, label: 'All Tournaments' },
       ...loaded.map((t) => ({ value: t.id, label: tournamentLabel(t) })),
@@ -86,33 +91,9 @@ function WeeklyReportPage(): ReactNode {
         options={tournamentOptions}
         onChange={setUserTournamentId}
       >
-        <Button
-          tone="secondary"
-          size="regular"
-          disabled={!reportQuery.data || pdfMutation.isPending}
-          onClick={() => reportQuery.data && pdfMutation.mutate(reportQuery.data)}
-        >
-          Download PDF
-        </Button>
+        {pdfButton}
         <LiveOverlayCheckbox state={liveOverlay} id={`weekly-report-live-overlay${idSuffix}`} />
       </PickerRow>
-    );
-  }
-
-  /**
-   * The open panel covers the page's alert, and an `aria-modal` dialog hides it from assistive tech, so the
-   * failure is an alert here too; a reader that ignores `aria-modal` hears it twice, not never.
-   */
-  function renderSheetField(loaded: readonly Tournament[], selectedId: string, idSuffix: string): ReactNode {
-    return (
-      <>
-        {renderTournamentField(loaded, selectedId, idSuffix)}
-        {pdfMutation.isError ? (
-          <p role="alert" className={PDF_FAILURE_CLASS}>
-            {pdfFailureMessage(pdfMutation.error)}
-          </p>
-        ) : null}
-      </>
     );
   }
 
@@ -130,15 +111,28 @@ function WeeklyReportPage(): ReactNode {
       );
     }
 
+    // Desktop only: the PDF is a blob download, which an iPhone home-screen app can fail to save.
+    const pdfButton = (
+      <Button
+        tone="secondary"
+        size="regular"
+        disabled={!reportQuery.data || pdfMutation.isPending}
+        onClick={() => reportQuery.data && pdfMutation.mutate(reportQuery.data)}
+      >
+        Download PDF
+      </Button>
+    );
+
     return (
       <>
-        <div className={DESKTOP_PICKER_CLASS}>{renderTournamentField(tournaments, effectiveId, '')}</div>
-        {/* Outside both copies of the field: a phone's sheet may close before the PDF fails. */}
-        {pdfMutation.isError ? (
-          <p role="alert" className={PDF_FAILURE_CLASS}>
-            {pdfFailureMessage(pdfMutation.error)}
-          </p>
-        ) : null}
+        <div className={`${DESKTOP_PICKER_CLASS} space-y-4`}>
+          {renderTournamentField(tournaments, effectiveId, '', pdfButton)}
+          {pdfMutation.isError ? (
+            <p role="alert" className={PDF_FAILURE_CLASS}>
+              {pdfFailureMessage(pdfMutation.error)}
+            </p>
+          ) : null}
+        </div>
 
         <QueryState query={reportQuery} label="report">
           {(report) => (
@@ -172,7 +166,7 @@ function WeeklyReportPage(): ReactNode {
               renderField={
                 tournaments === undefined || effectiveId === null
                   ? undefined
-                  : (idSuffix) => renderSheetField(tournaments, effectiveId, idSuffix)
+                  : (idSuffix) => renderTournamentField(tournaments, effectiveId, idSuffix)
               }
             />
           </>
