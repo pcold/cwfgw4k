@@ -8,8 +8,8 @@ type ScoreMark = 'eagle' | 'birdie' | 'bogey' | 'doubleBogey';
 // Round under par and square over it, so colour is never the only cue between birdie green and bogey red.
 const MARKS: Record<ScoreMark, { readonly label: string; readonly shapeClass: string }> = {
   eagle: { label: 'Eagle or better', shapeClass: 'rounded-full bg-score-eagle' },
-  birdie: { label: 'Birdie', shapeClass: 'rounded-full bg-score-birdie' },
-  bogey: { label: 'Bogey', shapeClass: 'rounded-sm bg-score-bogey' },
+  birdie: { label: 'Birdie', shapeClass: 'rounded-full border-2 border-score-birdie' },
+  bogey: { label: 'Bogey', shapeClass: 'rounded-sm border-2 border-score-bogey' },
   doubleBogey: { label: 'Double bogey or worse', shapeClass: 'rounded-sm bg-score-double-bogey' },
 };
 

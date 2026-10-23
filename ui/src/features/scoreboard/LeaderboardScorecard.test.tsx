@@ -43,7 +43,7 @@ describe('LeaderboardScorecard', () => {
     expect(rowOf(back, 'Score')).toEqual([...PARS_ON_NINE.map(String), '36', '72']);
   });
 
-  it('marks a hole by its score to par, round under par and square over it, and leaves par unmarked', () => {
+  it('marks a hole by its score to par, outlining one off and filling two or more, round under and square over', () => {
     renderWithProviders(
       <LeaderboardScorecard id="card" scorecards={[makeRoundScorecard(1, [2, 3, 4, 5, 6, 7])]} />,
       NO_PROVIDERS,
@@ -59,9 +59,9 @@ describe('LeaderboardScorecard', () => {
     ]);
     const marks = cellsOf(nine(1, 'front'), 'Score').map((cell) => cell.firstElementChild);
     expect(marks[0]).toHaveClass('rounded-full', 'bg-score-eagle');
-    expect(marks[1]).toHaveClass('rounded-full', 'bg-score-birdie');
+    expect(marks[1]).toHaveClass('rounded-full', 'border-score-birdie');
     expect(marks[2]).toBeNull();
-    expect(marks[3]).toHaveClass('rounded-sm', 'bg-score-bogey');
+    expect(marks[3]).toHaveClass('rounded-sm', 'border-score-bogey');
     expect(marks[4]).toHaveClass('rounded-sm', 'bg-score-double-bogey');
   });
 
