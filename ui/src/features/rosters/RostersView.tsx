@@ -28,7 +28,8 @@ interface SharedPlayer {
 
 const ROUNDS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
-const GOLFER_BUTTON_CLASS = `font-semibold text-ink-body truncate bg-transparent border-0 p-0 hover:underline cursor-pointer ${TAP_TARGET_CLASS}`;
+const GOLFER_BUTTON_CLASS =
+  'font-semibold text-ink-body truncate bg-transparent border-0 p-0 hover:underline cursor-pointer ' + TAP_TARGET_CLASS;
 
 function pickFor(team: RosterTeam, round: number): RosterPick | undefined {
   return team.picks.find((p) => p.round === round);

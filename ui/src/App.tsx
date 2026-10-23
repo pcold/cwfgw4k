@@ -29,6 +29,8 @@ const NAV_ITEMS: Array<{ to: string; label: string }> = [
 
 const ON_CHROME_IDLE_CLASS = 'text-on-chrome-muted hover:text-on-chrome';
 const NAV_LABEL_CLASS = 'font-display font-semibold uppercase tracking-wider';
+const MAIN_CLASS =
+  'max-w-screen-2xl mx-auto px-safe-3 sm:px-safe-4 pt-4 sm:pt-6 pb-above-tab-bar-4 sm:pb-above-tab-bar-6 lg:pb-6';
 
 const navLinkTone = (isActive: boolean): string =>
   isActive ? 'bg-surface-card text-ink-strong' : ON_CHROME_IDLE_CLASS;
@@ -111,7 +113,7 @@ function App(): ReactNode {
                 </div>
               </nav>
 
-              <main className="max-w-screen-2xl mx-auto px-safe-3 sm:px-safe-4 pt-4 sm:pt-6 pb-above-tab-bar-4 sm:pb-above-tab-bar-6 lg:pb-6">
+              <main className={MAIN_CLASS}>
                 <Routes>
                   <Route path="/" element={<ScoreboardPage />} />
                   <Route path="/scoreboard" element={<ScoreboardPage />} />

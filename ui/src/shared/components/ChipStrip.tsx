@@ -10,7 +10,9 @@ export interface StripChip {
 // The end padding is as wide as the fade, so the last chip can scroll clear of it.
 const STRIP_CLASS = 'flex gap-2 overflow-x-auto pr-8 mask-r-from-[calc(100%-2rem)]';
 
-const CHIP_CLASS = `shrink-0 whitespace-nowrap rounded border px-3 font-display font-bold text-sm uppercase tracking-wider ${TAP_TARGET_CLASS}`;
+const CHIP_CLASS =
+  'shrink-0 whitespace-nowrap rounded border px-3 font-display font-bold text-sm uppercase tracking-wider ' +
+  TAP_TARGET_CLASS;
 
 const SELECTED_CLASS = 'bg-chrome border-chrome text-on-chrome';
 
