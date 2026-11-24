@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { m } from 'motion/react';
-import { elapseFrames, isGliding, stackByTreeIndex } from '@/shared/test/glide';
+import { elapseFrames, freezeMotionClock, isGliding, stackByTreeIndex } from '@/shared/test/glide';
 import { glideAt } from './glide';
 import MotionProvider from './MotionProvider';
 
@@ -62,6 +62,7 @@ describe('MotionProvider', () => {
 
   it('glides a reordered row', async () => {
     preferReducedMotion(false);
+    freezeMotionClock();
 
     expect(isGliding(await reorder())).toBe(true);
   });

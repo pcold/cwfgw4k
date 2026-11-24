@@ -7,7 +7,7 @@ import { makeWonLostTotals } from '@/shared/test/fixtures';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { nth } from '@/shared/test/nth';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import { elapseFrames, isGliding, stackByTreeIndex } from '@/shared/test/glide';
+import { elapseFrames, freezeMotionClock, isGliding, stackByTreeIndex } from '@/shared/test/glide';
 import LateRowBetsView, { type LateRowTab } from './LateRowBetsView';
 
 function team(overrides: Partial<ReportTeamColumn> = {}): ReportTeamColumn {
@@ -519,6 +519,7 @@ describe('LateRowBetsView', () => {
 
     async function renderRefetching(props: RefetchingProps): Promise<void> {
       stackByTreeIndex();
+      freezeMotionClock();
       renderWithProviders(<Refetching {...props} />, { ...NO_PROVIDERS, withMotionProvider: true });
       await elapseFrames();
     }

@@ -8,7 +8,7 @@ import { makeLeaderboardEntry, makeRoundScorecard, makeWonLostTotals } from '@/s
 import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import { elapseFrames, isGliding, stackByTreeIndex } from '@/shared/test/glide';
+import { elapseFrames, freezeMotionClock, isGliding, stackByTreeIndex } from '@/shared/test/glide';
 import ScoreboardView from './ScoreboardView';
 
 const SELECTION_KEY = 'selection';
@@ -205,6 +205,7 @@ const WITH_MOTION = { ...NO_PROVIDERS, withMotionProvider: true };
 
 async function renderRefetching(props: RefetchingProps): Promise<void> {
   stackByTreeIndex();
+  freezeMotionClock();
   renderWithProviders(<Refetching {...props} />, WITH_MOTION);
   await elapseFrames();
 }
