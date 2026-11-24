@@ -1215,7 +1215,7 @@ private fun rosterIndexEntry(
 /**
  * Drafted rows sum ownership-adjusted [FantasyScore] points, one per (team, finish), so N co-owners
  * make N top tens. Undrafted rows are top-10 [TournamentResult]s nobody rostered, paid by the same
- * [PayoutTable.tieSplitPayout] [buildUndraftedAgg] uses and keyed per [PlayerRankingsAcc.undrafted].
+ * [PayoutTable.tieSplitPayout] helper [buildUndraftedAgg] uses, keyed per [PlayerRankingsAcc.undrafted].
  */
 internal fun buildPlayerRankingsAcc(
     allScores: List<FantasyScore>,
