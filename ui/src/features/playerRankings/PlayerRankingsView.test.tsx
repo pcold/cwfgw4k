@@ -4,7 +4,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PlayerRankingsRow } from '@/shared/api/types';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
-import { elapseFrames, isGliding, stackByTreeIndex } from '@/shared/test/glide';
+import { elapseFrames, freezeMotionClock, isGliding, stackByTreeIndex } from '@/shared/test/glide';
 import { nth } from '@/shared/test/nth';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { TAP_TARGET_CLASS } from '@/shared/components/formControls';
@@ -71,6 +71,7 @@ function Refetching({ first, second, secondSelectionKey = SELECTION_KEY }: Refet
 
 async function renderRefetching(props: RefetchingProps): Promise<void> {
   stackByTreeIndex();
+  freezeMotionClock();
   renderWithProviders(<Refetching {...props} />, { ...NO_PROVIDERS, withMotionProvider: true });
   await elapseFrames();
 }

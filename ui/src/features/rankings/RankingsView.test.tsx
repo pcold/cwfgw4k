@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Rankings } from '@/shared/api/types';
-import { elapseFrames, isGliding, stackByTreeIndex } from '@/shared/test/glide';
+import { elapseFrames, freezeMotionClock, isGliding, stackByTreeIndex } from '@/shared/test/glide';
 import { expectSharedColumnHeads } from '@/shared/test/columnHeads';
 import { renderWithProviders } from '@/shared/test/renderWithProviders';
 import RankingsView from './RankingsView';
@@ -121,6 +121,7 @@ function Refetching({
 
 async function refetch(props: RefetchingProps): Promise<void> {
   stackByTreeIndex();
+  freezeMotionClock();
   renderWithProviders(<Refetching {...props} />, { ...NO_PROVIDERS, withMotionProvider: true });
   await elapseFrames();
   await userEvent.click(screen.getByRole('button', { name: 'Refetch' }));
