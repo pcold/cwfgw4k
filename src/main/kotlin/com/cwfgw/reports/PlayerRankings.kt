@@ -18,6 +18,9 @@ import java.math.BigDecimal
  * Undrafted rows have `golferId = null` and `key = "u:<name>"`. The
  * name is the display string the report builder produces ("F. Lastname"
  * for non-team events).
+ *
+ * `eventsPlayed` counts tournaments, not (team, finish) pairs, so unlike
+ * `topTens` it never multiplies by the teams rostering the golfer.
  */
 @Serializable
 data class PlayerRankingsRow(
@@ -25,6 +28,7 @@ data class PlayerRankingsRow(
     val golferId: GolferId? = null,
     val name: String,
     val topTens: Int,
+    val eventsPlayed: Int,
     @Serializable(with = BigDecimalSerializer::class) val totalEarnings: BigDecimal,
     val teamName: String? = null,
     val draftRound: Int? = null,
@@ -52,14 +56,15 @@ data class PlayerRankings(
  *
  * `drafted` is keyed by golferId because we always have a golferId for
  * persisted FantasyScores and ESPN preview entries that match a roster.
- * `undrafted` is keyed by display name because ESPN's leaderboard
- * doesn't give us a golferId for unrostered competitors and the
- * persisted-results path has to use the same key shape so the two
- * combine without a join.
+ * `undrafted` is keyed by display name because a live leaderboard
+ * competitor may match no golfer, and the persisted-results path has to
+ * use the same key shape so the two combine without a join.
  */
 internal data class PlayerRankingsAcc(
     val drafted: Map<GolferId, DraftedAgg>,
     val undrafted: Map<String, UndraftedAgg>,
+    /** Every golfer with a result or a live leaderboard entry, top 10 or not: a row reads its count here. */
+    val eventsPlayed: Map<GolferId, Int> = emptyMap(),
     /** Set by folding in a preview, never from the request's flag. */
     val live: Boolean = false,
 )
@@ -69,7 +74,13 @@ internal data class DraftedAgg(
     val totalEarnings: BigDecimal,
 )
 
+/**
+ * [golferIds] are the golfers behind the name, whose counts in [PlayerRankingsAcc.eventsPlayed] the row sums.
+ * [unlinkedEvents] counts live events where the competitor matched no golfer, so there is no id to count by.
+ */
 internal data class UndraftedAgg(
     val topTens: Int,
     val totalEarnings: BigDecimal,
+    val golferIds: Set<GolferId> = emptySet(),
+    val unlinkedEvents: Int = 0,
 )

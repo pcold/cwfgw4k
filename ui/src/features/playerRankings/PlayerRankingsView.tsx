@@ -96,6 +96,7 @@ function PlayerDetail({ player, myTeamName, listKey }: PlayerDetailProps): React
       {' · '}
       <TopTens player={player} listKey={listKey} />
       {player.topTens === 1 ? ' top 10' : ' top 10s'}
+      {` in ${player.eventsPlayed} ${player.eventsPlayed === 1 ? 'event' : 'events'}`}
     </>
   );
 }
@@ -131,7 +132,7 @@ function PlayerRows({ players, myTeamName, onGolferClick, listKey }: PlayerListP
     <tbody key={listKey} className="divide-y divide-hairline-soft">
       {players.length === 0 ? (
         <tr>
-          <td colSpan={6} className="px-3 py-6 text-center text-ink-soft italic">
+          <td colSpan={7} className="px-3 py-6 text-center text-ink-soft italic">
             {FILTERED_EMPTY}
           </td>
         </tr>
@@ -156,6 +157,7 @@ function PlayerRows({ players, myTeamName, onGolferClick, listKey }: PlayerListP
                   player.name
                 )}
               </td>
+              <td className="px-3 py-2 text-right tabular-nums">{player.eventsPlayed}</td>
               <td className="px-3 py-2 text-right tabular-nums">
                 <TopTens player={player} listKey={listKey} />
               </td>
@@ -262,6 +264,7 @@ function PlayerRankingsView({ players, myTeamName, onGolferClick, selectionKey }
             <tr className="text-left">
               <th className="px-3 py-2 w-12">#</th>
               <th className="px-3 py-2">Player</th>
+              <th className="px-3 py-2 text-right">Events</th>
               <th className="px-3 py-2 text-right">Top 10s</th>
               <th className="px-3 py-2 text-right">Total $</th>
               <th className="px-3 py-2">

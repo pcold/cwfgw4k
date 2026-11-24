@@ -1223,8 +1223,8 @@ private fun rosterIndexEntry(
  *  - Undrafted rows come from [TournamentResult]: top-10 finishes by
  *    golfers no team rostered, with payouts computed via the same
  *    [PayoutTable.tieSplitPayout] helper [buildUndraftedAgg] uses for
- *    per-tournament reports. Keyed by display name because the
- *    matching ESPN-leaderboard path doesn't carry golferId.
+ *    per-tournament reports. Keyed by display name — see
+ *    [PlayerRankingsAcc.undrafted].
  */
 internal fun buildPlayerRankingsAcc(
     allScores: List<FantasyScore>,
@@ -1254,11 +1254,19 @@ internal fun buildPlayerRankingsAcc(
                     existing.copy(
                         topTens = existing.topTens + 1,
                         totalEarnings = existing.totalEarnings.add(payout),
+                        golferIds = existing.golferIds + result.golferId,
                     )
             }
     }
 
-    return PlayerRankingsAcc(drafted = drafted.toMap(), undrafted = undrafted.toMap())
+    return PlayerRankingsAcc(
+        drafted = drafted.toMap(),
+        undrafted = undrafted.toMap(),
+        eventsPlayed =
+            allResults
+                .groupBy(TournamentResult::golferId) { it.tournamentId }
+                .mapValues { (_, tournamentIds) -> tournamentIds.distinct().size },
+    )
 }
 
 /**
@@ -1310,6 +1318,7 @@ internal fun composePlayerRankings(
                 golferId = golferId,
                 name = roster?.fullName ?: golfer?.let { "${it.firstName} ${it.lastName}" } ?: "?",
                 topTens = agg.topTens,
+                eventsPlayed = acc.eventsPlayed[golferId] ?: 0,
                 totalEarnings = agg.totalEarnings,
                 teamName = roster?.teamName,
                 draftRound = roster?.draftRound,
@@ -1322,6 +1331,7 @@ internal fun composePlayerRankings(
                 golferId = null,
                 name = name,
                 topTens = agg.topTens,
+                eventsPlayed = agg.golferIds.sumOf { acc.eventsPlayed[it] ?: 0 } + agg.unlinkedEvents,
                 totalEarnings = agg.totalEarnings,
             )
         }

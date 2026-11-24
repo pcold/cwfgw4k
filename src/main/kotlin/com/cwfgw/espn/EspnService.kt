@@ -929,6 +929,7 @@ private fun buildLivePreviewLeaderboard(
     fun entry(competitor: EspnCompetitor, golfer: Golfer?, position: Int?, scoreToPar: Int?) =
         PreviewLeaderboardEntry(
             name = competitor.name,
+            golferId = golfer?.id,
             position = position,
             scoreToPar = scoreToPar,
             teamNames = golfer?.let { teamNamesByGolfer[it.id] }.orEmpty(),

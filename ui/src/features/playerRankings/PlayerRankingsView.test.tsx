@@ -21,6 +21,7 @@ function r(overrides: Partial<PlayerRankingsRow>): PlayerRankingsRow {
     golferId: 'g-1',
     name: 'Scottie Scheffler',
     topTens: 1,
+    eventsPlayed: 1,
     totalEarnings: 18,
     teamName: 'Aces',
     draftRound: 1,
@@ -99,6 +100,7 @@ describe('PlayerRankingsView', () => {
             key: 'g:g-1',
             name: 'Scottie Scheffler',
             topTens: 3,
+            eventsPlayed: 7,
             totalEarnings: 50,
             teamName: 'Aces',
             draftRound: 1,
@@ -124,10 +126,11 @@ describe('PlayerRankingsView', () => {
     const firstCells = first.getAllByRole('cell');
     expect(firstCells[0]).toHaveTextContent('1');
     expect(firstCells[1]).toHaveTextContent('Scottie Scheffler');
-    expect(firstCells[2]).toHaveTextContent('3');
-    expect(firstCells[3]).toHaveTextContent('$50.00');
-    expect(firstCells[4]).toHaveTextContent('Aces');
-    expect(firstCells[5]).toHaveTextContent('1');
+    expect(firstCells[2]).toHaveTextContent('7');
+    expect(firstCells[3]).toHaveTextContent('3');
+    expect(firstCells[4]).toHaveTextContent('$50.00');
+    expect(firstCells[5]).toHaveTextContent('Aces');
+    expect(firstCells[6]).toHaveTextContent('1');
 
     const second = within(nth(rows, 1));
     expect(second.getByText('P. Mickelson')).toBeInTheDocument();
@@ -445,6 +448,7 @@ describe('PlayerRankingsView', () => {
         golferId: 'g-1',
         name: 'Scottie Scheffler',
         topTens: 4,
+        eventsPlayed: 9,
         totalEarnings: 50,
         teamName: 'Aces',
         draftRound: 1,
@@ -534,13 +538,13 @@ describe('PlayerRankingsView', () => {
       expect(within(phoneCard('P. Mickelson')).queryByRole('button')).not.toBeInTheDocument();
     });
 
-    it('prints the team, the draft round and the top-10 count under the name', () => {
+    it('prints the team, the draft round, the top-10 count and the events played under the name', () => {
       renderWithProviders(
         <PlayerRankingsView selectionKey={SELECTION_KEY} myTeamName={null} players={roster} />,
         NO_PROVIDERS,
       );
 
-      expect(phoneDetailLine('Scottie Scheffler')).toHaveTextContent(/^Aces · Rd 1 · 4 top 10s$/);
+      expect(phoneDetailLine('Scottie Scheffler')).toHaveTextContent(/^Aces · Rd 1 · 4 top 10s in 9 events$/);
       expect(within(phoneDetailLine('Scottie Scheffler')).getByText('Aces')).toHaveClass('uppercase');
     });
 
@@ -550,7 +554,7 @@ describe('PlayerRankingsView', () => {
         NO_PROVIDERS,
       );
 
-      expect(phoneDetailLine('Rory McIlroy')).toHaveTextContent(/^Birdies · Rd 3 · 1 top 10$/);
+      expect(phoneDetailLine('Rory McIlroy')).toHaveTextContent(/^Birdies · Rd 3 · 1 top 10 in 1 event$/);
     });
 
     it('names an undrafted player undrafted, with no round', () => {
@@ -559,7 +563,7 @@ describe('PlayerRankingsView', () => {
         NO_PROVIDERS,
       );
 
-      expect(phoneDetailLine('P. Mickelson')).toHaveTextContent(/^Undrafted · 1 top 10$/);
+      expect(phoneDetailLine('P. Mickelson')).toHaveTextContent(/^Undrafted · 1 top 10 in 1 event$/);
     });
 
     it('leaves the round out for a drafted player the server sends no round for', () => {
@@ -572,7 +576,7 @@ describe('PlayerRankingsView', () => {
         NO_PROVIDERS,
       );
 
-      expect(phoneDetailLine('Roundless')).toHaveTextContent(/^Aces · 2 top 10s$/);
+      expect(phoneDetailLine('Roundless')).toHaveTextContent(/^Aces · 2 top 10s in 1 event$/);
     });
 
     it('sets the total as a plain figure toned by its sign, with no fill', () => {

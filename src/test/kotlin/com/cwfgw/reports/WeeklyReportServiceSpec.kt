@@ -1856,6 +1856,43 @@ class WeeklyReportServiceSpec : FunSpec({
         row.draftRound shouldBe null
     }
 
+    test("getPlayerRankings counts each tournament a golfer has a result in once, top 10 or not") {
+        val sony = tournamentFixture(SONY_ID, "Sony Open", "2026-01-15")
+        val masters = tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
+        val shared = golferFixture("d01", "Scottie", "Scheffler")
+        val undraftedGolfer = golferFixture("d02", "Phil", "Mickelson")
+        val fixture =
+            Fixture(
+                initialTournaments = listOf(sony, masters),
+                initialTeams = listOf(TEAM_A, TEAM_B),
+                initialGolfers = listOf(shared, undraftedGolfer),
+                initialRosters =
+                    listOf(
+                        rosterEntry(TEAM_A.id, shared.id, draftRound = 1, ownershipPct = BigDecimal(50)),
+                        rosterEntry(TEAM_B.id, shared.id, draftRound = 2, ownershipPct = BigDecimal(50)),
+                    ),
+                initialResults =
+                    listOf(
+                        resultFixture(SONY_ID, shared.id, position = 1),
+                        resultFixture(MASTERS_ID, shared.id, position = 40),
+                        resultFixture(SONY_ID, undraftedGolfer.id, position = null),
+                        resultFixture(MASTERS_ID, undraftedGolfer.id, position = 5),
+                    ),
+                initialScores =
+                    listOf(
+                        scoreFixture(TEAM_A.id, SONY_ID, shared.id, BigDecimal(9), position = 1),
+                        scoreFixture(TEAM_B.id, SONY_ID, shared.id, BigDecimal(9), position = 1),
+                    ),
+            )
+
+        val players = fixture.service.getPlayerRankings(SEASON_ID).orFail().players
+
+        val drafted = players.single { it.golferId == shared.id }
+        drafted.topTens shouldBe 2
+        drafted.eventsPlayed shouldBe 2
+        players.single { it.name == "P. Mickelson" }.eventsPlayed shouldBe 2
+    }
+
     test("getPlayerRankings respects the through cutoff and excludes later tournaments") {
         val sony = tournamentFixture(SONY_ID, "Sony Open", "2026-01-15")
         val masters = tournamentFixture(MASTERS_ID, "The Masters", "2026-04-09")
@@ -1923,6 +1960,7 @@ class WeeklyReportServiceSpec : FunSpec({
         rankings.live shouldBe true
         val row = rankings.players.single { it.golferId == winner.id }
         row.topTens shouldBe 1
+        row.eventsPlayed shouldBe 1
         // First-place finish on multiplier=1.0 → $18 base payout for one rostering team.
         row.totalEarnings.compareTo(BigDecimal(18)) shouldBe 0
         row.teamName shouldBe TEAM_A.teamName

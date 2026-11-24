@@ -225,6 +225,7 @@ com.cwfgw.reports.PlayerRankingsRow [CLASS]
   golferId: com.cwfgw.golfers.GolferId? [INLINE] optional
   name: kotlin.String [STRING]
   topTens: kotlin.Int [INT]
+  eventsPlayed: kotlin.Int [INT]
   totalEarnings: java.math.BigDecimal [STRING]
   teamName: kotlin.String? [STRING] optional
   draftRound: kotlin.Int? [INT] optional
