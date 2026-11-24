@@ -1213,18 +1213,9 @@ private fun rosterIndexEntry(
 }
 
 /**
- * Build the base accumulator from completed-tournament data:
- *  - Drafted rows come from [FantasyScore]: each row is one (team,
- *    golfer, tournament) finish where the golfer top-10'd. We sum
- *    ownership-adjusted `points` and count rows so a golfer rostered
- *    by N teams who top-10s once contributes N to `topTens` and the
- *    sum of their ownership-adjusted slices to earnings — matching
- *    the legacy UI semantic where each cell counted independently.
- *  - Undrafted rows come from [TournamentResult]: top-10 finishes by
- *    golfers no team rostered, with payouts computed via the same
- *    [PayoutTable.tieSplitPayout] helper [buildUndraftedAgg] uses for
- *    per-tournament reports. Keyed by display name — see
- *    [PlayerRankingsAcc.undrafted].
+ * Drafted rows sum ownership-adjusted [FantasyScore] points, one per (team, finish), so N co-owners
+ * make N top tens. Undrafted rows are top-10 [TournamentResult]s nobody rostered, paid by the same
+ * [PayoutTable.tieSplitPayout] [buildUndraftedAgg] uses and keyed per [PlayerRankingsAcc.undrafted].
  */
 internal fun buildPlayerRankingsAcc(
     allScores: List<FantasyScore>,

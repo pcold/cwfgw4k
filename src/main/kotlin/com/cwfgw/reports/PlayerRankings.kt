@@ -6,21 +6,9 @@ import kotlinx.serialization.Serializable
 import java.math.BigDecimal
 
 /**
- * One row of the Player Rankings table — either a drafted golfer (with
- * roster context) or an undrafted top-10 finisher aggregated by name.
- *
- * Earnings is the sum of ownership-adjusted payouts across every (team
- * that rostered them, top-10 finish) pair, matching the behavior the
- * UI previously assembled by walking N per-tournament reports.
- * `topTens` likewise counts each (team, finish) pair so a golfer
- * rostered by two teams who top-10s once contributes 2.
- *
- * Undrafted rows have `golferId = null` and `key = "u:<name>"`. The
- * name is the display string the report builder produces ("F. Lastname"
- * for non-team events).
- *
- * `eventsPlayed` counts tournaments, not (team, finish) pairs, so unlike
- * `topTens` it never multiplies by the teams rostering the golfer.
+ * `topTens` and earnings count each (team, finish) pair, so a golfer two teams roster who top-10s once
+ * contributes 2; `eventsPlayed` counts tournaments and never multiplies. Undrafted rows have
+ * `golferId = null` and `key = "u:<name>"`, the name being the report builder's display string.
  */
 @Serializable
 data class PlayerRankingsRow(
@@ -50,15 +38,9 @@ data class PlayerRankings(
 )
 
 /**
- * Working accumulator for the player-rankings build. Kept immutable so
- * the live-overlay pass returns a new instance rather than mutating the
- * base — the same data-flow shape the team rankings overlay uses.
- *
- * `drafted` is keyed by golferId because we always have a golferId for
- * persisted FantasyScores and ESPN preview entries that match a roster.
- * `undrafted` is keyed by display name because a live leaderboard
- * competitor may match no golfer, and the persisted-results path has to
- * use the same key shape so the two combine without a join.
+ * Immutable so the live overlay returns a new instance rather than mutating the base. `undrafted` is
+ * keyed by display name because a live leaderboard competitor may match no golfer, and the persisted
+ * path uses the same key shape so the two combine without a join.
  */
 internal data class PlayerRankingsAcc(
     val drafted: Map<GolferId, DraftedAgg>,
