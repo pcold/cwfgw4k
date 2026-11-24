@@ -424,8 +424,8 @@ nothing.
   sharing a `pairKey` of `team:<id>`.
 - **Positions.** Competitors are sorted by score to par, then ESPN's order. Equal scores share a position, and
   the next position skips past them, counting a pair as one. Once the event is completed a tie for the lead is
-  broken by ESPN's order (the playoff result): every playoff entrant gets its own place, so a three-way playoff
-  pays 1st, 2nd and 3rd, not a shared T2. Ties below the lead stay shared. A competitor with no score sorts
+  broken by ESPN's order (the playoff result): the winner takes sole 1st and every other playoff entrant shares
+  2nd, so a four-way playoff is 1, T2, T2, T2 and the next finisher is 5th. Ties below the lead stay shared. A competitor with no score sorts
   last, each in its own position.
 
 Pinned by `EspnClientSpec`.

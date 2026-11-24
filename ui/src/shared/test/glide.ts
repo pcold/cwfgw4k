@@ -1,4 +1,5 @@
 import { act } from '@testing-library/react';
+import { MotionGlobalConfig } from 'motion/react';
 import { onTestFinished, vi } from 'vitest';
 
 const ROW_HEIGHT = 40;
@@ -18,6 +19,18 @@ export function stackByTreeIndex(): void {
     return DOMRect.fromRect({ x: 0, y: rowsAbove(this) * ROW_HEIGHT, width: 100, height: ROW_HEIGHT });
   });
   onTestFinished(() => spy.mockRestore());
+}
+
+/**
+ * Motion runs a glide on the wall clock, so on a slow runner it can finish before a test looks, leaving no transform.
+ * Frames still run on a frozen clock, so a glide gets its first transform from the old place and holds there.
+ * Even reduced motion's instant move never lands on it, so a reduced-motion test keeps the real clock.
+ */
+export function freezeMotionClock(): void {
+  MotionGlobalConfig.useManualTiming = true;
+  onTestFinished(() => {
+    MotionGlobalConfig.useManualTiming = false;
+  });
 }
 
 /**

@@ -551,6 +551,24 @@ class EspnClientSpec : FunSpec({
         positioned.getValue("clark").position shouldBe 3
     }
 
+    test("assignPositions: a completed multi-way playoff gives the losers a shared 2nd behind the winner") {
+        val penge = leaderboardCompetitor(espnId = "penge", order = 1, scoreStr = "-16", scoreToPar = -16)
+        val thorbjornsen = leaderboardCompetitor(espnId = "thorbjornsen", order = 2, scoreStr = "-16", scoreToPar = -16)
+        val li = leaderboardCompetitor(espnId = "li", order = 3, scoreStr = "-16", scoreToPar = -16)
+        val greyserman = leaderboardCompetitor(espnId = "greyserman", order = 4, scoreStr = "-16", scoreToPar = -16)
+        val koivun = leaderboardCompetitor(espnId = "koivun", order = 5, scoreStr = "-14", scoreToPar = -14)
+
+        val positioned =
+            assignPositions(listOf(li, greyserman, penge, koivun, thorbjornsen), completed = true)
+                .associateBy { it.espnId }
+
+        positioned.getValue("penge").position shouldBe 1
+        positioned.getValue("thorbjornsen").position shouldBe 2
+        positioned.getValue("li").position shouldBe 2
+        positioned.getValue("greyserman").position shouldBe 2
+        positioned.getValue("koivun").position shouldBe 5
+    }
+
     test("assignPositions: an unfinished tie for the lead stays shared (order is only tee-time live)") {
         val leaders =
             listOf(

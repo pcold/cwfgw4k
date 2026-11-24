@@ -501,16 +501,10 @@ internal fun assignPositions(
 }
 
 /**
- * Resolve a tie for the lead at a completed event.
- *
- * In stroke play a tie for the lead is decided by a sudden-death playoff, so a
- * completed event never has co-leaders — exactly one entry finishes first. ESPN
- * reflects this only in `order` (1 = playoff winner, 2 = runner-up); its `score`
- * field is unreliable here, sometimes folding the winner's extra-hole birdie in
- * (−13 vs −12) and sometimes leaving both level (−12 vs −12). So when the top
- * group holds more than one team we split it into one group per team ranked by
- * `order`, giving the winner sole 1st and the rest the following places. Groups
- * below the lead are untouched — those are genuine shared finishes (T2, T3, …).
+ * A completed event has one winner, decided by playoff, and ESPN reports it only in `order`:
+ * `score` sometimes folds the winner's extra-hole birdie in and sometimes stays level. The
+ * lowest-`order` team takes sole 1st and every other playoff entrant shares 2nd, so a 4-way
+ * playoff is 1, T2, T2, T2.
  */
 private fun breakLeadTie(
     groups: List<List<EspnCompetitor>>,
@@ -518,6 +512,7 @@ private fun breakLeadTie(
     val lead = groups.firstOrNull() ?: return groups
     val leadTeams = lead.groupBy { it.pairKey ?: it.espnId }
     if (leadTeams.size <= 1) return groups
-    val splitLead = leadTeams.values.sortedBy { team -> team.minOf { it.order } }
-    return splitLead + groups.drop(1)
+    val winner = leadTeams.values.minBy { team -> team.minOf { it.order } }
+    val playoffLosers = lead.filterNot { it in winner }
+    return listOf(winner, playoffLosers) + groups.drop(1)
 }
