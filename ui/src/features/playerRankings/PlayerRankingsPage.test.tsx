@@ -69,6 +69,7 @@ function row(overrides: Partial<PlayerRankingsRow>): PlayerRankingsRow {
     golferId: 'g-1',
     name: 'Scottie Scheffler',
     topTens: 1,
+    eventsPlayed: 1,
     totalEarnings: 18,
     teamName: 'Aces',
     draftRound: 1,
@@ -124,7 +125,14 @@ describe('PlayerRankingsPage', () => {
     playerRankingsMock.mockResolvedValue(
       rankings({
         players: [
-          row({ key: 'g:g-1', golferId: 'g-1', name: 'Scottie Scheffler', topTens: 2, totalEarnings: 30 }),
+          row({
+            key: 'g:g-1',
+            golferId: 'g-1',
+            name: 'Scottie Scheffler',
+            topTens: 2,
+            eventsPlayed: 4,
+            totalEarnings: 30,
+          }),
           row({
             key: 'u:P. Mickelson',
             golferId: null,
@@ -148,14 +156,15 @@ describe('PlayerRankingsPage', () => {
 
     const scheffler = within(nth(dataRows, 0)).getAllByRole('cell');
     expect(scheffler[1]).toHaveTextContent('Scottie Scheffler');
-    expect(scheffler[2]).toHaveTextContent('2');
-    expect(scheffler[3]).toHaveTextContent('+$30.00');
-    expect(scheffler[4]).toHaveTextContent('Aces');
-    expect(scheffler[5]).toHaveTextContent('1');
+    expect(scheffler[2]).toHaveTextContent('4');
+    expect(scheffler[3]).toHaveTextContent('2');
+    expect(scheffler[4]).toHaveTextContent('+$30.00');
+    expect(scheffler[5]).toHaveTextContent('Aces');
+    expect(scheffler[6]).toHaveTextContent('1');
 
     const phil = within(nth(dataRows, 1)).getAllByRole('cell');
     expect(phil[1]).toHaveTextContent('P. Mickelson');
-    expect(phil[4]).toHaveTextContent('undrafted');
+    expect(phil[5]).toHaveTextContent('undrafted');
   });
 
   it('refetches with a different through param when the selector changes', async () => {
@@ -178,7 +187,7 @@ describe('PlayerRankingsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<PlayerRankingsPage />, WITH_MY_TEAM);
     const table = await screen.findByRole('table');
-    expect(within(nth(within(table).getAllByRole('row'), 1)).getAllByRole('cell')[3]).toHaveTextContent('+$30.00');
+    expect(within(nth(within(table).getAllByRole('row'), 1)).getAllByRole('cell')[4]).toHaveTextContent('+$30.00');
 
     const select = screen.getByLabelText(/Through/i);
     await user.selectOptions(select, 'tn-a');

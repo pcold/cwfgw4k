@@ -577,15 +577,30 @@ internal fun foldLivePlayerRankings(
     preview.leaderboard.forEach { entry ->
         liveUndraftedPayout(entry, preview, rules, tiedAtPosition)?.let { payout ->
             val existing = undrafted[entry.name] ?: UndraftedAgg(topTens = 0, totalEarnings = BigDecimal.ZERO)
-            undrafted[entry.name] =
-                existing.copy(
-                    topTens = existing.topTens + 1,
-                    totalEarnings = existing.totalEarnings.add(payout),
-                )
+            undrafted[entry.name] = existing.withLiveTopTen(entry.golferId, payout)
         }
     }
 
-    return acc.copy(drafted = drafted.toMap(), undrafted = undrafted.toMap(), live = true)
+    return acc.copy(
+        drafted = drafted.toMap(),
+        undrafted = undrafted.toMap(),
+        eventsPlayed = acc.eventsPlayed.withLiveField(preview.leaderboard),
+        live = true,
+    )
+}
+
+private fun UndraftedAgg.withLiveTopTen(golferId: GolferId?, payout: BigDecimal): UndraftedAgg =
+    copy(
+        topTens = topTens + 1,
+        totalEarnings = totalEarnings.add(payout),
+        golferIds = golferIds + listOfNotNull(golferId),
+        unlinkedEvents = if (golferId == null) unlinkedEvents + 1 else unlinkedEvents,
+    )
+
+/** One more event for each golfer on the leaderboard, cut or yet to tee off alike. */
+private fun Map<GolferId, Int>.withLiveField(leaderboard: List<PreviewLeaderboardEntry>): Map<GolferId, Int> {
+    val inField = leaderboard.mapNotNull(PreviewLeaderboardEntry::golferId).toSet()
+    return this + inField.associateWith { golferId -> getOrDefault(golferId, 0) + 1 }
 }
 
 /**

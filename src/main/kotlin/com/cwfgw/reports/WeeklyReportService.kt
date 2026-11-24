@@ -1213,18 +1213,9 @@ private fun rosterIndexEntry(
 }
 
 /**
- * Build the base accumulator from completed-tournament data:
- *  - Drafted rows come from [FantasyScore]: each row is one (team,
- *    golfer, tournament) finish where the golfer top-10'd. We sum
- *    ownership-adjusted `points` and count rows so a golfer rostered
- *    by N teams who top-10s once contributes N to `topTens` and the
- *    sum of their ownership-adjusted slices to earnings — matching
- *    the legacy UI semantic where each cell counted independently.
- *  - Undrafted rows come from [TournamentResult]: top-10 finishes by
- *    golfers no team rostered, with payouts computed via the same
- *    [PayoutTable.tieSplitPayout] helper [buildUndraftedAgg] uses for
- *    per-tournament reports. Keyed by display name because the
- *    matching ESPN-leaderboard path doesn't carry golferId.
+ * Drafted rows sum ownership-adjusted [FantasyScore] points, one per (team, finish), so N co-owners
+ * make N top tens. Undrafted rows are top-10 [TournamentResult]s nobody rostered, paid by the same
+ * [PayoutTable.tieSplitPayout] helper [buildUndraftedAgg] uses, keyed per [PlayerRankingsAcc.undrafted].
  */
 internal fun buildPlayerRankingsAcc(
     allScores: List<FantasyScore>,
@@ -1254,11 +1245,19 @@ internal fun buildPlayerRankingsAcc(
                     existing.copy(
                         topTens = existing.topTens + 1,
                         totalEarnings = existing.totalEarnings.add(payout),
+                        golferIds = existing.golferIds + result.golferId,
                     )
             }
     }
 
-    return PlayerRankingsAcc(drafted = drafted.toMap(), undrafted = undrafted.toMap())
+    return PlayerRankingsAcc(
+        drafted = drafted.toMap(),
+        undrafted = undrafted.toMap(),
+        eventsPlayed =
+            allResults
+                .groupBy(TournamentResult::golferId) { it.tournamentId }
+                .mapValues { (_, tournamentIds) -> tournamentIds.distinct().size },
+    )
 }
 
 /**
@@ -1310,6 +1309,7 @@ internal fun composePlayerRankings(
                 golferId = golferId,
                 name = roster?.fullName ?: golfer?.let { "${it.firstName} ${it.lastName}" } ?: "?",
                 topTens = agg.topTens,
+                eventsPlayed = acc.eventsPlayed[golferId] ?: 0,
                 totalEarnings = agg.totalEarnings,
                 teamName = roster?.teamName,
                 draftRound = roster?.draftRound,
@@ -1322,6 +1322,7 @@ internal fun composePlayerRankings(
                 golferId = null,
                 name = name,
                 topTens = agg.topTens,
+                eventsPlayed = agg.golferIds.sumOf { acc.eventsPlayed[it] ?: 0 } + agg.unlinkedEvents,
                 totalEarnings = agg.totalEarnings,
             )
         }

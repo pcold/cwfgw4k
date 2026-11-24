@@ -368,6 +368,7 @@ export interface WireContract extends Record<string, true> {
     | 'golferId'
     | 'name'
     | 'topTens'
+    | 'eventsPlayed'
     | 'totalEarnings'
     | 'teamName'
     | 'draftRound'

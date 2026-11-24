@@ -80,9 +80,11 @@ private fun leaderboardEntry(
     teamNames: List<String> = emptyList(),
     scoreToPar: Int? = -10,
     pairKey: String? = null,
+    golferId: GolferId? = null,
 ): PreviewLeaderboardEntry =
     PreviewLeaderboardEntry(
         name = name,
+        golferId = golferId,
         position = position,
         scoreToPar = scoreToPar,
         teamNames = teamNames,
@@ -896,6 +898,30 @@ class LiveOverlayServiceSpec : FunSpec({
 
         folded.undrafted.keys shouldContainExactly setOf("Leader")
         folded.undrafted.getValue("Leader").totalEarnings.compareTo(BigDecimal(18)) shouldBe 0
+    }
+
+    test("foldLivePlayerRankings plays the live event for every golfer on the leaderboard, linked or not") {
+        val live =
+            preview(
+                leaderboard =
+                    listOf(
+                        leaderboardEntry("Rory McIlroy", position = 1, golferId = RORY_ID),
+                        leaderboardEntry("Unlinked", position = 2),
+                        leaderboardEntry(
+                            "Scottie Scheffler",
+                            position = null,
+                            teamNames = listOf("BROWN"),
+                            golferId = SCOTTIE_ID,
+                        ),
+                    ),
+            )
+        val base = PlayerRankingsAcc(emptyMap(), emptyMap(), eventsPlayed = mapOf(SCOTTIE_ID to 3, XANDER_ID to 2))
+
+        val folded = foldLivePlayerRankings(base, live, DEFAULT_RULES)
+        val rows = composePlayerRankings(folded, emptyMap(), emptyMap(), liveEligible = true).players
+
+        folded.eventsPlayed shouldBe mapOf(SCOTTIE_ID to 4, XANDER_ID to 2, RORY_ID to 1)
+        rows.associate { it.name to it.eventsPlayed } shouldBe mapOf("Rory McIlroy" to 1, "Unlinked" to 1)
     }
 
     test("buildUndraftedFromLeaderboard returns empty when every top-10 finisher is rostered") {

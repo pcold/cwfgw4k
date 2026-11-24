@@ -136,6 +136,8 @@ data class PreviewLeaderboardEntry(
     val totalStrokes: Int? = null,
     /** @see RoundScorecard */
     val scorecards: List<RoundScorecard> = emptyList(),
+    /** Null for a competitor that matched no golfer. */
+    val golferId: GolferId? = null,
 ) {
     val rostered: Boolean get() = teamNames.isNotEmpty()
 }

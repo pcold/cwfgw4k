@@ -455,7 +455,7 @@ class EspnLivePreviewSpec : FunSpec({
         leaderboard.forEach { it.rostered shouldBe false }
     }
 
-    test("previewForTournament answers NotStarted with the field unplaced and every credited golfer in it") {
+    test("previewForTournament answers NotStarted with the field unplaced, each matched entry naming its golfer") {
         val scottie = golfer(SCOTTIE_ID, "Scottie", "Scheffler", pgaPlayerId = "p1")
         val rory = golfer(RORY_ID, "Rory", "McIlroy", pgaPlayerId = "p2")
         val event =
@@ -475,8 +475,20 @@ class EspnLivePreviewSpec : FunSpec({
 
         val unplacedField =
             listOf(
-                PreviewLeaderboardEntry("Scottie Scheffler", position = null, scoreToPar = null, listOf("BROWN")),
-                PreviewLeaderboardEntry("Rory McIlroy", position = null, scoreToPar = null, emptyList()),
+                PreviewLeaderboardEntry(
+                    "Scottie Scheffler",
+                    position = null,
+                    scoreToPar = null,
+                    listOf("BROWN"),
+                    golferId = SCOTTIE_ID,
+                ),
+                PreviewLeaderboardEntry(
+                    "Rory McIlroy",
+                    position = null,
+                    scoreToPar = null,
+                    emptyList(),
+                    golferId = RORY_ID,
+                ),
                 PreviewLeaderboardEntry("Undrafted", position = null, scoreToPar = null, emptyList()),
             )
         fixture.previewFor(tournament()) shouldBe

@@ -223,6 +223,8 @@ export interface PlayerRankingsRow {
   golferId: string | null;
   name: string;
   topTens: number;
+  /** Counts tournaments, not (team, finish) pairs, so unlike topTens it never multiplies by co-owning teams. */
+  eventsPlayed: number;
   totalEarnings: number;
   teamName: string | null;
   draftRound: number | null;
